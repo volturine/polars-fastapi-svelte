@@ -77,10 +77,15 @@ Pre-approved operations:
 ✅ All file operations (Read, Edit, Write, Glob, Grep)
 ✅ npm commands (install, run, build, test, etc.)
 ✅ uv commands (sync, add, run, etc.)
-✅ git commands (status, add, commit, push, etc.)
+✅ git commands (status, add, commit, branch, merge, etc.)
 ✅ just commands (task runner)
 ✅ Python tools (pytest, ruff, mypy)
 ✅ Common shell commands (ls, cat, mkdir, cp, mv, etc.)
+
+**Git Policy**:
+- ✅ Local operations: commit, branch, merge, rebase, stash
+- ❌ **FORBIDDEN**: `git push` to any remote (explicitly denied)
+- **Rationale**: User controls when changes are pushed to remote repositories
 
 ## Customization
 

@@ -12,6 +12,28 @@ This is a no-code data analysis platform built with SvelteKit 2 + FastAPI + Pola
 - `STYLE_GUIDE.md` - Code style preferences
 - `tasks/` - Detailed implementation task breakdowns
 
+## Git Policy
+
+**IMPORTANT: Never push to remote**
+
+✅ Allowed:
+- `git commit` - Local commits
+- `git add` - Staging changes
+- `git branch` - Creating/managing branches
+- `git checkout` - Switching branches
+- `git merge` - Merging branches
+- `git status`, `git log`, `git diff` - Read operations
+- `git stash` - Stashing changes
+- `git rebase` - Rebasing (local only)
+
+❌ Forbidden:
+- `git push` - Never push to remote
+- `git push origin` - Never push to origin
+- `git push --force` - Never force push
+- Any variant of pushing to remote
+
+**Rationale**: User maintains control over when and what gets pushed to remote repositories.
+
 ## Tech Stack Conventions
 
 ### Frontend (SvelteKit 2 + Svelte 5)

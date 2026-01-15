@@ -7,11 +7,17 @@ requires-python = "==3.13.*"
 dependencies = [
     "uvicorn",
     "fastapi",
-    "pydantic",
+    "pydantic>=2.0",
+    "pydantic-settings",
     "pytest",
     "httpx",
     "requests",
     "ruff>=0.14.7",
+    "polars",
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite",
+    "alembic",
+    "python-multipart",
 ]
 
 [project.optional-dependencies]

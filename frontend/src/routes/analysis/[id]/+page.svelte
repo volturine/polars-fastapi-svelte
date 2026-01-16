@@ -3,25 +3,22 @@
 	import { goto } from '$app/navigation';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
-	import { computeStore } from '$lib/stores/compute.svelte';
 	import { getAnalysis } from '$lib/api/analysis';
-	import { getResultData } from '$lib/api/results';
 	import { getDatasourceSchema } from '$lib/api/datasource';
 	import type { PipelineStep } from '$lib/types/analysis';
 	import StepLibrary from '$lib/components/pipeline/StepLibrary.svelte';
 	import PipelineCanvas from '$lib/components/pipeline/PipelineCanvas.svelte';
 	import StepConfig from '$lib/components/pipeline/StepConfig.svelte';
-	import DataTable from '$lib/components/viewers/DataTable.svelte';
 
 	const analysisId = $derived($page.params.id);
 
 	let selectedStepId = $state<string | null>(null);
-	let showResults = $state(false);
 	let isSaving = $state(false);
-	let isRunning = $state(false);
 	let saveStatus = $state<'saved' | 'unsaved' | 'saving'>('saved');
 	let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 	let initialPipeline: PipelineStep[] | null = null;
+
+	let isLoadingSchema = $state(false);
 
 	const analysisQuery = createQuery(() => ({
 		queryKey: ['analysis', analysisId],
@@ -30,41 +27,37 @@
 			const analysis = await getAnalysis(analysisId);
 			await analysisStore.loadAnalysis(analysisId);
 
-			if (analysis.pipeline_definition && 'datasource_ids' in analysis.pipeline_definition) {
-				const datasourceIds = analysis.pipeline_definition.datasource_ids as string[];
-				if (datasourceIds.length > 0) {
-					try {
-						const schema = await getDatasourceSchema(datasourceIds[0]);
-						analysisStore.setSourceSchema(datasourceIds[0], schema);
-					} catch (err) {
-						console.error('Failed to load schema:', err);
-					}
-				}
-			}
-
 			return analysis;
 		},
 		retry: false
 	}));
 
-	let currentJob = $derived.by(() => {
-		const jobs = Array.from(computeStore.jobs.values());
-		const analysisJobs = jobs.filter((job) => {
-			return job.result && typeof job.result === 'object' && 'analysis_id' in job.result;
-		});
-		return analysisJobs.length > 0 ? analysisJobs[analysisJobs.length - 1] : null;
+	$effect(() => {
+		const datasourceIdValue = datasourceId;
+		if (!datasourceIdValue) return;
+
+		const existingSchema = analysisStore.sourceSchemas.get(datasourceIdValue);
+		if (existingSchema) return;
+
+		isLoadingSchema = true;
+		getDatasourceSchema(datasourceIdValue)
+			.then((schema) => {
+				analysisStore.setSourceSchema(datasourceIdValue, schema);
+			})
+			.catch((err) => {
+				console.error('Failed to load schema:', err);
+			})
+			.finally(() => {
+				isLoadingSchema = false;
+			});
 	});
 
-	const resultQuery = createQuery(() => ({
-		queryKey: ['result', analysisId, currentJob?.id],
-		queryFn: async () => {
-			if (!analysisId || !currentJob || currentJob?.status !== 'completed') {
-				return null;
-			}
-			return await getResultData(analysisId, 1, 100);
-		},
-		enabled: currentJob?.status === 'completed'
-	}));
+	const datasourceId = $derived.by(() => {
+		const analysis = analysisQuery.data;
+		if (!analysis?.pipeline_definition) return undefined;
+		const datasourceIds = (analysis.pipeline_definition as { datasource_ids?: string[] }).datasource_ids;
+		return datasourceIds?.[0];
+	});
 
 	function makeId() {
 		if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -114,21 +107,6 @@
 			alert(message);
 		} finally {
 			isSaving = false;
-		}
-	}
-
-	async function handleRun() {
-		if (isRunning || !analysisId) return;
-
-		isRunning = true;
-		try {
-			const _job = await computeStore.executeAnalysis(analysisId);
-			showResults = true;
-		} catch (err) {
-			const message = err instanceof Error ? err.message : 'Failed to run analysis';
-			alert(message);
-		} finally {
-			isRunning = false;
 		}
 	}
 
@@ -242,14 +220,6 @@
 				>
 					Save
 				</button>
-				<button
-					class="btn btn-primary"
-					onclick={handleRun}
-					disabled={isRunning || analysisStore.pipeline.length === 0}
-					type="button"
-				>
-					{isRunning ? 'Running...' : 'Run'}
-				</button>
 			</div>
 		</header>
 
@@ -258,6 +228,7 @@
 
 			<PipelineCanvas
 				steps={analysisStore.pipeline}
+				{datasourceId}
 				onStepClick={handleSelectStep}
 				onStepDelete={handleDeleteStep}
 			/>
@@ -265,79 +236,10 @@
 			<StepConfig
 				step={selectedStep}
 				schema={analysisStore.calculatedSchema}
+				{isLoadingSchema}
 				onClose={handleCloseConfig}
 			/>
 		</div>
-
-		{#if showResults}
-			<div class="results-panel">
-				<div class="results-header">
-					<h3>Results</h3>
-					<div class="results-actions">
-						{#if currentJob}
-							<span
-								class="job-status"
-								class:completed={currentJob?.status === 'completed'}
-								class:failed={currentJob?.status === 'failed'}
-							>
-								{currentJob?.status}
-							</span>
-						{/if}
-						<button
-							class="btn-icon"
-							onclick={() => (showResults = false)}
-							type="button"
-							aria-label="Close results panel"
-						>
-							<svg
-								width="16"
-								height="16"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-							>
-								<path d="M18 6L6 18M6 6l12 12" />
-							</svg>
-						</button>
-					</div>
-				</div>
-
-				<div class="results-content">
-					{#if currentJob?.status === 'pending' || currentJob?.status === 'running'}
-						<div class="results-loading">
-							<div class="spinner"></div>
-							<p>{currentJob?.status === 'pending' ? 'Queued...' : 'Running...'}</p>
-							{#if currentJob?.progress !== undefined}
-								<div class="progress-bar">
-									<div class="progress-fill" style="width: {currentJob?.progress}%"></div>
-								</div>
-							{/if}
-						</div>
-					{:else if currentJob?.status === 'failed'}
-						<div class="results-error">
-							<p>Analysis failed</p>
-							<span>{currentJob?.error || 'Unknown error'}</span>
-						</div>
-					{:else if currentJob?.status === 'completed' && resultQuery.data}
-						<DataTable
-							columns={resultQuery.data.columns}
-							data={resultQuery.data.data}
-							loading={resultQuery.isLoading}
-						/>
-					{:else if currentJob?.status === 'completed' && resultQuery.isLoading}
-						<div class="results-loading">
-							<div class="spinner"></div>
-							<p>Loading results...</p>
-						</div>
-					{:else}
-						<div class="results-empty">
-							<p>Run the analysis to see results</p>
-						</div>
-					{/if}
-				</div>
-			</div>
-		{/if}
 	</div>
 {/if}
 
@@ -516,21 +418,6 @@
 		transition: all var(--transition-fast);
 	}
 
-	.btn-primary {
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border-color: var(--accent-primary);
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		opacity: 0.85;
-	}
-
-	.btn-primary:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
 	.btn-secondary {
 		background-color: transparent;
 		color: var(--fg-primary);
@@ -546,129 +433,9 @@
 		cursor: not-allowed;
 	}
 
-	.btn-icon {
-		padding: var(--space-1);
-		background: transparent;
-		border: none;
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		color: var(--fg-muted);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.btn-icon:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-primary);
-	}
-
 	.editor-workspace {
 		display: flex;
 		flex: 1;
 		overflow: hidden;
-	}
-
-	.results-panel {
-		border-top: 1px solid var(--border-primary);
-		background-color: var(--bg-primary);
-		max-height: 360px;
-		display: flex;
-		flex-direction: column;
-		box-shadow: var(--shadow-soft);
-	}
-
-	.results-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: var(--space-3) var(--space-4);
-		border-bottom: 1px solid var(--border-primary);
-		background-color: var(--bg-tertiary);
-	}
-
-	.results-header h3 {
-		margin: 0;
-		font-size: var(--text-sm);
-		font-weight: 600;
-		color: var(--fg-primary);
-	}
-
-	.results-actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-	}
-
-	.job-status {
-		font-size: var(--text-xs);
-		padding: var(--space-1) var(--space-2);
-		border-radius: var(--radius-sm);
-		background-color: var(--warning-bg);
-		color: var(--warning-fg);
-		border: 1px solid var(--warning-border);
-		text-transform: lowercase;
-		font-weight: 500;
-	}
-
-	.job-status.completed {
-		background-color: var(--success-bg);
-		color: var(--success-fg);
-		border-color: var(--success-border);
-	}
-
-	.job-status.failed {
-		background-color: var(--error-bg);
-		color: var(--error-fg);
-		border-color: var(--error-border);
-	}
-
-	.results-content {
-		flex: 1;
-		overflow-y: auto;
-	}
-
-	.results-loading,
-	.results-error,
-	.results-empty {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-8);
-		gap: var(--space-3);
-	}
-
-	.results-loading p,
-	.results-empty p {
-		margin: 0;
-		color: var(--fg-tertiary);
-		font-size: var(--text-sm);
-	}
-
-	.results-error p {
-		margin: 0;
-		color: var(--error-fg);
-		font-size: var(--text-sm);
-		font-weight: 500;
-	}
-
-	.results-error span {
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
-	}
-
-	.progress-bar {
-		width: 200px;
-		height: 4px;
-		background-color: var(--bg-tertiary);
-		border-radius: var(--radius-sm);
-		overflow: hidden;
-	}
-
-	.progress-fill {
-		height: 100%;
-		background-color: var(--accent-primary);
-		transition: width 0.3s ease;
 	}
 </style>

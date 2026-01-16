@@ -5,11 +5,12 @@
 
 	interface Props {
 		steps: PipelineStep[];
+		datasourceId?: string;
 		onStepClick: (id: string) => void;
 		onStepDelete: (id: string) => void;
 	}
 
-	let { steps, onStepClick, onStepDelete }: Props = $props();
+	let { steps, datasourceId, onStepClick, onStepDelete }: Props = $props();
 </script>
 
 <div class="pipeline-canvas">
@@ -35,7 +36,14 @@
 				{#if i > 0}
 					<ConnectionLine fromStepIndex={i - 1} toStepIndex={i} totalSteps={steps.length} />
 				{/if}
-				<StepNode {step} index={i} onEdit={onStepClick} onDelete={onStepDelete} />
+				<StepNode
+					{step}
+					index={i}
+					{datasourceId}
+					allSteps={steps}
+					onEdit={onStepClick}
+					onDelete={onStepDelete}
+				/>
 			{/each}
 		</div>
 	{/if}

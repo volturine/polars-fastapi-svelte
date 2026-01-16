@@ -42,3 +42,24 @@ class ComputeResultSchema(BaseModel):
     status: JobStatus
     data: dict | None = None
     error: str | None = None
+
+
+class StepPreviewRequest(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    datasource_id: str
+    pipeline_steps: list[dict]
+    target_step_id: str
+    row_limit: int = 1000
+    page: int = 1
+
+
+class StepPreviewResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    step_id: str
+    columns: list[str]
+    data: list[dict]
+    total_rows: int
+    page: int
+    page_size: int

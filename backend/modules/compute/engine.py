@@ -153,7 +153,7 @@ class PolarsComputeEngine:
         result_queue: mp.Queue,
     ) -> dict:
         """Execute the Polars transformation pipeline."""
-        df = PolarsComputeEngine._load_datasource(datasource_config)
+        lf = PolarsComputeEngine._load_datasource(datasource_config)
 
         total_steps = len(pipeline_steps)
 
@@ -187,19 +187,22 @@ class PolarsComputeEngine:
                 }
             )
 
-            df = PolarsComputeEngine._apply_step(df, backend_step)
+            lf = PolarsComputeEngine._apply_step(lf, backend_step)
+
+        # Only collect at the very end
+        df = lf.collect()
 
         output = {
             'schema': {col: str(dtype) for col, dtype in df.schema.items()},
             'row_count': len(df),
-            'sample_data': df.head(100).to_dicts(),
+            'sample_data': df.head(5000).to_dicts(),
         }
 
         return output
 
     @staticmethod
-    def _load_datasource(config: dict) -> pl.DataFrame:
-        """Load data from datasource configuration."""
+    def _load_datasource(config: dict) -> pl.LazyFrame:
+        """Load data from datasource configuration using lazy evaluation."""
         source_type = config.get('source_type', 'file')
 
         if source_type == 'file':
@@ -207,25 +210,26 @@ class PolarsComputeEngine:
             file_type = config['file_type']
 
             if file_type == 'csv':
-                return pl.read_csv(file_path)
+                return pl.scan_csv(file_path)
             elif file_type == 'parquet':
-                return pl.read_parquet(file_path)
+                return pl.scan_parquet(file_path)
             elif file_type == 'json':
-                return pl.read_ndjson(file_path)
+                return pl.scan_ndjson(file_path)
             else:
                 raise ValueError(f'Unsupported file type: {file_type}')
 
         elif source_type == 'database':
             connection_string = config['connection_string']
             query = config['query']
-            return pl.read_database(query, connection_string)
+            # Database reads need to be collected, then converted to lazy
+            return pl.read_database(query, connection_string).lazy()
 
         else:
             raise ValueError(f'Unsupported source type: {source_type}')
 
     @staticmethod
-    def _apply_step(df: pl.DataFrame, step: dict) -> pl.DataFrame:
-        """Apply a single transformation step to the DataFrame."""
+    def _apply_step(lf: pl.LazyFrame, step: dict) -> pl.LazyFrame:
+        """Apply a single transformation step to the LazyFrame."""
         operation = step.get('operation')
         params = step.get('params', {})
 
@@ -283,11 +287,11 @@ class PolarsComputeEngine:
             else:
                 raise ValueError(f'Unsupported logic operator: {logic}')
 
-            return df.filter(final_expr)
+            return lf.filter(final_expr)
 
         elif operation == 'select':
             columns = params.get('columns', [])
-            return df.select(columns)
+            return lf.select(columns)
 
         elif operation == 'groupby':
             group_cols = params.get('group_by', [])
@@ -309,16 +313,16 @@ class PolarsComputeEngine:
                 elif func == 'max':
                     agg_exprs.append(pl.col(col).max().alias(f'{col}_max'))
 
-            return df.group_by(group_cols).agg(agg_exprs)
+            return lf.group_by(group_cols).agg(agg_exprs)
 
         elif operation == 'sort':
             columns = params.get('columns', [])
             descending = params.get('descending', False)
-            return df.sort(columns, descending=descending)
+            return lf.sort(columns, descending=descending)
 
         elif operation == 'rename':
             mapping = params.get('mapping', {})
-            return df.rename(mapping)
+            return lf.rename(mapping)
 
         elif operation == 'with_columns':
             expressions = params.get('expressions', [])
@@ -333,11 +337,11 @@ class PolarsComputeEngine:
                 elif expr_type == 'column':
                     new_cols.append(pl.col(expr['column']).alias(col_name))
 
-            return df.with_columns(new_cols)
+            return lf.with_columns(new_cols)
 
         elif operation == 'drop':
             columns = params.get('columns', [])
-            return df.drop(columns)
+            return lf.drop(columns)
 
         elif operation == 'pivot':
             index = params.get('index', [])
@@ -345,7 +349,7 @@ class PolarsComputeEngine:
             values = params.get('values')
             aggregate_function = params.get('aggregate_function', 'first')
 
-            return df.pivot(on=on, index=index, values=values, aggregate_function=aggregate_function)
+            return lf.pivot(on=on, index=index, values=values, aggregate_function=aggregate_function)
 
         elif operation == 'timeseries':
             column = params.get('column')
@@ -355,23 +359,23 @@ class PolarsComputeEngine:
             if operation_type == 'extract':
                 component = params.get('component')
                 if component == 'year':
-                    return df.with_columns(pl.col(column).dt.year().alias(new_column))
+                    return lf.with_columns(pl.col(column).dt.year().alias(new_column))
                 elif component == 'month':
-                    return df.with_columns(pl.col(column).dt.month().alias(new_column))
+                    return lf.with_columns(pl.col(column).dt.month().alias(new_column))
                 elif component == 'day':
-                    return df.with_columns(pl.col(column).dt.day().alias(new_column))
+                    return lf.with_columns(pl.col(column).dt.day().alias(new_column))
                 elif component == 'hour':
-                    return df.with_columns(pl.col(column).dt.hour().alias(new_column))
+                    return lf.with_columns(pl.col(column).dt.hour().alias(new_column))
                 elif component == 'minute':
-                    return df.with_columns(pl.col(column).dt.minute().alias(new_column))
+                    return lf.with_columns(pl.col(column).dt.minute().alias(new_column))
                 elif component == 'second':
-                    return df.with_columns(pl.col(column).dt.second().alias(new_column))
+                    return lf.with_columns(pl.col(column).dt.second().alias(new_column))
                 elif component == 'quarter':
-                    return df.with_columns(pl.col(column).dt.quarter().alias(new_column))
+                    return lf.with_columns(pl.col(column).dt.quarter().alias(new_column))
                 elif component == 'week':
-                    return df.with_columns(pl.col(column).dt.week().alias(new_column))
+                    return lf.with_columns(pl.col(column).dt.week().alias(new_column))
                 elif component == 'dayofweek':
-                    return df.with_columns(pl.col(column).dt.weekday().alias(new_column))
+                    return lf.with_columns(pl.col(column).dt.weekday().alias(new_column))
                 else:
                     raise ValueError(f'Unsupported time component: {component}')
 
@@ -392,7 +396,7 @@ class PolarsComputeEngine:
                 else:
                     raise ValueError(f'Unsupported time unit: {unit}')
 
-                return df.with_columns((pl.col(column) + duration).alias(new_column))
+                return lf.with_columns((pl.col(column) + duration).alias(new_column))
 
             elif operation_type == 'subtract':
                 value = params.get('value')
@@ -411,11 +415,11 @@ class PolarsComputeEngine:
                 else:
                     raise ValueError(f'Unsupported time unit: {unit}')
 
-                return df.with_columns((pl.col(column) - duration).alias(new_column))
+                return lf.with_columns((pl.col(column) - duration).alias(new_column))
 
             elif operation_type == 'diff':
                 column2 = params.get('column2')
-                return df.with_columns((pl.col(column2) - pl.col(column)).alias(new_column))
+                return lf.with_columns((pl.col(column2) - pl.col(column)).alias(new_column))
 
             else:
                 raise ValueError(f'Unsupported timeseries operation: {operation_type}')
@@ -426,35 +430,35 @@ class PolarsComputeEngine:
             new_column = params.get('new_column', column)
 
             if method == 'uppercase':
-                return df.with_columns(pl.col(column).str.to_uppercase().alias(new_column))
+                return lf.with_columns(pl.col(column).str.to_uppercase().alias(new_column))
             elif method == 'lowercase':
-                return df.with_columns(pl.col(column).str.to_lowercase().alias(new_column))
+                return lf.with_columns(pl.col(column).str.to_lowercase().alias(new_column))
             elif method == 'title':
-                return df.with_columns(pl.col(column).str.to_titlecase().alias(new_column))
+                return lf.with_columns(pl.col(column).str.to_titlecase().alias(new_column))
             elif method == 'strip':
-                return df.with_columns(pl.col(column).str.strip_chars().alias(new_column))
+                return lf.with_columns(pl.col(column).str.strip_chars().alias(new_column))
             elif method == 'lstrip':
-                return df.with_columns(pl.col(column).str.strip_chars_start().alias(new_column))
+                return lf.with_columns(pl.col(column).str.strip_chars_start().alias(new_column))
             elif method == 'rstrip':
-                return df.with_columns(pl.col(column).str.strip_chars_end().alias(new_column))
+                return lf.with_columns(pl.col(column).str.strip_chars_end().alias(new_column))
             elif method == 'length':
-                return df.with_columns(pl.col(column).str.len_chars().alias(new_column))
+                return lf.with_columns(pl.col(column).str.len_chars().alias(new_column))
             elif method == 'slice':
                 start = params.get('start', 0)
                 end = params.get('end')
-                return df.with_columns(pl.col(column).str.slice(start, end).alias(new_column))
+                return lf.with_columns(pl.col(column).str.slice(start, end).alias(new_column))
             elif method == 'replace':
                 pattern = params.get('pattern')
                 replacement = params.get('replacement', '')
-                return df.with_columns(pl.col(column).str.replace_all(pattern, replacement).alias(new_column))
+                return lf.with_columns(pl.col(column).str.replace_all(pattern, replacement).alias(new_column))
             elif method == 'extract':
                 pattern = params.get('pattern')
                 group_index = params.get('group_index', 0)
-                return df.with_columns(pl.col(column).str.extract(pattern, group_index).alias(new_column))
+                return lf.with_columns(pl.col(column).str.extract(pattern, group_index).alias(new_column))
             elif method == 'split':
                 delimiter = params.get('delimiter', ' ')
                 index = params.get('index', 0)
-                return df.with_columns(pl.col(column).str.split(delimiter).list.get(index).alias(new_column))
+                return lf.with_columns(pl.col(column).str.split(delimiter).list.get(index).alias(new_column))
             else:
                 raise ValueError(f'Unsupported string method: {method}')
 
@@ -465,41 +469,45 @@ class PolarsComputeEngine:
             if strategy == 'literal':
                 value = params.get('value')
                 if columns:
-                    return df.with_columns([pl.col(c).fill_null(value) for c in columns])
-                return df.fill_null(value)
+                    return lf.with_columns([pl.col(c).fill_null(value) for c in columns])
+                return lf.fill_null(value)
 
             elif strategy == 'forward':
                 if columns:
-                    return df.with_columns([pl.col(c).forward_fill() for c in columns])
-                return df.select([pl.all().forward_fill()])
+                    return lf.with_columns([pl.col(c).forward_fill() for c in columns])
+                return lf.select([pl.all().forward_fill()])
 
             elif strategy == 'backward':
                 if columns:
-                    return df.with_columns([pl.col(c).backward_fill() for c in columns])
-                return df.select([pl.all().backward_fill()])
+                    return lf.with_columns([pl.col(c).backward_fill() for c in columns])
+                return lf.select([pl.all().backward_fill()])
 
             elif strategy == 'mean':
                 if not columns:
                     raise ValueError('Columns must be specified for mean strategy')
+                # Compute stats separately (requires collection)
+                stats = lf.select([pl.col(c).mean().alias(c) for c in columns]).collect()
                 exprs = []
                 for c in columns:
-                    mean_val = df.select(pl.col(c).mean()).item()
+                    mean_val = stats[c][0]
                     exprs.append(pl.col(c).fill_null(mean_val))
-                return df.with_columns(exprs)
+                return lf.with_columns(exprs)
 
             elif strategy == 'median':
                 if not columns:
                     raise ValueError('Columns must be specified for median strategy')
+                # Compute stats separately (requires collection)
+                stats = lf.select([pl.col(c).median().alias(c) for c in columns]).collect()
                 exprs = []
                 for c in columns:
-                    median_val = df.select(pl.col(c).median()).item()
+                    median_val = stats[c][0]
                     exprs.append(pl.col(c).fill_null(median_val))
-                return df.with_columns(exprs)
+                return lf.with_columns(exprs)
 
             elif strategy == 'drop_rows':
                 if columns:
-                    return df.drop_nulls(subset=columns)
-                return df.drop_nulls()
+                    return lf.drop_nulls(subset=columns)
+                return lf.drop_nulls()
 
             else:
                 raise ValueError(f'Unsupported fill_null strategy: {strategy}')
@@ -508,18 +516,18 @@ class PolarsComputeEngine:
             subset = params.get('subset', None)
             keep = params.get('keep', 'first')
 
-            return df.unique(subset=subset, keep=keep, maintain_order=True)
+            return lf.unique(subset=subset, keep=keep, maintain_order=True)
 
         elif operation == 'explode':
             columns = params.get('columns')
             if isinstance(columns, str):
                 columns = [columns]
-            return df.explode(columns)
+            return lf.explode(columns)
 
         elif operation == 'view':
             # View is a passthrough operation for visualization purposes
             # It doesn't modify the data, just allows previewing at this step
-            return df
+            return lf
 
         else:
             raise ValueError(f'Unsupported operation: {operation}')

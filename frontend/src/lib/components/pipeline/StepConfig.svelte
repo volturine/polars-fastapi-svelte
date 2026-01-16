@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PipelineStep } from '$lib/types/analysis';
-	import type { Schema } from '$lib/types/schema';
+	import type { Schema, Column } from '$lib/types/schema';
 	import type {
 		FilterConfigData,
 		SelectConfigData,
@@ -18,6 +18,8 @@
 		StringMethodsConfigData,
 		ViewConfigData
 	} from '$lib/types/operation-config';
+	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { schemaCalculator } from '$lib/utils/schema';
 	import FilterConfig from '$lib/components/operations/FilterConfig.svelte';
 	import SelectConfig from '$lib/components/operations/SelectConfig.svelte';
 	import GroupByConfig from '$lib/components/operations/GroupByConfig.svelte';
@@ -37,12 +39,54 @@
 	interface Props {
 		step: PipelineStep | null;
 		schema: Schema | null;
+		isLoadingSchema?: boolean;
 		onClose?: () => void;
 	}
 
-	let { step, schema, onClose }: Props = $props();
+	let { step, schema, isLoadingSchema = false, onClose }: Props = $props();
 
 	let nonNullSchema = $derived<Schema>(schema || { columns: [], row_count: null });
+
+	// Calculate the INPUT schema BEFORE the current step transformation
+	let inputSchema = $derived.by(() => {
+		if (!step) {
+			return nonNullSchema;
+		}
+
+		// Get source schema from analysis store
+		const sourceSchemas = analysisStore.sourceSchemas;
+		if (!sourceSchemas.size) {
+			// No source schema available - return empty schema
+			return { columns: [], row_count: null };
+		}
+
+		const sourceSchema = sourceSchemas.values().next().value;
+		if (!sourceSchema) {
+			// No source schema available - return empty schema
+			return { columns: [], row_count: null };
+		}
+
+		// Get all steps in the pipeline
+		const allSteps = analysisStore.pipeline;
+
+		// Find the current step's position
+		const stepIndex = allSteps.findIndex((s) => s.id === step.id);
+		if (stepIndex <= 0) {
+			// This is the first step, use source schema
+			return sourceSchema as Schema;
+		}
+
+		// Get steps before the current step
+		const previousSteps = allSteps.slice(0, stepIndex);
+
+		// Calculate schema after applying previous steps
+		const calculatedInputSchema = schemaCalculator.calculatePipelineSchema(
+			sourceSchema as Schema,
+			previousSteps
+		);
+
+		return calculatedInputSchema || ({ columns: [], row_count: null } as Schema);
+	});
 
 	function handleClose() {
 		if (onClose) {
@@ -67,74 +111,79 @@
 		</div>
 
 		<div class="config-body">
-			{#if !schema}
+			{#if !schema && !isLoadingSchema}
 				<div class="warning-message">
 					<p>Schema not available. Please ensure the data source is loaded.</p>
 					<button onclick={handleClose} type="button">Close</button>
 				</div>
+			{:else if isLoadingSchema}
+				<div class="loading-message">
+					<div class="spinner"></div>
+					<p>Loading schema...</p>
+				</div>
 			{:else if step.type === 'filter'}
 				<FilterConfig
-					schema={nonNullSchema}
+					schema={inputSchema}
 					bind:config={step.config as unknown as FilterConfigData}
 				/>
 			{:else if step.type === 'select'}
 				<SelectConfig
-					schema={nonNullSchema}
+					schema={inputSchema}
 					bind:config={step.config as unknown as SelectConfigData}
 				/>
 			{:else if step.type === 'groupby'}
 				<GroupByConfig
-					schema={nonNullSchema}
+					schema={inputSchema}
 					bind:config={step.config as unknown as GroupByConfigData}
 				/>
 			{:else if step.type === 'sort'}
-				<SortConfig schema={nonNullSchema} bind:config={step.config as unknown as SortConfigData} />
+				<SortConfig schema={inputSchema} bind:config={step.config as unknown as SortConfigData} />
 			{:else if step.type === 'rename'}
 				<RenameConfig
-					schema={nonNullSchema}
+					schema={inputSchema}
 					bind:config={step.config as unknown as RenameConfigData}
 				/>
 			{:else if step.type === 'drop'}
-				<DropConfig schema={nonNullSchema} bind:config={step.config as unknown as DropConfigData} />
+				<DropConfig schema={inputSchema} bind:config={step.config as unknown as DropConfigData} />
 			{:else if step.type === 'join'}
-				<JoinConfig schema={nonNullSchema} bind:config={step.config as unknown as JoinConfigData} />
+				<JoinConfig schema={inputSchema} bind:config={step.config as unknown as JoinConfigData} />
 			{:else if step.type === 'expression' || step.type === 'with_columns'}
 				<ExpressionConfig
-					schema={nonNullSchema}
+					schema={inputSchema}
 					bind:config={step.config as unknown as ExpressionConfigData}
 				/>
 			{:else if step.type === 'deduplicate'}
 				<DeduplicateConfig
-					schema={nonNullSchema}
+					schema={inputSchema}
 					bind:config={step.config as unknown as DeduplicateConfigData}
 				/>
 			{:else if step.type === 'fill_null'}
 				<FillNullConfig
-					schema={nonNullSchema}
+					schema={inputSchema}
 					bind:config={step.config as unknown as FillNullConfigData}
 				/>
 			{:else if step.type === 'explode'}
 				<ExplodeConfig
-					schema={nonNullSchema}
+					schema={inputSchema}
 					bind:config={step.config as unknown as ExplodeConfigData}
 				/>
 			{:else if step.type === 'pivot'}
 				<PivotConfig
-					schema={nonNullSchema}
+					schema={inputSchema}
 					bind:config={step.config as unknown as PivotConfigData}
 				/>
 			{:else if step.type === 'timeseries'}
 				<TimeSeriesConfig
-					schema={nonNullSchema}
+					schema={inputSchema}
 					bind:config={step.config as unknown as TimeSeriesConfigData}
 				/>
 			{:else if step.type === 'string_transform'}
 				<StringMethodsConfig
-					schema={nonNullSchema}
+					schema={inputSchema}
 					bind:config={step.config as unknown as StringMethodsConfigData}
 				/>
 			{:else if step.type === 'view'}
-				<ViewConfig schema={nonNullSchema} bind:config={step.config as unknown as ViewConfigData} />
+				<ViewConfig schema={inputSchema} bind:config={step.config as unknown as ViewConfigData} />
 			{:else}
 				<div class="not-implemented">
 					<p>Configuration for {step.type} is not yet implemented</p>
@@ -250,5 +299,31 @@
 
 	.not-implemented button:hover {
 		opacity: 0.9;
+	}
+
+	.loading-message {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 2rem;
+		color: var(--fg-muted);
+		text-align: center;
+		gap: var(--space-3);
+	}
+
+	.loading-message .spinner {
+		width: 24px;
+		height: 24px;
+		border: 2px solid var(--border-primary);
+		border-top-color: var(--accent-primary);
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 </style>

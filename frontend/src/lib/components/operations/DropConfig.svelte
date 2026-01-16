@@ -16,15 +16,9 @@
 	// Keep SvelteSet for UI
 	let selectedColumns = $state(new SvelteSet(config.columns));
 
-	// Bidirectional sync
+	// Sync SvelteSet → config.columns when selectedColumns changes
 	$effect(() => {
-		// Sync SvelteSet → config.columns
 		config.columns = Array.from(selectedColumns);
-	});
-
-	$effect(() => {
-		// Sync config.columns → SvelteSet (when parent changes)
-		selectedColumns = new SvelteSet(config.columns);
 	});
 
 	function toggleColumn(columnName: string) {

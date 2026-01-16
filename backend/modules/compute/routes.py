@@ -22,12 +22,6 @@ class ExecuteRequest(BaseModel):
         }
 
 
-class PreviewRequest(BaseModel):
-    datasource_id: str
-    pipeline_steps: list[dict]
-    step_index: int
-
-
 @router.post('/execute', response_model=schemas.ComputeStatusSchema)
 async def execute_analysis(
     request: ExecuteRequest,
@@ -65,18 +59,20 @@ async def execute_analysis(
         raise HTTPException(status_code=500, detail=f'Failed to execute analysis: {str(e)}')
 
 
-@router.post('/preview', response_model=dict)
+@router.post('/preview', response_model=schemas.StepPreviewResponse)
 async def preview_step(
-    request: PreviewRequest,
+    request: schemas.StepPreviewRequest,
     session: AsyncSession = Depends(get_db),
 ):
-    """Preview the result of a pipeline step."""
+    """Preview the result of a pipeline step with pagination."""
     try:
         return await service.preview_step(
             session=session,
             datasource_id=request.datasource_id,
             pipeline_steps=request.pipeline_steps,
-            step_index=request.step_index,
+            target_step_id=request.target_step_id,
+            row_limit=request.row_limit,
+            page=request.page,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

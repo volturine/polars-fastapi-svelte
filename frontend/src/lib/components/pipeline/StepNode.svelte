@@ -1,14 +1,17 @@
 <script lang="ts">
 	import type { PipelineStep } from '$lib/types/analysis';
+	import { InlineDataTable } from '$lib/components/viewers';
 
 	interface Props {
 		step: PipelineStep;
 		index: number;
+		datasourceId?: string;
+		allSteps?: PipelineStep[];
 		onEdit: (id: string) => void;
 		onDelete: (id: string) => void;
 	}
 
-	let { step, index, onEdit, onDelete }: Props = $props();
+	let { step, index, datasourceId, allSteps = [], onEdit, onDelete }: Props = $props();
 
 	const typeLabels: Record<string, string> = {
 		filter: 'filter',
@@ -69,7 +72,7 @@
 	let summary = $derived(getConfigSummary(step));
 </script>
 
-<div class="step-node">
+<div class="step-node" class:view-node={step.type === 'view'}>
 	<div class="connection-point top"></div>
 
 	<div class="step-content">
@@ -86,6 +89,12 @@
 				delete
 			</button>
 		</div>
+
+		{#if step.type === 'view' && datasourceId && allSteps.length > 0}
+			<div class="view-preview expanded">
+				<InlineDataTable {datasourceId} pipeline={allSteps} stepId={step.id} rowLimit={1000} />
+			</div>
+		{/if}
 	</div>
 
 	<div class="connection-point bottom"></div>
@@ -95,7 +104,10 @@
 	.step-node {
 		position: relative;
 		width: 100%;
-		max-width: 320px;
+	}
+
+	.step-node.view-node {
+		max-width: 600px;
 	}
 
 	.connection-point {
@@ -163,6 +175,14 @@
 	.step-actions {
 		display: flex;
 		gap: var(--space-2);
+	}
+
+	.view-preview {
+		margin-top: var(--space-3);
+		border-top: 1px solid var(--border-primary);
+		padding-top: var(--space-3);
+		max-width: 800px;
+		overflow-y: auto;
 	}
 
 	.action-btn {

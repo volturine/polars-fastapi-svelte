@@ -1,5 +1,6 @@
 import type { Analysis, AnalysisUpdate, PipelineStep } from '$lib/types/analysis';
 import type { SchemaInfo } from '$lib/types/datasource';
+import type { Schema } from '$lib/types/schema';
 import { getAnalysis, updateAnalysis } from '$lib/api/analysis';
 import { schemaCalculator } from '$lib/utils/schema';
 
@@ -12,8 +13,19 @@ class AnalysisStore {
 
 	calculatedSchema = $derived.by(() => {
 		if (!this.pipeline.length || !this.sourceSchemas.size) return null;
-		const baseSchema = this.sourceSchemas.values().next().value;
-		if (!baseSchema) return null;
+		const sourceSchema = this.sourceSchemas.values().next().value;
+		if (!sourceSchema) return null;
+
+		// Convert SchemaInfo to Schema (both have same structure)
+		const baseSchema: Schema = {
+			columns: sourceSchema.columns.map((col) => ({
+				name: col.name,
+				dtype: col.dtype,
+				nullable: col.nullable
+			})),
+			row_count: sourceSchema.row_count
+		};
+
 		return schemaCalculator.calculatePipelineSchema(baseSchema, this.pipeline);
 	});
 

@@ -76,14 +76,28 @@ async def preview_step(
     session: AsyncSession,
     datasource_id: str,
     pipeline_steps: list[dict],
-    step_index: int,
-) -> dict:
-    """Preview the result of executing pipeline up to a specific step."""
+    target_step_id: str,
+    row_limit: int = 1000,
+    page: int = 1,
+):
+    """Preview the result of executing pipeline up to a specific step with pagination."""
+    from modules.compute.schemas import StepPreviewResponse
+
     result = await session.execute(select(DataSource).where(DataSource.id == datasource_id))
     datasource = result.scalar_one_or_none()
 
     if not datasource:
         raise ValueError(f'DataSource {datasource_id} not found')
+
+    # Find the step index by step_id
+    step_index = None
+    for idx, step in enumerate(pipeline_steps):
+        if step.get('id') == target_step_id:
+            step_index = idx
+            break
+
+    if step_index is None:
+        raise ValueError(f'Step with id {target_step_id} not found in pipeline')
 
     preview_steps = pipeline_steps[: step_index + 1]
 
@@ -98,7 +112,7 @@ async def preview_step(
     engine.execute(
         datasource_config=datasource_config,
         pipeline_steps=preview_steps,
-        timeout=300,
+        timeout=30,
     )
 
     while True:
@@ -106,7 +120,25 @@ async def preview_step(
         if result_data:
             if result_data['status'] == JobStatus.COMPLETED:
                 manager.shutdown_engine(f'{datasource_id}_preview')
-                return result_data['data']
+
+                # Extract data for pagination
+                sample_data = result_data['data'].get('sample_data', [])
+                total_rows = result_data['data'].get('row_count', 0)
+                schema = result_data['data'].get('schema', {})
+
+                # Apply pagination
+                start_idx = (page - 1) * row_limit
+                end_idx = start_idx + row_limit
+                paginated_data = sample_data[start_idx:end_idx]
+
+                return StepPreviewResponse(
+                    step_id=target_step_id,
+                    columns=list(schema.keys()),
+                    data=paginated_data,
+                    total_rows=total_rows,
+                    page=page,
+                    page_size=len(paginated_data),
+                )
             elif result_data['status'] == JobStatus.FAILED:
                 manager.shutdown_engine(f'{datasource_id}_preview')
                 raise ValueError(f'Preview failed: {result_data.get("error", "Unknown error")}')

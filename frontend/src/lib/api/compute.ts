@@ -8,6 +8,27 @@ export interface PreviewResponse {
 	total_count: number;
 }
 
+export interface StepPreviewRequest {
+	datasource_id: string;
+	pipeline_steps: Array<{
+		id: string;
+		type: string;
+		config: Record<string, unknown>;
+	}>;
+	target_step_id: string;
+	row_limit?: number;
+	page?: number;
+}
+
+export interface StepPreviewResponse {
+	step_id: string;
+	columns: string[];
+	data: Array<Record<string, unknown>>;
+	total_rows: number;
+	page: number;
+	page_size: number;
+}
+
 function isValidComputeStatus(status: unknown): status is ComputeStatus {
 	return (
 		status === 'pending' || status === 'running' || status === 'completed' || status === 'failed'
@@ -53,6 +74,13 @@ export async function previewStep(analysisId: string, stepId: string): Promise<P
 			execute_mode: 'preview',
 			step_id: stepId
 		})
+	});
+}
+
+export async function previewStepData(request: StepPreviewRequest): Promise<StepPreviewResponse> {
+	return apiRequest<StepPreviewResponse>('/api/v1/compute/preview', {
+		method: 'POST',
+		body: JSON.stringify(request)
 	});
 }
 

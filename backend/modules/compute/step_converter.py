@@ -97,13 +97,14 @@ def convert_groupby_config(config: dict) -> dict:
 def convert_join_config(config: dict) -> dict:
     """Convert join config from frontend to backend format.
 
-    Frontend: {rightDataSource, leftOn, rightOn, how}
+    Frontend: {how, left_on, right_on} or {rightDataSource, leftOn, rightOn, how}
     Backend: {right_source, left_on, right_on, how}
     """
     return {
-        'right_source': config.get('rightDataSource'),
-        'left_on': config.get('leftOn'),
-        'right_on': config.get('rightOn'),
+        'right_source': config.get('rightDataSource') or config.get('right_source'),
+        # Support both snake_case (frontend) and camelCase formats
+        'left_on': config.get('left_on') or config.get('leftOn', []),
+        'right_on': config.get('right_on') or config.get('rightOn', []),
         'how': config.get('how', 'inner'),
     }
 

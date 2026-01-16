@@ -534,5 +534,43 @@ class PolarsComputeEngine:
             # It doesn't modify the data, just allows previewing at this step
             return lf
 
+        elif operation == 'unpivot':
+            # Unpivot (melt) transforms wide format to long format
+            index = params.get('index') or params.get('id_vars', [])
+            on = params.get('on') or params.get('value_vars')
+            variable_name = params.get('variable_name', 'variable')
+            value_name = params.get('value_name', 'value')
+
+            return lf.unpivot(
+                index=index,
+                on=on,
+                variable_name=variable_name,
+                value_name=value_name,
+            )
+
+        elif operation == 'join':
+            # Join requires a second datasource
+            # For now, implement self-join (join with same datasource) or skip if no right_source
+            right_source = params.get('right_source')
+            left_on = params.get('left_on', [])
+            right_on = params.get('right_on', [])
+            how = params.get('how', 'inner')
+
+            if not left_on or not right_on:
+                raise ValueError('Join requires left_on and right_on columns')
+
+            # If no right_source specified, this is a self-join (useful for deduplication patterns)
+            # Otherwise, we'd need to load the other datasource - not yet supported
+            if right_source:
+                raise ValueError(
+                    'Cross-datasource joins are not yet supported. '
+                    'Please use a single datasource and restructure your data, '
+                    'or wait for multi-datasource support in a future update.'
+                )
+
+            # Self-join case: join the dataframe with itself
+            # This is useful for certain analytical patterns
+            return lf.join(lf, left_on=left_on, right_on=right_on, how=how, suffix='_right')
+
         else:
             raise ValueError(f'Unsupported operation: {operation}')

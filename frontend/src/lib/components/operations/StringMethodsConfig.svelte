@@ -136,7 +136,6 @@
 					<input type="number" bind:value={localConfig.end} placeholder="Leave empty for end" />
 				</div>
 			</div>
-			<p class="help-text">Extract substring from start to end index</p>
 		</div>
 	{/if}
 
@@ -151,7 +150,6 @@
 				<label>Replacement:</label>
 				<input type="text" bind:value={localConfig.replacement} placeholder="Replacement text" />
 			</div>
-			<p class="help-text">Replace all occurrences of pattern with replacement</p>
 		</div>
 	{/if}
 
@@ -170,7 +168,6 @@
 				<label>Group Index:</label>
 				<input type="number" bind:value={localConfig.group_index} min="0" />
 			</div>
-			<p class="help-text">Extract text matching regex group (0 = full match, 1+ = capture groups)</p>
 		</div>
 	{/if}
 
@@ -185,7 +182,6 @@
 				<label>Part Index:</label>
 				<input type="number" bind:value={localConfig.index} min="0" />
 			</div>
-			<p class="help-text">Split by delimiter and keep part at index (0 = first part)</p>
 		</div>
 	{/if}
 
@@ -196,7 +192,6 @@
 			bind:value={localConfig.new_column}
 			placeholder="e.g., name_upper, domain, first_name"
 		/>
-		<p class="help-text">Leave empty to overwrite source column</p>
 	</div>
 
 	<div class="actions">

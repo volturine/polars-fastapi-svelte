@@ -60,13 +60,8 @@
 <div class="pivot-config">
 	<h3>Pivot Configuration</h3>
 
-	<div class="help-banner">
-		Transform data from long to wide format. Select index columns (rows to keep), pivot column
-		(spread into new columns), and values column (data to fill).
-	</div>
-
 	<div class="section">
-		<h4>Index Columns (Group By)</h4>
+		<h4>Index Columns</h4>
 		<div class="column-list">
 			{#each schema.columns as column}
 				<label class="column-item">
@@ -86,7 +81,6 @@
 
 	<div class="section">
 		<h4>Pivot Column</h4>
-		<p class="help-text">Column whose unique values will become new column names</p>
 		<select bind:value={localConfig.columns}>
 			<option value="">Select column...</option>
 			{#each schema.columns as column}
@@ -97,7 +91,6 @@
 
 	<div class="section">
 		<h4>Values Column</h4>
-		<p class="help-text">Column containing the data to populate the pivoted table</p>
 		<select bind:value={localConfig.values}>
 			<option value="">Select column...</option>
 			{#each schema.columns as column}
@@ -108,17 +101,11 @@
 
 	<div class="section">
 		<h4>Aggregation Function</h4>
-		<p class="help-text">How to combine multiple values in the same cell</p>
 		<select bind:value={localConfig.aggregate_function}>
 			{#each aggregateFunctions as func}
 				<option value={func}>{func}</option>
 			{/each}
 		</select>
-	</div>
-
-	<div class="example">
-		<strong>Example:</strong> Pivot sales data by date (index), product (columns), revenue (values)
-		with sum aggregation
 	</div>
 
 	<div class="actions">
@@ -152,26 +139,11 @@
 		font-size: 1rem;
 	}
 
-	.help-banner {
-		background-color: #e7f3ff;
-		padding: 0.75rem;
-		border-left: 3px solid #007bff;
-		border-radius: 4px;
-		margin-bottom: 1rem;
-		font-size: 0.875rem;
-	}
-
 	.section {
 		margin-bottom: 1.5rem;
 		padding: 1rem;
 		background-color: #f8f9fa;
 		border-radius: 4px;
-	}
-
-	.help-text {
-		font-size: 0.875rem;
-		color: #6c757d;
-		margin-bottom: 0.5rem;
 	}
 
 	.column-list {
@@ -213,15 +185,6 @@
 		padding: 0.5rem;
 		border: 1px solid #ccc;
 		border-radius: 4px;
-	}
-
-	.example {
-		margin-bottom: 1rem;
-		padding: 0.75rem;
-		background-color: #fff3cd;
-		border-left: 3px solid #ffc107;
-		border-radius: 4px;
-		font-size: 0.875rem;
 	}
 
 	.actions {

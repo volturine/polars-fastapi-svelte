@@ -20,13 +20,9 @@
 	});
 
 	const keepStrategies = [
-		{ value: 'first', label: 'Keep First', description: 'Keep the first occurrence of each duplicate' },
-		{
-			value: 'last',
-			label: 'Keep Last',
-			description: 'Keep the last occurrence of each duplicate'
-		},
-		{ value: 'none', label: 'Keep None', description: 'Remove all duplicate rows' }
+		{ value: 'first', label: 'Keep First' },
+		{ value: 'last', label: 'Keep Last' },
+		{ value: 'none', label: 'Keep None' }
 	];
 
 	function toggleColumn(columnName: string) {
@@ -67,21 +63,13 @@
 <div class="deduplicate-config">
 	<h3>Deduplicate Configuration</h3>
 
-	<div class="help-banner">
-		Remove duplicate rows from your dataset. Choose which columns to check for duplicates, and
-		which duplicate to keep.
-	</div>
-
 	<div class="section">
 		<h4>Keep Strategy</h4>
 		<div class="strategy-grid">
 			{#each keepStrategies as strategy}
 				<label class="strategy-option">
 					<input type="radio" bind:group={localConfig.keep} value={strategy.value} />
-					<div class="strategy-content">
-						<div class="strategy-label">{strategy.label}</div>
-						<div class="strategy-description">{strategy.description}</div>
-					</div>
+					<span>{strategy.label}</span>
 				</label>
 			{/each}
 		</div>
@@ -89,10 +77,6 @@
 
 	<div class="section">
 		<h4>Column Subset</h4>
-		<p class="help-text">
-			Select specific columns to check for duplicates. If none selected, all columns will be
-			checked.
-		</p>
 
 		<div class="column-actions">
 			<button type="button" onclick={selectAllColumns} class="action-btn">Select All</button>
@@ -122,11 +106,6 @@
 		{/if}
 	</div>
 
-	<div class="example">
-		<strong>Example:</strong> Remove duplicate emails by selecting only the "email" column and keeping
-		the first occurrence.
-	</div>
-
 	<div class="actions">
 		<button type="button" onclick={handleSave} class="save-btn">Save</button>
 		<button type="button" onclick={handleCancel} class="cancel-btn">Cancel</button>
@@ -151,26 +130,11 @@
 		font-size: 1rem;
 	}
 
-	.help-banner {
-		background-color: #e7f3ff;
-		padding: 0.75rem;
-		border-left: 3px solid #007bff;
-		border-radius: 4px;
-		margin-bottom: 1rem;
-		font-size: 0.875rem;
-	}
-
 	.section {
 		margin-bottom: 1.5rem;
 		padding: 1rem;
 		background-color: #f8f9fa;
 		border-radius: 4px;
-	}
-
-	.help-text {
-		font-size: 0.875rem;
-		color: #6c757d;
-		margin-bottom: 0.75rem;
 	}
 
 	.strategy-grid {
@@ -197,26 +161,8 @@
 	}
 
 	.strategy-option input[type='radio'] {
-		margin-top: 0.25rem;
+		margin-right: 0.5rem;
 		cursor: pointer;
-	}
-
-	.strategy-option input[type='radio']:checked + .strategy-content {
-		color: #007bff;
-	}
-
-	.strategy-content {
-		flex: 1;
-	}
-
-	.strategy-label {
-		font-weight: 500;
-		margin-bottom: 0.25rem;
-	}
-
-	.strategy-description {
-		font-size: 0.875rem;
-		color: #6c757d;
 	}
 
 	.column-actions {
@@ -269,15 +215,6 @@
 		margin-top: 0.5rem;
 		padding: 0.5rem;
 		background-color: #e7f3ff;
-		border-radius: 4px;
-		font-size: 0.875rem;
-	}
-
-	.example {
-		margin-bottom: 1rem;
-		padding: 0.75rem;
-		background-color: #fff3cd;
-		border-left: 3px solid #ffc107;
 		border-radius: 4px;
 		font-size: 0.875rem;
 	}

@@ -128,7 +128,6 @@
 					<option value={comp}>{comp}</option>
 				{/each}
 			</select>
-			<p class="help-text">Extract year, month, day, etc. from the date column</p>
 		</div>
 	{:else if localConfig.operation_type === 'add' || localConfig.operation_type === 'subtract'}
 		<div class="section">
@@ -141,11 +140,6 @@
 					{/each}
 				</select>
 			</div>
-			<p class="help-text">
-				{localConfig.operation_type === 'add' ? 'Add' : 'Subtract'}
-				{localConfig.value}
-				{localConfig.unit} to/from the date
-			</p>
 		</div>
 	{:else if localConfig.operation_type === 'diff'}
 		<div class="section">
@@ -156,7 +150,6 @@
 					<option value={column.name}>{column.name} ({column.dtype})</option>
 				{/each}
 			</select>
-			<p class="help-text">Calculate difference: column2 - column (result in duration)</p>
 		</div>
 	{/if}
 

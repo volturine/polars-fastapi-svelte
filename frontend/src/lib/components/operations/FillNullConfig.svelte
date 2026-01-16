@@ -77,11 +77,6 @@
 <div class="fill-null-config">
 	<h3>Fill Null Configuration</h3>
 
-	<div class="help-banner">
-		Handle missing (null) values in your data using various strategies. Select columns to apply
-		the strategy to, or leave unselected to apply to all columns.
-	</div>
-
 	<div class="section">
 		<h4>Fill Strategy</h4>
 		<select bind:value={localConfig.strategy}>
@@ -89,29 +84,12 @@
 				<option value={strategy.value}>{strategy.label}</option>
 			{/each}
 		</select>
-
-		<div class="strategy-info">
-			{#if localConfig.strategy === 'literal'}
-				<p>Replace null values with a specific value</p>
-			{:else if localConfig.strategy === 'forward'}
-				<p>Propagate last valid value forward</p>
-			{:else if localConfig.strategy === 'backward'}
-				<p>Propagate next valid value backward</p>
-			{:else if localConfig.strategy === 'mean'}
-				<p>Replace nulls with column mean (numeric columns only)</p>
-			{:else if localConfig.strategy === 'median'}
-				<p>Replace nulls with column median (numeric columns only)</p>
-			{:else if localConfig.strategy === 'drop_rows'}
-				<p>Remove rows containing null values</p>
-			{/if}
-		</div>
 	</div>
 
 	{#if currentStrategy?.needsValue}
 		<div class="section">
 			<h4>Fill Value</h4>
 			<input type="text" bind:value={localConfig.value} placeholder="Enter value (e.g., 0, N/A)" />
-			<p class="help-text">Value will be converted to appropriate type for each column</p>
 		</div>
 	{/if}
 
@@ -169,41 +147,11 @@
 		font-size: 1rem;
 	}
 
-	.help-banner {
-		background-color: #e7f3ff;
-		padding: 0.75rem;
-		border-left: 3px solid #007bff;
-		border-radius: 4px;
-		margin-bottom: 1rem;
-		font-size: 0.875rem;
-	}
-
 	.section {
 		margin-bottom: 1.5rem;
 		padding: 1rem;
 		background-color: #f8f9fa;
 		border-radius: 4px;
-	}
-
-	.strategy-info {
-		margin-top: 0.75rem;
-		padding: 0.5rem;
-		background-color: #fff;
-		border-left: 3px solid #28a745;
-		border-radius: 4px;
-	}
-
-	.strategy-info p {
-		margin: 0;
-		font-size: 0.875rem;
-		color: #495057;
-	}
-
-	.help-text {
-		font-size: 0.875rem;
-		color: #6c757d;
-		margin-top: 0.5rem;
-		margin-bottom: 0;
 	}
 
 	select,

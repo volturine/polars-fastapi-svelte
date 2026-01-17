@@ -242,6 +242,9 @@
 		border-right: 1px solid var(--border-primary);
 		padding: 1rem;
 		background-color: var(--bg-tertiary);
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
 	}
 
 	h3 {
@@ -249,12 +252,16 @@
 		margin-bottom: 1rem;
 		font-size: 1.125rem;
 		color: var(--fg-primary);
+		flex-shrink: 0;
 	}
 
 	.step-list {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
+		overflow-y: auto;
+		flex: 1;
+		min-height: 0;
 	}
 
 
@@ -307,6 +314,7 @@
 		margin-top: var(--space-4);
 		padding-top: var(--space-3);
 		border-top: 1px solid var(--border-primary);
+		flex-shrink: 0;
 	}
 
 	.fallback-actions h4 {

@@ -44,9 +44,10 @@
 				tabs: selectedDatasourceIds.map((datasourceId, index) => ({
 					id: `tab-${datasourceId}`,
 					name: `Source ${index + 1}`,
-					type: 'datasource',
+					type: 'datasource' as const,
 					parent_id: null,
-					datasource_id: datasourceId
+					datasource_id: datasourceId,
+					steps: []
 				}))
 			};
 

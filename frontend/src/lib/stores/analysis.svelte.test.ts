@@ -9,35 +9,28 @@ import type { SchemaInfo } from '$lib/types/datasource';
 vi.mock('$lib/api/analysis');
 
 describe('analysis.svelte store', () => {
+	const mockSteps: PipelineStep[] = [
+		{
+			id: 'step-1',
+			type: 'filter',
+			config: { conditions: [] },
+			depends_on: []
+		},
+		{
+			id: 'step-2',
+			type: 'select',
+			config: { columns: ['id', 'name'] },
+			depends_on: ['step-1']
+		}
+	];
+
 	const mockAnalysis: Analysis = {
 		id: 'test-123',
 		name: 'Test Analysis',
 		description: 'A test analysis',
 		pipeline_definition: {
-			steps: [
-				{
-					id: 'step-1',
-					type: 'filter',
-					config: { conditions: [] },
-					depends_on: []
-				},
-				{
-					id: 'step-2',
-					type: 'select',
-					config: { columns: ['id', 'name'] },
-					depends_on: ['step-1']
-				}
-			],
-			datasource_ids: ['source-1'],
-			tabs: [
-				{
-					id: 'tab-1',
-					name: 'Source 1',
-					type: 'datasource',
-					parent_id: null,
-					datasource_id: 'source-1'
-				}
-			]
+			steps: mockSteps,
+			datasource_ids: ['source-1']
 		},
 		status: 'active',
 		created_at: '2024-01-15T10:00:00Z',
@@ -50,7 +43,8 @@ describe('analysis.svelte store', () => {
 				name: 'Source 1',
 				type: 'datasource',
 				parent_id: null,
-				datasource_id: 'source-1'
+				datasource_id: 'source-1',
+				steps: mockSteps
 			}
 		]
 	};
@@ -137,7 +131,18 @@ describe('analysis.svelte store', () => {
 	});
 
 	describe('addStep', () => {
-		it('should add a step to the pipeline', () => {
+		it('should add a step to the pipeline', async () => {
+			// Load analysis with empty steps first to have an active tab
+			const emptyAnalysis: Analysis = {
+				...mockAnalysis,
+				tabs: [{
+					...mockAnalysis.tabs[0],
+					steps: []
+				}]
+			};
+			vi.mocked(analysisApi.getAnalysis).mockResolvedValue(emptyAnalysis);
+			await analysisStore.loadAnalysis('test-123');
+
 			const newStep: PipelineStep = {
 				id: 'step-new',
 				type: 'sort',
@@ -259,19 +264,27 @@ describe('analysis.svelte store', () => {
 	});
 
 	describe('reorderSteps', () => {
+		const threeSteps: PipelineStep[] = [
+			{ id: 'step-1', type: 'filter', config: {}, depends_on: [] },
+			{ id: 'step-2', type: 'select', config: {}, depends_on: [] },
+			{ id: 'step-3', type: 'sort', config: {}, depends_on: [] }
+		];
+
 		beforeEach(async () => {
 			const analysisWithMultipleSteps: Analysis = {
 				...mockAnalysis,
 				pipeline_definition: {
-					steps: [
-						{ id: 'step-1', type: 'filter', config: {}, depends_on: [] },
-						{ id: 'step-2', type: 'select', config: {}, depends_on: [] },
-						{ id: 'step-3', type: 'sort', config: {}, depends_on: [] }
-					],
-					datasource_ids: ['source-1'],
-					tabs: mockAnalysis.tabs
+					steps: threeSteps,
+					datasource_ids: ['source-1']
 				},
-				tabs: mockAnalysis.tabs
+				tabs: [{
+					id: 'tab-1',
+					name: 'Source 1',
+					type: 'datasource',
+					parent_id: null,
+					datasource_id: 'source-1',
+					steps: threeSteps
+				}]
 			};
 
 			vi.mocked(analysisApi.getAnalysis).mockResolvedValue(analysisWithMultipleSteps);
@@ -316,7 +329,6 @@ describe('analysis.svelte store', () => {
 			await analysisStore.save();
 
 			expect(analysisApi.updateAnalysis).toHaveBeenCalledWith('test-123', {
-				pipeline_steps: analysisStore.pipeline,
 				tabs: analysisStore.tabs
 			});
 			expect(analysisStore.current).toEqual(updatedAnalysis);
@@ -366,15 +378,24 @@ describe('analysis.svelte store', () => {
 			expect(analysisStore.calculatedSchema).toBe(null);
 		});
 
-		it('should return null when pipeline is empty', () => {
-			analysisStore.pipeline = [];
-			analysisStore.setSourceSchema('ds-1', mockSchema);
+		it('should return null when pipeline is empty', async () => {
+			// Load analysis with empty steps
+			const emptyAnalysis = {
+				...mockAnalysis,
+				tabs: [{
+					...mockAnalysis.tabs[0],
+					steps: []
+				}]
+			};
+			vi.mocked(analysisApi.getAnalysis).mockResolvedValue(emptyAnalysis);
+			await analysisStore.loadAnalysis('test-123');
+			analysisStore.setSourceSchema('source-1', mockSchema);
 
 			expect(analysisStore.calculatedSchema).toBe(null);
 		});
 
 		it('should calculate schema with source schema and pipeline', () => {
-			analysisStore.setSourceSchema('ds-1', mockSchema);
+			analysisStore.setSourceSchema('source-1', mockSchema);
 
 			// The schema calculator should process the pipeline
 			const result = analysisStore.calculatedSchema;

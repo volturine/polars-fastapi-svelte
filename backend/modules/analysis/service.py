@@ -200,6 +200,7 @@ async def link_datasource(
                 'type': 'datasource',
                 'parent_id': None,
                 'datasource_id': datasource_id,
+                'steps': [],
             }
         )
         analysis.pipeline_definition['tabs'] = tabs

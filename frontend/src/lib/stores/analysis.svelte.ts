@@ -6,7 +6,6 @@ import { schemaCalculator } from '$lib/utils/schema';
 
 export class AnalysisStore {
 	current = $state<Analysis | null>(null);
-	pipeline = $state<PipelineStep[]>([]);
 	tabs = $state<AnalysisTab[]>([]);
 	activeTabId = $state<string | null>(null);
 	sourceSchemas = $state(new Map<string, SchemaInfo>());
@@ -19,12 +18,22 @@ export class AnalysisStore {
 		return this.tabs[0] ?? null;
 	});
 
+	// Current tab's pipeline
+	pipeline = $derived.by(() => {
+		return this.activeTab?.steps ?? [];
+	});
+
 	calculatedSchema = $derived.by(() => {
-		if (!this.pipeline.length || !this.sourceSchemas.size) return null;
-		const sourceSchema = this.sourceSchemas.values().next().value;
+		const steps = this.pipeline;
+		if (!steps.length || !this.sourceSchemas.size) return null;
+		
+		// Use the active tab's datasource schema
+		const datasourceId = this.activeTab?.datasource_id;
+		const sourceSchema = datasourceId 
+			? this.sourceSchemas.get(datasourceId) 
+			: this.sourceSchemas.values().next().value;
 		if (!sourceSchema) return null;
 
-		// Convert SchemaInfo to Schema (both have same structure)
 		const baseSchema: Schema = {
 			columns: sourceSchema.columns.map((col) => ({
 				name: col.name,
@@ -34,7 +43,7 @@ export class AnalysisStore {
 			row_count: sourceSchema.row_count
 		};
 
-		return schemaCalculator.calculatePipelineSchema(baseSchema, this.pipeline);
+		return schemaCalculator.calculatePipelineSchema(baseSchema, steps);
 	});
 
 	async loadAnalysis(id: string): Promise<void> {
@@ -51,16 +60,28 @@ export class AnalysisStore {
 				datasource_ids?: string[];
 			};
 
-			const steps = definition?.steps ?? [];
-			this.pipeline = steps;
-
-					const tabs = analysis.tabs?.length ? analysis.tabs : definition?.tabs;
-			if (tabs && tabs.length) {
+			// Check if tabs already have steps (new format)
+			const tabs = analysis.tabs?.length ? analysis.tabs : definition?.tabs;
+			if (tabs && tabs.length && tabs[0].steps !== undefined) {
 				this.setTabs(tabs);
 				return;
 			}
 
-			const defaults = this.buildTabs(definition?.datasource_ids ?? []);
+			// Legacy format: single pipeline shared across tabs
+			const legacySteps = definition?.steps ?? [];
+			
+			if (tabs && tabs.length) {
+				// Migrate: assign legacy steps to first tab only
+				const migratedTabs = tabs.map((tab, index) => ({
+					...tab,
+					steps: index === 0 ? legacySteps : []
+				}));
+				this.setTabs(migratedTabs);
+				return;
+			}
+
+			// Build default tabs from datasource_ids
+			const defaults = this.buildTabs(definition?.datasource_ids ?? [], legacySteps);
 			this.setTabs(defaults);
 		} catch (err) {
 			this.error = err instanceof Error ? err.message : 'Failed to load analysis';
@@ -71,8 +92,9 @@ export class AnalysisStore {
 	}
 
 	addStep(step: PipelineStep): void {
-		this.pipeline = [...this.pipeline, step];
-		schemaCalculator.invalidateCache(this.pipeline, [step.id]);
+		if (!this.activeTab) return;
+		this.updateTabSteps(this.activeTab.id, [...this.activeTab.steps, step]);
+		schemaCalculator.invalidateCache(this.activeTab.steps, [step.id]);
 	}
 
 	setTabs(tabs: AnalysisTab[]): void {
@@ -88,8 +110,10 @@ export class AnalysisStore {
 	}
 
 	addTab(tab: AnalysisTab): void {
-		this.tabs = [...this.tabs, tab];
-		this.activeTabId = tab.id;
+		// Ensure new tabs have empty steps array
+		const newTab = { ...tab, steps: tab.steps ?? [] };
+		this.tabs = [...this.tabs, newTab];
+		this.activeTabId = newTab.id;
 	}
 
 	removeTab(id: string): void {
@@ -103,13 +127,21 @@ export class AnalysisStore {
 		this.tabs = this.tabs.map((tab) => (tab.id === id ? { ...tab, ...updates } : tab));
 	}
 
+	updateTabSteps(tabId: string, steps: PipelineStep[]): void {
+		this.tabs = this.tabs.map((tab) => 
+			tab.id === tabId ? { ...tab, steps } : tab
+		);
+	}
+
 	insertStep(
 		step: PipelineStep,
 		index: number,
 		parentId: string | null,
 		nextId: string | null
 	): boolean {
-		const nextPipeline = [...this.pipeline];
+		if (!this.activeTab) return false;
+		
+		const nextPipeline = [...this.activeTab.steps];
 		const normalizedParentId = parentId ?? null;
 		step.depends_on = normalizedParentId ? [normalizedParentId] : [];
 
@@ -129,38 +161,45 @@ export class AnalysisStore {
 			if (!normalizedParentId && nextDeps.length > 0) {
 				return false;
 			}
-			nextStep.depends_on = [step.id];
+			nextPipeline[nextStepIndex] = { ...nextStep, depends_on: [step.id] };
 		}
 
 		nextPipeline.splice(index, 0, step);
-		this.pipeline = nextPipeline;
+		this.updateTabSteps(this.activeTab.id, nextPipeline);
 		const invalidated = nextId ? [step.id, nextId] : [step.id];
 		schemaCalculator.invalidateCache(nextPipeline, invalidated);
 		return true;
 	}
 
 	addBranchStep(step: PipelineStep, parentId: string | null): void {
+		if (!this.activeTab) return;
 		step.depends_on = parentId ? [parentId] : [];
-		this.pipeline = [...this.pipeline, step];
-		schemaCalculator.invalidateCache(this.pipeline, [step.id]);
+		this.updateTabSteps(this.activeTab.id, [...this.activeTab.steps, step]);
+		schemaCalculator.invalidateCache(this.activeTab.steps, [step.id]);
 	}
 
 	updateStep(id: string, updates: Partial<PipelineStep>): void {
-		const nextPipeline = this.pipeline.map((step) => (step.id === id ? { ...step, ...updates } : step));
-		this.pipeline = nextPipeline;
+		if (!this.activeTab) return;
+		const nextPipeline = this.activeTab.steps.map((step) => 
+			step.id === id ? { ...step, ...updates } : step
+		);
+		this.updateTabSteps(this.activeTab.id, nextPipeline);
 		schemaCalculator.invalidateCache(nextPipeline, [id]);
 	}
 
 	removeStep(id: string): void {
-		this.pipeline = this.pipeline.filter((step) => step.id !== id);
-		schemaCalculator.invalidateCache(this.pipeline, [id]);
+		if (!this.activeTab) return;
+		const nextPipeline = this.activeTab.steps.filter((step) => step.id !== id);
+		this.updateTabSteps(this.activeTab.id, nextPipeline);
+		schemaCalculator.invalidateCache(nextPipeline, [id]);
 	}
 
 	reorderSteps(fromIndex: number, toIndex: number): void {
-		const steps = [...this.pipeline];
+		if (!this.activeTab) return;
+		const steps = [...this.activeTab.steps];
 		const [moved] = steps.splice(fromIndex, 1);
 		steps.splice(toIndex, 0, moved);
-		this.pipeline = steps;
+		this.updateTabSteps(this.activeTab.id, steps);
 	}
 
 	/**
@@ -168,7 +207,9 @@ export class AnalysisStore {
 	 * Updates dependency chains accordingly.
 	 */
 	moveStep(stepId: string, toIndex: number, newParentId: string | null, newNextId: string | null): boolean {
-		const steps = [...this.pipeline];
+		if (!this.activeTab) return false;
+		
+		const steps = [...this.activeTab.steps];
 		const fromIndex = steps.findIndex((s) => s.id === stepId);
 		if (fromIndex < 0) return false;
 
@@ -213,7 +254,7 @@ export class AnalysisStore {
 			}
 		}
 
-		this.pipeline = steps;
+		this.updateTabSteps(this.activeTab.id, steps);
 		schemaCalculator.invalidateCache(steps, [stepId]);
 		return true;
 	}
@@ -228,7 +269,6 @@ export class AnalysisStore {
 
 		try {
 			const update: AnalysisUpdate = {
-				pipeline_steps: this.pipeline,
 				tabs: this.tabs
 			};
 
@@ -237,7 +277,6 @@ export class AnalysisStore {
 			const tabs = updated.tabs ?? [];
 			if (tabs.length) {
 				this.tabs = tabs;
-				// Preserve activeTabId if it still exists, otherwise fall back to first tab
 				if (!this.activeTabId || !tabs.some((tab) => tab.id === this.activeTabId)) {
 					this.activeTabId = this.tabs[0]?.id ?? null;
 				}
@@ -263,7 +302,6 @@ export class AnalysisStore {
 
 	reset(): void {
 		this.current = null;
-		this.pipeline = [];
 		this.tabs = [];
 		this.activeTabId = null;
 		this.sourceSchemas.clear();
@@ -272,13 +310,14 @@ export class AnalysisStore {
 		this.loading = false;
 	}
 
-	buildTabs(datasourceIds: string[]): AnalysisTab[] {
+	buildTabs(datasourceIds: string[], initialSteps: PipelineStep[] = []): AnalysisTab[] {
 		return datasourceIds.map((datasourceId, index) => ({
 			id: `tab-${datasourceId}`,
 			name: `Source ${index + 1}`,
-			type: 'datasource',
+			type: 'datasource' as const,
 			parent_id: null,
-			datasource_id: datasourceId
+			datasource_id: datasourceId,
+			steps: index === 0 ? initialSteps : []
 		}));
 	}
 }

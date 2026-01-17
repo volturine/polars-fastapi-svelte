@@ -13,6 +13,7 @@ export interface AnalysisTab {
 	type: AnalysisTabType;
 	parent_id: string | null;
 	datasource_id: string | null;
+	steps: PipelineStep[];
 }
 
 export interface AnalysisCreate {

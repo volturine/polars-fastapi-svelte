@@ -22,6 +22,37 @@
 	let showDatasourceModal = $state(false);
 	let searchQuery = $state('');
 
+	// Resizable panes
+	let leftPaneWidth = $state(240);
+	let rightPaneWidth = $state(320);
+	let isResizingLeft = $state(false);
+	let isResizingRight = $state(false);
+
+	function startResizeLeft(e: MouseEvent) {
+		isResizingLeft = true;
+		e.preventDefault();
+	}
+
+	function startResizeRight(e: MouseEvent) {
+		isResizingRight = true;
+		e.preventDefault();
+	}
+
+	function handleMouseMove(e: MouseEvent) {
+		if (isResizingLeft) {
+			const newWidth = e.clientX;
+			leftPaneWidth = Math.max(180, Math.min(400, newWidth));
+		} else if (isResizingRight) {
+			const newWidth = window.innerWidth - e.clientX;
+			rightPaneWidth = Math.max(250, Math.min(500, newWidth));
+		}
+	}
+
+	function stopResize() {
+		isResizingLeft = false;
+		isResizingRight = false;
+	}
+
 	const analysisQuery = createQuery(() => ({
 		queryKey: ['analysis', analysisId],
 		queryFn: async () => {
@@ -66,13 +97,8 @@
 			});
 	});
 
-	const datasourceId = $derived.by(() => {
-		const analysis = analysisQuery.data;
-		if (!analysis?.pipeline_definition) return undefined;
-		const datasourceIds = (analysis.pipeline_definition as { datasource_ids?: string[] })
-			.datasource_ids;
-		return datasourceIds?.[0];
-	});
+	// Use active tab's datasource
+	const datasourceId = $derived(analysisStore.activeTab?.datasource_id ?? undefined);
 
 	function makeId() {
 		if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -150,7 +176,8 @@
 			name,
 			type: 'datasource',
 			parent_id: null,
-			datasource_id: datasourceId
+			datasource_id: datasourceId,
+			steps: []
 		};
 		analysisStore.addTab(tab);
 		analysisStore.setActiveTab(tab.id);
@@ -316,24 +343,46 @@
 			</div>
 		</div>
 
-		<div class="editor-workspace">
-			<StepLibrary onAddStep={handleAddStep} onInsertStep={handleInsertStep} />
-			<PipelineCanvas
-				steps={analysisStore.pipeline}
-				{datasourceId}
-				onStepClick={handleSelectStep}
-				onStepDelete={handleDeleteStep}
-				onInsertStep={handleInsertStep}
-				onMoveStep={handleMoveStep}
-			/>
-
-
-			<StepConfig
-				step={selectedStep}
-				schema={analysisStore.calculatedSchema}
-				{isLoadingSchema}
-				onClose={handleCloseConfig}
-			/>
+		<div
+			class="editor-workspace"
+			onmousemove={handleMouseMove}
+			onmouseup={stopResize}
+			onmouseleave={stopResize}
+			role="application"
+		>
+			<div class="left-pane" style="width: {leftPaneWidth}px">
+				<StepLibrary onAddStep={handleAddStep} onInsertStep={handleInsertStep} />
+			</div>
+			<div
+				class="resize-handle"
+				onmousedown={startResizeLeft}
+				role="separator"
+				aria-orientation="vertical"
+			></div>
+			<div class="center-pane">
+				<PipelineCanvas
+					steps={analysisStore.pipeline}
+					{datasourceId}
+					onStepClick={handleSelectStep}
+					onStepDelete={handleDeleteStep}
+					onInsertStep={handleInsertStep}
+					onMoveStep={handleMoveStep}
+				/>
+			</div>
+			<div
+				class="resize-handle"
+				onmousedown={startResizeRight}
+				role="separator"
+				aria-orientation="vertical"
+			></div>
+			<div class="right-pane" style="width: {rightPaneWidth}px">
+				<StepConfig
+					step={selectedStep}
+					schema={analysisStore.calculatedSchema}
+					{isLoadingSchema}
+					onClose={handleCloseConfig}
+				/>
+			</div>
 		</div>
 	</div>
 {/if}
@@ -759,5 +808,49 @@
 		display: flex;
 		flex: 1;
 		overflow: hidden;
+		user-select: none;
+	}
+
+	.left-pane {
+		flex-shrink: 0;
+		overflow: hidden;
+		display: flex;
+	}
+
+	.left-pane :global(> *) {
+		width: 100%;
+	}
+
+	.center-pane {
+		flex: 1;
+		min-width: 200px;
+		overflow: hidden;
+		display: flex;
+	}
+
+	.center-pane :global(> *) {
+		width: 100%;
+	}
+
+	.right-pane {
+		flex-shrink: 0;
+		overflow: hidden;
+		display: flex;
+	}
+
+	.right-pane :global(> *) {
+		width: 100%;
+	}
+
+	.resize-handle {
+		width: 4px;
+		background-color: var(--border-primary);
+		cursor: col-resize;
+		flex-shrink: 0;
+		transition: background-color var(--transition-fast);
+	}
+
+	.resize-handle:hover {
+		background-color: var(--accent-primary);
 	}
 </style>

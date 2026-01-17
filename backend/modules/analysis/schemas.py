@@ -20,6 +20,7 @@ class TabSchema(BaseModel):
     type: str
     parent_id: str | None = None
     datasource_id: str | None = None
+    steps: list[PipelineStepSchema] = []
 
 
 class AnalysisCreateSchema(BaseModel):

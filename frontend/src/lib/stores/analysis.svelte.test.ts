@@ -261,6 +261,125 @@ describe('analysis.svelte store', () => {
 			expect(analysisStore.pipeline).toHaveLength(1);
 			expect(analysisStore.pipeline.find((s) => s.id === 'step-2')).toBeUndefined();
 		});
+
+		it('should update dependent step to point to removed step parent', () => {
+			// step-1 -> step-2, if we remove step-1, step-2 should have no dependencies
+			analysisStore.removeStep('step-1');
+
+			expect(analysisStore.pipeline).toHaveLength(1);
+			expect(analysisStore.pipeline[0].id).toBe('step-2');
+			expect(analysisStore.pipeline[0].depends_on).toEqual([]);
+		});
+
+		it('should maintain valid DAG when removing middle step in chain', async () => {
+			// Create a 3-step chain: step-1 -> step-2 -> step-3
+			const threeStepChain: PipelineStep[] = [
+				{ id: 'step-1', type: 'filter', config: {}, depends_on: [] },
+				{ id: 'step-2', type: 'select', config: {}, depends_on: ['step-1'] },
+				{ id: 'step-3', type: 'sort', config: {}, depends_on: ['step-2'] }
+			];
+			const chainAnalysis: Analysis = {
+				...mockAnalysis,
+				tabs: [{
+					id: 'tab-1',
+					name: 'Source 1',
+					type: 'datasource',
+					parent_id: null,
+					datasource_id: 'source-1',
+					steps: threeStepChain
+				}]
+			};
+			vi.mocked(analysisApi.getAnalysis).mockResolvedValue(chainAnalysis);
+			await analysisStore.loadAnalysis('test-123');
+
+			// Remove step-2 (middle step)
+			analysisStore.removeStep('step-2');
+
+			// Verify step-3 now depends on step-1
+			expect(analysisStore.pipeline).toHaveLength(2);
+			expect(analysisStore.pipeline[0].id).toBe('step-1');
+			expect(analysisStore.pipeline[1].id).toBe('step-3');
+			expect(analysisStore.pipeline[1].depends_on).toEqual(['step-1']);
+		});
+
+		it('should handle removing first step in chain', async () => {
+			// Create a 3-step chain: step-1 -> step-2 -> step-3
+			const threeStepChain: PipelineStep[] = [
+				{ id: 'step-1', type: 'filter', config: {}, depends_on: [] },
+				{ id: 'step-2', type: 'select', config: {}, depends_on: ['step-1'] },
+				{ id: 'step-3', type: 'sort', config: {}, depends_on: ['step-2'] }
+			];
+			const chainAnalysis: Analysis = {
+				...mockAnalysis,
+				tabs: [{
+					id: 'tab-1',
+					name: 'Source 1',
+					type: 'datasource',
+					parent_id: null,
+					datasource_id: 'source-1',
+					steps: threeStepChain
+				}]
+			};
+			vi.mocked(analysisApi.getAnalysis).mockResolvedValue(chainAnalysis);
+			await analysisStore.loadAnalysis('test-123');
+
+			// Remove step-1 (first step)
+			analysisStore.removeStep('step-1');
+
+			// Verify step-2 now has no dependencies (becomes root)
+			expect(analysisStore.pipeline).toHaveLength(2);
+			expect(analysisStore.pipeline[0].id).toBe('step-2');
+			expect(analysisStore.pipeline[0].depends_on).toEqual([]);
+			expect(analysisStore.pipeline[1].id).toBe('step-3');
+			expect(analysisStore.pipeline[1].depends_on).toEqual(['step-2']);
+		});
+
+		it('should handle removing last step in chain', async () => {
+			// Create a 3-step chain: step-1 -> step-2 -> step-3
+			const threeStepChain: PipelineStep[] = [
+				{ id: 'step-1', type: 'filter', config: {}, depends_on: [] },
+				{ id: 'step-2', type: 'select', config: {}, depends_on: ['step-1'] },
+				{ id: 'step-3', type: 'sort', config: {}, depends_on: ['step-2'] }
+			];
+			const chainAnalysis: Analysis = {
+				...mockAnalysis,
+				tabs: [{
+					id: 'tab-1',
+					name: 'Source 1',
+					type: 'datasource',
+					parent_id: null,
+					datasource_id: 'source-1',
+					steps: threeStepChain
+				}]
+			};
+			vi.mocked(analysisApi.getAnalysis).mockResolvedValue(chainAnalysis);
+			await analysisStore.loadAnalysis('test-123');
+
+			// Remove step-3 (last step)
+			analysisStore.removeStep('step-3');
+
+			// Verify the chain is still valid
+			expect(analysisStore.pipeline).toHaveLength(2);
+			expect(analysisStore.pipeline[0].id).toBe('step-1');
+			expect(analysisStore.pipeline[0].depends_on).toEqual([]);
+			expect(analysisStore.pipeline[1].id).toBe('step-2');
+			expect(analysisStore.pipeline[1].depends_on).toEqual(['step-1']);
+		});
+
+		it('should invalidate cache for removed step and dependents', async () => {
+			const invalidateSpy = vi.spyOn(schemaCalculator, 'invalidateCache');
+			
+			// step-1 -> step-2
+			analysisStore.removeStep('step-1');
+
+			// Should be called with the new pipeline and affected step IDs
+			expect(invalidateSpy).toHaveBeenCalled();
+			const calls = invalidateSpy.mock.calls;
+			const lastCall = calls[calls.length - 1];
+			// The affected IDs should include step-1 and step-2 (dependent)
+			expect(lastCall[1]).toContain('step-1');
+			expect(lastCall[1]).toContain('step-2');
+		});
 	});
 
 	describe('reorderSteps', () => {

@@ -102,6 +102,13 @@
 	// Use active tab's datasource
 	const datasourceId = $derived(analysisStore.activeTab?.datasource_id ?? undefined);
 
+	// Get the current datasource object for the active tab
+	const currentDatasource = $derived.by(() => {
+		if (!datasourceId) return null;
+		const all = datasourcesQuery.data ?? [];
+		return all.find((ds) => ds.id === datasourceId) ?? null;
+	});
+
 	function makeId() {
 		if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
 			return crypto.randomUUID();
@@ -427,10 +434,12 @@
 				<PipelineCanvas
 					steps={analysisStore.pipeline}
 					{datasourceId}
+					datasource={currentDatasource}
 					onStepClick={handleSelectStep}
 					onStepDelete={handleDeleteStep}
 					onInsertStep={handleInsertStep}
 					onMoveStep={handleMoveStep}
+					onChangeDatasource={openDatasourceModal}
 				/>
 			</div>
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->

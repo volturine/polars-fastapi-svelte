@@ -166,7 +166,8 @@ export function getExpressionResultDType(
 	}
 
 	// Try to find column reference and use its type
-	const columnMatch = expr.match(/pl\.col\(['"](\w+)['"]\)/);
+	// Support both pl.col(...) and col(...) patterns
+	const columnMatch = expr.match(/(?:pl\.)?col\(['"](\w+)['"]\)/);
 	if (columnMatch) {
 		const column = schema.columns.find((c) => c.name === columnMatch[1]);
 		if (column) return column.dtype;

@@ -432,3 +432,82 @@ export function applyViewRule(schema: Schema, _config: Record<string, unknown>):
 		row_count: schema.row_count
 	};
 }
+
+// Sample transformation: returns same schema, row_count unknown
+export function applySampleRule(schema: Schema, _config: Record<string, unknown>): Schema {
+	return {
+		columns: schema.columns,
+		row_count: null
+	};
+}
+
+// Limit transformation: returns same schema, row_count is the limit
+export function applyLimitRule(schema: Schema, config: Record<string, unknown>): Schema {
+	const n = config.n as number | undefined;
+	const currentRows = schema.row_count;
+	
+	// If we know both values, use the minimum
+	const rowCount = n !== undefined && currentRows !== null 
+		? Math.min(n, currentRows) 
+		: n ?? null;
+	
+	return {
+		columns: schema.columns,
+		row_count: rowCount
+	};
+}
+
+// TopK transformation: returns same schema, row_count is k
+export function applyTopKRule(schema: Schema, config: Record<string, unknown>): Schema {
+	const k = config.k as number | undefined;
+	const currentRows = schema.row_count;
+	
+	const rowCount = k !== undefined && currentRows !== null
+		? Math.min(k, currentRows)
+		: k ?? null;
+	
+	return {
+		columns: schema.columns,
+		row_count: rowCount
+	};
+}
+
+// NullCount transformation: returns one row with count of nulls per column
+export function applyNullCountRule(schema: Schema, _config: Record<string, unknown>): Schema {
+	// null_count returns a single row with the same column names but Int64 values
+	return {
+		columns: schema.columns.map((col) => ({
+			name: col.name,
+			dtype: 'UInt32',
+			nullable: false
+		})),
+		row_count: 1
+	};
+}
+
+// ValueCounts transformation: returns column + count
+export function applyValueCountsRule(schema: Schema, config: Record<string, unknown>): Schema {
+	const column = config.column as string | undefined;
+	
+	if (!column) {
+		return schema;
+	}
+	
+	const sourceCol = schema.columns.find((c) => c.name === column);
+	
+	return {
+		columns: [
+			{
+				name: column,
+				dtype: sourceCol?.dtype ?? 'String',
+				nullable: sourceCol?.nullable ?? false
+			},
+			{
+				name: 'count',
+				dtype: 'UInt32',
+				nullable: false
+			}
+		],
+		row_count: null // Unknown - depends on unique values
+	};
+}

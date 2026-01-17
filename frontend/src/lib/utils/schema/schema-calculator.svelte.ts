@@ -21,7 +21,12 @@ import {
 	applyExplodeRule,
 	applyPivotRule,
 	applyUnpivotRule,
-	applyViewRule
+	applyViewRule,
+	applySampleRule,
+	applyLimitRule,
+	applyTopKRule,
+	applyNullCountRule,
+	applyValueCountsRule
 } from './transformation-rules';
 
 class SchemaCalculator {
@@ -135,24 +140,28 @@ class SchemaCalculator {
 	}
 
 	invalidateCache(steps: PipelineStep[], rootIds: string[]): void {
+		// First, delete the root IDs directly (they might not be in steps anymore)
+		for (const rootId of rootIds) {
+			this.cache.delete(rootId);
+		}
+		
+		// Then find and invalidate all dependents in the current pipeline
 		const dependents = this.getDependentsMap(steps);
 		const queue = [...rootIds];
-		const seen = new Set<string>();
+		const seen = new Set<string>(rootIds);
 		let index = 0;
 
 		while (index < queue.length) {
 			const currentId = queue[index];
 			index += 1;
-			if (seen.has(currentId)) {
-				continue;
-			}
-			seen.add(currentId);
 			const children = dependents.get(currentId) ?? [];
-			queue.push(...children);
-		}
-
-		for (const stepId of seen) {
-			this.cache.delete(stepId);
+			for (const childId of children) {
+				if (!seen.has(childId)) {
+					seen.add(childId);
+					queue.push(childId);
+					this.cache.delete(childId);
+				}
+			}
 		}
 	}
 
@@ -283,6 +292,31 @@ class SchemaCalculator {
 		return applyViewRule(schema, config);
 	}
 
+	// Sample: random sample of rows
+	applySample(schema: Schema, config: Record<string, unknown>): Schema {
+		return applySampleRule(schema, config);
+	}
+
+	// Limit: first n rows
+	applyLimit(schema: Schema, config: Record<string, unknown>): Schema {
+		return applyLimitRule(schema, config);
+	}
+
+	// TopK: top k rows by column
+	applyTopK(schema: Schema, config: Record<string, unknown>): Schema {
+		return applyTopKRule(schema, config);
+	}
+
+	// NullCount: count nulls per column
+	applyNullCount(schema: Schema, config: Record<string, unknown>): Schema {
+		return applyNullCountRule(schema, config);
+	}
+
+	// ValueCounts: count unique values
+	applyValueCounts(schema: Schema, config: Record<string, unknown>): Schema {
+		return applyValueCountsRule(schema, config);
+	}
+
 	// Apply a single step transformation
 	applyStep(schema: Schema, step: PipelineStep, schemaMap?: Map<string, Schema>): Schema | null {
 		switch (step.type) {
@@ -365,6 +399,26 @@ class SchemaCalculator {
 
 			case 'view': {
 				return this.applyView(schema, step.config);
+			}
+
+			case 'sample': {
+				return this.applySample(schema, step.config);
+			}
+
+			case 'limit': {
+				return this.applyLimit(schema, step.config);
+			}
+
+			case 'topk': {
+				return this.applyTopK(schema, step.config);
+			}
+
+			case 'null_count': {
+				return this.applyNullCount(schema, step.config);
+			}
+
+			case 'value_counts': {
+				return this.applyValueCounts(schema, step.config);
 			}
 
 			default: {

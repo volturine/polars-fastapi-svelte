@@ -1,20 +1,32 @@
 <script lang="ts">
 	import type { PipelineStep } from '$lib/types/analysis';
+	import type { DataSource } from '$lib/types/datasource';
 	import { drag, type DropTarget } from '$lib/stores/drag.svelte';
 	import StepNode from './StepNode.svelte';
 	import ConnectionLine from './ConnectionLine.svelte';
+	import DatasourceNode from './DatasourceNode.svelte';
 
 	interface Props {
 		steps: PipelineStep[];
 		datasourceId?: string;
+		datasource?: DataSource | null;
 		onStepClick: (id: string) => void;
 		onStepDelete: (id: string) => void;
 		onInsertStep: (type: string, target: DropTarget) => void;
 		onMoveStep: (stepId: string, target: DropTarget) => void;
+		onChangeDatasource?: () => void;
 	}
 
-	let { steps, datasourceId, onStepClick, onStepDelete, onInsertStep, onMoveStep }: Props =
-		$props();
+	let {
+		steps,
+		datasourceId,
+		datasource = null,
+		onStepClick,
+		onStepDelete,
+		onInsertStep,
+		onMoveStep,
+		onChangeDatasource
+	}: Props = $props();
 
 	// Derived: whether we can accept drops
 	let canDrop = $derived(drag.active);
@@ -115,7 +127,7 @@
 </script>
 
 <div class="pipeline-canvas">
-	{#if steps.length === 0}
+	{#if steps.length === 0 && !datasource}
 		<div class="empty-state">
 			<svg
 				width="32"
@@ -146,7 +158,13 @@
 		</div>
 	{:else}
 		<div class="steps-container" role="list">
-			<!-- Drop zone before first step -->
+			<!-- Datasource node (non-removable root) -->
+			{#if datasource}
+				<DatasourceNode {datasource} {onChangeDatasource} />
+				<ConnectionLine fromStepIndex={-1} toStepIndex={0} totalSteps={steps.length + 1} />
+			{/if}
+
+			<!-- Drop zone before first step (after datasource) -->
 			<!-- svelte-ignore a11y_consider_explicit_label -->
 			<div
 				class="drop-target"

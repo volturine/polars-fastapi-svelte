@@ -12,6 +12,18 @@
 
 	let { schema, config = $bindable({ columns: [] }) }: Props = $props();
 
+	// Ensure config has proper structure
+	$effect(() => {
+		if (!config || typeof config !== 'object') {
+			config = { columns: [] };
+		} else if (!Array.isArray(config.columns)) {
+			config.columns = [];
+		}
+	});
+
+	// Safe accessor
+	let safeColumns = $derived(Array.isArray(config?.columns) ? config.columns : []);
+
 	const listColumns = $derived(
 		schema.columns.filter(
 			(col) =>
@@ -22,11 +34,12 @@
 	);
 
 	function toggleColumn(columnName: string) {
-		const index = config.columns.indexOf(columnName);
+		const cols = safeColumns;
+		const index = cols.indexOf(columnName);
 		if (index > -1) {
-			config.columns = config.columns.filter((_, i) => i !== index);
+			config.columns = cols.filter((_, i) => i !== index);
 		} else {
-			config.columns = [...config.columns, columnName];
+			config.columns = [...cols, columnName];
 		}
 	}
 </script>
@@ -57,7 +70,7 @@
 					<label class="column-item">
 						<input
 							type="checkbox"
-							checked={config.columns.includes(column.name)}
+							checked={safeColumns.includes(column.name)}
 							onchange={() => toggleColumn(column.name)}
 						/>
 						<span>{column.name} ({column.dtype})</span>
@@ -65,10 +78,10 @@
 				{/each}
 			</div>
 
-			{#if config.columns.length > 0}
+			{#if safeColumns.length > 0}
 				<div class="selected-info">
-					Selected {config.columns.length} column{config.columns.length !== 1 ? 's' : ''}:
-					{config.columns.join(', ')}
+					Selected {safeColumns.length} column{safeColumns.length !== 1 ? 's' : ''}:
+					{safeColumns.join(', ')}
 				</div>
 			{/if}
 		{/if}

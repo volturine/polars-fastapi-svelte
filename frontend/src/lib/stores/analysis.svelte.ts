@@ -93,8 +93,9 @@ export class AnalysisStore {
 
 	addStep(step: PipelineStep): void {
 		if (!this.activeTab) return;
-		this.updateTabSteps(this.activeTab.id, [...this.activeTab.steps, step]);
-		schemaCalculator.invalidateCache(this.activeTab.steps, [step.id]);
+		const newSteps = [...this.activeTab.steps, step];
+		this.updateTabSteps(this.activeTab.id, newSteps);
+		schemaCalculator.invalidateCache(newSteps, [step.id]);
 	}
 
 	setTabs(tabs: AnalysisTab[]): void {
@@ -174,8 +175,9 @@ export class AnalysisStore {
 	addBranchStep(step: PipelineStep, parentId: string | null): void {
 		if (!this.activeTab) return;
 		step.depends_on = parentId ? [parentId] : [];
-		this.updateTabSteps(this.activeTab.id, [...this.activeTab.steps, step]);
-		schemaCalculator.invalidateCache(this.activeTab.steps, [step.id]);
+		const newSteps = [...this.activeTab.steps, step];
+		this.updateTabSteps(this.activeTab.id, newSteps);
+		schemaCalculator.invalidateCache(newSteps, [step.id]);
 	}
 
 	updateStep(id: string, updates: Partial<PipelineStep>): void {
@@ -189,9 +191,41 @@ export class AnalysisStore {
 
 	removeStep(id: string): void {
 		if (!this.activeTab) return;
-		const nextPipeline = this.activeTab.steps.filter((step) => step.id !== id);
+		
+		const steps = this.activeTab.steps;
+		const removedStep = steps.find((step) => step.id === id);
+		if (!removedStep) return;
+		
+		// Find the parent of the removed step
+		const removedDeps = removedStep.depends_on ?? [];
+		const removedParentId = removedDeps[0] ?? null;
+		
+		// Update steps that depended on the removed step to now depend on its parent
+		const nextPipeline = steps
+			.filter((step) => step.id !== id)
+			.map((step) => {
+				const deps = step.depends_on ?? [];
+				if (deps.includes(id)) {
+					// This step depended on the removed step, update to point to removed step's parent
+					return {
+						...step,
+						depends_on: removedParentId ? [removedParentId] : []
+					};
+				}
+				return step;
+			});
+		
+		// Get all affected step IDs (the removed step and all its descendants)
+		const affectedIds = [id];
+		for (const step of steps) {
+			if (step.depends_on?.includes(id)) {
+				affectedIds.push(step.id);
+			}
+		}
+		
 		this.updateTabSteps(this.activeTab.id, nextPipeline);
-		schemaCalculator.invalidateCache(nextPipeline, [id]);
+		// Invalidate cache for affected steps using the NEW pipeline (after removal)
+		schemaCalculator.invalidateCache(nextPipeline, affectedIds);
 	}
 
 	reorderSteps(fromIndex: number, toIndex: number): void {

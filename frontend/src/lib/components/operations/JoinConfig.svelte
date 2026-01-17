@@ -14,6 +14,22 @@
 
 	let { schema, config = $bindable({ how: 'inner', left_on: [], right_on: [] }) }: Props = $props();
 
+	// Ensure config has proper structure
+	$effect(() => {
+		if (!config || typeof config !== 'object') {
+			config = { how: 'inner', left_on: [], right_on: [] };
+		} else {
+			if (!config.how) config.how = 'inner';
+			if (!Array.isArray(config.left_on)) config.left_on = [];
+			if (!Array.isArray(config.right_on)) config.right_on = [];
+		}
+	});
+
+	// Safe accessors
+	let safeLeftOn = $derived(Array.isArray(config?.left_on) ? config.left_on : []);
+	let safeRightOn = $derived(Array.isArray(config?.right_on) ? config.right_on : []);
+	let safeHow = $derived(config?.how ?? 'inner');
+
 	let newLeftKey = $state('');
 	let newRightKey = $state('');
 
@@ -27,16 +43,16 @@
 	function addJoinKey() {
 		if (!newLeftKey || !newRightKey) return;
 
-		config.left_on = [...config.left_on, newLeftKey];
-		config.right_on = [...config.right_on, newRightKey];
+		config.left_on = [...safeLeftOn, newLeftKey];
+		config.right_on = [...safeRightOn, newRightKey];
 
 		newLeftKey = '';
 		newRightKey = '';
 	}
 
 	function removeJoinKey(index: number) {
-		config.left_on = config.left_on.filter((_, i) => i !== index);
-		config.right_on = config.right_on.filter((_, i) => i !== index);
+		config.left_on = safeLeftOn.filter((_, i) => i !== index);
+		config.right_on = safeRightOn.filter((_, i) => i !== index);
 	}
 </script>
 
@@ -47,7 +63,7 @@
 		<h4>Join Type</h4>
 		<select bind:value={config.how}>
 			{#each joinTypes as joinType (joinType.value)}
-				<option value={joinType.value}>{joinType.label}</option>
+				<option value={joinType.value} selected={safeHow === joinType.value}>{joinType.label}</option>
 			{/each}
 		</select>
 		<div class="help-text">
@@ -89,14 +105,14 @@
 			</button>
 		</div>
 
-		{#if config.left_on.length > 0}
+		{#if safeLeftOn.length > 0}
 			<div class="keys-list">
-				{#each config.left_on as leftKey, i (leftKey + '-' + i)}
+				{#each safeLeftOn as leftKey, i (leftKey + '-' + i)}
 					<div class="key-item">
 						<span class="key-details">
 							<span class="key-column">{leftKey}</span>
 							<span class="key-separator">=</span>
-							<span class="key-column">{config.right_on[i]}</span>
+							<span class="key-column">{safeRightOn[i]}</span>
 						</span>
 						<button type="button" onclick={() => removeJoinKey(i)}>Remove</button>
 					</div>

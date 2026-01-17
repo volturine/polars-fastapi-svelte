@@ -21,6 +21,8 @@
 	let isLoadingSchema = $state(false);
 	let showDatasourceModal = $state(false);
 	let searchQuery = $state('');
+	let editingTabId = $state<string | null>(null);
+	let editingTabName = $state('');
 
 	// Resizable panes
 	let leftPaneWidth = $state(240);
@@ -189,6 +191,48 @@
 		analysisStore.removeTab(tabId);
 	}
 
+	function startRenameTab(tab: AnalysisTab) {
+		editingTabId = tab.id;
+		editingTabName = tab.name;
+	}
+
+	function cancelRenameTab() {
+		editingTabId = null;
+		editingTabName = '';
+	}
+
+	function scheduleSave() {
+		if (saveTimeout) {
+			clearTimeout(saveTimeout);
+			saveTimeout = null;
+		}
+
+		saveStatus = 'unsaved';
+		saveTimeout = setTimeout(async () => {
+			saveStatus = 'saving';
+			try {
+				await analysisStore.save();
+				saveStatus = 'saved';
+			} catch (err) {
+				saveStatus = 'unsaved';
+				console.error('Autosave failed:', err);
+			}
+		}, 3000);
+	}
+
+	function commitRenameTab(tab: AnalysisTab) {
+		const nextName = editingTabName.trim();
+		if (!nextName) {
+			cancelRenameTab();
+			return;
+		}
+		if (nextName !== tab.name) {
+			analysisStore.updateTab(tab.id, { name: nextName });
+			scheduleSave();
+		}
+		cancelRenameTab();
+	}
+
 	function openDatasourceModal() {
 		searchQuery = '';
 		showDatasourceModal = true;
@@ -224,18 +268,7 @@
 			saveTimeout = null;
 		}
 
-		saveStatus = 'unsaved';
-
-		saveTimeout = setTimeout(async () => {
-			saveStatus = 'saving';
-			try {
-				await analysisStore.save();
-				saveStatus = 'saved';
-			} catch (err) {
-				saveStatus = 'unsaved';
-				console.error('Autosave failed:', err);
-			}
-		}, 3000);
+		scheduleSave();
 
 		return () => {
 			if (saveTimeout) {
@@ -286,8 +319,8 @@
 					{/if}
 				</div>
 			</div>
-		<div class="header-right">
-			<span
+			<div class="header-right">
+				<span
 					class="save-status"
 					class:saved={saveStatus === 'saved'}
 					class:unsaved={saveStatus === 'unsaved'}
@@ -320,29 +353,59 @@
 						onclick={() => handleSelectTab(tab.id)}
 						type="button"
 					>
-						{tab.name}
-						{#if analysisStore.tabs.length > 1}
+						<span class="tab-label">
+							{#if editingTabId === tab.id}
+								<input
+									class="tab-rename-input"
+									bind:value={editingTabName}
+									onclick={(e) => e.stopPropagation()}
+									onkeydown={(e) => {
+										if (e.key === 'Enter') commitRenameTab(tab);
+										if (e.key === 'Escape') cancelRenameTab();
+									}}
+									onblur={() => commitRenameTab(tab)}
+									aria-label="Rename tab"
+								/>
+							{:else}
+								<span class="tab-name">{tab.name}</span>
+							{/if}
+						</span>
+						<span class="tab-actions">
 							<span
-								class="tab-remove"
+								class="tab-rename"
 								onclick={(e) => {
 									e.stopPropagation();
-									handleRemoveTab(tab.id);
+									startRenameTab(tab);
 								}}
 								role="button"
 								tabindex="0"
-								onkeydown={(e) => e.key === 'Enter' && handleRemoveTab(tab.id)}
+								onkeydown={(e) => e.key === 'Enter' && startRenameTab(tab)}
+								aria-label="Rename tab"
 							>
-								&times;
+								✎
 							</span>
-						{/if}
+							{#if analysisStore.tabs.length > 1}
+								<span
+									class="tab-remove"
+									onclick={(e) => {
+										e.stopPropagation();
+										handleRemoveTab(tab.id);
+									}}
+									role="button"
+									tabindex="0"
+									onkeydown={(e) => e.key === 'Enter' && handleRemoveTab(tab.id)}
+								>
+									&times;
+								</span>
+							{/if}
+						</span>
 					</button>
 				{/each}
-				<button class="tab add-tab" onclick={openDatasourceModal} type="button">
-					+
-				</button>
+				<button class="tab add-tab" onclick={openDatasourceModal} type="button"> + </button>
 			</div>
 		</div>
 
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			class="editor-workspace"
 			onmousemove={handleMouseMove}
@@ -353,6 +416,7 @@
 			<div class="left-pane" style="width: {leftPaneWidth}px">
 				<StepLibrary onAddStep={handleAddStep} onInsertStep={handleInsertStep} />
 			</div>
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<div
 				class="resize-handle"
 				onmousedown={startResizeLeft}
@@ -369,6 +433,7 @@
 					onMoveStep={handleMoveStep}
 				/>
 			</div>
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<div
 				class="resize-handle"
 				onmousedown={startResizeRight}
@@ -657,6 +722,9 @@
 		color: var(--fg-muted);
 		font-family: var(--font-mono);
 		transition: all var(--transition-fast);
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
 	}
 
 	.tab:hover {
@@ -666,6 +734,56 @@
 	.tab.active {
 		color: var(--accent-primary);
 		border-bottom-color: var(--accent-primary);
+	}
+
+	.tab-label {
+		display: inline-flex;
+		align-items: center;
+		min-width: 0;
+	}
+
+	.tab-name {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 180px;
+	}
+
+	.tab-rename-input {
+		width: 160px;
+		max-width: 220px;
+		padding: 2px 6px;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--border-secondary);
+		background-color: var(--bg-secondary);
+		color: var(--fg-primary);
+		font-family: var(--font-mono);
+		font-size: var(--text-sm);
+	}
+
+	.tab-rename-input:focus {
+		outline: none;
+		border-color: var(--accent-primary);
+	}
+
+	.tab-actions {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-1);
+	}
+
+	.tab-rename {
+		color: var(--fg-muted);
+		cursor: pointer;
+		font-size: var(--text-xs);
+		padding: 0;
+		line-height: 1;
+		opacity: 0.7;
+	}
+
+	.tab-rename:hover {
+		opacity: 1;
+		color: var(--fg-secondary);
 	}
 
 	.tab-remove {

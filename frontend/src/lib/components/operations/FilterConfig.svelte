@@ -36,14 +36,18 @@
 		}
 	});
 
+	// Safe accessors
+	let safeConditions = $derived(Array.isArray(config?.conditions) ? config.conditions : [{ column: '', operator: '=', value: '' }]);
+	let safeLogic = $derived(config?.logic ?? 'AND');
+
 	const operators = ['=', '!=', '>', '<', '>=', '<=', 'contains'];
 
 	function addCondition() {
-		config.conditions = [...config.conditions, { column: '', operator: '=', value: '' }];
+		config.conditions = [...safeConditions, { column: '', operator: '=', value: '' }];
 	}
 
 	function removeCondition(index: number) {
-		config.conditions = config.conditions.filter((_, i) => i !== index);
+		config.conditions = safeConditions.filter((_, i) => i !== index);
 	}
 
 	function getInputType(columnName: string): string {
@@ -65,14 +69,14 @@
 		<label>
 			Combine conditions with:
 			<select bind:value={config.logic}>
-				<option value="AND">AND</option>
-				<option value="OR">OR</option>
+				<option value="AND" selected={safeLogic === 'AND'}>AND</option>
+				<option value="OR" selected={safeLogic === 'OR'}>OR</option>
 			</select>
 		</label>
 	</div>
 
 	<div class="conditions">
-		{#each config.conditions as condition, i (i)}
+		{#each safeConditions as condition, i (i)}
 			<div class="condition-row">
 				<select bind:value={condition.column}>
 					<option value="">Select column...</option>
@@ -96,7 +100,7 @@
 				<button
 					type="button"
 					onclick={() => removeCondition(i)}
-					disabled={config.conditions.length === 1}
+					disabled={safeConditions.length === 1}
 				>
 					Remove
 				</button>

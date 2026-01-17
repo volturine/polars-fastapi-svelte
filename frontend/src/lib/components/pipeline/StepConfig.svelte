@@ -64,27 +64,42 @@
 			return nonNullSchema;
 		}
 
-		// Get source schema from analysis store
+		// Get source schema for active tab's datasource
+		const activeTab = analysisStore.activeTab;
+		const datasourceId = activeTab?.datasource_id;
 		const sourceSchemas = analysisStore.sourceSchemas;
+		
 		if (!sourceSchemas.size) {
-			// No source schema available - return empty schema
 			return { columns: [], row_count: null };
 		}
 
-		const sourceSchema = sourceSchemas.values().next().value;
-		if (!sourceSchema) {
-			// No source schema available - return empty schema
+		// Get the correct datasource schema for this tab
+		const schemaInfo = datasourceId 
+			? sourceSchemas.get(datasourceId) 
+			: sourceSchemas.values().next().value;
+		
+		if (!schemaInfo) {
 			return { columns: [], row_count: null };
 		}
 
-		// Get all steps in the pipeline
+		// Convert SchemaInfo to Schema format
+		const baseSchema: Schema = {
+			columns: schemaInfo.columns.map((col) => ({
+				name: col.name,
+				dtype: col.dtype,
+				nullable: col.nullable
+			})),
+			row_count: schemaInfo.row_count
+		};
+
+		// Get all steps in the pipeline (for active tab)
 		const allSteps = analysisStore.pipeline;
 
 		// Find the current step's position
 		const stepIndex = allSteps.findIndex((s) => s.id === step.id);
 		if (stepIndex <= 0) {
-			// This is the first step, use source schema
-			return sourceSchema as Schema;
+			// This is the first step, use base schema
+			return baseSchema;
 		}
 
 		// Get steps before the current step
@@ -92,11 +107,11 @@
 
 		// Calculate schema after applying previous steps
 		const calculatedInputSchema = schemaCalculator.calculatePipelineSchema(
-			sourceSchema as Schema,
+			baseSchema,
 			previousSteps
 		);
 
-		return calculatedInputSchema || ({ columns: [], row_count: null } as Schema);
+		return calculatedInputSchema || { columns: [], row_count: null };
 	});
 
 	function handleClose() {

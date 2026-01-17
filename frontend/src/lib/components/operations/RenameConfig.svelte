@@ -12,25 +12,37 @@
 
 	let { schema, config = $bindable({ column_mapping: {} }) }: Props = $props();
 
+	// Ensure config has proper structure
+	$effect(() => {
+		if (!config || typeof config !== 'object') {
+			config = { column_mapping: {} };
+		} else if (!config.column_mapping || typeof config.column_mapping !== 'object') {
+			config.column_mapping = {};
+		}
+	});
+
 	let newMapping = $state({
 		oldName: '',
 		newName: ''
 	});
 
+	// Safe accessor for column_mapping
+	let safeMapping = $derived(config?.column_mapping ?? {});
+
 	let mappings = $derived(
-		Object.entries(config.column_mapping).map(([oldName, newName]) => ({
+		Object.entries(safeMapping).map(([oldName, newName]) => ({
 			oldName,
 			newName
 		}))
 	);
 
-	let availableColumns = $derived(schema.columns.filter((col) => !config.column_mapping[col.name]));
+	let availableColumns = $derived(schema.columns.filter((col) => !safeMapping[col.name]));
 
 	function addMapping() {
 		if (!newMapping.oldName || !newMapping.newName) return;
 
 		config.column_mapping = {
-			...config.column_mapping,
+			...safeMapping,
 			[newMapping.oldName]: newMapping.newName
 		};
 
@@ -41,7 +53,7 @@
 	}
 
 	function removeMapping(oldName: string) {
-		const { [oldName]: _, ...rest } = config.column_mapping;
+		const { [oldName]: _, ...rest } = safeMapping;
 		config.column_mapping = rest;
 	}
 </script>

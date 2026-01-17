@@ -13,8 +13,20 @@
 
 	let { schema, config = $bindable({ columns: [] }) }: Props = $props();
 
+	// Ensure config has proper structure
+	$effect(() => {
+		if (!config || typeof config !== 'object') {
+			config = { columns: [] };
+		} else if (!Array.isArray(config.columns)) {
+			config.columns = [];
+		}
+	});
+
+	// Safe accessor
+	let safeColumns = $derived(Array.isArray(config?.columns) ? config.columns : []);
+
 	// Keep SvelteSet for UI
-	let selectedColumns = $state(new SvelteSet(config.columns));
+	let selectedColumns = $state(new SvelteSet<string>());
 
 	// Track the config reference to detect when a different step is selected
 	let prevConfig = $state(config);
@@ -22,8 +34,15 @@
 	// Sync config.columns → SvelteSet when config changes (different step selected)
 	$effect(() => {
 		if (config !== prevConfig) {
-			selectedColumns = new SvelteSet(config.columns);
+			selectedColumns = new SvelteSet(safeColumns);
 			prevConfig = config;
+		}
+	});
+
+	// Initialize on first render
+	$effect(() => {
+		if (selectedColumns.size === 0 && safeColumns.length > 0) {
+			selectedColumns = new SvelteSet(safeColumns);
 		}
 	});
 

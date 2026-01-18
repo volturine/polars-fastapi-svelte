@@ -189,6 +189,14 @@ Group by columns and aggregate.
 | `count` | Count | `{col}_count` |
 | `min` | Minimum | `{col}_min` |
 | `max` | Maximum | `{col}_max` |
+| `first` | First value | `{col}_first` |
+| `last` | Last value | `{col}_last` |
+| `median` | Median value | `{col}_median` |
+| `std` | Standard deviation | `{col}_std` |
+| `collect_list` | Collect values to list | `{col}_list` |
+| `collect_set` | Collect unique values to list | `{col}_set` |
+
+**Note**: `collect_list` and `collect_set` produce `List` type columns, which display as `[val1, val2, ...]` in the data table.
 
 ### value_counts
 
@@ -434,11 +442,11 @@ String manipulation methods.
 | `rstrip` | Remove trailing whitespace | - |
 | `length` | String length | - |
 | `slice` | Extract substring | `start`, `end` |
-| `replace` | Replace pattern | `pattern`, `replacement` |
+| `replace` | Replace all matching patterns | `pattern`, `replacement` |
 | `extract` | Regex extract | `pattern`, `group_index` |
 | `split` | Split and get element | `delimiter`, `index` |
 
-**Example - Replace**:
+**Example - Replace (global)**:
 ```python
 {
     'operation': 'string_transform',
@@ -451,6 +459,8 @@ String manipulation methods.
     }
 }
 ```
+
+**Note**: Replace uses global replacement (all occurrences), not just the first match.
 
 **Example - Extract**:
 ```python

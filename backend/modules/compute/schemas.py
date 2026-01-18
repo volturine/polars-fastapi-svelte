@@ -83,6 +83,7 @@ class StepPreviewResponse(BaseModel):
 
     step_id: str
     columns: list[str]
+    column_types: dict[str, str] | None = None
     data: list[dict]
     total_rows: int
     page: int

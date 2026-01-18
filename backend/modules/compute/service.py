@@ -127,6 +127,7 @@ async def preview_step(
                 return StepPreviewResponse(
                     step_id=target_step_id,
                     columns=list(schema.keys()),
+                    column_types=schema,
                     data=paginated_data,
                     total_rows=total_rows,
                     page=page,

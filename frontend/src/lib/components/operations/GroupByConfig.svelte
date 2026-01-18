@@ -52,7 +52,9 @@
 		'first',
 		'last',
 		'median',
-		'std'
+		'std',
+		'collect_list',
+		'collect_set'
 	];
 
 	function toggleGroupByColumn(columnName: string) {

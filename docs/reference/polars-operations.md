@@ -206,6 +206,12 @@ Group by columns and aggregate.
 | `count` | Count of values | `{col}_count` |
 | `min` | Minimum value | `{col}_min` |
 | `max` | Maximum value | `{col}_max` |
+| `first` | First value | `{col}_first` |
+| `last` | Last value | `{col}_last` |
+| `median` | Median value | `{col}_median` |
+| `std` | Standard deviation | `{col}_std` |
+| `collect_list` | Collect values to list | `{col}_list` |
+| `collect_set` | Collect unique values to list | `{col}_set` |
 
 **Example:**
 ```json

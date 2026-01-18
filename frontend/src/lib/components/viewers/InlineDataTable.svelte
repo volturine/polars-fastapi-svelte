@@ -53,7 +53,7 @@
 		}
 	}
 
-	function formatValue(value: TableCellValue): string {
+	function formatValue(value: TableCellValue, columnType?: string): string {
 		if (value === null || value === undefined) return '—'
 		if (typeof value === 'number') {
 			return value.toLocaleString()
@@ -61,7 +61,22 @@
 		if (typeof value === 'boolean') {
 			return value ? 'true' : 'false'
 		}
+		if (Array.isArray(value)) {
+			return '[' + value.map(v => {
+				if (typeof v === 'number') return v.toLocaleString()
+				if (v === null || v === undefined) return 'null'
+				return String(v)
+			}).join(', ') + ']'
+		}
 		return String(value)
+	}
+
+	function getColumnType(col: string): string {
+		return data?.column_types?.[col] || ''
+	}
+
+	function isListType(columnType: string): boolean {
+		return columnType.includes('List') || columnType === 'list'
 	}
 </script>
 
@@ -88,6 +103,11 @@
 						{#each data.columns as col (col)}
 							<th>
 								<span class="column-name">{col}</span>
+								{#if getColumnType(col)}
+									<span class="column-type" class:is-list={isListType(getColumnType(col))}>
+										{getColumnType(col)}
+									</span>
+								{/if}
 							</th>
 						{/each}
 					</tr>
@@ -96,7 +116,9 @@
 					{#each data.data as row, idx (idx)}
 						<tr>
 							{#each data.columns as col (col)}
-								<td>{formatValue(row[col] as TableCellValue)}</td>
+								<td class:is-list-cell={isListType(getColumnType(col))}>
+									{formatValue(row[col] as TableCellValue, getColumnType(col))}
+								</td>
 							{/each}
 						</tr>
 					{/each}
@@ -236,6 +258,30 @@
 	.column-name {
 		font-family: var(--font-mono);
 		font-size: 0.875rem;
+	}
+
+	.column-type {
+		display: inline-block;
+		margin-left: 0.5rem;
+		padding: 0.125rem 0.375rem;
+		font-size: 0.625rem;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		border-radius: var(--radius-sm);
+		background: var(--bg-tertiary);
+		color: var(--fg-muted);
+		font-family: var(--font-mono);
+	}
+
+	.column-type.is-list {
+		background: var(--accent-bg);
+		color: var(--accent-fg);
+	}
+
+	td.is-list-cell {
+		font-family: var(--font-mono);
+		font-size: 0.75rem;
 	}
 
 	tbody tr {

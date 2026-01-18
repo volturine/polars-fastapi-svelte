@@ -381,6 +381,18 @@ class PolarsComputeEngine:
                     agg_exprs.append(pl.col(col).min().alias(f'{col}_min'))
                 elif func == 'max':
                     agg_exprs.append(pl.col(col).max().alias(f'{col}_max'))
+                elif func == 'first':
+                    agg_exprs.append(pl.col(col).first().alias(f'{col}_first'))
+                elif func == 'last':
+                    agg_exprs.append(pl.col(col).last().alias(f'{col}_last'))
+                elif func == 'median':
+                    agg_exprs.append(pl.col(col).median().alias(f'{col}_median'))
+                elif func == 'std':
+                    agg_exprs.append(pl.col(col).std().alias(f'{col}_std'))
+                elif func == 'collect_list':
+                    agg_exprs.append(pl.col(col).implode().alias(f'{col}_list'))
+                elif func == 'collect_set':
+                    agg_exprs.append(pl.col(col).implode().list.unique().alias(f'{col}_set'))
 
             return lf.group_by(group_cols).agg(agg_exprs)
 
@@ -390,11 +402,7 @@ class PolarsComputeEngine:
             # Handle both single boolean and list of booleans for descending
             if isinstance(descending, list) and len(descending) != len(columns):
                 # Ensure descending list matches columns length
-                descending = (
-                    descending[: len(columns)]
-                    if len(descending) > len(columns)
-                    else descending + [False] * (len(columns) - len(descending))
-                )
+                descending = descending[: len(columns)] if len(descending) > len(columns) else descending + [False] * (len(columns) - len(descending))
             return lf.sort(columns, descending=descending)
 
         elif operation == 'rename':

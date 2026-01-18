@@ -28,6 +28,7 @@ export interface StepPreviewRequest {
 export interface StepPreviewResponse {
 	step_id: string;
 	columns: string[];
+	column_types?: Record<string, string>;
 	data: Array<Record<string, unknown>>;
 	total_rows: number;
 	page: number;

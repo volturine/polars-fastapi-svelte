@@ -27,6 +27,7 @@ async def execute_analysis(
 
         job = await service.execute_analysis(
             session=session,
+            analysis_id=request.analysis_id,
             datasource_id=datasource_id,
             pipeline_steps=pipeline_steps,
         )

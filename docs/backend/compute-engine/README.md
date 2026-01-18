@@ -126,8 +126,7 @@ ProcessManager
 
 ```python
 # core/config.py
-compute_timeout: int = 300  # 5 minutes
-job_ttl: int = 3600         # 1 hour cleanup
+engine_idle_timeout: int = 300  # 5 minutes - engines without keepalive are terminated
 ```
 
 ## See Also

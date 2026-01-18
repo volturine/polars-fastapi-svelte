@@ -34,7 +34,7 @@ class PolarsComputeEngine:
         self.process.start()
         self.is_running = True
 
-    def execute(self, datasource_config: dict, pipeline_steps: list[dict], timeout: int = 300) -> str:
+    def execute(self, datasource_config: dict, pipeline_steps: list[dict]) -> str:
         """Execute a Polars pipeline in the subprocess."""
         job_id = str(uuid.uuid4())
         self.current_job_id = job_id
@@ -47,7 +47,6 @@ class PolarsComputeEngine:
             'job_id': job_id,
             'datasource_config': datasource_config,
             'pipeline_steps': pipeline_steps,
-            'timeout': timeout,
         }
 
         self.command_queue.put(command)

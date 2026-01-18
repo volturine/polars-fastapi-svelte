@@ -420,7 +420,7 @@ Gracefully shuts down engine.
 def cleanup_idle_engines(self) -> list[str]
 ```
 
-Shuts down engines idle for > 60 seconds.
+Shuts down engines idle for longer than `settings.engine_idle_timeout` seconds. Engines with running jobs are skipped.
 
 #### shutdown_all
 
@@ -667,23 +667,9 @@ In-memory tracking:
 ```python
 _job_status: dict[str, dict] = {}
 _job_results: dict[str, dict] = {}
-_job_timestamps: dict[str, float] = {}
 ```
 
-TTL cleanup (1 hour default):
-
-```python
-def _cleanup_expired_jobs() -> None:
-    current_time = time.time()
-    expired = [
-        job_id for job_id, ts in _job_timestamps.items()
-        if current_time - ts > settings.job_ttl
-    ]
-    for job_id in expired:
-        _job_status.pop(job_id, None)
-        _job_results.pop(job_id, None)
-        _job_timestamps.pop(job_id, None)
-```
+Job cleanup happens when engines are terminated via `cleanup_jobs_for_engine(analysis_id)`.
 
 ---
 

@@ -308,8 +308,7 @@ See `core/config.py` for all settings:
 | `upload_dir` | Path | ./data/uploads | Upload directory |
 | `results_dir` | Path | ./data/results | Results directory |
 | `max_upload_size` | int | 10GB | Max file upload size |
-| `compute_timeout` | int | 300 | Compute timeout (seconds) |
-| `job_ttl` | int | 3600 | Job TTL (seconds) |
+| `engine_idle_timeout` | int | 300 | Idle engine timeout (seconds) |
 
 ## See Also
 

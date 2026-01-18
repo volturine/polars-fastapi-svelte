@@ -40,10 +40,10 @@ class Settings(BaseSettings):
     exports_dir: Path = Field(default=DATA_DIR / 'exports', alias='EXPORTS_DIR')
 
     max_upload_size: int = Field(default=10 * 1024 * 1024 * 1024, alias='MAX_UPLOAD_SIZE')
-    compute_timeout: int = Field(default=300, alias='COMPUTE_TIMEOUT')
 
-    # Job cleanup TTL in seconds (default 1 hour)
-    job_ttl: int = Field(default=3600, alias='JOB_TTL')
+    # Engine idle timeout in seconds (default 5 minutes)
+    # Engines without keepalive pings will be terminated after this duration
+    engine_idle_timeout: int = Field(default=300, alias='ENGINE_IDLE_TIMEOUT')
 
     @property
     def cors_origins_list(self) -> list[str]:

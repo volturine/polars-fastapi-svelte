@@ -159,8 +159,7 @@ class Settings(BaseSettings):
     upload_dir: Path = Path('./data/uploads')
     results_dir: Path = Path('./data/results')
     max_upload_size: int = 10 * 1024 * 1024 * 1024  # 10GB
-    compute_timeout: int = 300  # 5 minutes
-    job_ttl: int = 3600  # 1 hour
+    engine_idle_timeout: int = 300  # 5 minutes
 ```
 
 Environment variables override defaults:

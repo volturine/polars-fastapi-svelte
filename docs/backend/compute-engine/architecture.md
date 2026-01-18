@@ -84,7 +84,6 @@ Central manager for all compute engines.
 class ProcessManager:
     _instance: 'ProcessManager | None' = None
     _engines: dict[str, EngineInfo]
-    _idle_timeout: int = 60  # seconds
 
     def __new__(cls) -> 'ProcessManager':
         if cls._instance is None:
@@ -267,8 +266,8 @@ PolarsComputeEngine
                          ▼                        ▼                        │
                        IDLE ◄─────────────────────┘◄───────────────────────┘
                          │
-                         │ idle_timeout (60s) OR shutdown()
-                         ▼
+                         │ idle_timeout (settings.engine_idle_timeout) OR shutdown()
+                          ▼
                     TERMINATED
 ```
 
@@ -280,7 +279,7 @@ PolarsComputeEngine
 | IDLE | `execute()` | RUNNING |
 | RUNNING | job completed | IDLE |
 | RUNNING | job failed | IDLE |
-| IDLE | 60s timeout | TERMINATED |
+| IDLE | engine_idle_timeout | TERMINATED |
 | IDLE | `shutdown()` | TERMINATED |
 | RUNNING | `shutdown()` | TERMINATED |
 
@@ -389,12 +388,10 @@ def shutdown(self) -> None:
 
 ```python
 # core/config.py
-compute_timeout: int = 300  # 5 minutes max per job
-job_ttl: int = 3600         # 1 hour job result retention
-
-# modules/compute/manager.py
-_idle_timeout: int = 60     # Engine idle timeout
+engine_idle_timeout: int = 300  # 5 minutes - engines without keepalive are terminated
 ```
+
+The `cleanup_idle_engines()` method uses `settings.engine_idle_timeout` and skips engines with running jobs.
 
 ## See Also
 

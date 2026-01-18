@@ -1,39 +1,34 @@
 import logging
-import time
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.config import settings
 from modules.compute.manager import get_manager
 from modules.compute.schemas import ComputeResultSchema, ComputeStatusSchema, JobStatus
 from modules.datasource.models import DataSource
 
 logger = logging.getLogger(__name__)
 
-# Job tracking with timestamps for TTL cleanup
+# Job tracking
 _job_results: dict[str, dict] = {}
 _job_status: dict[str, dict] = {}
-_job_timestamps: dict[str, float] = {}
 
 
-def _cleanup_expired_jobs() -> None:
-    """Remove jobs older than TTL from memory."""
-    current_time = time.time()
-    expired_jobs = [job_id for job_id, timestamp in _job_timestamps.items() if current_time - timestamp > settings.job_ttl]
-
-    for job_id in expired_jobs:
-        logger.debug(f'Cleaning up expired job: {job_id}')
-        _job_status.pop(job_id, None)
-        _job_results.pop(job_id, None)
-        _job_timestamps.pop(job_id, None)
-
-    if expired_jobs:
-        logger.info(f'Cleaned up {len(expired_jobs)} expired jobs')
+def cleanup_jobs_for_engine(analysis_id: str) -> int:
+    """Clean up all jobs associated with an engine. Returns count of cleaned jobs."""
+    cleaned = 0
+    for job_id in list(_job_status.keys()):
+        if _job_status[job_id].get('analysis_id') == analysis_id:
+            _job_status.pop(job_id, None)
+            _job_results.pop(job_id, None)
+            cleaned += 1
+            logger.debug(f'Cleaned up job {job_id} for engine {analysis_id}')
+    return cleaned
 
 
 async def execute_analysis(
     session: AsyncSession,
+    analysis_id: str,
     datasource_id: str,
     pipeline_steps: list[dict],
 ) -> ComputeStatusSchema:
@@ -45,7 +40,7 @@ async def execute_analysis(
         raise ValueError(f'DataSource {datasource_id} not found')
 
     manager = get_manager()
-    engine = manager.get_or_create_engine(datasource_id)
+    engine = manager.get_or_create_engine(analysis_id)
 
     datasource_config = {
         'source_type': datasource.source_type,
@@ -55,20 +50,19 @@ async def execute_analysis(
     job_id = engine.execute(
         datasource_config=datasource_config,
         pipeline_steps=pipeline_steps,
-        timeout=300,
     )
 
     _job_status[job_id] = {
         'job_id': job_id,
+        'analysis_id': analysis_id,
         'status': JobStatus.PENDING,
         'progress': 0.0,
         'current_step': None,
         'error_message': None,
         'process_id': engine.process.pid if engine.process else None,
     }
-    _job_timestamps[job_id] = time.time()
 
-    logger.info(f'Started job {job_id} for datasource {datasource_id}')
+    logger.info(f'Started job {job_id} for analysis {analysis_id}')
     return ComputeStatusSchema.model_validate(_job_status[job_id])
 
 
@@ -112,7 +106,6 @@ async def preview_step(
     engine.execute(
         datasource_config=datasource_config,
         pipeline_steps=preview_steps,
-        timeout=30,
     )
 
     while True:
@@ -146,9 +139,6 @@ async def preview_step(
 
 def get_job_status(job_id: str) -> ComputeStatusSchema:
     """Get the status of a compute job."""
-    # Cleanup expired jobs periodically
-    _cleanup_expired_jobs()
-
     manager = get_manager()
 
     for analysis_id in manager.list_engines():
@@ -157,7 +147,6 @@ def get_job_status(job_id: str) -> ComputeStatusSchema:
             result = engine.get_result(timeout=0.1)
             if result:
                 _job_status[job_id] = result
-                _job_timestamps[job_id] = time.time()  # Update timestamp on activity
                 if result.get('data'):
                     _job_results[job_id] = result
 
@@ -207,7 +196,6 @@ def cleanup_job(job_id: str) -> None:
     """Clean up job data from memory."""
     _job_status.pop(job_id, None)
     _job_results.pop(job_id, None)
-    _job_timestamps.pop(job_id, None)
     logger.debug(f'Cleaned up job {job_id}')
 
 
@@ -257,7 +245,6 @@ async def export_data(
     engine.execute(
         datasource_config=datasource_config,
         pipeline_steps=export_steps,
-        timeout=60,
     )
 
     while True:

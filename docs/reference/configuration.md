@@ -27,8 +27,7 @@ class Settings(BaseSettings):
     results_dir: Path = Path('./data/results')
     exports_dir: Path = Path('./data/exports')
     max_upload_size: int = 10 * 1024 * 1024 * 1024  # 10GB
-    compute_timeout: int = 300  # 5 minutes
-    job_ttl: int = 3600  # 1 hour
+    engine_idle_timeout: int = 300  # 5 minutes
 ```
 
 ## Environment Variables
@@ -135,27 +134,23 @@ max_upload_size=53687091200
 
 ### Compute Engine
 
-| Variable          | Type    | Default           | Description                                                |
-| ----------------- | ------- | ----------------- | ---------------------------------------------------------- |
-| `compute_timeout` | integer | `300` (5 minutes) | Maximum time allowed for pipeline execution (seconds)      |
-| `job_ttl`         | integer | `3600` (1 hour)   | Job result retention time-to-live before cleanup (seconds) |
+| Variable              | Type    | Default           | Description                                                           |
+| --------------------- | ------- | ----------------- | --------------------------------------------------------------------- |
+| `engine_idle_timeout` | integer | `300` (5 minutes) | Time before idle compute engines are terminated (seconds)             |
 
 #### Details
 
-- **Fully configurable via environment variables** - Set via `compute_timeout`, `job_ttl` in `.env` or system environment
-- `compute_timeout`: Used to prevent long-running operations from consuming resources indefinitely
-- `job_ttl`: Used in `backend/modules/compute/service.py` for automatic job cleanup
-- Jobs older than `job_ttl` seconds are automatically cleaned up from the system
-- If not set via environment variables, uses default values shown above
+- **Fully configurable via environment variables** - Set via `ENGINE_IDLE_TIMEOUT` in `.env` or system environment
+- Engines without keepalive signals are automatically terminated after this timeout
+- A background task runs every 30 seconds to clean up idle engines
+- Engines with running jobs are protected from cleanup
+- If not set via environment variables, uses default value shown above
 
 #### Example
 
 ```bash
-# Extend timeout for long-running pipelines (10 minutes)
-compute_timeout=600
-
-# Keep job results for 2 hours
-job_ttl=7200
+# Extend timeout for idle engines (10 minutes)
+ENGINE_IDLE_TIMEOUT=600
 ```
 
 ## Frontend Configuration
@@ -233,8 +228,7 @@ CORS_ORIGINS=http://localhost:3000
 DEBUG=false
 UPLOAD_DIR=/app/data/uploads
 RESULTS_DIR=/app/data/results
-COMPUTE_TIMEOUT=300
-JOB_TTL=7200
+ENGINE_IDLE_TIMEOUT=300
 
 # Frontend
 VITE_API_URL=http://api:8000
@@ -336,8 +330,7 @@ debug=true
 cors_origins=http://localhost:3000,http://127.0.0.1:3000
 
 # Compute
-compute_timeout=300
-job_ttl=3600
+engine_idle_timeout=300
 
 # Storage
 upload_dir=./data/uploads
@@ -368,8 +361,7 @@ debug=false
 cors_origins=https://app.example.com
 
 # Extended timeouts for production workloads
-compute_timeout=600
-job_ttl=86400
+engine_idle_timeout=600
 
 # Persistent storage
 upload_dir=/var/app/uploads
@@ -392,9 +384,8 @@ max_upload_size=10737418240
 | `upload_dir`      | Path    | `{project_root}/data/uploads`                                                                                         | `backend/modules/datasource/routes.py`                        | No       |
 | `results_dir`     | Path    | `{project_root}/data/results`                                                                                         | `backend/modules/results/service.py`                          | No       |
 | `exports_dir`     | Path    | `{project_root}/data/exports`                                                                                         | `backend/modules/compute/routes.py`                           | No       |
-| `max_upload_size` | integer | `10737418240` (10GB)                                                                                                  | Configuration only                                            | No       |
-| `compute_timeout` | integer | `300` (5 minutes)                                                                                                     | `backend/modules/compute/service.py`                          | No       |
-| `job_ttl`         | integer | `3600` (1 hour)                                                                                                       | `backend/modules/compute/service.py`                          | No       |
+| `max_upload_size`     | integer | `10737418240` (10GB)                                                  | Configuration only                                            | No       |
+| `engine_idle_timeout` | integer | `300` (5 minutes)                                                     | `backend/modules/compute/manager.py`                          | No       |
 
 ### All Frontend Variables
 

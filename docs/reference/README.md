@@ -19,8 +19,7 @@ Technical reference for the Polars-FastAPI-Svelte Analysis Platform.
 | `DATABASE_URL` | `sqlite+aiosqlite:///./database/app.db` | Database connection |
 | `DEBUG` | `false` | Enable debug logging |
 | `CORS_ORIGINS` | `http://localhost:3000,...` | Allowed CORS origins |
-| `COMPUTE_TIMEOUT` | `300` | Pipeline execution timeout (seconds) |
-| `JOB_TTL` | `3600` | Job result retention (seconds) |
+| `ENGINE_IDLE_TIMEOUT` | `300` | Idle engine termination timeout (seconds) |
 | `MAX_UPLOAD_SIZE` | `10GB` | Maximum file upload size |
 
 ### Supported File Types

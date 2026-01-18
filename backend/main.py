@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import logging
 from contextlib import asynccontextmanager
 
@@ -8,6 +10,7 @@ from api import router
 from core.config import settings
 from core.database import init_db
 from modules.compute.manager import get_manager
+from modules.compute.service import cleanup_jobs_for_engine
 
 # Configure logging
 logging.basicConfig(
@@ -17,11 +20,35 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+async def engine_cleanup_loop():
+    """Periodically clean up idle engines."""
+    while True:
+        await asyncio.sleep(30)  # Check every 30 seconds
+        try:
+            manager = get_manager()
+            cleaned = manager.cleanup_idle_engines()
+            for analysis_id in cleaned:
+                count = cleanup_jobs_for_engine(analysis_id)
+                logger.info(f'Cleaned up engine {analysis_id} and {count} associated jobs')
+        except Exception as e:
+            logger.error(f'Error in engine cleanup: {e}')
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info('Starting application...')
     await init_db()
+
+    # Start background cleanup task
+    cleanup_task = asyncio.create_task(engine_cleanup_loop())
+
     yield
+
+    # Cancel cleanup task
+    cleanup_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await cleanup_task
+
     # Cleanup compute processes on shutdown
     logger.info('Shutting down compute processes...')
     manager = get_manager()

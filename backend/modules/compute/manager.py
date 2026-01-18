@@ -25,7 +25,6 @@ class EngineInfo:
 class ProcessManager:
     _instance: 'ProcessManager | None' = None
     _engines: dict[str, EngineInfo]
-    _idle_timeout: int = 60  # seconds
 
     def __new__(cls) -> 'ProcessManager':
         if cls._instance is None:
@@ -124,10 +123,17 @@ class ProcessManager:
 
     def cleanup_idle_engines(self) -> list[str]:
         """Shutdown engines that have been idle too long. Returns list of cleaned up analysis_ids."""
+        from core.config import settings  # Import here to avoid circular import
+
         cleaned = []
         for analysis_id in list(self._engines.keys()):
             info = self._engines[analysis_id]
-            if info.is_idle_for(self._idle_timeout):
+
+            # Skip engines with running jobs
+            if info.engine.current_job_id and info.engine.process and info.engine.process.is_alive():
+                continue
+
+            if info.is_idle_for(settings.engine_idle_timeout):
                 self.shutdown_engine(analysis_id)
                 cleaned.append(analysis_id)
         return cleaned

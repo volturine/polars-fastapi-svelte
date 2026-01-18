@@ -1,36 +1,29 @@
 <script lang="ts">
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
 	import { page } from '$app/stores';
+	import { PersistedState } from 'runed';
 	import favicon from '$lib/assets/favicon.svg';
 	import { Monitor, Sun, Moon } from 'lucide-svelte';
 	import '$lib/../app.css';
 
 	let { children } = $props();
 
-	let theme = $state<'light' | 'dark' | 'system'>('system');
-
-	$effect(() => {
-		// Check for saved preference or system preference
-		const saved = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null;
-		if (saved) {
-			theme = saved;
-		}
-	});
+	// Use runed's PersistedState for persisted theme state across tabs/sessions
+	const theme = new PersistedState<'light' | 'dark' | 'system'>('theme', 'system');
 
 	$effect(() => {
 		// Apply theme to document
-		if (theme === 'system') {
+		if (theme.current === 'system') {
 			document.documentElement.removeAttribute('data-theme');
 		} else {
-			document.documentElement.setAttribute('data-theme', theme);
+			document.documentElement.setAttribute('data-theme', theme.current);
 		}
-		localStorage.setItem('theme', theme);
 	});
 
 	function cycleTheme() {
-		if (theme === 'system') theme = 'light';
-		else if (theme === 'light') theme = 'dark';
-		else theme = 'system';
+		if (theme.current === 'system') theme.current = 'light';
+		else if (theme.current === 'light') theme.current = 'dark';
+		else theme.current = 'system';
 	}
 
 	const queryClient = new QueryClient({
@@ -85,14 +78,14 @@
 
 				<div class="header-actions">
 					<button class="theme-toggle" onclick={cycleTheme} title="Toggle theme">
-						{#if theme === 'system'}
+						{#if theme.current === 'system'}
 							<Monitor size={16} />
-						{:else if theme === 'light'}
+						{:else if theme.current === 'light'}
 							<Sun size={16} />
 						{:else}
 							<Moon size={16} />
 						{/if}
-						<span class="theme-label">{theme}</span>
+						<span class="theme-label">{theme.current}</span>
 					</button>
 				</div>
 			</div>

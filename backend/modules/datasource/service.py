@@ -111,8 +111,12 @@ async def get_datasource_schema(session: AsyncSession, datasource_id: str) -> Sc
     if not datasource:
         raise ValueError(f'DataSource {datasource_id} not found')
 
+    # Check if we have cached schema with row_count
     if datasource.schema_cache:
-        return SchemaInfo.model_validate(datasource.schema_cache)
+        cached = SchemaInfo.model_validate(datasource.schema_cache)
+        # If row_count is missing from cache, re-extract to get it
+        if cached.row_count is not None:
+            return cached
 
     schema_info = await _extract_schema(datasource)
 

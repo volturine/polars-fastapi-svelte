@@ -193,29 +193,35 @@
 					onDelete={onStepDelete}
 				/>
 				<!-- Connection + Drop zone after each step -->
-				<!-- svelte-ignore a11y_consider_explicit_label -->
-				<div
-					class="insert-zone"
-					class:ready={canDrop}
-					class:active={hoverIndex === i + 1}
-					class:invalid={hoverIndex === i + 1 && !drag.valid}
-					role="button"
-					tabindex="0"
-					ondragenter={(e) => handleDragEnter(e, i + 1)}
-					ondragover={handleDragOver}
-					ondragleave={handleDragLeave}
-					ondrop={(e) => handleDrop(e, i + 1)}
-				>
-					<ConnectionLine fromStepIndex={i} toStepIndex={i + 1} totalSteps={steps.length} highlighted={hoverIndex === i + 1} />
-					{#if canDrop}
-						<div class="drop-slot" class:active={hoverIndex === i + 1} class:invalid={hoverIndex === i + 1 && !drag.valid}>
-							{#if hoverIndex === i + 1}
-								<span class="slot-label">{drag.type ?? 'step'}</span>
-							{/if}
-						</div>
+				<!-- Only show connection line after last step when dragging -->
+				{#if i < steps.length - 1 || canDrop}
+					<!-- svelte-ignore a11y_consider_explicit_label -->
+					<div
+						class="insert-zone"
+						class:ready={canDrop}
+						class:active={hoverIndex === i + 1}
+						class:invalid={hoverIndex === i + 1 && !drag.valid}
+						role="button"
+						tabindex="0"
+						ondragenter={(e) => handleDragEnter(e, i + 1)}
+						ondragover={handleDragOver}
+						ondragleave={handleDragLeave}
+						ondrop={(e) => handleDrop(e, i + 1)}
+					>
 						<ConnectionLine fromStepIndex={i} toStepIndex={i + 1} totalSteps={steps.length} highlighted={hoverIndex === i + 1} />
-					{/if}
-				</div>
+						{#if canDrop}
+							<div class="drop-slot" class:active={hoverIndex === i + 1} class:invalid={hoverIndex === i + 1 && !drag.valid}>
+								{#if hoverIndex === i + 1}
+									<span class="slot-label">{drag.type ?? 'step'}</span>
+								{/if}
+							</div>
+							<!-- Only show trailing connection if not the last position -->
+							{#if i < steps.length - 1}
+								<ConnectionLine fromStepIndex={i} toStepIndex={i + 1} totalSteps={steps.length} highlighted={hoverIndex === i + 1} />
+							{/if}
+						{/if}
+					</div>
+				{/if}
 			{/each}
 		</div>
 	{/if}

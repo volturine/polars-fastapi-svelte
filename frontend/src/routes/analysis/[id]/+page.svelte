@@ -5,7 +5,7 @@
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { getAnalysis } from '$lib/api/analysis';
 	import { getDatasourceSchema, listDatasources } from '$lib/api/datasource';
-	import { ArrowLeft } from 'lucide-svelte';
+	import { ArrowLeft, FileSpreadsheet, FileJson, FileType, Database, Globe } from 'lucide-svelte';
 	import type { PipelineStep, AnalysisTab } from '$lib/types/analysis';
 	import type { DropTarget } from '$lib/stores/drag.svelte';
 	import StepLibrary from '$lib/components/pipeline/StepLibrary.svelte';
@@ -452,13 +452,36 @@
 						</div>
 					{:else}
 						{#each filteredDatasources as ds (ds.id)}
+							{@const fileType = ds.source_type === 'file' ? (ds.config?.file_type as string) : null}
 							<button
 								class="datasource-item"
 								onclick={() => handleAddTab(ds.id, ds.name)}
 								type="button"
 							>
 								<span class="datasource-name">{ds.name}</span>
-								<span class="datasource-type">{ds.source_type}</span>
+								<span class="datasource-type">
+									{#if fileType === 'csv'}
+										<FileSpreadsheet size={12} />
+										CSV
+									{:else if fileType === 'json'}
+										<FileJson size={12} />
+										JSON
+									{:else if fileType === 'parquet'}
+										<FileType size={12} />
+										Parquet
+									{:else if fileType === 'excel'}
+										<FileSpreadsheet size={12} />
+										Excel
+									{:else if ds.source_type === 'database'}
+										<Database size={12} />
+										Database
+									{:else if ds.source_type === 'api'}
+										<Globe size={12} />
+										API
+									{:else}
+										{ds.source_type}
+									{/if}
+								</span>
 							</button>
 						{/each}
 					{/if}
@@ -831,6 +854,9 @@
 	}
 
 	.datasource-type {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
 		font-size: var(--text-xs);
 		color: var(--fg-muted);
 		text-transform: uppercase;

@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { engineLifecycle } from '$lib/stores/engine-lifecycle.svelte';
 	import { getAnalysis } from '$lib/api/analysis';
 	import { getDatasourceSchema, listDatasources } from '$lib/api/datasource';
 	import { ArrowLeft, FileSpreadsheet, FileJson, FileType, Database, Globe } from 'lucide-svelte';
@@ -22,6 +24,7 @@
 	let isLoadingSchema = $state(false);
 	let showDatasourceModal = $state(false);
 	let searchQuery = $state('');
+	let modalMode = $state<'add' | 'change'>('add');
 
 	// Resizable panes
 	let leftPaneWidth = $state(240);
@@ -64,6 +67,14 @@
 		},
 		retry: false
 	}));
+
+	// Start engine when component mounts, stop on unmount
+	onMount(() => {
+		if (analysisId) {
+			engineLifecycle.start(analysisId);
+		}
+		return () => engineLifecycle.scheduleShutdown();
+	});
 
 	const datasourcesQuery = createQuery(() => ({
 		queryKey: ['datasources'],
@@ -193,6 +204,23 @@
 		searchQuery = '';
 	}
 
+	function handleChangeDatasource(datasourceId: string, name: string) {
+		const active = analysisStore.activeTab;
+		if (!active) return;
+		analysisStore.updateTab(active.id, { datasource_id: datasourceId, name });
+		showDatasourceModal = false;
+		searchQuery = '';
+		scheduleSave();
+	}
+
+	function handleDatasourceSelect(datasourceId: string, name: string) {
+		if (modalMode === 'change') {
+			handleChangeDatasource(datasourceId, name);
+		} else {
+			handleAddTab(datasourceId, name);
+		}
+	}
+
 	function handleRemoveTab(tabId: string) {
 		analysisStore.removeTab(tabId);
 	}
@@ -225,7 +253,8 @@
 		scheduleSave();
 	}
 
-	function openDatasourceModal() {
+	function openDatasourceModal(mode: 'add' | 'change' = 'add') {
+		modalMode = mode;
 		searchQuery = '';
 		showDatasourceModal = true;
 	}
@@ -355,7 +384,7 @@
 						{/if}
 					</button>
 				{/each}
-				<button class="tab add-tab" onclick={openDatasourceModal} type="button"> + </button>
+				<button class="tab add-tab" onclick={() => openDatasourceModal('add')} type="button"> + </button>
 			</div>
 		</div>
 
@@ -387,7 +416,7 @@
 					onStepDelete={handleDeleteStep}
 					onInsertStep={handleInsertStep}
 					onMoveStep={handleMoveStep}
-					onChangeDatasource={openDatasourceModal}
+					onChangeDatasource={() => openDatasourceModal('change')}
 					onRenameTab={handleRenameSourceTab}
 				/>
 			</div>
@@ -429,7 +458,7 @@
 			tabindex="0"
 		>
 			<div class="modal-header">
-				<h2 id="modal-title">Add Datasource</h2>
+				<h2 id="modal-title">{modalMode === 'change' ? 'Change Datasource' : 'Add Datasource'}</h2>
 				<button class="modal-close" onclick={closeDatasourceModal} type="button" aria-label="Close">
 					&times;
 				</button>
@@ -455,7 +484,7 @@
 							{@const fileType = ds.source_type === 'file' ? (ds.config?.file_type as string) : null}
 							<button
 								class="datasource-item"
-								onclick={() => handleAddTab(ds.id, ds.name)}
+								onclick={() => handleDatasourceSelect(ds.id, ds.name)}
 								type="button"
 							>
 								<span class="datasource-name">{ds.name}</span>

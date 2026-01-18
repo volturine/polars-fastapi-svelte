@@ -67,7 +67,7 @@ class DataSource(Base):
 - `csv` - Comma-separated values
 - `parquet` - Apache Parquet
 - `json` - JSON (array of objects)
-- `ndjson` - Newline-delimited JSON
+- `ndjson` / `jsonl` - Newline-delimited JSON
 - `xlsx` - Excel spreadsheet
 
 ### Database Source

@@ -2,6 +2,9 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Root data directory (relative to project root, not backend/)
+DATA_DIR = Path(__file__).parent.parent.parent / 'data'
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
@@ -19,8 +22,10 @@ class Settings(BaseSettings):
 
     database_url: str = 'sqlite+aiosqlite:///./database/app.db'
 
-    upload_dir: Path = Path('./data/uploads')
-    results_dir: Path = Path('./data/results')
+    # All data directories under root data/ folder
+    upload_dir: Path = DATA_DIR / 'uploads'
+    results_dir: Path = DATA_DIR / 'results'
+    exports_dir: Path = DATA_DIR / 'exports'
 
     max_upload_size: int = 10 * 1024 * 1024 * 1024
     compute_timeout: int = 300
@@ -36,5 +41,7 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+# Ensure all data directories exist
 settings.upload_dir.mkdir(parents=True, exist_ok=True)
 settings.results_dir.mkdir(parents=True, exist_ok=True)
+settings.exports_dir.mkdir(parents=True, exist_ok=True)

@@ -3,27 +3,21 @@
 	import { page } from '$app/stores';
 	import { PersistedState } from 'runed';
 	import favicon from '$lib/assets/favicon.svg';
-	import { Monitor, Sun, Moon } from 'lucide-svelte';
+	import { Sun, Moon } from 'lucide-svelte';
+	import EngineMonitor from '$lib/components/common/EngineMonitor.svelte';
 	import '$lib/../app.css';
 
 	let { children } = $props();
 
 	// Use runed's PersistedState for persisted theme state across tabs/sessions
-	const theme = new PersistedState<'light' | 'dark' | 'system'>('theme', 'system');
+	const theme = new PersistedState<'light' | 'dark'>('theme', 'dark');
 
 	$effect(() => {
-		// Apply theme to document
-		if (theme.current === 'system') {
-			document.documentElement.removeAttribute('data-theme');
-		} else {
-			document.documentElement.setAttribute('data-theme', theme.current);
-		}
+		document.documentElement.setAttribute('data-theme', theme.current);
 	});
 
-	function cycleTheme() {
-		if (theme.current === 'system') theme.current = 'light';
-		else if (theme.current === 'light') theme.current = 'dark';
-		else theme.current = 'system';
+	function toggleTheme() {
+		theme.current = theme.current === 'light' ? 'dark' : 'light';
 	}
 
 	const queryClient = new QueryClient({
@@ -77,15 +71,13 @@
 				</nav>
 
 				<div class="header-actions">
-					<button class="theme-toggle" onclick={cycleTheme} title="Toggle theme">
-						{#if theme.current === 'system'}
-							<Monitor size={16} />
-						{:else if theme.current === 'light'}
+					<EngineMonitor />
+					<button class="theme-toggle" onclick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
+						{#if theme.current === 'light'}
 							<Sun size={16} />
 						{:else}
 							<Moon size={16} />
 						{/if}
-						<span class="theme-label">{theme.current}</span>
 					</button>
 				</div>
 			</div>
@@ -182,12 +174,11 @@
 	.theme-toggle {
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
+		justify-content: center;
+		padding: var(--space-2);
 		background-color: var(--bg-primary);
 		border: 1px solid var(--border-primary);
 		color: var(--fg-secondary);
-		font-size: var(--text-xs);
 		cursor: pointer;
 		border-radius: var(--radius-sm);
 		transition: all var(--transition-fast);
@@ -197,10 +188,6 @@
 	.theme-toggle:hover {
 		background-color: var(--bg-hover);
 		color: var(--fg-primary);
-	}
-
-	.theme-label {
-		text-transform: capitalize;
 	}
 
 	.main {

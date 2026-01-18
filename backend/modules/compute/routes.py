@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
@@ -151,3 +152,58 @@ async def shutdown_engine(analysis_id: str):
         raise HTTPException(status_code=404, detail=f'No engine found for analysis {analysis_id}')
     manager.shutdown_engine(analysis_id)
     return {'message': f'Engine for analysis {analysis_id} shutdown successfully'}
+
+
+@router.get('/engines', response_model=schemas.EngineListSchema)
+async def list_engines():
+    """List all active engines with their status."""
+    manager = get_manager()
+    statuses = manager.list_all_engine_statuses()
+    return {'engines': statuses, 'total': len(statuses)}
+
+
+@router.post('/export')
+async def export_data(
+    request: schemas.ExportRequest,
+    session: AsyncSession = Depends(get_db),
+):
+    """Export pipeline result to file (download or save to filesystem)."""
+    try:
+        file_bytes, filename, content_type = await service.export_data(
+            session=session,
+            datasource_id=request.datasource_id,
+            pipeline_steps=request.pipeline_steps,
+            target_step_id=request.target_step_id,
+            export_format=request.format.value,
+            filename=request.filename,
+            destination=request.destination.value,
+        )
+
+        if request.destination == schemas.ExportDestination.DOWNLOAD:
+            return Response(
+                content=file_bytes,
+                media_type=content_type,
+                headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+            )
+        else:
+            # Filesystem destination - save to exports directory
+            from core.config import settings
+
+            file_path = settings.exports_dir / filename
+
+            with open(file_path, 'wb') as f:
+                f.write(file_bytes)
+
+            return schemas.ExportResponse(
+                success=True,
+                filename=filename,
+                format=request.format.value,
+                destination=request.destination.value,
+                file_path=str(file_path.absolute()),
+                message=f'File saved to {file_path.absolute()}',
+            )
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'Failed to export data: {str(e)}')

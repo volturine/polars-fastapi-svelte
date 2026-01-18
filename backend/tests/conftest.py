@@ -99,8 +99,8 @@ def sample_parquet_file(temp_upload_dir: Path) -> Path:
 
 
 @pytest.fixture(scope='function')
-def sample_json_file(temp_upload_dir: Path) -> Path:
-    json_path = temp_upload_dir / 'sample.ndjson'
+def sample_ndjson_file(temp_upload_dir: Path) -> Path:
+    ndjson_path = temp_upload_dir / 'sample.ndjson'
     df = pl.DataFrame(
         {
             'user_id': [1, 2, 3],
@@ -108,7 +108,21 @@ def sample_json_file(temp_upload_dir: Path) -> Path:
             'email': ['user1@test.com', 'user2@test.com', 'user3@test.com'],
         }
     )
-    df.write_ndjson(json_path)
+    df.write_ndjson(ndjson_path)
+    return ndjson_path
+
+
+@pytest.fixture(scope='function')
+def sample_json_file(temp_upload_dir: Path) -> Path:
+    json_path = temp_upload_dir / 'sample.json'
+    df = pl.DataFrame(
+        {
+            'user_id': [1, 2, 3],
+            'username': ['user1', 'user2', 'user3'],
+            'email': ['user1@test.com', 'user2@test.com', 'user3@test.com'],
+        }
+    )
+    df.write_json(json_path)
     return json_path
 
 

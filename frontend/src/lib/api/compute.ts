@@ -1,4 +1,9 @@
-import type { ComputeJob, ComputeStatus, EngineStatusResponse } from '$lib/types/compute';
+import type {
+	ComputeJob,
+	ComputeStatus,
+	EngineListResponse,
+	EngineStatusResponse
+} from '$lib/types/compute';
 import type { RawComputeJobResponse } from '$lib/types/api-responses';
 import { apiRequest } from './client';
 
@@ -118,4 +123,63 @@ export async function shutdownEngine(analysisId: string): Promise<void> {
 	await apiRequest<void>(`/api/v1/compute/engine/${analysisId}`, {
 		method: 'DELETE'
 	});
+}
+
+export async function listEngines(): Promise<EngineListResponse> {
+	return apiRequest<EngineListResponse>('/api/v1/compute/engines');
+}
+
+export interface ExportRequest {
+	datasource_id: string;
+	pipeline_steps: Array<{
+		id: string;
+		type: string;
+		config: Record<string, unknown>;
+		depends_on?: string[];
+	}>;
+	target_step_id: string;
+	format: 'csv' | 'parquet' | 'json' | 'ndjson';
+	filename: string;
+	destination: 'download' | 'filesystem';
+}
+
+export interface ExportResponse {
+	success: boolean;
+	filename: string;
+	format: string;
+	destination: string;
+	file_path: string | null;
+	message: string | null;
+}
+
+export async function exportData(request: ExportRequest): Promise<Blob | ExportResponse> {
+	const response = await fetch('/api/v1/compute/export', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(request)
+	});
+
+	if (!response.ok) {
+		const error = await response.json().catch(() => ({ detail: 'Export failed' }));
+		throw new Error(error.detail || 'Export failed');
+	}
+
+	// For download destination, return blob for browser download
+	if (request.destination === 'download') {
+		return response.blob();
+	}
+
+	// For filesystem destination, return JSON response
+	return response.json();
+}
+
+export function downloadBlob(blob: Blob, filename: string): void {
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = filename;
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	URL.revokeObjectURL(url);
 }

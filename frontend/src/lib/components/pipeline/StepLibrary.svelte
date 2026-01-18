@@ -77,7 +77,8 @@
 			icon: '📊',
 			description: 'Get value frequencies'
 		},
-		{ type: 'view', label: 'View', icon: '👁️', description: 'Preview data at this step' }
+		{ type: 'view', label: 'View', icon: '👁️', description: 'Preview data at this step' },
+		{ type: 'export', label: 'Export', icon: '📤', description: 'Export data to file' }
 	];
 
 	// Quick insert selected type
@@ -157,6 +158,7 @@
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
+		overflow-x: hidden;
 	}
 
 	h3 {
@@ -172,6 +174,7 @@
 		flex-direction: column;
 		gap: 0.5rem;
 		overflow-y: auto;
+		overflow-x: hidden;
 		flex: 1;
 		min-height: 0;
 	}

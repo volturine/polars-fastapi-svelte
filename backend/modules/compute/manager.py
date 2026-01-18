@@ -76,12 +76,15 @@ class ProcessManager:
                 'status': EngineStatus.TERMINATED,
                 'process_id': None,
                 'last_activity': None,
+                'current_job_id': None,
             }
 
         pid = None
+        current_job_id = None
         if info.engine.process and info.engine.process.is_alive():
             pid = info.engine.process.pid
-            status = EngineStatus.RUNNING if info.engine.current_job_id else EngineStatus.IDLE
+            current_job_id = info.engine.current_job_id
+            status = EngineStatus.RUNNING if current_job_id else EngineStatus.IDLE
         else:
             status = EngineStatus.TERMINATED
 
@@ -90,6 +93,7 @@ class ProcessManager:
             'status': status,
             'process_id': pid,
             'last_activity': info.last_activity.isoformat(),
+            'current_job_id': current_job_id,
         }
 
     def mark_running(self, analysis_id: str) -> None:
@@ -131,6 +135,10 @@ class ProcessManager:
     def list_engines(self) -> list[str]:
         """List all active engine analysis_ids."""
         return list(self._engines.keys())
+
+    def list_all_engine_statuses(self) -> list[dict]:
+        """Get status info for all engines."""
+        return [self.get_engine_status(aid) for aid in self._engines]
 
 
 def get_manager() -> ProcessManager:

@@ -18,7 +18,7 @@ The compute engine supports 20+ data transformation operations organized into ca
 | **Transformation** | sort, deduplicate, fill_null |
 | **String** | string_transform (20+ methods) |
 | **Time Series** | timeseries (extract, add, subtract, diff) |
-| **Expressions** | with_columns, view |
+| **Expressions** | with_columns, view, export |
 
 ---
 
@@ -527,9 +527,9 @@ Date/time manipulation.
 ## Expression Operations
 
 ### with_columns
-
+ 
 Add computed columns.
-
+ 
 ```python
 {
     'operation': 'with_columns',
@@ -549,23 +549,39 @@ Add computed columns.
     }
 }
 ```
-
+ 
 ### view
-
+ 
 Passthrough operation for visualization checkpoints.
-
+ 
 ```python
 {
     'operation': 'view',
     'params': {}
 }
 ```
-
+ 
 **Note**: View doesn't modify data but allows pipeline previewing at that step.
-
+ 
+### export
+ 
+Trigger export of pipeline output. The engine returns the lazy frame unchanged; the export is handled via `/compute/export` to either stream a download or write to `data/exports`.
+ 
+```python
+{
+    'operation': 'export',
+    'params': {
+        'format': 'csv',            # csv, parquet, json, ndjson
+        'filename': 'export',       # base name
+        'destination': 'download'   # download or filesystem
+    }
+}
+```
+ 
 ---
-
+ 
 ## Data Loading
+
 
 ### Supported File Types
 

@@ -239,6 +239,19 @@ def convert_value_counts_config(config: dict) -> dict:
     }
 
 
+def convert_export_config(config: dict) -> dict:
+    """Convert export config from frontend to backend format.
+
+    Frontend: {format, filename, destination}
+    Backend: {format, filename, destination}
+    """
+    return {
+        'format': config.get('format', 'csv'),
+        'filename': config.get('filename', 'export'),
+        'destination': config.get('destination', 'download'),
+    }
+
+
 def get_converters() -> dict:
     """Return all converters dictionary."""
     return {
@@ -263,6 +276,7 @@ def get_converters() -> dict:
         'topk': convert_topk_config,
         'null_count': lambda c: c,
         'value_counts': convert_value_counts_config,
+        'export': convert_export_config,
     }
 
 

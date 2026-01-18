@@ -26,7 +26,8 @@ async def upload_file(
         '.csv': 'csv',
         '.parquet': 'parquet',
         '.json': 'json',
-        '.ndjson': 'json',
+        '.ndjson': 'ndjson',
+        '.jsonl': 'ndjson',
         '.xlsx': 'excel',
     }
 

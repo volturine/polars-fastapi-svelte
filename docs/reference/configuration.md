@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     database_url: str = 'sqlite+aiosqlite:///./database/app.db'
     upload_dir: Path = Path('./data/uploads')
     results_dir: Path = Path('./data/results')
+    exports_dir: Path = Path('./data/exports')
     max_upload_size: int = 10 * 1024 * 1024 * 1024  # 10GB
     compute_timeout: int = 300  # 5 minutes
     job_ttl: int = 3600  # 1 hour
@@ -89,6 +90,7 @@ settings.cors_origins_list  # Returns ['http://localhost:3000', ...]
 |----------|------|---------|-------------|
 | `UPLOAD_DIR` | Path | `./data/uploads` | Directory for uploaded files |
 | `RESULTS_DIR` | Path | `./data/results` | Directory for computation results |
+| `EXPORTS_DIR` | Path | `./data/exports` | Directory for exported files |
 | `MAX_UPLOAD_SIZE` | int | `10737418240` (10GB) | Maximum file upload size in bytes |
 
 Directories are created automatically on startup if they don't exist.

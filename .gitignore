@@ -1,1 +1,4 @@
 .DS_Store
+
+# Data directory (uploads, results, exports)
+/data/

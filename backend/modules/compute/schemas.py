@@ -30,6 +30,14 @@ class EngineStatusSchema(BaseModel):
     status: EngineStatus
     process_id: int | None = None
     last_activity: str | None = None
+    current_job_id: str | None = None
+
+
+class EngineListSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    engines: list[EngineStatusSchema]
+    total: int
 
 
 class ComputeExecuteSchema(BaseModel):
@@ -79,3 +87,37 @@ class StepPreviewResponse(BaseModel):
     total_rows: int
     page: int
     page_size: int
+
+
+class ExportFormat(str, Enum):
+    CSV = 'csv'
+    PARQUET = 'parquet'
+    JSON = 'json'
+    NDJSON = 'ndjson'
+
+
+class ExportDestination(str, Enum):
+    DOWNLOAD = 'download'
+    FILESYSTEM = 'filesystem'
+
+
+class ExportRequest(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    datasource_id: str
+    pipeline_steps: list[dict]
+    target_step_id: str
+    format: ExportFormat = ExportFormat.CSV
+    filename: str = 'export'
+    destination: ExportDestination = ExportDestination.DOWNLOAD
+
+
+class ExportResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    success: bool
+    filename: str
+    format: str
+    destination: str
+    file_path: str | None = None
+    message: str | None = None

@@ -136,6 +136,8 @@ async def _extract_schema(datasource: DataSource) -> SchemaInfo:
         elif file_type == 'parquet':
             df = pl.scan_parquet(file_path)
         elif file_type == 'json':
+            df = pl.read_json(file_path).lazy()
+        elif file_type == 'ndjson':
             df = pl.scan_ndjson(file_path)
         elif file_type == 'excel':
             df = pl.read_excel(file_path).lazy()

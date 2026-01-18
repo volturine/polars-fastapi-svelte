@@ -46,6 +46,7 @@
 	import NullCountConfig from '$lib/components/operations/NullCountConfig.svelte';
 	import ValueCountsConfig from '$lib/components/operations/ValueCountsConfig.svelte';
 	import UnpivotConfig from '$lib/components/operations/UnpivotConfig.svelte';
+	import ExportConfig from '$lib/components/operations/ExportConfig.svelte';
 
 	interface Props {
 		step: PipelineStep | null;
@@ -222,6 +223,8 @@
 				<ValueCountsConfig schema={inputSchema} bind:config={step.config as unknown as ValueCountsConfigData} />
 			{:else if step.type === 'unpivot'}
 				<UnpivotConfig schema={inputSchema} bind:config={step.config as unknown as UnpivotConfigData} />
+			{:else if step.type === 'export'}
+				<ExportConfig bind:config={step.config as unknown as { format?: string; filename?: string; destination?: string }} />
 			{:else}
 				<div class="not-implemented">
 					<p>Configuration for {step.type} is not yet implemented</p>

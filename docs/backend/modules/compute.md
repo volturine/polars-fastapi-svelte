@@ -204,7 +204,7 @@ Preview step result with pagination.
 ```
 
 ### GET /api/v1/compute/status/{job_id}
-
+ 
 Get job execution status.
 
 **Response** (200 OK):
@@ -218,9 +218,9 @@ Get job execution status.
   "process_id": 12345
 }
 ```
-
+ 
 ### GET /api/v1/compute/result/{job_id}
-
+ 
 Get completed job result.
 
 **Response** (200 OK):
@@ -236,9 +236,49 @@ Get completed job result.
   "error": null
 }
 ```
+ 
+### GET /api/v1/compute/engines
+ 
+List active engines and their status (includes `current_job_id`).
 
+**Response** (200 OK):
+```json
+{
+  "engines": [
+    {
+      "analysis_id": "analysis-uuid-123",
+      "status": "running",
+      "process_id": 12345,
+      "last_activity": "2024-01-15T10:30:00Z",
+      "current_job_id": "job-uuid-456"
+    }
+  ],
+  "total": 1
+}
+```
+ 
+### POST /api/v1/compute/export
+ 
+Export pipeline output to CSV, Parquet, JSON, or NDJSON. Destination can be browser download or filesystem `data/exports`.
+
+**Request**:
+```json
+{
+  "datasource_id": "ds-uuid-123",
+  "pipeline_steps": [{"id": "step-1", "type": "select", "config": {}}],
+  "target_step_id": "step-1",
+  "format": "csv",
+  "filename": "export",
+  "destination": "download"
+}
+```
+
+**Response** (200 OK):
+- `download` → file stream with `Content-Disposition`
+- `filesystem` → JSON body with saved file path
+ 
 ### DELETE /api/v1/compute/{job_id}
-
+ 
 Cancel running job.
 
 **Response** (200 OK):
@@ -247,9 +287,9 @@ Cancel running job.
   "message": "Job cancelled"
 }
 ```
-
+ 
 ### DELETE /api/v1/compute/{job_id}/cleanup
-
+ 
 Clean up job from memory.
 
 **Response** (200 OK):
@@ -258,9 +298,9 @@ Clean up job from memory.
   "message": "Job cleaned up"
 }
 ```
-
+ 
 ### POST /api/v1/compute/engine/spawn/{analysis_id}
-
+ 
 Spawn or get existing compute engine.
 
 **Response** (200 OK):
@@ -272,21 +312,21 @@ Spawn or get existing compute engine.
   "last_activity": "2024-01-15T10:30:00Z"
 }
 ```
-
+ 
 ### POST /api/v1/compute/engine/keepalive/{analysis_id}
-
+ 
 Send keepalive ping to prevent timeout.
 
 **Response** (200 OK): `EngineStatusSchema`
-
+ 
 ### GET /api/v1/compute/engine/status/{analysis_id}
-
+ 
 Get engine status.
 
 **Response** (200 OK): `EngineStatusSchema`
-
+ 
 ### DELETE /api/v1/compute/engine/{analysis_id}
-
+ 
 Shutdown engine.
 
 **Response** (200 OK):
@@ -295,6 +335,7 @@ Shutdown engine.
   "message": "Engine shutdown"
 }
 ```
+
 
 ---
 
@@ -647,9 +688,9 @@ def _cleanup_expired_jobs() -> None:
 ---
 
 ## Supported Operations
-
+ 
 See [Operations Reference](../../reference/polars-operations.md) for full list:
-
+ 
 - filter, select, drop, rename
 - sort, limit, sample, topk
 - group_by, join, pivot, unpivot
@@ -657,10 +698,12 @@ See [Operations Reference](../../reference/polars-operations.md) for full list:
 - string_transform, timeseries
 - with_columns, cast, expression
 - null_count, value_counts
-
+- export (passthrough trigger for download/save)
+ 
 ---
-
+ 
 ## See Also
+
 
 - [Compute Engine Architecture](../compute-engine/README.md)
 - [Operations Reference](../../reference/polars-operations.md)

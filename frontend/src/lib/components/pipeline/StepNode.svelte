@@ -2,6 +2,8 @@
 	import type { PipelineStep } from '$lib/types/analysis';
 	import { drag } from '$lib/stores/drag.svelte';
 	import { InlineDataTable } from '$lib/components/viewers';
+	import { Download, Save } from 'lucide-svelte';
+	import { exportData, downloadBlob, type ExportRequest } from '$lib/api/compute';
 
 	interface Props {
 		step: PipelineStep;
@@ -13,6 +15,9 @@
 	}
 
 	let { step, index, datasourceId, allSteps = [], onEdit, onDelete }: Props = $props();
+
+	let isExporting = $state(false);
+	let exportError = $state<string | null>(null);
 
 	const typeLabels: Record<string, string> = {
 		filter: 'filter',
@@ -29,7 +34,8 @@
 		explode: 'explode',
 		pivot: 'pivot',
 		timeseries: 'timeseries',
-		string_transform: 'string'
+		string_transform: 'string',
+		export: 'export'
 	};
 
 	function getConfigSummary(s: PipelineStep): string {
@@ -63,6 +69,12 @@
 				return `${sortRules.length} column${sortRules.length > 1 ? 's' : ''}`;
 			}
 
+			case 'export': {
+				const format = (s.config.format as string) || 'csv';
+				const filename = (s.config.filename as string) || 'export';
+				return `${filename}.${format}`;
+			}
+
 			default: {
 				return 'click to configure';
 			}
@@ -90,6 +102,44 @@
 	function handleDragEnd() {
 		isDragging = false;
 		drag.end();
+	}
+
+	async function handleExport() {
+		if (!datasourceId || isExporting) return;
+
+		isExporting = true;
+		exportError = null;
+
+		const format = (step.config.format as string) || 'csv';
+		const filename = (step.config.filename as string) || 'export';
+		const destination = (step.config.destination as string) || 'filesystem';
+
+		try {
+			const request: ExportRequest = {
+				datasource_id: datasourceId,
+				pipeline_steps: allSteps.map((s) => ({
+					id: s.id,
+					type: s.type,
+					config: s.config,
+					depends_on: s.depends_on
+				})),
+				target_step_id: step.id,
+				format: format as 'csv' | 'parquet' | 'json',
+				filename,
+				destination: destination as 'download' | 'filesystem'
+			};
+
+			const result = await exportData(request);
+
+			if (destination === 'download' && result instanceof Blob) {
+				const ext = format === 'csv' ? '.csv' : format === 'parquet' ? '.parquet' : '.json';
+				downloadBlob(result, `${filename}${ext}`);
+			}
+		} catch (err) {
+			exportError = err instanceof Error ? err.message : 'Export failed';
+		} finally {
+			isExporting = false;
+		}
 	}
 </script>
 
@@ -121,6 +171,31 @@
 				delete
 			</button>
 		</div>
+
+		{#if step.type === 'export' && datasourceId}
+			<div class="export-section">
+				{#if exportError}
+					<div class="export-error">{exportError}</div>
+				{/if}
+				<button
+					class="export-btn"
+					onclick={handleExport}
+					disabled={isExporting}
+					type="button"
+				>
+					{#if isExporting}
+						<span class="spinner"></span>
+						Exporting...
+					{:else if step.config.destination === 'download'}
+						<Download size={14} />
+						Download
+					{:else}
+						<Save size={14} />
+						Save
+					{/if}
+				</button>
+			</div>
+		{/if}
 
 		{#if step.type === 'view' && datasourceId && allSteps.length > 0}
 			<div class="view-preview expanded">
@@ -256,6 +331,64 @@
 		background-color: var(--error-bg);
 		border-color: var(--error-border);
 		color: var(--error-fg);
+	}
+
+	.export-section {
+		margin-top: var(--space-3);
+		padding-top: var(--space-3);
+		border-top: 1px solid var(--border-primary);
+	}
+
+	.export-btn {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		background-color: var(--accent-primary);
+		color: var(--bg-primary);
+		border: none;
+		border-radius: var(--radius-sm);
+		font-family: var(--font-mono);
+		font-size: var(--text-xs);
+		font-weight: 500;
+		cursor: pointer;
+		transition: opacity var(--transition-fast);
+	}
+
+	.export-btn:hover:not(:disabled) {
+		opacity: 0.9;
+	}
+
+	.export-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.export-btn .spinner {
+		width: 14px;
+		height: 14px;
+		border: 2px solid currentColor;
+		border-top-color: transparent;
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	.export-error {
+		padding: var(--space-2);
+		margin-bottom: var(--space-2);
+		background-color: var(--error-bg);
+		color: var(--error-fg);
+		border: 1px solid var(--error-border);
+		border-radius: var(--radius-sm);
+		font-size: var(--text-xs);
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	/* When another node is being dragged */

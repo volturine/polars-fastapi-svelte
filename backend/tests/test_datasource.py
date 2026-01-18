@@ -52,7 +52,7 @@ class TestDataSourceUpload:
     async def test_upload_json_file_success(self, client: AsyncClient, temp_upload_dir: Path, sample_json_file: Path):
         with patch.object(settings, 'upload_dir', temp_upload_dir):
             with open(sample_json_file, 'rb') as f:
-                files = {'file': ('test.ndjson', f, 'application/json')}
+                files = {'file': ('test.json', f, 'application/json')}
                 data = {'name': 'Test JSON Upload'}
 
                 response = await client.post('/api/v1/datasource/upload', files=files, data=data)
@@ -62,6 +62,24 @@ class TestDataSourceUpload:
 
             assert result['name'] == 'Test JSON Upload'
             assert result['config']['file_type'] == 'json'
+
+            uploaded_file = Path(result['config']['file_path'])
+            assert uploaded_file.exists()
+            uploaded_file.unlink()
+
+    async def test_upload_ndjson_file_success(self, client: AsyncClient, temp_upload_dir: Path, sample_ndjson_file: Path):
+        with patch.object(settings, 'upload_dir', temp_upload_dir):
+            with open(sample_ndjson_file, 'rb') as f:
+                files = {'file': ('test.ndjson', f, 'application/json')}
+                data = {'name': 'Test NDJSON Upload'}
+
+                response = await client.post('/api/v1/datasource/upload', files=files, data=data)
+
+            assert response.status_code == 200
+            result = response.json()
+
+            assert result['name'] == 'Test NDJSON Upload'
+            assert result['config']['file_type'] == 'ndjson'
 
             uploaded_file = Path(result['config']['file_path'])
             assert uploaded_file.exists()

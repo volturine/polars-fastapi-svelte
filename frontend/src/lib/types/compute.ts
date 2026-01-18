@@ -7,6 +7,11 @@ export interface EngineStatusResponse {
 	status: EngineStatus;
 	process_id: number | null;
 	last_activity: string | null;
+	current_job_id: string | null;
+}
+
+export interface EngineListResponse {
+	engines: EngineStatusResponse[];
 }
 
 export interface ComputeJob {

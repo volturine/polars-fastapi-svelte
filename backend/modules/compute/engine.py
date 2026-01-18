@@ -280,6 +280,8 @@ class PolarsComputeEngine:
             elif file_type == 'parquet':
                 return pl.scan_parquet(file_path)
             elif file_type == 'json':
+                return pl.read_json(file_path).lazy()
+            elif file_type == 'ndjson':
                 return pl.scan_ndjson(file_path)
             elif file_type == 'excel':
                 return pl.read_excel(file_path).lazy()
@@ -692,6 +694,11 @@ class PolarsComputeEngine:
             df = lf.collect()
             result = df.select(pl.col(column).value_counts(normalize=normalize, sort=sort))
             return result.lazy()
+
+        elif operation == 'export':
+            # Export is a passthrough operation - the actual export is triggered
+            # via the /compute/export endpoint, not during pipeline execution
+            return lf
 
         else:
             raise ValueError(f'Unsupported operation: {operation}')

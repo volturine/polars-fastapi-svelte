@@ -134,7 +134,7 @@ Sidebar panel containing available operations.
 - **Search/filter**: Find operations quickly
 
 #### Categories
-
+ 
 | Category | Operations |
 |----------|------------|
 | Filter | filter, limit, sample, topk |
@@ -144,7 +144,9 @@ Sidebar panel containing available operations.
 | Reshape | pivot, unpivot, explode |
 | String | string_transform |
 | Time | timeseries |
+| Export | export |
 | View | view |
+
 
 #### Drag Initialization
 

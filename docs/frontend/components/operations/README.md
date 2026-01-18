@@ -447,22 +447,39 @@ interface TimeSeriesConfigData {
 ---
 
 ## Special Operations
-
+ 
 ### ViewConfig
-
+ 
 **Location:** `frontend/src/lib/components/operations/ViewConfig.svelte`
-
+ 
 Configure data preview.
-
+ 
 ```typescript
 interface ViewConfigData {
     rowLimit: number;
 }
 ```
-
+ 
 ---
-
+ 
+### ExportConfig
+ 
+**Location:** `frontend/src/lib/components/operations/ExportConfig.svelte`
+ 
+Configure export format and destination.
+ 
+```typescript
+interface ExportConfigData {
+    format?: 'csv' | 'parquet' | 'json' | 'ndjson';
+    filename?: string;
+    destination?: 'download' | 'filesystem';
+}
+```
+ 
+---
+ 
 ### JoinConfig
+
 
 **Location:** `frontend/src/lib/components/operations/JoinConfig.svelte`
 

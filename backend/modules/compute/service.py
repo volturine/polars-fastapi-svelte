@@ -209,3 +209,89 @@ def cleanup_job(job_id: str) -> None:
     _job_results.pop(job_id, None)
     _job_timestamps.pop(job_id, None)
     logger.debug(f'Cleaned up job {job_id}')
+
+
+async def export_data(
+    session: AsyncSession,
+    datasource_id: str,
+    pipeline_steps: list[dict],
+    target_step_id: str,
+    export_format: str = 'csv',
+    filename: str = 'export',
+    destination: str = 'download',
+) -> tuple[bytes, str, str]:
+    """
+    Export pipeline result to file.
+    Returns (file_bytes, filename_with_ext, content_type).
+    """
+    import io
+
+    import polars as pl
+
+    result = await session.execute(select(DataSource).where(DataSource.id == datasource_id))
+    datasource = result.scalar_one_or_none()
+
+    if not datasource:
+        raise ValueError(f'DataSource {datasource_id} not found')
+
+    # Find steps up to target
+    step_index = None
+    for idx, step in enumerate(pipeline_steps):
+        if step.get('id') == target_step_id:
+            step_index = idx
+            break
+
+    if step_index is None:
+        raise ValueError(f'Step with id {target_step_id} not found in pipeline')
+
+    export_steps = pipeline_steps[: step_index + 1]
+
+    manager = get_manager()
+    engine = manager.get_or_create_engine(f'{datasource_id}_export')
+
+    datasource_config = {
+        'source_type': datasource.source_type,
+        **datasource.config,
+    }
+
+    engine.execute(
+        datasource_config=datasource_config,
+        pipeline_steps=export_steps,
+        timeout=60,
+    )
+
+    while True:
+        result_data = engine.get_result(timeout=1.0)
+        if result_data:
+            if result_data['status'] == JobStatus.COMPLETED:
+                manager.shutdown_engine(f'{datasource_id}_export')
+
+                sample_data = result_data['data'].get('sample_data', [])
+                df = pl.DataFrame(sample_data)
+
+                buffer = io.BytesIO()
+                if export_format == 'csv':
+                    df.write_csv(buffer)
+                    ext = '.csv'
+                    content_type = 'text/csv'
+                elif export_format == 'parquet':
+                    df.write_parquet(buffer)
+                    ext = '.parquet'
+                    content_type = 'application/octet-stream'
+                elif export_format == 'json':
+                    df.write_json(buffer)
+                    ext = '.json'
+                    content_type = 'application/json'
+                elif export_format == 'ndjson':
+                    df.write_ndjson(buffer)
+                    ext = '.ndjson'
+                    content_type = 'application/x-ndjson'
+                else:
+                    raise ValueError(f'Unsupported export format: {export_format}')
+
+                buffer.seek(0)
+                return buffer.read(), f'{filename}{ext}', content_type
+
+            elif result_data['status'] == JobStatus.FAILED:
+                manager.shutdown_engine(f'{datasource_id}_export')
+                raise ValueError(f'Export failed: {result_data.get("error", "Unknown error")}')

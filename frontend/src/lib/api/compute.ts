@@ -19,6 +19,7 @@ export interface StepPreviewRequest {
 		id: string;
 		type: string;
 		config: Record<string, unknown>;
+		depends_on?: string[];
 	}>;
 	target_step_id: string;
 	row_limit?: number;

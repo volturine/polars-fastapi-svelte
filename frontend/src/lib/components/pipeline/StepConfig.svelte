@@ -96,20 +96,36 @@
 		// Get all steps in the pipeline (for active tab)
 		const allSteps = analysisStore.pipeline;
 
-		// Find the current step's position
-		const stepIndex = allSteps.findIndex((s) => s.id === step.id);
-		if (stepIndex <= 0) {
-			// This is the first step, use base schema
+		// Check if this step has a parent dependency
+		const parentId = step.depends_on?.[0] ?? null;
+		
+		if (!parentId) {
+			// This is a root step with no dependencies, use base schema
 			return baseSchema;
 		}
 
-		// Get steps before the current step
-		const previousSteps = allSteps.slice(0, stepIndex);
+		// Find the parent step and all its ancestors to build the dependency chain
+		const dependencyChain: PipelineStep[] = [];
+		const stepMap = new Map(allSteps.map(s => [s.id, s]));
+		
+		// Build the chain of steps from root to parent (not including current step)
+		let currentId: string | null = parentId;
+		while (currentId) {
+			const currentStep = stepMap.get(currentId);
+			if (!currentStep) break;
+			dependencyChain.unshift(currentStep); // Add to front to maintain order
+			currentId = currentStep.depends_on?.[0] ?? null;
+		}
 
-		// Calculate schema after applying previous steps
+		if (dependencyChain.length === 0) {
+			// Parent step not found, use base schema
+			return baseSchema;
+		}
+
+		// Calculate schema by applying the dependency chain
 		const calculatedInputSchema = schemaCalculator.calculatePipelineSchema(
 			baseSchema,
-			previousSteps
+			dependencyChain
 		);
 
 		return calculatedInputSchema || { columns: [], row_count: null };

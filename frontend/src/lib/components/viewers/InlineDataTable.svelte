@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { createQuery } from '@tanstack/svelte-query'
-	import { previewStepData, type StepPreviewRequest, type StepPreviewResponse } from '$lib/api/compute'
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query'
+	import { previewStepData, type StepPreviewResponse } from '$lib/api/compute'
 	import type { TableCellValue } from '$lib/types/api-responses'
+	import { onMount } from 'svelte'
 
 	interface Props {
 		datasourceId: string
@@ -9,6 +10,7 @@
 			id: string
 			type: string
 			config: Record<string, unknown>
+			depends_on?: string[]
 		}>
 		stepId: string
 		rowLimit?: number
@@ -16,10 +18,32 @@
 
 	let { datasourceId, pipeline, stepId, rowLimit = 1000 }: Props = $props()
 	let currentPage = $state(1)
-
-	// Query key includes pipeline to trigger re-fetch on changes
+	
+	const queryClient = useQueryClient()
+	
+	// Use a version number that we increment when config changes
+	let configVersion = $state(0)
+	
+	// Track config changes by polling - bind:config mutations don't trigger Svelte reactivity
+	let lastHash = ''
+	onMount(() => {
+		const interval = setInterval(() => {
+			const hash = JSON.stringify(pipeline.map(s => ({ id: s.id, type: s.type, config: s.config })))
+			if (lastHash && hash !== lastHash) {
+				configVersion++
+				queryClient.invalidateQueries({ queryKey: ['step-preview', datasourceId, stepId] })
+			}
+			lastHash = hash
+		}, 500) // Check every 500ms
+		
+		// Initial hash
+		lastHash = JSON.stringify(pipeline.map(s => ({ id: s.id, type: s.type, config: s.config })))
+		
+		return () => clearInterval(interval)
+	})
+	
 	const query = createQuery(() => ({
-		queryKey: ['step-preview', datasourceId, stepId, pipeline, currentPage],
+		queryKey: ['step-preview', datasourceId, stepId, currentPage],
 		queryFn: async (): Promise<StepPreviewResponse> => {
 			return await previewStepData({
 				datasource_id: datasourceId,
@@ -29,7 +53,7 @@
 				page: currentPage
 			})
 		},
-		staleTime: 30000, // 30 seconds
+		staleTime: 30000,
 		enabled: !!datasourceId && !!stepId && pipeline.length > 0
 	}))
 
@@ -156,6 +180,7 @@
 		margin: var(--space-2) 0;
 		font-size: 0.875rem;
 		box-shadow: var(--panel-shadow);
+		user-select: text;
 	}
 
 	.loading-overlay {
@@ -309,6 +334,7 @@
 		text-overflow: ellipsis;
 		max-width: 250px;
 		font-size: 0.8125rem;
+		user-select: text;
 	}
 
 	.pagination {

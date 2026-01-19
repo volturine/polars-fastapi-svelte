@@ -19,6 +19,34 @@
 	let isExporting = $state(false);
 	let exportError = $state<string | null>(null);
 
+	let dragPreviewEl = $state<HTMLDivElement | null>(null);
+
+	const stepTypeInfo: Record<string, { label: string; icon: string }> = {
+		filter: { label: 'Filter', icon: '🔍' },
+		select: { label: 'Select', icon: '📋' },
+		groupby: { label: 'Group By', icon: '📊' },
+		sort: { label: 'Sort', icon: '↕️' },
+		rename: { label: 'Rename', icon: '✏️' },
+		drop: { label: 'Drop', icon: '🗑️' },
+		join: { label: 'Join', icon: '🔗' },
+		expression: { label: 'Expression', icon: '🧮' },
+		with_columns: { label: 'With Columns', icon: '🧮' },
+		pivot: { label: 'Pivot', icon: '🔄' },
+		unpivot: { label: 'Unpivot', icon: '🔃' },
+		fill_null: { label: 'Fill Null', icon: '🔧' },
+		deduplicate: { label: 'Deduplicate', icon: '🧹' },
+		explode: { label: 'Explode', icon: '💥' },
+		timeseries: { label: 'Time Series', icon: '📅' },
+		string_transform: { label: 'String Transform', icon: '📝' },
+		sample: { label: 'Sample', icon: '🎲' },
+		limit: { label: 'Limit', icon: '✂️' },
+		topk: { label: 'Top K', icon: '🏆' },
+		null_count: { label: 'Null Count', icon: '❓' },
+		value_counts: { label: 'Value Counts', icon: '📊' },
+		view: { label: 'View', icon: '👁️' },
+		export: { label: 'Export', icon: '📤' }
+	};
+
 	const typeLabels: Record<string, string> = {
 		filter: 'filter',
 		select: 'select',
@@ -81,6 +109,7 @@
 		}
 	}
 
+	let currentStepInfo = $derived(stepTypeInfo[step.type] || { label: step.type, icon: '⚙️' });
 	let label = $derived(typeLabels[step.type] || step.type);
 	let summary = $derived(getConfigSummary(step));
 
@@ -91,17 +120,25 @@
 	let isOtherDragging = $derived(drag.active && drag.stepId !== step.id);
 
 	function handleDragStart(event: DragEvent) {
-		isDragging = true;
 		if (event.dataTransfer) {
 			event.dataTransfer.setData('application/x-pipeline-step', step.id);
+			event.dataTransfer.setData('text/plain', step.id);
 			event.dataTransfer.effectAllowed = 'move';
+			if (dragPreviewEl) {
+				event.dataTransfer.setDragImage(dragPreviewEl, 0, 0);
+			}
 		}
-		drag.startMove(step.id, step.type);
+		requestAnimationFrame(() => {
+			isDragging = true;
+			drag.startMove(step.id, step.type);
+		});
 	}
 
 	function handleDragEnd() {
 		isDragging = false;
-		drag.end();
+		if (drag.active) {
+			drag.end();
+		}
 	}
 
 	async function handleExport() {
@@ -143,22 +180,41 @@
 	}
 </script>
 
+<div class="drag-preview" bind:this={dragPreviewEl}>
+	<span class="preview-icon">{currentStepInfo.icon}</span>
+	<span class="preview-name">{currentStepInfo.label}</span>
+</div>
+
 <div
 	class="step-node"
 	class:view-node={step.type === 'view'}
-	class:dragging={isDragging}
+	class:greyed-out={isDragging}
 	class:drag-target={isOtherDragging}
 >
 	<div class="connection-point top"></div>
 
-	<div
-		class="step-content"
-		role="listitem"
-		draggable="true"
-		ondragstart={handleDragStart}
-		ondragend={handleDragEnd}
-	>
+	<div class="step-content" role="listitem">
 		<div class="step-header">
+			<!-- Drag handle (6-dot grip) -->
+			<button
+				class="drag-handle"
+				title="Drag to reorder"
+				type="button"
+				draggable="true"
+				ondragstart={handleDragStart}
+				ondragend={handleDragEnd}
+			>
+				<svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor">
+					<circle cx="2" cy="2" r="1.5" />
+					<circle cx="8" cy="2" r="1.5" />
+					<circle cx="2" cy="8" r="1.5" />
+					<circle cx="8" cy="8" r="1.5" />
+					<circle cx="2" cy="14" r="1.5" />
+					<circle cx="8" cy="14" r="1.5" />
+				</svg>
+			</button>
+
+			<span class="step-icon">{currentStepInfo.icon}</span>
 			<span class="step-type">{label}</span>
 			<span class="step-number">#{index + 1}</span>
 		</div>
@@ -224,8 +280,9 @@
 		min-width: 320px;
 	}
 
-	.step-node.dragging {
-		opacity: 0.5;
+	.step-node.greyed-out {
+		opacity: 0.4;
+		filter: grayscale(50%);
 	}
 
 	.connection-point {
@@ -255,11 +312,6 @@
 		padding: var(--space-4);
 		transition: all var(--transition-fast);
 		box-shadow: var(--card-shadow);
-		cursor: grab;
-	}
-
-	.step-content:active {
-		cursor: grabbing;
 	}
 
 	.step-content:hover {
@@ -269,9 +321,43 @@
 
 	.step-header {
 		display: flex;
-		justify-content: space-between;
 		align-items: center;
+		gap: var(--space-2);
 		margin-bottom: var(--space-3);
+	}
+
+	.drag-handle {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--space-1);
+		background: transparent;
+		border: none;
+		cursor: grab;
+		opacity: 0.4;
+		color: var(--fg-muted);
+		border-radius: var(--radius-sm);
+		transition:
+			opacity 0.15s,
+			background-color 0.15s;
+		flex-shrink: 0;
+		user-select: none;
+		-webkit-user-select: none;
+		appearance: none;
+	}
+
+	.drag-handle:hover {
+		opacity: 1;
+		background-color: var(--bg-hover);
+	}
+
+	.drag-handle:active {
+		cursor: grabbing;
+	}
+
+	.step-icon {
+		font-size: var(--text-base);
+		flex-shrink: 0;
 	}
 
 	.step-type {
@@ -279,11 +365,13 @@
 		font-weight: 600;
 		color: var(--fg-primary);
 		font-family: var(--font-mono);
+		flex: 1;
 	}
 
 	.step-number {
 		font-size: var(--text-xs);
 		color: var(--fg-muted);
+		flex-shrink: 0;
 	}
 
 	.step-summary {
@@ -397,5 +485,35 @@
 		border-color: var(--accent-primary);
 		opacity: 0.7;
 		transform: scale(0.98);
+	}
+
+	/* Hidden drag preview element - positioned off-screen */
+	.drag-preview {
+		position: fixed;
+		top: -9999px;
+		left: -9999px;
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		background: var(--bg-primary, #fff);
+		border: 2px solid var(--border-primary, #ccc);
+		border-radius: var(--radius-sm);
+		font-size: var(--text-sm);
+		white-space: nowrap;
+		pointer-events: none;
+		z-index: 9999;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		/* Use opacity 0 instead of display: none so browser can capture it */
+		opacity: 0;
+	}
+
+	.preview-icon {
+		font-size: var(--text-base);
+	}
+
+	.preview-name {
+		font-weight: 500;
+		color: var(--fg-primary);
 	}
 </style>

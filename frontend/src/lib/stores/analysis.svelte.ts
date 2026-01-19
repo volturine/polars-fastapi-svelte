@@ -189,6 +189,19 @@ export class AnalysisStore {
 		schemaCalculator.invalidateCache(nextPipeline, [id]);
 	}
 
+	/**
+	 * Update the config of a specific step. Creates new object references
+	 * to ensure reactivity is triggered properly.
+	 */
+	updateStepConfig(id: string, config: Record<string, unknown>): void {
+		if (!this.activeTab) return;
+		const nextPipeline = this.activeTab.steps.map((step) => 
+			step.id === id ? { ...step, config: { ...config } } : step
+		);
+		this.updateTabSteps(this.activeTab.id, nextPipeline);
+		schemaCalculator.invalidateCache(nextPipeline, [id]);
+	}
+
 	removeStep(id: string): void {
 		if (!this.activeTab) return;
 		

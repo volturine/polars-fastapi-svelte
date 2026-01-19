@@ -28,19 +28,13 @@ class DragState {
 	valid = $state(true);
 
 	/** Whether a drag operation is in progress */
-	get active() {
-		return this.type !== null || this.stepId !== null;
-	}
+	active = $derived(this.type !== null || this.stepId !== null);
 
 	/** Whether this is a reorder operation (moving existing step) */
-	get isReorder() {
-		return this.source === 'canvas' && this.stepId !== null;
-	}
+	isReorder = $derived(this.source === 'canvas' && this.stepId !== null);
 
 	/** Whether this is an insert operation (adding new step from library) */
-	get isInsert() {
-		return this.source === 'library' && this.type !== null;
-	}
+	isInsert = $derived(this.source === 'library' && this.type !== null);
 
 	/** Start a drag operation for a new step from library */
 	start(type: string, source: DragSource) {

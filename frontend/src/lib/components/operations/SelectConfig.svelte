@@ -25,8 +25,11 @@
 	// Safe accessor
 	let safeColumns = $derived(Array.isArray(config?.columns) ? config.columns : []);
 
-	// Keep SvelteSet for UI
-	let selectedColumns = $state(new SvelteSet<string>());
+	// Keep SvelteSet for UI - initialize from config
+	let selectedColumns = $state(new SvelteSet<string>(config?.columns ?? []));
+	
+	// Track if component has been initialized to avoid re-init on deselectAll
+	let initialized = $state(false);
 
 	// Track the config reference to detect when a different step is selected
 	let prevConfig = $state(config);
@@ -36,13 +39,15 @@
 		if (config !== prevConfig) {
 			selectedColumns = new SvelteSet(safeColumns);
 			prevConfig = config;
+			initialized = true;
 		}
 	});
 
-	// Initialize on first render
+	// Initialize on first render only
 	$effect(() => {
-		if (selectedColumns.size === 0 && safeColumns.length > 0) {
+		if (!initialized && safeColumns.length > 0) {
 			selectedColumns = new SvelteSet(safeColumns);
+			initialized = true;
 		}
 	});
 

@@ -13,6 +13,7 @@
 	import StepLibrary from '$lib/components/pipeline/StepLibrary.svelte';
 	import PipelineCanvas from '$lib/components/pipeline/PipelineCanvas.svelte';
 	import StepConfig from '$lib/components/pipeline/StepConfig.svelte';
+	import DragPreview from '$lib/components/pipeline/DragPreview.svelte';
 
 	const analysisId = $derived($page.params.id);
 
@@ -395,6 +396,7 @@
 			onmouseup={stopResize}
 			onmouseleave={stopResize}
 			role="application"
+			ondragover={(event) => event.preventDefault()}
 		>
 			<div class="left-pane" style="width: {leftPaneWidth}px">
 				<StepLibrary onAddStep={handleAddStep} onInsertStep={handleInsertStep} />
@@ -519,6 +521,8 @@
 		</div>
 	</div>
 {/if}
+
+<DragPreview />
 
 <style>
 	.loading-container,

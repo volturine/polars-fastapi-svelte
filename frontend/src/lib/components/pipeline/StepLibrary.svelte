@@ -15,28 +15,32 @@
 
 	let { onAddStep, onInsertStep }: Props = $props();
 
-	// Track if we're dragging to prevent click from firing
 	let isDragging = $state(false);
+	let dragImageEl = $state<HTMLDivElement | null>(null);
 
 	function handleDragStart(event: DragEvent, stepType: string) {
-		isDragging = true;
 		if (event.dataTransfer) {
 			event.dataTransfer.setData('application/x-pipeline-step', stepType);
+			event.dataTransfer.setData('text/plain', stepType);
 			event.dataTransfer.effectAllowed = 'copy';
+			if (dragImageEl) {
+				event.dataTransfer.setDragImage(dragImageEl, 0, 0);
+			}
 		}
-		drag.start(stepType, 'library');
+		requestAnimationFrame(() => {
+			isDragging = true;
+			drag.start(stepType, 'library');
+		});
 	}
 
 	function handleDragEnd() {
-		// Small delay to prevent click from firing after drag
-		setTimeout(() => {
-			isDragging = false;
-		}, 0);
-		drag.end();
+		isDragging = false;
+		if (drag.active) {
+			drag.end();
+		}
 	}
 
 	function handleClick(stepType: string) {
-		// Don't add step if we were dragging
 		if (isDragging) return;
 		onAddStep(stepType);
 	}
@@ -86,6 +90,7 @@
 </script>
 
 <div class="step-library">
+	<div class="drag-preview" bind:this={dragImageEl}></div>
 	<h3>Operations</h3>
 	<div class="step-list" role="list">
 		{#each stepTypes as stepType (stepType.type)}
@@ -159,6 +164,16 @@
 		flex-direction: column;
 		overflow: hidden;
 		overflow-x: hidden;
+	}
+
+	.drag-preview {
+		position: fixed;
+		top: -9999px;
+		left: -9999px;
+		width: 1px;
+		height: 1px;
+		opacity: 0;
+		pointer-events: none;
 	}
 
 	h3 {

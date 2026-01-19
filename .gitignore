@@ -2,3 +2,4 @@
 
 # Data directory (uploads, results, exports)
 /data/
+.opencode/opencode.jsonc

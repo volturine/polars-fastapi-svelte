@@ -2,7 +2,7 @@ import type { Analysis, AnalysisTab, AnalysisUpdate, PipelineStep } from '$lib/t
 import type { SchemaInfo } from '$lib/types/datasource';
 import type { Schema } from '$lib/types/schema';
 import { getAnalysis, updateAnalysis } from '$lib/api/analysis';
-import { normalizeDtype } from '$lib/utils/schema/ops';
+import { normalizeDtype } from '$lib/utils/transform';
 import { schemaStore } from '$lib/stores/schema.svelte';
 
 export class AnalysisStore {

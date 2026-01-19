@@ -34,7 +34,7 @@ export interface StepConfig {
 	explode_column?: string;
 	window?: Record<string, unknown>;
 	rowLimit?: number;
-	[ key: string ]: unknown;
+	[key: string]: unknown;
 }
 
 export type SchemaTransformer = (input: Schema | null, config: StepConfig) => Schema;
@@ -42,7 +42,9 @@ export type SchemaTransformer = (input: Schema | null, config: StepConfig) => Sc
 export function filterTransform(input: Schema | null, config: StepConfig): Schema {
 	if (!input) return { columns: [], row_count: null };
 
-	const conditions = config.conditions as Array<{ column: string; operator: string; value: string }> | undefined;
+	const conditions = config.conditions as
+		| Array<{ column: string; operator: string; value: string }>
+		| undefined;
 	if (!conditions || conditions.length === 0) {
 		return { columns: input.columns, row_count: null };
 	}
@@ -59,7 +61,7 @@ export function selectTransform(input: Schema | null, config: StepConfig): Schem
 	}
 
 	return {
-		columns: input.columns.filter(c => columns.includes(c.name)),
+		columns: input.columns.filter((col) => columns.includes(col.name)),
 		row_count: null
 	};
 }
@@ -73,7 +75,7 @@ export function dropTransform(input: Schema | null, config: StepConfig): Schema 
 	}
 
 	return {
-		columns: input.columns.filter(c => !columns.includes(c.name)),
+		columns: input.columns.filter((col) => !columns.includes(col.name)),
 		row_count: null
 	};
 }
@@ -87,9 +89,9 @@ export function renameTransform(input: Schema | null, config: StepConfig): Schem
 	}
 
 	return {
-		columns: input.columns.map(c => ({
-			...c,
-			name: mapping[c.name] ?? c.name
+		columns: input.columns.map((col) => ({
+			...col,
+			name: mapping[col.name] ?? col.name
 		})),
 		row_count: null
 	};
@@ -109,7 +111,8 @@ export function groupbyTransform(input: Schema | null, config: StepConfig): Sche
 	for (const col of groupBy ?? []) {
 		result.push({
 			name: col,
-			dtype: normalizeDtype(input.columns.find(c => c.name === col)?.dtype) ?? 'Unknown',
+			dtype:
+				normalizeDtype(input.columns.find((column) => column.name === col)?.dtype) ?? 'Unknown',
 			nullable: false
 		});
 	}
@@ -138,7 +141,7 @@ export function groupbyTransform(input: Schema | null, config: StepConfig): Sche
 			aggName = `${aggColumn}_${aggFunc}`;
 		} else if (Array.isArray(aggFunc)) {
 			// Multiple aggregations on same column
-			aggName = `${aggColumn}_${aggFunc.map(a => a.agg).join('_')}`;
+			aggName = `${aggColumn}_${aggFunc.map((a) => a.agg).join('_')}`;
 		} else {
 			aggName = `${aggColumn}_${(aggFunc as { column: string; agg: string }).agg}`;
 		}
@@ -195,7 +198,7 @@ export function withColumnsTransform(input: Schema | null, config: StepConfig): 
 		return { columns: input.columns, row_count: null };
 	}
 
-	const newColumn: typeof input.columns[0] = {
+	const newColumn: (typeof input.columns)[0] = {
 		name: targetColumn,
 		dtype: 'unknown',
 		nullable: true
@@ -229,10 +232,10 @@ export function explodeTransform(input: Schema | null, config: StepConfig): Sche
 	if (!input) return { columns: [], row_count: null };
 
 	const column = config.explode_column as string | undefined;
-	const hasColumn = input.columns.some(c => c.name === column);
+	const hasColumn = input.columns.some((col) => col.name === column);
 
 	return {
-		columns: hasColumn ? input.columns.filter(c => c.name !== column) : input.columns,
+		columns: hasColumn ? input.columns.filter((col) => col.name !== column) : input.columns,
 		row_count: null
 	};
 }
@@ -285,8 +288,8 @@ export function nullCountTransform(input: Schema | null, _config: StepConfig): S
 	if (!input) return { columns: [], row_count: null };
 
 	return {
-		columns: input.columns.map(c => ({
-			name: `${c.name}_null_count`,
+		columns: input.columns.map((col) => ({
+			name: `${col.name}_null_count`,
 			dtype: 'UInt32',
 			nullable: false
 		})),
@@ -338,7 +341,7 @@ export function joinTransform(
 	if (!input) return rightSchema ?? { columns: [], row_count: null };
 	if (!rightSchema) return { columns: input.columns, row_count: null };
 
-	const how = config.how as string ?? 'inner';
+	const how = (config.how as string) ?? 'inner';
 	const suffix = (config.suffix as string) ?? '_right';
 
 	switch (how) {

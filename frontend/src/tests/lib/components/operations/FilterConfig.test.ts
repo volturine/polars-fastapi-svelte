@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
-import FilterConfig from './FilterConfig.svelte';
+import FilterConfig from '$lib/components/operations/FilterConfig.svelte';
 import type { Schema } from '$lib/types/schema';
 
 // TODO: Re-enable when @testing-library/svelte fully supports Svelte 5's mount() API

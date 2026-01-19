@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { analysisStore } from './analysis.svelte';
+import { analysisStore } from '$lib/stores/analysis.svelte';
 import * as analysisApi from '$lib/api/analysis';
 import type { Analysis, PipelineStep } from '$lib/types/analysis';
 import type { SchemaInfo } from '$lib/types/datasource';

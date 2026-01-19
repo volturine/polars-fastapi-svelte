@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
-import AnalysisCard from './AnalysisCard.svelte';
+import AnalysisCard from '$lib/components/gallery/AnalysisCard.svelte';
 import type { AnalysisGalleryItem } from '$lib/types/analysis';
 import { goto } from '$app/navigation';
 

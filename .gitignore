@@ -3,3 +3,4 @@
 # Data directory (uploads, results, exports)
 /data/
 .opencode/opencode.jsonc
+.vscode/mcp.json

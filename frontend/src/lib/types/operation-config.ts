@@ -45,8 +45,8 @@ export interface JoinConfigData {
 	how: 'inner' | 'left' | 'right' | 'outer' | 'cross';
 	left_on: string | null;
 	right_on: string | null;
-	datasource_id: string;
-	suffix: string;
+	datasource_id?: string;
+	suffix?: string;
 }
 
 export interface ExpressionConfigData {
@@ -63,6 +63,7 @@ export interface FillNullConfigData {
 	strategy: string;
 	columns: string[] | null;
 	value?: string | number;
+	value_type?: string;
 }
 
 export interface ExplodeConfigData {
@@ -120,7 +121,7 @@ export interface TopKConfigData {
 	descending: boolean;
 }
 
-export interface NullCountConfigData extends Record<string, never> {}
+export type NullCountConfigData = Record<string, never>;
 
 export interface ValueCountsConfigData {
 	column: string;

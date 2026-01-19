@@ -3,8 +3,10 @@
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import { goto } from '$app/navigation';
 	import { listAnalyses, deleteAnalysis } from '$lib/api/analysis';
-	import { GalleryGrid, EmptyState, AnalysisFilters } from '$lib/components/gallery';
-	import { ConfirmDialog } from '$lib/components/common';
+	import GalleryGrid from '$lib/components/gallery/GalleryGrid.svelte';
+	import EmptyState from '$lib/components/gallery/EmptyState.svelte';
+	import AnalysisFilters from '$lib/components/gallery/AnalysisFilters.svelte';
+	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import { Plus } from 'lucide-svelte';
 	import type { SortOption } from '$lib/components/gallery/AnalysisFilters.svelte';
 

@@ -5,6 +5,7 @@
 		strategy: string;
 		columns: string[] | null;
 		value?: string | number;
+		value_type?: string;
 	}
 
 	interface Props {
@@ -12,7 +13,7 @@
 		config?: FillNullConfigData;
 	}
 
-	let { schema, config = $bindable({ strategy: 'literal', columns: null, value: '' }) }: Props =
+	let { schema, config = $bindable({ strategy: 'literal', columns: null, value: '', value_type: 'Utf8' }) }: Props =
 		$props();
 
 	const strategies = [
@@ -61,6 +62,15 @@
 		<div class="section">
 			<h4>Fill Value</h4>
 			<input type="text" bind:value={config.value} placeholder="Enter value (e.g., 0, N/A)" />
+			<select bind:value={config.value_type}>
+				<option value="Utf8">String</option>
+				<option value="Int64">Integer</option>
+				<option value="Float64">Float</option>
+				<option value="Boolean">Boolean</option>
+				<option value="Date">Date</option>
+				<option value="Datetime">Datetime</option>
+				<option value="Unknown">Unknown</option>
+			</select>
 		</div>
 	{/if}
 

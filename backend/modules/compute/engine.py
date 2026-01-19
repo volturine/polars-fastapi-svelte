@@ -3,7 +3,7 @@ import multiprocessing as mp
 import uuid
 from collections.abc import Callable
 from queue import Empty
-from typing import cast
+from typing import Any, cast
 
 import polars as pl
 
@@ -302,6 +302,21 @@ class PolarsComputeEngine:
         operation = step.get('operation')
         params = step.get('params', {})
 
+        def cast_value(value: Any, value_type: str | None) -> Any:
+            if value_type == 'Int64':
+                return int(value) if value is not None else value
+            if value_type == 'Float64':
+                return float(value) if value is not None else value
+            if value_type == 'Boolean':
+                if isinstance(value, str):
+                    return value.strip().lower() in {'true', '1', 'yes'}
+                return bool(value)
+            if value_type == 'Date':
+                return pl.lit(value).cast(pl.Date)
+            if value_type == 'Datetime':
+                return pl.lit(value).cast(pl.Datetime)
+            return value
+
         if operation == 'filter':
             conditions = params.get('conditions', [])
             logic = params.get('logic', 'AND')
@@ -370,29 +385,30 @@ class PolarsComputeEngine:
             for agg in agg_cols:
                 col = agg['column']
                 func = agg['function']
+                alias = agg.get('alias')
 
                 if func == 'sum':
-                    agg_exprs.append(pl.col(col).sum().alias(f'{col}_sum'))
+                    agg_exprs.append(pl.col(col).sum().alias(alias or f'{col}_sum'))
                 elif func == 'mean':
-                    agg_exprs.append(pl.col(col).mean().alias(f'{col}_mean'))
+                    agg_exprs.append(pl.col(col).mean().alias(alias or f'{col}_mean'))
                 elif func == 'count':
-                    agg_exprs.append(pl.col(col).count().alias(f'{col}_count'))
+                    agg_exprs.append(pl.col(col).count().alias(alias or f'{col}_count'))
                 elif func == 'min':
-                    agg_exprs.append(pl.col(col).min().alias(f'{col}_min'))
+                    agg_exprs.append(pl.col(col).min().alias(alias or f'{col}_min'))
                 elif func == 'max':
-                    agg_exprs.append(pl.col(col).max().alias(f'{col}_max'))
+                    agg_exprs.append(pl.col(col).max().alias(alias or f'{col}_max'))
                 elif func == 'first':
-                    agg_exprs.append(pl.col(col).first().alias(f'{col}_first'))
+                    agg_exprs.append(pl.col(col).first().alias(alias or f'{col}_first'))
                 elif func == 'last':
-                    agg_exprs.append(pl.col(col).last().alias(f'{col}_last'))
+                    agg_exprs.append(pl.col(col).last().alias(alias or f'{col}_last'))
                 elif func == 'median':
-                    agg_exprs.append(pl.col(col).median().alias(f'{col}_median'))
+                    agg_exprs.append(pl.col(col).median().alias(alias or f'{col}_median'))
                 elif func == 'std':
-                    agg_exprs.append(pl.col(col).std().alias(f'{col}_std'))
+                    agg_exprs.append(pl.col(col).std().alias(alias or f'{col}_std'))
                 elif func == 'collect_list':
-                    agg_exprs.append(pl.col(col).implode().alias(f'{col}_list'))
+                    agg_exprs.append(pl.col(col).implode().alias(alias or f'{col}_list'))
                 elif func == 'collect_set':
-                    agg_exprs.append(pl.col(col).implode().list.unique().alias(f'{col}_set'))
+                    agg_exprs.append(pl.col(col).implode().list.unique().alias(alias or f'{col}_set'))
 
             return lf.group_by(group_cols).agg(agg_exprs)
 
@@ -402,7 +418,11 @@ class PolarsComputeEngine:
             # Handle both single boolean and list of booleans for descending
             if isinstance(descending, list) and len(descending) != len(columns):
                 # Ensure descending list matches columns length
-                descending = descending[: len(columns)] if len(descending) > len(columns) else descending + [False] * (len(columns) - len(descending))
+                descending = (
+                    descending[: len(columns)]
+                    if len(descending) > len(columns)
+                    else descending + [False] * (len(columns) - len(descending))
+                )
             return lf.sort(columns, descending=descending)
 
         elif operation == 'rename':
@@ -542,9 +562,26 @@ class PolarsComputeEngine:
 
             if strategy == 'literal':
                 value = params.get('value')
+                value_type = params.get('value_type')
+                casted = cast_value(value, value_type)
+
+                def cast_column(col: str) -> pl.Expr:
+                    expr = pl.col(col)
+                    if value_type == 'Int64':
+                        return expr.cast(pl.Int64).fill_null(casted)
+                    if value_type == 'Float64':
+                        return expr.cast(pl.Float64).fill_null(casted)
+                    if value_type == 'Boolean':
+                        return expr.cast(pl.Boolean).fill_null(casted)
+                    if value_type == 'Date':
+                        return expr.cast(pl.Date).fill_null(casted)
+                    if value_type == 'Datetime':
+                        return expr.cast(pl.Datetime).fill_null(casted)
+                    return expr.fill_null(casted)
+
                 if columns:
-                    return lf.with_columns([pl.col(c).fill_null(value) for c in columns])
-                return lf.fill_null(value)
+                    return lf.with_columns([cast_column(c) for c in columns])
+                return lf.with_columns([cast_column(c) for c in lf.columns])
 
             elif strategy == 'forward':
                 if columns:

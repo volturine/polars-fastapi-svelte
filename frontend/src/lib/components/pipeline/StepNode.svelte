@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PipelineStep } from '$lib/types/analysis';
 	import { drag } from '$lib/stores/drag.svelte';
-	import { InlineDataTable } from '$lib/components/viewers';
+	import InlineDataTable from '$lib/components/viewers/InlineDataTable.svelte';
 	import { Download, Save } from 'lucide-svelte';
 	import { exportData, downloadBlob, type ExportRequest } from '$lib/api/compute';
 
@@ -10,11 +10,13 @@
 		index: number;
 		datasourceId?: string;
 		allSteps?: PipelineStep[];
+		savedSteps?: PipelineStep[];
+		saveStatus?: 'saved' | 'unsaved' | 'saving';
 		onEdit: (id: string) => void;
 		onDelete: (id: string) => void;
 	}
 
-	let { step, index, datasourceId, allSteps = [], onEdit, onDelete }: Props = $props();
+	let { step, index, datasourceId, allSteps = [], savedSteps = [], saveStatus = 'saved', onEdit, onDelete }: Props = $props();
 
 	let isExporting = $state(false);
 	let exportError = $state<string | null>(null);
@@ -253,11 +255,14 @@
 			</div>
 		{/if}
 
-		{#if step.type === 'view' && datasourceId && allSteps.length > 0}
+		{#if step.type === 'view' && datasourceId && savedSteps.length > 0}
 			<div class="view-preview expanded">
+				{#if saveStatus === 'unsaved'}
+					<div class="preview-stale">Preview shows last saved state</div>
+				{/if}
 				<InlineDataTable
 					{datasourceId}
-					pipeline={allSteps}
+					pipeline={savedSteps}
 					stepId={step.id}
 					rowLimit={typeof step.config?.rowLimit === 'number' ? step.config.rowLimit : 100}
 				/>
@@ -390,11 +395,23 @@
 
 	.view-preview {
 		margin-top: var(--space-3);
-		border-top: 1px solid var(--border-primary);
+		border-top: 1px solid var(--border-secondary);
 		padding-top: var(--space-3);
-		width: 100%;
-		overflow-y: auto;
 	}
+
+	.preview-stale {
+		margin-bottom: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		border: 1px dashed var(--warning-border);
+		border-radius: var(--radius-sm);
+		background-color: var(--warning-bg);
+		color: var(--warning-fg);
+		font-size: var(--text-xs);
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
 
 	.action-btn {
 		flex: 1;

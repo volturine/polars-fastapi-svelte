@@ -7,8 +7,8 @@
 		how: 'inner' | 'left' | 'right' | 'outer' | 'cross';
 		left_on: string | null;
 		right_on: string | null;
-		datasource_id: string;
-		suffix: string;
+		datasource_id?: string;
+		suffix?: string;
 	}
 
 	interface Props {

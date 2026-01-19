@@ -52,11 +52,28 @@
 		schema: Schema | null;
 		isLoadingSchema?: boolean;
 		onClose?: () => void;
+		onConfigChange?: () => void;
 	}
 
-	let { step, schema, isLoadingSchema = false, onClose }: Props = $props();
+	let { step, schema, isLoadingSchema = false, onClose, onConfigChange }: Props = $props();
+	let configSnapshot = $state('');
+
+	function refreshSnapshot(nextStep: PipelineStep | null) {
+		configSnapshot = JSON.stringify(nextStep?.config ?? {});
+	}
 
 	let inputSchema = $derived(step ? schemaStore.getInput(step.id) ?? { columns: [], row_count: null } : { columns: [], row_count: null });
+
+	$effect(() => {
+		refreshSnapshot(step);
+	});
+
+	$effect(() => {
+		const snapshot = JSON.stringify(step?.config ?? {});
+		if (!step || snapshot === configSnapshot) return;
+		configSnapshot = snapshot;
+		onConfigChange?.();
+	});
 
 	function handleClose() {
 		if (onClose) {
@@ -116,7 +133,10 @@
 			{:else if step.type === 'drop'}
 				<DropConfig schema={inputSchema} bind:config={step.config as unknown as DropConfigData} />
 			{:else if step.type === 'join'}
-				<JoinConfig schema={inputSchema} bind:config={step.config as unknown as JoinConfigData} />
+				<JoinConfig
+					schema={inputSchema}
+					bind:config={step.config as unknown as JoinConfigData}
+				/>
 			{:else if step.type === 'expression' || step.type === 'with_columns'}
 				<ExpressionConfig
 					schema={inputSchema}

@@ -24,6 +24,9 @@ async def execute_analysis(
 
         datasource_id = datasource_ids[0]
         pipeline_steps = analysis.pipeline_definition.get('steps', [])
+        if not pipeline_steps:
+            tabs = analysis.pipeline_definition.get('tabs', [])
+            pipeline_steps = [step for tab in tabs for step in tab.get('steps', [])]
 
         job = await service.execute_analysis(
             session=session,

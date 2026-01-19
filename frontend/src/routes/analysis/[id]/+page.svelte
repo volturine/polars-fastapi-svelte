@@ -20,7 +20,6 @@
 	let selectedStepId = $state<string | null>(null);
 	let isSaving = $state(false);
 	let saveStatus = $state<'saved' | 'unsaved' | 'saving'>('saved');
-	let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 	let initialPipeline: PipelineStep[] | null = null;
 	let isLoadingSchema = $state(false);
 	let showDatasourceModal = $state(false);
@@ -64,6 +63,7 @@
 			if (!analysisId) throw new Error('Analysis ID is required');
 			const analysis = await getAnalysis(analysisId);
 			await analysisStore.loadAnalysis(analysisId);
+			saveStatus = 'saved';
 			return analysis;
 		},
 		retry: false
@@ -131,10 +131,15 @@
 		return { id: makeId(), type, config: {}, depends_on: [] };
 	}
 
+	function markUnsaved() {
+		saveStatus = 'unsaved';
+	}
+
 	function handleAddStep(type: string) {
 		const step = buildStep(type);
 		analysisStore.addStep(step);
 		selectedStepId = step.id;
+		markUnsaved();
 	}
 
 	function handleInsertStep(type: string, target: DropTarget) {
@@ -142,15 +147,18 @@
 		const inserted = analysisStore.insertStep(step, target.index, target.parentId, target.nextId);
 		if (inserted) {
 			selectedStepId = step.id;
+			markUnsaved();
 		}
 	}
 
 	function handleMoveStep(stepId: string, target: DropTarget) {
 		analysisStore.moveStep(stepId, target.index, target.parentId, target.nextId);
+		markUnsaved();
 	}
 
 	function handleSelectStep(stepId: string) {
 		selectedStepId = stepId;
+		markUnsaved();
 	}
 
 	function handleDeleteStep(stepId: string) {
@@ -158,21 +166,18 @@
 		if (selectedStepId === stepId) {
 			selectedStepId = null;
 		}
+		markUnsaved();
 	}
 
 	async function handleSave() {
 		if (isSaving || saveStatus === 'saving') return;
-
-		if (saveTimeout) {
-			clearTimeout(saveTimeout);
-			saveTimeout = null;
-		}
 
 		isSaving = true;
 		saveStatus = 'saving';
 		try {
 			await analysisStore.save();
 			saveStatus = 'saved';
+			selectedStepId = null;
 		} catch (err) {
 			saveStatus = 'unsaved';
 			const message = err instanceof Error ? err.message : 'Failed to save pipeline';
@@ -203,6 +208,7 @@
 		analysisStore.setActiveTab(tab.id);
 		showDatasourceModal = false;
 		searchQuery = '';
+		markUnsaved();
 	}
 
 	function handleChangeDatasource(datasourceId: string, name: string) {
@@ -211,7 +217,7 @@
 		analysisStore.updateTab(active.id, { datasource_id: datasourceId, name });
 		showDatasourceModal = false;
 		searchQuery = '';
-		scheduleSave();
+		markUnsaved();
 	}
 
 	function handleDatasourceSelect(datasourceId: string, name: string) {
@@ -224,25 +230,7 @@
 
 	function handleRemoveTab(tabId: string) {
 		analysisStore.removeTab(tabId);
-	}
-
-	function scheduleSave() {
-		if (saveTimeout) {
-			clearTimeout(saveTimeout);
-			saveTimeout = null;
-		}
-
-		saveStatus = 'unsaved';
-		saveTimeout = setTimeout(async () => {
-			saveStatus = 'saving';
-			try {
-				await analysisStore.save();
-				saveStatus = 'saved';
-			} catch (err) {
-				saveStatus = 'unsaved';
-				console.error('Autosave failed:', err);
-			}
-		}, 3000);
+		markUnsaved();
 	}
 
 	function handleRenameSourceTab(nextName: string) {
@@ -251,7 +239,7 @@
 		const trimmed = nextName.trim();
 		if (!trimmed || trimmed === active.name) return;
 		analysisStore.updateTab(active.id, { name: trimmed });
-		scheduleSave();
+		markUnsaved();
 	}
 
 	function openDatasourceModal(mode: 'add' | 'change' = 'add') {
@@ -272,31 +260,6 @@
 	const selectedStep = $derived.by(() => {
 		if (!selectedStepId) return null;
 		return analysisStore.pipeline.find((step) => step.id === selectedStepId) || null;
-	});
-
-	// Auto-save when pipeline changes
-	$effect(() => {
-		const pipeline = analysisStore.pipeline;
-
-		if (initialPipeline === null) {
-			initialPipeline = pipeline;
-			return;
-		}
-
-		if (pipeline === initialPipeline) return;
-
-		if (saveTimeout) {
-			clearTimeout(saveTimeout);
-			saveTimeout = null;
-		}
-
-		scheduleSave();
-
-		return () => {
-			if (saveTimeout) {
-				clearTimeout(saveTimeout);
-			}
-		};
 	});
 </script>
 
@@ -385,7 +348,9 @@
 						{/if}
 					</button>
 				{/each}
-				<button class="tab add-tab" onclick={() => openDatasourceModal('add')} type="button"> + </button>
+				<button class="tab add-tab" onclick={() => openDatasourceModal('add')} type="button">
+					+
+				</button>
 			</div>
 		</div>
 
@@ -411,6 +376,8 @@
 			<div class="center-pane">
 				<PipelineCanvas
 					steps={analysisStore.pipeline}
+					savedSteps={analysisStore.savedTabs.flatMap((tab: AnalysisTab) => tab.steps ?? [])}
+					{saveStatus}
 					{datasourceId}
 					datasource={currentDatasource}
 					tabName={analysisStore.activeTab?.name}
@@ -435,6 +402,7 @@
 					schema={analysisStore.calculatedSchema}
 					{isLoadingSchema}
 					onClose={handleCloseConfig}
+					onConfigChange={markUnsaved}
 				/>
 			</div>
 		</div>
@@ -483,7 +451,8 @@
 						</div>
 					{:else}
 						{#each filteredDatasources as ds (ds.id)}
-							{@const fileType = ds.source_type === 'file' ? (ds.config?.file_type as string) : null}
+							{@const fileType =
+								ds.source_type === 'file' ? (ds.config?.file_type as string) : null}
 							<button
 								class="datasource-item"
 								onclick={() => handleDatasourceSelect(ds.id, ds.name)}

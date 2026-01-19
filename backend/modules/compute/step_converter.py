@@ -61,7 +61,14 @@ def convert_groupby_config(config: dict) -> dict:
     """
     return {
         'group_by': config.get('groupBy', []),
-        'aggregations': [{'column': agg.get('column'), 'function': agg.get('function')} for agg in config.get('aggregations', [])],
+        'aggregations': [
+            {
+                'column': agg.get('column'),
+                'function': agg.get('function') or agg.get('agg'),
+                'alias': agg.get('alias'),
+            }
+            for agg in config.get('aggregations', [])
+        ],
     }
 
 
@@ -89,6 +96,7 @@ def convert_fillnull_config(config: dict) -> dict:
     return {
         'strategy': config.get('strategy', 'value'),
         'value': config.get('value'),
+        'value_type': config.get('value_type'),
         'columns': config.get('columns', []),
     }
 
@@ -116,7 +124,10 @@ def convert_rename_config(config: dict) -> dict:
     """
     # Support both column_mapping (frontend) and mapping (backend format)
     mapping = config.get('column_mapping') or config.get('mapping', {})
-    return {'mapping': mapping}
+    normalized = mapping
+    if isinstance(mapping, list):
+        normalized = {item.get('from'): item.get('to') for item in mapping if item.get('from') and item.get('to')}
+    return {'mapping': normalized}
 
 
 def convert_sort_config(config: dict) -> dict:

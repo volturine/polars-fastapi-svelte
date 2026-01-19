@@ -1,9 +1,9 @@
 import type { Schema } from '$lib/types/schema';
 import type { PipelineStep } from '$lib/types/analysis';
 import { analysisStore } from '$lib/stores/analysis.svelte';
-import { getStepTransform, type StepConfig } from '$lib/utils/schema/ops';
 import { emptySchema } from '$lib/types/schema';
-import { joinTransform } from '$lib/utils/schema/ops';
+import { getStepTransform, joinTransform, type StepConfig } from '$lib/utils/schema/ops';
+
 
 export interface StepSchemas {
 	input: Schema;

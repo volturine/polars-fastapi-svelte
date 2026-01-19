@@ -9,6 +9,8 @@
 
 	interface Props {
 		steps: PipelineStep[];
+		savedSteps?: PipelineStep[];
+		saveStatus?: 'saved' | 'unsaved' | 'saving';
 		datasourceId?: string;
 		datasource?: DataSource | null;
 		tabName?: string;
@@ -22,6 +24,8 @@
 
 	let {
 		steps,
+		savedSteps = [],
+		saveStatus = 'saved',
 		datasourceId,
 		datasource = null,
 		tabName,
@@ -189,6 +193,8 @@
 					index={i}
 					{datasourceId}
 					allSteps={steps}
+					savedSteps={savedSteps}
+					saveStatus={saveStatus}
 					onEdit={onStepClick}
 					onDelete={onStepDelete}
 				/>

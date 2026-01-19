@@ -364,6 +364,7 @@ export class AnalysisStore {
 export type AnalysisStoreApi = {
 	insertStep: (step: PipelineStep, index: number, parentId: string | null, nextId: string | null) => boolean;
 	addBranchStep: (step: PipelineStep, parentId: string | null) => void;
+	updateStepConfig: (id: string, config: Record<string, unknown>) => void;
 };
 
 export const analysisStore = new AnalysisStore();

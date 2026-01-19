@@ -17,9 +17,19 @@
 
 	let { datasourceId, pipeline, stepId, rowLimit = 1000 }: Props = $props()
 	let currentPage = $state(1)
+	const pipelineKey = $derived(JSON.stringify(pipeline))
+
+	$effect(() => {
+		pipelineKey
+		rowLimit
+		stepId
+		if (currentPage !== 1) {
+			currentPage = 1
+		}
+	})
 
 	const query = createQuery(() => ({
-		queryKey: ['step-preview', datasourceId, stepId, currentPage, pipeline],
+		queryKey: ['step-preview', datasourceId, stepId, currentPage, rowLimit, pipelineKey],
 		queryFn: async (): Promise<StepPreviewResponse> => {
 			return await previewStepData({
 				datasource_id: datasourceId,

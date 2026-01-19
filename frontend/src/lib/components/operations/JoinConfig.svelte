@@ -42,7 +42,7 @@
 		}
 	});
 
-	const joinTypes: Array<{ value: 'inner' | 'left' | 'right' | 'outer' | 'cross'; label: string }> = [
+	const joinTypes: Array<{ value: JoinConfigData['how']; label: string }> = [
 		{ value: 'inner', label: 'Inner Join' },
 		{ value: 'left', label: 'Left Join' },
 		{ value: 'right', label: 'Right Join' },
@@ -56,18 +56,19 @@
 		const target = event.target as HTMLSelectElement;
 		const dsId = target.value;
 		selectedDatasourceId = dsId;
-		if (dsId) {
-			const schemaInfo = await datasourceStore.getSchema(dsId);
-			const schema: Schema = {
-				columns: schemaInfo.columns.map(c => ({
-					name: c.name,
-					dtype: c.dtype,
-					nullable: c.nullable
-				})),
-				row_count: schemaInfo.row_count
-			};
-			await schemaStore.setJoinDatasource(dsId, schema);
-		}
+		if (!dsId) return;
+		const schemaInfo = await datasourceStore.getSchema(dsId);
+		const joinSchema: Schema = {
+			columns: schemaInfo.columns.map(c => ({
+				name: c.name,
+				dtype: c.dtype,
+				nullable: c.nullable
+			})),
+			row_count: schemaInfo.row_count
+		};
+		const setJoinDatasource = schemaStore.setJoinDatasource as unknown as (id: string, schema: Schema) => void;
+		setJoinDatasource(dsId, joinSchema);
+
 	}
 </script>
 

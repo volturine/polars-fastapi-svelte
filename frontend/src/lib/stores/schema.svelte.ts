@@ -1,7 +1,5 @@
 import type { Schema } from '$lib/types/schema';
 import type { PipelineStep } from '$lib/types/analysis';
-import type { SchemaInfo } from '$lib/types/datasource';
-import { datasourceStore } from '$lib/stores/datasource.svelte';
 import { analysisStore } from '$lib/stores/analysis.svelte';
 import { getStepTransform, type StepConfig } from '$lib/utils/schema/ops';
 import { emptySchema } from '$lib/types/schema';

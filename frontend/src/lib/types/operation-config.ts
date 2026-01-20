@@ -26,12 +26,10 @@ export interface GroupByConfigData {
 	aggregations: Aggregation[];
 }
 
-export interface SortRule {
-	column: string;
-	descending: boolean;
+export interface SortConfigData {
+	columns: string[];
+	descending: boolean[];
 }
-
-export type SortConfigData = SortRule[];
 
 export interface RenameConfigData {
 	column_mapping: Record<string, string>;

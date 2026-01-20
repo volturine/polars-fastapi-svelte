@@ -1,73 +1,66 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 
-	interface SortRule {
-		column: string;
-		descending: boolean;
-	}
-
 	interface Props {
 		schema: Schema;
-		config?: SortRule[];
+		config?: { columns: string[]; descending: boolean[] };
 	}
 
-	let { schema, config = $bindable([]) }: Props = $props();
+	let { schema, config = $bindable({ columns: [], descending: [] }) }: Props = $props();
 
-	// Ensure config is an array (handles empty {} from step creation)
-	let safeConfig = $derived(Array.isArray(config) ? config : []);
-
-	let newRule = $state<SortRule>({
-		column: '',
-		descending: false
+	let safeConfig = $derived({
+		columns: config?.columns ?? [],
+		descending: config?.descending ?? []
 	});
 
+	let newColumn = $state('');
+	let newDescending = $state(false);
+
 	function addSortRule() {
-		if (!newRule.column) return;
-
-		// Check if column is already in sort rules
-		const exists = safeConfig.some((rule) => rule.column === newRule.column);
-		if (exists) return;
-
-		// Ensure config is an array before adding
-		const base = Array.isArray(config) ? config : [];
-		config = [...base, { column: newRule.column, descending: newRule.descending }];
-
-		newRule = {
-			column: '',
-			descending: false
+		if (!newColumn) return;
+		if (safeConfig.columns.includes(newColumn)) return;
+		config = {
+			columns: [...safeConfig.columns, newColumn],
+			descending: [...safeConfig.descending, newDescending]
 		};
+		newColumn = '';
+		newDescending = false;
 	}
 
 	function removeSortRule(index: number) {
-		if (Array.isArray(config)) {
-			config = config.filter((_, i) => i !== index);
-		}
+		config = {
+			columns: safeConfig.columns.filter((_, i) => i !== index),
+			descending: safeConfig.descending.filter((_, i) => i !== index)
+		};
 	}
 
 	function toggleDirection(index: number) {
-		if (Array.isArray(config) && config[index]) {
-			config = config.map((rule, i) =>
-				i === index ? { ...rule, descending: !rule.descending } : rule
-			);
-		}
+		config = {
+			...safeConfig,
+			descending: safeConfig.descending.map((d, i) => (i === index ? !d : d))
+		};
 	}
 
 	function moveUp(index: number) {
-		if (!Array.isArray(config) || index === 0) return;
-		const newConfig = [...config];
-		[newConfig[index], newConfig[index - 1]] = [newConfig[index - 1], newConfig[index]];
-		config = newConfig;
+		if (index === 0) return;
+		const columns = [...safeConfig.columns];
+		const descending = [...safeConfig.descending];
+		[columns[index], columns[index - 1]] = [columns[index - 1], columns[index]];
+		[descending[index], descending[index - 1]] = [descending[index - 1], descending[index]];
+		config = { columns, descending };
 	}
 
 	function moveDown(index: number) {
-		if (!Array.isArray(config) || index === config.length - 1) return;
-		const newConfig = [...config];
-		[newConfig[index], newConfig[index + 1]] = [newConfig[index + 1], newConfig[index]];
-		config = newConfig;
+		if (index === safeConfig.columns.length - 1) return;
+		const columns = [...safeConfig.columns];
+		const descending = [...safeConfig.descending];
+		[columns[index], columns[index + 1]] = [columns[index + 1], columns[index]];
+		[descending[index], descending[index + 1]] = [descending[index + 1], descending[index]];
+		config = { columns, descending };
 	}
 
 	let availableColumns = $derived(
-		schema.columns.filter((col) => !safeConfig.some((rule) => rule.column === col.name))
+		schema.columns.filter((col) => !safeConfig.columns.includes(col.name))
 	);
 </script>
 
@@ -75,7 +68,7 @@
 	<h3>Sort Configuration</h3>
 
 	<div class="add-rule">
-		<select bind:value={newRule.column}>
+		<select bind:value={newColumn}>
 			<option value="">Select column...</option>
 			{#each availableColumns as column (column.name)}
 				<option value={column.name}>{column.name} ({column.dtype})</option>
@@ -83,22 +76,22 @@
 		</select>
 
 		<label class="direction-toggle">
-			<input type="checkbox" bind:checked={newRule.descending} />
+			<input type="checkbox" bind:checked={newDescending} />
 			<span>Descending</span>
 		</label>
 
-		<button type="button" onclick={addSortRule} disabled={!newRule.column}> Add Sort Rule </button>
+		<button type="button" onclick={addSortRule} disabled={!newColumn}> Add Sort Rule </button>
 	</div>
 
-	{#if safeConfig.length > 0}
+	{#if safeConfig.columns.length > 0}
 		<div class="sort-rules">
 			<h4>Sort Order (top to bottom)</h4>
-			{#each safeConfig as rule, i (i)}
+			{#each safeConfig.columns as column, i (column)}
 				<div class="sort-rule-item">
 					<div class="rule-info">
-						<span class="rule-column">{rule.column}</span>
+						<span class="rule-column">{column}</span>
 						<button type="button" class="direction-btn" onclick={() => toggleDirection(i)}>
-							{rule.descending ? '↓ DESC' : '↑ ASC'}
+							{safeConfig.descending[i] ? '↓ DESC' : '↑ ASC'}
 						</button>
 					</div>
 
@@ -109,7 +102,7 @@
 						<button
 							type="button"
 							onclick={() => moveDown(i)}
-							disabled={i === safeConfig.length - 1}
+							disabled={i === safeConfig.columns.length - 1}
 							title="Move down"
 						>
 							↓

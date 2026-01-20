@@ -83,7 +83,7 @@
 		} else {
 			sorting = [];
 		}
-		
+
 		if (onSort && sorting.length > 0) {
 			onSort(sorting[0].id, sorting[0].desc ? 'desc' : 'asc');
 		}

@@ -35,7 +35,6 @@
 	let dragPreviewEl = $state<HTMLImageElement | null>(null);
 	let touchDragging = $state(false);
 	let touchConsumed = $state(false);
-	let touchMode = $state(false);
 	let longPressTimer = $state<number | null>(null);
 	let pointerStartX = $state<number | null>(null);
 	let pointerStartY = $state<number | null>(null);
@@ -114,9 +113,12 @@
 			}
 
 			case 'sort': {
-				const sortRules = s.config as unknown as Array<{ column: string; descending: boolean }>;
-				if (!Array.isArray(sortRules) || sortRules.length === 0) return 'not configured';
-				return `${sortRules.length} column${sortRules.length > 1 ? 's' : ''}`;
+				const sortConfig = s.config as { columns: string[]; descending: boolean[] };
+				const columns = sortConfig?.columns;
+				if (!columns || columns.length === 0) return 'not configured';
+				return columns
+					.map((col, i) => `${col} ${sortConfig.descending[i] ? '↓' : '↑'}`)
+					.join(', ');
 			}
 
 			case 'export': {
@@ -183,7 +185,6 @@
 		const target = event.currentTarget as HTMLElement | null;
 		const handle = target?.closest('[data-drag-handle]');
 		if (!handle) return;
-		touchMode = true;
 		pointerStartX = event.clientX;
 		pointerStartY = event.clientY;
 		longPressTimer = window.setTimeout(() => {
@@ -214,7 +215,6 @@
 		longPressTimer = null;
 		pointerStartX = null;
 		pointerStartY = null;
-		if (!touchDragging) touchMode = false;
 	}
 
 	function handleTouchMove(event: PointerEvent) {
@@ -247,7 +247,6 @@
 		const wasTouchDragging = touchDragging;
 		touchDragging = false;
 		touchConsumed = wasTouchDragging;
-		touchMode = false;
 		isDragging = false;
 		cancelLongPress();
 		if (event.currentTarget instanceof HTMLElement) {

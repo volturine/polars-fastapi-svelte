@@ -55,7 +55,13 @@
 		onConfigChange?: () => void;
 	}
 
-	let { step, schema, isLoadingSchema = false, onClose, onConfigChange }: Props = $props();
+	let {
+		step = $bindable(null),
+		schema,
+		isLoadingSchema = false,
+		onClose,
+		onConfigChange
+	}: Props = $props();
 	let configSnapshot = $state('');
 
 	function refreshSnapshot(nextStep: PipelineStep | null) {

@@ -6,8 +6,6 @@
 		getSortedRowModel,
 		type ColumnDef,
 		type SortingState,
-		type Table,
-		type Updater,
 		type HeaderGroup,
 		type Row
 	} from '@tanstack/table-core';

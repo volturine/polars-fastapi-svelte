@@ -19,6 +19,7 @@
 	const analysisId = $derived($page.params.id);
 
 	let selectedStepId = $state<string | null>(null);
+	let selectedStepState = $state<PipelineStep | null>(null);
 	let isSaving = $state(false);
 	let saveStatus = $state<'saved' | 'unsaved' | 'saving'>('saved');
 	let isLoadingSchema = $state(false);
@@ -158,6 +159,7 @@
 
 	function handleSelectStep(stepId: string) {
 		selectedStepId = stepId;
+		selectedStepState = analysisStore.pipeline.find((step) => step.id === stepId) || null;
 		markUnsaved();
 	}
 
@@ -165,6 +167,7 @@
 		analysisStore.removeStep(stepId);
 		if (selectedStepId === stepId) {
 			selectedStepId = null;
+			selectedStepState = null;
 		}
 		markUnsaved();
 	}
@@ -189,6 +192,7 @@
 
 	function handleCloseConfig() {
 		selectedStepId = null;
+		selectedStepState = null;
 	}
 
 	function handleSelectTab(tabId: string) {
@@ -257,9 +261,13 @@
 		if (event.key === 'Escape') closeDatasourceModal();
 	}
 
-	const selectedStep = $derived.by(() => {
-		if (!selectedStepId) return null;
-		return analysisStore.pipeline.find((step) => step.id === selectedStepId) || null;
+	$effect(() => {
+		if (selectedStepId) {
+			const current = analysisStore.pipeline.find((step) => step.id === selectedStepId);
+			if (current) {
+				selectedStepState = current;
+			}
+		}
 	});
 </script>
 
@@ -401,7 +409,7 @@
 
 			<div class="right-pane" style="width: {rightPaneWidth}px">
 				<StepConfig
-					step={selectedStep}
+					bind:step={selectedStepState}
 					schema={analysisStore.calculatedSchema}
 					{isLoadingSchema}
 					onClose={handleCloseConfig}

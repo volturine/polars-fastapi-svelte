@@ -1,4 +1,13 @@
 <script lang="ts">
+	import {
+		createTable,
+		getCoreRowModel,
+		getSortedRowModel,
+		type ColumnDef,
+		type SortingState,
+		type HeaderGroup,
+		type Row
+	} from '@tanstack/table-core';
 	import type { TableCellValue } from '$lib/types/api-responses';
 
 	interface Props {
@@ -8,57 +17,82 @@
 		onSort?: (column: string, direction: 'asc' | 'desc') => void;
 	}
 
+	type RowData = Record<string, unknown>;
+
 	let { columns, data, loading = false, onSort }: Props = $props();
 
-	let sortColumn = $state<string | null>(null);
-	let sortDirection = $state<'asc' | 'desc'>('asc');
+	let sorting = $state<SortingState>([]);
+	let headerGroups = $state<HeaderGroup<RowData>[]>([]);
+	let rows = $state<Row<RowData>[]>([]);
 
-	let sortedData = $derived(() => {
-		if (!sortColumn) return data;
+	// Single effect that handles table creation and updates
+	$effect(() => {
+		// Dependencies: data, columns, sorting
+		const currentData = data;
+		const currentColumns = columns;
+		const currentSorting = sorting;
 
-		const col = sortColumn;
-		const sorted = [...data].sort((a, b) => {
-			const aVal = a[col];
-			const bVal = b[col];
+		if (currentData.length === 0 || currentColumns.length === 0) {
+			headerGroups = [];
+			rows = [];
+			return;
+		}
 
-			if (aVal === null || aVal === undefined) return 1;
-			if (bVal === null || bVal === undefined) return -1;
+		const columnDefs: ColumnDef<RowData>[] = currentColumns.map((col) => ({
+			id: col,
+			accessorKey: col,
+			header: col
+		}));
 
-			if (typeof aVal === 'number' && typeof bVal === 'number') {
-				return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
-			}
-
-			const aStr = String(aVal);
-			const bStr = String(bVal);
-			const comparison = aStr.localeCompare(bStr);
-			return sortDirection === 'asc' ? comparison : -comparison;
+		const table = createTable({
+			data: currentData,
+			columns: columnDefs,
+			state: {
+				sorting: currentSorting,
+				columnPinning: { left: [], right: [] },
+				columnVisibility: {},
+				expanded: {},
+				grouping: [],
+				rowSelection: {},
+				columnOrder: []
+			},
+			onSortingChange: () => {},
+			getCoreRowModel: getCoreRowModel(),
+			getSortedRowModel: getSortedRowModel(),
+			onStateChange: () => {},
+			renderFallbackValue: null
 		});
 
-		return sorted;
+		headerGroups = table.getHeaderGroups();
+		rows = table.getRowModel().rows;
 	});
-
-	function handleSort(column: string) {
-		if (sortColumn === column) {
-			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-		} else {
-			sortColumn = column;
-			sortDirection = 'asc';
-		}
-
-		if (onSort) {
-			onSort(column, sortDirection);
-		}
-	}
 
 	function formatValue(value: TableCellValue): string {
 		if (value === null || value === undefined) return '—';
-		if (typeof value === 'number') {
-			return value.toLocaleString();
-		}
-		if (typeof value === 'boolean') {
-			return value ? 'true' : 'false';
-		}
+		if (typeof value === 'number') return value.toLocaleString();
+		if (typeof value === 'boolean') return value ? 'true' : 'false';
 		return String(value);
+	}
+
+	function toggleSort(columnId: string) {
+		const existing = sorting.find((s: SortingState[number]) => s.id === columnId);
+		if (!existing) {
+			sorting = [{ id: columnId, desc: false }];
+		} else if (!existing.desc) {
+			sorting = [{ id: columnId, desc: true }];
+		} else {
+			sorting = [];
+		}
+		
+		if (onSort && sorting.length > 0) {
+			onSort(sorting[0].id, sorting[0].desc ? 'desc' : 'asc');
+		}
+	}
+
+	function getSortDirection(columnId: string): 'asc' | 'desc' | false {
+		const sort = sorting.find((s: SortingState[number]) => s.id === columnId);
+		if (!sort) return false;
+		return sort.desc ? 'desc' : 'asc';
 	}
 </script>
 
@@ -74,31 +108,37 @@
 		<div class="empty-state">
 			<p>No data available</p>
 		</div>
-	{:else}
+	{:else if headerGroups.length > 0}
 		<div class="table-wrapper">
 			<table class="data-table">
 				<thead>
-					<tr>
-						{#each columns as column (column)}
-							<th>
-								<button class="column-header" onclick={() => handleSort(column)}>
-									<span class="column-name">{column}</span>
-									{#if sortColumn === column}
-										<span class="sort-indicator">
-											{sortDirection === 'asc' ? '↑' : '↓'}
+					{#each headerGroups as headerGroup (headerGroup.id)}
+						<tr>
+							{#each headerGroup.headers as header (header.id)}
+								<th>
+									<button class="column-header" onclick={() => toggleSort(header.id)}>
+										<span class="column-name">
+											{typeof header.column.columnDef.header === 'string'
+												? header.column.columnDef.header
+												: header.id}
 										</span>
-									{/if}
-								</button>
-							</th>
-						{/each}
-					</tr>
+										{#if getSortDirection(header.id)}
+											<span class="sort-indicator">
+												{getSortDirection(header.id) === 'asc' ? '↑' : '↓'}
+											</span>
+										{/if}
+									</button>
+								</th>
+							{/each}
+						</tr>
+					{/each}
 				</thead>
 				<tbody>
-					{#each sortedData() as row, _rowIndex (_rowIndex)}
+					{#each rows as row (row.id)}
 						<tr>
-							{#each columns as column (column)}
+							{#each row.getVisibleCells() as cell (cell.id)}
 								<td>
-									{formatValue(row[column] as TableCellValue)}
+									{formatValue(cell.getValue() as TableCellValue)}
 								</td>
 							{/each}
 						</tr>

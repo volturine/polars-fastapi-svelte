@@ -1,5 +1,16 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
+	import {
+		createTable,
+		getCoreRowModel,
+		getSortedRowModel,
+		type ColumnDef,
+		type SortingState,
+		type Table,
+		type Updater,
+		type HeaderGroup,
+		type Row
+	} from '@tanstack/table-core';
 	import { previewStepData, type StepPreviewResponse } from '$lib/api/compute';
 	import type { TableCellValue } from '$lib/types/api-responses';
 
@@ -15,8 +26,13 @@
 		rowLimit?: number;
 	}
 
+	type RowData = Record<string, unknown>;
+
 	let { datasourceId, pipeline, stepId, rowLimit = 1000 }: Props = $props();
 	let currentPage = $state(1);
+	let sorting = $state<SortingState>([]);
+	let headerGroups = $state<HeaderGroup<RowData>[]>([]);
+	let rows = $state<Row<RowData>[]>([]);
 	const pipelineKey = $derived(JSON.stringify(pipeline));
 
 	$effect(() => {
@@ -51,26 +67,10 @@
 	const startRow = $derived((currentPage - 1) * rowLimit + 1);
 	const endRow = $derived(data ? Math.min(currentPage * rowLimit, data.total_rows) : 0);
 
-	function nextPage() {
-		if (currentPage < totalPages) {
-			currentPage++;
-		}
-	}
-
-	function prevPage() {
-		if (currentPage > 1) {
-			currentPage--;
-		}
-	}
-
-	function formatValue(value: TableCellValue, _columnType?: string): string {
+	function formatValue(value: TableCellValue): string {
 		if (value === null || value === undefined) return '—';
-		if (typeof value === 'number') {
-			return value.toLocaleString();
-		}
-		if (typeof value === 'boolean') {
-			return value ? 'true' : 'false';
-		}
+		if (typeof value === 'number') return value.toLocaleString();
+		if (typeof value === 'boolean') return value ? 'true' : 'false';
 		if (Array.isArray(value)) {
 			return (
 				'[' +
@@ -94,6 +94,72 @@
 	function isListType(columnType: string): boolean {
 		return columnType.includes('List') || columnType === 'list';
 	}
+
+	// Single effect that handles table creation and updates
+	$effect(() => {
+		// Dependencies: data, sorting
+		const currentData = data;
+		const currentSorting = sorting;
+
+		if (!currentData || !currentData.columns || currentData.columns.length === 0) {
+			headerGroups = [];
+			rows = [];
+			return;
+		}
+
+		const columnDefs: ColumnDef<RowData>[] = currentData.columns.map((col) => ({
+			id: col,
+			accessorKey: col,
+			header: col
+		}));
+
+		const table = createTable({
+			data: currentData.data,
+			columns: columnDefs,
+			state: {
+				sorting: currentSorting,
+				columnPinning: { left: [], right: [] },
+				columnVisibility: {},
+				expanded: {},
+				grouping: [],
+				rowSelection: {},
+				columnOrder: []
+			},
+			onSortingChange: () => {},
+			getCoreRowModel: getCoreRowModel(),
+			getSortedRowModel: getSortedRowModel(),
+			onStateChange: () => {},
+			renderFallbackValue: null
+		});
+
+		headerGroups = table.getHeaderGroups();
+		rows = table.getRowModel().rows;
+	});
+
+	function nextPage() {
+		if (currentPage < totalPages) currentPage++;
+	}
+
+	function prevPage() {
+		if (currentPage > 1) currentPage--;
+	}
+
+	function toggleSort(columnId: string) {
+		const existing = sorting.find((s: SortingState[number]) => s.id === columnId);
+		if (!existing) {
+			sorting = [{ id: columnId, desc: false }];
+		} else if (!existing.desc) {
+			sorting = [{ id: columnId, desc: true }];
+		} else {
+			sorting = [];
+		}
+	}
+
+	function getSortDirection(columnId: string): 'asc' | 'desc' | false {
+		const sort = sorting.find((s: SortingState[number]) => s.id === columnId);
+		if (!sort) return false;
+		return sort.desc ? 'desc' : 'asc';
+	}
 </script>
 
 <div class="inline-data-table">
@@ -107,7 +173,7 @@
 			<p class="error-title">Failed to load preview</p>
 			<p class="error-message">{error.message}</p>
 		</div>
-	{:else if data}
+	{:else if headerGroups.length > 0 && data}
 		<div class="table-info">
 			Showing {startRow.toLocaleString()}-{endRow.toLocaleString()} of {data.total_rows.toLocaleString()}
 			rows
@@ -116,25 +182,38 @@
 		<div class="table-wrapper">
 			<table>
 				<thead>
-					<tr>
-						{#each data.columns as col (col)}
-							<th>
-								<span class="column-name">{col}</span>
-								{#if getColumnType(col)}
-									<span class="column-type" class:is-list={isListType(getColumnType(col))}>
-										{getColumnType(col)}
-									</span>
-								{/if}
-							</th>
-						{/each}
-					</tr>
+					{#each headerGroups as headerGroup (headerGroup.id)}
+						<tr>
+							{#each headerGroup.headers as header (header.id)}
+								<th>
+									<button class="column-header" onclick={() => toggleSort(header.id)}>
+										<span class="column-name">
+											{typeof header.column.columnDef.header === 'string'
+												? header.column.columnDef.header
+												: header.id}
+										</span>
+										{#if getSortDirection(header.id)}
+											<span class="sort-indicator">
+												{getSortDirection(header.id) === 'asc' ? '↑' : '↓'}
+											</span>
+										{/if}
+									</button>
+									{#if getColumnType(header.id)}
+										<span class="column-type" class:is-list={isListType(getColumnType(header.id))}>
+											{getColumnType(header.id)}
+										</span>
+									{/if}
+								</th>
+							{/each}
+						</tr>
+					{/each}
 				</thead>
 				<tbody>
-					{#each data.data as row, idx (idx)}
+					{#each rows as row (row.id)}
 						<tr>
-							{#each data.columns as col (col)}
-								<td class:is-list-cell={isListType(getColumnType(col))}>
-									{formatValue(row[col] as TableCellValue, getColumnType(col))}
+							{#each row.getVisibleCells() as cell (cell.id)}
+								<td class:is-list-cell={isListType(getColumnType(cell.column.id))}>
+									{formatValue(cell.getValue() as TableCellValue)}
 								</td>
 							{/each}
 						</tr>
@@ -145,11 +224,9 @@
 
 		{#if totalPages > 1}
 			<div class="pagination">
-				<button onclick={prevPage} disabled={currentPage === 1}> Previous </button>
-				<span class="page-info">
-					Page {currentPage} of {totalPages}
-				</span>
-				<button onclick={nextPage} disabled={currentPage >= totalPages}> Next </button>
+				<button onclick={prevPage} disabled={currentPage === 1}>Previous</button>
+				<span class="page-info">Page {currentPage} of {totalPages}</span>
+				<button onclick={nextPage} disabled={currentPage >= totalPages}>Next</button>
 			</div>
 		{/if}
 	{:else}
@@ -259,7 +336,7 @@
 	}
 
 	th {
-		padding: 0.75rem 1rem;
+		padding: 0;
 		text-align: left;
 		border-bottom: 2px solid var(--table-border);
 		font-weight: 600;
@@ -269,9 +346,34 @@
 		letter-spacing: 0.02em;
 	}
 
+	.column-header {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.75rem 1rem;
+		background: none;
+		border: none;
+		cursor: pointer;
+		font-size: inherit;
+		font-weight: inherit;
+		color: inherit;
+		text-transform: inherit;
+		letter-spacing: inherit;
+		transition: background-color 0.15s ease;
+	}
+
+	.column-header:hover {
+		background: var(--bg-hover);
+	}
+
 	.column-name {
 		font-family: var(--font-mono);
 		font-size: 0.875rem;
+	}
+
+	.sort-indicator {
+		color: var(--accent-primary);
+		font-size: 0.75rem;
 	}
 
 	.column-type {

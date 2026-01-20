@@ -160,12 +160,15 @@
 				ondragleave={handleDragLeave}
 				ondrop={(e) => handleDrop(e, 0)}
 			>
-				<ConnectionLine
-					fromStepIndex={-1}
-					toStepIndex={0}
-					totalSteps={steps.length + 1}
-					highlighted={hoverIndex === 0}
-				/>
+					{#if steps.length > 0 || canDrop}
+						<ConnectionLine
+							fromStepIndex={-1}
+							toStepIndex={0}
+							totalSteps={steps.length + 1}
+							highlighted={hoverIndex === 0}
+						/>
+					{/if}
+
 				{#if canDrop}
 					<div
 						class="drop-slot"
@@ -194,34 +197,37 @@
 				onRenameTab={_onRenameTab}
 			/>
 			{#if shouldShowInsert(0)}
-				<div
-					class="insert-zone drop-target"
-					class:ready={canDrop}
-					class:active={hoverIndex === 0}
-					class:invalid={hoverIndex === 0 && !drag.valid}
-					role="button"
-					tabindex="0"
-					ondragenter={(e) => handleDragEnter(e, 0)}
-					ondragover={handleDragOver}
-					ondragleave={handleDragLeave}
-					ondrop={(e) => handleDrop(e, 0)}
-				>
+			<div
+				class="insert-zone drop-target"
+				class:ready={canDrop}
+				class:active={hoverIndex === 0}
+				class:invalid={hoverIndex === 0 && !drag.valid}
+				role="button"
+				tabindex="0"
+				ondragenter={(e) => handleDragEnter(e, 0)}
+				ondragover={handleDragOver}
+				ondragleave={handleDragLeave}
+				ondrop={(e) => handleDrop(e, 0)}
+			>
+				{#if steps.length > 0}
 					<ConnectionLine
 						fromStepIndex={-1}
 						toStepIndex={0}
 						totalSteps={steps.length + 1}
 						highlighted={hoverIndex === 0}
 					/>
-					{#if canDrop}
-						<div
-							class="drop-slot"
-							class:active={hoverIndex === 0}
-							class:invalid={hoverIndex === 0 && !drag.valid}
-						>
-							{#if hoverIndex === 0}
-								<span class="slot-label">{drag.type ?? 'step'}</span>
-							{/if}
-						</div>
+				{/if}
+				{#if canDrop}
+					<div
+						class="drop-slot"
+						class:active={hoverIndex === 0}
+						class:invalid={hoverIndex === 0 && !drag.valid}
+					>
+						{#if hoverIndex === 0}
+							<span class="slot-label">{drag.type ?? 'step'}</span>
+						{/if}
+					</div>
+					{#if steps.length > 0}
 						<ConnectionLine
 							fromStepIndex={-1}
 							toStepIndex={0}
@@ -229,7 +235,9 @@
 							highlighted={hoverIndex === 0}
 						/>
 					{/if}
-				</div>
+				{/if}
+			</div>
+
 			{/if}
 			{#each steps as step, i (step.id)}
 				<StepNode

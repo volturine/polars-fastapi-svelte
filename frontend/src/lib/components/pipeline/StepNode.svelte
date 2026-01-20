@@ -123,6 +123,7 @@
 	let currentStepInfo = $derived(stepTypeInfo[step.type] || { label: step.type, icon: '⚙️' });
 	let label = $derived(typeLabels[step.type] || step.type);
 	let summary = $derived(getConfigSummary(step));
+	let isSavedView = $derived(step.type === 'view' && savedSteps.some((item) => item.id === step.id));
 
 	// Is this node being dragged?
 	let isDragging = $state(false);
@@ -259,17 +260,24 @@
 			</div>
 		{/if}
 
-		{#if step.type === 'view' && datasourceId && savedSteps.length > 0}
+		{#if step.type === 'view' && datasourceId}
 			<div class="view-preview expanded">
-				{#if saveStatus === 'unsaved'}
-					<div class="preview-stale">Preview shows last saved state</div>
+				{#if isSavedView}
+					{#if saveStatus === 'unsaved'}
+						<div class="preview-stale">Preview shows last saved state</div>
+					{/if}
+					<InlineDataTable
+						{datasourceId}
+						pipeline={savedSteps}
+						stepId={step.id}
+						rowLimit={typeof step.config?.rowLimit === 'number' ? step.config.rowLimit : 100}
+					/>
+				{:else}
+					<div class="preview-pending">
+						<div class="pending-dot"></div>
+						<span>Save to preview data</span>
+					</div>
 				{/if}
-				<InlineDataTable
-					{datasourceId}
-					pipeline={savedSteps}
-					stepId={step.id}
-					rowLimit={typeof step.config?.rowLimit === 'number' ? step.config.rowLimit : 100}
-				/>
 			</div>
 		{/if}
 	</div>
@@ -401,6 +409,29 @@
 		margin-top: var(--space-3);
 		border-top: 1px solid var(--border-secondary);
 		padding-top: var(--space-3);
+	}
+
+	.preview-pending {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-3);
+		border: 1px dashed var(--border-secondary);
+		border-radius: var(--radius-sm);
+		background-color: var(--bg-tertiary);
+		color: var(--fg-tertiary);
+		font-size: var(--text-xs);
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+	}
+
+	.pending-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 999px;
+		background: var(--accent-primary);
+		box-shadow: 0 0 0 4px rgba(70, 120, 200, 0.12);
 	}
 
 	.preview-stale {

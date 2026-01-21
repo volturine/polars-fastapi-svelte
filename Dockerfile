@@ -22,59 +22,39 @@ COPY frontend/ .
 RUN npm run build
 
 # ============================================
-# Stage 2: Build Backend Dependencies
+# Stage 2: Backend Runtime (Build + Run)
 # ============================================
 FROM python:3.13-slim AS backend-builder
 
 WORKDIR /app/backend
 
-# Install uv for fast dependency management
-RUN pip install --no-cache-dir uv
-
-# Copy dependency files
-COPY backend/pyproject.toml backend/uv.lock* ./
-
-# Install dependencies into .venv
-RUN uv sync --frozen --no-dev || uv sync --no-dev
-
-# ============================================
-# Stage 3: Runtime Image
-# ============================================
-FROM python:3.13-slim
+# Install uv (from official image)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 LABEL maintainer="Your Name <your.email@example.com>"
 LABEL description="Polars-FastAPI-Svelte Analysis Platform - Combined frontend and backend"
 
-WORKDIR /app
+# Create a custom user with UID 1000 and GID 1000
+RUN addgroup --gid 1000 appgroup && adduser --uid 1000 --gid 1000 --disabled-password --gecos "" appuser
 
-# Install runtime dependencies
-# - curl: for health checks
-# - ca-certificates: for HTTPS requests
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+# Copy dependency files
+COPY backend/pyproject.toml backend/uv.lock* backend/README.md ./
+
+# Install dependencies into .venv
+RUN uv sync --frozen || uv sync
 
 # Copy backend code
 COPY backend/ /app/backend/
 
-# Copy virtual environment from builder
-COPY --from=backend-builder /app/backend/.venv /app/backend/.venv
-
 # Copy frontend build from builder
 COPY --from=frontend-builder /app/frontend/build /app/frontend/build
-
-# Set up environment
-ENV PATH="/app/backend/.venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
 
 # Create data directories with proper permissions
 RUN mkdir -p /app/data/uploads /app/data/results /app/data/exports /app/backend/database && \
     chmod -R 755 /app/data /app/backend/database
 
-# Create non-root user for security
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
+# Fix ownership and permissions for all files
+RUN chown -R appuser:appgroup /app
 
 USER appuser
 
@@ -86,9 +66,7 @@ EXPOSE 8000
 
 # Health check using the /health endpoint
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD python -c "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"
 
-# Start command using Gunicorn with Uvicorn workers
-CMD ["gunicorn", "main:app", \
-     "-c", "gunicorn.conf.py", \
-     "-b", "0.0.0.0:8000"]
+# Start command using uv
+CMD [ "uv", "run", "main.py" ]

@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   app:
@@ -55,7 +55,7 @@ services:
 
       # Logging
       - LOG_LEVEL=${LOG_LEVEL:-info}
-
+      - PROD_MODE_ENABLED=true
     volumes:
       # Persist data directory
       - data:/app/data
@@ -64,21 +64,27 @@ services:
 
     restart: unless-stopped
 
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
+    # healthcheck:
+    #   test:
+    #     [
+    #       "CMD",
+    #       "python",
+    #       "-c",
+    #       "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)",
+    #     ]
+    #   interval: 30s
+    #   timeout: 3s
+    #   retries: 3
+    #   start_period: 10s
 
     # Resource limits (adjust based on your server)
     deploy:
       resources:
         limits:
-          cpus: '4.0'
+          cpus: "4.0"
           memory: 8G
         reservations:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 2G
 
 volumes:

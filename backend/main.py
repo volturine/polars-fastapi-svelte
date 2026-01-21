@@ -1,11 +1,13 @@
 import asyncio
 import contextlib
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from api import router
@@ -78,6 +80,13 @@ app.include_router(router, prefix='/api', tags=['api'])
 
 @app.get('/')
 async def root():
+    prod_mode_enabled = os.getenv('PROD_MODE_ENABLED', 'false').lower() in ['true', '1', 'yes']
+    frontend_build_dir = Path(__file__).parent.parent / 'frontend' / 'build'
+    index_path = frontend_build_dir / 'index.html'
+
+    if prod_mode_enabled and index_path.exists():
+        return FileResponse(str(index_path))
+
     return {'message': 'Welcome to Svelte-FastAPI Template'}
 
 
@@ -149,13 +158,32 @@ async def startup():
 
 
 # Mount static files (frontend) - This must be LAST
-# Only mount if the frontend build directory exists (for Docker/production deployments)
+# Only mount if PROD_MODE_ENABLED is true and frontend build exists
+prod_mode_enabled = os.getenv('PROD_MODE_ENABLED', 'false').lower() in ['true', '1', 'yes']
 frontend_build_dir = Path(__file__).parent.parent / 'frontend' / 'build'
-if frontend_build_dir.exists():
-    logger.info(f'Mounting frontend static files from {frontend_build_dir}')
-    app.mount('/', StaticFiles(directory=str(frontend_build_dir), html=True), name='frontend')
+
+if prod_mode_enabled and frontend_build_dir.exists():
+    logger.info(f'PROD_MODE_ENABLED=true. Serving frontend from {frontend_build_dir}')
+
+    app.mount(
+        '/_app',
+        StaticFiles(directory=str(frontend_build_dir / '_app')),
+        name='frontend-assets',
+    )
+
+    @app.get('/{full_path:path}', include_in_schema=False)
+    async def serve_static_or_index(full_path: str):
+        path = frontend_build_dir / full_path
+        if path.is_file():
+            return FileResponse(str(path))
+
+        index_path = frontend_build_dir / 'index.html'
+        if index_path.exists():
+            return FileResponse(str(index_path))
+
+        raise HTTPException(status_code=404, detail='File not found')
 else:
-    logger.info('Frontend build directory not found, skipping static file serving (development mode)')
+    logger.info('Frontend build not served (development mode or build missing)')
 
 
 if __name__ == '__main__':

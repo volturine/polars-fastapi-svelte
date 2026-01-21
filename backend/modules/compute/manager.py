@@ -42,7 +42,18 @@ class ProcessManager:
         return cls._instance
 
     def spawn_engine(self, analysis_id: str) -> EngineInfo:
-        """Spawn a new engine for the analysis or return existing one."""
+        """
+        Spawn a new compute engine for an analysis or return existing one.
+
+        This method is thread-safe and will reuse an existing engine if one
+        is already running for the given analysis_id.
+
+        Args:
+            analysis_id: Unique identifier for the analysis
+
+        Returns:
+            EngineInfo containing the engine and metadata
+        """
         with self._engines_lock:
             if analysis_id in self._engines:
                 info = self._engines[analysis_id]

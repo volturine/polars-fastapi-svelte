@@ -121,7 +121,22 @@ async def execute_analysis(
     datasource_id: str,
     pipeline_steps: list[dict],
 ) -> ComputeStatusSchema:
-    """Execute a data analysis pipeline."""
+    """
+    Execute a data analysis pipeline asynchronously.
+
+    Args:
+        session: Database session
+        analysis_id: Unique identifier for the analysis
+        datasource_id: ID of the datasource to analyze
+        pipeline_steps: List of pipeline step configurations
+
+    Returns:
+        ComputeStatusSchema with job status and metadata
+
+    Raises:
+        DataSourceNotFoundError: If datasource doesn't exist
+        PipelineExecutionError: If pipeline execution fails
+    """
     result = await session.execute(select(DataSource).where(DataSource.id == datasource_id))
     datasource = result.scalar_one_or_none()
 
@@ -253,7 +268,20 @@ async def preview_step(
 
 
 def get_job_status(job_id: str) -> ComputeStatusSchema:
-    """Get the status of a compute job."""
+    """
+    Get the current status of a compute job.
+
+    This function polls the engine for updates and refreshes the cached status.
+
+    Args:
+        job_id: Unique identifier for the job
+
+    Returns:
+        ComputeStatusSchema with current job status
+
+    Raises:
+        JobNotFoundError: If job doesn't exist or has been cleaned up
+    """
     # Periodic cleanup when accessing jobs
     cleanup_old_jobs()
 

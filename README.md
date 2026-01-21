@@ -39,6 +39,46 @@ Frontend: http://localhost:5173
 
 Backend: http://localhost:8000
 
+## Configuration
+
+The backend can be configured using environment variables. Copy `.env.example` to `.env` and customize as needed:
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+### Key Configuration Options
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DEBUG` | `false` | Enable debug logging and SQL echo |
+| `ENGINE_IDLE_TIMEOUT` | `300` | Seconds before idle engines are cleaned up |
+| `JOB_TIMEOUT` | `300` | Maximum job execution time in seconds |
+| `JOB_TTL` | `1800` | Seconds to keep completed jobs in memory |
+| `MAX_JOBS_IN_MEMORY` | `1000` | Maximum number of jobs to cache |
+| `MAX_UPLOAD_SIZE` | `10737418240` | Maximum file upload size (10GB) |
+
+See `backend/.env.example` for all available options with detailed descriptions.
+
+## Architecture
+
+### Backend Components
+
+- **Compute Engine**: Isolated multiprocess execution for each analysis
+- **Process Manager**: Thread-safe singleton managing engine lifecycle
+- **Job Tracking**: TTL-based cleanup with configurable size limits
+- **Error Handling**: Custom exception hierarchy with structured error responses
+- **Configuration**: Pydantic-based settings with validation
+
+### Key Features
+
+- **Thread-safe operations**: All shared state uses proper locking
+- **Automatic cleanup**: Idle engines and old jobs are cleaned up automatically
+- **Timeout protection**: All polling loops have configurable timeouts
+- **Structured logging**: Comprehensive logging at INFO, DEBUG, and ERROR levels
+- **Graceful shutdown**: Proper cleanup of all resources on application exit
+
 ## Documentation
 
 - [PRD](docs/PRD.md) — Feature specs and architecture

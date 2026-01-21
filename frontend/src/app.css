@@ -148,6 +148,7 @@
 
 	/* Panel widths */
 	--operations-panel-width: 340px;
+	--operations-panel-max-width: 500px;
 
 	--form-section-bg: var(--bg-tertiary);
 	--form-section-border: var(--border-primary);

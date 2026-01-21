@@ -37,7 +37,7 @@
 	let modalMode = $state<'add' | 'change'>('add');
 
 	// Resizable panes with persisted state
-	const operationsPanelWidth = new PersistedState('analysis-operations-panel-width', 280);
+	const operationsPanelWidth = new PersistedState('analysis-operations-panel-width', 180);
 	let isResizingLeft = $state(false);
 	let isResizingRight = $state(false);
 
@@ -54,10 +54,16 @@
 	function handleMouseMove(e: MouseEvent) {
 		if (isResizingLeft) {
 			const newWidth = e.clientX;
-			operationsPanelWidth.current = Math.max(180, Math.min(500, newWidth));
+			operationsPanelWidth.current = Math.max(
+				window.innerWidth * 0.15,
+				Math.min(window.innerWidth * 0.4, newWidth)
+			);
 		} else if (isResizingRight) {
 			const newWidth = window.innerWidth - e.clientX;
-			operationsPanelWidth.current = Math.max(180, Math.min(500, newWidth));
+			operationsPanelWidth.current = Math.max(
+				window.innerWidth * 0.15,
+				Math.min(window.innerWidth * 0.4, newWidth)
+			);
 		}
 	}
 
@@ -944,7 +950,8 @@
 		flex-shrink: 0;
 		overflow: hidden;
 		display: flex;
-		min-width: var(--operations-panel-width, 280px);
+		min-width: var(--operations-panel-width, 200px);
+		max-width: var(--operations-panel-max-width, 500px);
 		justify-content: left;
 		background-color: var(--panel-bg);
 	}
@@ -969,7 +976,8 @@
 		flex-shrink: 0;
 		overflow: hidden;
 		display: flex;
-		min-width: var(--operations-panel-width, 280px);
+		min-width: var(--operations-panel-width, 200px);
+		max-width: var(--operations-panel-max-width, 500px);
 		justify-content: left;
 		background-color: var(--panel-bg);
 	}

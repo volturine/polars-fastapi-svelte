@@ -53,7 +53,7 @@
 		{ value: 'cross', label: 'Cross Join' }
 	];
 
-	const rightColumns = $derived(rightSchema?.columns ?? []);
+	const rightColumns = $derived(rightSchema?.columns ?? schema.columns);
 
 	async function handleDatasourceChange(event: Event) {
 		const target = event.target as HTMLSelectElement;
@@ -83,7 +83,7 @@
 	<div class="section">
 		<h4>Right Datasource</h4>
 		<select value={selectedDatasourceId} onchange={handleDatasourceChange}>
-			<option value="">Select datasource...</option>
+			<option value="">None (self-join same datasource)</option>
 			{#each datasourceStore.datasources as ds (ds.id)}
 				<option value={ds.id}>{ds.name} ({ds.source_type})</option>
 			{/each}
@@ -93,6 +93,8 @@
 				<strong>Right schema:</strong>
 				<span class="column-count">{rightSchema.columns.length} columns</span>
 			</div>
+		{:else}
+			<div class="help-text">Leave empty to perform a self-join (join table to itself)</div>
 		{/if}
 	</div>
 
@@ -129,7 +131,7 @@
 
 				<div class="key-input-group">
 					<label for="right-key">Right Column</label>
-					<select id="right-key" bind:value={config.right_on} disabled={!rightSchema}>
+					<select id="right-key" bind:value={config.right_on}>
 						<option value={null}>Select column...</option>
 						{#each rightColumns as column (column.name)}
 							<option value={column.name}>{column.name} ({column.dtype})</option>

@@ -52,10 +52,8 @@
 		}
 	});
 
-	// Sync SvelteSet → config.columns when selectedColumns changes
-	$effect(() => {
-		config.columns = Array.from(selectedColumns);
-	});
+	// Config is now updated directly in toggleColumn/selectAll/deselectAll functions
+	// to avoid infinite loop from bidirectional effect binding
 
 	function toggleColumn(columnName: string) {
 		if (selectedColumns.has(columnName)) {
@@ -63,14 +61,18 @@
 		} else {
 			selectedColumns.add(columnName);
 		}
+		// Update config directly to avoid infinite loop
+		config.columns = Array.from(selectedColumns);
 	}
 
 	function selectAll() {
 		selectedColumns = new SvelteSet(schema.columns.map((c) => c.name));
+		config.columns = Array.from(selectedColumns);
 	}
 
 	function deselectAll() {
 		selectedColumns = new SvelteSet();
+		config.columns = [];
 	}
 
 	let selectedColumnNames = $derived(Array.from(selectedColumns));

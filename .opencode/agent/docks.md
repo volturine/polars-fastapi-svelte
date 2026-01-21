@@ -1,5 +1,6 @@
 ---
 description: ALWAYS use this when writing docs
+model: opencode/minimax-m2.1-free
 color: "#38A3EE"
 ---
 

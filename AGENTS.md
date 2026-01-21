@@ -191,3 +191,176 @@ Copy `.env.example` to `.env` in both `backend/` and `frontend/` directories.
 - NEVER push to remote repositories
 - Only local commits are allowed
 - To share changes, create a pull request or ask a maintainer to push
+
+## Testing
+
+### Playwright E2E Testing Strategy
+
+This project uses Playwright MCP for end-to-end testing with a subagent-based approach to keep the main processing agent uncluttered.
+
+#### Philosophy
+
+- Use subagents for testing to avoid cluttering main processing agents
+- Test every functionality by creating a new analysis for each test session
+- Test compute pipeline nodes (operations) thoroughly
+- Subagents run Playwright tests in parallel while the main agent coordinates
+
+#### Testing Workflow
+
+1. **Per-Feature Testing**: Each new feature gets its own analysis to avoid state pollution
+2. **Node Testing**: Test compute nodes (operations) by adding them to pipelines and verifying:
+   - Config panel opens correctly
+   - Step appears in pipeline
+   - Save succeeds
+   - Preview/data loads correctly
+
+3. **Subagent Pattern**:
+   ```typescript
+   // Main agent coordinates
+   await task((subagent_type = "general"), (command = "/test-feature-x"));
+   // Subagent runs Playwright, reports results back
+   ```
+
+#### Quick Test Script
+
+```bash
+# Start services
+cd /home/kripso/workspace/polars-fastapi-svelte
+uv run main.py &    # Backend on port 8000
+cd frontend
+npm run dev -- --port 5173 --host &  # Frontend on port 5173
+
+# Run tests via Playwright MCP
+```
+
+#### Available as OpenCode Skill
+
+Create a skill `e2e-testing` that provides:
+
+- Prompt template for testing new features
+- Checklist for complete E2E coverage
+- Reporting format for test results
+
+#### Test Coverage Requirements
+
+- ✅ New analysis creation flow
+- ✅ Data source selection
+- ✅ All operation config panels
+- ✅ Pipeline step management (add, edit, delete, reorder)
+- ✅ Save/load state persistence
+- ✅ Engine lifecycle (creation, monitor, shutdown)
+- ✅ Export functionality
+- ✅ Error handling
+
+### E2E Testing Lessons Learned
+
+During comprehensive E2E testing of this project, the following patterns and lessons were documented:
+
+#### 1. Subagent Pattern for Testing
+
+**Why**: Avoids cluttering main processing agent with Playwright interactions.
+
+**How**:
+
+```typescript
+// Main agent coordinates testing
+await task((subagent_type = "general"), (command = "/test-phase-5-operations"));
+// Subagent runs Playwright, reports results back
+```
+
+**Benefits**:
+
+- Parallel test execution possible
+- Clean separation of concerns
+- Each test gets fresh analysis (no state pollution)
+- Standardized reporting format
+
+#### 2. File Upload Monitoring
+
+**Check uploads directory**:
+
+```bash
+ls -la /home/kripso/workspace/polars-fastapi-svelte/data/uploads/
+```
+
+Files are renamed to UUIDs when uploaded (e.g., `6ce4c9e9-b4de-4dde-a143-80f772390972.csv`).
+
+#### 3. Test Organization
+
+**Use Phases Structure**:
+
+- Phase 1: Home Page
+- Phase 2: Create Analysis Wizard
+- Phase 3: Data Sources Management
+- Phase 4: Analysis Editor
+- Phase 5: Operations Pipeline
+- Phase 6: Engine Lifecycle
+- Phase 7: Export Functionality
+- Phase 8: Error Handling
+
+**Analysis Naming**: Use descriptive names like `E2E Test - Phase 5 Operations` to avoid confusion.
+
+#### 4. Status Tracking
+
+**Use todo list** to track progress across sessions:
+
+```typescript
+todowrite({
+  todos: [
+    { id: "1", content: "Test Phase 5 operations", status: "in_progress" },
+    { id: "2", content: "Update E2E_TEST_RESULTS.md", status: "pending" },
+  ],
+});
+```
+
+#### 5. Documentation
+
+**E2E_TEST_RESULTS.md is source of truth**:
+
+- Track completed/blocked tests per phase
+- Document bugs found and fixes applied
+- Note Docker MCP limitations
+- Update after each testing session
+
+**Sections to include**:
+
+- Test execution log
+- Phase-by-phase results
+- Key findings (what works, what needs testing)
+- Known issues
+- Session notes
+
+#### 6. Playwright MCP Limitations
+
+| Feature                 | Status                 | Workaround                       |
+| ----------------------- | ---------------------- | -------------------------------- |
+| Host file access        | ❌ Blocked             | check the ./data local directory |
+| Slow network simulation | ❌ Blocked             | Manual test                      |
+| Drag-drop operations    | ⚠️ Partial             | Manual verification              |
+| WebSocket connections   | ⚠️ Errors non-critical | Ignore HMR errors                |
+
+#### 7. Frontend URLs for Testing
+
+- **Development**: http://192.168.1.140:5173 (network-accessible)
+- **Local**: http://localhost:5173
+- **Backend**: http://localhost:8000
+
+**Start services**:
+
+```bash
+cd /home/kripso/workspace/polars-fastapi-svelte
+uv run main.py &    # Backend on port 8000
+cd frontend
+npm run dev -- --port 5173 --host &  # Frontend on port 5173
+```
+
+#### 8. Testing Checklist Template
+
+When testing new features, verify:
+
+- [ ] Config panel opens correctly
+- [ ] Step appears in pipeline
+- [ ] Save succeeds
+- [ ] Preview/data loads correctly
+- [ ] Error handling works
+- [ ] Update E2E_TEST_RESULTS.md

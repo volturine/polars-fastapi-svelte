@@ -29,9 +29,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # CORS origins - comma-separated list of allowed origins
-    cors_origins: str = (
-        'http://localhost:3000,http://127.0.0.1:3000,http://0.0.0.0:3000,http://192.168.1.140:3000,http://100.68.183.19:3000'
-    )
+    cors_origins: str = 'http://localhost:3000,http://127.0.0.1:3000,http://0.0.0.0:3000,http://192.168.1.140:3000,http://100.68.183.19:3000'
 
     database_url: str = 'sqlite+aiosqlite:///./database/app.db'
 
@@ -80,7 +78,7 @@ class Settings(BaseSettings):
     max_concurrent_engines: int = Field(default=10, alias='MAX_CONCURRENT_ENGINES')
 
     # Worker Configuration
-    # Number of Uvicorn/Gunicorn workers (0 = auto: 2 * cores + 1)
+    # Number of Gunicorn/Uvicorn workers (0 = auto: 2 * cores + 1)
     workers: int = Field(default=1, alias='WORKERS')
 
     # Maximum connections per worker

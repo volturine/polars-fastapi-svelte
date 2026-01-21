@@ -26,7 +26,7 @@ This document lists ALL environment variables supported by the application.
 | `POLARS_STREAMING_CHUNK_SIZE` | integer | 0 | Streaming chunk size (0=auto) |
 | `MAX_CONCURRENT_ENGINES` | integer | 10 | Max simultaneous engines (1-100) |
 | **Workers** ||||
-| `WORKERS` | integer | 1 | Gunicorn workers (0=auto: 2*cores+1) |
+| `WORKERS` | integer | 1 | Gunicorn/Uvicorn workers (0=auto: 2*cores+1) |
 | `WORKER_CONNECTIONS` | integer | 1000 | Max connections per worker |
 | `TIMEOUT` | integer | 30 | Worker timeout seconds |
 | `KEEPALIVE` | integer | 5 | Keep-alive timeout seconds |

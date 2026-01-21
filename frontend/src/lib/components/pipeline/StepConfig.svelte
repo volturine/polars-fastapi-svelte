@@ -46,6 +46,12 @@
 	import ValueCountsConfig from '$lib/components/operations/ValueCountsConfig.svelte';
 	import UnpivotConfig from '$lib/components/operations/UnpivotConfig.svelte';
 	import ExportConfig from '$lib/components/operations/ExportConfig.svelte';
+	import UnionByNameConfig from '$lib/components/operations/UnionByNameConfig.svelte';
+
+	interface UnionByNameConfigData {
+		sources: string[];
+		allow_missing: boolean;
+	}
 
 	interface Props {
 		step: PipelineStep | null;
@@ -195,6 +201,11 @@
 				<UnpivotConfig
 					schema={inputSchema}
 					bind:config={step.config as unknown as UnpivotConfigData}
+				/>
+			{:else if step.type === 'union_by_name'}
+				<UnionByNameConfig
+					schema={inputSchema}
+					bind:config={step.config as unknown as UnionByNameConfigData}
 				/>
 			{:else if step.type === 'export'}
 				<ExportConfig

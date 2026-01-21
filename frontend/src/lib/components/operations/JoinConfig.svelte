@@ -24,6 +24,8 @@
 	let loadedRightSource = $state('');
 	let rightSchema = $state<Schema | null>(null);
 	let rightColumns = $derived(rightSchema?.columns ?? []);
+	let search = $state('');
+	let showPicker = $state(false);
 
 	const isCrossJoin = $derived(config.how === 'cross');
 
@@ -39,6 +41,17 @@
 		if (targetSource && targetSource !== loadedRightSource) {
 			loadedRightSource = targetSource;
 			loadRightSchema(targetSource);
+		}
+	});
+
+	$effect(() => {
+		if (showPicker) return;
+		if (!selectedSource) {
+			if (search) search = '';
+			return;
+		}
+		if (search !== selectedSource.name) {
+			search = selectedSource.name;
 		}
 	});
 
@@ -87,6 +100,26 @@
 		config.right_columns = [];
 	}
 
+	function setRightSource(sourceId: string) {
+		selectedRightSource = sourceId;
+	}
+
+	function handlePickerFocus() {
+		showPicker = true;
+	}
+
+	function handlePickerBlur() {
+		setTimeout(() => {
+			showPicker = false;
+		}, 100);
+	}
+
+	function pickSource(sourceId: string, name: string) {
+		selectedRightSource = sourceId;
+		search = name;
+		showPicker = false;
+	}
+
 	const joinTypes: Array<{ value: JoinConfigData['how']; label: string }> = [
 		{ value: 'inner', label: 'Inner Join' },
 		{ value: 'left', label: 'Left Join' },
@@ -99,6 +132,19 @@
 	const currentDatasource = $derived(
 		datasourceStore.datasources.find((ds) => ds.id === currentTabDatasource)
 	);
+const datasourceOptions = $derived.by(() => datasourceStore.datasources);
+const filteredOptions = $derived.by(() => {
+	const query = search.trim().toLowerCase();
+	if (!query) return datasourceOptions;
+	return datasourceOptions.filter((ds) => {
+		const name = ds.name.toLowerCase();
+		const type = ds.source_type.toLowerCase();
+		return name.includes(query) || type.includes(query);
+	});
+});
+const selectedSource = $derived.by(() =>
+	datasourceOptions.find((ds) => ds.id === selectedRightSource)
+);
 </script>
 
 <div class="join-config">
@@ -106,19 +152,55 @@
 
 	<div class="section">
 		<h4>Right Datasource</h4>
-		<select bind:value={selectedRightSource}>
-			<option value="">-- Select datasource --</option>
-			{#if currentDatasource}
-				<option value={currentDatasource.id}>
-					{currentDatasource.name} (current)
-				</option>
-			{/if}
-			{#each datasourceStore.datasources as ds (ds.id)}
-				{#if ds.id !== currentTabDatasource}
-					<option value={ds.id}>{ds.name} ({ds.source_type})</option>
+	<div class="search-picker" role="combobox" aria-expanded={showPicker} aria-controls="join-right-options">
+		<span class="sr-only">Search datasources</span>
+		<input
+			type="text"
+			placeholder="Search datasources..."
+			bind:value={search}
+			onfocus={handlePickerFocus}
+			onblur={handlePickerBlur}
+		/>
+		{#if showPicker}
+			<div
+				class="picker-list"
+				id="join-right-options"
+				role="listbox"
+				aria-label="Right datasource options"
+			>
+				{#if datasourceOptions.length === 0}
+					<div class="picker-empty">No datasources available.</div>
+				{:else if filteredOptions.length === 0}
+					<div class="picker-empty">No matching datasources.</div>
+				{:else}
+					{#if currentDatasource && filteredOptions.some((ds) => ds.id === currentDatasource.id)}
+						<button
+							type="button"
+							class="picker-item"
+							data-selected={selectedRightSource === currentDatasource.id}
+							onmousedown={() => pickSource(currentDatasource.id, currentDatasource.name)}
+						>
+							<span class="source-name">{currentDatasource.name}</span>
+							<span class="meta">current</span>
+						</button>
+					{/if}
+					{#each filteredOptions as ds (ds.id)}
+						{#if ds.id !== currentTabDatasource}
+							<button
+								type="button"
+								class="picker-item"
+								data-selected={selectedRightSource === ds.id}
+								onmousedown={() => pickSource(ds.id, ds.name)}
+							>
+								<span class="source-name">{ds.name}</span>
+								<span class="meta">{ds.source_type}</span>
+							</button>
+						{/if}
+					{/each}
 				{/if}
-			{/each}
-		</select>
+			</div>
+		{/if}
+	</div>
 		{#if rightSchema}
 			<div class="schema-preview">
 				<strong>{rightSchema.columns.length} columns</strong>
@@ -408,5 +490,88 @@
 		font-size: 0.875rem;
 		font-style: italic;
 		margin: 0.5rem 0;
+	}
+
+	.search-picker {
+		position: relative;
+		margin-bottom: 0.75rem;
+	}
+
+	.search-picker input {
+		width: 100%;
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--form-control-border);
+		border-radius: var(--radius-sm);
+		background-color: var(--form-control-bg);
+		color: var(--fg-primary);
+		font-size: 0.875rem;
+	}
+
+	.search-picker input::placeholder {
+		color: var(--fg-muted);
+	}
+
+	.picker-list {
+		position: absolute;
+		z-index: 10;
+		top: calc(100% + 0.25rem);
+		left: 0;
+		right: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		max-height: 220px;
+		overflow-y: auto;
+		padding: 0.5rem;
+		background-color: var(--panel-bg);
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--panel-border);
+		box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+	}
+
+	.picker-item {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+		cursor: pointer;
+		padding: 0.4rem 0.5rem;
+		border: 1px solid transparent;
+		border-radius: var(--radius-sm);
+		background-color: transparent;
+		color: var(--fg-primary);
+		text-align: left;
+	}
+
+	.picker-item[data-selected='true'] {
+		border-color: var(--accent-primary);
+		background-color: var(--bg-hover);
+	}
+
+	.picker-item:hover {
+		background-color: var(--bg-hover);
+	}
+
+	.picker-empty {
+		padding: 0.5rem;
+		color: var(--fg-muted);
+		font-size: 0.875rem;
+		font-style: italic;
+	}
+
+	.source-name {
+		flex: 1;
+	}
+
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 </style>

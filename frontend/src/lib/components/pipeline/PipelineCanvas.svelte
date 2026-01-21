@@ -12,6 +12,7 @@
 		savedSteps?: PipelineStep[];
 		saveStatus?: 'saved' | 'unsaved' | 'saving';
 		datasourceId?: string;
+		previewDatasourceId?: string;
 		datasource?: DataSource | null;
 		tabName?: string;
 		onStepClick: (id: string) => void;
@@ -27,6 +28,7 @@
 		savedSteps = [],
 		saveStatus = 'saved',
 		datasourceId,
+		previewDatasourceId,
 		datasource = null,
 		tabName: _tabName,
 		onStepClick,
@@ -290,7 +292,7 @@
 				<StepNode
 					{step}
 					index={i}
-					{datasourceId}
+					datasourceId={previewDatasourceId ?? datasourceId}
 					allSteps={steps}
 					{savedSteps}
 					{saveStatus}

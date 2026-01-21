@@ -141,6 +141,18 @@
 
 	// Use active tab's datasource
 	const datasourceId = $derived(analysisStore.activeTab?.datasource_id ?? undefined);
+	const savedSteps = $derived.by(() => {
+		const activeTab = analysisStore.activeTab;
+		if (!activeTab) return [];
+		const savedTab = analysisStore.savedTabs.find((tab) => tab.id === activeTab.id);
+		return savedTab?.steps ?? [];
+	});
+	const previewDatasourceId = $derived.by(() => {
+		const activeTab = analysisStore.activeTab;
+		if (!activeTab) return undefined;
+		const savedTab = analysisStore.savedTabs.find((tab) => tab.id === activeTab.id);
+		return savedTab?.datasource_id ?? undefined;
+	});
 
 	// Get the current datasource object for the active tab
 	const currentDatasource = $derived.by(() => {
@@ -425,7 +437,8 @@
 			<div class="center-pane">
 				<PipelineCanvas
 					steps={analysisStore.pipeline}
-					savedSteps={analysisStore.savedTabs.flatMap((tab: AnalysisTab) => tab.steps ?? [])}
+					savedSteps={savedSteps}
+					{previewDatasourceId}
 					saveStatus={saveStatus.current}
 					{datasourceId}
 					datasource={currentDatasource}

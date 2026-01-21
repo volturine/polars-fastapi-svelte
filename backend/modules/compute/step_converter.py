@@ -266,6 +266,18 @@ def convert_export_config(config: dict) -> dict:
     }
 
 
+def convert_union_by_name_config(config: dict) -> dict:
+    """Convert union_by_name config from frontend to backend format.
+
+    Frontend: {sources: [...], allow_missing: bool} or {sources: [...], allowMissing: bool}
+    Backend: {sources: [...], allow_missing: bool}
+    """
+    return {
+        'sources': config.get('sources', []),
+        'allow_missing': config.get('allow_missing', config.get('allowMissing', True)),
+    }
+
+
 def get_converters() -> dict:
     """Return all converters dictionary."""
     return {
@@ -291,6 +303,7 @@ def get_converters() -> dict:
         'null_count': lambda c: c,
         'value_counts': convert_value_counts_config,
         'export': convert_export_config,
+        'union_by_name': convert_union_by_name_config,
     }
 
 

@@ -2,7 +2,7 @@ import type { Schema } from '$lib/types/schema';
 import type { PipelineStep } from '$lib/types/analysis';
 import { analysisStore } from '$lib/stores/analysis.svelte';
 import { emptySchema } from '$lib/types/schema';
-import { getStepTransform, joinTransform, type StepConfig } from '$lib/utils/transform';
+import { getStepTransform, joinTransform, unionByNameTransform, type StepConfig } from '$lib/utils/transform';
 import { SvelteMap } from 'svelte/reactivity';
 
 export interface StepSchemas {
@@ -60,6 +60,13 @@ class SchemaStore {
 				const rightSchema = this.joinSchemas.get(step.id) ?? emptySchema();
 				const config = step.config as StepConfig;
 				output = joinTransform(input, config, rightSchema);
+			} else if (step.type === 'union_by_name') {
+				const config = step.config as StepConfig;
+				const sources = Array.isArray(config.sources) ? config.sources : [];
+				const unionSchemas = sources
+					.map((sourceId) => this.joinSchemas.get(sourceId))
+					.filter((schema): schema is Schema => schema !== undefined);
+				output = unionByNameTransform(input, config, unionSchemas);
 			} else {
 				output = transformer(input, config);
 			}

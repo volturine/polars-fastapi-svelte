@@ -139,7 +139,9 @@ def _handle_sort(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
     if isinstance(descending, list) and len(descending) != len(columns):
         # Ensure descending list matches columns length
         descending = (
-            descending[: len(columns)] if len(descending) > len(columns) else descending + [False] * (len(columns) - len(descending))
+            descending[: len(columns)]
+            if len(descending) > len(columns)
+            else descending + [False] * (len(columns) - len(descending))
         )
     return lf.sort(columns, descending=descending)
 
@@ -193,7 +195,10 @@ def _handle_timeseries(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
     operation_type = params.get('operation_type')
     new_column = params.get('new_column')
 
-    if not new_column:
+    if not isinstance(column, str) or not column:
+        raise ValueError('timeseries operation requires column parameter')
+
+    if not isinstance(new_column, str) or not new_column:
         raise ValueError('timeseries operation requires new_column parameter')
 
     if operation_type == 'extract':
@@ -223,24 +228,70 @@ def _handle_timeseries(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
         value = params.get('value')
         unit = params.get('unit', 'days')
 
+        if unit not in {'seconds', 'minutes', 'hours', 'days', 'weeks', 'months'}:
+            raise ValueError('timeseries operation requires unit parameter')
+
+        if not isinstance(value, (int, float)):
+            raise ValueError('timeseries operation requires numeric value parameter')
+
         if unit == 'months':
             return lf.with_columns(pl.col(column).dt.offset_by(f'{value}mo').alias(new_column))
-        else:
-            duration = pl.duration(**{unit: value})
+
+        if unit == 'seconds':
+            duration = pl.duration(seconds=int(value))
             return lf.with_columns((pl.col(column) + duration).alias(new_column))
+
+        if unit == 'minutes':
+            duration = pl.duration(minutes=int(value))
+            return lf.with_columns((pl.col(column) + duration).alias(new_column))
+
+        if unit == 'hours':
+            duration = pl.duration(hours=int(value))
+            return lf.with_columns((pl.col(column) + duration).alias(new_column))
+
+        if unit == 'days':
+            duration = pl.duration(days=int(value))
+            return lf.with_columns((pl.col(column) + duration).alias(new_column))
+
+        duration = pl.duration(weeks=int(value))
+        return lf.with_columns((pl.col(column) + duration).alias(new_column))
 
     elif operation_type == 'subtract':
         value = params.get('value')
         unit = params.get('unit', 'days')
 
+        if unit not in {'seconds', 'minutes', 'hours', 'days', 'weeks', 'months'}:
+            raise ValueError('timeseries operation requires unit parameter')
+
+        if not isinstance(value, (int, float)):
+            raise ValueError('timeseries operation requires numeric value parameter')
+
         if unit == 'months':
             return lf.with_columns(pl.col(column).dt.offset_by(f'-{value}mo').alias(new_column))
-        else:
-            duration = pl.duration(**{unit: value})
+
+        if unit == 'seconds':
+            duration = pl.duration(seconds=int(value))
             return lf.with_columns((pl.col(column) - duration).alias(new_column))
+
+        if unit == 'minutes':
+            duration = pl.duration(minutes=int(value))
+            return lf.with_columns((pl.col(column) - duration).alias(new_column))
+
+        if unit == 'hours':
+            duration = pl.duration(hours=int(value))
+            return lf.with_columns((pl.col(column) - duration).alias(new_column))
+
+        if unit == 'days':
+            duration = pl.duration(days=int(value))
+            return lf.with_columns((pl.col(column) - duration).alias(new_column))
+
+        duration = pl.duration(weeks=int(value))
+        return lf.with_columns((pl.col(column) - duration).alias(new_column))
 
     elif operation_type == 'diff':
         column2 = params.get('column2')
+        if not isinstance(column2, str) or not column2:
+            raise ValueError('timeseries operation requires column2 parameter')
         return lf.with_columns((pl.col(column2) - pl.col(column)).alias(new_column))
 
     else:
@@ -252,6 +303,12 @@ def _handle_string_transform(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
     column = params.get('column')
     method = params.get('method')
     new_column = params.get('new_column', column)
+
+    if not isinstance(column, str) or not column:
+        raise ValueError('string_transform requires column parameter')
+
+    if not isinstance(new_column, str) or not new_column:
+        raise ValueError('string_transform requires new_column parameter')
 
     if method == 'uppercase':
         return lf.with_columns(pl.col(column).str.to_uppercase().alias(new_column))
@@ -274,14 +331,20 @@ def _handle_string_transform(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
     elif method == 'replace':
         pattern = params.get('pattern')
         replacement = params.get('replacement', '')
+        if not isinstance(pattern, str) or not pattern:
+            raise ValueError('string_transform replace requires pattern parameter')
         return lf.with_columns(pl.col(column).str.replace_all(pattern, replacement).alias(new_column))
     elif method == 'extract':
         pattern = params.get('pattern')
         group_index = params.get('group_index', 0)
+        if not isinstance(pattern, str) or not pattern:
+            raise ValueError('string_transform extract requires pattern parameter')
         return lf.with_columns(pl.col(column).str.extract(pattern, group_index).alias(new_column))
     elif method == 'split':
         delimiter = params.get('delimiter', ' ')
         index = params.get('index', 0)
+        if not isinstance(delimiter, str):
+            raise ValueError('string_transform split requires delimiter parameter')
         return lf.with_columns(pl.col(column).str.split(delimiter).list.get(index).alias(new_column))
     else:
         raise ValueError(f'Unsupported string method: {method}')
@@ -369,6 +432,8 @@ def _handle_explode(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
     columns = params.get('columns')
     if isinstance(columns, str):
         columns = [columns]
+    if not isinstance(columns, list) or not columns:
+        raise ValueError('Explode requires columns parameter')
     return lf.explode(columns)
 
 
@@ -421,21 +486,17 @@ def _handle_join(lf: pl.LazyFrame, params: dict, right_lf: pl.LazyFrame | None =
         raise ValueError('Join requires at least one join column pair')
 
     if how == 'cross':
-        if right_lf is not None:
-            joined = lf.join(right_lf, how='cross')
-        else:
-            joined = lf.join(lf, how='cross')
+        joined = lf.join(right_lf, how='cross') if right_lf is not None else lf.join(lf, how='cross')
     else:
-        if right_lf is not None and right_source:
-            joined = lf.join(right_lf, left_on=left_on, right_on=right_on, how=how, suffix=suffix)
-        else:
-            joined = lf.join(lf, left_on=left_on, right_on=right_on, how=how, suffix=suffix)
+        joined = (
+            lf.join(right_lf, left_on=left_on, right_on=right_on, how=how, suffix=suffix)
+            if right_lf is not None and right_source
+            else lf.join(lf, left_on=left_on, right_on=right_on, how=how, suffix=suffix)
+        )
 
     if right_columns and how != 'cross':
         df = joined.collect()
         all_columns = df.columns
-
-        right_suffix_columns = [f'{col}{suffix}' for col in right_columns if col not in left_on]
 
         final_columns = []
         for col in all_columns:
@@ -515,6 +576,39 @@ def _handle_export(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
     return lf
 
 
+def _handle_union_by_name(
+    lf: pl.LazyFrame,
+    params: dict,
+    right_sources: dict[str, pl.LazyFrame],
+) -> pl.LazyFrame:
+    """Handle union_by_name operation."""
+    sources = params.get('sources', [])
+    allow_missing = params.get('allow_missing', True)
+
+    if not sources:
+        raise ValueError('Union by name requires at least one datasource')
+
+    frames: list[pl.LazyFrame] = [lf]
+    for source_id in sources:
+        frame = right_sources.get(source_id)
+        if frame is None:
+            raise ValueError(f'Union by name requires datasource {source_id}')
+        frames.append(frame)
+
+    base_columns = lf.columns
+    if not allow_missing:
+        base_set = set(base_columns)
+        aligned = [lf]
+        for frame in frames[1:]:
+            frame_columns = frame.columns
+            if set(frame_columns) != base_set:
+                raise ValueError('Union by name requires matching columns when allow_missing is false')
+            aligned.append(frame.select(base_columns))
+        return pl.concat(aligned, how='vertical')
+
+    return pl.concat(frames, how='diagonal')
+
+
 def get_operation_handlers() -> dict:
     """Return registry of all operation handlers."""
     return {
@@ -540,6 +634,7 @@ def get_operation_handlers() -> dict:
         'null_count': _handle_null_count,
         'value_counts': _handle_value_counts,
         'export': _handle_export,
+        'union_by_name': _handle_union_by_name,
     }
 
 
@@ -799,7 +894,12 @@ class PolarsComputeEngine:
             right_source_id = backend_step.get('params', {}).get('right_source')
             right_lf = right_sources.get(right_source_id) if right_source_id else None
 
-            schema_map[step_id] = PolarsComputeEngine._apply_step(parent_frame, backend_step, right_lf)
+            schema_map[step_id] = PolarsComputeEngine._apply_step(
+                parent_frame,
+                backend_step,
+                right_sources=right_sources,
+                right_lf=right_lf,
+            )
 
         # Only collect at the very end
         last_step = ordered_steps[-1] if ordered_steps else None
@@ -854,7 +954,12 @@ class PolarsComputeEngine:
             raise ValueError(f'Unsupported source type: {source_type}')
 
     @staticmethod
-    def _apply_step(lf: pl.LazyFrame, step: dict, right_lf: pl.LazyFrame | None = None) -> pl.LazyFrame:
+    def _apply_step(
+        lf: pl.LazyFrame,
+        step: dict,
+        right_sources: dict[str, pl.LazyFrame] | None = None,
+        right_lf: pl.LazyFrame | None = None,
+    ) -> pl.LazyFrame:
         """Apply a single transformation step to the LazyFrame."""
         operation = step.get('operation')
         params = step.get('params', {})
@@ -867,5 +972,8 @@ class PolarsComputeEngine:
 
         if operation == 'join':
             return handler(lf, params, right_lf)
+
+        if operation == 'union_by_name':
+            return handler(lf, params, right_sources or {})
 
         return handler(lf, params)

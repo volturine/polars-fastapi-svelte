@@ -182,6 +182,12 @@
 			description: 'Get value frequencies'
 		},
 		{ type: 'view', label: 'View', icon: '👁️', description: 'Preview data at this step' },
+		{
+			type: 'union_by_name',
+			label: 'Union By Name',
+			icon: '🧩',
+			description: 'Union rows from multiple datasources'
+		},
 		{ type: 'export', label: 'Export', icon: '📤', description: 'Export data to file' }
 	];
 

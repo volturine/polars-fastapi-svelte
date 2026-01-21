@@ -140,6 +140,11 @@ export interface UnpivotConfigData {
 	value_name?: string;
 }
 
+export interface UnionByNameConfigData {
+	sources: string[];
+	allow_missing: boolean;
+}
+
 // Union type for all possible config types
 export type OperationConfig =
 	| FilterConfigData
@@ -162,4 +167,5 @@ export type OperationConfig =
 	| TopKConfigData
 	| NullCountConfigData
 	| ValueCountsConfigData
-	| UnpivotConfigData;
+	| UnpivotConfigData
+	| UnionByNameConfigData;

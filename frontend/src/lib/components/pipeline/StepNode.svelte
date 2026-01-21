@@ -79,6 +79,7 @@
 		null_count: { label: 'Null Count', icon: '❓' },
 		value_counts: { label: 'Value Counts', icon: '📊' },
 		view: { label: 'View', icon: '👁️' },
+		union_by_name: { label: 'Union By Name', icon: '🧩' },
 		export: { label: 'Export', icon: '📤' }
 	};
 
@@ -98,6 +99,7 @@
 		pivot: 'pivot',
 		timeseries: 'timeseries',
 		string_transform: 'string',
+		union_by_name: 'union_by_name',
 		export: 'export'
 	};
 
@@ -137,6 +139,12 @@
 				const format = (s.config.format as string) || 'csv';
 				const filename = (s.config.filename as string) || 'export';
 				return `${filename}.${format}`;
+			}
+
+			case 'union_by_name': {
+				const sources = s.config.sources as string[];
+				if (!sources || sources.length === 0) return 'no sources';
+				return `${sources.length} source${sources.length > 1 ? 's' : ''}`;
 			}
 
 			default: {

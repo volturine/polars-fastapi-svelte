@@ -1,6 +1,8 @@
 import type { Schema } from '$lib/types/schema';
 import type { PipelineStep } from '$lib/types/analysis';
 import {
+	emptySchema,
+	unionByName,
 	intersectSchemas,
 	leftJoinSchema,
 	rightJoinSchema,
@@ -36,6 +38,8 @@ export interface StepConfig {
 	rowLimit?: number;
 	join_columns?: Array<{ id: string; left_column: string; right_column: string }>;
 	right_columns?: string[];
+	sources?: string[];
+	allow_missing?: boolean;
 	[key: string]: unknown;
 }
 
@@ -363,6 +367,28 @@ export function joinTransform(
 		default:
 			return intersectSchemas(input, safeRightSchema, suffix, rightColumns);
 	}
+}
+
+export function unionByNameTransform(
+	input: Schema | null,
+	config: StepConfig,
+	unionSchemas: Schema[]
+): Schema {
+	if (!input) return emptySchema();
+
+	const allowMissing = config.allow_missing !== false;
+	const schemas = [input, ...unionSchemas];
+	const merged = unionByName(schemas, allowMissing);
+
+	if (allowMissing) return merged;
+
+	const baseNames = new Set(input.columns.map((col) => col.name));
+	const sameColumns = unionSchemas.every((schema) => {
+		if (schema.columns.length !== baseNames.size) return false;
+		return schema.columns.every((col) => baseNames.has(col.name));
+	});
+
+	return sameColumns ? merged : input;
 }
 
 export function normalizeDtype(dtype: string | undefined): string | undefined {

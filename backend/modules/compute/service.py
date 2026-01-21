@@ -34,11 +34,26 @@ async def _get_additional_datasources(session: AsyncSession, pipeline_steps: lis
         config = step.get('config', {})
         right_source_id = config.get('right_source') or config.get('rightDataSource')
 
+        union_sources = config.get('sources', [])
+        if isinstance(union_sources, str):
+            union_sources = [union_sources]
+
         if right_source_id and right_source_id not in additional:
             result = await session.execute(select(DataSource).where(DataSource.id == right_source_id))
             datasource = result.scalar_one_or_none()
             if datasource:
                 additional[right_source_id] = {
+                    'source_type': datasource.source_type,
+                    **datasource.config,
+                }
+
+        for source_id in union_sources:
+            if source_id in additional:
+                continue
+            result = await session.execute(select(DataSource).where(DataSource.id == source_id))
+            datasource = result.scalar_one_or_none()
+            if datasource:
+                additional[source_id] = {
                     'source_type': datasource.source_type,
                     **datasource.config,
                 }

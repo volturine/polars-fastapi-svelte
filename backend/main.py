@@ -23,15 +23,18 @@ logger = logging.getLogger(__name__)
 async def engine_cleanup_loop():
     """Periodically clean up idle engines."""
     while True:
-        await asyncio.sleep(30)  # Check every 30 seconds
+        await asyncio.sleep(settings.engine_cleanup_interval)
         try:
             manager = get_manager()
             cleaned = manager.cleanup_idle_engines()
-            for analysis_id in cleaned:
-                count = cleanup_jobs_for_engine(analysis_id)
-                logger.info(f'Cleaned up engine {analysis_id} and {count} associated jobs')
+            if cleaned:
+                for analysis_id in cleaned:
+                    count = cleanup_jobs_for_engine(analysis_id)
+                    logger.info(f'Cleaned up engine {analysis_id} and {count} associated jobs')
+            else:
+                logger.debug('No idle engines to clean up')
         except Exception as e:
-            logger.error(f'Error in engine cleanup: {e}')
+            logger.error(f'Error in engine cleanup: {e}', exc_info=True)
 
 
 @asynccontextmanager

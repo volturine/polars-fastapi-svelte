@@ -1,6 +1,7 @@
+import os
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Root data directory (relative to project root, not backend/)
@@ -56,6 +57,15 @@ class Settings(BaseSettings):
     # Maximum number of jobs to keep in memory
     max_jobs_in_memory: int = Field(default=1000, alias='MAX_JOBS_IN_MEMORY')
 
+    # Engine cleanup interval in seconds (default 30 seconds)
+    engine_cleanup_interval: int = Field(default=30, alias='ENGINE_CLEANUP_INTERVAL')
+
+    # Process shutdown timeout in seconds (default 5 seconds)
+    process_shutdown_timeout: int = Field(default=5, alias='PROCESS_SHUTDOWN_TIMEOUT')
+
+    # Process terminate timeout in seconds (default 2 seconds)
+    process_terminate_timeout: int = Field(default=2, alias='PROCESS_TERMINATE_TIMEOUT')
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""
@@ -65,6 +75,41 @@ class Settings(BaseSettings):
     @classmethod
     def _ensure_dirs(cls, value: Path) -> Path:
         return _resolve_dir(value)
+
+    @field_validator('engine_idle_timeout', 'job_timeout', 'job_ttl', 'engine_cleanup_interval')
+    @classmethod
+    def _validate_positive_timeout(cls, value: int, info) -> int:
+        """Ensure timeout values are positive."""
+        if value <= 0:
+            raise ValueError(f'{info.field_name} must be positive, got {value}')
+        return value
+
+    @field_validator('max_jobs_in_memory')
+    @classmethod
+    def _validate_max_jobs(cls, value: int) -> int:
+        """Ensure max jobs is reasonable."""
+        if value < 10:
+            raise ValueError(f'max_jobs_in_memory must be at least 10, got {value}')
+        if value > 100000:
+            raise ValueError(f'max_jobs_in_memory must be at most 100000, got {value}')
+        return value
+
+    @field_validator('max_upload_size')
+    @classmethod
+    def _validate_upload_size(cls, value: int) -> int:
+        """Ensure upload size is reasonable."""
+        if value < 1024:  # At least 1KB
+            raise ValueError(f'max_upload_size must be at least 1024 bytes, got {value}')
+        return value
+
+    @model_validator(mode='after')
+    def _validate_directories_writable(self):
+        """Ensure all directories are writable."""
+        for dir_name in ['upload_dir', 'results_dir', 'exports_dir']:
+            dir_path = getattr(self, dir_name)
+            if not os.access(dir_path, os.W_OK):
+                raise ValueError(f'{dir_name} is not writable: {dir_path}')
+        return self
 
 
 settings = Settings()

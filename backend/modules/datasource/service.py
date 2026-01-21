@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -6,13 +7,15 @@ import polars as pl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.exceptions import DataSourceNotFoundError, DataSourceValidationError
+from core.exceptions import DataSourceNotFoundError, DataSourceValidationError, FileError
 from modules.datasource.models import DataSource
 from modules.datasource.schemas import (
     ColumnSchema,
     DataSourceResponse,
     SchemaInfo,
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def create_file_datasource(
@@ -203,16 +206,39 @@ async def list_datasources(session: AsyncSession) -> list[DataSourceResponse]:
 
 
 async def delete_datasource(session: AsyncSession, datasource_id: str) -> None:
+    """Delete a datasource and its associated file if it exists."""
     result = await session.execute(select(DataSource).where(DataSource.id == datasource_id))
     datasource = result.scalar_one_or_none()
 
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
 
+    # Delete associated file if it's a file datasource
     if datasource.source_type == 'file' and 'file_path' in datasource.config:
         file_path = Path(datasource.config['file_path'])
         if file_path.exists():
-            file_path.unlink()
+            try:
+                # Check if file is accessible before deletion
+                if not file_path.is_file():
+                    logger.warning(f'Path exists but is not a file: {file_path}')
+                else:
+                    file_path.unlink()
+                    logger.info(f'Deleted file: {file_path}')
+            except PermissionError as e:
+                logger.error(f'Permission denied when deleting file {file_path}: {e}')
+                raise FileError(
+                    f'Permission denied when deleting file: {file_path}',
+                    error_code='FILE_PERMISSION_DENIED',
+                    details={'file_path': str(file_path)},
+                )
+            except OSError as e:
+                logger.error(f'OS error when deleting file {file_path}: {e}')
+                raise FileError(
+                    f'Failed to delete file: {file_path}',
+                    error_code='FILE_DELETE_ERROR',
+                    details={'file_path': str(file_path), 'error': str(e)},
+                )
 
     await session.delete(datasource)
     await session.commit()
+    logger.info(f'Deleted datasource {datasource_id}')

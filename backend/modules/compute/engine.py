@@ -701,16 +701,18 @@ class PolarsComputeEngine:
 
     def shutdown(self) -> None:
         """Shutdown the compute subprocess."""
+        from core.config import settings
+
         if not self.is_running:
             return
 
         self.command_queue.put({'type': 'shutdown'})
 
         if self.process and self.process.is_alive():
-            self.process.join(timeout=5)
+            self.process.join(timeout=settings.process_shutdown_timeout)
             if self.process.is_alive():
                 self.process.terminate()
-                self.process.join(timeout=2)
+                self.process.join(timeout=settings.process_terminate_timeout)
             if self.process.is_alive():
                 self.process.kill()
 

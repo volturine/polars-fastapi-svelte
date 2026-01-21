@@ -45,6 +45,17 @@ class Settings(BaseSettings):
     # Engines without keepalive pings will be terminated after this duration
     engine_idle_timeout: int = Field(default=300, alias='ENGINE_IDLE_TIMEOUT')
 
+    # Job execution timeout in seconds (default 5 minutes)
+    # Jobs that take longer than this will timeout
+    job_timeout: int = Field(default=300, alias='JOB_TIMEOUT')
+
+    # Job TTL in seconds (default 30 minutes)
+    # Completed jobs will be cleaned up after this duration
+    job_ttl: int = Field(default=1800, alias='JOB_TTL')
+
+    # Maximum number of jobs to keep in memory
+    max_jobs_in_memory: int = Field(default=1000, alias='MAX_JOBS_IN_MEMORY')
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""

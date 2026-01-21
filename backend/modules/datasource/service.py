@@ -6,6 +6,7 @@ import polars as pl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.exceptions import DataSourceNotFoundError, DataSourceValidationError
 from modules.datasource.models import DataSource
 from modules.datasource.schemas import (
     ColumnSchema,
@@ -109,7 +110,7 @@ async def get_datasource_schema(session: AsyncSession, datasource_id: str) -> Sc
     datasource = result.scalar_one_or_none()
 
     if not datasource:
-        raise ValueError(f'DataSource {datasource_id} not found')
+        raise DataSourceNotFoundError(datasource_id)
 
     # Check if we have cached schema with row_count
     if datasource.schema_cache:
@@ -142,7 +143,7 @@ async def _extract_schema(datasource: DataSource) -> SchemaInfo:
         elif file_type == 'excel':
             lazy = pl.read_excel(file_path).lazy()
         else:
-            raise ValueError(f'Unsupported file type: {file_type}')
+            raise DataSourceValidationError(f'Unsupported file type: {file_type}', details={'file_type': file_type})
 
         schema = lazy.collect_schema()
         # Calculate row count for file datasources
@@ -179,7 +180,10 @@ async def _extract_schema(datasource: DataSource) -> SchemaInfo:
         return SchemaInfo(columns=columns, row_count=row_count)
 
     else:
-        raise ValueError(f'Schema extraction not supported for type: {datasource.source_type}')
+        raise DataSourceValidationError(
+            f'Schema extraction not supported for type: {datasource.source_type}',
+            details={'source_type': datasource.source_type},
+        )
 
 
 async def get_datasource(session: AsyncSession, datasource_id: str) -> DataSourceResponse:
@@ -187,7 +191,7 @@ async def get_datasource(session: AsyncSession, datasource_id: str) -> DataSourc
     datasource = result.scalar_one_or_none()
 
     if not datasource:
-        raise ValueError(f'DataSource {datasource_id} not found')
+        raise DataSourceNotFoundError(datasource_id)
 
     return DataSourceResponse.model_validate(datasource)
 
@@ -203,7 +207,7 @@ async def delete_datasource(session: AsyncSession, datasource_id: str) -> None:
     datasource = result.scalar_one_or_none()
 
     if not datasource:
-        raise ValueError(f'DataSource {datasource_id} not found')
+        raise DataSourceNotFoundError(datasource_id)
 
     if datasource.source_type == 'file' and 'file_path' in datasource.config:
         file_path = Path(datasource.config['file_path'])

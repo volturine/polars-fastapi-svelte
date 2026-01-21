@@ -2,7 +2,12 @@ import type { Schema } from '$lib/types/schema';
 import type { PipelineStep } from '$lib/types/analysis';
 import { analysisStore } from '$lib/stores/analysis.svelte';
 import { emptySchema } from '$lib/types/schema';
-import { getStepTransform, joinTransform, unionByNameTransform, type StepConfig } from '$lib/utils/transform';
+import {
+	getStepTransform,
+	joinTransform,
+	unionByNameTransform,
+	type StepConfig
+} from '$lib/utils/transform';
 import { SvelteMap } from 'svelte/reactivity';
 
 export interface StepSchemas {

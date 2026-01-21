@@ -22,13 +22,17 @@ function createApiError(
 }
 
 export function apiRequest<T>(endpoint: string, options?: RequestInit): ResultAsync<T, ApiError> {
+	const isFormData = options?.body instanceof FormData;
+	const headers = new Headers(options?.headers);
+
+	if (!isFormData && !headers.has('Content-Type')) {
+		headers.set('Content-Type', 'application/json');
+	}
+
 	return ResultAsync.fromPromise(
 		fetch(`${BASE_URL}${endpoint}`, {
 			...options,
-			headers: {
-				'Content-Type': 'application/json',
-				...options?.headers
-			}
+			headers
 		}),
 		(error): ApiError =>
 			createApiError('network', error instanceof Error ? error.message : 'Network error')

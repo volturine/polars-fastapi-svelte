@@ -1,6 +1,6 @@
 import type { DataSource, SchemaInfo } from '$lib/types/datasource';
-import { BASE_URL, apiRequest } from './client';
-import { ResultAsync, err } from 'neverthrow';
+import { apiRequest } from './client';
+import { ResultAsync } from 'neverthrow';
 import type { ApiError } from './client';
 
 function createApiError(
@@ -17,21 +17,14 @@ export function uploadFile(file: File, name: string): ResultAsync<DataSource, Ap
 	formData.append('file', file);
 	formData.append('name', name);
 
-	return ResultAsync.fromPromise(
-		fetch(`${BASE_URL}/v1/datasource/upload`, {
-			method: 'POST',
-			body: formData
-		}),
-		(error): ApiError =>
-			createApiError('network', error instanceof Error ? error.message : 'Upload failed')
-	).andThen((response) => {
-		if (!response.ok) {
-			return err(createApiError('http', response.statusText, response.status));
+	return apiRequest<DataSource>('/v1/datasource/upload', {
+		method: 'POST',
+		body: formData
+	}).mapErr((error) => {
+		if (error.type === 'network') {
+			return createApiError('network', error.message || 'Upload failed');
 		}
-		return ResultAsync.fromPromise(
-			response.json() as Promise<DataSource>,
-			(): ApiError => createApiError('parse', 'Failed to parse upload response')
-		);
+		return error;
 	});
 }
 

@@ -147,8 +147,7 @@
 	--panel-shadow: var(--shadow-soft);
 
 	/* Panel widths */
-	--operations-panel-width: 340px;
-	--operations-panel-max-width: 500px;
+	--operations-panel-width: 280px;
 
 	--form-section-bg: var(--bg-tertiary);
 	--form-section-border: var(--border-primary);

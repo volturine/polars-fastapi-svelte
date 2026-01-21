@@ -35,42 +35,8 @@
 	let searchQuery = $state('');
 	const debouncedSearch = new Debounced(() => searchQuery, 200);
 	let modalMode = $state<'add' | 'change'>('add');
-
-	// Resizable panes with persisted state
-	const operationsPanelWidth = new PersistedState('analysis-operations-panel-width', 180);
-	let isResizingLeft = $state(false);
-	let isResizingRight = $state(false);
-
-	function startResizeLeft(e: Event) {
-		isResizingLeft = true;
-		e.preventDefault();
-	}
-
-	function startResizeRight(e: Event) {
-		isResizingRight = true;
-		e.preventDefault();
-	}
-
-	function handleMouseMove(e: MouseEvent) {
-		if (isResizingLeft) {
-			const newWidth = e.clientX;
-			operationsPanelWidth.current = Math.max(
-				window.innerWidth * 0.15,
-				Math.min(window.innerWidth * 0.4, newWidth)
-			);
-		} else if (isResizingRight) {
-			const newWidth = window.innerWidth - e.clientX;
-			operationsPanelWidth.current = Math.max(
-				window.innerWidth * 0.15,
-				Math.min(window.innerWidth * 0.4, newWidth)
-			);
-		}
-	}
-
-	function stopResize() {
-		isResizingLeft = false;
-		isResizingRight = false;
-	}
+	let leftPaneCollapsed = $state(false);
+	let rightPaneCollapsed = $state(false);
 
 	const analysisQuery = createQuery(() => ({
 		queryKey: ['analysis', analysisId],
@@ -344,93 +310,90 @@
 {:else if analysisQuery.data}
 	<div class="editor-container">
 		<header class="editor-header">
-			<div class="header-top">
-				<div class="header-left">
-					<div class="header-title">
-						<h1>{analysisQuery.data.name}</h1>
-						{#if analysisQuery.data.description}
-							<span class="description">{analysisQuery.data.description}</span>
-						{/if}
-					</div>
-					<div class="header-tabs">
-						<div class="tabs">
-							{#each analysisStore.tabs.filter((t) => t.type === 'datasource') as tab (tab.id)}
-								<button
-									class="tab"
-									class:active={analysisStore.activeTab?.id === tab.id}
-									onclick={() => handleSelectTab(tab.id)}
-									type="button"
-								>
-									<span class="tab-label">
-										<span class="tab-name">{tab.name}</span>
+			<div class="header-left">
+				<div class="analysis-name">
+					<h1 contenteditable="true" class="editable-title">{analysisQuery.data.name}</h1>
+					{#if analysisQuery.data.description}
+						<span class="description">{analysisQuery.data.description}</span>
+					{/if}
+				</div>
+				<button
+					class="collapse-arrow collapse-arrow-left"
+					class:collapsed={leftPaneCollapsed}
+					onclick={() => (leftPaneCollapsed = !leftPaneCollapsed)}
+					type="button"
+					title={leftPaneCollapsed ? 'Expand operations' : 'Collapse operations'}
+				>
+					{leftPaneCollapsed ? '‹' : '›'}
+				</button>
+			</div>
+			<div class="header-middle">
+				<div class="header-tabs">
+					<div class="tabs">
+						{#each analysisStore.tabs.filter((t) => t.type === 'datasource') as tab (tab.id)}
+							<button
+								class="tab"
+								class:active={analysisStore.activeTab?.id === tab.id}
+								onclick={() => handleSelectTab(tab.id)}
+								type="button"
+							>
+								<span class="tab-label">
+									<span class="tab-name">{tab.name}</span>
+								</span>
+								{#if analysisStore.tabs.length > 1}
+									<span
+										class="tab-remove"
+										onclick={(e) => {
+											e.stopPropagation();
+											handleRemoveTab(tab.id);
+										}}
+										role="button"
+										tabindex="0"
+										onkeydown={(e) => e.key === 'Enter' && handleRemoveTab(tab.id)}
+									>
+										&times;
 									</span>
-									{#if analysisStore.tabs.length > 1}
-										<span
-											class="tab-remove"
-											onclick={(e) => {
-												e.stopPropagation();
-												handleRemoveTab(tab.id);
-											}}
-											role="button"
-											tabindex="0"
-											onkeydown={(e) => e.key === 'Enter' && handleRemoveTab(tab.id)}
-										>
-											&times;
-										</span>
-									{/if}
-								</button>
-							{/each}
-							<button class="tab add-tab" onclick={() => openDatasourceModal('add')} type="button">
-								+
+								{/if}
 							</button>
-						</div>
+						{/each}
+						<button class="tab add-tab" onclick={() => openDatasourceModal('add')} type="button">
+							+
+						</button>
 					</div>
 				</div>
-				<div class="header-right">
-					<span
-						class="save-status"
-						class:saved={saveStatus.current === 'saved'}
-						class:unsaved={saveStatus.current === 'unsaved'}
-					>
-						{#if saveStatus.current === 'saving'}
-							saving...
-						{:else if saveStatus.current === 'unsaved'}
-							unsaved
-						{:else}
-							saved
-						{/if}
-					</span>
-					<button
-						class="btn btn-secondary"
-						onclick={handleSave}
-						disabled={isSaving || saveStatus.current === 'saving' || analysisStore.loading}
-						type="button"
-					>
-						Save
-					</button>
-				</div>
+			</div>
+			<div class="header-right">
+				<button
+					class="collapse-arrow collapse-arrow-right"
+					class:collapsed={rightPaneCollapsed}
+					onclick={() => (rightPaneCollapsed = !rightPaneCollapsed)}
+					type="button"
+					title={rightPaneCollapsed ? 'Expand configuration' : 'Collapse configuration'}
+				>
+					{rightPaneCollapsed ? '›' : '‹'}
+				</button>
+				<button
+					class="save-button"
+					class:saved={saveStatus.current === 'saved'}
+					class:unsaved={saveStatus.current === 'unsaved'}
+					onclick={handleSave}
+					disabled={isSaving || saveStatus.current === 'saving' || analysisStore.loading}
+					type="button"
+				>
+					{saveStatus.current === 'saving'
+						? 'Saving...'
+						: saveStatus.current === 'saved'
+							? 'Saved'
+							: 'Save'}
+				</button>
 			</div>
 		</header>
 
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-		<div
-			class="editor-workspace"
-			onmousemove={handleMouseMove}
-			onmouseup={stopResize}
-			onmouseleave={stopResize}
-			role="application"
-			ondragover={(event) => event.preventDefault()}
-		>
-			<div class="left-pane" style="width: {operationsPanelWidth.current}px">
+		<div class="editor-workspace" role="application">
+			<div class="left-pane" class:collapsed={leftPaneCollapsed}>
 				<StepLibrary onAddStep={handleAddStep} onInsertStep={handleInsertStep} />
 			</div>
-			<div
-				class="resize-handle"
-				onmousedown={startResizeLeft}
-				role="separator"
-				aria-orientation="vertical"
-				aria-label="Resize left panel"
-			></div>
 
 			<div class="center-pane">
 				<PipelineCanvas
@@ -449,15 +412,8 @@
 					onRenameTab={handleRenameSourceTab}
 				/>
 			</div>
-			<div
-				class="resize-handle"
-				onmousedown={startResizeRight}
-				role="separator"
-				aria-orientation="vertical"
-				aria-label="Resize right panel"
-			></div>
 
-			<div class="right-pane" style="width: {operationsPanelWidth.current}px">
+			<div class="right-pane" class:collapsed={rightPaneCollapsed}>
 				<StepConfig
 					bind:step={selectedStepState}
 					schema={analysisStore.calculatedSchema}
@@ -641,36 +597,49 @@
 
 	.editor-header {
 		display: flex;
-		flex-direction: column;
+		flex-direction: row;
 		align-items: stretch;
-		padding: var(--space-3) var(--space-5);
+		padding: 0;
 		border-bottom: 1px solid var(--panel-border);
 		background-color: var(--panel-bg);
-		gap: var(--space-3);
-		box-shadow: none;
-	}
-
-	.header-top {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		gap: var(--space-4);
+		height: 48px;
 	}
 
 	.header-left {
 		display: flex;
 		align-items: center;
-		gap: var(--space-3);
-		min-width: 0;
+		width: var(--operations-panel-width, 280px);
+		height: 100%;
+		border-right: 1px solid var(--panel-border);
+		transition: width var(--transition);
+	}
+
+	.header-middle {
 		flex: 1;
+		min-width: 0;
 		overflow: hidden;
 	}
 
-	.header-title {
-		min-width: 0;
+	.header-right {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		width: var(--operations-panel-width, 280px);
+		height: 100%;
+		border-left: 1px solid var(--panel-border);
+		transition: width var(--transition);
 	}
 
-	.editor-header h1 {
+	.analysis-name {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		overflow: hidden;
+		padding: 0 var(--space-4);
+	}
+
+	.editable-title {
 		margin: 0;
 		font-size: var(--text-sm);
 		font-weight: 600;
@@ -680,43 +649,61 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		outline: none;
+		cursor: text;
+	}
+
+	.editable-title:focus {
+		background-color: var(--bg-hover);
+		border-radius: var(--radius-sm);
+		padding: 0 var(--space-1);
+		margin: 0 calc(var(--space-1) * -1);
 	}
 
 	.description {
 		font-size: var(--text-xs);
 		color: var(--fg-muted);
 		letter-spacing: 0.02em;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
-	.header-right {
+	.collapse-arrow {
+		width: 24px;
+		height: 100%;
 		display: flex;
-		gap: var(--space-3);
-		flex-shrink: 0;
 		align-items: center;
-	}
-
-	.save-status {
-		font-size: var(--text-xs);
+		justify-content: center;
+		background: none;
+		border: none;
 		color: var(--fg-muted);
-		padding: var(--space-1) var(--space-2);
-		border-radius: var(--radius-sm);
-		background-color: var(--panel-header-bg);
+		font-size: var(--text-lg);
+		cursor: pointer;
+		transition: color var(--transition);
+		flex-shrink: 0;
 	}
 
-	.save-status.saved {
-		color: var(--success-fg);
-		background-color: var(--success-bg);
+	.collapse-arrow:hover {
+		color: var(--fg-primary);
 	}
 
-	.save-status.unsaved {
-		color: var(--warning-fg);
-		background-color: var(--warning-bg);
+	.collapse-arrow-left {
+		border-left: 1px solid var(--panel-border);
+		border-right: none;
 	}
 
-	.btn {
-		padding: var(--space-2) var(--space-4);
-		border: 1px solid transparent;
-		border-radius: var(--radius-sm);
+	.collapse-arrow-right {
+		border-right: 1px solid var(--panel-border);
+		border-left: none;
+	}
+
+	.save-button {
+		flex: 1;
+		height: 100%;
+		padding: 0 var(--space-4);
+		background: none;
+		border: none;
 		font-family: var(--font-mono);
 		font-size: var(--text-sm);
 		font-weight: 500;
@@ -724,17 +711,19 @@
 		transition: all var(--transition);
 	}
 
-	.btn-secondary {
-		background-color: transparent;
-		color: var(--fg-primary);
-		border-color: var(--border-secondary);
+	.save-button.saved {
+		color: var(--success-fg);
 	}
 
-	.btn-secondary:hover:not(:disabled) {
+	.save-button.unsaved {
+		color: var(--fg-primary);
+	}
+
+	.save-button.unsaved:hover {
 		background-color: var(--bg-hover);
 	}
 
-	.btn-secondary:disabled {
+	.save-button:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
@@ -950,14 +939,28 @@
 		flex-shrink: 0;
 		overflow: hidden;
 		display: flex;
-		min-width: var(--operations-panel-width, 200px);
-		max-width: var(--operations-panel-max-width, 500px);
+		width: var(--operations-panel-width, 280px);
 		justify-content: left;
 		background-color: var(--panel-bg);
+		border-right: 1px solid var(--panel-border);
+		transition:
+			width var(--transition),
+			visibility var(--transition);
+	}
+
+	.left-pane.collapsed {
+		width: 0;
+		border-right: none;
 	}
 
 	.left-pane :global(> *) {
 		width: 100%;
+		visibility: visible;
+		transition: visibility var(--transition);
+	}
+
+	.left-pane.collapsed :global(> *) {
+		visibility: hidden;
 	}
 
 	.center-pane {
@@ -976,25 +979,27 @@
 		flex-shrink: 0;
 		overflow: hidden;
 		display: flex;
-		min-width: var(--operations-panel-width, 200px);
-		max-width: var(--operations-panel-max-width, 500px);
+		width: var(--operations-panel-width, 280px);
 		justify-content: left;
 		background-color: var(--panel-bg);
+		border-left: 1px solid var(--panel-border);
+		transition:
+			width var(--transition),
+			visibility var(--transition);
+	}
+
+	.right-pane.collapsed {
+		width: 0;
+		border-left: none;
 	}
 
 	.right-pane :global(> *) {
 		width: 100%;
+		visibility: visible;
+		transition: visibility var(--transition);
 	}
 
-	.resize-handle {
-		width: 2px;
-		background-color: var(--panel-border);
-		cursor: col-resize;
-		flex-shrink: 0;
-		transition: background-color var(--transition);
-	}
-
-	.resize-handle:hover {
-		background-color: var(--border-tertiary);
+	.right-pane.collapsed :global(> *) {
+		visibility: hidden;
 	}
 </style>

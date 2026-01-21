@@ -269,7 +269,6 @@
 <style>
 	.step-library {
 		width: var(--operations-panel-width, 280px);
-		border-right: 1px solid var(--panel-border);
 		padding: var(--space-4) var(--space-3);
 		background-color: var(--panel-bg);
 		display: flex;
@@ -319,7 +318,9 @@
 		border: 1px solid transparent;
 		border-radius: 6px;
 		cursor: grab;
-		transition: background-color var(--transition), border-color var(--transition);
+		transition:
+			background-color var(--transition),
+			border-color var(--transition);
 		text-align: left;
 		position: relative;
 	}

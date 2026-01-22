@@ -12,8 +12,10 @@
 	import { previewStepData, type StepPreviewResponse } from '$lib/api/compute';
 	import type { TableCellValue } from '$lib/types/api-responses';
 	import { Previous } from 'runed';
+	import { schemaStore } from '$lib/stores/schema.svelte';
 
 	interface Props {
+		analysisId: string;
 		datasourceId: string;
 		pipeline: Array<{
 			id: string;
@@ -27,7 +29,7 @@
 
 	type RowData = Record<string, unknown>;
 
-	let { datasourceId, pipeline, stepId, rowLimit = 1000 }: Props = $props();
+	let { analysisId, datasourceId, pipeline, stepId, rowLimit = 1000 }: Props = $props();
 	let currentPage = $state(1);
 	let sorting = $state<SortingState>([]);
 	const pipelineKey = $derived(JSON.stringify(pipeline));
@@ -40,9 +42,10 @@
 	});
 
 	const query = createQuery(() => ({
-		queryKey: ['step-preview', datasourceId, stepId, currentPage, rowLimit, pipelineKey],
+		queryKey: ['step-preview', analysisId, datasourceId, stepId, currentPage, rowLimit, pipelineKey],
 		queryFn: async (): Promise<StepPreviewResponse> => {
 			const result = await previewStepData({
+				analysis_id: analysisId,
 				datasource_id: datasourceId,
 				pipeline_steps: pipeline,
 				target_step_id: stepId,
@@ -55,12 +58,19 @@
 			return result.value;
 		},
 		staleTime: 30000,
-		enabled: !!datasourceId && !!stepId && pipeline.length > 0
+		enabled: !!analysisId && !!datasourceId && !!stepId && pipeline.length > 0
 	}));
 
 	const data = $derived(query.data);
 	const isLoading = $derived(query.isLoading);
 	const error = $derived(query.error);
+
+	// Update schema store with actual columns from preview
+	$effect(() => {
+		if (data?.columns && data.column_types) {
+			schemaStore.setPreviewSchema(stepId, data.columns, data.column_types);
+		}
+	});
 
 	const totalPages = $derived(data ? Math.ceil(data.total_rows / rowLimit) : 0);
 	const startRow = $derived((currentPage - 1) * rowLimit + 1);

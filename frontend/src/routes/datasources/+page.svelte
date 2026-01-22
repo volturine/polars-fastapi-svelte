@@ -55,6 +55,25 @@
 		return 0;
 	}
 
+	function getRowCount(datasource: DataSource): number | null {
+		if (datasource.schema_cache && typeof datasource.schema_cache === 'object') {
+			const schema = datasource.schema_cache as { row_count?: number | null };
+			return schema.row_count ?? null;
+		}
+		return null;
+	}
+
+	function formatRowCount(count: number | null): string {
+		if (count === null) return '-';
+		if (count >= 1_000_000) {
+			return `${(count / 1_000_000).toFixed(1)}M`;
+		}
+		if (count >= 1_000) {
+			return `${(count / 1_000).toFixed(1)}K`;
+		}
+		return count.toLocaleString();
+	}
+
 	function formatDate(dateString: string): string {
 		const date = new Date(dateString);
 		return date.toLocaleDateString();
@@ -104,6 +123,7 @@
 						<tr>
 							<th>Name</th>
 							<th>Type</th>
+							<th>Rows</th>
 							<th>Columns</th>
 							<th>Created</th>
 							<th class="actions-col">Actions</th>
@@ -127,6 +147,7 @@
 										{/if}
 									</span>
 								</td>
+								<td class="num-cell">{formatRowCount(getRowCount(datasource))}</td>
 								<td class="num-cell">{getColumnCount(datasource)}</td>
 								<td class="date-cell">{formatDate(datasource.created_at)}</td>
 								<td class="actions-cell">

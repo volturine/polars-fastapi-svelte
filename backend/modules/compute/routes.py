@@ -61,6 +61,23 @@ async def preview_step(
         target_step_id=request.target_step_id,
         row_limit=request.row_limit,
         page=request.page,
+        analysis_id=request.analysis_id,
+    )
+
+
+@router.post('/schema', response_model=schemas.StepSchemaResponse)
+@handle_errors(operation='get step schema')
+async def get_step_schema(
+    request: schemas.StepSchemaRequest,
+    session: AsyncSession = Depends(get_db),
+):
+    """Get the output schema of a pipeline step (for pivot/unpivot dynamic columns)."""
+    return await service.get_step_schema(
+        session=session,
+        datasource_id=request.datasource_id,
+        pipeline_steps=request.pipeline_steps,
+        target_step_id=request.target_step_id,
+        analysis_id=request.analysis_id,
     )
 
 
@@ -161,6 +178,7 @@ async def export_data(
         export_format=request.format.value,
         filename=request.filename,
         destination=request.destination.value,
+        analysis_id=request.analysis_id,
     )
 
     if request.destination == schemas.ExportDestination.DOWNLOAD:

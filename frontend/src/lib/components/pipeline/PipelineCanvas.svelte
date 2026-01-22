@@ -11,6 +11,7 @@
 		steps: PipelineStep[];
 		savedSteps?: PipelineStep[];
 		saveStatus?: 'saved' | 'unsaved' | 'saving';
+		analysisId?: string;
 		datasourceId?: string;
 		previewDatasourceId?: string;
 		datasource?: DataSource | null;
@@ -27,6 +28,7 @@
 		steps,
 		savedSteps = [],
 		saveStatus = 'saved',
+		analysisId,
 		datasourceId,
 		previewDatasourceId,
 		datasource = null,
@@ -290,18 +292,19 @@
 					<ConnectionLine fromStepIndex={-1} toStepIndex={0} totalSteps={steps.length} />
 				</div>
 			{/if}
-			{#each steps as step, i (step.id)}
-				<StepNode
-					{step}
-					index={i}
-					datasourceId={previewDatasourceId ?? datasourceId}
-					allSteps={steps}
-					{savedSteps}
-					{saveStatus}
-					onEdit={onStepClick}
-					onDelete={onStepDelete}
-					onTouchMove={onMoveStep}
-				/>
+		{#each steps as step, i (step.id)}
+			<StepNode
+				{step}
+				index={i}
+				{analysisId}
+				datasourceId={previewDatasourceId ?? datasourceId}
+				allSteps={steps}
+				{savedSteps}
+				{saveStatus}
+				onEdit={onStepClick}
+				onDelete={onStepDelete}
+				onTouchMove={onMoveStep}
+			/>
 				<!-- Connection + Drop zone after each step -->
 				{#if i < steps.length - 1 || canDrop}
 					{#if shouldShowInsert(i + 1)}

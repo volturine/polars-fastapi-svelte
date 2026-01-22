@@ -204,7 +204,7 @@
 	<div class="section">
 		<h4>Column Matching</h4>
 		<label class="toggle">
-			<input type="checkbox" bind:checked={config.allow_missing} />
+			<input id="allow-missing" type="checkbox" bind:checked={config.allow_missing} />
 			<span>Allow missing columns (fill with nulls)</span>
 		</label>
 		<p class="help-text">

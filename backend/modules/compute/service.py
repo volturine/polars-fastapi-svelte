@@ -187,12 +187,16 @@ async def preview_step(
     row_limit: int = 1000,
     page: int = 1,
     timeout: int | None = None,
+    analysis_id: str | None = None,
 ):
     """Preview the result of executing pipeline up to a specific step with pagination."""
     from modules.compute.schemas import StepPreviewResponse
 
     if timeout is None:
         timeout = settings.job_timeout
+
+    if not analysis_id:
+        raise ValueError('analysis_id is required for preview')
 
     result = await session.execute(select(DataSource).where(DataSource.id == datasource_id))
     datasource = result.scalar_one_or_none()
@@ -213,7 +217,9 @@ async def preview_step(
     preview_steps = pipeline_steps[: step_index + 1]
 
     manager = get_manager()
-    engine = manager.get_or_create_engine(f'{datasource_id}_preview')
+    engine = manager.get_engine(analysis_id)
+    if not engine:
+        engine = manager.get_or_create_engine(analysis_id)
 
     datasource_config = {
         'source_type': datasource.source_type,
@@ -232,14 +238,11 @@ async def preview_step(
     while True:
         # Check timeout
         if time.time() - start_time > timeout:
-            manager.shutdown_engine(f'{datasource_id}_preview')
             raise EngineTimeoutError(f'Preview operation timed out after {timeout} seconds', timeout)
 
         result_data = engine.get_result(timeout=1.0)
         if result_data:
             if result_data['status'] == JobStatus.COMPLETED:
-                manager.shutdown_engine(f'{datasource_id}_preview')
-
                 # Extract data for pagination
                 sample_data = result_data['data'].get('sample_data', [])
                 total_rows = result_data['data'].get('row_count', 0)
@@ -260,7 +263,6 @@ async def preview_step(
                     page_size=len(paginated_data),
                 )
             elif result_data['status'] == JobStatus.FAILED:
-                manager.shutdown_engine(f'{datasource_id}_preview')
                 raise PipelineExecutionError(
                     f'Preview failed: {result_data.get("error", "Unknown error")}',
                     details={'operation': 'preview', 'datasource_id': datasource_id},
@@ -354,6 +356,77 @@ def cleanup_job(job_id: str) -> None:
     logger.debug(f'Cleaned up job {job_id}')
 
 
+async def get_step_schema(
+    session: AsyncSession,
+    datasource_id: str,
+    pipeline_steps: list[dict],
+    target_step_id: str,
+    analysis_id: str,
+    timeout: int | None = None,
+) -> dict:
+    """Get the output schema of a pipeline step without returning data."""
+    from modules.compute.schemas import StepSchemaResponse
+
+    if timeout is None:
+        timeout = settings.job_timeout
+
+    result = await session.execute(select(DataSource).where(DataSource.id == datasource_id))
+    datasource = result.scalar_one_or_none()
+
+    if not datasource:
+        raise DataSourceNotFoundError(datasource_id)
+
+    # Find the step index by step_id
+    step_index = None
+    for idx, step in enumerate(pipeline_steps):
+        if step.get('id') == target_step_id:
+            step_index = idx
+            break
+
+    if step_index is None:
+        raise StepNotFoundError(target_step_id)
+
+    schema_steps = pipeline_steps[: step_index + 1]
+
+    manager = get_manager()
+    engine = manager.get_engine(analysis_id)
+    if not engine:
+        engine = manager.get_or_create_engine(analysis_id)
+
+    datasource_config = {
+        'source_type': datasource.source_type,
+        **datasource.config,
+    }
+
+    additional_datasources = await _get_additional_datasources(session, schema_steps)
+
+    engine.execute(
+        datasource_config=datasource_config,
+        pipeline_steps=schema_steps,
+        additional_datasources=additional_datasources,
+    )
+
+    start_time = time.time()
+    while True:
+        if time.time() - start_time > timeout:
+            raise EngineTimeoutError(f'Schema operation timed out after {timeout} seconds', timeout)
+
+        result_data = engine.get_result(timeout=1.0)
+        if result_data:
+            if result_data['status'] == JobStatus.COMPLETED:
+                schema = result_data['data'].get('schema', {})
+                return StepSchemaResponse(
+                    step_id=target_step_id,
+                    columns=list(schema.keys()),
+                    column_types=schema,
+                )
+            elif result_data['status'] == JobStatus.FAILED:
+                raise PipelineExecutionError(
+                    f'Schema fetch failed: {result_data.get("error", "Unknown error")}',
+                    details={'operation': 'schema', 'datasource_id': datasource_id},
+                )
+
+
 async def export_data(
     session: AsyncSession,
     datasource_id: str,
@@ -363,6 +436,7 @@ async def export_data(
     filename: str = 'export',
     destination: str = 'download',
     timeout: int | None = None,
+    analysis_id: str | None = None,
 ) -> tuple[bytes, str, str]:
     """
     Export pipeline result to file.
@@ -394,7 +468,16 @@ async def export_data(
     export_steps = pipeline_steps[: step_index + 1]
 
     manager = get_manager()
-    engine = manager.get_or_create_engine(f'{datasource_id}_export')
+
+    # Use analysis engine if provided and exists, otherwise create temporary one
+    temp_engine = False
+    if analysis_id:
+        engine = manager.get_engine(analysis_id)
+        if not engine:
+            engine = manager.get_or_create_engine(analysis_id)
+    else:
+        engine = manager.get_or_create_engine(f'{datasource_id}_export')
+        temp_engine = True
 
     datasource_config = {
         'source_type': datasource.source_type,
@@ -410,16 +493,19 @@ async def export_data(
     )
 
     start_time = time.time()
+    temp_engine_id = f'{datasource_id}_export'
     while True:
         # Check timeout
         if time.time() - start_time > timeout:
-            manager.shutdown_engine(f'{datasource_id}_export')
+            if temp_engine:
+                manager.shutdown_engine(temp_engine_id)
             raise EngineTimeoutError(f'Export operation timed out after {timeout} seconds', timeout)
 
         result_data = engine.get_result(timeout=1.0)
         if result_data:
             if result_data['status'] == JobStatus.COMPLETED:
-                manager.shutdown_engine(f'{datasource_id}_export')
+                if temp_engine:
+                    manager.shutdown_engine(temp_engine_id)
 
                 sample_data = result_data['data'].get('sample_data', [])
                 df = pl.DataFrame(sample_data)
@@ -448,7 +534,8 @@ async def export_data(
                 return buffer.read(), f'{filename}{ext}', content_type
 
             elif result_data['status'] == JobStatus.FAILED:
-                manager.shutdown_engine(f'{datasource_id}_export')
+                if temp_engine:
+                    manager.shutdown_engine(temp_engine_id)
                 raise PipelineExecutionError(
                     f'Export failed: {result_data.get("error", "Unknown error")}',
                     details={'operation': 'export', 'datasource_id': datasource_id, 'export_format': export_format},

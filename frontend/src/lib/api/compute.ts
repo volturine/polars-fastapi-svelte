@@ -5,8 +5,8 @@ import type {
 	EngineStatusResponse
 } from '$lib/types/compute';
 import type { RawComputeJobResponse } from '$lib/types/api-responses';
-import { apiRequest } from './client';
-import { err, ResultAsync } from 'neverthrow';
+import { apiBlobRequest, apiRequest } from './client';
+import { okAsync, ResultAsync } from 'neverthrow';
 import type { ApiError } from './client';
 
 export interface PreviewResponse {
@@ -16,6 +16,7 @@ export interface PreviewResponse {
 }
 
 export interface StepPreviewRequest {
+	analysis_id: string;
 	datasource_id: string;
 	pipeline_steps: Array<{
 		id: string;
@@ -137,6 +138,7 @@ export function listEngines(): ResultAsync<EngineListResponse, ApiError> {
 }
 
 export interface ExportRequest {
+	analysis_id?: string;
 	datasource_id: string;
 	pipeline_steps: Array<{
 		id: string;
@@ -160,49 +162,19 @@ export interface ExportResponse {
 }
 
 export function exportData(request: ExportRequest): ResultAsync<Blob | ExportResponse, ApiError> {
-	return ResultAsync.fromPromise(
-		fetch('/v1/compute/export', {
+	if (request.destination === 'download') {
+		return apiBlobRequest('/v1/compute/export', {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(request)
-		}),
-		(error): ApiError => ({
-			type: 'network' as const,
-			message: error instanceof Error ? error.message : 'Export failed'
-		})
-	).andThen((response) => {
-		if (!response.ok) {
-			return ResultAsync.fromPromise(
-				response.json().catch(() => ({ detail: 'Export failed' })),
-				(): ApiError => ({
-					type: 'http' as const,
-					message: response.statusText,
-					status: response.status
-				})
-			).andThen((errorData) =>
-				err({
-					type: 'http' as const,
-					message: (errorData as { detail?: string }).detail || 'Export failed',
-					status: response.status
-				})
-			);
-		}
-		if (request.destination === 'download') {
-			return ResultAsync.fromPromise(
-				response.blob(),
-				(): ApiError => ({
-					type: 'parse' as const,
-					message: 'Failed to parse blob'
-				})
-			);
-		}
-		return ResultAsync.fromPromise(
-			response.json() as Promise<ExportResponse>,
-			(): ApiError => ({
-				type: 'parse' as const,
-				message: 'Failed to parse export response'
-			})
-		);
+		}).andThen((blob) => {
+			const ext = request.format.startsWith('.') ? request.format : `.${request.format}`;
+			downloadBlob(blob, `${request.filename}${ext}`);
+			return okAsync(blob);
+		});
+	}
+	return apiRequest<ExportResponse>('/v1/compute/export', {
+		method: 'POST',
+		body: JSON.stringify(request)
 	});
 }
 
@@ -215,4 +187,31 @@ export function downloadBlob(blob: Blob, filename: string): void {
 	link.click();
 	document.body.removeChild(link);
 	URL.revokeObjectURL(url);
+}
+
+export interface StepSchemaRequest {
+	analysis_id: string;
+	datasource_id: string;
+	pipeline_steps: Array<{
+		id: string;
+		type: string;
+		config: Record<string, unknown>;
+		depends_on?: string[];
+	}>;
+	target_step_id: string;
+}
+
+export interface StepSchemaResponse {
+	step_id: string;
+	columns: string[];
+	column_types: Record<string, string>;
+}
+
+export function getStepSchema(
+	request: StepSchemaRequest
+): ResultAsync<StepSchemaResponse, ApiError> {
+	return apiRequest<StepSchemaResponse>('/v1/compute/schema', {
+		method: 'POST',
+		body: JSON.stringify(request)
+	});
 }

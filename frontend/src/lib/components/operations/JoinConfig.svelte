@@ -312,7 +312,7 @@
 
 	<div class="section">
 		<h4>Column Suffix</h4>
-		<input type="text" bind:value={config.suffix} placeholder="_right" />
+		<input id="suffix" type="text" bind:value={config.suffix} placeholder="_right" />
 		<div class="help-text">Suffix for columns from the right dataset (when names collide)</div>
 	</div>
 </div>

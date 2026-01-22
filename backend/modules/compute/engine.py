@@ -140,9 +140,7 @@ def _handle_sort(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
     if isinstance(descending, list) and len(descending) != len(columns):
         # Ensure descending list matches columns length
         descending = (
-            descending[: len(columns)]
-            if len(descending) > len(columns)
-            else descending + [False] * (len(columns) - len(descending))
+            descending[: len(columns)] if len(descending) > len(columns) else descending + [False] * (len(columns) - len(descending))
         )
     return lf.sort(columns, descending=descending)
 
@@ -179,15 +177,26 @@ def _handle_drop(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
 def _handle_pivot(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
     """Handle pivot operation."""
     index = params.get('index', [])
-    on = params.get('columns')
+    on_column = params.get('columns')
     values = params.get('values')
     aggregate_function = params.get('aggregate_function', 'first')
 
-    if not on:
-        raise ValueError('Pivot requires a column to pivot on')
+    if not on_column:
+        raise ValueError('Pivot requires a pivot column')
 
-    pivot = cast(Callable[..., pl.LazyFrame], lf.pivot)
-    return pivot(on=on, index=index, values=values, aggregate_function=aggregate_function)
+    if not index:
+        raise ValueError('Pivot requires at least one index column')
+
+    # Get unique values from the pivot column to use as on_columns
+    # This is needed because LazyFrame.pivot() requires both 'on' and 'on_columns'
+    df_temp = lf.collect()
+    on_columns = df_temp.select(on_column).to_series().unique().to_list()
+
+    # Return a lazy pivot using the collected unique values
+    if values:
+        return lf.pivot(on=on_column, on_columns=on_columns, index=index, values=values, aggregate_function=aggregate_function)
+    else:
+        return lf.pivot(on=on_column, on_columns=on_columns, index=index, aggregate_function=aggregate_function)
 
 
 def _handle_timeseries(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:

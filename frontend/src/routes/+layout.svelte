@@ -96,10 +96,16 @@
 </QueryClientProvider>
 
 <style>
+	:global(html, body) {
+		height: 100%;
+		overflow: hidden;
+	}
+
 	.app {
-		min-height: 100vh;
+		height: 100vh;
 		display: flex;
 		flex-direction: column;
+		overflow: hidden;
 	}
 
 	.header {
@@ -107,7 +113,7 @@
 		background-color: var(--bg-primary);
 		position: sticky;
 		top: 0;
-		z-index: 100;
+		z-index: var(--z-header);
 		backdrop-filter: blur(8px);
 	}
 
@@ -125,7 +131,7 @@
 		align-items: center;
 		gap: var(--space-1);
 		text-decoration: none;
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 		font-size: var(--text-base);
 	}
 
@@ -161,7 +167,6 @@
 		color: var(--fg-primary);
 		background-color: var(--bg-hover);
 		border-color: var(--border-primary);
-		opacity: 1;
 	}
 
 	.nav-link.active {
@@ -199,5 +204,6 @@
 	.main {
 		flex: 1;
 		background-color: var(--bg-secondary);
+		overflow: hidden;
 	}
 </style>

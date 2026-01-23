@@ -152,7 +152,7 @@
 <div class="container">
 	<header>
 		<h1>Add Data Source</h1>
-		<a href={resolve('/datasources')} class="button" data-sveltekit-reload>Cancel</a>
+		<a href={resolve('/datasources')} class="btn-secondary" data-sveltekit-reload>Cancel</a>
 	</header>
 
 	<div class="tabs">
@@ -172,7 +172,7 @@
 	</div>
 
 	{#if error}
-		<div class="error-banner">{error}</div>
+		<div class="error-box">{error}</div>
 	{/if}
 
 	<div class="content">
@@ -258,7 +258,7 @@
 					</div>
 				{/if}
 
-				<button class="button primary" onclick={handleFileUpload} disabled={loading || !file}>
+				<button class="btn-primary" onclick={handleFileUpload} disabled={loading || !file}>
 					{loading ? 'Uploading...' : 'Upload'}
 				</button>
 			</div>
@@ -341,7 +341,7 @@
 						<label for="duckdb-readonly">Read-only mode</label>
 					</div>
 
-					<button class="button primary" onclick={handleDuckDBConnect} disabled={loading}>
+					<button class="btn-primary" onclick={handleDuckDBConnect} disabled={loading}>
 						{loading ? 'Connecting...' : 'Connect'}
 					</button>
 				{:else}
@@ -379,7 +379,7 @@
 						></textarea>
 					</div>
 
-					<button class="button primary" onclick={handleDatabaseConnect} disabled={loading}>
+					<button class="btn-primary" onclick={handleDatabaseConnect} disabled={loading}>
 						{loading ? 'Connecting...' : 'Connect'}
 					</button>
 				{/if}
@@ -416,7 +416,7 @@
 					</select>
 				</div>
 
-				<button class="button primary" onclick={handleApiConnect} disabled={loading}>
+				<button class="btn-primary" onclick={handleApiConnect} disabled={loading}>
 					{loading ? 'Connecting...' : 'Connect'}
 				</button>
 			</div>
@@ -440,41 +440,12 @@
 
 	h1 {
 		font-size: var(--text-2xl);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 		margin: 0;
 	}
 
-	.button {
-		display: inline-block;
-		padding: var(--space-2) var(--space-4);
-		background-color: var(--bg-tertiary);
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		cursor: pointer;
+	.btn-secondary {
 		text-decoration: none;
-		color: var(--fg-primary);
-		font-size: var(--text-sm);
-		font-weight: 500;
-		transition: background-color var(--transition);
-	}
-
-	.button:hover:not(:disabled) {
-		background-color: var(--bg-hover);
-	}
-
-	.button.primary {
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border-color: var(--accent-primary);
-	}
-
-	.button.primary:hover:not(:disabled) {
-		opacity: 0.9;
-	}
-
-	.button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
 	}
 
 	.tabs {
@@ -491,7 +462,7 @@
 		border-bottom: 2px solid transparent;
 		cursor: pointer;
 		font-size: var(--text-sm);
-		font-weight: 500;
+		font-weight: var(--font-medium);
 		color: var(--fg-muted);
 		margin-bottom: -2px;
 		transition: all var(--transition);
@@ -506,14 +477,6 @@
 		border-bottom-color: var(--accent-primary);
 	}
 
-	.error-banner {
-		padding: var(--space-4);
-		background-color: var(--error-bg);
-		color: var(--error-fg);
-		border-radius: var(--radius-md);
-		margin-bottom: var(--space-6);
-	}
-
 	.content {
 		background-color: var(--card-bg);
 		padding: var(--space-8);
@@ -524,18 +487,18 @@
 	.form {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
+		gap: var(--space-6);
 	}
 
 	.form-group {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: var(--space-2);
 	}
 
 	label {
-		font-weight: 500;
-		font-size: 0.875rem;
+		font-weight: var(--font-medium);
+		font-size: var(--text-sm);
 		color: var(--fg-secondary);
 	}
 
@@ -543,13 +506,13 @@
 	input[type='url'],
 	select,
 	textarea {
-		padding: 0.5rem 0.75rem;
+		padding: var(--space-2) var(--space-3);
 		border: 1px solid var(--input-border);
 		border-radius: var(--radius-sm);
-		font-size: 0.875rem;
+		font-size: var(--text-sm);
 		background-color: var(--input-bg);
 		color: var(--fg-primary);
-		transition: border-color 0.15s;
+		transition: border-color var(--transition);
 	}
 
 	input[type='text']:focus,
@@ -570,10 +533,10 @@
 	}
 
 	input[type='file'] {
-		padding: 0.5rem;
+		padding: var(--space-2);
 		border: 1px solid var(--input-border);
 		border-radius: var(--radius-sm);
-		font-size: 0.875rem;
+		font-size: var(--text-sm);
 	}
 
 	textarea {
@@ -582,13 +545,13 @@
 	}
 
 	.hint {
-		font-size: 0.75rem;
+		font-size: var(--text-xs);
 		color: var(--fg-muted);
 		margin: 0;
 	}
 
 	.file-info {
-		font-size: 0.875rem;
+		font-size: var(--text-sm);
 		color: var(--fg-secondary);
 		margin: 0;
 	}
@@ -602,7 +565,7 @@
 
 	.csv-options h3 {
 		font-size: var(--text-sm);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 		margin: 0 0 var(--space-4) 0;
 		color: var(--fg-secondary);
 	}
@@ -628,10 +591,10 @@
 	}
 
 	input[type='number'] {
-		padding: 0.5rem 0.75rem;
+		padding: var(--space-2) var(--space-3);
 		border: 1px solid var(--input-border);
 		border-radius: var(--radius-sm);
-		font-size: 0.875rem;
+		font-size: var(--text-sm);
 		background-color: var(--input-bg);
 		color: var(--fg-primary);
 	}
@@ -656,15 +619,15 @@
 	.radio-group {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: var(--space-3);
 	}
 
 	.radio-option {
 		display: grid;
 		grid-template-columns: auto 1fr;
 		grid-template-rows: auto auto;
-		gap: 0 0.75rem;
-		padding: 0.75rem 1rem;
+		gap: 0 var(--space-3);
+		padding: var(--space-3) var(--space-4);
 		border: 1px solid var(--border-primary);
 		border-radius: var(--radius-sm);
 		cursor: pointer;
@@ -690,13 +653,13 @@
 	}
 
 	.radio-label {
-		font-weight: 500;
+		font-weight: var(--font-medium);
 		color: var(--fg-primary);
-		font-size: 0.875rem;
+		font-size: var(--text-sm);
 	}
 
 	.radio-desc {
-		font-size: 0.75rem;
+		font-size: var(--text-xs);
 		color: var(--fg-muted);
 	}
 </style>

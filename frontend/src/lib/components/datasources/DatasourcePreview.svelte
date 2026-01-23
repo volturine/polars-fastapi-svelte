@@ -204,19 +204,19 @@
 	}
 
 	.error-state {
-		padding: 2rem;
+		padding: var(--space-8);
 		text-align: center;
 	}
 
 	.error-state .error-title {
-		margin: 0 0 0.5rem;
+		margin: 0 0 var(--space-2);
 		color: var(--error-fg);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 	}
 
 	.error-state .error-message {
 		margin: 0;
-		font-size: 0.75rem;
+		font-size: var(--text-xs);
 		color: var(--fg-tertiary);
 	}
 
@@ -267,10 +267,10 @@
 
 	.type-badge {
 		display: inline-block;
-		padding: 0.125rem 0.5rem;
+		padding: var(--space-1) var(--space-2);
 		border-radius: var(--radius-sm);
-		font-size: 0.6875rem;
-		font-weight: 500;
+		font-size: var(--text-xs);
+		font-weight: var(--font-medium);
 		font-family: var(--font-mono);
 		border: 1px solid;
 	}
@@ -293,27 +293,12 @@
 		border-color: var(--warning-border);
 	}
 
-	.type-badge.temporal {
-		background: #2d1f3d;
-		color: #c4a7e7;
-		border-color: #5a3d7a;
-	}
-
-	.type-badge.list {
-		background: #1f2d3d;
-		color: #7dc4e4;
-		border-color: #3d5a7a;
-	}
-
-	.type-badge.struct {
-		background: #2d2d1f;
-		color: #e7d4a7;
-		border-color: #7a6a3d;
-	}
-
+	.type-badge.temporal,
+	.type-badge.list,
+	.type-badge.struct,
 	.type-badge.other {
 		background: var(--bg-tertiary);
-		color: var(--fg-muted);
+		color: var(--fg-tertiary);
 		border-color: var(--border-primary);
 	}
 </style>

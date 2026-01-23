@@ -65,10 +65,10 @@
 	}
 </script>
 
-<div class="string-methods-config" role="region" aria-label="String methods configuration">
+<div class="config-panel" role="region" aria-label="String methods configuration">
 	<h3>String Methods Configuration</h3>
 
-	<div class="section" role="group" aria-labelledby="str-column-heading">
+	<div class="form-section" role="group" aria-labelledby="str-column-heading">
 		<h4 id="str-column-heading">Source Column</h4>
 		<label for="str-select-column" class="sr-only">Select string column</label>
 		<select id="str-select-column" data-testid="str-column-select" bind:value={config.column}>
@@ -78,13 +78,13 @@
 			{/each}
 		</select>
 		{#if stringColumns.length === 0}
-			<p id="str-no-columns-warning" class="warning" role="alert">
+			<p id="str-no-columns-warning" class="warning-box" role="alert">
 				No string columns detected in schema
 			</p>
 		{/if}
 	</div>
 
-	<div class="section" role="group" aria-labelledby="str-method-heading">
+	<div class="form-section" role="group" aria-labelledby="str-method-heading">
 		<h4 id="str-method-heading">String Method</h4>
 		<label for="str-select-method" class="sr-only">Select string method</label>
 		<select id="str-select-method" data-testid="str-method-select" bind:value={config.method}>
@@ -95,7 +95,7 @@
 	</div>
 
 	{#if needsParam('start') || needsParam('end')}
-		<div class="section" role="group" aria-labelledby="slice-params-heading">
+		<div class="form-section" role="group" aria-labelledby="slice-params-heading">
 			<h4 id="slice-params-heading">Slice Parameters</h4>
 			<div class="inline-group">
 				<div class="input-group">
@@ -128,7 +128,7 @@
 	{/if}
 
 	{#if needsParam('pattern') && needsParam('replacement')}
-		<div class="section" role="group" aria-labelledby="replace-params-heading">
+		<div class="form-section" role="group" aria-labelledby="replace-params-heading">
 			<h4 id="replace-params-heading">Replace Parameters</h4>
 			<div class="input-group">
 				<label for="str-input-pattern">Pattern to find:</label>
@@ -162,7 +162,7 @@
 	{/if}
 
 	{#if needsParam('pattern') && needsParam('group_index')}
-		<div class="section" role="group" aria-labelledby="extract-params-heading">
+		<div class="form-section" role="group" aria-labelledby="extract-params-heading">
 			<h4 id="extract-params-heading">Extract Parameters</h4>
 			<div class="input-group">
 				<label for="str-input-extract-pattern">Regex Pattern:</label>
@@ -196,7 +196,7 @@
 	{/if}
 
 	{#if needsParam('delimiter') && needsParam('index')}
-		<div class="section" role="group" aria-labelledby="split-params-heading">
+		<div class="form-section" role="group" aria-labelledby="split-params-heading">
 			<h4 id="split-params-heading">Split Parameters</h4>
 			<div class="input-group">
 				<label for="str-input-delimiter">Delimiter:</label>
@@ -229,7 +229,7 @@
 		</div>
 	{/if}
 
-	<div class="section" role="group" aria-labelledby="new-column-heading">
+	<div class="form-section" role="group" aria-labelledby="new-column-heading">
 		<h4 id="new-column-heading">New Column Name</h4>
 		<label for="str-input-new-column" class="sr-only">New column name</label>
 		<input
@@ -247,67 +247,16 @@
 </div>
 
 <style>
-	.string-methods-config {
-		padding: 1rem;
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: 1rem;
-		color: var(--panel-header-fg);
-	}
-
-	h4 {
-		margin-top: 0;
-		margin-bottom: 0.5rem;
-		font-size: 1rem;
-		color: var(--fg-secondary);
-	}
-
-	.section {
-		margin-bottom: 1.5rem;
-		padding: 1rem;
-		background-color: var(--form-section-bg);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--form-section-border);
-	}
-
-	.warning {
-		font-size: 0.875rem;
+	.warning-box {
+		font-size: var(--text-sm);
 		color: var(--error-fg);
-		margin-top: 0.5rem;
+		margin-top: var(--space-2);
 		margin-bottom: 0;
-	}
-
-	select,
-	input[type='text'],
-	input[type='number'] {
-		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
 	}
 
 	.inline-group {
 		display: flex;
-		gap: 1rem;
+		gap: var(--space-4);
 	}
 
 	.input-group {
@@ -316,9 +265,9 @@
 
 	.input-group label {
 		display: block;
-		font-size: 0.875rem;
-		font-weight: 500;
-		margin-bottom: 0.25rem;
+		font-size: var(--text-sm);
+		font-weight: var(--font-medium);
+		margin-bottom: var(--space-1);
 		color: var(--fg-secondary);
 	}
 </style>

@@ -134,9 +134,7 @@
 	h3 {
 		margin: 0;
 		font-size: var(--text-sm);
-		font-weight: 600;
-		color: var(--fg-primary);
-		line-height: 1.4;
+		font-weight: var(--font-semibold);
 		flex: 1;
 		min-width: 0;
 		overflow: hidden;

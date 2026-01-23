@@ -73,7 +73,7 @@
 	}
 </script>
 
-<div class="filter-config" role="region" aria-label="Filter configuration">
+<div class="config-panel" role="region" aria-label="Filter configuration">
 	<h3>Filter Configuration</h3>
 
 	<div class="logic-selector">
@@ -163,31 +163,6 @@
 </div>
 
 <style>
-	.filter-config {
-		padding: var(--space-4);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: var(--space-4);
-		color: var(--panel-header-fg);
-	}
-
 	.logic-selector {
 		margin-bottom: var(--space-4);
 		color: var(--fg-secondary);
@@ -196,10 +171,6 @@
 	.logic-selector select {
 		margin-left: var(--space-2);
 		padding: var(--space-1) var(--space-2);
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
 	}
 
 	.conditions {
@@ -214,15 +185,6 @@
 		gap: var(--space-2);
 		align-items: center;
 		flex-wrap: wrap;
-	}
-
-	.condition-row select,
-	.condition-row input {
-		padding: var(--space-2);
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
 	}
 
 	.condition-row select:first-child {

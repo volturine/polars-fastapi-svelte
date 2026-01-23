@@ -47,7 +47,7 @@
 	);
 </script>
 
-<div class="sort-config" role="region" aria-label="Sort configuration">
+<div class="config-panel" role="region" aria-label="Sort configuration">
 	<h3>Sort Configuration</h3>
 
 	<div class="add-rule" role="group" aria-label="Add sort rule form">
@@ -159,36 +159,7 @@
 </div>
 
 <style>
-	.sort-config {
-		padding: var(--space-4);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: var(--space-4);
-		color: var(--panel-header-fg);
-	}
-
 	h4 {
-		margin-top: 0;
-		margin-bottom: var(--space-3);
-		font-size: var(--text-sm);
-		color: var(--fg-muted);
 		text-transform: uppercase;
 	}
 
@@ -203,11 +174,6 @@
 	.add-rule select {
 		flex: 2;
 		min-width: 200px;
-		padding: var(--space-2);
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
 	}
 
 	.direction-select {
@@ -275,6 +241,13 @@
 		border-radius: var(--radius-md);
 		margin-bottom: var(--space-4);
 		border: 1px solid var(--panel-muted-border);
+	}
+
+	.sort-rules h4 {
+		margin-top: 0;
+		margin-bottom: var(--space-3);
+		font-size: var(--text-sm);
+		color: var(--fg-muted);
 	}
 
 	.sort-rule-item {

@@ -46,7 +46,7 @@
 	}
 </script>
 
-<div class="rename-config" role="region" aria-label="Rename configuration">
+<div class="config-panel" role="region" aria-label="Rename configuration">
 	<h3>Rename Configuration</h3>
 
 	<div class="add-mapping" role="group" aria-label="Add rename mapping form">
@@ -115,36 +115,7 @@
 </div>
 
 <style>
-	.rename-config {
-		padding: var(--space-4);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: var(--space-4);
-		color: var(--panel-header-fg);
-	}
-
 	h4 {
-		margin-top: 0;
-		margin-bottom: var(--space-3);
-		font-size: var(--text-sm);
-		color: var(--fg-muted);
 		text-transform: uppercase;
 	}
 
@@ -153,15 +124,6 @@
 		gap: var(--space-2);
 		margin-bottom: var(--space-6);
 		flex-wrap: wrap;
-	}
-
-	.add-mapping select,
-	.add-mapping input {
-		padding: var(--space-2);
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
 	}
 
 	.add-mapping select {
@@ -194,6 +156,13 @@
 		border-radius: var(--radius-md);
 		margin-bottom: var(--space-4);
 		border: 1px solid var(--panel-muted-border);
+	}
+
+	.mappings-list h4 {
+		margin-top: 0;
+		margin-bottom: var(--space-3);
+		font-size: var(--text-sm);
+		color: var(--fg-muted);
 	}
 
 	.mapping-item {

@@ -47,7 +47,7 @@
 	});
 </script>
 
-<div class="sample-config" role="region" aria-label="Sample configuration">
+<div class="config-panel" role="region" aria-label="Sample configuration">
 	<h3>Sample Configuration</h3>
 
 	<div class="form-group" role="radiogroup" aria-labelledby="sample-mode-heading">
@@ -128,59 +128,17 @@
 </div>
 
 <style>
-	.sample-config {
-		padding: 1rem;
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: 1rem;
-		color: var(--panel-header-fg);
-	}
-
 	.form-group {
-		margin-bottom: 1rem;
+		margin-bottom: var(--space-4);
 	}
 
 	.form-group:last-child {
 		margin-bottom: 0;
 	}
 
-	label {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		cursor: pointer;
-		color: var(--fg-secondary);
-	}
-
-	input[type='number'] {
-		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
-	}
-
 	.checkbox-label {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-2);
 	}
 </style>

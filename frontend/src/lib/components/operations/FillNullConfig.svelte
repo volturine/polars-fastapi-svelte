@@ -48,10 +48,10 @@
 	}
 </script>
 
-<div class="fill-null-config" role="region" aria-label="Fill null configuration">
+<div class="config-panel" role="region" aria-label="Fill null configuration">
 	<h3>Fill Null Configuration</h3>
 
-	<div class="section" role="group" aria-labelledby="fill-strategy-heading">
+	<div class="form-section" role="group" aria-labelledby="fill-strategy-heading">
 		<h4 id="fill-strategy-heading">Fill Strategy</h4>
 		<label for="fill-select-strategy" class="sr-only">Select fill strategy</label>
 		<select
@@ -66,8 +66,9 @@
 	</div>
 
 	{#if currentStrategy?.needsValue}
-		<div class="section">
-			<h4>Fill Value</h4>
+		<div class="form-section" role="group" aria-labelledby="fill-value-heading">
+			<h4 id="fill-value-heading">Fill Value</h4>
+			<label for="fill-input-value" class="sr-only">Fill value</label>
 			<input
 				id="fill-value"
 				type="text"
@@ -86,15 +87,14 @@
 		</div>
 	{/if}
 
-	<div class="section" role="group" aria-labelledby="target-columns-heading">
+	<div class="form-section" role="group" aria-labelledby="target-columns-heading">
 		<h4 id="target-columns-heading">Target Columns</h4>
-		<div class="column-actions">
+		<div class="bulk-actions">
 			<button
 				id="fill-btn-select-all"
 				data-testid="fill-select-all-button"
 				type="button"
 				onclick={selectAllColumns}
-				class="action-btn"
 				aria-label="Select all columns"
 			>
 				Select All
@@ -104,7 +104,6 @@
 				data-testid="fill-deselect-all-button"
 				type="button"
 				onclick={deselectAllColumns}
-				class="action-btn"
 				aria-label="Deselect all columns"
 			>
 				Deselect All
@@ -122,18 +121,19 @@
 						onchange={() => toggleColumn(column.name)}
 						aria-label={`Fill nulls in ${column.name}`}
 					/>
-					<span>{column.name} ({column.dtype})</span>
+					<span class="column-name">{column.name}</span>
+					<span class="column-type">{column.dtype}</span>
 				</label>
 			{/each}
 		</div>
 
 		{#if config.columns && config.columns.length > 0}
-			<div id="fill-selected-info" class="selected-info" aria-live="polite">
+			<div id="fill-selected-info" class="info-box" aria-live="polite">
 				Selected {config.columns.length} column{config.columns.length !== 1 ? 's' : ''}:
 				{config.columns.join(', ')}
 			</div>
 		{:else}
-			<div id="fill-no-columns-info" class="selected-info">
+			<div id="fill-no-columns-info" class="info-box">
 				No columns selected - will apply to all columns
 			</div>
 		{/if}
@@ -141,114 +141,9 @@
 </div>
 
 <style>
-	.fill-null-config {
-		padding: 1rem;
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: 1rem;
-		color: var(--panel-header-fg);
-	}
-
-	h4 {
-		margin-top: 0;
-		margin-bottom: 0.5rem;
-		font-size: 1rem;
-		color: var(--fg-secondary);
-	}
-
-	.section {
-		margin-bottom: 1.5rem;
-		padding: 1rem;
-		background-color: var(--form-section-bg);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--form-section-border);
-	}
-
 	select,
 	input[type='text'] {
 		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
-	}
-
-	.column-actions {
-		display: flex;
-		gap: 0.5rem;
-		margin-bottom: 0.75rem;
-		flex-wrap: wrap;
-	}
-
-	.action-btn {
-		padding: 0.25rem 0.75rem;
-		background-color: var(--bg-tertiary);
-		color: var(--fg-primary);
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		font-size: 0.875rem;
-	}
-
-	.action-btn:hover {
-		background-color: var(--bg-hover);
-	}
-
-	.column-list {
-		max-height: 200px;
-		overflow-y: auto;
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		padding: 0.5rem;
-		background-color: var(--bg-primary);
-	}
-
-	.column-item {
-		display: flex;
-		align-items: center;
-		padding: 0.5rem;
-		cursor: pointer;
-		border-radius: var(--radius-sm);
-	}
-
-	.column-item:hover {
-		background-color: var(--bg-hover);
-	}
-
-	.column-item input[type='checkbox'] {
-		margin-right: 0.5rem;
-		cursor: pointer;
-	}
-
-	.selected-info {
-		margin-top: 0.5rem;
-		padding: 0.5rem;
-		background-color: var(--info-bg);
-		border: 1px solid var(--info-border);
-		border-radius: var(--radius-sm);
-		font-size: 0.875rem;
-		color: var(--info-fg);
-	}
-
-	button:hover:not(:disabled) {
-		opacity: 0.9;
+		margin-bottom: var(--space-2);
 	}
 </style>

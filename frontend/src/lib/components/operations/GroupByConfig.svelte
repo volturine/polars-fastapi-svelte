@@ -96,10 +96,10 @@
 	}
 </script>
 
-<div class="groupby-config" role="region" aria-label="Group by configuration">
+<div class="config-panel" role="region" aria-label="Group by configuration">
 	<h3>Group By Configuration</h3>
 
-	<div class="section" role="group" aria-labelledby="groupby-columns-heading">
+	<div class="form-section" role="group" aria-labelledby="groupby-columns-heading">
 		<h4 id="groupby-columns-heading">Group By Columns</h4>
 		<div class="column-list">
 			{#each schema.columns as column (column.name)}
@@ -112,18 +112,19 @@
 						onchange={() => toggleGroupByColumn(column.name)}
 						aria-label={`Group by ${column.name}`}
 					/>
-					<span>{column.name} ({column.dtype})</span>
+					<span class="column-name">{column.name}</span>
+					<span class="column-type">{column.dtype}</span>
 				</label>
 			{/each}
 		</div>
 		{#if safeGroupBy.length > 0}
-			<div id="groupby-selected-info" class="selected-info" aria-live="polite">
+			<div id="groupby-selected-info" class="info-box" aria-live="polite">
 				Selected: {safeGroupBy.join(', ')}
 			</div>
 		{/if}
 	</div>
 
-	<div class="section" role="group" aria-labelledby="aggregations-heading">
+	<div class="form-section" role="group" aria-labelledby="aggregations-heading">
 		<h4 id="aggregations-heading">Aggregations</h4>
 
 		<div class="add-aggregation" role="group" aria-label="Add aggregation form">
@@ -198,96 +199,11 @@
 </div>
 
 <style>
-	.groupby-config {
-		padding: var(--space-4);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: var(--space-4);
-		color: var(--panel-header-fg);
-	}
-
-	h4 {
-		margin-top: 0;
-		margin-bottom: var(--space-3);
-		font-size: var(--text-base);
-		color: var(--fg-secondary);
-	}
-
-	.section {
-		margin-bottom: var(--space-6);
-		padding: var(--space-4);
-		background-color: var(--form-section-bg);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--form-section-border);
-	}
-
-	.column-list {
-		max-height: 200px;
-		overflow-y: auto;
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		padding: var(--space-2);
-		background-color: var(--bg-primary);
-	}
-
-	.column-item {
-		display: flex;
-		align-items: center;
-		padding: var(--space-2);
-		cursor: pointer;
-		border-radius: var(--radius-sm);
-	}
-
-	.column-item:hover {
-		background-color: var(--bg-hover);
-	}
-
-	.column-item input[type='checkbox'] {
-		margin-right: var(--space-2);
-		cursor: pointer;
-	}
-
-	.selected-info {
-		margin-top: var(--space-2);
-		padding: var(--space-2);
-		background-color: var(--info-bg);
-		border: 1px solid var(--info-border);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-sm);
-		color: var(--info-fg);
-	}
-
 	.add-aggregation {
 		display: flex;
 		gap: var(--space-2);
 		margin-bottom: var(--space-4);
 		flex-wrap: wrap;
-	}
-
-	.add-aggregation select,
-	.add-aggregation input {
-		padding: var(--space-2);
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
 	}
 
 	.add-aggregation select:first-child {

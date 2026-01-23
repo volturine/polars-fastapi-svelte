@@ -103,16 +103,16 @@
 			<h1>Data Sources</h1>
 			<p class="subtitle">Manage your data connections and files</p>
 		</div>
-		<a href={resolve('/datasources/new')} class="btn-new" data-sveltekit-reload>
+		<a href={resolve('/datasources/new')} class="btn-primary btn-new" data-sveltekit-reload>
 			<Plus size={16} />
 			Add Data Source
 		</a>
 	</header>
 
 	{#if query.isLoading}
-		<div class="loading-state">Loading data sources...</div>
+		<div class="info-box loading-state">Loading data sources...</div>
 	{:else if query.isError}
-		<div class="error-state">
+		<div class="error-box">
 			Error loading data sources: {query.error instanceof Error
 				? query.error.message
 				: 'Unknown error'}
@@ -157,10 +157,10 @@
 							<span class="col-name">{datasource.name}</span>
 							<span class="col-type">
 								<span
-									class="type-badge"
-									class:file={datasource.source_type === 'file'}
-									class:database={datasource.source_type === 'database'}
-									class:api={datasource.source_type === 'api'}
+									class="badge"
+									class:badge-info={datasource.source_type === 'file'}
+									class:badge-success={datasource.source_type === 'database'}
+									class:badge-warning={datasource.source_type === 'api'}
 								>
 									{#if datasource.source_type === 'file'}
 										{getFileType(datasource) ?? 'file'}
@@ -214,6 +214,9 @@
 		max-width: 1000px;
 		margin: 0 auto;
 		padding: var(--space-6);
+		height: 100%;
+		overflow: auto;
+		box-sizing: border-box;
 	}
 
 	.page-header {
@@ -229,7 +232,7 @@
 	.header-text h1 {
 		margin: 0 0 var(--space-2) 0;
 		font-size: var(--text-2xl);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 	}
 
 	.subtitle {
@@ -239,43 +242,12 @@
 	}
 
 	.btn-new {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-4);
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border: 1px solid var(--accent-primary);
-		border-radius: var(--radius-sm);
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-		font-weight: 500;
 		text-decoration: none;
-		cursor: pointer;
-		transition: opacity var(--transition);
 		box-shadow: var(--card-shadow);
 	}
 
-	.btn-new:hover {
-		opacity: 0.9;
-	}
-
 	.loading-state {
-		padding: var(--space-8);
 		text-align: center;
-		color: var(--fg-tertiary);
-		background-color: var(--bg-primary);
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-	}
-
-	.error-state {
-		padding: var(--space-6);
-		text-align: center;
-		background-color: var(--error-bg);
-		border: 1px solid var(--error-border);
-		border-radius: var(--radius-sm);
-		color: var(--error-fg);
 	}
 
 	.empty-state {
@@ -322,7 +294,7 @@
 	.list-header {
 		padding: var(--space-4) var(--space-5);
 		font-size: var(--text-xs);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 		color: var(--fg-tertiary);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
@@ -349,7 +321,7 @@
 	}
 
 	.col-name {
-		font-weight: 500;
+		font-weight: var(--font-medium);
 		color: var(--fg-primary);
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -396,98 +368,8 @@
 		border-top: 1px solid var(--border-primary);
 	}
 
-	.type-badge {
-		display: inline-block;
-		padding: var(--space-1) var(--space-2);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-xs);
-		font-weight: 500;
-		border: 1px solid;
-	}
-
-	.type-badge.file {
-		color: var(--info-fg);
-		background-color: var(--info-bg);
-		border-color: var(--info-border);
-	}
-
-	.type-badge.database {
-		color: var(--success-fg);
-		background-color: var(--success-bg);
-		border-color: var(--success-border);
-	}
-
-	.type-badge.api {
-		color: var(--warning-fg);
-		background-color: var(--warning-bg);
-		border-color: var(--warning-border);
-	}
-
 	.confirm-actions {
 		display: flex;
 		gap: var(--space-2);
-	}
-
-	.btn {
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid transparent;
-		border-radius: var(--radius-sm);
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-		font-weight: 500;
-		cursor: pointer;
-		transition: all var(--transition);
-		text-decoration: none;
-	}
-
-	.btn-sm {
-		padding: var(--space-1) var(--space-2);
-		font-size: var(--text-xs);
-	}
-
-	.btn-primary {
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border-color: var(--accent-primary);
-	}
-
-	.btn-primary:hover {
-		opacity: 0.85;
-	}
-
-	.btn-secondary {
-		background-color: transparent;
-		color: var(--fg-primary);
-		border-color: var(--border-secondary);
-	}
-
-	.btn-secondary:hover {
-		background-color: var(--bg-hover);
-	}
-
-	.btn-ghost {
-		background-color: transparent;
-		color: var(--fg-tertiary);
-		border-color: transparent;
-	}
-
-	.btn-ghost:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-primary);
-	}
-
-	.btn-danger {
-		background-color: var(--error-bg);
-		color: var(--error-fg);
-		border-color: var(--error-border);
-	}
-
-	.btn-danger:hover {
-		opacity: 0.85;
-	}
-
-	.btn:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
 	}
 </style>

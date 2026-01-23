@@ -49,9 +49,7 @@
 
 	h2 {
 		margin: 0 0 var(--space-2) 0;
-		font-size: var(--text-lg);
-		font-weight: 600;
-		color: var(--fg-primary);
+		font-weight: var(--font-semibold);
 	}
 
 	p {

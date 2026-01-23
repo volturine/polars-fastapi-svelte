@@ -20,10 +20,10 @@
 	}
 </script>
 
-<div class="expression-config" role="region" aria-label="Expression configuration">
+<div class="config-panel" role="region" aria-label="Expression configuration">
 	<h3>Expression Configuration</h3>
 
-	<div class="section" role="group" aria-labelledby="expr-expression-heading">
+	<div class="form-section" role="group" aria-labelledby="expr-expression-heading">
 		<h4 id="expr-expression-heading">Expression</h4>
 		<label for="expr-textarea-expression" class="sr-only">Polars expression</label>
 		<textarea
@@ -49,7 +49,7 @@
 		</div>
 	</div>
 
-	<div class="section" role="group" aria-labelledby="expr-new-column-heading">
+	<div class="form-section" role="group" aria-labelledby="expr-new-column-heading">
 		<h4 id="expr-new-column-heading">New Column Name</h4>
 		<label for="expr-input-column" class="sr-only">New column name</label>
 		<input
@@ -61,7 +61,7 @@
 		/>
 	</div>
 
-	<div class="section" role="group" aria-labelledby="expr-columns-heading">
+	<div class="form-section" role="group" aria-labelledby="expr-columns-heading">
 		<h4 id="expr-columns-heading">Available Columns</h4>
 		<div id="expr-columns-grid" class="columns-grid" role="listbox" aria-label="Available columns">
 			{#each schema.columns as column (column.name)}
@@ -84,73 +84,17 @@
 </div>
 
 <style>
-	.expression-config {
-		padding: 1rem;
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: 1rem;
-		color: var(--panel-header-fg);
-	}
-
-	h4 {
-		margin-top: 0;
-		margin-bottom: 0.75rem;
-		font-size: 1rem;
-		color: var(--fg-secondary);
-	}
-
-	.section {
-		margin-bottom: 1.5rem;
-		padding: 1rem;
-		background-color: var(--form-section-bg);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--form-section-border);
-	}
-
 	textarea {
 		width: 100%;
-		padding: 0.75rem;
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		font-family: var(--font-mono);
-		font-size: 0.875rem;
 		resize: vertical;
-		margin-bottom: 0.5rem;
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
-	}
-
-	input[type='text'] {
-		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
+		margin-bottom: var(--space-2);
 	}
 
 	.help-text {
-		font-size: 0.875rem;
+		font-size: var(--text-sm);
 		color: var(--fg-tertiary);
 		line-height: 1.6;
-		padding: 0.75rem;
+		padding: var(--space-3);
 		background-color: var(--form-help-bg);
 		border: 1px solid var(--form-help-border);
 		border-left: 3px solid var(--form-help-accent);
@@ -159,7 +103,7 @@
 
 	.help-text code {
 		background-color: var(--bg-tertiary);
-		padding: 0.125rem 0.375rem;
+		padding: var(--space-1) var(--space-2);
 		border-radius: 3px;
 		font-family: var(--font-mono);
 		font-size: 0.85em;
@@ -169,11 +113,11 @@
 	.columns-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-		gap: 0.5rem;
-		margin-bottom: 0.5rem;
+		gap: var(--space-2);
+		margin-bottom: var(--space-2);
 		max-height: 200px;
 		overflow-y: auto;
-		padding: 0.5rem;
+		padding: var(--space-2);
 		background-color: var(--bg-primary);
 		border: 1px solid var(--border-primary);
 		border-radius: var(--radius-sm);
@@ -183,8 +127,8 @@
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
-		gap: 0.25rem;
-		padding: 0.5rem 0.75rem;
+		gap: var(--space-1);
+		padding: var(--space-2) var(--space-3);
 		background-color: var(--info-bg);
 		border: 1px solid var(--info-border);
 		border-radius: var(--radius-sm);
@@ -199,19 +143,12 @@
 		transform: translateY(-1px);
 	}
 
-	.column-name {
-		font-weight: 500;
-		font-size: 0.875rem;
-		color: var(--fg-primary);
+	.column-chip .column-name {
+		font-weight: var(--font-medium);
+		font-size: var(--text-sm);
 	}
 
-	.column-type {
-		font-size: 0.75rem;
-		color: var(--fg-tertiary);
-		font-family: var(--font-mono);
-	}
-
-	button:hover:not(:disabled) {
-		opacity: 0.9;
+	.column-chip .column-type {
+		font-size: var(--text-xs);
 	}
 </style>

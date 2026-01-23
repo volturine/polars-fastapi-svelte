@@ -98,7 +98,7 @@
 			<h1>Analyses</h1>
 			<p class="subtitle">Browse and manage your data analyses</p>
 		</div>
-		<button class="btn-new" onclick={createNew}>
+		<button class="btn-primary btn-new" onclick={createNew}>
 			<Plus size={16} />
 			New Analysis
 		</button>
@@ -121,11 +121,11 @@
 				</div>
 			</div>
 		{:else if query.isError}
-			<div class="error-state">
+			<div class="error-box error-state">
 				<div class="error-icon">!</div>
 				<h2>Failed to load analyses</h2>
-				<p class="error-message">{query.error.message}</p>
-				<button class="btn-retry" onclick={() => query.refetch()}>Try again</button>
+				<p>{query.error.message}</p>
+				<button class="btn-primary" onclick={() => query.refetch()}>Try again</button>
 			</div>
 		{:else if query.data}
 			{#if query.data.length === 0}
@@ -159,6 +159,9 @@
 		max-width: 1200px;
 		margin: 0 auto;
 		padding: var(--space-7) var(--space-6);
+		height: 100%;
+		overflow: auto;
+		box-sizing: border-box;
 	}
 
 	.page-header {
@@ -174,32 +177,13 @@
 	.header-text h1 {
 		margin: 0 0 var(--space-2) 0;
 		font-size: var(--text-2xl);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 	}
 
 	.subtitle {
 		margin: 0;
 		font-size: var(--text-sm);
 		color: var(--fg-tertiary);
-	}
-
-	.btn-new {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-4);
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border: 1px solid var(--accent-primary);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-sm);
-		font-weight: 500;
-		cursor: pointer;
-		transition: opacity var(--transition);
-	}
-
-	.btn-new:hover {
-		opacity: 0.85;
 	}
 
 	.loading {
@@ -285,41 +269,22 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background-color: var(--error-bg);
-		color: var(--error-fg);
-		border: 1px solid var(--error-border);
 		border-radius: var(--radius-sm);
 		font-size: var(--text-xl);
-		font-weight: 700;
+		font-weight: var(--font-bold);
 		margin-bottom: var(--space-6);
 	}
 
 	.error-state h2 {
 		margin: 0 0 var(--space-2) 0;
 		font-size: var(--text-lg);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 	}
 
-	.error-message {
+	.error-state p {
 		margin: 0 0 var(--space-6) 0;
 		font-size: var(--text-sm);
-		color: var(--fg-tertiary);
 		max-width: 400px;
-	}
-
-	.btn-retry {
-		padding: var(--space-2) var(--space-4);
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border: 1px solid var(--accent-primary);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-sm);
-		cursor: pointer;
-		transition: opacity var(--transition);
-	}
-
-	.btn-retry:hover {
-		opacity: 0.85;
 	}
 
 	.no-results {

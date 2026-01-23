@@ -61,10 +61,10 @@
 	);
 </script>
 
-<div class="timeseries-config" role="region" aria-label="Time series configuration">
+<div class="config-panel" role="region" aria-label="Time series configuration">
 	<h3>Time Series Configuration</h3>
 
-	<div class="section" role="group" aria-labelledby="ts-source-column-heading">
+	<div class="form-section" role="group" aria-labelledby="ts-source-column-heading">
 		<h4 id="ts-source-column-heading">Source Column</h4>
 		<label for="ts-select-column" class="sr-only">Select date/time column</label>
 		<select id="ts-select-column" data-testid="ts-column-select" bind:value={config.column}>
@@ -74,13 +74,13 @@
 			{/each}
 		</select>
 		{#if dateColumns.length === 0}
-			<p id="ts-no-columns-warning" class="warning" role="alert">
+			<p id="ts-no-columns-warning" class="warning-box" role="alert">
 				No date/time columns detected in schema
 			</p>
 		{/if}
 	</div>
 
-	<div class="section" role="group" aria-labelledby="ts-operation-heading">
+	<div class="form-section" role="group" aria-labelledby="ts-operation-heading">
 		<h4 id="ts-operation-heading">Operation Type</h4>
 		<label for="ts-select-operation" class="sr-only">Select operation type</label>
 		<select
@@ -95,7 +95,7 @@
 	</div>
 
 	{#if config.operation_type === 'extract'}
-		<div class="section" role="group" aria-labelledby="ts-component-heading">
+		<div class="form-section" role="group" aria-labelledby="ts-component-heading">
 			<h4 id="ts-component-heading">Extract Component</h4>
 			<label for="ts-select-component" class="sr-only">Select component to extract</label>
 			<select
@@ -109,7 +109,7 @@
 			</select>
 		</div>
 	{:else if config.operation_type === 'add' || config.operation_type === 'subtract'}
-		<div class="section" role="group" aria-labelledby="ts-period-heading">
+		<div class="form-section" role="group" aria-labelledby="ts-period-heading">
 			<h4 id="ts-period-heading">Time Period</h4>
 			<div class="inline-group">
 				<div class="input-group">
@@ -134,7 +134,7 @@
 			</div>
 		</div>
 	{:else if config.operation_type === 'diff'}
-		<div class="section" role="group" aria-labelledby="ts-column2-heading">
+		<div class="form-section" role="group" aria-labelledby="ts-column2-heading">
 			<h4 id="ts-column2-heading">Second Date Column</h4>
 			<label for="ts-select-column2" class="sr-only">Select second date column</label>
 			<select id="ts-select-column2" data-testid="ts-column2-select" bind:value={config.column2}>
@@ -146,8 +146,9 @@
 		</div>
 	{/if}
 
-	<div class="section">
-		<h4>New Column Name</h4>
+	<div class="form-section" role="group" aria-labelledby="ts-new-column-heading">
+		<h4 id="ts-new-column-heading">New Column Name</h4>
+		<label for="ts-input-new-column" class="sr-only">New column name</label>
 		<input
 			id="ts-new-column"
 			type="text"
@@ -158,23 +159,11 @@
 </div>
 
 <style>
-	.timeseries-config {
-		padding: 1rem;
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
+	.warning-box {
+		font-size: var(--text-sm);
+		color: var(--error-fg);
+		margin-top: var(--space-2);
+		margin-bottom: 0;
 	}
 
 	.input-group {
@@ -183,53 +172,14 @@
 
 	.input-group label {
 		display: block;
-		font-size: 0.875rem;
-		margin-bottom: 0.25rem;
+		font-size: var(--text-sm);
+		margin-bottom: var(--space-1);
 		color: var(--fg-secondary);
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: 1rem;
-		color: var(--panel-header-fg);
-	}
-
-	h4 {
-		margin-top: 0;
-		margin-bottom: 0.5rem;
-		font-size: 1rem;
-		color: var(--fg-secondary);
-	}
-
-	.section {
-		margin-bottom: 1.5rem;
-		padding: 1rem;
-		background-color: var(--form-section-bg);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--form-section-border);
-	}
-
-	.warning {
-		font-size: 0.875rem;
-		color: var(--error-fg);
-		margin-top: 0.5rem;
-		margin-bottom: 0;
-	}
-
-	select,
-	input[type='text'],
-	input[type='number'] {
-		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
 	}
 
 	.inline-group {
 		display: flex;
-		gap: 0.5rem;
+		gap: var(--space-2);
 	}
 
 	.inline-group input {

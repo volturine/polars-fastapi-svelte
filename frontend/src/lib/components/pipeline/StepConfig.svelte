@@ -163,7 +163,7 @@
 				</div>
 			{:else if isLoadingSchema}
 				<div class="loading-message">
-					<div class="spinner"></div>
+					<div class="spinner-md"></div>
 					<p>Loading schema...</p>
 				</div>
 			{:else if step.type === 'filter'}
@@ -408,18 +408,4 @@
 		background-color: var(--panel-bg);
 	}
 
-	.loading-message .spinner {
-		width: 24px;
-		height: 24px;
-		border: 2px solid var(--border-primary);
-		border-top-color: var(--accent-primary);
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
 </style>

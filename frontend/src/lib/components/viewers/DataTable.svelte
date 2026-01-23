@@ -100,7 +100,7 @@
 	{#if loading}
 		<div class="loading-overlay">
 			<div class="spinner"></div>
-			<p>Loading data...</p>
+			<p class="text-tertiary text-sm">Loading data...</p>
 		</div>
 	{/if}
 
@@ -177,36 +177,18 @@
 		color: var(--fg-tertiary);
 	}
 
-	.spinner {
-		width: 40px;
-		height: 40px;
-		border: 4px solid var(--border-primary);
-		border-top-color: var(--accent-primary);
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
 	.loading-overlay p {
 		margin: 0;
-		color: var(--fg-tertiary);
-		font-size: var(--text-sm);
 	}
 
 	.empty-state {
 		padding: var(--space-12);
 		text-align: center;
+		color: var(--fg-muted);
 	}
 
 	.empty-state p {
 		margin: 0;
-		color: var(--fg-muted);
-		font-size: var(--text-sm);
 	}
 
 	.table-wrapper {

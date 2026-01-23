@@ -177,8 +177,8 @@
 <div class="inline-data-table">
 	{#if isLoading}
 		<div class="loading-overlay">
-			<div class="spinner"></div>
-			<p>Loading preview...</p>
+			<div class="spinner-md"></div>
+			<p class="text-tertiary">Loading preview...</p>
 		</div>
 	{:else if error}
 		<div class="error-state">
@@ -271,53 +271,34 @@
 		color: var(--fg-tertiary);
 	}
 
-	.spinner {
-		width: 32px;
-		height: 32px;
-		border: 3px solid var(--border-primary);
-		border-top-color: var(--accent-primary);
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
 	.loading-overlay p {
 		margin: 0;
-		color: var(--fg-tertiary);
-		font-size: 0.875rem;
 	}
 
 	.error-state {
-		padding: 2rem;
+		padding: var(--space-8);
 		text-align: center;
 	}
 
 	.error-title {
-		margin: 0 0 0.5rem 0;
+		margin: 0 0 var(--space-2) 0;
 		color: var(--error-fg);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 	}
 
 	.error-message {
 		margin: 0;
 		color: var(--fg-tertiary);
-		font-size: 0.875rem;
 	}
 
 	.empty-state {
-		padding: 2rem;
+		padding: var(--space-8);
 		text-align: center;
+		color: var(--fg-muted);
 	}
 
 	.empty-state p {
 		margin: 0;
-		color: var(--fg-muted);
-		font-size: 0.875rem;
 	}
 
 	.table-info {

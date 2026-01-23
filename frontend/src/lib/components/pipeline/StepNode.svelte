@@ -279,7 +279,7 @@
 				{/if}
 				<button class="export-btn" onclick={handleExport} disabled={isExporting} type="button">
 					{#if isExporting}
-						<span class="spinner"></span>
+						<span class="spinner-sm"></span>
 						Exporting...
 					{:else if step.config.destination === 'download'}
 						<Download size={14} />
@@ -553,15 +553,6 @@
 		cursor: not-allowed;
 	}
 
-	.export-btn .spinner {
-		width: 14px;
-		height: 14px;
-		border: 2px solid currentColor;
-		border-top-color: transparent;
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-
 	.export-error {
 		padding: var(--space-2);
 		margin-bottom: var(--space-2);
@@ -570,12 +561,6 @@
 		border: 1px solid var(--error-border);
 		border-radius: var(--radius-sm);
 		font-size: var(--text-xs);
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
 	}
 
 	/* When another node is being dragged */

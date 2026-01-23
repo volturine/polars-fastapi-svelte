@@ -156,18 +156,14 @@
 
 	.dtype-badge {
 		display: inline-block;
-		padding: 0.25rem 0.625rem;
+		padding: var(--space-1) var(--space-2);
 		border-radius: var(--radius-sm);
-		font-size: 0.75rem;
-		font-weight: 600;
+		font-size: var(--text-xs);
+		font-weight: var(--font-semibold);
 		font-family: var(--font-mono);
 	}
 
-	.badge-numeric {
-		background: var(--info-bg);
-		color: var(--info-fg);
-	}
-
+	.badge-numeric,
 	.badge-float {
 		background: var(--info-bg);
 		color: var(--info-fg);
@@ -189,8 +185,8 @@
 	}
 
 	.badge-other {
-		background: var(--badge-bg);
-		color: var(--badge-fg);
+		background: var(--bg-tertiary);
+		color: var(--fg-tertiary);
 	}
 
 	.column-nullable {

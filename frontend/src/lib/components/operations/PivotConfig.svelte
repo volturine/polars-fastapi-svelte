@@ -61,15 +61,10 @@
 	<h3>Pivot Configuration</h3>
 
 	<div class="field-group">
-		<label for="pivot-select-column"
+		<label for="pivot-column"
 			>Pivot Column <span class="hint">(values become new columns)</span></label
 		>
-		<select
-			id="pivot-select-column"
-			data-testid="pivot-column-select"
-			bind:value={config.columns}
-			aria-describedby="pivot-column-help"
-		>
+		<select id="pivot-column" bind:value={config.columns}>
 			<option value="">Select column...</option>
 			{#each schema.columns as column (column.name)}
 				<option value={column.name}>{column.name} ({column.dtype})</option>
@@ -84,7 +79,7 @@
 		<span id="index-columns-label" class="group-label"
 			>Index Columns <span class="hint">(rows)</span></span
 		>
-		<div id="pivot-index-grid" class="checkbox-grid" role="group" aria-label="Select index columns">
+		<div class="checkbox-grid">
 			{#each schema.columns as column (column.name)}
 				<label class="checkbox-label">
 					<input

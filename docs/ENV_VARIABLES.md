@@ -28,18 +28,11 @@ This document lists ALL environment variables supported by the application.
 | **Workers** ||||
 | `WORKERS` | integer | 1 | Gunicorn/Uvicorn workers (0=auto: 2*cores+1) |
 | `WORKER_CONNECTIONS` | integer | 1000 | Max connections per worker |
-| `TIMEOUT` | integer | 30 | Worker timeout seconds |
-| `KEEPALIVE` | integer | 5 | Keep-alive timeout seconds |
-| `GRACEFUL_TIMEOUT` | integer | 10 | Graceful shutdown timeout seconds |
 | **Engine Lifecycle** ||||
-| `ENGINE_IDLE_TIMEOUT` | integer | 300 | Idle timeout before cleanup (seconds) |
-| `ENGINE_CLEANUP_INTERVAL` | integer | 30 | Cleanup check interval (seconds) |
-| `PROCESS_SHUTDOWN_TIMEOUT` | integer | 5 | Process shutdown timeout (seconds) |
-| `PROCESS_TERMINATE_TIMEOUT` | integer | 2 | Process terminate timeout (seconds) |
+| `ENGINE_IDLE_TIMEOUT` | integer | 300 | Idle timeout before cleanup (seconds, reset on save) |
+| `ENGINE_POOLING_INTERVAL` | integer | 5 | Polling interval to check engine states (seconds) |
 | **Job Management** ||||
 | `JOB_TIMEOUT` | integer | 300 | Max job execution time (seconds) |
-| `JOB_TTL` | integer | 1800 | Job TTL in memory (seconds) |
-| `MAX_JOBS_IN_MEMORY` | integer | 1000 | Max jobs cached (10-100000) |
 | **Logging** ||||
 | `LOG_LEVEL` | string | info | Log level (debug/info/warning/error/critical) |
 
@@ -48,7 +41,6 @@ This document lists ALL environment variables supported by the application.
 ### Integer Ranges
 
 - `MAX_CONCURRENT_ENGINES`: 1-100
-- `MAX_JOBS_IN_MEMORY`: 10-100000
 - `WORKERS`: 0-32
 - `MAX_UPLOAD_SIZE`: ≥1024 bytes
 
@@ -56,8 +48,7 @@ This document lists ALL environment variables supported by the application.
 
 - `ENGINE_IDLE_TIMEOUT` > 0
 - `JOB_TIMEOUT` > 0
-- `JOB_TTL` > 0
-- `ENGINE_CLEANUP_INTERVAL` > 0
+- `ENGINE_POOLING_INTERVAL` > 0
 
 ### Non-Negative Values
 

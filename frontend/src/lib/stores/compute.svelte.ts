@@ -4,6 +4,10 @@ import {
 	getComputeStatus,
 	cancelJob as cancelJobApi
 } from '$lib/api/compute';
+import { configStore } from './config.svelte';
+
+// Job status polling interval - 2 seconds for responsive UI feedback
+const JOB_POLL_INTERVAL = 2000;
 
 class ComputeStore {
 	jobs = $state(new Map<string, ComputeJob>());
@@ -102,7 +106,7 @@ class ComputeStore {
 			this.pollJobStatus(jobId).catch(() => {
 				this.stopPolling(jobId);
 			});
-		}, 2000);
+		}, JOB_POLL_INTERVAL);
 
 		this.polling.set(jobId, intervalId);
 		this.polling = new Map(this.polling);

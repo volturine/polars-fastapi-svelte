@@ -29,9 +29,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # CORS origins - comma-separated list of allowed origins
-    cors_origins: str = (
-        'http://localhost:3000,http://127.0.0.1:3000,http://0.0.0.0:3000,http://192.168.1.140:3000,http://100.68.183.19:3000'
-    )
+    cors_origins: str = 'http://localhost:3000,http://127.0.0.1:3000,http://0.0.0.0:3000,http://192.168.1.140:3000,http://100.68.183.19:3000'
 
     database_url: str = 'sqlite+aiosqlite:///./database/app.db'
 
@@ -43,28 +41,16 @@ class Settings(BaseSettings):
     max_upload_size: int = Field(default=10 * 1024 * 1024 * 1024, alias='MAX_UPLOAD_SIZE')
 
     # Engine idle timeout in seconds (default 5 minutes)
-    # Engines without keepalive pings will be terminated after this duration
+    # Engines will be terminated after this duration of inactivity (reset on save)
     engine_idle_timeout: int = Field(default=300, alias='ENGINE_IDLE_TIMEOUT')
 
+    # Engine pooling interval in seconds (default 5 seconds)
+    # How often to check engine states and cleanup idle engines
+    engine_pooling_interval: int = Field(default=5, alias='ENGINE_POOLING_INTERVAL')
+
     # Job execution timeout in seconds (default 5 minutes)
-    # Jobs that take longer than this will timeout
+    # Jobs that exceed this duration will be terminated
     job_timeout: int = Field(default=300, alias='JOB_TIMEOUT')
-
-    # Job TTL in seconds (default 30 minutes)
-    # Completed jobs will be cleaned up after this duration
-    job_ttl: int = Field(default=1800, alias='JOB_TTL')
-
-    # Maximum number of jobs to keep in memory
-    max_jobs_in_memory: int = Field(default=1000, alias='MAX_JOBS_IN_MEMORY')
-
-    # Engine cleanup interval in seconds (default 30 seconds)
-    engine_cleanup_interval: int = Field(default=30, alias='ENGINE_CLEANUP_INTERVAL')
-
-    # Process shutdown timeout in seconds (default 5 seconds)
-    process_shutdown_timeout: int = Field(default=5, alias='PROCESS_SHUTDOWN_TIMEOUT')
-
-    # Process terminate timeout in seconds (default 2 seconds)
-    process_terminate_timeout: int = Field(default=2, alias='PROCESS_TERMINATE_TIMEOUT')
 
     # Polars Engine Resource Configuration
     # Maximum threads per engine (0 = auto-detect, uses all available cores)
@@ -86,15 +72,6 @@ class Settings(BaseSettings):
     # Maximum connections per worker
     worker_connections: int = Field(default=1000, alias='WORKER_CONNECTIONS')
 
-    # Worker timeout in seconds
-    timeout: int = Field(default=30, alias='TIMEOUT')
-
-    # Keep-alive timeout in seconds
-    keepalive: int = Field(default=5, alias='KEEPALIVE')
-
-    # Graceful shutdown timeout in seconds
-    graceful_timeout: int = Field(default=10, alias='GRACEFUL_TIMEOUT')
-
     # Logging level (debug, info, warning, error)
     log_level: str = Field(default='info', alias='LOG_LEVEL')
 
@@ -108,22 +85,12 @@ class Settings(BaseSettings):
     def _ensure_dirs(cls, value: Path) -> Path:
         return _resolve_dir(value)
 
-    @field_validator('engine_idle_timeout', 'job_timeout', 'job_ttl', 'engine_cleanup_interval')
+    @field_validator('engine_idle_timeout', 'job_timeout', 'engine_pooling_interval')
     @classmethod
     def _validate_positive_timeout(cls, value: int, info) -> int:
         """Ensure timeout values are positive."""
         if value <= 0:
             raise ValueError(f'{info.field_name} must be positive, got {value}')
-        return value
-
-    @field_validator('max_jobs_in_memory')
-    @classmethod
-    def _validate_max_jobs(cls, value: int) -> int:
-        """Ensure max jobs is reasonable."""
-        if value < 10:
-            raise ValueError(f'max_jobs_in_memory must be at least 10, got {value}')
-        if value > 100000:
-            raise ValueError(f'max_jobs_in_memory must be at most 100000, got {value}')
         return value
 
     @field_validator('max_upload_size')

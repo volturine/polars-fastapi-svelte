@@ -1,7 +1,6 @@
 import type { EngineStatusResponse } from '$lib/types/compute';
 import { listEngines, shutdownEngine as shutdownEngineApi } from '$lib/api/compute';
-
-const POLL_INTERVAL = 3000;
+import { configStore } from './config.svelte';
 
 class EnginesStore {
 	engines = $state<EngineStatusResponse[]>([]);
@@ -50,14 +49,17 @@ class EnginesStore {
 		);
 	}
 
-	startPolling(): void {
+	async startPolling(): Promise<void> {
 		if (this.interval !== null) return;
+
+		// Ensure config is loaded before polling
+		await configStore.fetch();
 
 		this.fetch();
 
 		this.interval = window.setInterval(() => {
 			this.fetch();
-		}, POLL_INTERVAL);
+		}, configStore.enginePoolingInterval);
 	}
 
 	stopPolling(): void {

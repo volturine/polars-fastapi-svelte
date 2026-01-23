@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from core.database import get_db
+from core.exceptions import DataSourceNotFoundError
 from modules.datasource import schemas, service
 
 router = APIRouter(prefix='/datasource', tags=['datasource'])
@@ -19,7 +20,7 @@ async def upload_file(
     quote_char: str = Form('"'),
     has_header: bool = Form(True),
     skip_rows: int = Form(0),
-    encoding: str = Form('utf-8'),
+    encoding: str = Form('utf8'),
     session: AsyncSession = Depends(get_db),
 ):
     """Upload a file and create a data source."""
@@ -138,7 +139,7 @@ async def get_datasource(
     """Get a single data source by ID."""
     try:
         return await service.get_datasource(session, datasource_id)
-    except ValueError as e:
+    except (ValueError, DataSourceNotFoundError) as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Failed to get datasource: {str(e)}')
@@ -152,7 +153,7 @@ async def get_datasource_schema(
     """Get schema information for a data source."""
     try:
         return await service.get_datasource_schema(session, datasource_id)
-    except ValueError as e:
+    except (ValueError, DataSourceNotFoundError) as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Failed to get schema: {str(e)}')
@@ -167,7 +168,7 @@ async def delete_datasource(
     try:
         await service.delete_datasource(session, datasource_id)
         return {'message': f'DataSource {datasource_id} deleted successfully'}
-    except ValueError as e:
+    except (ValueError, DataSourceNotFoundError) as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Failed to delete datasource: {str(e)}')

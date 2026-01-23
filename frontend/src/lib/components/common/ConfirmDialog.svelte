@@ -43,12 +43,6 @@
 		}
 	}
 
-	function _handleBackdropClick(e: MouseEvent) {
-		if (e.target === e.currentTarget) {
-			onCancel();
-		}
-	}
-
 	$effect(() => {
 		if (show && dialogEl) {
 			dialogEl.focus();

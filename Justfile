@@ -13,7 +13,7 @@ install:
 # Run development servers concurrently
 dev:
     @echo "Starting servers..."
-    (cd backend && uv run uvicorn main:app --reload --port 8000) & (cd frontend && npm run dev) & wait
+    (cd backend && uv run --env-file .env ./main.py) & (cd frontend && npm run dev) & wait
 
 # Lint everything
 lint:

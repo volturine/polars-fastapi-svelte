@@ -2,14 +2,13 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { onMount } from 'svelte';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { Debounced, FiniteStateMachine, onClickOutside } from 'runed';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
-	import { engineLifecycle } from '$lib/stores/engine-lifecycle.svelte';
 	import { getAnalysis } from '$lib/api/analysis';
 	import { getDatasourceSchema, listDatasources } from '$lib/api/datasource';
+	import { sendKeepalive } from '$lib/api/compute';
 	import { FileSpreadsheet, FileJson, FileType, Database, Globe } from 'lucide-svelte';
 	import type { PipelineStep, AnalysisTab } from '$lib/types/analysis';
 	import type { DropTarget } from '$lib/stores/drag.svelte';
@@ -52,14 +51,6 @@
 		},
 		retry: false
 	}));
-
-	// Start engine when component mounts, stop on unmount
-	onMount(() => {
-		if (analysisId) {
-			engineLifecycle.start(analysisId);
-		}
-		return () => engineLifecycle.scheduleShutdown();
-	});
 
 	const datasourcesQuery = createQuery(() => ({
 		queryKey: ['datasources'],
@@ -196,6 +187,11 @@
 				selectedStepId = null;
 				selectedStepState = null;
 				isSaving = false;
+				
+				// Reset engine idle timeout on successful save
+				if (analysisId) {
+					sendKeepalive(analysisId);
+				}
 			},
 			(error) => {
 				saveStatus.send('saveError');

@@ -47,13 +47,10 @@
 			{#each keepStrategies as strategy (strategy.value)}
 				<label class="strategy-option">
 					<input
-						id={`dedup-radio-${strategy.value}`}
-						data-testid={`dedup-keep-${strategy.value}`}
 						type="radio"
 						name="keep-strategy"
 						bind:group={config.keep}
 						value={strategy.value}
-						aria-label={strategy.label}
 					/>
 					<span>{strategy.label}</span>
 				</label>

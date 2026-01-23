@@ -1,13 +1,10 @@
-import io
 import logging
 import os
 import tempfile
 import threading
 import time
-from datetime import UTC, datetime
 
 import duckdb
-import polars as pl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,51 +23,10 @@ from modules.datasource.models import DataSource
 
 logger = logging.getLogger(__name__)
 
-# Job tracking with TTL
+# Job tracking (simple in-memory storage)
 _job_results: dict[str, dict] = {}
 _job_status: dict[str, dict] = {}
-_job_timestamps: dict[str, datetime] = {}
 _job_lock = threading.Lock()
-
-
-def _cleanup_single_job(job_id: str) -> None:
-    """Internal helper to clean up a single job (must be called with lock held)."""
-    _job_status.pop(job_id, None)
-    _job_results.pop(job_id, None)
-    _job_timestamps.pop(job_id, None)
-
-
-def cleanup_old_jobs() -> int:
-    """Clean up jobs that have exceeded their TTL. Returns count of cleaned jobs."""
-    with _job_lock:
-        now = datetime.now(UTC)
-        cleaned = 0
-        for job_id in list(_job_timestamps.keys()):
-            timestamp = _job_timestamps.get(job_id)
-            if timestamp and (now - timestamp).total_seconds() > settings.job_ttl:
-                _cleanup_single_job(job_id)
-                cleaned += 1
-                logger.debug(f'Cleaned up expired job {job_id}')
-        return cleaned
-
-
-def enforce_job_size_limit() -> int:
-    """Enforce maximum jobs in memory by removing oldest jobs. Returns count of cleaned jobs."""
-    with _job_lock:
-        if len(_job_timestamps) <= settings.max_jobs_in_memory:
-            return 0
-
-        # Sort by timestamp and remove oldest jobs
-        sorted_jobs = sorted(_job_timestamps.items(), key=lambda x: x[1])
-        to_remove = len(sorted_jobs) - settings.max_jobs_in_memory
-        cleaned = 0
-
-        for job_id, _ in sorted_jobs[:to_remove]:
-            _cleanup_single_job(job_id)
-            cleaned += 1
-            logger.debug(f'Cleaned up job {job_id} due to size limit')
-
-        return cleaned
 
 
 def cleanup_jobs_for_engine(analysis_id: str) -> int:
@@ -79,7 +35,8 @@ def cleanup_jobs_for_engine(analysis_id: str) -> int:
         cleaned = 0
         for job_id in list(_job_status.keys()):
             if _job_status[job_id].get('analysis_id') == analysis_id:
-                _cleanup_single_job(job_id)
+                _job_status.pop(job_id, None)
+                _job_results.pop(job_id, None)
                 cleaned += 1
                 logger.debug(f'Cleaned up job {job_id} for engine {analysis_id}')
         return cleaned
@@ -129,6 +86,9 @@ async def execute_analysis(
     """
     Execute a data analysis pipeline asynchronously.
 
+    Note: This function uses the preview command internally, which is efficient
+    for most use cases. For full data export, use export_data() instead.
+
     Args:
         session: Database session
         analysis_id: Unique identifier for the analysis
@@ -158,17 +118,17 @@ async def execute_analysis(
 
     additional_datasources = await _get_additional_datasources(session, pipeline_steps)
 
-    job_id = engine.execute(
+    # Use preview command with a reasonable row limit for async execution
+    # For full data, use export_data() instead
+    job_id = engine.preview(
         datasource_config=datasource_config,
         pipeline_steps=pipeline_steps,
+        row_limit=10000,  # Default preview limit for async execution
+        offset=0,
         additional_datasources=additional_datasources,
     )
 
     with _job_lock:
-        # Cleanup old jobs before adding new one
-        cleanup_old_jobs()
-        enforce_job_size_limit()
-
         _job_status[job_id] = {
             'job_id': job_id,
             'analysis_id': analysis_id,
@@ -178,7 +138,6 @@ async def execute_analysis(
             'error_message': None,
             'process_id': engine.process.pid if engine.process else None,
         }
-        _job_timestamps[job_id] = datetime.now(UTC)
 
     logger.info(f'Started job {job_id} for analysis {analysis_id}')
     return ComputeStatusSchema.model_validate(_job_status[job_id])
@@ -237,9 +196,15 @@ async def preview_step(
 
     additional_datasources = await _get_additional_datasources(session, preview_steps)
 
-    engine.execute(
+    # Calculate offset for pagination
+    offset = (page - 1) * row_limit
+
+    # Use the new preview method that efficiently fetches only needed rows
+    engine.preview(
         datasource_config=datasource_config,
         pipeline_steps=preview_steps,
+        row_limit=row_limit,
+        offset=offset,
         additional_datasources=additional_datasources,
     )
 
@@ -252,24 +217,18 @@ async def preview_step(
         result_data = engine.get_result(timeout=1.0)
         if result_data:
             if result_data['status'] == JobStatus.COMPLETED:
-                # Extract data for pagination
-                sample_data = result_data['data'].get('sample_data', [])
-                total_rows = result_data['data'].get('row_count', 0)
+                data = result_data['data'].get('data', [])
                 schema = result_data['data'].get('schema', {})
-
-                # Apply pagination
-                start_idx = (page - 1) * row_limit
-                end_idx = start_idx + row_limit
-                paginated_data = sample_data[start_idx:end_idx]
+                row_count = result_data['data'].get('row_count', 0)
 
                 return StepPreviewResponse(
                     step_id=target_step_id,
                     columns=list(schema.keys()),
                     column_types=schema,
-                    data=paginated_data,
-                    total_rows=total_rows,
+                    data=data,
+                    total_rows=row_count,
                     page=page,
-                    page_size=len(paginated_data),
+                    page_size=len(data),
                 )
             elif result_data['status'] == JobStatus.FAILED:
                 raise PipelineExecutionError(
@@ -293,9 +252,7 @@ def get_job_status(job_id: str) -> ComputeStatusSchema:
     Raises:
         JobNotFoundError: If job doesn't exist or has been cleaned up
     """
-    # Periodic cleanup when accessing jobs
-    cleanup_old_jobs()
-
+    # Poll engine for job status update
     manager = get_manager()
 
     for analysis_id in manager.list_engines():
@@ -305,7 +262,6 @@ def get_job_status(job_id: str) -> ComputeStatusSchema:
             if result:
                 with _job_lock:
                     _job_status[job_id] = result
-                    _job_timestamps[job_id] = datetime.now(UTC)
                     if result.get('data'):
                         _job_results[job_id] = result
 
@@ -322,10 +278,7 @@ def get_job_result(job_id: str) -> ComputeResultSchema:
     with _job_lock:
         if job_id not in _job_results:
             raise JobNotFoundError(job_id)
-
         result = _job_results[job_id]
-        # Update timestamp on access
-        _job_timestamps[job_id] = datetime.now(UTC)
 
     return ComputeResultSchema(
         job_id=job_id,
@@ -352,7 +305,6 @@ def cancel_job(job_id: str) -> None:
                     'error_message': 'Job cancelled by user',
                     'process_id': None,
                 }
-                _job_timestamps[job_id] = datetime.now(UTC)
             return
 
     raise JobNotFoundError(job_id)
@@ -361,7 +313,8 @@ def cancel_job(job_id: str) -> None:
 def cleanup_job(job_id: str) -> None:
     """Clean up job data from memory."""
     with _job_lock:
-        _cleanup_single_job(job_id)
+        _job_status.pop(job_id, None)
+        _job_results.pop(job_id, None)
     logger.debug(f'Cleaned up job {job_id}')
 
 
@@ -372,7 +325,7 @@ async def get_step_schema(
     target_step_id: str,
     analysis_id: str,
     timeout: int | None = None,
-) -> dict:
+):
     """Get the output schema of a pipeline step without returning data."""
     from modules.compute.schemas import StepSchemaResponse
 
@@ -409,7 +362,8 @@ async def get_step_schema(
 
     additional_datasources = await _get_additional_datasources(session, schema_steps)
 
-    engine.execute(
+    # Use the new schema command that doesn't collect full data
+    engine.get_schema(
         datasource_config=datasource_config,
         pipeline_steps=schema_steps,
         additional_datasources=additional_datasources,
@@ -450,6 +404,9 @@ async def export_data(
     """
     Export pipeline result to file.
     Returns (file_bytes, filename_with_ext, content_type).
+
+    The engine subprocess writes the full dataset to a temp file,
+    then we read it and return the bytes.
     """
     if timeout is None:
         timeout = settings.job_timeout
@@ -476,12 +433,13 @@ async def export_data(
 
     # Use analysis engine if provided and exists, otherwise create temporary one
     temp_engine = False
+    temp_engine_id = f'{datasource_id}_export'
     if analysis_id:
         engine = manager.get_engine(analysis_id)
         if not engine:
             engine = manager.get_or_create_engine(analysis_id)
     else:
-        engine = manager.get_or_create_engine(f'{datasource_id}_export')
+        engine = manager.get_or_create_engine(temp_engine_id)
         temp_engine = True
 
     datasource_config = {
@@ -491,81 +449,82 @@ async def export_data(
 
     additional_datasources = await _get_additional_datasources(session, export_steps)
 
-    engine.execute(
-        datasource_config=datasource_config,
-        pipeline_steps=export_steps,
-        additional_datasources=additional_datasources,
-    )
+    # Determine file extension and content type
+    format_config = {
+        'csv': ('.csv', 'text/csv'),
+        'parquet': ('.parquet', 'application/octet-stream'),
+        'json': ('.json', 'application/json'),
+        'ndjson': ('.ndjson', 'application/x-ndjson'),
+        'duckdb': ('.parquet', 'application/octet-stream'),  # Export as parquet first
+    }
 
-    start_time = time.time()
-    temp_engine_id = f'{datasource_id}_export'
-    while True:
-        # Check timeout
-        if time.time() - start_time > timeout:
-            if temp_engine:
-                manager.shutdown_engine(temp_engine_id)
-            raise EngineTimeoutError(f'Export operation timed out after {timeout} seconds', timeout)
+    if export_format not in format_config:
+        raise UnsupportedExportFormatError(export_format)
 
-        result_data = engine.get_result(timeout=1.0)
-        if result_data:
-            if result_data['status'] == JobStatus.COMPLETED:
+    ext, content_type = format_config[export_format]
+
+    # For duckdb, we first export to parquet then convert
+    actual_format = 'parquet' if export_format == 'duckdb' else export_format
+
+    # Create temp file for engine to write to
+    tmp_output = tempfile.mktemp(suffix=ext)
+
+    try:
+        # Use the new export method that writes full data directly to file
+        engine.export(
+            datasource_config=datasource_config,
+            pipeline_steps=export_steps,
+            output_path=tmp_output,
+            export_format=actual_format,
+            additional_datasources=additional_datasources,
+        )
+
+        start_time = time.time()
+        while True:
+            if time.time() - start_time > timeout:
                 if temp_engine:
                     manager.shutdown_engine(temp_engine_id)
+                raise EngineTimeoutError(f'Export operation timed out after {timeout} seconds', timeout)
 
-                sample_data = result_data['data'].get('sample_data', [])
-                df = pl.DataFrame(sample_data)
+            result_data = engine.get_result(timeout=1.0)
+            if result_data:
+                if result_data['status'] == JobStatus.COMPLETED:
+                    if temp_engine:
+                        manager.shutdown_engine(temp_engine_id)
 
-                buffer = io.BytesIO()
-                if export_format == 'csv':
-                    df.write_csv(buffer)
-                    ext = '.csv'
-                    content_type = 'text/csv'
-                elif export_format == 'parquet':
-                    df.write_parquet(buffer)
-                    ext = '.parquet'
-                    content_type = 'application/octet-stream'
-                elif export_format == 'json':
-                    df.write_json(buffer)
-                    ext = '.json'
-                    content_type = 'application/json'
-                elif export_format == 'ndjson':
-                    df.write_ndjson(buffer)
-                    ext = '.ndjson'
-                    content_type = 'application/x-ndjson'
-                elif export_format == 'duckdb':
-                    tmp_db_path = tempfile.mktemp(suffix='.duckdb')
-                    tmp_parquet_path = tempfile.mktemp(suffix='.parquet')
+                    row_count = result_data['data'].get('row_count', 0)
+                    logger.info(f'Export completed: {row_count} rows written to {export_format}')
 
-                    try:
-                        # Write to parquet first (no pyarrow needed)
-                        df.write_parquet(tmp_parquet_path)
+                    # Handle DuckDB conversion
+                    if export_format == 'duckdb':
+                        tmp_db_path = tempfile.mktemp(suffix='.duckdb')
+                        try:
+                            conn = duckdb.connect(tmp_db_path)
+                            conn.execute('CREATE TABLE data AS SELECT * FROM read_parquet(?)', [tmp_output])
+                            conn.close()
 
-                        # Import parquet into DuckDB
-                        conn = duckdb.connect(tmp_db_path)
-                        conn.execute('CREATE TABLE data AS SELECT * FROM read_parquet(?)', [tmp_parquet_path])
-                        conn.close()
+                            with open(tmp_db_path, 'rb') as f:
+                                file_bytes = f.read()
 
-                        with open(tmp_db_path, 'rb') as f:
-                            buffer = f.read()
-                    finally:
-                        if os.path.exists(tmp_parquet_path):
-                            os.unlink(tmp_parquet_path)
-                        if os.path.exists(tmp_db_path):
-                            os.unlink(tmp_db_path)
+                            return file_bytes, f'{filename}.duckdb', 'application/octet-stream'
+                        finally:
+                            if os.path.exists(tmp_db_path):
+                                os.unlink(tmp_db_path)
 
-                    ext = '.duckdb'
-                    content_type = 'application/octet-stream'
-                    return buffer, f'{filename}{ext}', content_type
-                else:
-                    raise UnsupportedExportFormatError(export_format)
+                    # Read the exported file
+                    with open(tmp_output, 'rb') as f:
+                        file_bytes = f.read()
 
-                buffer.seek(0)
-                return buffer.read(), f'{filename}{ext}', content_type
+                    return file_bytes, f'{filename}{ext}', content_type
 
-            elif result_data['status'] == JobStatus.FAILED:
-                if temp_engine:
-                    manager.shutdown_engine(temp_engine_id)
-                raise PipelineExecutionError(
-                    f'Export failed: {result_data.get("error", "Unknown error")}',
-                    details={'operation': 'export', 'datasource_id': datasource_id, 'export_format': export_format},
-                )
+                elif result_data['status'] == JobStatus.FAILED:
+                    if temp_engine:
+                        manager.shutdown_engine(temp_engine_id)
+                    raise PipelineExecutionError(
+                        f'Export failed: {result_data.get("error", "Unknown error")}',
+                        details={'operation': 'export', 'datasource_id': datasource_id, 'export_format': export_format},
+                    )
+    finally:
+        # Clean up temp file
+        if os.path.exists(tmp_output):
+            os.unlink(tmp_output)

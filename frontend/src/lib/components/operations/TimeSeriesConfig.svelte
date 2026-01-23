@@ -146,12 +146,10 @@
 		</div>
 	{/if}
 
-	<div class="section" role="group" aria-labelledby="ts-new-column-heading">
-		<h4 id="ts-new-column-heading">New Column Name</h4>
-		<label for="ts-input-new-column" class="sr-only">New column name</label>
+	<div class="section">
+		<h4>New Column Name</h4>
 		<input
-			id="ts-input-new-column"
-			data-testid="ts-new-column-input"
+			id="ts-new-column"
 			type="text"
 			bind:value={config.new_column}
 			placeholder="e.g., year, future_date"

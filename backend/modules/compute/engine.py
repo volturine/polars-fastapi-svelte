@@ -138,9 +138,7 @@ def _handle_sort(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
     # Handle both single boolean and list of booleans for descending
     if isinstance(descending, list) and len(descending) != len(columns):
         # Ensure descending list matches columns length
-        descending = (
-            descending[: len(columns)] if len(descending) > len(columns) else descending + [False] * (len(columns) - len(descending))
-        )
+        descending = descending[: len(columns)] if len(descending) > len(columns) else descending + [False] * (len(columns) - len(descending))
     return lf.sort(columns, descending=descending)
 
 
@@ -668,18 +666,22 @@ class PolarsComputeEngine:
         self.process.start()
         self.is_running = True
 
-    def execute(
+    def preview(
         self,
         datasource_config: dict,
         pipeline_steps: list[dict],
+        row_limit: int = 1000,
+        offset: int = 0,
         additional_datasources: dict[str, dict] | None = None,
     ) -> str:
-        """Execute a Polars pipeline in the subprocess.
+        """Preview pipeline results with limited rows.
 
         Args:
             datasource_config: Configuration for the main datasource
             pipeline_steps: List of pipeline transformation steps
-            additional_datasources: Dict of datasource_id -> config for additional datasources (e.g., for joins)
+            row_limit: Maximum rows to return for display
+            offset: Row offset for pagination
+            additional_datasources: Dict of datasource_id -> config for additional datasources
         """
         job_id = str(uuid.uuid4())
         self.current_job_id = job_id
@@ -688,7 +690,75 @@ class PolarsComputeEngine:
             self.start()
 
         command = {
-            'type': 'execute',
+            'type': 'preview',
+            'job_id': job_id,
+            'datasource_config': datasource_config,
+            'pipeline_steps': pipeline_steps,
+            'row_limit': row_limit,
+            'offset': offset,
+            'additional_datasources': additional_datasources or {},
+        }
+
+        self.command_queue.put(command)
+        return job_id
+
+    def export(
+        self,
+        datasource_config: dict,
+        pipeline_steps: list[dict],
+        output_path: str,
+        export_format: str = 'csv',
+        additional_datasources: dict[str, dict] | None = None,
+    ) -> str:
+        """Export full pipeline results to file.
+
+        Args:
+            datasource_config: Configuration for the main datasource
+            pipeline_steps: List of pipeline transformation steps
+            output_path: Path to write the exported file
+            export_format: Export format (csv, parquet, json, ndjson)
+            additional_datasources: Dict of datasource_id -> config for additional datasources
+        """
+        job_id = str(uuid.uuid4())
+        self.current_job_id = job_id
+
+        if not self.is_running:
+            self.start()
+
+        command = {
+            'type': 'export',
+            'job_id': job_id,
+            'datasource_config': datasource_config,
+            'pipeline_steps': pipeline_steps,
+            'output_path': output_path,
+            'export_format': export_format,
+            'additional_datasources': additional_datasources or {},
+        }
+
+        self.command_queue.put(command)
+        return job_id
+
+    def get_schema(
+        self,
+        datasource_config: dict,
+        pipeline_steps: list[dict],
+        additional_datasources: dict[str, dict] | None = None,
+    ) -> str:
+        """Get schema of pipeline result without collecting full data.
+
+        Args:
+            datasource_config: Configuration for the main datasource
+            pipeline_steps: List of pipeline transformation steps
+            additional_datasources: Dict of datasource_id -> config for additional datasources
+        """
+        job_id = str(uuid.uuid4())
+        self.current_job_id = job_id
+
+        if not self.is_running:
+            self.start()
+
+        command = {
+            'type': 'schema',
             'job_id': job_id,
             'datasource_config': datasource_config,
             'pipeline_steps': pipeline_steps,
@@ -701,7 +771,11 @@ class PolarsComputeEngine:
     def get_result(self, timeout: float = 1.0) -> dict | None:
         """Get result from result queue (non-blocking)."""
         try:
-            return self.result_queue.get(timeout=timeout)
+            result = self.result_queue.get(timeout=timeout)
+            # Clear current_job_id when job reaches terminal state
+            if result and result.get('status') in [JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED]:
+                self.current_job_id = None
+            return result
         except Empty:
             return None
         except Exception as e:
@@ -710,19 +784,20 @@ class PolarsComputeEngine:
 
     def shutdown(self) -> None:
         """Shutdown the compute subprocess."""
-        from core.config import settings
-
         if not self.is_running:
             return
 
         self.command_queue.put({'type': 'shutdown'})
 
         if self.process and self.process.is_alive():
-            self.process.join(timeout=settings.process_shutdown_timeout)
+            # Wait up to 5 seconds for graceful shutdown
+            self.process.join(timeout=5)
             if self.process.is_alive():
+                # Terminate if still alive after 5s
                 self.process.terminate()
-                self.process.join(timeout=settings.process_terminate_timeout)
+                self.process.join(timeout=2)
             if self.process.is_alive():
+                # Force kill if still alive after terminate
                 self.process.kill()
 
         self.is_running = False
@@ -751,52 +826,78 @@ class PolarsComputeEngine:
                 if command['type'] == 'shutdown':
                     break
 
-                if command['type'] == 'execute':
-                    job_id = command['job_id']
-                    datasource_config = command['datasource_config']
-                    pipeline_steps = command['pipeline_steps']
-                    additional_datasources = command.get('additional_datasources', {})
+                job_id = command['job_id']
+                datasource_config = command['datasource_config']
+                pipeline_steps = command['pipeline_steps']
+                additional_datasources = command.get('additional_datasources', {})
 
-                    result_queue.put(
-                        {
-                            'job_id': job_id,
-                            'status': JobStatus.RUNNING,
-                            'progress': 0.0,
-                            'current_step': 'Loading data',
-                            'error': None,
-                        }
-                    )
+                result_queue.put(
+                    {
+                        'job_id': job_id,
+                        'status': JobStatus.RUNNING,
+                        'progress': 0.0,
+                        'current_step': 'Loading data',
+                        'error': None,
+                    }
+                )
 
-                    try:
-                        result_data = PolarsComputeEngine._execute_pipeline(
+                try:
+                    if command['type'] == 'preview':
+                        row_limit = command.get('row_limit', 1000)
+                        offset = command.get('offset', 0)
+                        result_data = PolarsComputeEngine._execute_preview(
+                            datasource_config,
+                            pipeline_steps,
+                            row_limit,
+                            offset,
+                            job_id,
+                            result_queue,
+                            additional_datasources,
+                        )
+                    elif command['type'] == 'export':
+                        output_path = command['output_path']
+                        export_format = command.get('export_format', 'csv')
+                        result_data = PolarsComputeEngine._execute_export(
+                            datasource_config,
+                            pipeline_steps,
+                            output_path,
+                            export_format,
+                            job_id,
+                            result_queue,
+                            additional_datasources,
+                        )
+                    elif command['type'] == 'schema':
+                        result_data = PolarsComputeEngine._execute_schema(
                             datasource_config,
                             pipeline_steps,
                             job_id,
                             result_queue,
                             additional_datasources,
                         )
+                    else:
+                        raise ValueError(f'Unknown command type: {command["type"]}')
 
-                        result_queue.put(
-                            {
-                                'job_id': job_id,
-                                'status': JobStatus.COMPLETED,
-                                'progress': 1.0,
-                                'current_step': None,
-                                'data': result_data,
-                                'error': None,
-                            }
-                        )
+                    result_queue.put(
+                        {
+                            'job_id': job_id,
+                            'status': JobStatus.COMPLETED,
+                            'progress': 1.0,
+                            'current_step': None,
+                            'data': result_data,
+                            'error': None,
+                        }
+                    )
 
-                    except Exception as e:
-                        result_queue.put(
-                            {
-                                'job_id': job_id,
-                                'status': JobStatus.FAILED,
-                                'progress': 0.0,
-                                'current_step': None,
-                                'error': str(e),
-                            }
-                        )
+                except Exception as e:
+                    result_queue.put(
+                        {
+                            'job_id': job_id,
+                            'status': JobStatus.FAILED,
+                            'progress': 0.0,
+                            'current_step': None,
+                            'error': str(e),
+                        }
+                    )
 
             except Exception as e:
                 result_queue.put(
@@ -810,14 +911,14 @@ class PolarsComputeEngine:
                 )
 
     @staticmethod
-    def _execute_pipeline(
+    def _build_pipeline(
         datasource_config: dict,
         pipeline_steps: list[dict],
         job_id: str,
         result_queue: mp.Queue,
         additional_datasources: dict[str, dict] | None = None,
-    ) -> dict:
-        """Execute the Polars transformation pipeline."""
+    ) -> pl.LazyFrame:
+        """Build the Polars transformation pipeline and return the final LazyFrame."""
         lf = PolarsComputeEngine._load_datasource(datasource_config)
 
         right_sources: dict[str, pl.LazyFrame] = {}
@@ -828,6 +929,10 @@ class PolarsComputeEngine:
                 except Exception as e:
                     logger.error(f'Failed to load additional datasource {ds_id}: {e}')
                     raise ValueError(f'Failed to load datasource {ds_id}: {e}')
+
+        # No pipeline steps - return raw datasource
+        if not pipeline_steps:
+            return lf
 
         step_map: dict[str, dict] = {}
         for step in pipeline_steps:
@@ -925,26 +1030,126 @@ class PolarsComputeEngine:
                 right_lf=right_lf,
             )
 
-        # Only collect at the very end
-        last_step = ordered_steps[-1] if ordered_steps else None
-        if last_step:
-            last_id = last_step.get('id')
-            if not last_id:
-                raise ValueError('Each pipeline step must include an id')
-            last_frame = schema_map.get(last_id)
-            if last_frame is None:
-                raise ValueError(f'Missing frame for step {last_id}')
-            df = last_frame.collect()
-        else:
-            df = lf.collect()
+        # Return the final LazyFrame
+        last_step = ordered_steps[-1]
+        last_id = last_step.get('id')
+        if not last_id:
+            raise ValueError('Each pipeline step must include an id')
+        last_frame = schema_map.get(last_id)
+        if last_frame is None:
+            raise ValueError(f'Missing frame for step {last_id}')
+        return last_frame
 
-        output = {
-            'schema': {col: str(dtype) for col, dtype in df.schema.items()},
-            'row_count': len(df),
-            'sample_data': df.head(5000).to_dicts(),
+    @staticmethod
+    def _execute_preview(
+        datasource_config: dict,
+        pipeline_steps: list[dict],
+        row_limit: int,
+        offset: int,
+        job_id: str,
+        result_queue: mp.Queue,
+        additional_datasources: dict[str, dict] | None = None,
+    ) -> dict:
+        """Execute pipeline and return limited rows for preview."""
+        lf = PolarsComputeEngine._build_pipeline(
+            datasource_config,
+            pipeline_steps,
+            job_id,
+            result_queue,
+            additional_datasources,
+        )
+
+        # Get schema from lazy frame (no collection needed)
+        schema = {col: str(dtype) for col, dtype in lf.collect_schema().items()}
+
+        # Collect only the rows we need for preview
+        # Use head() for efficiency - don't collect entire dataset
+        preview_df = lf.head(offset + row_limit).collect()
+
+        # Apply offset (slice from offset to end)
+        if offset > 0:
+            preview_df = preview_df.slice(offset, row_limit)
+
+        return {
+            'schema': schema,
+            'row_count': preview_df.height,  # Rows in this preview page
+            'data': preview_df.to_dicts(),
         }
 
-        return output
+    @staticmethod
+    def _execute_export(
+        datasource_config: dict,
+        pipeline_steps: list[dict],
+        output_path: str,
+        export_format: str,
+        job_id: str,
+        result_queue: mp.Queue,
+        additional_datasources: dict[str, dict] | None = None,
+    ) -> dict:
+        """Execute pipeline and write full results to file."""
+        lf = PolarsComputeEngine._build_pipeline(
+            datasource_config,
+            pipeline_steps,
+            job_id,
+            result_queue,
+            additional_datasources,
+        )
+
+        result_queue.put(
+            {
+                'job_id': job_id,
+                'status': JobStatus.RUNNING,
+                'progress': 0.9,
+                'current_step': 'Writing export file',
+                'error': None,
+            }
+        )
+
+        # Collect full dataset and write to file
+        df = lf.collect()
+        row_count = len(df)
+
+        if export_format == 'csv':
+            df.write_csv(output_path)
+        elif export_format == 'parquet':
+            df.write_parquet(output_path)
+        elif export_format == 'json':
+            df.write_json(output_path)
+        elif export_format == 'ndjson':
+            df.write_ndjson(output_path)
+        else:
+            raise ValueError(f'Unsupported export format: {export_format}')
+
+        return {
+            'output_path': output_path,
+            'export_format': export_format,
+            'row_count': row_count,
+        }
+
+    @staticmethod
+    def _execute_schema(
+        datasource_config: dict,
+        pipeline_steps: list[dict],
+        job_id: str,
+        result_queue: mp.Queue,
+        additional_datasources: dict[str, dict] | None = None,
+    ) -> dict:
+        """Execute pipeline and return schema without collecting full data."""
+        lf = PolarsComputeEngine._build_pipeline(
+            datasource_config,
+            pipeline_steps,
+            job_id,
+            result_queue,
+            additional_datasources,
+        )
+
+        # Get schema from lazy frame (no full collection needed)
+        schema = {col: str(dtype) for col, dtype in lf.collect_schema().items()}
+
+        return {
+            'schema': schema,
+            'columns': list(schema.keys()),
+        }
 
     @staticmethod
     def _load_datasource(config: dict) -> pl.LazyFrame:
@@ -955,7 +1160,7 @@ class PolarsComputeEngine:
             file_path = config['file_path']
             file_type = config['file_type']
             csv_options_dict = config.get('csv_options')
-
+            encoding = config.get('encoding', 'utf8').lower().replace('utf8', 'utf-8')
             if file_type == 'csv':
                 if csv_options_dict:
                     return pl.scan_csv(
@@ -990,10 +1195,7 @@ class PolarsComputeEngine:
             db_path = config.get('db_path')
             query = config['query']
 
-            if db_path:
-                conn = duckdb.connect(database=db_path, read_only=config.get('read_only', True))
-            else:
-                conn = duckdb.connect(database=':memory:')
+            conn = duckdb.connect(database=db_path, read_only=config.get('read_only', True)) if db_path else duckdb.connect(database=':memory:')
 
             return conn.execute(query).fetch_df().lazy()
 

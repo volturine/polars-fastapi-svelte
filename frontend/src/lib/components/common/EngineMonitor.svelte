@@ -70,15 +70,17 @@
 			</div>
 
 			<div class="dropdown-content">
-				{#if enginesStore.loading && enginesStore.count === 0}
-					<div class="empty">
-						<LoaderCircle size={16} class="spinner" />
-						<span>Loading...</span>
-					</div>
-				{:else if enginesStore.count === 0}
-					<div class="empty">
-						<span>No active engines</span>
-					</div>
+				{#if enginesStore.count === 0}
+					{#if enginesStore.loading}
+						<div class="empty">
+							<LoaderCircle size={16} class="spinner" />
+							<span>Loading...</span>
+						</div>
+					{:else}
+						<div class="empty">
+							<span>No active engines</span>
+						</div>
+					{/if}
 				{:else}
 					<ul class="engine-list">
 						{#each enginesStore.engines as engine (engine.analysis_id)}
@@ -88,7 +90,11 @@
 										<span class="engine-id" title={engine.analysis_id}>
 											{engine.analysis_id.slice(0, 8)}...
 										</span>
-										<span class="engine-status" class:running={engine.status === 'running'}>
+										<span
+											class="engine-status"
+											class:running={engine.status === 'running'}
+											class:idle={engine.status === 'idle'}
+										>
 											{engine.status}
 										</span>
 									</div>
@@ -286,11 +292,18 @@
 		border-radius: var(--radius-full);
 		background-color: var(--bg-tertiary);
 		color: var(--fg-muted);
+		text-transform: uppercase;
+		font-weight: 500;
 	}
 
 	.engine-status.running {
 		background-color: var(--success-bg);
 		color: var(--success-fg);
+	}
+
+	.engine-status.idle {
+		background-color: var(--bg-secondary);
+		color: var(--fg-secondary);
 	}
 
 	.engine-meta {

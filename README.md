@@ -68,13 +68,12 @@ cp .env.example .env
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DEBUG` | `false` | Enable debug logging and SQL echo |
-| `ENGINE_IDLE_TIMEOUT` | `300` | Seconds before idle engines are cleaned up |
+| `ENGINE_IDLE_TIMEOUT` | `300` | Seconds before idle engines are cleaned up (reset on save) |
+| `ENGINE_POOLING_INTERVAL` | `5` | Seconds between engine state checks |
 | `JOB_TIMEOUT` | `300` | Maximum job execution time in seconds |
-| `JOB_TTL` | `1800` | Seconds to keep completed jobs in memory |
-| `MAX_JOBS_IN_MEMORY` | `1000` | Maximum number of jobs to cache |
 | `MAX_UPLOAD_SIZE` | `10737418240` | Maximum file upload size (10GB) |
 
-See **[ENV_VARIABLES.md](ENV_VARIABLES.md)** for complete reference of all 26 environment variables.
+See **[ENV_VARIABLES.md](ENV_VARIABLES.md)** for complete reference of all environment variables.
 
 ## Architecture
 

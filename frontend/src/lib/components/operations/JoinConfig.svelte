@@ -100,10 +100,6 @@
 		config.right_columns = [];
 	}
 
-	function _setRightSource(sourceId: string) {
-		selectedRightSource = sourceId;
-	}
-
 	function handlePickerFocus() {
 		showPicker = true;
 	}

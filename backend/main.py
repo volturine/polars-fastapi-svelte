@@ -8,7 +8,6 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 
 from api import router
 from core.config import settings
@@ -23,11 +22,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+frontend_build_dir = Path(__file__).parent.parent / 'frontend' / 'build'
+
 
 async def engine_cleanup_loop():
-    """Periodically clean up idle engines."""
+    """Periodically check and clean up idle engines."""
     while True:
-        await asyncio.sleep(settings.engine_cleanup_interval)
+        await asyncio.sleep(settings.engine_pooling_interval)
         try:
             manager = get_manager()
             cleaned = manager.cleanup_idle_engines()
@@ -81,7 +82,6 @@ app.include_router(router, tags=['api'])
 @app.get('/')
 async def root():
     prod_mode_enabled = os.getenv('PROD_MODE_ENABLED', 'false').lower() in ['true', '1', 'yes']
-    frontend_build_dir = Path(__file__).parent.parent / 'frontend' / 'build'
     index_path = frontend_build_dir / 'index.html'
 
     if prod_mode_enabled and index_path.exists():
@@ -103,15 +103,18 @@ async def readiness():
     Readiness check - verifies app can handle requests.
     Checks database connectivity, engine manager, and filesystem.
     """
-    from core.database import async_session_maker
+    from fastapi.responses import JSONResponse
+    from sqlalchemy import text
+
+    from core.database import AsyncSessionLocal
 
     checks = {}
     is_ready = True
 
     # Check database
     try:
-        async with async_session_maker() as session:
-            await session.execute('SELECT 1')
+        async with AsyncSessionLocal() as session:
+            await session.execute(text('SELECT 1'))
         checks['database'] = 'ok'
     except Exception as e:
         checks['database'] = f'error: {str(e)}'
@@ -140,7 +143,7 @@ async def readiness():
         is_ready = False
 
     status_code = 200 if is_ready else 503
-    return {'status': 'ready' if is_ready else 'not_ready', 'checks': checks}, status_code
+    return JSONResponse(content={'status': 'ready' if is_ready else 'not_ready', 'checks': checks}, status_code=status_code)
 
 
 @app.get('/health/startup')
@@ -150,43 +153,33 @@ async def startup():
     Returns 200 when app is initialized and ready to accept traffic.
     """
     try:
-        # Just check if we can import and access settings
         _ = settings.app_name
-        return {'status': 'started'}
+        return {'status': 'ready'}
     except Exception as e:
-        return {'status': 'starting', 'error': str(e)}, 503
+        return {'status': 'error', 'message': str(e)}
 
 
-# Mount static files (frontend) - This must be LAST
-# Only mount if PROD_MODE_ENABLED is true and frontend build exists
-prod_mode_enabled = os.getenv('PROD_MODE_ENABLED', 'false').lower() in ['true', '1', 'yes']
-frontend_build_dir = Path(__file__).parent.parent / 'frontend' / 'build'
+@app.get('/{full_path:path}', include_in_schema=False)
+async def serve_static_or_index(full_path: str):
+    prod_mode_enabled = os.getenv('PROD_MODE_ENABLED', 'false').lower() in ['true', '1', 'yes']
+    frontend_build_dir = Path(__file__).parent.parent / 'frontend' / 'build'
 
-if prod_mode_enabled and frontend_build_dir.exists():
-    logger.info(f'PROD_MODE_ENABLED=true. Serving frontend from {frontend_build_dir}')
+    if not prod_mode_enabled:
+        logger.info('Frontend build not served (development mode or build missing)')
+        raise HTTPException(status_code=404, detail='Frontend build not found')
 
-    app.mount(
-        '/_app',
-        StaticFiles(directory=str(frontend_build_dir / '_app')),
-        name='frontend-assets',
-    )
+    if full_path.startswith('api/') or full_path == 'api':
+        raise HTTPException(status_code=404, detail='Not Found')
 
-    @app.get('/{full_path:path}', include_in_schema=False)
-    async def serve_static_or_index(full_path: str):
-        if full_path.startswith('api/') or full_path == 'api':
-            raise HTTPException(status_code=404, detail='Not Found')
+    path = frontend_build_dir / full_path
+    if path.is_file():
+        return FileResponse(str(path))
 
-        path = frontend_build_dir / full_path
-        if path.is_file():
-            return FileResponse(str(path))
+    index_path = frontend_build_dir / 'index.html'
+    if index_path.exists():
+        return FileResponse(str(index_path))
 
-        index_path = frontend_build_dir / 'index.html'
-        if index_path.exists():
-            return FileResponse(str(index_path))
-
-        raise HTTPException(status_code=404, detail='File not found')
-else:
-    logger.info('Frontend build not served (development mode or build missing)')
+    raise HTTPException(status_code=404, detail='File not found')
 
 
 if __name__ == '__main__':

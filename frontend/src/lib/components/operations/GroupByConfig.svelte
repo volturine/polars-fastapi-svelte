@@ -150,14 +150,11 @@
 				{/each}
 			</select>
 
-			<label for="agg-input-alias" class="sr-only">Alias (optional)</label>
 			<input
-				id="agg-input-alias"
-				data-testid="agg-alias-input"
+				id="agg-alias"
 				type="text"
 				bind:value={newAggregation.alias}
 				placeholder="Alias (optional)"
-				aria-label="Aggregation alias (optional)"
 			/>
 
 			<button

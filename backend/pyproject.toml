@@ -3,7 +3,7 @@ name = "backend"
 version = "0.1.0"
 description = "FastAPI backend"
 readme = "README.md"
-requires-python = "==3.13.*"
+requires-python = ">=3.11"
 dependencies = [
     "uvicorn",
     "fastapi",
@@ -22,7 +22,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0.0", "pytest-asyncio>=0.23.0", "ruff>=0.2.0"]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-timeout>=2.2.0",
+    "coverage>=7.0.0",
+    "ruff>=0.2.0"
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -111,6 +119,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+timeout = 30
 addopts = [
     "-v",
     "--strict-markers",

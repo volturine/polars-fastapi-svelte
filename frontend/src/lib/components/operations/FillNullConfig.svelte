@@ -66,23 +66,15 @@
 	</div>
 
 	{#if currentStrategy?.needsValue}
-		<div class="section" role="group" aria-labelledby="fill-value-heading">
-			<h4 id="fill-value-heading">Fill Value</h4>
-			<label for="fill-input-value" class="sr-only">Fill value</label>
+		<div class="section">
+			<h4>Fill Value</h4>
 			<input
-				id="fill-input-value"
-				data-testid="fill-value-input"
+				id="fill-value"
 				type="text"
 				bind:value={config.value}
 				placeholder="Enter value (e.g., 0, N/A)"
-				aria-describedby="fill-value-type"
 			/>
-			<label for="fill-select-value-type" class="sr-only">Value type</label>
-			<select
-				id="fill-select-value-type"
-				data-testid="fill-value-type-select"
-				bind:value={config.value_type}
-			>
+			<select id="fill-value-type" bind:value={config.value_type}>
 				<option value="Utf8">String</option>
 				<option value="Int64">Integer</option>
 				<option value="Float64">Float</option>

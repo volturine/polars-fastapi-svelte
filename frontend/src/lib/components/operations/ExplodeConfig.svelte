@@ -44,7 +44,7 @@
 	}
 </script>
 
-<div class="explode-config">
+<div class="config-panel">
 	<h3>Explode Configuration</h3>
 
 	<div class="help-banner">
@@ -52,7 +52,7 @@
 		duplicating all other column values.
 	</div>
 
-	<div class="section">
+	<div class="form-section">
 		<h4>Columns to Explode</h4>
 		<p class="help-text">Select one or more list/array columns to explode</p>
 
@@ -73,13 +73,14 @@
 							checked={safeColumns.includes(column.name)}
 							onchange={() => toggleColumn(column.name)}
 						/>
-						<span>{column.name} ({column.dtype})</span>
+						<span class="column-name">{column.name}</span>
+						<span class="column-type">{column.dtype}</span>
 					</label>
 				{/each}
 			</div>
 
 			{#if safeColumns.length > 0}
-				<div class="selected-info">
+				<div class="info-box">
 					Selected {safeColumns.length} column{safeColumns.length !== 1 ? 's' : ''}:
 					{safeColumns.join(', ')}
 				</div>
@@ -87,7 +88,7 @@
 		{/if}
 	</div>
 
-	<div class="info-box">
+	<div class="success-box">
 		<strong>How it works:</strong>
 		<ul>
 			<li>Each list element becomes a new row</li>
@@ -104,137 +105,48 @@
 </div>
 
 <style>
-	.explode-config {
-		padding: 1rem;
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: 1rem;
-		color: var(--panel-header-fg);
-	}
-
-	h4 {
-		margin-top: 0;
-		margin-bottom: 0.5rem;
-		font-size: 1rem;
-		color: var(--fg-secondary);
-	}
-
 	.help-banner {
 		background-color: var(--info-bg);
-		padding: 0.75rem;
+		padding: var(--space-3);
 		border-left: 3px solid var(--info-border);
 		border-radius: var(--radius-sm);
-		margin-bottom: 1rem;
-		font-size: 0.875rem;
+		margin-bottom: var(--space-4);
+		font-size: var(--text-sm);
 		color: var(--info-fg);
 	}
 
-	.section {
-		margin-bottom: 1.5rem;
-		padding: 1rem;
-		background-color: var(--form-section-bg);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--form-section-border);
-	}
-
 	.help-text {
-		font-size: 0.875rem;
+		font-size: var(--text-sm);
 		color: var(--fg-tertiary);
-		margin-bottom: 0.75rem;
-	}
-
-	.warning-box {
-		padding: 1rem;
-		background-color: var(--warning-bg);
-		border-left: 3px solid var(--warning-border);
-		border-radius: var(--radius-sm);
-		color: var(--warning-fg);
+		margin-bottom: var(--space-3);
 	}
 
 	.warning-box strong {
 		display: block;
-		margin-bottom: 0.5rem;
-		color: inherit;
+		margin-bottom: var(--space-2);
 	}
 
 	.warning-box p {
 		margin: 0;
-		font-size: 0.875rem;
-		color: inherit;
+		font-size: var(--text-sm);
 	}
 
-	.column-list {
-		max-height: 200px;
-		overflow-y: auto;
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		padding: 0.5rem;
-		background-color: var(--bg-primary);
-	}
-
-	.column-item {
-		display: flex;
-		align-items: center;
-		padding: 0.5rem;
-		cursor: pointer;
-		border-radius: var(--radius-sm);
-	}
-
-	.column-item:hover {
-		background-color: var(--bg-hover);
-	}
-
-	.column-item input[type='checkbox'] {
-		margin-right: 0.5rem;
-		cursor: pointer;
-	}
-
-	.selected-info {
-		margin-top: 0.5rem;
-		padding: 0.5rem;
-		background-color: var(--info-bg);
-		border: 1px solid var(--info-border);
-		border-radius: var(--radius-sm);
-		font-size: 0.875rem;
-		color: var(--info-fg);
-	}
-
-	.info-box {
-		margin-bottom: 1rem;
-		padding: 0.75rem;
-		background-color: var(--success-bg);
-		border-left: 3px solid var(--success-border);
-		border-radius: var(--radius-sm);
-		font-size: 0.875rem;
-		color: var(--success-fg);
-	}
-
-	.info-box strong {
-		display: block;
-		margin-bottom: 0.5rem;
-	}
-
-	.info-box ul {
+	.success-box ul {
 		margin: 0;
-		padding-left: 1.5rem;
+		padding-left: var(--space-6);
 	}
 
-	.info-box li {
-		margin-bottom: 0.25rem;
+	.success-box li {
+		margin-bottom: var(--space-1);
 	}
 
 	.example {
-		margin-bottom: 1rem;
-		padding: 0.75rem;
+		margin-bottom: var(--space-4);
+		padding: var(--space-3);
 		background-color: var(--warning-bg);
 		border-left: 3px solid var(--warning-border);
 		border-radius: var(--radius-sm);
-		font-size: 0.875rem;
+		font-size: var(--text-sm);
 		color: var(--warning-fg);
 	}
 </style>

@@ -21,7 +21,7 @@
 	});
 </script>
 
-<div class="value-counts-config">
+<div class="config-panel">
 	<h3>Value Counts</h3>
 
 	<div class="form-group">
@@ -50,47 +50,18 @@
 </div>
 
 <style>
-	.value-counts-config {
-		padding: 1rem;
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: 1rem;
-		color: var(--panel-header-fg);
-	}
-
 	.form-group {
-		margin-bottom: 1rem;
+		margin-bottom: var(--space-4);
 	}
 
 	.form-group:last-child {
 		margin-bottom: 0;
 	}
 
-	label {
-		display: block;
-		margin-bottom: 0.25rem;
-		color: var(--fg-secondary);
-	}
-
-	select {
-		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
-	}
-
 	.checkbox-label {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-2);
 		cursor: pointer;
-		color: var(--fg-secondary);
 	}
 </style>

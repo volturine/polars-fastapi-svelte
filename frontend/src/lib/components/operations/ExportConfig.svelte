@@ -42,7 +42,7 @@
 	];
 </script>
 
-<div class="export-config" role="region" aria-label="Export configuration">
+<div class="config-panel" role="region" aria-label="Export configuration">
 	<div class="form-group">
 		<label for="export-input-filename">Filename</label>
 		<input
@@ -102,39 +102,17 @@
 </div>
 
 <style>
-	.export-config {
-		padding: 1rem;
-	}
-
 	.form-group {
-		margin-bottom: 1rem;
+		margin-bottom: var(--space-4);
 	}
 
 	.form-group:last-child {
 		margin-bottom: 0;
 	}
 
-	label {
-		display: block;
-		margin-bottom: 0.25rem;
-		font-size: var(--text-sm);
-		color: var(--fg-secondary);
-	}
-
-	input[type='text'],
-	select {
-		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
-		font-family: var(--font-mono);
-	}
-
 	.hint {
 		display: block;
-		margin-top: 0.25rem;
+		margin-top: var(--space-1);
 		font-size: var(--text-xs);
 		color: var(--fg-muted);
 	}

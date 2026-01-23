@@ -22,10 +22,10 @@
 	});
 </script>
 
-<div class="view-config">
+<div class="config-panel">
 	<h3>View Configuration</h3>
 
-	<div class="config-section">
+	<div class="form-section">
 		<label for="row-limit">
 			Preview Rows
 			<input
@@ -42,50 +42,16 @@
 </div>
 
 <style>
-	.view-config {
-		padding: 1rem;
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: 1rem;
-		color: var(--panel-header-fg);
-	}
-
-	.config-section {
-		margin-bottom: 1.5rem;
-	}
-
 	label {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
-		font-weight: 500;
-		color: var(--fg-secondary);
-	}
-
-	input[type='number'] {
-		padding: 0.5rem;
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
-		font-size: 1rem;
-	}
-
-	input[type='number']:focus {
-		outline: none;
-		border-color: var(--input-focus-border);
-		box-shadow: 0 0 0 3px var(--accent-bg);
+		gap: var(--space-2);
 	}
 
 	.help-text {
-		margin: 0.5rem 0 0 0;
-		font-size: 0.875rem;
+		margin: var(--space-2) 0 0 0;
+		font-size: var(--text-sm);
 		color: var(--fg-tertiary);
-		font-weight: normal;
+		font-weight: var(--font-normal);
 	}
 </style>

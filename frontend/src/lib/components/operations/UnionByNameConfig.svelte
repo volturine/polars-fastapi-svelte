@@ -108,11 +108,11 @@
 	}
 </script>
 
-<div class="union-config">
+<div class="config-panel">
 	<h3>Union By Name</h3>
 	<p class="description">Combine rows from multiple datasources using matching column names.</p>
 
-	<div class="section">
+	<div class="form-section">
 		<h4>Base Datasource</h4>
 		<div class="summary">
 			{#if currentDatasource}
@@ -124,10 +124,10 @@
 		</div>
 	</div>
 
-	<div class="section">
+	<div class="form-section">
 		<div class="section-header">
 			<h4>Union Sources</h4>
-			<div class="column-actions">
+			<div class="bulk-actions">
 				<button type="button" class="btn-link" onclick={selectAll}>Select All</button>
 				<button type="button" class="btn-link" onclick={deselectAll}>Deselect All</button>
 			</div>
@@ -197,11 +197,11 @@
 		{/if}
 
 		{#if selectedSources.length === 0}
-			<div class="warning">Select at least one datasource to union.</div>
+			<div class="warning-box">Select at least one datasource to union.</div>
 		{/if}
 	</div>
 
-	<div class="section">
+	<div class="form-section">
 		<h4>Column Matching</h4>
 		<label class="toggle">
 			<input id="allow-missing" type="checkbox" bind:checked={config.allow_missing} />
@@ -215,45 +215,15 @@
 </div>
 
 <style>
-	.union-config {
-		padding: var(--space-4);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: var(--space-2);
-		color: var(--panel-header-fg);
-	}
-
-	h4 {
-		margin-top: 0;
-		margin-bottom: var(--space-3);
-		font-size: var(--text-base);
-		color: var(--fg-secondary);
-	}
-
-	.description {
-		margin: 0 0 var(--space-4);
-		color: var(--fg-muted);
-		font-size: var(--text-sm);
-	}
-
-	.section {
-		margin-bottom: var(--space-6);
-		padding: var(--space-4);
-		background-color: var(--form-section-bg);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--form-section-border);
-	}
-
 	.section-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		margin-bottom: var(--space-4);
+	}
+
+	.section-header h4 {
+		margin-bottom: 0;
 	}
 
 	.summary {
@@ -270,11 +240,6 @@
 
 	.muted {
 		color: var(--fg-muted);
-	}
-
-	.column-actions {
-		display: flex;
-		gap: var(--space-2);
 	}
 
 	.btn-link {
@@ -343,15 +308,6 @@
 		border-left: 3px solid var(--form-help-accent);
 		border-radius: var(--radius-sm);
 		border: 1px solid var(--form-help-border);
-	}
-
-	.warning {
-		padding: var(--space-2);
-		background-color: var(--warning-bg);
-		color: var(--warning-fg);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-sm);
-		margin-top: var(--space-2);
 	}
 
 	.empty-message {
@@ -426,17 +382,5 @@
 		color: var(--fg-muted);
 		font-size: var(--text-sm);
 		font-style: italic;
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 </style>

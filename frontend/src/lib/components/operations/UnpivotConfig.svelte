@@ -23,7 +23,7 @@
 	});
 </script>
 
-<div class="unpivot-config" role="region" aria-label="Unpivot configuration">
+<div class="config-panel" role="region" aria-label="Unpivot configuration">
 	<h3>Unpivot Configuration</h3>
 	<p class="description">Transform wide data to long format (melt operation).</p>
 
@@ -76,59 +76,22 @@
 </div>
 
 <style>
-	.unpivot-config {
-		padding: 1rem;
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: 0.25rem;
-		color: var(--panel-header-fg);
-	}
-
-	.description {
-		color: var(--fg-secondary);
-		margin-bottom: 1rem;
-	}
-
 	.form-group {
-		margin-bottom: 1rem;
+		margin-bottom: var(--space-4);
 	}
 
 	.form-group:last-child {
 		margin-bottom: 0;
 	}
 
-	label {
-		display: block;
-		margin-bottom: 0.25rem;
-		color: var(--fg-secondary);
-	}
-
 	select[multiple] {
 		height: 80px;
-		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
-	}
-
-	input[type='text'] {
-		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
 	}
 
 	.hint {
-		font-size: 0.75rem;
+		font-size: var(--text-xs);
 		color: var(--fg-tertiary);
+		display: block;
+		margin-top: var(--space-1);
 	}
 </style>

@@ -78,7 +78,7 @@
 	let selectedColumnNames = $derived(Array.from(selectedColumns));
 </script>
 
-<div class="select-config" role="region" aria-label="Select columns configuration">
+<div class="config-panel" role="region" aria-label="Select columns configuration">
 	<h3>Select Columns</h3>
 
 	<div class="bulk-actions">
@@ -129,90 +129,3 @@
 	{/if}
 </div>
 
-<style>
-	.select-config {
-		padding: var(--space-4);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: var(--space-4);
-		color: var(--panel-header-fg);
-	}
-
-	.bulk-actions {
-		display: flex;
-		gap: var(--space-2);
-		margin-bottom: var(--space-4);
-		flex-wrap: wrap;
-	}
-
-	.bulk-actions button {
-		padding: var(--space-2) var(--space-4);
-		background-color: var(--bg-tertiary);
-		color: var(--fg-primary);
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-	}
-
-	.column-list {
-		max-height: 300px;
-		overflow-y: auto;
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		padding: var(--space-2);
-		margin-bottom: var(--space-4);
-		background-color: var(--bg-primary);
-	}
-
-	.column-item {
-		display: flex;
-		align-items: center;
-		padding: var(--space-2);
-		cursor: pointer;
-		border-radius: var(--radius-sm);
-	}
-
-	.column-item:hover {
-		background-color: var(--bg-hover);
-	}
-
-	.column-item input[type='checkbox'] {
-		margin-right: var(--space-2);
-		cursor: pointer;
-	}
-
-	.column-name {
-		font-weight: var(--font-medium);
-		margin-right: var(--space-2);
-		color: var(--fg-primary);
-	}
-
-	.column-type {
-		color: var(--fg-tertiary);
-		font-size: var(--text-sm);
-	}
-
-	.selected-summary {
-		padding: var(--space-4);
-		background-color: var(--info-bg);
-		border: 1px solid var(--info-border);
-		border-radius: var(--radius-sm);
-		margin-bottom: var(--space-4);
-		color: var(--info-fg);
-	}
-
-	.selected-names {
-		margin-top: var(--space-2);
-		font-size: var(--text-sm);
-		color: var(--fg-primary);
-	}
-
-	button:hover {
-		opacity: 0.9;
-	}
-</style>

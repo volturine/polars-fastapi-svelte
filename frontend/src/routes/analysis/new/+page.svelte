@@ -149,9 +149,9 @@
 				<p class="step-description">Choose one or more data sources for this analysis.</p>
 
 				{#if datasourcesQuery.isLoading}
-					<div class="loading-state">Loading data sources...</div>
+					<div class="info-box">Loading data sources...</div>
 				{:else if datasourcesQuery.error}
-					<div class="error-message">
+					<div class="error-box">
 						Error loading data sources: {datasourcesQuery.error.message}
 					</div>
 				{:else if datasourcesQuery.data && datasourcesQuery.data.length === 0}
@@ -190,7 +190,7 @@
 											onmousedown={() => toggleDatasource(datasource.id)}
 										>
 											<span class="picker-name">{datasource.name}</span>
-											<span class="type-badge">{getSourceLabel(datasource)}</span>
+											<span class="badge badge-neutral">{getSourceLabel(datasource)}</span>
 										</button>
 									{/each}
 								{/if}
@@ -253,7 +253,7 @@
 				</div>
 
 				{#if error}
-					<div class="error-message">{error}</div>
+					<div class="error-box">{error}</div>
 				{/if}
 			</div>
 		{/if}
@@ -304,7 +304,7 @@
 	.wizard-header h1 {
 		margin: 0 0 var(--space-6) 0;
 		font-size: var(--text-2xl);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 	}
 
 	.steps-indicator {
@@ -328,7 +328,7 @@
 		border: 1px solid var(--border-secondary);
 		border-radius: var(--radius-sm);
 		font-size: var(--text-xs);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 		color: var(--fg-muted);
 		background-color: var(--bg-primary);
 	}
@@ -352,7 +352,7 @@
 
 	.step.active .step-label {
 		color: var(--fg-primary);
-		font-weight: 500;
+		font-weight: var(--font-medium);
 	}
 
 	.step-line {
@@ -382,7 +382,7 @@
 	.step-content h2 {
 		margin: 0 0 var(--space-2) 0;
 		font-size: var(--text-lg);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 	}
 
 	.step-description {
@@ -398,7 +398,7 @@
 		display: block;
 		margin-bottom: var(--space-2);
 		font-size: var(--text-sm);
-		font-weight: 500;
+		font-weight: var(--font-medium);
 		color: var(--fg-secondary);
 	}
 
@@ -492,7 +492,7 @@
 	}
 
 	.picker-name {
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 	}
 
 	.picker-empty {
@@ -520,7 +520,7 @@
 		border-radius: var(--radius-full);
 		background-color: var(--bg-tertiary);
 		font-size: var(--text-xs);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 	}
 
 	.source-chip button {
@@ -535,15 +535,6 @@
 
 	.source-chip button:hover {
 		color: var(--fg-primary);
-	}
-
-	.type-badge {
-		padding: var(--space-1) var(--space-2);
-		background-color: var(--bg-tertiary);
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-xs);
-		color: var(--fg-tertiary);
 	}
 
 	.review-section {
@@ -561,7 +552,7 @@
 	.review-section h3 {
 		margin: 0 0 var(--space-4) 0;
 		font-size: var(--text-sm);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 		color: var(--fg-tertiary);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
@@ -618,23 +609,12 @@
 		color: var(--fg-muted);
 	}
 
-	.loading-state,
 	.empty-state {
 		text-align: center;
 		padding: var(--space-8);
 		color: var(--fg-tertiary);
 		border: 1px dashed var(--border-primary);
 		border-radius: var(--radius-sm);
-	}
-
-	.error-message {
-		padding: var(--space-4);
-		background-color: var(--error-bg);
-		border: 1px solid var(--error-border);
-		border-radius: var(--radius-sm);
-		color: var(--error-fg);
-		font-size: var(--text-sm);
-		margin-top: var(--space-4);
 	}
 
 	.wizard-footer {
@@ -646,50 +626,5 @@
 
 	.spacer {
 		flex: 1;
-	}
-
-	.btn {
-		padding: var(--space-2) var(--space-5);
-		border: 1px solid transparent;
-		border-radius: var(--radius-sm);
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-		font-weight: 500;
-		cursor: pointer;
-		transition: all var(--transition);
-		text-decoration: none;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.btn-primary {
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border-color: var(--accent-primary);
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		opacity: 0.85;
-	}
-
-	.btn-primary:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.btn-secondary {
-		background-color: transparent;
-		color: var(--fg-primary);
-		border-color: var(--border-secondary);
-	}
-
-	.btn-secondary:hover:not(:disabled) {
-		background-color: var(--bg-hover);
-	}
-
-	.btn-secondary:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
 	}
 </style>

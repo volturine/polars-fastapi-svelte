@@ -57,7 +57,7 @@
 	}
 </script>
 
-<div class="pivot-config" role="region" aria-label="Pivot configuration">
+<div class="config-panel" role="region" aria-label="Pivot configuration">
 	<h3>Pivot Configuration</h3>
 
 	<div class="field-group">
@@ -149,36 +149,13 @@
 </div>
 
 <style>
-	.pivot-config {
-		padding: var(--space-4);
-	}
-
-	h3 {
-		margin: 0 0 var(--space-4) 0;
-		color: var(--panel-header-fg);
-	}
-
 	.field-group {
 		margin-bottom: var(--space-4);
 	}
 
-	label {
-		display: block;
-		margin-bottom: var(--space-2);
-		color: var(--fg-secondary);
-		font-size: 0.875rem;
-	}
-
-	.group-label {
-		display: block;
-		margin-bottom: var(--space-2);
-		color: var(--fg-secondary);
-		font-size: 0.875rem;
-	}
-
 	.hint {
 		color: var(--fg-muted);
-		font-size: 0.75rem;
+		font-size: var(--text-xs);
 	}
 
 	.checkbox-grid {
@@ -200,7 +177,7 @@
 		padding: var(--space-1) var(--space-2);
 		border-radius: var(--radius-sm);
 		cursor: pointer;
-		font-size: 0.8125rem;
+		font-size: var(--text-sm);
 	}
 
 	.checkbox-label:hover {
@@ -213,23 +190,8 @@
 
 	.selection-summary {
 		margin-top: var(--space-2);
-		font-size: 0.75rem;
+		font-size: var(--text-xs);
 		color: var(--fg-muted);
-	}
-
-	select {
-		width: 100%;
-		padding: var(--space-2);
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
-		font-size: 0.875rem;
-	}
-
-	select:focus {
-		outline: none;
-		border-color: var(--accent-primary);
 	}
 
 	.refresh-button {
@@ -239,8 +201,8 @@
 		color: var(--bg-primary);
 		border: none;
 		border-radius: var(--radius-sm);
-		font-size: 0.875rem;
-		font-weight: 500;
+		font-size: var(--text-sm);
+		font-weight: var(--font-medium);
 		cursor: pointer;
 		display: flex;
 		align-items: center;

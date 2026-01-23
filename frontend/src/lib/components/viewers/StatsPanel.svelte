@@ -97,9 +97,6 @@
 
 	.stats-header h3 {
 		margin: 0;
-		font-size: var(--text-lg);
-		font-weight: var(--font-semibold);
-		color: var(--fg-primary);
 	}
 
 	.primary-stats {

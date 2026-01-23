@@ -290,16 +290,16 @@
 </script>
 
 {#if analysisQuery.isLoading}
-	<div class="loading-container">
+	<div class="info-box loading-container">
 		<div class="spinner"></div>
 		<p>Loading analysis...</p>
 	</div>
 {:else if analysisQuery.isError}
-	<div class="error-container">
+	<div class="error-box error-container">
 		<div class="error-icon">!</div>
 		<h2>Error loading analysis</h2>
 		<p>{analysisQuery.error instanceof Error ? analysisQuery.error.message : 'Unknown error'}</p>
-		<button onclick={() => goto(resolve('/'), { invalidateAll: true })} type="button"
+		<button class="btn-primary" onclick={() => goto(resolve('/'), { invalidateAll: true })} type="button"
 			>Back to Gallery</button
 		>
 	</div>
@@ -531,6 +531,7 @@
 		justify-content: center;
 		height: calc(100vh - 60px);
 		gap: var(--space-4);
+		text-align: center;
 	}
 
 	.spinner {
@@ -549,12 +550,8 @@
 	}
 
 	.loading-container p {
-		color: var(--fg-tertiary);
+		margin: 0;
 		font-size: var(--text-sm);
-	}
-
-	.error-container {
-		text-align: center;
 	}
 
 	.error-icon {
@@ -563,38 +560,24 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background-color: var(--error-bg);
-		color: var(--error-fg);
-		border: 1px solid var(--error-border);
 		border-radius: var(--radius-sm);
 		font-size: var(--text-xl);
-		font-weight: 700;
+		font-weight: var(--font-bold);
 		box-shadow: var(--shadow-soft);
 	}
 
 	.error-container h2 {
 		margin: 0;
 		font-size: var(--text-lg);
-		color: var(--fg-primary);
 	}
 
 	.error-container p {
 		margin: 0;
-		color: var(--fg-tertiary);
 		font-size: var(--text-sm);
 	}
 
 	.error-container button {
 		margin-top: var(--space-4);
-		padding: var(--space-2) var(--space-4);
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border: 1px solid var(--accent-primary);
-		border-radius: var(--radius-sm);
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-		cursor: pointer;
-		box-shadow: var(--card-shadow);
 	}
 
 	.editor-container {
@@ -675,7 +658,7 @@
 	.editable-title {
 		margin: 0;
 		font-size: var(--text-sm);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 		letter-spacing: 0.02em;
 		text-transform: uppercase;
 		color: var(--fg-primary);
@@ -739,7 +722,7 @@
 		border: none;
 		font-family: var(--font-mono);
 		font-size: var(--text-sm);
-		font-weight: 500;
+		font-weight: var(--font-medium);
 		cursor: pointer;
 		transition: all var(--transition);
 	}
@@ -784,6 +767,7 @@
 		font-size: var(--text-sm);
 		color: var(--fg-muted);
 		font-family: var(--font-mono);
+		font-weight: var(--font-medium);
 		transition: all var(--transition);
 		display: inline-flex;
 		align-items: center;
@@ -830,7 +814,7 @@
 
 	.add-tab {
 		padding: var(--space-1) var(--space-2);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 	}
 
 	.modal-backdrop {
@@ -867,7 +851,7 @@
 	.modal-header h2 {
 		margin: 0;
 		font-size: var(--text-sm);
-		font-weight: 600;
+		font-weight: var(--font-semibold);
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: var(--fg-primary);

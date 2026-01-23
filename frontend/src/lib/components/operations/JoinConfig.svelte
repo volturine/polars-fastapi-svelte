@@ -143,10 +143,10 @@
 	);
 </script>
 
-<div class="join-config" role="region" aria-label="Join configuration">
+<div class="config-panel" role="region" aria-label="Join configuration">
 	<h3>Join Configuration</h3>
 
-	<div class="section" role="group" aria-labelledby="right-datasource-heading">
+	<div class="form-section" role="group" aria-labelledby="right-datasource-heading">
 		<h4 id="right-datasource-heading">Right Datasource</h4>
 		<div
 			class="search-picker"
@@ -216,7 +216,7 @@
 		{/if}
 	</div>
 
-	<div class="section" role="group" aria-labelledby="join-type-heading">
+	<div class="form-section" role="group" aria-labelledby="join-type-heading">
 		<h4 id="join-type-heading">Join Type</h4>
 		<label for="join-select-type" class="sr-only">Select join type</label>
 		<select id="join-select-type" data-testid="join-type-select" bind:value={config.how}>
@@ -234,7 +234,7 @@
 	</div>
 
 	{#if !isCrossJoin}
-		<div class="section" role="group" aria-labelledby="join-columns-heading">
+		<div class="form-section" role="group" aria-labelledby="join-columns-heading">
 			<div class="section-header">
 				<h4 id="join-columns-heading">Join Columns</h4>
 				<button
@@ -300,7 +300,7 @@
 
 			{#if (config.join_columns ?? []).length > 0}
 				{#if !(config.join_columns ?? []).some((c) => c.left_column && c.right_column)}
-					<div id="join-columns-warning" class="warning" role="alert">
+					<div id="join-columns-warning" class="warning-box" role="alert">
 						Configure at least one join column pair
 					</div>
 				{/if}
@@ -308,10 +308,10 @@
 		</div>
 	{/if}
 
-	<div class="section" role="group" aria-labelledby="right-columns-heading">
+	<div class="form-section" role="group" aria-labelledby="right-columns-heading">
 		<div class="section-header">
 			<h4 id="right-columns-heading">Columns from Right Dataset</h4>
-			<div class="column-actions">
+			<div class="bulk-actions">
 				<button
 					id="join-btn-select-all-right"
 					data-testid="join-select-all-right-button"
@@ -362,13 +362,13 @@
 		{/if}
 
 		{#if rightColumns.length > 0 && (config.right_columns ?? []).length === 0}
-			<div id="join-right-columns-warning" class="warning" role="alert">
+			<div id="join-right-columns-warning" class="warning-box" role="alert">
 				Select at least one column from the right dataset
 			</div>
 		{/if}
 	</div>
 
-	<div class="section" role="group" aria-labelledby="suffix-heading">
+	<div class="form-section" role="group" aria-labelledby="suffix-heading">
 		<h4 id="suffix-heading">Column Suffix</h4>
 		<label for="join-input-suffix" class="sr-only">Suffix for right dataset columns</label>
 		<input
@@ -386,46 +386,6 @@
 </div>
 
 <style>
-	.join-config {
-		padding: var(--space-4);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		background-color: var(--panel-bg);
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
-	h3 {
-		margin-top: 0;
-		margin-bottom: var(--space-4);
-		color: var(--panel-header-fg);
-	}
-
-	h4 {
-		margin-top: 0;
-		margin-bottom: var(--space-3);
-		font-size: var(--text-base);
-		color: var(--fg-secondary);
-	}
-
-	.section {
-		margin-bottom: var(--space-6);
-		padding: var(--space-4);
-		background-color: var(--form-section-bg);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--form-section-border);
-	}
-
 	.section-header {
 		display: flex;
 		justify-content: space-between;
@@ -433,20 +393,14 @@
 		margin-bottom: var(--space-4);
 	}
 
-	.column-actions {
-		display: flex;
-		gap: var(--space-2);
+	.section-header h4 {
+		margin-bottom: 0;
 	}
 
-	.section select,
-	.section input {
+	.form-section select,
+	.form-section input {
 		width: 100%;
-		padding: var(--space-2);
-		border: 1px solid var(--form-control-border);
-		border-radius: var(--radius-sm);
 		margin-bottom: var(--space-2);
-		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
 	}
 
 	.join-column-row {
@@ -515,11 +469,6 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 		gap: var(--space-2);
-		max-height: 200px;
-		overflow-y: auto;
-		padding: var(--space-2);
-		background-color: var(--panel-bg);
-		border-radius: var(--radius-sm);
 	}
 
 	.column-checkbox {
@@ -559,15 +508,6 @@
 		border-radius: var(--radius-sm);
 		margin-top: var(--space-2);
 		border: 1px solid var(--form-help-border);
-	}
-
-	.warning {
-		padding: var(--space-2);
-		background-color: var(--warning-bg);
-		color: var(--warning-fg);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-sm);
-		margin-top: var(--space-2);
 	}
 
 	.empty-message {
@@ -646,17 +586,5 @@
 
 	.source-name {
 		flex: 1;
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 </style>

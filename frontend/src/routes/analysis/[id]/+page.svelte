@@ -187,7 +187,7 @@
 				selectedStepId = null;
 				selectedStepState = null;
 				isSaving = false;
-				
+
 				// Reset engine idle timeout on successful save
 				if (analysisId) {
 					sendKeepalive(analysisId);
@@ -299,8 +299,10 @@
 		<div class="error-icon">!</div>
 		<h2>Error loading analysis</h2>
 		<p>{analysisQuery.error instanceof Error ? analysisQuery.error.message : 'Unknown error'}</p>
-		<button class="btn-primary" onclick={() => goto(resolve('/'), { invalidateAll: true })} type="button"
-			>Back to Gallery</button
+		<button
+			class="btn-primary"
+			onclick={() => goto(resolve('/'), { invalidateAll: true })}
+			type="button">Back to Gallery</button
 		>
 	</div>
 {:else if analysisQuery.data}

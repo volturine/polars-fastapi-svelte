@@ -907,30 +907,8 @@ tr:hover {
 	color: var(--fg-primary);
 }
 
-/* ============================================
-   SCROLLBAR STYLING
-   ============================================ */
-:global(*::-webkit-scrollbar) {
-	width: 0;
-	height: 0;
-}
-
-:global(*::-webkit-scrollbar-thumb) {
-	background: transparent;
-}
-
-:global(*::-webkit-scrollbar-track) {
-	background: transparent;
-}
-
-/* Firefox */
-:global(*) {
+* {
 	scrollbar-width: none;
-}
-
-/* Legacy Edge/IE */
-:global(*) {
-	-ms-overflow-style: none;
 }
 
 /* ============================================

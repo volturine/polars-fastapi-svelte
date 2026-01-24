@@ -183,17 +183,15 @@ def _handle_pivot(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
 
     if not index:
         raise ValueError('Pivot requires at least one index column')
+    # .collect_schema().names()
 
-    # Get unique values from the pivot column to use as on_columns
-    # This is needed because LazyFrame.pivot() requires both 'on' and 'on_columns'
-    df_temp = lf.collect()
-    on_columns = df_temp.select(on_column).to_series().unique().to_list()
+    on_columns = params.get('on_columns') or params.get('onColumns')
+    if not on_columns:
+        raise ValueError('Pivot requires on_columns to remain lazy; collecting for preview-only is not supported')
 
-    # Return a lazy pivot using the collected unique values
     if values:
         return lf.pivot(on=on_column, on_columns=on_columns, index=index, values=values, aggregate_function=aggregate_function)
-    else:
-        return lf.pivot(on=on_column, on_columns=on_columns, index=index, aggregate_function=aggregate_function)
+    return lf.pivot(on=on_column, on_columns=on_columns, index=index, aggregate_function=aggregate_function)
 
 
 def _handle_timeseries(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
@@ -398,23 +396,13 @@ def _handle_fill_null(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
     elif strategy == 'mean':
         if not columns:
             raise ValueError('Columns must be specified for mean strategy')
-        # Compute stats separately (requires collection)
-        stats = lf.select([pl.col(c).mean().alias(c) for c in columns]).collect()
-        exprs = []
-        for c in columns:
-            mean_val = stats[c][0]
-            exprs.append(pl.col(c).fill_null(mean_val))
+        exprs = [pl.col(c).fill_null(pl.col(c).mean()) for c in columns]
         return lf.with_columns(exprs)
 
     elif strategy == 'median':
         if not columns:
             raise ValueError('Columns must be specified for median strategy')
-        # Compute stats separately (requires collection)
-        stats = lf.select([pl.col(c).median().alias(c) for c in columns]).collect()
-        exprs = []
-        for c in columns:
-            median_val = stats[c][0]
-            exprs.append(pl.col(c).fill_null(median_val))
+        exprs = [pl.col(c).fill_null(pl.col(c).median()) for c in columns]
         return lf.with_columns(exprs)
 
     elif strategy == 'drop_rows':
@@ -502,8 +490,7 @@ def _handle_join(lf: pl.LazyFrame, params: dict, right_lf: pl.LazyFrame | None =
         )
 
     if right_columns and how != 'cross':
-        df = joined.collect()
-        all_columns = df.columns
+        all_columns = joined.collect_schema().names()
 
         final_columns = []
         for col in all_columns:
@@ -515,26 +502,25 @@ def _handle_join(lf: pl.LazyFrame, params: dict, right_lf: pl.LazyFrame | None =
                 final_columns.append(col)
 
         if final_columns != all_columns:
-            return df.select(final_columns).lazy()
+            return joined.select(final_columns)
 
     return joined
 
 
 def _handle_sample(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
     """Handle sample operation."""
-    n = params.get('n')
     fraction = params.get('fraction')
-    shuffle = params.get('shuffle', False)
     seed = params.get('seed')
 
-    if n is not None:
-        df = lf.collect()
-        return df.sample(n=n, shuffle=shuffle, seed=seed).lazy()
-    elif fraction is not None:
-        df = lf.collect()
-        return df.sample(n=None, fraction=fraction, shuffle=shuffle, seed=seed).lazy()
-    else:
-        raise ValueError('Sample requires n or fraction parameter')
+    mod = int(1 / fraction)
+
+    lf_sampled = (
+        lf.with_row_index('idx')  # or with_row_count on older versions
+        .filter(pl.col('idx').hash(seed=seed) % mod == 0)
+        .drop('idx')
+    )
+
+    return lf_sampled
 
 
 def _handle_limit(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:
@@ -602,12 +588,12 @@ def _handle_union_by_name(
             raise ValueError(f'Union by name requires datasource {source_id}')
         frames.append(frame)
 
-    base_columns = lf.columns
     if not allow_missing:
+        base_columns = lf.collect_schema().names()
         base_set = set(base_columns)
         aligned = [lf]
         for frame in frames[1:]:
-            frame_columns = frame.columns
+            frame_columns = frame.collect_schema().names()
             if set(frame_columns) != base_set:
                 raise ValueError('Union by name requires matching columns when allow_missing is false')
             aligned.append(frame.select(base_columns))
@@ -1169,7 +1155,7 @@ class PolarsComputeEngine:
                         quote_char=csv_options_dict.get('quote_char', '"'),
                         has_header=csv_options_dict.get('has_header', True),
                         skip_rows=csv_options_dict.get('skip_rows', 0),
-                        encoding=csv_options_dict.get('encoding', 'utf8'),
+                        encoding=encoding,
                     )
                 return pl.scan_csv(file_path)
             elif file_type == 'parquet':

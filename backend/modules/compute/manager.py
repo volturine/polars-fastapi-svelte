@@ -109,7 +109,7 @@ class ProcessManager:
             return info
 
     def get_engine_status(self, analysis_id: str) -> dict:
-        """Get status info for an engine."""
+        """Get status info for an engine - non-blocking."""
         with self._engines_lock:
             info = self._engines.get(analysis_id)
             if not info:
@@ -121,14 +121,24 @@ class ProcessManager:
                     'current_job_id': None,
                 }
 
-            pid = None
-            current_job_id = None
-            if info.engine.process and info.engine.process.is_alive():
-                pid = info.engine.process.pid
-                current_job_id = info.engine.current_job_id
+            engine = info.engine
+            process = engine.process
+
+            # Non-blocking status check - don't wait for subprocess
+            try:
+                is_alive = process and process.is_alive() if process else False
+            except Exception:
+                is_alive = False
+
+            current_job_id = engine.current_job_id
+
+            if is_alive:
                 status = EngineStatus.RUNNING if current_job_id else EngineStatus.IDLE
+                pid = process.pid if process else None
             else:
                 status = EngineStatus.TERMINATED
+                pid = None
+                current_job_id = None
 
             return {
                 'analysis_id': analysis_id,

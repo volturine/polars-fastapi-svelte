@@ -1,6 +1,7 @@
 import logging
 import multiprocessing as mp
 import os
+import resource
 import uuid
 from queue import Empty
 from typing import Any
@@ -645,9 +646,20 @@ class PolarsComputeEngine:
         if self.is_running:
             return
 
+        from core.config import settings
+
+        if settings.polars_max_threads > 0:
+            os.environ['POLARS_MAX_THREADS'] = str(settings.polars_max_threads)
+            logger.debug(f'Set POLARS_MAX_THREADS={settings.polars_max_threads}')
+
+        if settings.polars_streaming_chunk_size > 0:
+            os.environ['POLARS_STREAMING_CHUNK_SIZE'] = str(settings.polars_streaming_chunk_size)
+            logger.debug(f'Set POLARS_STREAMING_CHUNK_SIZE={settings.polars_streaming_chunk_size}')
+
         self.process = mp.Process(
             target=self._run_compute,
             args=(self.command_queue, self.result_queue),
+            daemon=True,
         )
         self.process.start()
         self.is_running = True
@@ -792,18 +804,19 @@ class PolarsComputeEngine:
     @staticmethod
     def _run_compute(command_queue: mp.Queue, result_queue: mp.Queue) -> None:
         """Main compute loop running in subprocess."""
-        # Configure Polars environment variables for this subprocess
         from core.config import settings
 
-        if settings.polars_max_threads > 0:
-            os.environ['POLARS_MAX_THREADS'] = str(settings.polars_max_threads)
-            logger.debug(f'Set POLARS_MAX_THREADS={settings.polars_max_threads}')
+        if settings.polars_max_memory_mb > 0:
+            memory_bytes = settings.polars_max_memory_mb * 1024 * 1024
+            try:
+                resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
+                logger.debug(f'Set memory limit to {settings.polars_max_memory_mb} MB')
+            except (OSError, ValueError) as e:
+                logger.warning(f'Failed to set memory limit: {e}')
 
-        if settings.polars_streaming_chunk_size > 0:
-            os.environ['POLARS_STREAMING_CHUNK_SIZE'] = str(settings.polars_streaming_chunk_size)
-            logger.debug(f'Set POLARS_STREAMING_CHUNK_SIZE={settings.polars_streaming_chunk_size}')
-
-        logger.info(f'Polars engine started (PID: {os.getpid()}, threads: {settings.polars_max_threads or "auto"})')
+        logger.info(
+            f'Polars engine started (PID: {os.getpid()}, threads: {settings.polars_max_threads or "auto"}, memory: {settings.polars_max_memory_mb or "unlimited"} MB)'  # noqa
+        )
 
         while True:
             try:
@@ -1146,7 +1159,7 @@ class PolarsComputeEngine:
             file_path = config['file_path']
             file_type = config['file_type']
             csv_options_dict = config.get('csv_options')
-            encoding = config.get('encoding', 'utf8').lower().replace('utf8', 'utf-8')
+
             if file_type == 'csv':
                 if csv_options_dict:
                     return pl.scan_csv(
@@ -1155,7 +1168,7 @@ class PolarsComputeEngine:
                         quote_char=csv_options_dict.get('quote_char', '"'),
                         has_header=csv_options_dict.get('has_header', True),
                         skip_rows=csv_options_dict.get('skip_rows', 0),
-                        encoding=encoding,
+                        encoding=csv_options_dict.get('encoding', 'utf8').lower(),
                     )
                 return pl.scan_csv(file_path)
             elif file_type == 'parquet':

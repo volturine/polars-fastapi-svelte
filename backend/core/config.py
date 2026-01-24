@@ -18,7 +18,7 @@ def _resolve_dir(value: Path | str) -> Path:
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file='.env',
-        env_file_encoding='utf-8',
+        env_file_encoding='utf8',
         extra='ignore',
     )
 

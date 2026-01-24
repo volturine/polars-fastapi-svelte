@@ -241,10 +241,7 @@ async def _extract_schema(datasource: DataSource) -> SchemaInfo:
         db_path = datasource.config.get('db_path')
         query = datasource.config['query']
 
-        if db_path:
-            conn = duckdb.connect(database=db_path, read_only=datasource.config.get('read_only', True))
-        else:
-            conn = duckdb.connect(database=':memory:')
+        conn = duckdb.connect(database=db_path, read_only=datasource.config.get('read_only', True)) if db_path else duckdb.connect(database=':memory:')
 
         frame = conn.execute(query).fetch_df()
         schema = frame.schema

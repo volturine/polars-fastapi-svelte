@@ -109,9 +109,7 @@ export interface ViewConfigData {
 }
 
 export interface SampleConfigData {
-	n?: number;
 	fraction?: number;
-	shuffle?: boolean;
 	seed?: number;
 }
 

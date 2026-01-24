@@ -249,8 +249,8 @@
 						<div class="form-group">
 							<label for="encoding">Encoding</label>
 							<select id="encoding" bind:value={encoding} disabled={loading}>
-								<option value="utf8">UTF-8</option>
-								<option value="utf8-lossy">UTF-8 (lossy)</option>
+								<option value="utf8">UTF8</option>
+								<option value="utf8-lossy">UTF8 (lossy)</option>
 								<option value="latin1">Latin-1 (ISO-8859-1)</option>
 								<option value="cp1252">Windows-1252</option>
 							</select>

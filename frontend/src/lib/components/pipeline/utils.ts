@@ -222,18 +222,12 @@ const stepTypes: Record<string, StepTypeConfig> = {
 		icon: '🎲',
 		typeLabel: 'sample',
 		summary: (c) => {
-			const n = c.n as number | undefined;
 			const frac = c.fraction as number | undefined;
-			const shuffle = c.shuffle as boolean;
 			const seed = c.seed as number | undefined;
-			let base = '';
-			if (n !== undefined) base = `${n} rows`;
-			else if (frac !== undefined) base = `${(frac * 100).toFixed(0)}%`;
-			else return 'not configured';
-			const extras = [];
-			if (shuffle) extras.push('shuffled');
-			if (seed !== undefined) extras.push(`seed: ${seed}`);
-			return extras.length ? `${base} (${extras.join(', ')})` : base;
+			if (frac === undefined) return 'not configured';
+			const base = `${(frac * 100).toFixed(0)}%`;
+			const extras = seed !== undefined ? `seed: ${seed}` : '';
+			return extras ? `${base} (${extras})` : base;
 		}
 	},
 	limit: {

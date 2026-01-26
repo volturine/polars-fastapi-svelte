@@ -68,9 +68,7 @@ class ProcessManager:
 
             # Check if we've reached max concurrent engines
             if len(self._engines) >= settings.max_concurrent_engines:
-                logger.warning(
-                    f'Max concurrent engines limit reached ({settings.max_concurrent_engines}), cannot spawn engine for {analysis_id}'
-                )
+                logger.warning(f'Max concurrent engines limit reached ({settings.max_concurrent_engines}), cannot spawn engine for {analysis_id}')
                 raise RuntimeError(
                     f'Maximum concurrent engines limit ({settings.max_concurrent_engines}) reached. '
                     f'Please wait for existing analyses to complete or increase MAX_CONCURRENT_ENGINES.'
@@ -122,14 +120,12 @@ class ProcessManager:
                 }
 
             engine = info.engine
+
+            # Check health and reset state if process died
+            engine.check_health()
+
             process = engine.process
-
-            # Non-blocking status check - don't wait for subprocess
-            try:
-                is_alive = process and process.is_alive() if process else False
-            except Exception:
-                is_alive = False
-
+            is_alive = engine.is_process_alive()
             current_job_id = engine.current_job_id
 
             if is_alive:
@@ -198,8 +194,11 @@ class ProcessManager:
                 if not info:
                     continue
 
-                # Skip engines with running jobs
-                if info.engine.current_job_id and info.engine.process and info.engine.process.is_alive():
+                # Check health first - reset state if process died
+                info.engine.check_health()
+
+                # Skip engines with running jobs (only if process is actually alive)
+                if info.engine.current_job_id and info.engine.is_process_alive():
                     continue
 
                 should_cleanup = info.is_idle_for(settings.engine_idle_timeout)
@@ -207,6 +206,26 @@ class ProcessManager:
             if should_cleanup:
                 self.shutdown_engine(analysis_id)
                 cleaned.append(analysis_id)
+        return cleaned
+
+    def cleanup_dead_engines(self) -> list[str]:
+        """Clean up engines whose processes have died. Returns list of cleaned up analysis_ids."""
+        cleaned = []
+        with self._engines_lock:
+            analysis_ids = list(self._engines.keys())
+
+        for analysis_id in analysis_ids:
+            with self._engines_lock:
+                info = self._engines.get(analysis_id)
+                if not info:
+                    continue
+
+                # Check if process died
+                if info.engine.is_running and not info.engine.is_process_alive():
+                    logger.info(f'Cleaning up dead engine for analysis {analysis_id}')
+                    info.engine._reset_state()
+                    cleaned.append(analysis_id)
+
         return cleaned
 
     def list_engines(self) -> list[str]:

@@ -33,7 +33,10 @@
 		previewVersion++;
 		lastPreviewPipeline = currentPipelineKey;
 		if (analysisId) {
-			sendKeepalive(analysisId);
+			// wait 1 second
+			setTimeout(() => {
+				sendKeepalive(analysisId);
+			}, 1000);
 		}
 	}
 	type SaveStates = 'saved' | 'unsaved' | 'saving';
@@ -204,7 +207,9 @@
 
 				// Reset engine idle timeout on successful save
 				if (analysisId) {
-					sendKeepalive(analysisId);
+					setTimeout(() => {
+						sendKeepalive(analysisId);
+					}, 1000);
 				}
 			},
 			(error) => {

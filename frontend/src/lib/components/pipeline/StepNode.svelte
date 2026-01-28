@@ -97,6 +97,7 @@
 		drag.startMove(step.id, step.type, event.pointerId, event.clientX, event.clientY);
 		if (event.currentTarget instanceof HTMLElement) {
 			event.currentTarget.setPointerCapture(event.pointerId);
+			drag.setCapturedElement(event.currentTarget, event.pointerId);
 		}
 	}
 
@@ -137,18 +138,7 @@
 		clickConsumed = wasDragging;
 		isDragging = false;
 		cancelLongPress();
-		if (event.currentTarget instanceof HTMLElement) {
-			event.currentTarget.releasePointerCapture(event.pointerId);
-		}
 	}
-
-	$effect(() => {
-		if (!dragging) return;
-		document.body.classList.add('touch-dragging');
-		return () => {
-			document.body.classList.remove('touch-dragging');
-		};
-	});
 
 	async function handleExport() {
 		if (!datasourceId || isExporting) return;

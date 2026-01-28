@@ -37,6 +37,9 @@ export class DragState {
 	public pointerX: number | null = $state<number | null>(null);
 	public pointerY: number | null = $state<number | null>(null);
 
+	/** Element with pointer capture (for cleanup on cancel/end) */
+	public capturedElement: HTMLElement | null = $state<HTMLElement | null>(null);
+
 	/** Whether this is a reorder operation (moving existing step) */
 	public isReorder: boolean = $derived(this.source === 'canvas' && this.stepId !== null);
 
@@ -45,6 +48,7 @@ export class DragState {
 
 	/** Start a drag operation for a new step from library */
 	start(type: string, source: DragSource, pointerId: number, pointerX: number, pointerY: number) {
+		if (this.active) return; // Prevent concurrent drags
 		this.type = type;
 		this.stepId = null;
 		this.source = source;
@@ -56,7 +60,14 @@ export class DragState {
 	}
 
 	/** Start a reorder operation for an existing step */
-	public startMove(stepId: string, type: string, pointerId: number, pointerX: number, pointerY: number) {
+	public startMove(
+		stepId: string,
+		type: string,
+		pointerId: number,
+		pointerX: number,
+		pointerY: number
+	) {
+		if (this.active) return; // Prevent concurrent drags
 		this.stepId = stepId;
 		this.type = type;
 		this.source = 'canvas';
@@ -85,8 +96,33 @@ export class DragState {
 		this.pointerY = y;
 	}
 
+	/** Set the element that has pointer capture for proper cleanup */
+	public setCapturedElement(el: HTMLElement, pointerId: number) {
+		this.capturedElement = el;
+		this.pointerId = pointerId;
+	}
+
+	/** Release pointer capture if held */
+	private releaseCapture() {
+		if (this.capturedElement && this.pointerId !== null) {
+			try {
+				this.capturedElement.releasePointerCapture(this.pointerId);
+			} catch {
+				// Already released or element removed from DOM
+			}
+		}
+		this.capturedElement = null;
+	}
+
+	/** Cancel the drag operation (e.g., via Escape key) */
+	cancel() {
+		this.releaseCapture();
+		this.end();
+	}
+
 	/** End the drag operation and reset all state */
 	end() {
+		this.releaseCapture();
 		this.type = null;
 		this.stepId = null;
 		this.source = null;
@@ -99,3 +135,26 @@ export class DragState {
 }
 
 export const drag = new DragState();
+
+// Module-level effects for global drag behavior
+$effect.root(() => {
+	// Escape key listener to cancel active drags
+	$effect(() => {
+		if (!drag.active) return;
+		const handleKeydown = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				drag.cancel();
+			}
+		};
+		window.addEventListener('keydown', handleKeydown);
+		return () => window.removeEventListener('keydown', handleKeydown);
+	});
+
+	// Body class management for touch-dragging
+	$effect(() => {
+		if (!drag.active) return;
+		document.body.classList.add('touch-dragging');
+		return () => document.body.classList.remove('touch-dragging');
+	});
+});

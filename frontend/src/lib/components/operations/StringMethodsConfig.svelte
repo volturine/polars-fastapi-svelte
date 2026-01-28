@@ -253,16 +253,13 @@
 		margin-top: var(--space-2);
 		margin-bottom: 0;
 	}
-
 	.inline-group {
 		display: flex;
 		gap: var(--space-4);
 	}
-
 	.input-group {
 		flex: 1;
 	}
-
 	.input-group label {
 		display: block;
 		font-size: var(--text-sm);

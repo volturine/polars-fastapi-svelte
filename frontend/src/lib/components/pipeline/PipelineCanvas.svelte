@@ -383,7 +383,6 @@
 		overflow-y: auto;
 		min-height: 400px;
 	}
-
 	.empty-state {
 		display: flex;
 		flex-direction: column;
@@ -394,25 +393,21 @@
 		color: var(--fg-muted);
 		text-align: center;
 	}
-
 	.empty-state :global(svg) {
 		color: var(--fg-faint);
 		margin-bottom: var(--space-4);
 	}
-
 	.empty-state h3 {
 		margin: 0 0 var(--space-2) 0;
 		font-size: var(--text-base);
 		font-weight: 600;
 		color: var(--fg-secondary);
 	}
-
 	.empty-state p {
 		margin: 0;
 		font-size: var(--text-sm);
 		color: var(--fg-muted);
 	}
-
 	.steps-container {
 		display: flex;
 		flex-direction: column;
@@ -421,8 +416,6 @@
 		max-width: 100%;
 		margin: 0 auto;
 	}
-
-	/* Insert zone - wraps connection line and drop area */
 	.insert-zone {
 		display: flex;
 		flex-direction: column;
@@ -432,29 +425,22 @@
 		transition: all var(--transition);
 		padding: var(--space-2) 0;
 	}
-
 	.insert-spacer {
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		padding: var(--space-2) 0;
 	}
-
-	/* Ensure connection lines never stretch */
 	.insert-zone :global(.connection-line),
 	.insert-spacer :global(.connection-line) {
 		flex-shrink: 0;
 	}
-
 	.insert-zone.ready {
 		cursor: pointer;
 	}
-
 	.insert-zone.ready:hover :global(.connection-line) {
 		color: var(--accent-primary);
 	}
-
-	/* Drop slot - always visible during drag, highlights on hover */
 	.drop-slot {
 		width: min(55%, 480px);
 		padding: var(--space-2) var(--space-4);
@@ -470,22 +456,18 @@
 		margin: var(--space-2) 0;
 		flex-shrink: 0;
 	}
-
 	.drop-slot:hover {
 		border-color: var(--fg-muted);
 		background-color: var(--bg-hover);
 	}
-
 	.drop-slot.active {
 		border-color: var(--fg-primary);
 		background-color: var(--bg-tertiary);
 	}
-
 	.drop-slot.invalid {
 		border-color: var(--error-border);
 		background-color: var(--error-bg);
 	}
-
 	.slot-label {
 		font-family: var(--font-mono);
 		font-size: var(--text-sm);
@@ -493,19 +475,7 @@
 		color: var(--fg-primary);
 		text-transform: lowercase;
 	}
-
 	.drop-slot.invalid .slot-label {
 		color: var(--error-fg);
-	}
-
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-			transform: scale(0.95);
-		}
-		to {
-			opacity: 1;
-			transform: scale(1);
-		}
 	}
 </style>

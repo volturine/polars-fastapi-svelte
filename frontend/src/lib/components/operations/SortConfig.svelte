@@ -170,7 +170,6 @@
 		margin-bottom: var(--space-6);
 		flex-wrap: wrap;
 	}
-
 	.add-rule select {
 		flex: 2;
 		min-width: 200px;
@@ -178,7 +177,6 @@
 
 	.direction-select {
 		display: flex;
-		gap: 0;
 	}
 
 	.dir-btn {
@@ -194,21 +192,17 @@
 		cursor: pointer;
 		transition: all var(--transition);
 	}
-
 	.dir-btn:first-child {
 		border-radius: var(--radius-sm) 0 0 var(--radius-sm);
 		border-right: none;
 	}
-
 	.dir-btn:last-child {
 		border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 	}
-
 	.dir-btn:hover:not(.active) {
 		background-color: var(--bg-secondary);
 		color: var(--fg-primary);
 	}
-
 	.dir-btn.active {
 		background-color: var(--accent-primary);
 		color: var(--bg-primary);
@@ -226,9 +220,7 @@
 		border-radius: var(--radius-sm);
 		cursor: pointer;
 		white-space: nowrap;
-		font-size: var(--text-sm);
 	}
-
 	.add-btn:disabled {
 		background-color: var(--border-primary);
 		cursor: not-allowed;
@@ -242,7 +234,6 @@
 		margin-bottom: var(--space-4);
 		border: 1px solid var(--panel-muted-border);
 	}
-
 	.sort-rules h4 {
 		margin-top: 0;
 		margin-bottom: var(--space-3);
@@ -260,23 +251,18 @@
 		border-radius: var(--radius-sm);
 		margin-bottom: var(--space-2);
 	}
-
 	.sort-rule-item:last-child {
 		margin-bottom: 0;
 	}
 
 	.rule-column {
 		font-weight: var(--font-medium);
-		font-size: var(--text-sm);
-		color: var(--fg-primary);
 	}
-
 	.rule-actions {
 		display: flex;
 		align-items: center;
 		gap: var(--space-1);
 	}
-
 	.rule-actions button {
 		display: flex;
 		align-items: center;
@@ -291,12 +277,10 @@
 		cursor: pointer;
 		transition: all var(--transition);
 	}
-
 	.rule-actions button:hover:not(:disabled) {
 		background-color: var(--bg-tertiary);
 		color: var(--fg-primary);
 	}
-
 	.rule-actions button:disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
@@ -308,11 +292,9 @@
 		background-color: transparent;
 		color: var(--fg-secondary);
 	}
-
 	.rule-actions .dir-btn:hover:not(.active) {
 		background-color: var(--bg-tertiary);
 	}
-
 	.rule-actions .dir-btn.active {
 		background-color: var(--accent-primary);
 		color: var(--bg-primary);
@@ -322,13 +304,11 @@
 		font-size: var(--text-sm);
 		line-height: 1;
 	}
-
 	.remove-btn:hover {
 		background-color: var(--error-bg) !important;
 		color: var(--error-fg) !important;
 		border-color: var(--error-border) !important;
 	}
-
 	.empty-state {
 		padding: var(--space-8);
 		text-align: center;

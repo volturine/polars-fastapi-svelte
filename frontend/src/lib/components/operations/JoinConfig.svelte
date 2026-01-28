@@ -392,7 +392,6 @@
 		align-items: center;
 		margin-bottom: var(--space-4);
 	}
-
 	.section-header h4 {
 		margin-bottom: 0;
 	}
@@ -416,14 +415,12 @@
 	.column-select {
 		flex: 1;
 	}
-
 	.column-select label {
 		display: block;
 		font-size: var(--text-xs);
 		margin-bottom: var(--space-1);
 		color: var(--fg-muted);
 	}
-
 	.column-select select {
 		margin-bottom: 0;
 	}
@@ -437,7 +434,6 @@
 		cursor: pointer;
 		font-size: var(--text-sm);
 	}
-
 	.btn-add:hover {
 		background-color: var(--primary-hover);
 	}
@@ -450,7 +446,6 @@
 		border-radius: var(--radius-sm);
 		cursor: pointer;
 	}
-
 	.btn-remove:hover {
 		background-color: var(--error-bg);
 	}
@@ -470,7 +465,6 @@
 		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 		gap: var(--space-2);
 	}
-
 	.column-checkbox {
 		display: flex;
 		align-items: center;
@@ -478,12 +472,10 @@
 		font-size: var(--text-sm);
 		cursor: pointer;
 	}
-
 	.column-checkbox input {
 		margin: 0;
 		width: auto;
 	}
-
 	.dtype {
 		color: var(--fg-muted);
 		font-size: var(--text-xs);
@@ -495,7 +487,6 @@
 		padding: var(--space-2);
 		background-color: var(--panel-bg);
 		border-radius: var(--radius-sm);
-		font-size: var(--text-sm);
 	}
 
 	.help-text {
@@ -512,26 +503,20 @@
 
 	.empty-message {
 		color: var(--fg-muted);
-		font-size: var(--text-sm);
 		font-style: italic;
 		margin: var(--space-2) 0;
 	}
-
 	.search-picker {
 		position: relative;
 		margin-bottom: var(--space-3);
 	}
-
 	.search-picker input {
 		width: 100%;
 		padding: var(--space-2) var(--space-3);
 		border: 1px solid var(--form-control-border);
 		border-radius: var(--radius-sm);
 		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
-		font-size: var(--text-sm);
 	}
-
 	.search-picker input::placeholder {
 		color: var(--fg-muted);
 	}
@@ -558,32 +543,25 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		font-size: var(--text-sm);
 		cursor: pointer;
 		padding: var(--space-1) var(--space-2);
 		border: 1px solid transparent;
 		border-radius: var(--radius-sm);
 		background-color: transparent;
-		color: var(--fg-primary);
 		text-align: left;
 	}
-
 	.picker-item[data-selected='true'] {
 		border-color: var(--accent-primary);
 		background-color: var(--bg-hover);
 	}
-
 	.picker-item:hover {
 		background-color: var(--bg-hover);
 	}
-
 	.picker-empty {
 		padding: var(--space-2);
 		color: var(--fg-muted);
-		font-size: var(--text-sm);
 		font-style: italic;
 	}
-
 	.source-name {
 		flex: 1;
 	}

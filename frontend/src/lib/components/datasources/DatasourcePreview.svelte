@@ -152,7 +152,6 @@
 		border-radius: var(--radius-md);
 		overflow: hidden;
 	}
-
 	.preview-header {
 		display: flex;
 		justify-content: space-between;
@@ -161,7 +160,6 @@
 		background: var(--bg-tertiary);
 		border-bottom: 1px solid var(--border-primary);
 	}
-
 	.preview-header h3 {
 		margin: 0;
 		font-size: 0.875rem;
@@ -171,13 +169,11 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-
 	.view-toggle {
 		display: flex;
 		gap: 0.25rem;
 		flex-shrink: 0;
 	}
-
 	.toggle-btn {
 		display: flex;
 		align-items: center;
@@ -191,46 +187,38 @@
 		font-weight: 500;
 		cursor: pointer;
 	}
-
 	.toggle-btn:hover {
 		background: var(--bg-hover);
 		color: var(--fg-primary);
 	}
-
 	.toggle-btn.active {
 		background: var(--accent-bg);
 		color: var(--accent-fg);
 		border-color: var(--accent-border);
 	}
-
 	.error-state {
 		padding: var(--space-8);
 		text-align: center;
 	}
-
 	.error-state .error-title {
 		margin: 0 0 var(--space-2);
 		color: var(--error-fg);
 		font-weight: var(--font-semibold);
 	}
-
 	.error-state .error-message {
 		margin: 0;
 		font-size: var(--text-xs);
 		color: var(--fg-tertiary);
 	}
-
 	.loading-state {
 		padding: 2rem;
 		text-align: center;
 		color: var(--fg-tertiary);
 	}
-
 	.schema-view {
 		max-height: 300px;
 		overflow-y: auto;
 	}
-
 	.schema-header {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
@@ -243,28 +231,23 @@
 		position: sticky;
 		top: 0;
 	}
-
 	.schema-row {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		padding: 0.5rem 1rem;
 		border-bottom: 1px solid var(--border-primary);
 	}
-
 	.schema-row:hover {
 		background: var(--bg-hover);
 	}
-
 	.schema-row:last-child {
 		border-bottom: none;
 	}
-
 	.col-name {
 		font-family: var(--font-mono);
 		font-size: 0.8125rem;
 		color: var(--fg-primary);
 	}
-
 	.type-badge {
 		display: inline-block;
 		padding: var(--space-1) var(--space-2);
@@ -274,25 +257,21 @@
 		font-family: var(--font-mono);
 		border: 1px solid;
 	}
-
 	.type-badge.numeric {
 		background: var(--info-bg);
 		color: var(--info-fg);
 		border-color: var(--info-border);
 	}
-
 	.type-badge.string {
 		background: var(--success-bg);
 		color: var(--success-fg);
 		border-color: var(--success-border);
 	}
-
 	.type-badge.boolean {
 		background: var(--warning-bg);
 		color: var(--warning-fg);
 		border-color: var(--warning-border);
 	}
-
 	.type-badge.temporal,
 	.type-badge.list,
 	.type-badge.struct,

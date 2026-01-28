@@ -114,32 +114,26 @@
 		font-size: var(--text-sm);
 		color: var(--info-fg);
 	}
-
 	.help-text {
 		font-size: var(--text-sm);
 		color: var(--fg-tertiary);
 		margin-bottom: var(--space-3);
 	}
-
 	.warning-box strong {
 		display: block;
 		margin-bottom: var(--space-2);
 	}
-
 	.warning-box p {
 		margin: 0;
 		font-size: var(--text-sm);
 	}
-
 	.success-box ul {
 		margin: 0;
 		padding-left: var(--space-6);
 	}
-
 	.success-box li {
 		margin-bottom: var(--space-1);
 	}
-
 	.example {
 		margin-bottom: var(--space-4);
 		padding: var(--space-3);

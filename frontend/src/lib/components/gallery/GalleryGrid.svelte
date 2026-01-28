@@ -23,7 +23,6 @@
 		gap: var(--space-4);
 		width: 100%;
 	}
-
 	@media (max-width: 640px) {
 		.grid {
 			grid-template-columns: 1fr;

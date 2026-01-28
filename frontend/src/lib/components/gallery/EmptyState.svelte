@@ -36,7 +36,6 @@
 		background-color: var(--bg-primary);
 		box-shadow: var(--card-shadow);
 	}
-
 	.icon {
 		width: 64px;
 		height: 64px;
@@ -46,19 +45,16 @@
 		color: var(--fg-faint);
 		margin-bottom: var(--space-6);
 	}
-
 	h2 {
 		margin: 0 0 var(--space-2) 0;
 		font-weight: var(--font-semibold);
 	}
-
 	p {
 		margin: 0 0 var(--space-6) 0;
 		font-size: var(--text-sm);
 		color: var(--fg-tertiary);
 		max-width: 300px;
 	}
-
 	.btn-create {
 		display: inline-flex;
 		align-items: center;
@@ -74,7 +70,6 @@
 		cursor: pointer;
 		transition: opacity var(--transition);
 	}
-
 	.btn-create:hover {
 		opacity: 0.85;
 	}

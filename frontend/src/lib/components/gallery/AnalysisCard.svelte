@@ -88,17 +88,14 @@
 		background-color: var(--bg-primary);
 		box-shadow: var(--card-shadow);
 	}
-
 	.card:hover {
 		border-color: var(--border-tertiary);
 		transform: translateY(-1px);
 	}
-
 	.card:focus {
 		outline: none;
 		border-color: var(--border-focus);
 	}
-
 	.thumbnail {
 		width: 100%;
 		aspect-ratio: 16 / 9;
@@ -108,21 +105,17 @@
 		justify-content: center;
 		border-bottom: 1px solid var(--border-primary);
 	}
-
 	.thumbnail img {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
 	}
-
 	.placeholder {
 		color: var(--fg-faint);
 	}
-
 	.content {
 		padding: var(--space-4);
 	}
-
 	.header {
 		display: flex;
 		justify-content: space-between;
@@ -130,7 +123,6 @@
 		gap: var(--space-3);
 		margin-bottom: var(--space-3);
 	}
-
 	h3 {
 		margin: 0;
 		font-size: var(--text-sm);
@@ -141,7 +133,6 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-
 	.metadata {
 		display: flex;
 		align-items: center;
@@ -149,11 +140,9 @@
 		font-size: var(--text-xs);
 		color: var(--fg-muted);
 	}
-
 	.divider {
 		color: var(--fg-faint);
 	}
-
 	.btn-delete {
 		flex-shrink: 0;
 		background-color: transparent;
@@ -167,7 +156,6 @@
 		color: var(--fg-muted);
 		transition: all var(--transition);
 	}
-
 	.btn-delete:hover {
 		background-color: var(--error-bg);
 		border-color: var(--error-border);

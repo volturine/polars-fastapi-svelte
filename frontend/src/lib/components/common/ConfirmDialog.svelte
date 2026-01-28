@@ -105,7 +105,6 @@
 		padding: var(--space-4);
 		animation: fadeIn var(--transition);
 	}
-
 	@keyframes fadeIn {
 		from {
 			opacity: 0;
@@ -114,7 +113,6 @@
 			opacity: 1;
 		}
 	}
-
 	.dialog {
 		background-color: var(--dialog-bg);
 		border: 1px solid var(--border-primary);
@@ -124,7 +122,6 @@
 		width: 100%;
 		animation: slideIn var(--transition);
 	}
-
 	@keyframes slideIn {
 		from {
 			transform: translateY(-10px);
@@ -135,11 +132,9 @@
 			opacity: 1;
 		}
 	}
-
 	.dialog:focus {
 		outline: none;
 	}
-
 	.dialog-header {
 		display: flex;
 		align-items: center;
@@ -147,14 +142,12 @@
 		padding: var(--space-4);
 		border-bottom: 1px solid var(--border-primary);
 	}
-
 	.dialog-header h2 {
 		margin: 0;
 		font-size: var(--text-base);
 		font-weight: 600;
 		color: var(--fg-primary);
 	}
-
 	.close-btn {
 		background: transparent;
 		border: none;
@@ -167,23 +160,19 @@
 		color: var(--fg-muted);
 		transition: all var(--transition);
 	}
-
 	.close-btn:hover {
 		background-color: var(--bg-hover);
 		color: var(--fg-primary);
 	}
-
 	.dialog-body {
 		padding: var(--space-6);
 	}
-
 	.dialog-body p {
 		margin: 0;
 		font-size: var(--text-sm);
 		line-height: 1.6;
 		color: var(--fg-secondary);
 	}
-
 	.dialog-footer {
 		display: flex;
 		justify-content: flex-end;
@@ -191,7 +180,6 @@
 		padding: var(--space-4);
 		border-top: 1px solid var(--border-primary);
 	}
-
 	.btn {
 		border: 1px solid transparent;
 		border-radius: var(--radius-sm);
@@ -202,36 +190,29 @@
 		cursor: pointer;
 		transition: all var(--transition);
 	}
-
 	.btn-cancel {
 		background-color: transparent;
 		color: var(--fg-primary);
 		border-color: var(--border-secondary);
 	}
-
 	.btn-cancel:hover {
 		background-color: var(--bg-hover);
 	}
-
 	.btn-confirm {
 		background-color: var(--error-bg);
 		color: var(--error-fg);
 		border-color: var(--error-border);
 	}
-
 	.btn-confirm:hover {
 		opacity: 0.85;
 	}
-
 	@media (max-width: 640px) {
 		.dialog {
 			max-width: 100%;
 		}
-
 		.dialog-footer {
 			flex-direction: column-reverse;
 		}
-
 		.btn {
 			width: 100%;
 		}

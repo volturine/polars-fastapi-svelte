@@ -152,12 +152,10 @@
 	.field-group {
 		margin-bottom: var(--space-4);
 	}
-
 	.hint {
 		color: var(--fg-muted);
 		font-size: var(--text-xs);
 	}
-
 	.checkbox-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -169,7 +167,6 @@
 		max-height: 150px;
 		overflow-y: auto;
 	}
-
 	.checkbox-label {
 		display: flex;
 		align-items: center;
@@ -179,21 +176,17 @@
 		cursor: pointer;
 		font-size: var(--text-sm);
 	}
-
 	.checkbox-label:hover {
 		background-color: var(--bg-hover);
 	}
-
 	.checkbox-label input {
 		accent-color: var(--accent-primary);
 	}
-
 	.selection-summary {
 		margin-top: var(--space-2);
 		font-size: var(--text-xs);
 		color: var(--fg-muted);
 	}
-
 	.refresh-button {
 		width: 100%;
 		padding: var(--space-2) var(--space-3);
@@ -210,16 +203,13 @@
 		gap: var(--space-2);
 		transition: all var(--transition);
 	}
-
 	.refresh-button:hover:not(:disabled) {
 		opacity: 0.9;
 	}
-
 	.refresh-button:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
-
 	.refresh-button .spinner {
 		width: 14px;
 		height: 14px;
@@ -227,11 +217,5 @@
 		border-top-color: transparent;
 		border-radius: 50%;
 		animation: spin 0.8s linear infinite;
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
 	}
 </style>

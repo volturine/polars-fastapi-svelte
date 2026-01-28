@@ -74,7 +74,6 @@
 		border-radius: var(--radius-md);
 		overflow: hidden;
 	}
-
 	.schema-header {
 		display: flex;
 		justify-content: space-between;
@@ -83,24 +82,20 @@
 		border-bottom: 1px solid var(--border-primary);
 		background: var(--panel-header-bg);
 	}
-
 	.schema-header h3 {
 		margin: 0;
 		font-size: 1.125rem;
 		font-weight: 600;
 		color: var(--fg-primary);
 	}
-
 	.row-count {
 		font-size: 0.875rem;
 		color: var(--fg-muted);
 	}
-
 	.columns-list {
 		max-height: 500px;
 		overflow-y: auto;
 	}
-
 	.column-header-row {
 		display: grid;
 		grid-template-columns: 2fr 1.5fr 1fr;
@@ -114,7 +109,6 @@
 		letter-spacing: 0.05em;
 		color: var(--fg-muted);
 	}
-
 	.column-row {
 		display: grid;
 		grid-template-columns: 2fr 1.5fr 1fr;
@@ -123,15 +117,12 @@
 		border-bottom: 1px solid var(--border-primary);
 		transition: background-color 0.15s ease;
 	}
-
 	.column-row:hover {
 		background: var(--table-row-hover);
 	}
-
 	.column-row:last-child {
 		border-bottom: none;
 	}
-
 	.column-name {
 		display: flex;
 		align-items: center;
@@ -139,21 +130,17 @@
 		font-weight: 500;
 		color: var(--fg-primary);
 	}
-
 	.dtype-icon {
 		font-size: 1rem;
 	}
-
 	.name-text {
 		font-family: var(--font-mono);
 		font-size: 0.875rem;
 	}
-
 	.column-type {
 		display: flex;
 		align-items: center;
 	}
-
 	.dtype-badge {
 		display: inline-block;
 		padding: var(--space-1) var(--space-2);
@@ -162,43 +149,35 @@
 		font-weight: var(--font-semibold);
 		font-family: var(--font-mono);
 	}
-
 	.badge-numeric,
 	.badge-float {
 		background: var(--info-bg);
 		color: var(--info-fg);
 	}
-
 	.badge-string {
 		background: var(--success-bg);
 		color: var(--success-fg);
 	}
-
 	.badge-boolean {
 		background: var(--warning-bg);
 		color: var(--warning-fg);
 	}
-
 	.badge-datetime {
 		background: var(--error-bg);
 		color: var(--error-fg);
 	}
-
 	.badge-other {
 		background: var(--bg-tertiary);
 		color: var(--fg-tertiary);
 	}
-
 	.column-nullable {
 		display: flex;
 		align-items: center;
 		font-size: 0.875rem;
 	}
-
 	.nullable-yes {
 		color: var(--fg-muted);
 	}
-
 	.nullable-no {
 		color: var(--fg-secondary);
 		font-weight: 500;

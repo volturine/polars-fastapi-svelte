@@ -79,15 +79,12 @@
 	.form-group {
 		margin-bottom: var(--space-4);
 	}
-
 	.form-group:last-child {
 		margin-bottom: 0;
 	}
-
 	select[multiple] {
 		height: 80px;
 	}
-
 	.hint {
 		font-size: var(--text-xs);
 		color: var(--fg-tertiary);

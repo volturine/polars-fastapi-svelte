@@ -221,27 +221,21 @@
 		align-items: center;
 		margin-bottom: var(--space-4);
 	}
-
 	.section-header h4 {
 		margin-bottom: 0;
 	}
-
 	.summary {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-1);
-		font-size: var(--text-sm);
 	}
-
 	.meta {
 		color: var(--fg-tertiary);
 		font-size: var(--text-xs);
 	}
-
 	.muted {
 		color: var(--fg-muted);
 	}
-
 	.btn-link {
 		background: none;
 		border: none;
@@ -251,7 +245,6 @@
 		padding: var(--space-1);
 		text-decoration: underline;
 	}
-
 	.source-list {
 		display: flex;
 		flex-wrap: wrap;
@@ -261,7 +254,6 @@
 		border-radius: var(--radius-sm);
 		border: 1px solid var(--panel-border);
 	}
-
 	.source-chip {
 		display: inline-flex;
 		align-items: center;
@@ -271,33 +263,25 @@
 		background-color: var(--bg-hover);
 		font-size: var(--text-xs);
 	}
-
 	.source-chip button {
 		border: none;
 		background: none;
 		cursor: pointer;
-		font-size: var(--text-sm);
 		line-height: 1;
 		color: var(--fg-muted);
 		padding: 0;
 	}
-
 	.source-chip button:hover {
 		color: var(--fg-primary);
 	}
-
 	.source-name {
 		flex: 1;
 	}
-
 	.toggle {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		font-size: var(--text-sm);
-		color: var(--fg-primary);
 	}
-
 	.help-text {
 		font-size: var(--text-sm);
 		color: var(--fg-tertiary);
@@ -309,33 +293,25 @@
 		border-radius: var(--radius-sm);
 		border: 1px solid var(--form-help-border);
 	}
-
 	.empty-message {
 		color: var(--fg-muted);
-		font-size: var(--text-sm);
 		font-style: italic;
 		margin: var(--space-2) 0;
 	}
-
 	.search-picker {
 		position: relative;
 		margin-bottom: var(--space-3);
 	}
-
 	.search-picker input {
 		width: 100%;
 		padding: var(--space-2) var(--space-3);
 		border: 1px solid var(--form-control-border);
 		border-radius: var(--radius-sm);
 		background-color: var(--form-control-bg);
-		color: var(--fg-primary);
-		font-size: var(--text-sm);
 	}
-
 	.search-picker input::placeholder {
 		color: var(--fg-muted);
 	}
-
 	.picker-list {
 		position: absolute;
 		z-index: var(--z-dropdown);
@@ -353,34 +329,27 @@
 		border: 1px solid var(--panel-border);
 		box-shadow: var(--shadow-dropdown);
 	}
-
 	.picker-item {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		font-size: var(--text-sm);
 		cursor: pointer;
 		padding: var(--space-1) var(--space-2);
 		border: 1px solid transparent;
 		border-radius: var(--radius-sm);
 		background-color: transparent;
-		color: var(--fg-primary);
 		text-align: left;
 	}
-
 	.picker-item[data-selected='true'] {
 		border-color: var(--accent-primary);
 		background-color: var(--bg-hover);
 	}
-
 	.picker-item:hover {
 		background-color: var(--bg-hover);
 	}
-
 	.picker-empty {
 		padding: var(--space-2);
 		color: var(--fg-muted);
-		font-size: var(--text-sm);
 		font-style: italic;
 	}
 </style>

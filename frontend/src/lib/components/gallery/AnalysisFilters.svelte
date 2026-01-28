@@ -67,14 +67,12 @@
 		margin-bottom: var(--space-7);
 		flex-wrap: wrap;
 	}
-
 	.search-box {
 		position: relative;
 		flex: 1;
 		min-width: 220px;
 		max-width: 420px;
 	}
-
 	.search-box :global(.search-icon) {
 		position: absolute;
 		left: var(--space-3);
@@ -83,7 +81,6 @@
 		color: var(--fg-muted);
 		pointer-events: none;
 	}
-
 	.search-input {
 		width: 100%;
 		padding: var(--space-3) var(--space-10) var(--space-3) var(--space-10);
@@ -98,17 +95,14 @@
 			box-shadow var(--transition);
 		box-shadow: var(--card-shadow);
 	}
-
 	.search-input:focus {
 		outline: none;
 		border-color: var(--border-focus);
 		box-shadow: 0 0 0 2px color-mix(in srgb, var(--border-focus) 20%, transparent);
 	}
-
 	.search-input::placeholder {
 		color: var(--fg-muted);
 	}
-
 	.clear-btn {
 		position: absolute;
 		right: var(--space-2);
@@ -125,25 +119,21 @@
 		color: var(--fg-muted);
 		transition: all var(--transition);
 	}
-
 	.clear-btn:hover {
 		background-color: var(--bg-hover);
 		color: var(--fg-primary);
 	}
-
 	.sort-box {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
 	}
-
 	.sort-label {
 		font-size: var(--text-xs);
 		color: var(--fg-muted);
 		font-weight: 500;
 		white-space: nowrap;
 	}
-
 	.sort-select {
 		padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
 		border: 1px solid var(--border-primary);
@@ -159,30 +149,24 @@
 		appearance: none;
 		transition: border-color var(--transition);
 	}
-
 	.sort-select:focus {
 		outline: none;
 		border-color: var(--border-focus);
 	}
-
 	.sort-select:hover {
 		border-color: var(--border-tertiary);
 	}
-
 	@media (max-width: 640px) {
 		.filters {
 			flex-direction: column;
 			align-items: stretch;
 		}
-
 		.search-box {
 			max-width: none;
 		}
-
 		.sort-box {
 			justify-content: space-between;
 		}
-
 		.sort-select {
 			flex: 1;
 		}

@@ -150,7 +150,7 @@
 	/* Panel widths */
 	--operations-panel-width: 340px;
 
-	/* Pipeline component spacing - controls the height/spacing of connection arrows between nodes */
+	/* Pipeline component spacing */
 	--pipeline-connection-height: 18px;
 
 	--form-section-bg: var(--bg-tertiary);
@@ -340,20 +340,13 @@ body {
 
 a {
 	color: var(--fg-primary);
-	text-decoration: none;
-	transition:
-		color var(--transition),
-		opacity var(--transition);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	transition: opacity var(--transition);
 }
-
 a:hover {
-	color: var(--fg-secondary);
-	opacity: 0.85;
+	opacity: 0.7;
 }
-
-/* ============================================
-   TYPOGRAPHY
-   ============================================ */
 
 h1,
 h2,
@@ -366,7 +359,6 @@ h6 {
 	line-height: 1.3;
 	color: var(--fg-primary);
 }
-
 h1 {
 	font-size: var(--text-2xl);
 }
@@ -384,20 +376,8 @@ p {
 	color: var(--fg-secondary);
 	margin-bottom: var(--space-4);
 }
-
 p:last-child {
 	margin-bottom: 0;
-}
-
-a {
-	color: var(--fg-primary);
-	text-decoration: underline;
-	text-underline-offset: 2px;
-	transition: opacity var(--transition);
-}
-
-a:hover {
-	opacity: 0.7;
 }
 
 code,
@@ -405,7 +385,6 @@ pre,
 kbd {
 	font-family: var(--font-mono);
 }
-
 code {
 	font-size: 0.9em;
 	padding: var(--space-1) var(--space-2);
@@ -413,7 +392,6 @@ code {
 	border: 1px solid var(--border-primary);
 	border-radius: var(--radius-sm);
 }
-
 pre {
 	padding: var(--space-4);
 	background-color: var(--bg-tertiary);
@@ -440,38 +418,32 @@ select {
 		border-color var(--transition),
 		background-color var(--transition);
 }
-
 input:focus,
 textarea:focus,
 select:focus {
 	outline: none;
 	border-color: var(--input-focus-border);
 }
-
 input:hover:not(:focus):not(:disabled),
 textarea:hover:not(:focus):not(:disabled),
 select:hover:not(:focus):not(:disabled) {
 	border-color: var(--border-tertiary);
 }
-
 input:disabled,
 textarea:disabled,
 select:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 }
-
 input::placeholder,
 textarea::placeholder {
 	color: var(--fg-muted);
 }
-
 input[type='checkbox'],
 input[type='radio'] {
 	width: auto;
 	cursor: pointer;
 }
-
 label {
 	display: block;
 	font-size: var(--text-sm);
@@ -499,13 +471,10 @@ button {
 	gap: var(--space-2);
 	background-color: var(--bg-primary);
 }
-
 button:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 }
-
-/* Primary button - solid dark */
 button.btn-primary,
 button[type='submit'] {
 	background-color: var(--accent-primary);
@@ -513,57 +482,39 @@ button[type='submit'] {
 	border-color: var(--accent-primary);
 	box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.12);
 }
-
 button.btn-primary:hover:not(:disabled),
 button[type='submit']:hover:not(:disabled) {
 	opacity: 0.9;
 }
-
-/* Secondary button - outlined */
 button.btn-secondary {
 	background-color: transparent;
 	color: var(--fg-primary);
 	border-color: var(--border-secondary);
 }
-
 button.btn-secondary:hover:not(:disabled) {
 	background-color: var(--bg-hover);
 	color: var(--fg-secondary);
 }
-
-/* Ghost button - minimal */
 button.btn-ghost {
 	background-color: transparent;
 	color: var(--fg-secondary);
 	border-color: transparent;
 }
-
 button.btn-ghost:hover:not(:disabled) {
 	background-color: var(--bg-hover);
 	color: var(--fg-primary);
 }
-
-/* Danger button */
 button.btn-danger {
 	background-color: var(--error-bg);
 	color: var(--error-fg);
 	border-color: var(--error-border);
 }
-
 button.btn-danger:hover:not(:disabled) {
 	opacity: 0.85;
 }
-
-/* Small button */
 button.btn-sm {
 	font-size: var(--text-xs);
 	padding: var(--space-1) var(--space-2);
-}
-
-/* Icon button */
-button.btn-icon {
-	padding: var(--space-2);
-	aspect-ratio: 1;
 }
 
 /* ============================================
@@ -575,26 +526,23 @@ table {
 	border-collapse: collapse;
 	font-size: var(--text-sm);
 }
-
 th,
 td {
 	text-align: left;
 	padding: var(--space-3) var(--space-4);
 	border: 1px solid var(--table-border);
 }
-
 th {
 	background-color: var(--table-header-bg);
 	font-weight: var(--font-semibold);
 	color: var(--fg-primary);
 }
-
 tr:hover {
 	background-color: var(--table-row-hover);
 }
 
 /* ============================================
-   CARDS
+   CARDS & BADGES
    ============================================ */
 
 .card {
@@ -604,26 +552,6 @@ tr:hover {
 	padding: var(--space-5);
 	box-shadow: var(--card-shadow);
 }
-
-.card-header {
-	padding-bottom: var(--space-4);
-	border-bottom: 1px solid var(--border-primary);
-	margin-bottom: var(--space-4);
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--space-3);
-}
-
-.card-title {
-	font-size: var(--text-base);
-	font-weight: var(--font-semibold);
-}
-
-/* ============================================
-   STATUS BADGES
-   ============================================ */
-
 .badge {
 	display: inline-flex;
 	align-items: center;
@@ -633,101 +561,10 @@ tr:hover {
 	border-radius: var(--radius-sm);
 	border: 1px solid;
 }
-
-.badge-success {
-	color: var(--success-fg);
-	background-color: var(--success-bg);
-	border-color: var(--success-border);
-}
-
-.badge-warning {
-	color: var(--warning-fg);
-	background-color: var(--warning-bg);
-	border-color: var(--warning-border);
-}
-
-.badge-error {
-	color: var(--error-fg);
-	background-color: var(--error-bg);
-	border-color: var(--error-border);
-}
-
-.badge-info {
-	color: var(--info-fg);
-	background-color: var(--info-bg);
-	border-color: var(--info-border);
-}
-
 .badge-neutral {
 	color: var(--fg-tertiary);
 	background-color: var(--bg-tertiary);
 	border-color: var(--border-primary);
-}
-
-/* ============================================
-   UTILITY CLASSES
-   ============================================ */
-
-.text-mono {
-	font-family: var(--font-mono);
-}
-.text-sans {
-	font-family: var(--font-sans);
-}
-
-.text-xs {
-	font-size: var(--text-xs);
-}
-.text-sm {
-	font-size: var(--text-sm);
-}
-.text-base {
-	font-size: var(--text-base);
-}
-.text-lg {
-	font-size: var(--text-lg);
-}
-
-.text-primary {
-	color: var(--fg-primary);
-}
-.text-secondary {
-	color: var(--fg-secondary);
-}
-.text-tertiary {
-	color: var(--fg-tertiary);
-}
-.text-muted {
-	color: var(--fg-muted);
-}
-
-.font-normal {
-	font-weight: var(--font-normal);
-}
-.font-medium {
-	font-weight: var(--font-medium);
-}
-.font-semibold {
-	font-weight: var(--font-semibold);
-}
-.font-bold {
-	font-weight: var(--font-bold);
-}
-
-.border {
-	border: 1px solid var(--border-primary);
-}
-.border-t {
-	border-top: 1px solid var(--border-primary);
-}
-.border-b {
-	border-bottom: 1px solid var(--border-primary);
-}
-.border-l {
-	border-left: 1px solid var(--border-primary);
-}
-.border-r {
-	border-right: 1px solid var(--border-primary);
 }
 
 /* Accessibility */
@@ -753,27 +590,23 @@ tr:hover {
 	border-radius: var(--radius-md);
 	background-color: var(--panel-bg);
 }
-
 .config-panel h3 {
 	margin-top: 0;
 	margin-bottom: var(--space-4);
 	color: var(--panel-header-fg);
 }
-
 .config-panel .description {
 	margin-top: 0;
 	margin-bottom: var(--space-4);
 	color: var(--fg-tertiary);
 	font-size: var(--text-sm);
 }
-
 .config-panel h4 {
 	margin-top: 0;
 	margin-bottom: var(--space-3);
 	font-size: var(--text-base);
 	color: var(--fg-secondary);
 }
-
 .form-section {
 	margin-bottom: var(--space-6);
 	padding: var(--space-4);
@@ -795,7 +628,6 @@ tr:hover {
 	margin-bottom: var(--space-4);
 	background-color: var(--bg-primary);
 }
-
 .column-item {
 	display: flex;
 	align-items: center;
@@ -803,22 +635,18 @@ tr:hover {
 	cursor: pointer;
 	border-radius: var(--radius-sm);
 }
-
 .column-item:hover {
 	background-color: var(--bg-hover);
 }
-
 .column-item input[type='checkbox'] {
 	margin-right: var(--space-2);
 	cursor: pointer;
 }
-
 .column-name {
 	font-weight: var(--font-medium);
 	margin-right: var(--space-2);
 	color: var(--fg-primary);
 }
-
 .column-type {
 	color: var(--fg-tertiary);
 	font-size: var(--text-sm);
@@ -834,7 +662,6 @@ tr:hover {
 	margin-bottom: var(--space-4);
 	flex-wrap: wrap;
 }
-
 .bulk-actions button {
 	padding: var(--space-2) var(--space-4);
 	background-color: var(--bg-tertiary);
@@ -844,14 +671,13 @@ tr:hover {
 	cursor: pointer;
 	transition: opacity var(--transition);
 }
-
 .bulk-actions button:hover:not(:disabled) {
 	opacity: 0.9;
 	background-color: var(--bg-hover);
 }
 
 /* ============================================
-   INFO/WARNING/SUCCESS BOXES
+   INFO/WARNING/SUCCESS/ERROR BOXES
    ============================================ */
 
 .info-box,
@@ -864,43 +690,36 @@ tr:hover {
 	border-radius: var(--radius-sm);
 	margin-bottom: var(--space-4);
 }
-
 .info-box {
 	background-color: var(--info-bg);
 	border-color: var(--info-border);
 	color: var(--info-fg);
 }
-
 .warning-box {
 	background-color: var(--panel-muted-bg);
 	border-color: var(--panel-muted-border);
 	color: var(--fg-tertiary);
 }
-
 .success-box {
 	background-color: var(--success-bg);
 	border-color: var(--success-border);
 	color: var(--success-fg);
 }
-
 .error-box {
 	background-color: var(--error-bg);
 	border-color: var(--error-border);
 	color: var(--error-fg);
 }
-
 .selected-summary {
 	background-color: var(--info-bg);
 	border-color: var(--info-border);
 	color: var(--info-fg);
 }
-
 .selected-summary.warning {
 	background-color: var(--warning-bg);
 	border-color: var(--warning-border);
 	color: var(--warning-fg);
 }
-
 .selected-names {
 	margin-top: var(--space-2);
 	font-size: var(--text-sm);
@@ -912,7 +731,7 @@ tr:hover {
 }
 
 /* ============================================
-   ANIMATIONS
+   ANIMATIONS & SPINNER
    ============================================ */
 
 @keyframes fadeIn {
@@ -923,7 +742,6 @@ tr:hover {
 		opacity: 1;
 	}
 }
-
 @keyframes slideUp {
 	from {
 		opacity: 0;
@@ -934,24 +752,11 @@ tr:hover {
 		transform: translateY(0);
 	}
 }
-
 @keyframes spin {
 	to {
 		transform: rotate(360deg);
 	}
 }
-
-.animate-fadeIn {
-	animation: fadeIn var(--transition);
-}
-
-.animate-slideUp {
-	animation: slideUp var(--transition);
-}
-
-/* ============================================
-   SPINNER
-   ============================================ */
 
 .spinner {
 	width: 40px;
@@ -961,13 +766,11 @@ tr:hover {
 	border-radius: 50%;
 	animation: spin 0.8s linear infinite;
 }
-
 .spinner-sm {
 	width: 14px;
 	height: 14px;
 	border-width: 2px;
 }
-
 .spinner-md {
 	width: 24px;
 	height: 24px;

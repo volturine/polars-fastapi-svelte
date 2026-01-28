@@ -320,13 +320,11 @@
 		position: relative;
 		width: min(55%, 640px);
 	}
-
 	.step-node.view-node {
 		max-width: 75%;
 		width: 75%;
 		min-width: 320px;
 	}
-
 	.step-node.greyed-out {
 		opacity: 0.4;
 		filter: grayscale(50%);
@@ -343,11 +341,9 @@
 		border-radius: 50%;
 		z-index: 2;
 	}
-
 	.connection-point.top {
 		top: -4px;
 	}
-
 	.connection-point.bottom {
 		bottom: -4px;
 	}
@@ -360,7 +356,6 @@
 		transition: all var(--transition);
 		box-shadow: var(--card-shadow);
 	}
-
 	.step-content:hover {
 		border-color: var(--border-tertiary);
 		transform: translateY(-1px);
@@ -392,16 +387,13 @@
 		-webkit-user-select: none;
 		appearance: none;
 	}
-
 	.drag-handle:hover {
 		opacity: 1;
 		background-color: var(--bg-hover);
 	}
-
 	.drag-handle:active {
 		cursor: grabbing;
 	}
-
 	.drag-handle.touch-dragging {
 		user-select: none;
 		-webkit-user-select: none;
@@ -419,15 +411,11 @@
 		font-size: var(--text-base);
 		flex-shrink: 0;
 	}
-
 	.step-type {
 		font-size: var(--text-sm);
 		font-weight: 600;
-		color: var(--fg-primary);
-		font-family: var(--font-mono);
 		flex: 1;
 	}
-
 	.step-number {
 		font-size: var(--text-xs);
 		color: var(--fg-muted);
@@ -474,18 +462,15 @@
 		border: 1px solid var(--border-primary);
 		border-radius: var(--radius-sm);
 		cursor: pointer;
-		font-family: var(--font-mono);
 		font-size: var(--text-xs);
 		font-weight: 500;
 		color: var(--fg-secondary);
 		transition: all var(--transition);
 	}
-
 	.action-btn:hover {
 		background-color: var(--bg-hover);
 		color: var(--fg-primary);
 	}
-
 	.action-btn.danger:hover {
 		background-color: var(--error-bg);
 		border-color: var(--error-border);
@@ -509,17 +494,14 @@
 		color: var(--bg-primary);
 		border: none;
 		border-radius: var(--radius-sm);
-		font-family: var(--font-mono);
 		font-size: var(--text-xs);
 		font-weight: 500;
 		cursor: pointer;
 		transition: opacity var(--transition);
 	}
-
 	.export-btn:hover:not(:disabled) {
 		opacity: 0.9;
 	}
-
 	.export-btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
@@ -535,7 +517,6 @@
 		font-size: var(--text-xs);
 	}
 
-	/* When another node is being dragged */
 	.step-node.drag-target .step-content {
 		border-style: dashed;
 		border-color: var(--accent-primary);

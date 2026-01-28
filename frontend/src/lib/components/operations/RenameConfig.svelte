@@ -118,22 +118,16 @@
 	h4 {
 		text-transform: uppercase;
 	}
-
 	.add-mapping {
 		display: flex;
 		gap: var(--space-2);
 		margin-bottom: var(--space-6);
 		flex-wrap: wrap;
 	}
-
-	.add-mapping select {
-		flex: 2;
-	}
-
+	.add-mapping select,
 	.add-mapping input {
 		flex: 2;
 	}
-
 	.add-mapping button {
 		padding: var(--space-2) var(--space-4);
 		background-color: var(--accent-primary);
@@ -143,13 +137,11 @@
 		cursor: pointer;
 		white-space: nowrap;
 	}
-
 	.add-mapping button:disabled {
 		background-color: var(--border-primary);
 		cursor: not-allowed;
 		color: var(--fg-muted);
 	}
-
 	.mappings-list {
 		padding: var(--space-4);
 		background-color: var(--panel-muted-bg);
@@ -157,14 +149,12 @@
 		margin-bottom: var(--space-4);
 		border: 1px solid var(--panel-muted-border);
 	}
-
 	.mappings-list h4 {
 		margin-top: 0;
 		margin-bottom: var(--space-3);
 		font-size: var(--text-sm);
 		color: var(--fg-muted);
 	}
-
 	.mapping-item {
 		display: flex;
 		justify-content: space-between;
@@ -175,33 +165,27 @@
 		border-radius: var(--radius-sm);
 		margin-bottom: var(--space-2);
 	}
-
 	.mapping-item:last-child {
 		margin-bottom: 0;
 	}
-
 	.mapping-info {
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
 		font-family: var(--font-mono);
 	}
-
 	.old-name {
 		font-weight: var(--font-medium);
 		color: var(--fg-primary);
 	}
-
 	.arrow {
 		color: var(--fg-muted);
 		font-size: var(--text-lg);
 	}
-
 	.new-name {
 		font-weight: var(--font-medium);
 		color: var(--accent-primary);
 	}
-
 	.mapping-item button {
 		padding: var(--space-1) var(--space-3);
 		background-color: var(--error-bg);
@@ -211,7 +195,6 @@
 		cursor: pointer;
 		font-size: var(--text-sm);
 	}
-
 	.empty-state {
 		padding: var(--space-8);
 		text-align: center;
@@ -221,7 +204,6 @@
 		margin-bottom: var(--space-4);
 		border: 1px solid var(--panel-muted-border);
 	}
-
 	button:hover:not(:disabled) {
 		opacity: 0.9;
 	}

@@ -17,16 +17,6 @@
 </div>
 
 <style>
-	.grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-		gap: var(--space-4);
-		width: 100%;
-	}
-
-	@media (max-width: 640px) {
-		.grid {
-			grid-template-columns: 1fr;
-		}
-	}
+	.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); width: 100%; }
+	@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
 </style>

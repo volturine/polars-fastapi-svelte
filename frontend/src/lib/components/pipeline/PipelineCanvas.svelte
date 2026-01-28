@@ -383,6 +383,12 @@
 		overflow-y: auto;
 		min-height: 400px;
 	}
+
+	/* When touch-dragging class is on body, prevent any scrolling on the canvas */
+	:global(body.touch-dragging) .pipeline-canvas {
+		overflow: hidden;
+		touch-action: none;
+	}
 	.empty-state {
 		display: flex;
 		flex-direction: column;

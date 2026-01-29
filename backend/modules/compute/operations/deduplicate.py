@@ -2,7 +2,9 @@
 
 from typing import Literal
 
-from modules.compute.operations.base import OperationParams, make_handler
+import polars as pl
+
+from modules.compute.operations.base import OperationHandler, OperationParams
 
 
 class DeduplicateParams(OperationParams):
@@ -10,8 +12,18 @@ class DeduplicateParams(OperationParams):
     keep: Literal['first', 'last', 'any', 'none'] = 'first'
 
 
-DeduplicateHandler = make_handler(
-    'deduplicate',
-    DeduplicateParams,
-    lambda lf, p: lf.unique(subset=p.subset, keep=p.keep, maintain_order=True),
-)
+class DeduplicateHandler(OperationHandler):
+    @property
+    def name(self) -> str:
+        return 'deduplicate'
+
+    def __call__(
+        self,
+        lf: pl.LazyFrame,
+        params: dict,
+        *,
+        right_lf: pl.LazyFrame | None = None,
+        right_sources: dict[str, pl.LazyFrame] | None = None,
+    ) -> pl.LazyFrame:
+        validated = DeduplicateParams.model_validate(params)
+        return lf.unique(subset=validated.subset, keep=validated.keep, maintain_order=True)

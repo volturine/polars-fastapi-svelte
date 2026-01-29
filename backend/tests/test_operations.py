@@ -126,6 +126,8 @@ def test_pivot_handler():
 
 
 def test_select_and_sort_handlers():
-    lf = SelectHandler(_frame(), {'columns': ['age']})
-    lf = SortHandler(lf, {'columns': ['age'], 'descending': [True]})
+    select = SelectHandler()
+    sort = SortHandler()
+    lf = select(_frame(), {'columns': ['age']})
+    lf = sort(lf, {'columns': ['age'], 'descending': [True]})
     assert lf.collect()['age'].to_list()[0] == 40

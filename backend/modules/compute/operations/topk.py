@@ -1,6 +1,8 @@
 """Top-K rows operation."""
 
-from modules.compute.operations.base import OperationParams, make_handler
+import polars as pl
+
+from modules.compute.operations.base import OperationHandler, OperationParams
 
 
 class TopKParams(OperationParams):
@@ -9,4 +11,18 @@ class TopKParams(OperationParams):
     descending: bool = False
 
 
-TopKHandler = make_handler('topk', TopKParams, lambda lf, p: lf.sort(p.column, descending=p.descending).head(p.k))
+class TopKHandler(OperationHandler):
+    @property
+    def name(self) -> str:
+        return 'topk'
+
+    def __call__(
+        self,
+        lf: pl.LazyFrame,
+        params: dict,
+        *,
+        right_lf: pl.LazyFrame | None = None,
+        right_sources: dict[str, pl.LazyFrame] | None = None,
+    ) -> pl.LazyFrame:
+        validated = TopKParams.model_validate(params)
+        return lf.sort(validated.column, descending=validated.descending).head(validated.k)

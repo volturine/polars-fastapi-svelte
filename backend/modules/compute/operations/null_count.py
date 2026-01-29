@@ -2,11 +2,25 @@
 
 import polars as pl
 
-from modules.compute.operations.base import OperationParams, make_handler
+from modules.compute.operations.base import OperationHandler, OperationParams
 
 
 class NullCountParams(OperationParams):
     pass
 
 
-NullCountHandler = make_handler('null_count', NullCountParams, lambda lf, _: lf.select(pl.all().null_count()))
+class NullCountHandler(OperationHandler):
+    @property
+    def name(self) -> str:
+        return 'null_count'
+
+    def __call__(
+        self,
+        lf: pl.LazyFrame,
+        params: dict,
+        *,
+        right_lf: pl.LazyFrame | None = None,
+        right_sources: dict[str, pl.LazyFrame] | None = None,
+    ) -> pl.LazyFrame:
+        NullCountParams.model_validate(params)
+        return lf.select(pl.all().null_count())

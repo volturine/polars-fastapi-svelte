@@ -1,6 +1,8 @@
 """Sort rows operation."""
 
-from modules.compute.operations.base import OperationParams, make_handler
+import polars as pl
+
+from modules.compute.operations.base import OperationHandler, OperationParams
 
 
 class SortParams(OperationParams):
@@ -8,4 +10,18 @@ class SortParams(OperationParams):
     descending: list[bool] | bool = False
 
 
-SortHandler = make_handler('sort', SortParams, lambda lf, p: lf.sort(p.columns, descending=p.descending))
+class SortHandler(OperationHandler):
+    @property
+    def name(self) -> str:
+        return 'sort'
+
+    def __call__(
+        self,
+        lf: pl.LazyFrame,
+        params: dict,
+        *,
+        right_lf: pl.LazyFrame | None = None,
+        right_sources: dict[str, pl.LazyFrame] | None = None,
+    ) -> pl.LazyFrame:
+        validated = SortParams.model_validate(params)
+        return lf.sort(validated.columns, descending=validated.descending)

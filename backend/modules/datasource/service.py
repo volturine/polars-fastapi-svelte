@@ -8,13 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import DataSourceNotFoundError, DataSourceValidationError, FileError
+from modules.compute.registries.datasources import load_datasource
 from modules.datasource.models import DataSource
-from modules.datasource.schemas import (
-    ColumnSchema,
-    CSVOptions,
-    DataSourceResponse,
-    SchemaInfo,
-)
+from modules.datasource.schemas import ColumnSchema, CSVOptions, DataSourceResponse, SchemaInfo
 
 logger = logging.getLogger(__name__)
 
@@ -173,36 +169,12 @@ async def get_datasource_schema(session: AsyncSession, datasource_id: str) -> Sc
 
 async def _extract_schema(datasource: DataSource) -> SchemaInfo:
     if datasource.source_type == 'file':
-        file_path = datasource.config['file_path']
-        file_type = datasource.config['file_type']
-        csv_options_dict = datasource.config.get('csv_options')
-
-        if file_type == 'csv':
-            if csv_options_dict:
-                csv_options = CSVOptions(**csv_options_dict)
-                lazy = pl.scan_csv(
-                    file_path,
-                    separator=csv_options.delimiter,
-                    quote_char=csv_options.quote_char,
-                    has_header=csv_options.has_header,
-                    skip_rows=csv_options.skip_rows,
-                    encoding=csv_options.encoding,
-                )
-            else:
-                lazy = pl.scan_csv(file_path)
-        elif file_type == 'parquet':
-            lazy = pl.scan_parquet(file_path)
-        elif file_type == 'json':
-            lazy = pl.read_json(file_path).lazy()
-        elif file_type == 'ndjson':
-            lazy = pl.scan_ndjson(file_path)
-        elif file_type == 'excel':
-            lazy = pl.read_excel(file_path).lazy()
-        else:
-            raise DataSourceValidationError(f'Unsupported file type: {file_type}', details={'file_type': file_type})
-
+        config = {
+            'source_type': datasource.source_type,
+            **datasource.config,
+        }
+        lazy = load_datasource(config)
         schema = lazy.collect_schema()
-        # Calculate row count for file datasources
         row_count = lazy.select(pl.len()).collect().item()
 
         columns = [
@@ -216,7 +188,7 @@ async def _extract_schema(datasource: DataSource) -> SchemaInfo:
 
         return SchemaInfo(columns=columns, row_count=row_count)
 
-    elif datasource.source_type == 'database':
+    if datasource.source_type == 'database':
         connection_string = datasource.config['connection_string']
         query = datasource.config['query']
 
@@ -235,17 +207,14 @@ async def _extract_schema(datasource: DataSource) -> SchemaInfo:
 
         return SchemaInfo(columns=columns, row_count=row_count)
 
-    elif datasource.source_type == 'duckdb':
-        import duckdb
-
-        db_path = datasource.config.get('db_path')
-        query = datasource.config['query']
-
-        conn = duckdb.connect(database=db_path, read_only=datasource.config.get('read_only', True)) if db_path else duckdb.connect(database=':memory:')
-
-        frame = conn.execute(query).fetch_df()
+    if datasource.source_type == 'duckdb':
+        config = {
+            'source_type': datasource.source_type,
+            **datasource.config,
+        }
+        frame = load_datasource(config).collect()
         schema = frame.schema
-        row_count = frame.shape[0]
+        row_count = frame.height
 
         columns = [
             ColumnSchema(
@@ -256,15 +225,12 @@ async def _extract_schema(datasource: DataSource) -> SchemaInfo:
             for name, dtype in schema.items()
         ]
 
-        conn.close()
-
         return SchemaInfo(columns=columns, row_count=row_count)
 
-    else:
-        raise DataSourceValidationError(
-            f'Schema extraction not supported for type: {datasource.source_type}',
-            details={'source_type': datasource.source_type},
-        )
+    raise DataSourceValidationError(
+        f'Schema extraction not supported for type: {datasource.source_type}',
+        details={'source_type': datasource.source_type},
+    )
 
 
 async def get_datasource(session: AsyncSession, datasource_id: str) -> DataSourceResponse:

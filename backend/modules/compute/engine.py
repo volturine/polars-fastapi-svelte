@@ -8,7 +8,9 @@ from queue import Empty
 
 import polars as pl
 
-from modules.compute.polars_functions import get_operation_handlers
+from modules.compute.operations import get_operation_handlers
+from modules.compute.registries.datasources import load_datasource
+from modules.compute.registries.exports import get_export_format
 from modules.compute.step_converter import convert_step_format
 
 logger = logging.getLogger(__name__)
@@ -322,13 +324,13 @@ class PolarsComputeEngine:
         additional_datasources: dict[str, dict] | None = None,
     ) -> pl.LazyFrame:
         """Build the Polars transformation pipeline and return the final LazyFrame."""
-        lf = PolarsComputeEngine._load_datasource(datasource_config)
+        lf = load_datasource(datasource_config)
 
         right_sources: dict[str, pl.LazyFrame] = {}
         if additional_datasources:
             for ds_id, ds_config in additional_datasources.items():
                 try:
-                    right_sources[ds_id] = PolarsComputeEngine._load_datasource(ds_config)
+                    right_sources[ds_id] = load_datasource(ds_config)
                 except Exception as e:
                     logger.error(f'Failed to load additional datasource {ds_id}: {e}')
                     raise ValueError(f'Failed to load datasource {ds_id}: {e}')
@@ -482,16 +484,8 @@ class PolarsComputeEngine:
         df = lf.collect()
         row_count = len(df)
 
-        if export_format == 'csv':
-            df.write_csv(output_path)
-        elif export_format == 'parquet':
-            df.write_parquet(output_path)
-        elif export_format == 'json':
-            df.write_json(output_path)
-        elif export_format == 'ndjson':
-            df.write_ndjson(output_path)
-        else:
-            raise ValueError(f'Unsupported export format: {export_format}')
+        fmt = get_export_format(export_format)
+        fmt.writer(df, output_path)
 
         return {
             'output_path': output_path,
@@ -523,57 +517,6 @@ class PolarsComputeEngine:
         }
 
     @staticmethod
-    def _load_datasource(config: dict) -> pl.LazyFrame:
-        """Load data from datasource configuration using lazy evaluation."""
-        source_type = config.get('source_type', 'file')
-
-        if source_type == 'file':
-            file_path = config['file_path']
-            file_type = config['file_type']
-            csv_options_dict = config.get('csv_options')
-
-            if file_type == 'csv':
-                if csv_options_dict:
-                    return pl.scan_csv(
-                        file_path,
-                        separator=csv_options_dict.get('delimiter', ','),
-                        quote_char=csv_options_dict.get('quote_char', '"'),
-                        has_header=csv_options_dict.get('has_header', True),
-                        skip_rows=csv_options_dict.get('skip_rows', 0),
-                        encoding=csv_options_dict.get('encoding', 'utf8').lower(),
-                    )
-                return pl.scan_csv(file_path)
-            elif file_type == 'parquet':
-                return pl.scan_parquet(file_path)
-            elif file_type == 'json':
-                return pl.read_json(file_path).lazy()
-            elif file_type == 'ndjson':
-                return pl.scan_ndjson(file_path)
-            elif file_type == 'excel':
-                return pl.read_excel(file_path).lazy()
-            else:
-                raise ValueError(f'Unsupported file type: {file_type}')
-
-        elif source_type == 'database':
-            connection_string = config['connection_string']
-            query = config['query']
-            # Database reads need to be collected, then converted to lazy
-            return pl.read_database(query, connection_string).lazy()
-
-        elif source_type == 'duckdb':
-            import duckdb
-
-            db_path = config.get('db_path')
-            query = config['query']
-
-            conn = duckdb.connect(database=db_path, read_only=config.get('read_only', True)) if db_path else duckdb.connect(database=':memory:')
-
-            return conn.execute(query).fetch_df().lazy()
-
-        else:
-            raise ValueError(f'Unsupported source type: {source_type}')
-
-    @staticmethod
     def _apply_step(
         lf: pl.LazyFrame,
         step: dict,
@@ -582,6 +525,8 @@ class PolarsComputeEngine:
     ) -> pl.LazyFrame:
         """Apply a single transformation step to the LazyFrame."""
         operation = step.get('operation')
+        if not isinstance(operation, str) or not operation:
+            raise ValueError('Step operation is required')
         params = step.get('params', {})
 
         handlers = get_operation_handlers()
@@ -590,10 +535,4 @@ class PolarsComputeEngine:
         if not handler:
             raise ValueError(f'Unsupported operation: {operation}')
 
-        if operation == 'join':
-            return handler(lf, params, right_lf)
-
-        if operation == 'union_by_name':
-            return handler(lf, params, right_sources or {})
-
-        return handler(lf, params)
+        return handler(lf, params, right_lf=right_lf, right_sources=right_sources)

@@ -50,13 +50,8 @@
 	import ExportConfig from '$lib/components/operations/ExportConfig.svelte';
 	import UnionByNameConfig from '$lib/components/operations/UnionByNameConfig.svelte';
 
-	interface UnionByNameConfigData {
-		sources: string[];
-		allow_missing: boolean;
-	}
-
 	interface Props {
-		step: PipelineStep | null;
+		step?: PipelineStep | null;
 		schema: Schema | null;
 		isLoadingSchema?: boolean;
 		onClose?: () => void;
@@ -70,12 +65,7 @@
 		onClose,
 		onConfigChange
 	}: Props = $props();
-	let configSnapshot = $state('');
 	let fetchingPivotSchema = $state(false);
-
-	function refreshSnapshot(nextStep: PipelineStep | null) {
-		configSnapshot = JSON.stringify(nextStep?.config ?? {});
-	}
 
 	let inputSchema = $derived(
 		step
@@ -83,7 +73,29 @@
 			: { columns: [], row_count: null }
 	);
 
-	// Manual refresh function for pivot schema
+	let configSnapshot = $state<string>('');
+
+	$effect(() => {
+		if (step) {
+			const currentStep = step;
+			setTimeout(() => {
+				if (step === currentStep) {
+					configSnapshot = JSON.stringify(step.config);
+				}
+			}, 0);
+		}
+	});
+
+	$effect(() => {
+		if (!step || !configSnapshot) return;
+
+		const current = JSON.stringify(step.config);
+		if (current !== configSnapshot) {
+			onConfigChange?.();
+			configSnapshot = current;
+		}
+	});
+
 	function handleRefreshPivotSchema() {
 		if (!step || step.type !== 'pivot') return;
 
@@ -122,22 +134,6 @@
 			});
 	}
 
-	$effect(() => {
-		refreshSnapshot(step);
-	});
-
-	$effect(() => {
-		const snapshot = JSON.stringify(step?.config ?? {});
-		if (!step || snapshot === configSnapshot) return;
-		configSnapshot = snapshot;
-		onConfigChange?.();
-	});
-
-	function handleClose() {
-		if (onClose) {
-			onClose();
-		}
-	}
 </script>
 
 {#if step === null}
@@ -152,15 +148,15 @@
 	<div class="step-config">
 		<div class="config-header">
 			<h3>Configure Step</h3>
-			<button class="close-button" onclick={handleClose} type="button" title="Close">×</button>
+			<button class="close-button" onclick={() => onClose?.()} type="button" title="Close">×</button>
 		</div>
 
 		<div class="config-body">
 			{#if !schema && !isLoadingSchema}
-				<div class="warning-message">
-					<p>Schema not available. Please ensure the data source is loaded.</p>
-					<button onclick={handleClose} type="button">Close</button>
-				</div>
+			<div class="warning-message">
+				<p>Schema not available. Please ensure the data source is loaded.</p>
+				<button onclick={() => onClose?.()} type="button">Close</button>
+			</div>
 			{:else if isLoadingSchema}
 				<div class="loading-message">
 					<div class="spinner-md"></div>
@@ -256,7 +252,7 @@
 			{:else if step.type === 'union_by_name'}
 				<UnionByNameConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as UnionByNameConfigData}
+					bind:config={step.config as unknown as { sources: string[]; allow_missing: boolean }}
 				/>
 			{:else if step.type === 'export'}
 				<ExportConfig
@@ -265,10 +261,10 @@
 					}
 				/>
 			{:else}
-				<div class="not-implemented">
-					<p>Configuration for {step.type} is not yet implemented</p>
-					<button onclick={handleClose} type="button">Close</button>
-				</div>
+			<div class="not-implemented">
+				<p>Configuration for {step.type} is not yet implemented</p>
+				<button onclick={() => onClose?.()} type="button">Close</button>
+			</div>
 			{/if}
 		</div>
 	</div>

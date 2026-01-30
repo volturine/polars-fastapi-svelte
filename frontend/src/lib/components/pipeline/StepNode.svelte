@@ -12,8 +12,6 @@
 		analysisId?: string;
 		datasourceId?: string;
 		allSteps?: PipelineStep[];
-		previewVersion?: number;
-		isPreviewStale?: boolean;
 		onEdit: (id: string) => void;
 		onDelete: (id: string) => void;
 		onTouchMove: (stepId: string, target: DropTarget) => void;
@@ -25,8 +23,6 @@
 		analysisId,
 		datasourceId,
 		allSteps = [],
-		previewVersion = 0,
-		isPreviewStale = false,
 		onEdit,
 		onDelete,
 		onTouchMove
@@ -243,21 +239,15 @@
 			</div>
 		{/if}
 
-		{#if step.type === 'view' && datasourceId}
+		{#if step.type === 'view' && datasourceId && analysisId}
 			<div class="view-preview expanded">
-				{#if isPreviewStale}
-					<div class="preview-stale">Preview is stale - click Preview to refresh</div>
-				{/if}
-				{#if analysisId && datasourceId}
-					<InlineDataTable
-						{analysisId}
-						{datasourceId}
-						pipeline={allSteps}
-						stepId={step.id}
-						rowLimit={typeof step.config?.rowLimit === 'number' ? step.config.rowLimit : 100}
-						{previewVersion}
-					/>
-				{/if}
+				<InlineDataTable
+					{analysisId}
+					{datasourceId}
+					pipeline={allSteps}
+					stepId={step.id}
+					rowLimit={typeof step.config?.rowLimit === 'number' ? step.config.rowLimit : 100}
+				/>
 			</div>
 		{/if}
 	</div>
@@ -390,19 +380,6 @@
 		margin-top: var(--space-3);
 		border-top: 1px solid var(--border-secondary);
 		padding-top: var(--space-3);
-	}
-
-	.preview-stale {
-		margin-bottom: var(--space-2);
-		padding: var(--space-2) var(--space-3);
-		border: 1px dashed var(--warning-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--warning-bg);
-		color: var(--warning-fg);
-		font-size: var(--text-xs);
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
 	}
 
 	.action-btn {

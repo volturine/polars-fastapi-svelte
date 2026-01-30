@@ -25,63 +25,59 @@
 		}>;
 		stepId: string;
 		rowLimit?: number;
-		previewVersion?: number;
 	}
 
 	type RowData = Record<string, unknown>;
 
-	let {
-		analysisId,
-		datasourceId,
-		pipeline,
-		stepId,
-		rowLimit = 1000,
-		previewVersion = 0
-	}: Props = $props();
+	let { analysisId, datasourceId, pipeline, stepId, rowLimit = 1000 }: Props = $props();
 	let currentPage = $state(1);
 	let sorting = $state<SortingState>([]);
 
-	// Reset page when previewVersion changes (new preview requested)
-	let lastPreviewVersion = $state(0);
+	// Create a stable key from pipeline to detect changes
+	const pipelineKey = $derived(JSON.stringify(pipeline));
+
+	// Reset page when pipeline changes
+	let lastPipelineKey = $state('');
 	$effect(() => {
-		if (previewVersion !== lastPreviewVersion) {
+		if (pipelineKey !== lastPipelineKey) {
 			currentPage = 1;
-			lastPreviewVersion = previewVersion;
+			lastPipelineKey = pipelineKey;
 		}
 	});
 
-	const query = createQuery(() => ({
-		queryKey: [
-			'step-preview',
-			analysisId,
-			datasourceId,
-			stepId,
-			currentPage,
-			rowLimit,
-			previewVersion
-		],
-		queryFn: async (): Promise<StepPreviewResponse> => {
-			const resourceConfig = analysisStore.resourceConfig as unknown as Record<
-				string,
-				unknown
-			> | null;
-			const result = await previewStepData({
-				analysis_id: analysisId,
-				datasource_id: datasourceId,
-				pipeline_steps: pipeline,
-				target_step_id: stepId,
-				row_limit: rowLimit,
-				page: currentPage,
-				resource_config: resourceConfig
-			});
-			if (result.isErr()) {
-				throw new Error(result.error.message);
-			}
-			return result.value;
-		},
-		staleTime: Infinity,
-		enabled: !!previewVersion && !!analysisId && !!datasourceId && !!stepId && pipeline.length > 0
-	}));
+	const query = createQuery(() => {
+		return {
+			queryKey: [
+				'step-preview',
+				analysisId,
+				datasourceId,
+				stepId,
+				currentPage,
+				rowLimit,
+				pipelineKey
+			],
+			queryFn: async (): Promise<StepPreviewResponse> => {
+				const resourceConfig = analysisStore.resourceConfig as unknown as Record<
+					string,
+					unknown
+				> | null;
+				const result = await previewStepData({
+					analysis_id: analysisId,
+					datasource_id: datasourceId,
+					pipeline_steps: pipeline,
+					target_step_id: stepId,
+					row_limit: rowLimit,
+					page: currentPage,
+					resource_config: resourceConfig
+				});
+				if (result.isErr()) {
+					throw new Error(result.error.message);
+				}
+				return result.value;
+			},
+			staleTime: Infinity
+		};
+	});
 
 	const data = $derived(query.data);
 	const isLoading = $derived(query.isLoading);
@@ -159,7 +155,6 @@
 	});
 
 	const headerGroups = $derived<HeaderGroup<RowData>[]>(table ? table.getHeaderGroups() : []);
-
 	const rows = $derived<Row<RowData>[]>(table ? table.getRowModel().rows : []);
 
 	function nextPage() {
@@ -189,11 +184,7 @@
 </script>
 
 <div class="inline-data-table">
-	{#if !previewVersion}
-		<div class="not-loaded-state">
-			<p>Click Preview button to load data</p>
-		</div>
-	{:else if isLoading}
+	{#if isLoading}
 		<div class="loading-overlay">
 			<div class="spinner-md"></div>
 			<p class="text-tertiary">Loading preview...</p>
@@ -205,8 +196,10 @@
 		</div>
 	{:else if headerGroups.length > 0 && data}
 		<div class="table-info">
-			Showing {startRow.toLocaleString()}-{endRow.toLocaleString()} of {data.total_rows.toLocaleString()}
-			rows
+			<span>
+				Showing {startRow.toLocaleString()}-{endRow.toLocaleString()} of {data.total_rows.toLocaleString()}
+				rows
+			</span>
 		</div>
 
 		<div class="table-wrapper">
@@ -289,14 +282,6 @@
 	.loading-overlay p {
 		margin: 0;
 	}
-	.not-loaded-state {
-		padding: var(--space-6);
-		text-align: center;
-		color: var(--fg-muted);
-	}
-	.not-loaded-state p {
-		margin: 0;
-	}
 	.error-state {
 		padding: var(--space-8);
 		text-align: center;
@@ -319,6 +304,9 @@
 		margin: 0;
 	}
 	.table-info {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 		padding: 0.75rem 1rem;
 		font-size: 0.75rem;
 		color: var(--fg-tertiary);

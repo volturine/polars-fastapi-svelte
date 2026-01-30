@@ -11,9 +11,6 @@
 		steps: PipelineStep[];
 		analysisId?: string;
 		datasourceId?: string;
-		previewDatasourceId?: string;
-		previewVersion?: number;
-		isPreviewStale?: boolean;
 		datasource?: DataSource | null;
 		tabName?: string;
 		onStepClick: (id: string) => void;
@@ -28,9 +25,6 @@
 		steps,
 		analysisId,
 		datasourceId,
-		previewDatasourceId,
-		previewVersion = 0,
-		isPreviewStale = false,
 		datasource = null,
 		tabName: _tabName,
 		onStepClick,
@@ -288,16 +282,14 @@
 				</div>
 			{/if}
 			{#each steps as step, i (step.id)}
-						<StepNode
-							{step}
-							index={i}
-							{analysisId}
-							datasourceId={previewDatasourceId ?? datasourceId}
-							allSteps={steps}
-							{previewVersion}
-							{isPreviewStale}
-							onEdit={onStepClick}
-							onDelete={onStepDelete}
+				<StepNode
+					{step}
+					index={i}
+					{analysisId}
+					{datasourceId}
+					allSteps={steps}
+					onEdit={onStepClick}
+					onDelete={onStepDelete}
 					onTouchMove={onMoveStep}
 				/>
 				<!-- Connection + Drop zone after each step -->

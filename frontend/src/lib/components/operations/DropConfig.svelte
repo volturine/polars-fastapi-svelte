@@ -1,7 +1,5 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
-	import { Previous } from 'runed';
-	import { SvelteSet } from 'svelte/reactivity';
 
 	interface DropConfigData {
 		columns: string[];
@@ -14,63 +12,23 @@
 
 	let { schema, config = $bindable({ columns: [] }) }: Props = $props();
 
-	// Ensure config has proper structure
-	$effect(() => {
-		if (!config || typeof config !== 'object') {
-			config = { columns: [] };
-		} else if (!Array.isArray(config.columns)) {
-			config.columns = [];
-		}
-	});
-
-	// Safe accessor
-	let safeColumns = $derived(Array.isArray(config?.columns) ? config.columns : []);
-
-	// Keep SvelteSet for UI
-	// eslint-disable-next-line svelte/no-unnecessary-state-wrap
-	let selectedColumns = $state(new SvelteSet<string>());
-
-	// Track config changes with Previous utility
-	const prevConfig = new Previous(() => config);
-
-	// Sync config → SvelteSet when config changes
-	$effect(() => {
-		if (prevConfig.current !== config) {
-			selectedColumns = new SvelteSet(safeColumns);
-		}
-	});
-
-	// Initialize on first render
-	$effect(() => {
-		if (selectedColumns.size === 0 && safeColumns.length > 0) {
-			selectedColumns = new SvelteSet(safeColumns);
-		}
-	});
-
-	// Config is now updated directly in toggleColumn/selectAll/deselectAll functions
-	// to avoid infinite loop from bidirectional effect binding
-
 	function toggleColumn(columnName: string) {
-		if (selectedColumns.has(columnName)) {
-			selectedColumns.delete(columnName);
+		const cols = config.columns;
+		const index = cols.indexOf(columnName);
+		if (index > -1) {
+			config.columns = cols.filter((_, i) => i !== index);
 		} else {
-			selectedColumns.add(columnName);
+			config.columns = [...cols, columnName];
 		}
-		// Update config directly to avoid infinite loop
-		config.columns = Array.from(selectedColumns);
 	}
 
 	function selectAll() {
-		selectedColumns = new SvelteSet(schema.columns.map((c) => c.name));
-		config.columns = Array.from(selectedColumns);
+		config.columns = schema.columns.map((c) => c.name);
 	}
 
 	function deselectAll() {
-		selectedColumns = new SvelteSet();
 		config.columns = [];
 	}
-
-	let selectedColumnNames = $derived(Array.from(selectedColumns));
 </script>
 
 <div class="config-panel" role="region" aria-label="Drop columns configuration">
@@ -106,7 +64,7 @@
 					id={`drop-checkbox-${column.name}`}
 					data-testid={`drop-column-checkbox-${column.name}`}
 					type="checkbox"
-					checked={selectedColumns.has(column.name)}
+					checked={config.columns.includes(column.name)}
 					onchange={() => toggleColumn(column.name)}
 					aria-label={`Drop column ${column.name}`}
 				/>
@@ -116,11 +74,11 @@
 		{/each}
 	</div>
 
-	{#if selectedColumnNames.length > 0}
+	{#if config.columns.length > 0}
 		<div id="drop-selected-summary" class="selected-summary warning" aria-live="polite">
-			<strong>Columns to Drop ({selectedColumnNames.length}):</strong>
+			<strong>Columns to Drop ({config.columns.length}):</strong>
 			<div class="selected-names">
-				{selectedColumnNames.join(', ')}
+				{config.columns.join(', ')}
 			</div>
 		</div>
 	{:else}

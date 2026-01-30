@@ -994,6 +994,7 @@
 	.datasource-name {
 		font-size: var(--text-sm);
 		letter-spacing: 0.02em;
+		color: var(--fg-primary);
 	}
 	.datasource-type {
 		display: flex;

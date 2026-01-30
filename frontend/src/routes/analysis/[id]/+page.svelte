@@ -4,7 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { FiniteStateMachine } from 'runed';
-	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { analysisStore, type CachedPreview } from '$lib/stores/analysis.svelte';
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
 	import { getAnalysis } from '$lib/api/analysis';
 	import { getDatasourceSchema, listDatasources } from '$lib/api/datasource';
@@ -20,6 +20,8 @@
 	import DragPreview from '$lib/components/pipeline/DragPreview.svelte';
 	import DatasourceSelectorModal from '$lib/components/common/DatasourceSelectorModal.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
+	import { compress, decompress } from '$lib/utils/compression';
+	import { formatBytes } from '$lib/utils/compression';
 
 	const analysisId = $derived($page.params.id);
 
@@ -78,6 +80,7 @@
 			engineDefaults: EngineDefaults | null;
 			previewVersions: Record<string, number>;
 			lastPreviewPipelines: Record<string, string>;
+			previewCache: Record<string, CachedPreview>;
 			selectedStepId: string | null;
 			leftPaneCollapsed: boolean;
 			rightPaneCollapsed: boolean;
@@ -104,6 +107,11 @@
 			pipelines.set(key, value);
 		}
 		lastPreviewPipelines = pipelines;
+		const cache = new SvelteMap<string, CachedPreview>();
+		for (const [key, value] of Object.entries(parsed.previewCache ?? {})) {
+			cache.set(key, value);
+		}
+		analysisStore.previewCache = cache;
 		if (parsed.saveStatus === 'unsaved') {
 			saveStatus.send('markUnsaved');
 		} else {
@@ -124,6 +132,7 @@
 			engineDefaults: analysisStore.engineDefaults,
 			previewVersions: Object.fromEntries(previewVersions.entries()),
 			lastPreviewPipelines: Object.fromEntries(lastPreviewPipelines.entries()),
+			previewCache: Object.fromEntries(analysisStore.previewCache.entries()),
 			selectedStepId,
 			leftPaneCollapsed,
 			rightPaneCollapsed,
@@ -510,6 +519,7 @@
 					{datasourceId}
 					datasource={currentDatasource}
 					tabName={analysisStore.activeTab?.name}
+					tabId={activeTabId ?? ''}
 					onStepClick={handleSelectStep}
 					onStepDelete={handleDeleteStep}
 					onInsertStep={handleInsertStep}

@@ -13,6 +13,9 @@
 	import type { TableCellValue } from '$lib/types/api-responses';
 	import { schemaStore } from '$lib/stores/schema.svelte';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { compress, formatBytes } from '$lib/utils/compression';
+	import { hashPipeline } from '$lib/utils/hash';
+	import type { CachedPreview } from '$lib/stores/analysis.svelte';
 
 	interface Props {
 		analysisId: string;
@@ -26,6 +29,9 @@
 		stepId: string;
 		rowLimit?: number;
 		previewVersion?: number;
+		tabId: string;
+		isStale?: boolean;
+		onForceRefresh?: () => void;
 	}
 
 	type RowData = Record<string, unknown>;
@@ -36,10 +42,14 @@
 		pipeline,
 		stepId,
 		rowLimit = 1000,
-		previewVersion = 0
+		previewVersion = 0,
+		tabId,
+		isStale = false,
+		onForceRefresh
 	}: Props = $props();
 	let currentPage = $state(1);
 	let sorting = $state<SortingState>([]);
+	let cacheError = $state<string | null>(null);
 
 	// Reset page when previewVersion changes (new preview requested)
 	let lastPreviewVersion = $state(0);
@@ -50,42 +60,123 @@
 		}
 	});
 
-	const query = createQuery(() => ({
-		queryKey: [
-			'step-preview',
-			analysisId,
-			datasourceId,
-			stepId,
-			currentPage,
-			rowLimit,
-			previewVersion
-		],
-		queryFn: async (): Promise<StepPreviewResponse> => {
-			const resourceConfig = analysisStore.resourceConfig as unknown as Record<
-				string,
-				unknown
-			> | null;
-			const result = await previewStepData({
-				analysis_id: analysisId,
-				datasource_id: datasourceId,
-				pipeline_steps: pipeline,
-				target_step_id: stepId,
-				row_limit: rowLimit,
-				page: currentPage,
-				resource_config: resourceConfig
-			});
-			if (result.isErr()) {
-				throw new Error(result.error.message);
-			}
-			return result.value;
-		},
-		staleTime: Infinity,
-		enabled: !!previewVersion && !!analysisId && !!datasourceId && !!stepId && pipeline.length > 0
-	}));
+	// Get cached preview from store
+	const cachedPreview = $derived(analysisStore.getCachedPreview(tabId));
+	const hasCachedPreview = $derived(!!cachedPreview && !isStale);
+
+	// Query with optional initial data from cache
+	const query = createQuery(() => {
+		const cached = analysisStore.getCachedPreview(tabId);
+		let initialData: StepPreviewResponse | undefined;
+
+		// Use cached data if available and not stale
+		if (cached && !isStale) {
+			// Cached data is already the decompressed StepPreviewResponse
+			// We need to access it through the store which will decompress it
+			initialData = undefined; // We'll handle this via $effect below
+		}
+
+		return {
+			queryKey: [
+				'step-preview',
+				analysisId,
+				datasourceId,
+				stepId,
+				currentPage,
+				rowLimit,
+				previewVersion
+			],
+			queryFn: async (): Promise<StepPreviewResponse> => {
+				const resourceConfig = analysisStore.resourceConfig as unknown as Record<
+					string,
+					unknown
+				> | null;
+				const result = await previewStepData({
+					analysis_id: analysisId,
+					datasource_id: datasourceId,
+					pipeline_steps: pipeline,
+					target_step_id: stepId,
+					row_limit: rowLimit,
+					page: currentPage,
+					resource_config: resourceConfig
+				});
+				if (result.isErr()) {
+					throw new Error(result.error.message);
+				}
+
+				// Cache the preview data
+				const response = result.value;
+				try {
+					const compressed = await compress(response);
+					if (compressed) {
+						const originalSize = JSON.stringify(response).length;
+						const compressedSize = compressed.length;
+
+						// Skip if compressed size exceeds 50MB (50 * 1024 * 1024 bytes, but base64 is ~33% larger)
+						// Base64 encoded string: 50MB * 1.33 = ~66.5MB
+						const maxSize = 50 * 1024 * 1024 * 1.33;
+						if (compressedSize < maxSize) {
+							const cache: CachedPreview = {
+								compressed,
+								originalSize,
+								compressedSize,
+								pipelineHash: hashPipeline(pipeline),
+								timestamp: Date.now(),
+								version: previewVersion || 1
+							};
+							analysisStore.setCachedPreview(tabId, cache);
+						} else {
+							console.warn(
+								`Preview data too large to cache: ${formatBytes(compressedSize)} compressed (limit: 50MB)`
+							);
+						}
+					}
+				} catch (e) {
+					console.error('Failed to cache preview:', e);
+				}
+
+				return response;
+			},
+			staleTime: Infinity,
+			enabled: !!previewVersion
+		};
+	});
 
 	const data = $derived(query.data);
 	const isLoading = $derived(query.isLoading);
 	const error = $derived(query.error);
+
+	// Try to load cached data if query hasn't fetched yet
+	let cachedData = $state<StepPreviewResponse | null>(null);
+	let loadingCached = $state(false);
+
+	$effect(() => {
+		const cached = analysisStore.getCachedPreview(tabId);
+		if (cached && !isStale && !data && !isLoading && !loadingCached) {
+			loadingCached = true;
+			// Dynamically import decompress to avoid issues
+			import('$lib/utils/compression').then(async ({ decompress }) => {
+				try {
+					const decompressed = await decompress<StepPreviewResponse>(cached.compressed);
+					if (decompressed) {
+						cachedData = decompressed;
+						// Update schema store with cached columns
+						if (decompressed.columns && decompressed.column_types) {
+							schemaStore.setPreviewSchema(stepId, decompressed.columns, decompressed.column_types);
+						}
+					}
+				} catch (e) {
+					cacheError = 'Failed to load cached preview';
+					console.error('Failed to decompress cached preview:', e);
+				} finally {
+					loadingCached = false;
+				}
+			});
+		}
+	});
+
+	// Use cached data if available, otherwise use query data
+	const displayData = $derived(data ?? cachedData);
 
 	// Update schema store with actual columns from preview
 	$effect(() => {
@@ -94,9 +185,9 @@
 		}
 	});
 
-	const totalPages = $derived(data ? Math.ceil(data.total_rows / rowLimit) : 0);
+	const totalPages = $derived(displayData ? Math.ceil(displayData.total_rows / rowLimit) : 0);
 	const startRow = $derived((currentPage - 1) * rowLimit + 1);
-	const endRow = $derived(data ? Math.min(currentPage * rowLimit, data.total_rows) : 0);
+	const endRow = $derived(displayData ? Math.min(currentPage * rowLimit, displayData.total_rows) : 0);
 
 	function formatValue(value: TableCellValue): string {
 		if (value === null || value === undefined) return '—';
@@ -119,7 +210,7 @@
 	}
 
 	function getColumnType(col: string): string {
-		return data?.column_types?.[col] || '';
+		return displayData?.column_types?.[col] || '';
 	}
 
 	function isListType(columnType: string): boolean {
@@ -127,7 +218,7 @@
 	}
 
 	const table = $derived.by(() => {
-		const currentData = data;
+		const currentData = displayData;
 		if (!currentData || !currentData.columns || currentData.columns.length === 0) {
 			return null;
 		}
@@ -186,14 +277,22 @@
 		if (!sort) return false;
 		return sort.desc ? 'desc' : 'asc';
 	}
+
+	function handleForceRefresh() {
+		// Clear cache for this tab
+		analysisStore.clearCachedPreview(tabId);
+		cachedData = null;
+		// Trigger refresh
+		onForceRefresh?.();
+	}
 </script>
 
 <div class="inline-data-table">
-	{#if !previewVersion}
+	{#if !previewVersion && !hasCachedPreview}
 		<div class="not-loaded-state">
 			<p>Click Preview button to load data</p>
 		</div>
-	{:else if isLoading}
+	{:else if isLoading || loadingCached}
 		<div class="loading-overlay">
 			<div class="spinner-md"></div>
 			<p class="text-tertiary">Loading preview...</p>
@@ -203,10 +302,21 @@
 			<p class="error-title">Failed to load preview</p>
 			<p class="error-message">{error.message}</p>
 		</div>
-	{:else if headerGroups.length > 0 && data}
+	{:else if cacheError}
+		<div class="error-state">
+			<p class="error-title">Cache Error</p>
+			<p class="error-message">{cacheError}</p>
+			<button class="refresh-btn" onclick={handleForceRefresh}>Refresh</button>
+		</div>
+	{:else if headerGroups.length > 0 && displayData}
 		<div class="table-info">
-			Showing {startRow.toLocaleString()}-{endRow.toLocaleString()} of {data.total_rows.toLocaleString()}
-			rows
+			<span>
+				Showing {startRow.toLocaleString()}-{endRow.toLocaleString()} of {displayData.total_rows.toLocaleString()}
+				rows
+			</span>
+			{#if cachedData && !data}
+				<span class="cache-badge">Cached</span>
+			{/if}
 		</div>
 
 		<div class="table-wrapper">
@@ -257,6 +367,13 @@
 				<button onclick={prevPage} disabled={currentPage === 1}>Previous</button>
 				<span class="page-info">Page {currentPage} of {totalPages}</span>
 				<button onclick={nextPage} disabled={currentPage >= totalPages}>Next</button>
+			</div>
+		{/if}
+
+		{#if isStale}
+			<div class="stale-warning">
+				<span>Preview is stale - pipeline has changed</span>
+				<button class="refresh-btn" onclick={handleForceRefresh}>Refresh</button>
 			</div>
 		{/if}
 	{:else}
@@ -319,11 +436,23 @@
 		margin: 0;
 	}
 	.table-info {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 		padding: 0.75rem 1rem;
 		font-size: 0.75rem;
 		color: var(--fg-tertiary);
 		background: var(--panel-header-bg);
 		border-bottom: 1px solid var(--panel-border);
+	}
+	.cache-badge {
+		padding: 0.125rem 0.5rem;
+		background: var(--accent-bg);
+		color: var(--accent-fg);
+		border-radius: var(--radius-sm);
+		font-size: 0.625rem;
+		font-weight: 500;
+		text-transform: uppercase;
 	}
 	.table-wrapper {
 		overflow-x: auto;
@@ -443,5 +572,29 @@
 	.page-info {
 		font-size: 0.75rem;
 		color: var(--fg-tertiary);
+	}
+	.stale-warning {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.75rem 1rem;
+		background: var(--warning-bg);
+		border-top: 1px solid var(--warning-border);
+		color: var(--warning-fg);
+		font-size: 0.875rem;
+	}
+	.refresh-btn {
+		padding: 0.25rem 0.75rem;
+		background: var(--accent-primary);
+		color: white;
+		border: none;
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		font-size: 0.75rem;
+		font-weight: 500;
+		transition: opacity 0.15s ease;
+	}
+	.refresh-btn:hover {
+		opacity: 0.85;
 	}
 </style>

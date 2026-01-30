@@ -14,6 +14,7 @@
 		allSteps?: PipelineStep[];
 		previewVersion?: number;
 		isPreviewStale?: boolean;
+		tabId: string;
 		onEdit: (id: string) => void;
 		onDelete: (id: string) => void;
 		onTouchMove: (stepId: string, target: DropTarget) => void;
@@ -27,6 +28,7 @@
 		allSteps = [],
 		previewVersion = 0,
 		isPreviewStale = false,
+		tabId,
 		onEdit,
 		onDelete,
 		onTouchMove
@@ -256,6 +258,8 @@
 						stepId={step.id}
 						rowLimit={typeof step.config?.rowLimit === 'number' ? step.config.rowLimit : 100}
 						{previewVersion}
+						{tabId}
+						isStale={isPreviewStale}
 					/>
 				{/if}
 			</div>

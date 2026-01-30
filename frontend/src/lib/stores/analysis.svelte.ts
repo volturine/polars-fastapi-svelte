@@ -9,6 +9,17 @@ import { schemaStore } from '$lib/stores/schema.svelte';
 import { SvelteMap } from 'svelte/reactivity';
 import { ResultAsync, err, ok } from 'neverthrow';
 import type { ApiError } from '$lib/api/client';
+import { hashPipeline, isCacheStale } from '$lib/utils/hash';
+import type { StepPreviewResponse } from '$lib/api/compute';
+
+export interface CachedPreview {
+	compressed: string;
+	originalSize: number;
+	compressedSize: number;
+	pipelineHash: string;
+	timestamp: number;
+	version: number;
+}
 
 export class AnalysisStore {
 	current = $state<Analysis | null>(null);
@@ -20,6 +31,7 @@ export class AnalysisStore {
 	engineDefaults = $state<EngineDefaults | null>(null);
 	loading = $state(false);
 	error = $state<string | null>(null);
+	previewCache = $state(new SvelteMap<string, CachedPreview>());
 
 	activeTab = $derived.by(() => {
 		const match = this.tabs.find((tab) => tab.id === this.activeTabId) ?? null;
@@ -429,6 +441,39 @@ export class AnalysisStore {
 		this.engineDefaults = null;
 		this.loading = false;
 		this.error = null;
+	}
+
+	// Preview cache methods
+	setCachedPreview(tabId: string, preview: CachedPreview): void {
+		this.previewCache.set(tabId, preview);
+	}
+
+	getCachedPreview(tabId: string): CachedPreview | undefined {
+		return this.previewCache.get(tabId);
+	}
+
+	clearCachedPreview(tabId: string): void {
+		this.previewCache.delete(tabId);
+	}
+
+	clearAllCachedPreviews(): void {
+		this.previewCache.clear();
+	}
+
+	isPreviewStale(tabId: string): boolean {
+		const cached = this.previewCache.get(tabId);
+		if (!cached) return true;
+
+		const tab = this.tabs.find((t) => t.id === tabId);
+		if (!tab) return true;
+
+		return isCacheStale(cached.pipelineHash, tab.steps);
+	}
+
+	getPipelineHash(tabId: string): string {
+		const tab = this.tabs.find((t) => t.id === tabId);
+		if (!tab) return '';
+		return hashPipeline(tab.steps);
 	}
 
 	buildTabs(datasourceIds: string[], initialSteps: PipelineStep[] = []): AnalysisTab[] {

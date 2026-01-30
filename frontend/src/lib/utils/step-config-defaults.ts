@@ -215,17 +215,9 @@ export function getDefaultConfig(stepType: string): StepConfig {
 /**
  * Ensure a config has all required fields by merging with defaults.
  * Used when loading saved analyses to handle backward compatibility.
- * Strips out unknown fields that don't exist in the current defaults.
+ * Preserves all existing config fields while adding any missing defaults.
  */
 export function normalizeConfig(stepType: string, config: Record<string, unknown>): StepConfig {
 	const defaults = getDefaultConfig(stepType);
-	// Only keep fields that exist in defaults (strips out old/invalid fields)
-	const validFields = Object.keys(defaults);
-	const filteredConfig: Record<string, unknown> = {};
-	for (const key of validFields) {
-		if (key in config) {
-			filteredConfig[key] = config[key];
-		}
-	}
-	return { ...defaults, ...filteredConfig };
+	return { ...defaults, ...config };
 }

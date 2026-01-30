@@ -11,12 +11,8 @@
 		steps: PipelineStep[];
 		analysisId?: string;
 		datasourceId?: string;
-		previewDatasourceId?: string;
-		previewVersion?: number;
-		isPreviewStale?: boolean;
 		datasource?: DataSource | null;
 		tabName?: string;
-		tabId: string;
 		onStepClick: (id: string) => void;
 		onStepDelete: (id: string) => void;
 		onInsertStep: (type: string, target: DropTarget) => void;
@@ -29,12 +25,8 @@
 		steps,
 		analysisId,
 		datasourceId,
-		previewDatasourceId,
-		previewVersion = 0,
-		isPreviewStale = false,
 		datasource = null,
 		tabName: _tabName,
-		tabId,
 		onStepClick,
 		onStepDelete,
 		onInsertStep,
@@ -294,11 +286,8 @@
 					{step}
 					index={i}
 					{analysisId}
-					datasourceId={previewDatasourceId ?? datasourceId}
+					{datasourceId}
 					allSteps={steps}
-					{previewVersion}
-					{isPreviewStale}
-					{tabId}
 					onEdit={onStepClick}
 					onDelete={onStepDelete}
 					onTouchMove={onMoveStep}

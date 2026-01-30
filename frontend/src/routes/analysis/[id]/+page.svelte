@@ -4,13 +4,18 @@
 	import { resolve } from '$app/paths';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { FiniteStateMachine } from 'runed';
-	import { analysisStore, type CachedPreview } from '$lib/stores/analysis.svelte';
+	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
+	import {
+		acquireLock,
+		releaseLock,
+		checkLockStatus,
+		hasLock
+	} from '$lib/stores/lockManager.svelte';
 	import { getAnalysis } from '$lib/api/analysis';
 	import { getDatasourceSchema, listDatasources } from '$lib/api/datasource';
-	import { sendKeepalive, spawnEngine } from '$lib/api/compute';
+	import { spawnEngine } from '$lib/api/compute';
 	import type { PipelineStep, AnalysisTab } from '$lib/types/analysis';
-	import type { DataSource } from '$lib/types/datasource';
 	import { getDefaultConfig } from '$lib/utils/step-config-defaults';
 	import type { EngineResourceConfig, EngineDefaults } from '$lib/types/compute';
 	import type { DropTarget } from '$lib/stores/drag.svelte';
@@ -19,9 +24,6 @@
 	import StepConfig from '$lib/components/pipeline/StepConfig.svelte';
 	import DragPreview from '$lib/components/pipeline/DragPreview.svelte';
 	import DatasourceSelectorModal from '$lib/components/common/DatasourceSelectorModal.svelte';
-	import { SvelteMap } from 'svelte/reactivity';
-	import { compress, decompress } from '$lib/utils/compression';
-	import { formatBytes } from '$lib/utils/compression';
 
 	const analysisId = $derived($page.params.id);
 
@@ -31,32 +33,9 @@
 		return analysisStore.pipeline.find((step) => step.id === selectedStepId) || null;
 	});
 	let isSaving = $state(false);
-	let previewVersions = $state(new SvelteMap<string, number>());
-	let lastPreviewPipelines = $state(new SvelteMap<string, string>());
 	let draftLoaded = $state(false);
 
-	// Track pipeline state at last preview to detect staleness
-	const activeTabId = $derived(analysisStore.activeTab?.id ?? null);
-	const currentPipelineKey = $derived(JSON.stringify(analysisStore.pipeline));
-	const previewVersion = $derived(activeTabId ? (previewVersions.get(activeTabId) ?? 0) : 0);
-	const lastPreviewPipeline = $derived(
-		activeTabId ? (lastPreviewPipelines.get(activeTabId) ?? '') : ''
-	);
-	const isPreviewStale = $derived(!!previewVersion && lastPreviewPipeline !== currentPipelineKey);
 	const storageKey = $derived(analysisId ? `analysis-draft:${analysisId}` : null);
-
-	function handlePreview() {
-		if (!activeTabId) return;
-		const next = (previewVersions.get(activeTabId) ?? 0) + 1;
-		previewVersions.set(activeTabId, next);
-		lastPreviewPipelines.set(activeTabId, currentPipelineKey);
-		if (analysisId) {
-			// wait 1 second
-			setTimeout(() => {
-				sendKeepalive(analysisId);
-			}, 1000);
-		}
-	}
 
 	$effect(() => {
 		if (!analysisId) return;
@@ -78,9 +57,6 @@
 			activeTabId: string | null;
 			resourceConfig: EngineResourceConfig | null;
 			engineDefaults: EngineDefaults | null;
-			previewVersions: Record<string, number>;
-			lastPreviewPipelines: Record<string, string>;
-			previewCache: Record<string, CachedPreview>;
 			selectedStepId: string | null;
 			leftPaneCollapsed: boolean;
 			rightPaneCollapsed: boolean;
@@ -97,21 +73,6 @@
 		selectedStepId = parsed.selectedStepId;
 		leftPaneCollapsed = parsed.leftPaneCollapsed;
 		rightPaneCollapsed = parsed.rightPaneCollapsed;
-		const versions = new SvelteMap<string, number>();
-		for (const [key, value] of Object.entries(parsed.previewVersions ?? {})) {
-			versions.set(key, value);
-		}
-		previewVersions = versions;
-		const pipelines = new SvelteMap<string, string>();
-		for (const [key, value] of Object.entries(parsed.lastPreviewPipelines ?? {})) {
-			pipelines.set(key, value);
-		}
-		lastPreviewPipelines = pipelines;
-		const cache = new SvelteMap<string, CachedPreview>();
-		for (const [key, value] of Object.entries(parsed.previewCache ?? {})) {
-			cache.set(key, value);
-		}
-		analysisStore.previewCache = cache;
 		if (parsed.saveStatus === 'unsaved') {
 			saveStatus.send('markUnsaved');
 		} else {
@@ -130,9 +91,6 @@
 			activeTabId: analysisStore.activeTabId,
 			resourceConfig: analysisStore.resourceConfig,
 			engineDefaults: analysisStore.engineDefaults,
-			previewVersions: Object.fromEntries(previewVersions.entries()),
-			lastPreviewPipelines: Object.fromEntries(lastPreviewPipelines.entries()),
-			previewCache: Object.fromEntries(analysisStore.previewCache.entries()),
 			selectedStepId,
 			leftPaneCollapsed,
 			rightPaneCollapsed,
@@ -145,7 +103,7 @@
 	type SaveEvents = 'markUnsaved' | 'startSave' | 'saveComplete' | 'saveError';
 	const saveStatus = new FiniteStateMachine<SaveStates, SaveEvents>('saved', {
 		saved: { markUnsaved: 'unsaved', saveComplete: 'saved' },
-		unsaved: { markUnsaved: 'unsaved', startSave: 'saving' },
+		unsaved: { markUnsaved: 'unsaved', startSave: 'saving', saveComplete: 'saved' },
 		saving: { saveComplete: 'saved', saveError: 'unsaved' }
 	});
 	let isLoadingSchema = $state(false);
@@ -153,6 +111,9 @@
 	let modalMode = $state<'add' | 'change'>('add');
 	let leftPaneCollapsed = $state(false);
 	let rightPaneCollapsed = $state(false);
+	let isEditingMode = $state(false);
+	let showModeDropdown = $state(false);
+	let keepaliveInterval: number | null = null;
 
 	const analysisQuery = createQuery(() => ({
 		queryKey: ['analysis', analysisId],
@@ -180,7 +141,6 @@
 		}
 	}));
 
-	// Update datasourceStore when query data changes
 	$effect(() => {
 		const data = datasourcesQuery.data;
 		if (data) {
@@ -188,10 +148,8 @@
 		}
 	});
 
-	// All available datasources (filtering handled by modal component)
 	const filteredDatasources = $derived(datasourcesQuery.data ?? []);
 
-	// Spawn engine on load to get defaults
 	$effect(() => {
 		if (!analysisId || analysisStore.engineDefaults) return;
 		spawnEngine(analysisId).match(
@@ -200,7 +158,7 @@
 					analysisStore.setEngineDefaults(status.defaults);
 				}
 			},
-			() => {} // Ignore errors, defaults just won't be shown
+			() => {}
 		);
 	});
 
@@ -224,22 +182,8 @@
 		);
 	});
 
-	// Use active tab's datasource
 	const datasourceId = $derived(analysisStore.activeTab?.datasource_id ?? undefined);
-	const savedSteps = $derived.by(() => {
-		const activeTab = analysisStore.activeTab;
-		if (!activeTab) return [];
-		const savedTab = analysisStore.savedTabs.find((tab) => tab.id === activeTab.id);
-		return savedTab?.steps ?? [];
-	});
-	const previewDatasourceId = $derived.by(() => {
-		const activeTab = analysisStore.activeTab;
-		if (!activeTab) return undefined;
-		const savedTab = analysisStore.savedTabs.find((tab) => tab.id === activeTab.id);
-		return savedTab?.datasource_id ?? undefined;
-	});
 
-	// Get the current datasource object for the active tab
 	const currentDatasource = $derived.by(() => {
 		if (!datasourceId) return null;
 		const data = datasourcesQuery.data;
@@ -264,10 +208,13 @@
 	}
 
 	function markUnsaved() {
-		saveStatus.send('markUnsaved');
+		if (saveStatus.current !== 'saving' && isEditingMode) {
+			saveStatus.send('markUnsaved');
+		}
 	}
 
 	function handleAddStep(type: string) {
+		if (!isEditingMode) return;
 		const step = buildStep(type);
 		analysisStore.addStep(step);
 		selectedStepId = step.id;
@@ -275,6 +222,7 @@
 	}
 
 	function handleInsertStep(type: string, target: DropTarget) {
+		if (!isEditingMode) return;
 		const step = buildStep(type);
 		const inserted = analysisStore.insertStep(step, target.index, target.parentId, target.nextId);
 		if (inserted) {
@@ -284,6 +232,7 @@
 	}
 
 	function handleMoveStep(stepId: string, target: DropTarget) {
+		if (!isEditingMode) return;
 		analysisStore.moveStep(stepId, target.index, target.parentId, target.nextId);
 		markUnsaved();
 	}
@@ -293,6 +242,7 @@
 	}
 
 	function handleDeleteStep(stepId: string) {
+		if (!isEditingMode) return;
 		analysisStore.removeStep(stepId);
 		if (selectedStepId === stepId) {
 			selectedStepId = null;
@@ -312,11 +262,8 @@
 				selectedStepId = null;
 				isSaving = false;
 
-				// Reset engine idle timeout on successful save
-				if (analysisId) {
-					setTimeout(() => {
-						sendKeepalive(analysisId);
-					}, 1000);
+				if (storageKey && typeof window !== 'undefined') {
+					window.localStorage.removeItem(storageKey);
 				}
 			},
 			(error) => {
@@ -326,6 +273,58 @@
 			}
 		);
 	}
+
+	async function setMode(mode: 'editing' | 'viewing') {
+		showModeDropdown = false;
+
+		if (!analysisId) return;
+
+		if (mode === 'editing' && !isEditingMode) {
+			const success = await acquireLock(analysisId);
+			if (success) {
+				isEditingMode = true;
+				startLockCheck();
+			} else {
+				alert('This analysis is currently being edited by another user. Please try again later.');
+			}
+		} else if (mode === 'viewing' && isEditingMode) {
+			// Release lock
+			await releaseLock(analysisId);
+			stopLockCheck();
+			isEditingMode = false;
+		}
+	}
+
+	function startLockCheck() {
+		if (keepaliveInterval || !analysisId) return;
+		keepaliveInterval = window.setInterval(async () => {
+			if (isEditingMode && !hasLock(analysisId!)) {
+				alert(
+					'Your editing session has expired or been taken by another user. Please save your work and reload the page.'
+				);
+				isEditingMode = false;
+				stopLockCheck();
+			}
+		}, 10000);
+	}
+
+	function stopLockCheck() {
+		if (keepaliveInterval) {
+			window.clearInterval(keepaliveInterval);
+			keepaliveInterval = null;
+		}
+	}
+
+	$effect(() => {
+		return () => {
+			stopLockCheck();
+		};
+	});
+
+	$effect(() => {
+		if (!analysisId) return;
+		checkLockStatus(analysisId);
+	});
 
 	function handleCloseConfig() {
 		selectedStepId = null;
@@ -431,15 +430,17 @@
 						<span class="description">{analysisQuery.data.description}</span>
 					{/if}
 				</div>
-				<button
-					class="collapse-arrow collapse-arrow-left"
-					class:collapsed={leftPaneCollapsed}
-					onclick={() => (leftPaneCollapsed = !leftPaneCollapsed)}
-					type="button"
-					title={leftPaneCollapsed ? 'Expand operations' : 'Collapse operations'}
-				>
-					{leftPaneCollapsed ? '‹' : '›'}
-				</button>
+				{#if isEditingMode}
+					<button
+						class="collapse-arrow collapse-arrow-left"
+						class:collapsed={leftPaneCollapsed}
+						onclick={() => (leftPaneCollapsed = !leftPaneCollapsed)}
+						type="button"
+						title={leftPaneCollapsed ? 'Expand operations' : 'Collapse operations'}
+					>
+						{leftPaneCollapsed ? '‹' : '›'}
+					</button>
+				{/if}
 			</div>
 			<div class="header-middle">
 				<div class="header-tabs">
@@ -477,22 +478,51 @@
 				</div>
 			</div>
 			<div class="header-right">
-				<button
-					class="collapse-arrow collapse-arrow-right"
-					class:collapsed={rightPaneCollapsed}
-					onclick={() => (rightPaneCollapsed = !rightPaneCollapsed)}
-					type="button"
-					title={rightPaneCollapsed ? 'Expand configuration' : 'Collapse configuration'}
-				>
-					{rightPaneCollapsed ? '›' : '‹'}
-				</button>
-				<button class="preview-button" onclick={handlePreview} type="button"> Preview </button>
+				{#if isEditingMode}
+					<button
+						class="collapse-arrow collapse-arrow-right"
+						class:collapsed={rightPaneCollapsed}
+						onclick={() => (rightPaneCollapsed = !rightPaneCollapsed)}
+						type="button"
+						title={rightPaneCollapsed ? 'Expand configuration' : 'Collapse configuration'}
+					>
+						{rightPaneCollapsed ? '›' : '‹'}
+					</button>
+				{/if}
+
+				<div class="mode-toggle-container">
+					<button
+						class="mode-toggle"
+						onclick={() => (showModeDropdown = !showModeDropdown)}
+						type="button"
+					>
+						{isEditingMode ? 'Editing' : 'Viewing'}
+						<span class="dropdown-arrow">▼</span>
+					</button>
+
+					{#if showModeDropdown}
+						<div class="mode-dropdown">
+							<button class="mode-option" onclick={() => setMode('viewing')} type="button">
+								<span class="radio">{isEditingMode ? '○' : '●'}</span>
+								<span>Viewing</span>
+							</button>
+							<button class="mode-option" onclick={() => setMode('editing')} type="button">
+								<span class="radio">{isEditingMode ? '●' : '○'}</span>
+								<span>Editing</span>
+							</button>
+						</div>
+					{/if}
+				</div>
+
 				<button
 					class="save-button"
 					class:saved={saveStatus.current === 'saved'}
 					class:unsaved={saveStatus.current === 'unsaved'}
 					onclick={handleSave}
-					disabled={isSaving || saveStatus.current === 'saving' || analysisStore.loading}
+					disabled={!isEditingMode ||
+						isSaving ||
+						saveStatus.current === 'saving' ||
+						analysisStore.loading}
 					type="button"
 				>
 					{saveStatus.current === 'saving'
@@ -505,21 +535,19 @@
 		</header>
 
 		<div class="editor-workspace" role="application">
-			<div class="left-pane" class:collapsed={leftPaneCollapsed}>
-				<StepLibrary onAddStep={handleAddStep} onInsertStep={handleInsertStep} />
-			</div>
+			{#if isEditingMode}
+				<div class="left-pane" class:collapsed={leftPaneCollapsed}>
+					<StepLibrary onAddStep={handleAddStep} onInsertStep={handleInsertStep} />
+				</div>
+			{/if}
 
-			<div class="center-pane">
+			<div class="center-pane" class:readonly={!isEditingMode} class:expanded={!isEditingMode}>
 				<PipelineCanvas
 					steps={analysisStore.pipeline}
-					{previewDatasourceId}
-					{previewVersion}
-					{isPreviewStale}
 					{analysisId}
 					{datasourceId}
 					datasource={currentDatasource}
 					tabName={analysisStore.activeTab?.name}
-					tabId={activeTabId ?? ''}
 					onStepClick={handleSelectStep}
 					onStepDelete={handleDeleteStep}
 					onInsertStep={handleInsertStep}
@@ -529,15 +557,17 @@
 				/>
 			</div>
 
-			<div class="right-pane" class:collapsed={rightPaneCollapsed}>
-				<StepConfig
-					step={selectedStepState}
-					schema={analysisStore.calculatedSchema}
-					{isLoadingSchema}
-					onClose={handleCloseConfig}
-					onConfigChange={markUnsaved}
-				/>
-			</div>
+			{#if isEditingMode}
+				<div class="right-pane" class:collapsed={rightPaneCollapsed}>
+					<StepConfig
+						bind:step={selectedStepState}
+						schema={analysisStore.calculatedSchema}
+						{isLoadingSchema}
+						onClose={handleCloseConfig}
+						onConfigChange={markUnsaved}
+					/>
+				</div>
+			{/if}
 		</div>
 	</div>
 {/if}
@@ -706,8 +736,7 @@
 		border-right: 1px solid var(--panel-border);
 	}
 
-	.save-button,
-	.preview-button {
+	.save-button {
 		flex: 1;
 		height: 100%;
 		padding: 0 var(--space-4);
@@ -730,15 +759,6 @@
 	.save-button:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
-	}
-
-	.preview-button {
-		border-right: 1px solid var(--panel-border);
-		color: var(--fg-secondary);
-	}
-	.preview-button:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-primary);
 	}
 
 	.header-tabs {
@@ -861,5 +881,102 @@
 	}
 	.center-pane :global(> *) {
 		width: 100%;
+	}
+
+	/* Mode toggle styles */
+	.mode-toggle-container {
+		position: relative;
+		display: flex;
+		align-items: center;
+		left: 5px;
+	}
+
+	.mode-toggle {
+		padding: var(--space-2) var(--space-3);
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border-primary);
+		border-radius: var(--radius-sm);
+		color: var(--fg-secondary);
+		font-size: var(--text-sm);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		transition: all var(--transition);
+	}
+
+	.mode-toggle:hover {
+		background: var(--bg-hover);
+		border-color: var(--border-secondary);
+	}
+
+	.dropdown-arrow {
+		font-size: var(--text-xs);
+		color: var(--fg-muted);
+	}
+
+	.mode-dropdown {
+		position: absolute;
+		top: calc(100% + 4px);
+		left: 0;
+		background: var(--panel-bg);
+		border: 1px solid var(--panel-border);
+		border-radius: var(--radius-sm);
+		box-shadow: var(--shadow-soft);
+		z-index: 100;
+		min-width: 140px;
+		padding: var(--space-1);
+	}
+
+	.mode-option {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		width: 100%;
+		background: none;
+		border: none;
+		color: var(--fg-secondary);
+		font-size: var(--text-sm);
+		cursor: pointer;
+		border-radius: var(--radius-sm);
+		transition: background-color var(--transition);
+		text-align: left;
+	}
+
+	.mode-option:hover {
+		background: var(--bg-hover);
+	}
+
+	.radio {
+		color: var(--accent-primary);
+		font-weight: var(--font-bold);
+	}
+
+	/* Readonly mode - disable editing but allow scrolling */
+	.readonly {
+		opacity: 0.7;
+	}
+
+	/* Block interactions in readonly mode but keep scroll */
+	.readonly :global(.step-node),
+	.readonly :global(.step-button),
+	.readonly :global(.drag-handle),
+	.readonly :global(.action-btn),
+	.readonly :global(.drop-slot),
+	.readonly :global(.datasource-node) {
+		pointer-events: none !important;
+	}
+
+	/* Expanded center pane when side panes are hidden */
+	.center-pane.expanded {
+		flex: 1;
+	}
+
+	/* Keep the mode toggle clickable even in readonly */
+	.header-right :global(.mode-toggle-container),
+	.header-right :global(.mode-toggle-container *) {
+		pointer-events: auto !important;
+		opacity: 1 !important;
 	}
 </style>

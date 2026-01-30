@@ -47,19 +47,19 @@
 
 	const excludedSet = $derived(new Set(excludeIds));
 
-	const availableOptions = $derived(
-		datasources.filter((ds) => !excludedSet.has(ds.id))
-	);
+	const availableOptions = $derived(datasources.filter((ds) => !excludedSet.has(ds.id)));
 
 	const filteredOptions = $derived(() => {
 		if (!search.trim()) return availableOptions;
-		
+
 		const query = search.toLowerCase();
 		return availableOptions.filter((ds) => {
 			const matchesName = searchFields.includes('name') && ds.name.toLowerCase().includes(query);
-			const matchesSourceType = searchFields.includes('source_type') && ds.source_type.toLowerCase().includes(query);
+			const matchesSourceType =
+				searchFields.includes('source_type') && ds.source_type.toLowerCase().includes(query);
 			const fileType = (ds.config?.file_type as string) ?? '';
-			const matchesFileType = searchFields.includes('file_type') && fileType.toLowerCase().includes(query);
+			const matchesFileType =
+				searchFields.includes('file_type') && fileType.toLowerCase().includes(query);
 			return matchesName || matchesSourceType || matchesFileType;
 		});
 	});

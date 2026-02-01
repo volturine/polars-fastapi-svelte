@@ -107,7 +107,6 @@
 			mode="single"
 			id={uid}
 			highlightId={currentTabDatasource ?? undefined}
-			excludeIds={currentTabDatasource ? [currentTabDatasource] : []}
 			onSelect={(id) => {
 				config.right_source = id;
 				loadRightSchema(id);

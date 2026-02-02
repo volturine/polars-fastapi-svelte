@@ -50,7 +50,9 @@ export class SchemaStore {
 				output = cachedSchema;
 			} else if (step.type === 'join') {
 				const rightSource = typeof config.right_source === 'string' ? config.right_source : '';
-				const rightSchema = rightSource ? this.joinSchemas.get(rightSource) ?? emptySchema() : emptySchema();
+				const rightSchema = rightSource
+					? (this.joinSchemas.get(rightSource) ?? emptySchema())
+					: emptySchema();
 				output = joinTransform(input, config, rightSchema);
 			} else if (step.type === 'union_by_name') {
 				const sources = Array.isArray(config.sources) ? config.sources : [];

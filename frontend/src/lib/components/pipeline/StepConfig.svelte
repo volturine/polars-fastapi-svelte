@@ -26,6 +26,7 @@
 	import { schemaStore } from '$lib/stores/schema.svelte';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { getStepSchema, type StepSchemaResponse } from '$lib/api/compute';
+	import { normalizeConfig } from '$lib/utils/step-config-defaults';
 	import FilterConfig from '$lib/components/operations/FilterConfig.svelte';
 	import SelectConfig from '$lib/components/operations/SelectConfig.svelte';
 	import GroupByConfig from '$lib/components/operations/GroupByConfig.svelte';
@@ -87,7 +88,9 @@
 			: { columns: [], row_count: null }
 	);
 
-	function cloneConfig(config: Record<string, unknown> | null | undefined): Record<string, unknown> {
+	function cloneConfig(
+		config: Record<string, unknown> | null | undefined
+	): Record<string, unknown> {
 		const payload = config ?? {};
 		return JSON.parse(JSON.stringify(payload)) as Record<string, unknown>;
 	}
@@ -100,7 +103,11 @@
 		}
 		if (draftStepId === step.id) return;
 		draftStepId = step.id;
-		draftConfig = cloneConfig(step.config as Record<string, unknown>);
+		const normalizedConfig = normalizeConfig(
+			step.type,
+			(step.config as Record<string, unknown>) ?? {}
+		) as Record<string, unknown>;
+		draftConfig = cloneConfig(normalizedConfig);
 	});
 
 	const hasChanges = $derived(
@@ -164,7 +171,6 @@
 		if (!step) return;
 		draftConfig = cloneConfig(step.config as Record<string, unknown>);
 	}
-
 </script>
 
 {#if step === null}
@@ -179,15 +185,16 @@
 	<div class="step-config">
 		<div class="config-header">
 			<h3>Configure Step</h3>
-			<button class="close-button" onclick={() => onClose?.()} type="button" title="Close">×</button>
+			<button class="close-button" onclick={() => onClose?.()} type="button" title="Close">×</button
+			>
 		</div>
 
 		<div class="config-body">
 			{#if !schema && !isLoadingSchema}
-			<div class="warning-message">
-				<p>Schema not available. Please ensure the data source is loaded.</p>
-				<button onclick={() => onClose?.()} type="button">Close</button>
-			</div>
+				<div class="warning-message">
+					<p>Schema not available. Please ensure the data source is loaded.</p>
+					<button onclick={() => onClose?.()} type="button">Close</button>
+				</div>
 			{:else if isLoadingSchema}
 				<div class="loading-message">
 					<div class="spinner-md"></div>
@@ -288,9 +295,7 @@
 			{:else if step.type === 'union_by_name'}
 				<UnionByNameConfig
 					schema={inputSchema}
-					bind:config={
-						draftConfig as unknown as { sources: string[]; allow_missing: boolean }
-					}
+					bind:config={draftConfig as unknown as { sources: string[]; allow_missing: boolean }}
 				/>
 			{:else if step.type === 'export'}
 				<ExportConfig
@@ -299,10 +304,10 @@
 					}
 				/>
 			{:else}
-			<div class="not-implemented">
-				<p>Configuration for {step.type} is not yet implemented</p>
-				<button onclick={() => onClose?.()} type="button">Close</button>
-			</div>
+				<div class="not-implemented">
+					<p>Configuration for {step.type} is not yet implemented</p>
+					<button onclick={() => onClose?.()} type="button">Close</button>
+				</div>
 			{/if}
 		</div>
 		<div class="config-actions">

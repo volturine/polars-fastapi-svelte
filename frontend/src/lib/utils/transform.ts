@@ -41,14 +41,14 @@ export interface StepConfig {
 	right_columns?: string[];
 	sources?: string[];
 	allow_missing?: boolean;
-		expressions?: Array<{
-			name: string;
-			type: string;
-			value?: string | number | null;
-			column?: string | null;
-			args?: string[] | null;
-			code?: string | null;
-		}>;
+	expressions?: Array<{
+		name: string;
+		type: string;
+		value?: string | number | null;
+		column?: string | null;
+		args?: string[] | null;
+		code?: string | null;
+	}>;
 	[key: string]: unknown;
 }
 
@@ -366,7 +366,8 @@ export function expressionTransform(input: Schema | null, config: StepConfig): S
 	if (!input) return { columns: [], row_count: null };
 
 	const expression = config.expression as string | undefined;
-	const columnName = (config.column_name as string | undefined) || (config.target_column as string | undefined);
+	const columnName =
+		(config.column_name as string | undefined) || (config.target_column as string | undefined);
 
 	if (!expression || !columnName) {
 		return { columns: input.columns, row_count: null };

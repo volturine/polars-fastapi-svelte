@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { uploadFile, uploadBulkFiles, connectDatabase, connectApi, connectDuckDB } from '$lib/api/datasource';
+	import {
+		uploadFile,
+		uploadBulkFiles,
+		connectDatabase,
+		connectApi,
+		connectDuckDB
+	} from '$lib/api/datasource';
 	import { preflightExcel, previewExcel, confirmExcel } from '$lib/api/excel';
 	import type { ExcelPreflightResponse, ExcelPreviewResponse } from '$lib/api/excel';
 	import type { BulkUploadResult } from '$lib/api/datasource';
@@ -444,7 +450,8 @@
 								disabled={loading}
 							/>
 							<span class="radio-label">Bulk Upload</span>
-							<span class="radio-desc">Upload multiple files quickly (CSV, Parquet, JSON only)</span>
+							<span class="radio-desc">Upload multiple files quickly (CSV, Parquet, JSON only)</span
+							>
 						</label>
 					</div>
 				</div>
@@ -481,7 +488,8 @@
 							disabled={loading}
 						/>
 						<p class="hint">
-							Select multiple files. Supported: CSV, Parquet, JSON, NDJSON, Excel. Names will be derived from filenames.
+							Select multiple files. Supported: CSV, Parquet, JSON, NDJSON, Excel. Names will be
+							derived from filenames.
 						</p>
 						{#if selectedFiles.length > 0}
 							<div class="file-list">
@@ -517,7 +525,11 @@
 						<div class="bulk-results">
 							<h4>Upload Results</h4>
 							{#each bulkResults as result (result.name)}
-								<div class="result-item" class:success={result.success} class:error={!result.success}>
+								<div
+									class="result-item"
+									class:success={result.success}
+									class:error={!result.success}
+								>
 									<span class="result-icon">{result.success ? '✓' : '✗'}</span>
 									<span class="result-name">{result.name}</span>
 									{#if result.error}
@@ -648,7 +660,9 @@
 						onclick={handleBulkUpload}
 						disabled={loading || selectedFiles.length === 0}
 					>
-						{loading ? 'Uploading...' : `Upload ${selectedFiles.length} File${selectedFiles.length !== 1 ? 's' : ''}`}
+						{loading
+							? 'Uploading...'
+							: `Upload ${selectedFiles.length} File${selectedFiles.length !== 1 ? 's' : ''}`}
 					</button>
 				{/if}
 			</div>

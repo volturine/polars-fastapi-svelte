@@ -1,9 +1,9 @@
 /**
  * Context-based store management for SSR safety and better testability.
- * 
+ *
  * This module provides a centralized way to create and access stores via Svelte's context API,
  * preventing shared state between server requests and enabling easier testing.
- * 
+ *
  * Usage:
  * 1. In root layout: call initializeStores() to create and set all stores
  * 2. In components: use getXxxContext() to access stores (falls back to singletons for backward compat)

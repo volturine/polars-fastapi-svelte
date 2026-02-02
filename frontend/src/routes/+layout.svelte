@@ -72,7 +72,8 @@
 
 	const navItems = [
 		{ href: '/', label: 'Analyses' },
-		{ href: '/datasources', label: 'Data Sources' }
+		{ href: '/datasources', label: 'Data Sources' },
+		{ href: '/udfs', label: 'UDF Library' }
 	];
 </script>
 
@@ -100,10 +101,11 @@
 				<nav class="nav">
 					{#each navItems as item (item.href)}
 						<a
-							href={resolve(item.href as '/' | '/datasources')}
+							href={resolve(item.href as '/')}
 							class="nav-link"
 							class:active={$page.url.pathname === item.href ||
-								($page.url.pathname.startsWith('/analysis') && item.href === '/')}
+								($page.url.pathname.startsWith('/analysis') && item.href === '/') ||
+								($page.url.pathname.startsWith('/udfs') && item.href === '/udfs')}
 							data-sveltekit-reload
 						>
 							{item.label}

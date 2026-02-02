@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { PersistedState } from 'runed';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { listAnalyses, deleteAnalysis } from '$lib/api/analysis';
@@ -28,7 +29,7 @@
 	const sortOption = new PersistedState<SortOption>('analysis-sort', 'newest');
 
 	// Selection state
-	let selectedIds = $state<Set<string>>(new Set());
+	const selectedIds = new SvelteSet<string>();
 	let deleteConfirmId = $state<string | null>(null);
 	let bulkDeleteConfirm = $state(false);
 
@@ -61,11 +62,6 @@
 	});
 
 	const selectionCount = $derived(selectedIds.size);
-	const allSelected = $derived(
-		filteredAndSortedAnalyses.length > 0 &&
-			filteredAndSortedAnalyses.every((a) => selectedIds.has(a.id))
-	);
-
 	function createNew() {
 		goto(resolve('/analysis/new'), { invalidateAll: true });
 	}
@@ -79,19 +75,23 @@
 	}
 
 	function toggleSelect(id: string) {
-		const next = new Set(selectedIds);
-		if (next.has(id)) next.delete(id);
-		else next.add(id);
-		selectedIds = next;
+		if (selectedIds.has(id)) {
+			selectedIds.delete(id);
+			return;
+		}
+		selectedIds.add(id);
 	}
 
 	function selectAll() {
 		const ids = filteredAndSortedAnalyses.map((a) => a.id);
-		selectedIds = new Set(ids);
+		selectedIds.clear();
+		for (const id of ids) {
+			selectedIds.add(id);
+		}
 	}
 
 	function clearSelection() {
-		selectedIds = new Set();
+		selectedIds.clear();
 	}
 
 	function requestDelete(id: string) {
@@ -106,7 +106,6 @@
 				queryClient.invalidateQueries({ queryKey: ['analyses'] });
 				if (deleteConfirmId) {
 					selectedIds.delete(deleteConfirmId);
-					selectedIds = new Set(selectedIds);
 				}
 				deleteConfirmId = null;
 			},
@@ -135,7 +134,7 @@
 		}
 
 		queryClient.invalidateQueries({ queryKey: ['analyses'] });
-		selectedIds = new Set();
+		selectedIds.clear();
 		bulkDeleteConfirm = false;
 
 		if (failed > 0) {

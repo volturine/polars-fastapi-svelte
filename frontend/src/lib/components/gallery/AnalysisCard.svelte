@@ -36,7 +36,14 @@
 	}
 </script>
 
-<div class="card" class:selected onclick={handleClick} onkeypress={handleKeyPress} role="button" tabindex="0">
+<div
+	class="card"
+	class:selected
+	onclick={handleClick}
+	onkeypress={handleKeyPress}
+	role="button"
+	tabindex="0"
+>
 	<div class="thumbnail">
 		<input
 			type="checkbox"

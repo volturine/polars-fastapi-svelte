@@ -65,6 +65,7 @@ export interface WithColumnsExpr {
 	column?: string | null;
 	args?: string[] | null;
 	code?: string | null;
+	udf_id?: string | null;
 }
 
 export interface WithColumnsConfigData {

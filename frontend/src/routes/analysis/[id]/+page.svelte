@@ -474,7 +474,7 @@
 					title={leftPaneCollapsed ? 'Expand operations' : 'Collapse operations'}
 					disabled={!isEditingMode}
 				>
-					{leftPaneCollapsed ? '›' : '‹'}
+					{leftPaneCollapsed ? '>' : '<'}
 				</button>
 				<div class="header-tabs">
 					<div class="tabs">
@@ -518,7 +518,7 @@
 					title={rightPaneCollapsed ? 'Expand configuration' : 'Collapse configuration'}
 					disabled={!isEditingMode}
 				>
-					{rightPaneCollapsed ? '‹' : '›'}
+					{rightPaneCollapsed ? '<' : '>'}
 				</button>
 			</div>
 			<div class="header-right">

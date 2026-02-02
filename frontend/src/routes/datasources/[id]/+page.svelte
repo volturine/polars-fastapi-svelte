@@ -23,34 +23,7 @@
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		},
-		enabled: !!datasourceId,
-		onSuccess: (data: DataSource) => {
-			if (initialized) return;
-			name = data.name;
-			const config = data.config as unknown as FileDataSourceConfig;
-			if (isCsv(data)) {
-				const opts = config.csv_options;
-				csvConfig = {
-					delimiter: opts?.delimiter ?? ',',
-					quote_char: opts?.quote_char ?? '"',
-					has_header: opts?.has_header ?? true,
-					skip_rows: opts?.skip_rows ?? 0,
-					encoding: opts?.encoding ?? 'utf8'
-				};
-			}
-			if (isExcel(data)) {
-				excelConfig = {
-					sheet_name: config.sheet_name ?? '',
-					table_name: config.table_name ?? '',
-					named_range: config.named_range ?? '',
-					start_row: config.start_row ?? 0,
-					start_col: config.start_col ?? 0,
-					end_col: config.end_col ?? 0,
-					has_header: config.has_header ?? true
-				};
-			}
-			initialized = true;
-		}
+		enabled: !!datasourceId
 	}));
 
 	const schemaQuery = createQuery(() => ({
@@ -61,10 +34,7 @@
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		},
-		enabled: !!datasourceId && !!datasourceQuery.data,
-		onSuccess: (data: SchemaInfo) => {
-			setSchema(data);
-		}
+		enabled: !!datasourceId && !!datasourceQuery.data
 	}));
 
 	const updateMutation = createMutation(() => ({
@@ -83,13 +53,55 @@
 
 	let name = $state('');
 	let columns = $state<ColumnSchema[]>([]);
-	let originalColumns = $state<ColumnSchema[]>([]);
 	let hasChanges = $state(false);
 	let schemaModified = $state(false);
 	let activeTab = $state<'general' | 'schema' | 'csv' | 'excel'>('general');
 	let initialized = $state(false);
 	let parsingOptionsTimer: ReturnType<typeof setTimeout> | null = null;
 	let isSavingParsing = $state(false);
+
+	$effect(() => {
+		if (!datasourceId) return;
+		initialized = false;
+		hasChanges = false;
+		schemaModified = false;
+		columns = [];
+	});
+
+	$effect(() => {
+		const data = datasourceQuery.data;
+		if (!data) return;
+		if (initialized) return;
+		name = data.name;
+		const config = data.config as unknown as FileDataSourceConfig;
+		if (isCsv(data)) {
+			const opts = config.csv_options;
+			csvConfig = {
+				delimiter: opts?.delimiter ?? ',',
+				quote_char: opts?.quote_char ?? '"',
+				has_header: opts?.has_header ?? true,
+				skip_rows: opts?.skip_rows ?? 0,
+				encoding: opts?.encoding ?? 'utf8'
+			};
+		}
+		if (isExcel(data)) {
+			excelConfig = {
+				sheet_name: config.sheet_name ?? '',
+				table_name: config.table_name ?? '',
+				named_range: config.named_range ?? '',
+				start_row: config.start_row ?? 0,
+				start_col: config.start_col ?? 0,
+				end_col: config.end_col ?? 0,
+				has_header: config.has_header ?? true
+			};
+		}
+		initialized = true;
+	});
+
+	$effect(() => {
+		if (!schemaQuery.data) return;
+		setSchema(schemaQuery.data);
+	});
 
 	// CSV-specific state
 	let csvConfig = $state<{
@@ -129,11 +141,9 @@
 		if (!value) return;
 		if (schemaModified) return;
 		if (!value.columns?.length) {
-			originalColumns = [];
 			columns = [];
 			return;
 		}
-		originalColumns = value.columns.map((col) => ({ ...col }));
 		columns = value.columns.map((col) => ({ ...col }));
 	}
 
@@ -176,13 +186,13 @@
 	) {
 		csvConfig = { ...csvConfig, [key]: value };
 		hasChanges = true;
-		
+
 		// Clear existing timer
 		if (parsingOptionsTimer) {
 			clearTimeout(parsingOptionsTimer);
 			parsingOptionsTimer = null;
 		}
-		
+
 		// Auto-save when parsing options change (affects schema)
 		if (['delimiter', 'skip_rows', 'has_header'].includes(key as string)) {
 			// Immediate save for delimiter and has_header (select/checkbox)
@@ -203,15 +213,25 @@
 	) {
 		excelConfig = { ...excelConfig, [key]: value };
 		hasChanges = true;
-		
+
 		// Clear existing timer
 		if (parsingOptionsTimer) {
 			clearTimeout(parsingOptionsTimer);
 			parsingOptionsTimer = null;
 		}
-		
+
 		// Auto-save when parsing options change (affects schema)
-		if (['sheet_name', 'start_row', 'start_col', 'end_col', 'table_name', 'named_range', 'has_header'].includes(key as string)) {
+		if (
+			[
+				'sheet_name',
+				'start_row',
+				'start_col',
+				'end_col',
+				'table_name',
+				'named_range',
+				'has_header'
+			].includes(key as string)
+		) {
 			// Immediate save for sheet_name, table_name, named_range, has_header (text/checkbox)
 			// Debounced save for numeric inputs
 			if (['start_row', 'start_col', 'end_col'].includes(key as string)) {
@@ -266,7 +286,6 @@
 		if (!saved) return;
 
 		queryClient.removeQueries({ queryKey: ['datasource-schema', datasourceId] });
-		originalColumns = [];
 		columns = [];
 		hasChanges = false;
 		schemaModified = false;
@@ -329,7 +348,6 @@
 		hasChanges = false;
 		schemaModified = false;
 		initialized = false;
-		originalColumns = [];
 	}
 
 	function handleBack() {
@@ -401,11 +419,7 @@
 				Schema
 			</button>
 			{#if csv}
-				<button
-					class="tab"
-					class:active={activeTab === 'csv'}
-					onclick={() => (activeTab = 'csv')}
-				>
+				<button class="tab" class:active={activeTab === 'csv'} onclick={() => (activeTab = 'csv')}>
 					CSV Options
 				</button>
 			{/if}
@@ -602,7 +616,7 @@
 								value={csvConfig.quote_char}
 								onchange={(e) => handleCsvConfigChange('quote_char', e.currentTarget.value)}
 							>
-								<option value='"'>Double Quote (")</option>
+								<option value="&quot;">Double Quote (")</option>
 								<option value="'">Single Quote (')</option>
 								<option value="">None</option>
 							</select>

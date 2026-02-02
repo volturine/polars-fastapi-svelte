@@ -184,7 +184,7 @@
 	const scrollSpeed = 15;
 
 	function autoScroll(canvasEl: HTMLElement, pointerY: number) {
-		const rect = canvasEl.getBoundingClientRect();
+		canvasEl.getBoundingClientRect();
 		const viewportHeight = window.innerHeight;
 
 		// Check if pointer is near the bottom of the viewport

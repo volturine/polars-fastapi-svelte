@@ -108,9 +108,7 @@
 			{/each}
 		</div>
 	{:else}
-		<p id="rename-empty-state" class="empty-state" role="status">
-			No renames yet.
-		</p>
+		<p id="rename-empty-state" class="empty-state" role="status">No renames yet.</p>
 	{/if}
 </div>
 

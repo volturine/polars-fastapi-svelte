@@ -188,10 +188,7 @@
 									</div>
 								{:else}
 									<div class="action-buttons">
-										<a
-											href={`/datasources/${datasource.id}`}
-											class="btn btn-ghost btn-sm"
-										>
+										<a href={resolve(`/datasources/${datasource.id}`)} class="btn btn-ghost btn-sm">
 											Edit
 										</a>
 										<button

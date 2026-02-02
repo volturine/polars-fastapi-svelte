@@ -13,6 +13,8 @@
 
 	let { value = $bindable(''), height = '360px', onEdit }: Props = $props();
 	let view: EditorView | null = null;
+	let skipUpdate = false;
+	let programmatic = false;
 
 	const theme = EditorView.theme(
 		{
@@ -66,8 +68,13 @@
 				syntaxHighlighting(highlight),
 				EditorView.updateListener.of((update) => {
 					if (!update.docChanged) return;
+					if (programmatic) return;
+					skipUpdate = true;
 					value = update.state.doc.toString();
 					onEdit?.();
+					queueMicrotask(() => {
+						skipUpdate = false;
+					});
 				})
 			]
 		});
@@ -79,6 +86,20 @@
 			}
 		};
 	}
+
+	$effect(() => {
+		if (!view) return;
+		if (skipUpdate) return;
+		const current = view.state.doc.toString();
+		if (current === value) return;
+		programmatic = true;
+		view.dispatch({
+			changes: { from: 0, to: current.length, insert: value }
+		});
+		queueMicrotask(() => {
+			programmatic = false;
+		});
+	});
 </script>
 
 <div class="code-editor" style:height>

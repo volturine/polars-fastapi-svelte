@@ -15,15 +15,17 @@
 
 	let { schema, config = $bindable({ columns: [] }) }: Props = $props();
 
+	const safeColumns = $derived(Array.isArray(config.columns) ? config.columns : []);
+
 	// Use SvelteSet for O(1) lookups
-	const selectedSet = $derived(new SvelteSet(config.columns));
+	const selectedSet = $derived(new SvelteSet(safeColumns));
 
 	function toggleColumn(columnName: string) {
 		if (selectedSet.has(columnName)) {
-			config.columns = config.columns.filter((c) => c !== columnName);
-		} else {
-			config.columns = [...config.columns, columnName];
+			config.columns = safeColumns.filter((c) => c !== columnName);
+			return;
 		}
+		config.columns = [...safeColumns, columnName];
 	}
 
 	function selectAll() {
@@ -76,11 +78,11 @@
 		{/each}
 	</div>
 
-	{#if config.columns.length > 0}
+	{#if safeColumns.length > 0}
 		<div id="{uid}-summary" class="selected-summary" aria-live="polite">
-			<strong>Selected ({config.columns.length}):</strong>
+			<strong>Selected ({safeColumns.length}):</strong>
 			<div class="selected-names">
-				{config.columns.join(', ')}
+				{safeColumns.join(', ')}
 			</div>
 		</div>
 	{/if}

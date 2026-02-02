@@ -54,9 +54,11 @@
 	type WithColumnsConfigShape = {
 		expressions: Array<{
 			name: string;
-			type: 'literal' | 'column';
+			type: 'literal' | 'column' | 'udf';
 			value?: string | number | null;
 			column?: string | null;
+			args?: string[] | null;
+			code?: string | null;
 		}>;
 	};
 

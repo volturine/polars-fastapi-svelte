@@ -41,12 +41,14 @@ export interface StepConfig {
 	right_columns?: string[];
 	sources?: string[];
 	allow_missing?: boolean;
-	expressions?: Array<{
-		name: string;
-		type: string;
-		value?: string | number | null;
-		column?: string | null;
-	}>;
+		expressions?: Array<{
+			name: string;
+			type: string;
+			value?: string | number | null;
+			column?: string | null;
+			args?: string[] | null;
+			code?: string | null;
+		}>;
 	[key: string]: unknown;
 }
 

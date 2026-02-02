@@ -3,6 +3,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+	resolve: {
+		dedupe: ['@codemirror/state', '@codemirror/view', '@codemirror/language', '@lezer/common', '@lezer/lr']
+	},
 	plugins: [
 		sveltekit(),
 		VitePWA({

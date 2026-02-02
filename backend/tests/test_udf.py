@@ -4,7 +4,6 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from modules.udf.models import Udf
 from modules.udf.schemas import (
     UdfCreateSchema,
     UdfImportItemSchema,

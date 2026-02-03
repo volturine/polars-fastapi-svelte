@@ -152,10 +152,7 @@ class IcebergLogWriter:
     def _enqueue_rows(self, kind: str, rows: list[dict[str, Any]]) -> None:
         if not rows:
             return
-        try:
-            self._queue.put_nowait((kind, rows))
-        except queue.Full:
-            return
+        self._queue.put((kind, rows))
 
     def _run(self) -> None:
         while True:

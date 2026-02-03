@@ -1,4 +1,5 @@
 import logging
+import os
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -80,9 +81,9 @@ async def create_file_datasource(
 ) -> DataSourceResponse:
     """Create a file-based datasource."""
     datasource_id = str(uuid.uuid4())
-    resolved_path = Path(file_path).resolve()
-    data_root = settings.data_dir.resolve()
-    upload_root = settings.upload_dir.resolve()
+    resolved_path = Path(os.path.realpath(Path(file_path).resolve()))
+    data_root = Path(os.path.realpath(settings.data_dir.resolve()))
+    upload_root = Path(os.path.realpath(settings.upload_dir.resolve()))
     within_data_root = data_root in resolved_path.parents or data_root == resolved_path
     within_upload_root = upload_root in resolved_path.parents or upload_root == resolved_path
     if not (within_data_root or within_upload_root):

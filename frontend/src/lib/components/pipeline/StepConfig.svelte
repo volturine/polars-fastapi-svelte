@@ -340,7 +340,7 @@
 
 <style>
 	.step-config {
-		width: var(--operations-panel-width, 280px);
+		width: 100%;
 		background-color: var(--panel-bg);
 		display: flex;
 		flex-direction: column;

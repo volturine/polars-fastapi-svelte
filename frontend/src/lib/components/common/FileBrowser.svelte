@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { listDataFiles } from '$lib/api/datasource';
 	import type { FileListItem, FileListResponse } from '$lib/api/datasource';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
@@ -13,7 +14,7 @@
 		oncancel: () => void;
 	} = $props();
 
-	let path = $state(initialPath);
+	let path = $state(untrack(() => initialPath));
 	let root = $state('');
 	let loading = $state(false);
 	let error = $state<string | null>(null);

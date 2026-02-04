@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onClickOutside, Debounced } from 'runed';
-	import { X, Database, Globe, Snowflake } from 'lucide-svelte';
+	import { X } from 'lucide-svelte';
 	import type { DataSource } from '$lib/types/datasource';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 
@@ -33,19 +33,6 @@
 			return ds.name.toLowerCase().includes(query);
 		})
 	);
-
-	function getSourceTypeIcon(sourceType: string) {
-		switch (sourceType) {
-			case 'database':
-				return Database;
-			case 'api':
-				return Globe;
-			case 'iceberg':
-				return Snowflake;
-			default:
-				return null;
-		}
-	}
 
 	function handleClose() {
 		onClose();
@@ -137,16 +124,13 @@
 								<span class="datasource-name">{ds.name}</span>
 								<span class="datasource-type">
 									{#if ds.source_type === 'file'}
+										<FileTypeBadge path={ds.config.file_path as string} size="sm" showIcon={true} />
+									{:else}
 										<FileTypeBadge
-											path={ds.config.file_path as string}
+											sourceType={ds.source_type as 'database' | 'api' | 'iceberg' | 'duckdb'}
 											size="sm"
 											showIcon={true}
 										/>
-									{:else}
-										{@const Icon = getSourceTypeIcon(ds.source_type)}
-										{#if Icon}
-											<Icon size={16} />
-										{/if}
 									{/if}
 								</span>
 							</button>

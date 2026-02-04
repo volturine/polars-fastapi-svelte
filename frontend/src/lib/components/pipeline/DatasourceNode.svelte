@@ -134,11 +134,6 @@
 		);
 	}
 
-	let fileType = $derived(
-		datasource?.source_type === 'file' && datasource.config
-			? (datasource.config.file_type as string | undefined) ?? null
-			: null
-	);
 	let sourceType = $derived(datasource?.source_type ?? 'file');
 	let isDragActive = $derived(drag.active);
 </script>
@@ -225,7 +220,11 @@
 									showIcon={true}
 								/>
 							{:else}
-								<span class="meta-badge">{datasource.source_type}</span>
+								<FileTypeBadge
+									sourceType={datasource.source_type as 'database' | 'api' | 'iceberg' | 'duckdb'}
+									size="sm"
+									showIcon={true}
+								/>
 							{/if}
 						</div>
 					</div>
@@ -493,18 +492,6 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-	}
-
-	.meta-badge {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		font-size: 10px;
-		color: var(--fg-secondary);
-		background-color: var(--bg-secondary);
-		padding: 2px 8px;
-		border-radius: var(--radius-sm);
-		border: 1px solid var(--border-secondary);
 	}
 
 	.row-count-section {

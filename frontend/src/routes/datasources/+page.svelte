@@ -151,10 +151,7 @@
 							<span class="col-name">{datasource.name}</span>
 							<span class="col-type">
 								{#if datasource.source_type === 'file'}
-									<FileTypeBadge
-										path={(datasource.config?.file_path as string) ?? ''}
-										size="sm"
-									/>
+									<FileTypeBadge path={(datasource.config?.file_path as string) ?? ''} size="sm" />
 								{:else}
 									<FileTypeBadge
 										sourceType={datasource.source_type as 'database' | 'api' | 'iceberg' | 'duckdb'}

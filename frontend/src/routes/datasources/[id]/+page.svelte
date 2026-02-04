@@ -13,6 +13,7 @@
 		IcebergDataSourceConfig
 	} from '$lib/types/datasource';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
+	import ColumnTypeSelect from '$lib/components/common/ColumnTypeSelect.svelte';
 
 	const queryClient = useQueryClient();
 	const datasourceId = $derived(page.params.id);
@@ -568,41 +569,12 @@
 										value={column.name}
 										oninput={(e) => handleColumnNameChange(index, e.currentTarget.value)}
 									/>
-									<select
-										class="col-type-select"
+									<ColumnTypeSelect
 										value={column.dtype}
-										onchange={(e) => handleColumnTypeChange(index, e.currentTarget.value)}
-									>
-										<optgroup label="String">
-											<option value="String">String</option>
-											<option value="Categorical">Categorical</option>
-										</optgroup>
-										<optgroup label="Integer">
-											<option value="Int8">Int8</option>
-											<option value="Int16">Int16</option>
-											<option value="Int32">Int32</option>
-											<option value="Int64">Int64</option>
-											<option value="UInt8">UInt8</option>
-											<option value="UInt16">UInt16</option>
-											<option value="UInt32">UInt32</option>
-											<option value="UInt64">UInt64</option>
-										</optgroup>
-										<optgroup label="Float">
-											<option value="Float32">Float32</option>
-											<option value="Float64">Float64</option>
-										</optgroup>
-										<optgroup label="Temporal">
-											<option value="Date">Date</option>
-											<option value="Datetime">Datetime</option>
-											<option value="Time">Time</option>
-											<option value="Duration">Duration</option>
-										</optgroup>
-										<optgroup label="Other">
-											<option value="Boolean">Boolean</option>
-											<option value="Binary">Binary</option>
-											<option value="Null">Null</option>
-										</optgroup>
-									</select>
+										onchange={(val) => handleColumnTypeChange(index, val)}
+										size="sm"
+										showBadge={true}
+									/>
 									<span class="col-sample" title={column.sample_value ?? ''}>
 										{column.sample_value ?? '—'}
 									</span>
@@ -1069,10 +1041,6 @@
 	}
 
 	.col-name-input {
-		width: 100%;
-	}
-
-	.col-type-select {
 		width: 100%;
 	}
 

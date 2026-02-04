@@ -10,9 +10,6 @@
 		PanelLeft,
 		Pencil,
 		RefreshCw,
-		FileSpreadsheet,
-		FileBracesCorner,
-		FileType,
 		Hash,
 		Check,
 		X,
@@ -20,6 +17,7 @@
 		ChevronDown
 	} from 'lucide-svelte';
 	import { drag } from '$lib/stores/drag.svelte';
+	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 
 	interface Props {
 		datasource: DataSource | null;
@@ -136,15 +134,11 @@
 		);
 	}
 
-	function getFileType(): string | null {
-		if (datasource?.source_type === 'file' && datasource.config) {
-			const fileType = datasource.config.file_type as string | undefined;
-			return fileType ?? null;
-		}
-		return null;
-	}
-
-	let fileType = $derived(getFileType());
+	let fileType = $derived(
+		datasource?.source_type === 'file' && datasource.config
+			? (datasource.config.file_type as string | undefined) ?? null
+			: null
+	);
 	let sourceType = $derived(datasource?.source_type ?? 'file');
 	let isDragActive = $derived(drag.active);
 </script>
@@ -224,22 +218,14 @@
 					<div class="dataset-info">
 						<div class="dataset-name">{datasource.name}</div>
 						<div class="dataset-meta">
-							<span class="meta-badge">{fileType ?? datasource.source_type}</span>
-							{#if fileType}
-								<span class="meta-badge file-type">
-									{#if fileType === 'csv'}
-										<FileSpreadsheet size={10} />
-									{:else if fileType === 'json'}
-										<FileBracesCorner size={10} />
-									{:else if fileType === 'parquet'}
-										<FileType size={10} />
-									{:else if fileType === 'ndjson'}
-										<FileBracesCorner size={10} />
-									{:else}
-										<FileText size={10} />
-									{/if}
-									{fileType}
-								</span>
+							{#if datasource.source_type === 'file'}
+								<FileTypeBadge
+									path={(datasource.config?.file_path as string) ?? ''}
+									size="sm"
+									showIcon={true}
+								/>
+							{:else}
+								<span class="meta-badge">{datasource.source_type}</span>
 							{/if}
 						</div>
 					</div>
@@ -519,10 +505,6 @@
 		padding: 2px 8px;
 		border-radius: var(--radius-sm);
 		border: 1px solid var(--border-secondary);
-	}
-	.meta-badge.file-type {
-		color: var(--fg-tertiary);
-		text-transform: uppercase;
 	}
 
 	.row-count-section {

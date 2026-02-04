@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { listDataFiles } from '$lib/api/datasource';
 	import type { FileListItem, FileListResponse } from '$lib/api/datasource';
+	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 
 	let {
 		initialPath = '',
@@ -41,17 +42,6 @@
 
 	function entryType(entry: FileListItem) {
 		if (entry.is_dir) return 'folder';
-		return 'file';
-	}
-
-	function entryTag(entry: FileListItem): string {
-		if (entry.is_dir) return 'folder';
-		const lower = entry.name.toLowerCase();
-		if (lower.endsWith('.parquet')) return 'parquet';
-		if (lower.endsWith('.csv')) return 'csv';
-		if (lower.endsWith('.ndjson') || lower.endsWith('.jsonl')) return 'ndjson';
-		if (lower.endsWith('.json')) return 'json';
-		if (lower.endsWith('.xlsx')) return 'excel';
 		return 'file';
 	}
 
@@ -160,7 +150,7 @@
 								<span class="picker-name">{entry.name}</span>
 								<span class="picker-type">{entryType(entry)}</span>
 							</div>
-							<span class={`file-tag ${entryTag(entry)}`}>{entryTag(entry)}</span>
+							<FileTypeBadge path={entry.name} isFolder={entry.is_dir} size="sm" />
 						</button>
 					{/each}
 				</div>
@@ -371,45 +361,5 @@
 	}
 	.btn-text:hover {
 		text-decoration: underline;
-	}
-	.file-tag {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		font-size: 10px;
-		color: var(--fg-secondary);
-		background-color: var(--bg-secondary);
-		padding: 2px 8px;
-		border-radius: var(--radius-sm);
-		border: 1px solid var(--border-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		flex-shrink: 0;
-	}
-	.file-tag.folder {
-		color: #2e7d32;
-		border-color: rgba(46, 125, 50, 0.4);
-		background: rgba(46, 125, 50, 0.12);
-	}
-	.file-tag.parquet {
-		color: #8b5cf6;
-		border-color: rgba(139, 92, 246, 0.45);
-		background: rgba(139, 92, 246, 0.12);
-	}
-	.file-tag.csv {
-		color: #2563eb;
-		border-color: rgba(37, 99, 235, 0.45);
-		background: rgba(37, 99, 235, 0.12);
-	}
-	.file-tag.json,
-	.file-tag.ndjson {
-		color: #0f766e;
-		border-color: rgba(15, 118, 110, 0.45);
-		background: rgba(15, 118, 110, 0.12);
-	}
-	.file-tag.excel {
-		color: #b45309;
-		border-color: rgba(180, 83, 9, 0.45);
-		background: rgba(180, 83, 9, 0.12);
 	}
 </style>

@@ -12,6 +12,7 @@
 		FileDataSourceConfig,
 		IcebergDataSourceConfig
 	} from '$lib/types/datasource';
+	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 
 	const queryClient = useQueryClient();
 	const datasourceId = $derived(page.params.id);
@@ -488,7 +489,7 @@
 								{@const config = datasource.config as unknown as FileDataSourceConfig}
 								<div class="info-item">
 									<span class="info-label">File Type</span>
-									<span class="info-value">{config.file_type}</span>
+									<FileTypeBadge path={config.file_path} size="sm" />
 								</div>
 							{/if}
 							{#if isIceberg(datasource)}

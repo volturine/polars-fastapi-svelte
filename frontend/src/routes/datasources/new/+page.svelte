@@ -15,6 +15,8 @@
 	import type { ExcelPreflightResponse, ExcelPreviewResponse } from '$lib/api/excel';
 	import type { BulkUploadResult } from '$lib/api/datasource';
 	import FileBrowser from '$lib/components/common/FileBrowser.svelte';
+	import { detectFileType } from '$lib/utils/fileTypes';
+	import { MessageCircleQuestionMark } from 'lucide-svelte';
 
 	type Tab = 'file' | 'database' | 'api';
 	type DatabaseType = 'duckdb' | 'iceberg' | 'other';
@@ -335,19 +337,6 @@
 	let pickerOpen = $state(false);
 	let pathIsFolder = $state(false);
 
-	function inferPathType(
-		path: string,
-		isFolder: boolean
-	): 'parquet' | 'csv' | 'json' | 'ndjson' | null {
-		if (isFolder) return 'parquet';
-		const lower = path.toLowerCase();
-		if (lower.endsWith('.parquet')) return 'parquet';
-		if (lower.endsWith('.csv')) return 'csv';
-		if (lower.endsWith('.ndjson') || lower.endsWith('.jsonl')) return 'ndjson';
-		if (lower.endsWith('.json')) return 'json';
-		return null;
-	}
-
 	async function handlePathConnect() {
 		if (!pathName || !pathValue) {
 			error = 'Please fill in name and path';
@@ -355,10 +344,9 @@
 		}
 		const trimmedPath = pathValue.trim();
 		const normalizedPath = trimmedPath.replace(/\/+$/, '');
-		const lowerPath = normalizedPath.toLowerCase();
 		const isFolder = pathIsFolder;
-		const detectedType = inferPathType(lowerPath, isFolder);
-		if (!detectedType) {
+		const detectedType = detectFileType(normalizedPath, isFolder);
+		if (detectedType === 'unknown') {
 			error = 'Unknown file type. Add an extension or use a folder for parquet.';
 			return;
 		}
@@ -720,15 +708,31 @@
 					</div>
 
 					<div class="form-group">
-						<label for="path-options">Options (optional)</label>
+						<label for="path-options" class="label-with-help">
+							<span>Options (optional)</span>
+							<span class="help-icon" title="Click to view Polars documentation">
+								<a
+									href="https://docs.pola.rs/api/python/stable/reference/io.html"
+									target="_blank"
+									rel="noopener noreferrer"
+									class="help-link"
+								>
+									<MessageCircleQuestionMark size={16} />
+								</a>
+							</span>
+						</label>
 						<textarea
 							id="path-options"
 							bind:value={pathOptions}
-							placeholder={'{"ignore_errors": true}'}
+							placeholder={'{"ignore_errors": true, "rechunk": false}'}
 							rows="3"
 							disabled={loading}
 						></textarea>
-						<p class="hint">Options apply to this path datasource only.</p>
+						<p class="hint">
+							Advanced Polars scan options in JSON format. Common options: <code>ignore_errors</code
+							>,
+							<code>rechunk</code>, <code>low_memory</code>, <code>n_rows</code>.
+						</p>
 					</div>
 
 					<button class="btn-primary" onclick={handlePathConnect} disabled={loading}>
@@ -1246,10 +1250,49 @@
 		font-size: var(--text-xs);
 		color: var(--fg-muted);
 		margin: 0;
+		line-height: 1.5;
+	}
+	.hint code {
+		font-family: var(--font-mono);
+		background: var(--bg-tertiary);
+		padding: 1px 4px;
+		border-radius: 3px;
+		font-size: 0.9em;
+		color: var(--fg-secondary);
 	}
 	.file-info {
 		font-size: var(--text-sm);
 		color: var(--fg-secondary);
+	}
+	.label-with-help {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.help-icon {
+		display: inline-flex;
+		align-items: center;
+		flex-shrink: 0;
+	}
+	.help-link {
+		display: inline-flex;
+		align-items: center;
+		color: var(--fg-muted);
+		transition: color var(--transition);
+		text-decoration: none;
+	}
+	.help-link:hover {
+		color: var(--accent-primary);
+	}
+	.docs-link {
+		color: var(--accent-primary);
+		text-decoration: none;
+		font-weight: var(--font-medium);
+		transition: opacity var(--transition);
+	}
+	.docs-link:hover {
+		text-decoration: underline;
+		opacity: 0.8;
 	}
 	.form-row {
 		display: grid;

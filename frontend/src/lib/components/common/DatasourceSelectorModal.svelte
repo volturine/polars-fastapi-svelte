@@ -1,15 +1,8 @@
 <script lang="ts">
 	import { onClickOutside, Debounced } from 'runed';
-	import {
-		FileSpreadsheet,
-		FileBracesCorner,
-		FileType,
-		Database,
-		Globe,
-		Snowflake,
-		X
-	} from 'lucide-svelte';
+	import { X, Database, Globe, Snowflake } from 'lucide-svelte';
 	import type { DataSource } from '$lib/types/datasource';
+	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 
 	interface Props {
 		show: boolean;
@@ -40,23 +33,6 @@
 			return ds.name.toLowerCase().includes(query);
 		})
 	);
-
-	function getFileTypeIcon(fileType: string | null) {
-		switch (fileType) {
-			case 'csv':
-				return FileSpreadsheet;
-			case 'json':
-				return FileBracesCorner;
-			case 'parquet':
-				return FileType;
-			case 'ndjson':
-				return FileBracesCorner;
-			case 'excel':
-				return FileSpreadsheet;
-			default:
-				return null;
-		}
-	}
 
 	function getSourceTypeIcon(sourceType: string) {
 		switch (sourceType) {
@@ -161,10 +137,11 @@
 								<span class="datasource-name">{ds.name}</span>
 								<span class="datasource-type">
 									{#if ds.source_type === 'file'}
-										{@const Icon = getFileTypeIcon((ds.config.file_type as string) ?? null)}
-										{#if Icon}
-											<Icon size={16} />
-										{/if}
+										<FileTypeBadge
+											path={ds.config.file_path as string}
+											size="sm"
+											showIcon={true}
+										/>
 									{:else}
 										{@const Icon = getSourceTypeIcon(ds.source_type)}
 										{#if Icon}

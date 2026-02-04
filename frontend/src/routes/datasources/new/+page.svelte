@@ -1284,16 +1284,6 @@
 	.help-link:hover {
 		color: var(--accent-primary);
 	}
-	.docs-link {
-		color: var(--accent-primary);
-		text-decoration: none;
-		font-weight: var(--font-medium);
-		transition: opacity var(--transition);
-	}
-	.docs-link:hover {
-		text-decoration: underline;
-		opacity: 0.8;
-	}
 	.form-row {
 		display: grid;
 		grid-template-columns: 1fr 1fr;

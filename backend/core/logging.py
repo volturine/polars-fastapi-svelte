@@ -32,6 +32,7 @@ _LOG_TABLE_PROPERTIES = {
     'write.metadata.delete-after-commit.enabled': 'true',
     'write.metadata.previous-versions-max': '1',
 }
+_logger = logging.getLogger('core.logging')
 
 
 def _day_from_ts(ts: datetime | None) -> date:
@@ -46,10 +47,13 @@ class IcebergLogWriter:
         base_path: str,
         *,
         flush_interval: float = _DEFAULT_FLUSH_INTERVAL,
+        overflow_policy: str = 'block',
     ):
         self._lock = threading.Lock()
         self._queue: queue.Queue[tuple[str, list[dict[str, Any]]]] = queue.Queue(maxsize=settings.log_queue_max_size)
         self._stop_event = threading.Event()
+        self._overflow_policy = overflow_policy
+        self._dropped_count = 0
         self._base_path = Path(base_path)
         self._base_path.mkdir(parents=True, exist_ok=True)
         self._warehouse_path = (self._base_path / 'warehouse').resolve()
@@ -153,7 +157,15 @@ class IcebergLogWriter:
     def _enqueue_rows(self, kind: str, rows: list[dict[str, Any]]) -> None:
         if not rows:
             return
-        self._queue.put((kind, rows))
+        if self._overflow_policy == 'drop':
+            try:
+                self._queue.put_nowait((kind, rows))
+            except queue.Full:
+                self._dropped_count += len(rows)
+                if self._dropped_count % 100 == 1:
+                    _logger.warning(f'Log queue full, dropped {self._dropped_count} rows total')
+        else:
+            self._queue.put((kind, rows))
 
     def _run(self) -> None:
         while True:
@@ -189,8 +201,8 @@ class IcebergLogWriter:
         try:
             table = self._get_table(kind, day)
             table.append(pa.Table.from_pylist(rows, schema=self._arrow_map[kind]))
-        except Exception:
-            return
+        except Exception as e:
+            _logger.error(f'Failed to append {len(rows)} rows to {kind}/{day}: {e}')
 
     def _get_table(self, kind: str, day: date):
         name = _daily_table_name(kind, day)
@@ -230,10 +242,17 @@ class IcebergLogHandler(logging.Handler):
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, writer: IcebergLogWriter | None = None, get_time: Callable[[], float] | None = None):
+    def __init__(
+        self,
+        app,
+        writer: IcebergLogWriter | None = None,
+        get_time: Callable[[], float] | None = None,
+        max_body_size: int = 0,
+    ):
         super().__init__(app)
         self.writer = writer
         self.get_time = get_time or time.perf_counter
+        self.max_body_size = max_body_size or settings.log_max_body_size
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         if not self.writer:
@@ -241,7 +260,12 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         start = self.get_time()
         request_id = request.headers.get('x-request-id') or uuid.uuid4().hex
         request.state.request_id = request_id
-        body = await request.body()
+
+        # Only read body if within size limit
+        content_length = int(request.headers.get('content-length', 0))
+        should_log_body = self.max_body_size == 0 or content_length <= self.max_body_size
+        body = await request.body() if should_log_body else b''
+        body_for_log = body if should_log_body else None
 
         async def receive():
             return {'type': 'http.request', 'body': body, 'more_body': False}
@@ -251,10 +275,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
         except Exception as exc:
             duration_ms = (self.get_time() - start) * 1000
-            self._log_request(request, None, duration_ms, request_id, body, None, error=str(exc))
+            self._log_request(request, None, duration_ms, request_id, body_for_log, None, error=str(exc))
             raise
         duration_ms = (self.get_time() - start) * 1000
-        response = await self._capture_response(request, response, duration_ms, request_id, body)
+        response = await self._capture_response(request, response, duration_ms, request_id, body_for_log)
         response.headers['X-Request-Id'] = request_id
         return response
 
@@ -264,31 +288,37 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         response: Response,
         duration_ms: float,
         request_id: str,
-        body: bytes,
+        request_body: bytes | None,
     ) -> Response:
         stream = response.body_iterator if isinstance(response, StreamingResponse) else getattr(response, 'body_iterator', None)
         if stream is not None:
-
+            # For streaming responses, only log metadata on first chunk
+            # Don't accumulate entire response body
             async def stream_wrapper():
                 index = 0
                 logged = False
                 async for chunk in stream:
                     logged = True
-                    part = chunk.encode('utf-8') if isinstance(chunk, str) else bytes(chunk)
-                    request_body = body if index == 0 else None
+                    # Only log body snippet for first chunk if within size limit
+                    part = None
+                    if index == 0:
+                        raw = chunk.encode('utf-8') if isinstance(chunk, str) else bytes(chunk)
+                        if self.max_body_size == 0 or len(raw) <= self.max_body_size:
+                            part = raw
+                    req_body = request_body if index == 0 else None
                     self._log_request(
                         request,
                         response,
                         duration_ms,
                         request_id,
-                        request_body,
+                        req_body,
                         part,
                         chunk_index=index,
                     )
                     index += 1
                     yield chunk
                 if not logged:
-                    self._log_request(request, response, duration_ms, request_id, body, None, chunk_index=0)
+                    self._log_request(request, response, duration_ms, request_id, request_body, None, chunk_index=0)
 
             headers = dict(response.headers)
             headers.pop('content-length', None)
@@ -301,7 +331,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             )
         response_data = getattr(response, 'body', None)
         if response_data is None:
-            self._log_request(request, response, duration_ms, request_id, body, None, chunk_index=0)
+            self._log_request(request, response, duration_ms, request_id, request_body, None, chunk_index=0)
             return response
         if isinstance(response_data, str):
             response_body = response_data.encode('utf-8')
@@ -309,7 +339,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             response_body = bytes(response_data)
         else:
             response_body = response_data
-        self._log_request(request, response, duration_ms, request_id, body, response_body, chunk_index=0)
+        # Apply size limit to response body
+        if self.max_body_size > 0 and len(response_body) > self.max_body_size:
+            response_body = None
+        self._log_request(request, response, duration_ms, request_id, request_body, response_body, chunk_index=0)
         return response
 
     def _log_request(
@@ -375,6 +408,7 @@ def configure_logging() -> IcebergLogWriter:
     _writer = IcebergLogWriter(
         base_path=str(settings.log_iceberg_path),
         flush_interval=float(settings.log_iceberg_flush_interval_seconds),
+        overflow_policy=settings.log_queue_overflow,
     )
     queue_handler = logging.handlers.QueueHandler(queue.Queue())
     _listener = logging.handlers.QueueListener(queue_handler.queue, IcebergLogHandler(_writer))
@@ -415,8 +449,8 @@ def _apply_table_properties(table: Any) -> None:
         for key, value in updates.items():
             updater.set(key, value)
         updater.commit()
-    except Exception:
-        return
+    except Exception as e:
+        _logger.warning(f'Failed to apply table properties: {e}')
 
 
 def _request_schema() -> Schema:

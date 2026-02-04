@@ -98,6 +98,12 @@ class Settings(BaseSettings):
     # Max queued log batches before dropping
     log_queue_max_size: int = Field(default=2000, alias='LOG_QUEUE_MAX_SIZE')
 
+    # Queue overflow behavior: 'block' (default) or 'drop'
+    log_queue_overflow: str = Field(default='block', alias='LOG_QUEUE_OVERFLOW')
+
+    # Max body size to log in bytes (default 1MB, 0 = unlimited)
+    log_max_body_size: int = Field(default=1 * 1024 * 1024, alias='LOG_MAX_BODY_SIZE')
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""
@@ -185,6 +191,21 @@ class Settings(BaseSettings):
     def _validate_log_queue_size(cls, value: int) -> int:
         if value < 1:
             raise ValueError(f'log_queue_max_size must be positive, got {value}')
+        return value
+
+    @field_validator('log_queue_overflow')
+    @classmethod
+    def _validate_log_queue_overflow(cls, value: str) -> str:
+        valid = ['block', 'drop']
+        if value.lower() not in valid:
+            raise ValueError(f'log_queue_overflow must be one of {valid}, got {value}')
+        return value.lower()
+
+    @field_validator('log_max_body_size')
+    @classmethod
+    def _validate_log_max_body_size(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError(f'log_max_body_size must be non-negative (0 = unlimited), got {value}')
         return value
 
     @model_validator(mode='after')

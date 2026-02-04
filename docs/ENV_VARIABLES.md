@@ -35,6 +35,11 @@ This document lists ALL environment variables supported by the application.
 | `JOB_TIMEOUT`                 | integer | 300                                     | Max job execution time (seconds)                     |
 | **Logging**                   |         |                                         |                                                      |
 | `LOG_LEVEL`                   | string  | info                                    | Log level (debug/info/warning/error/critical)        |
+| `LOG_ICEBERG_PATH`            | path    | /app/data/logs/iceberg                  | Iceberg log storage path                             |
+| `LOG_ICEBERG_FLUSH_INTERVAL`  | integer | 300                                     | Log flush interval (seconds)                         |
+| `LOG_QUEUE_MAX_SIZE`          | integer | 2000                                    | Max queued log batches                               |
+| `LOG_QUEUE_OVERFLOW`          | string  | block                                   | Queue overflow behavior (block/drop)                 |
+| `LOG_MAX_BODY_SIZE`           | integer | 1048576                                 | Max body size to log in bytes (0=unlimited)          |
 
 ## Validation Rules
 
@@ -59,6 +64,7 @@ This document lists ALL environment variables supported by the application.
 ### String Enums
 
 - `LOG_LEVEL`: Must be one of: debug, info, warning, error, critical
+- `LOG_QUEUE_OVERFLOW`: Must be one of: block, drop
 
 ## Configuration by Environment
 

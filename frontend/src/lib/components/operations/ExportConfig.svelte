@@ -52,7 +52,7 @@
 </script>
 
 <div class="config-panel" role="region" aria-label="Export configuration">
-	<div class="form-group">
+	<div class="form-group mb-4">
 		<label for="export-input-filename">Filename</label>
 		<input
 			id="export-input-filename"
@@ -62,10 +62,10 @@
 			placeholder="e.g., my_data"
 			aria-describedby="export-filename-hint"
 		/>
-		<span id="export-filename-hint" class="hint">Extension will be added automatically</span>
+		<span id="export-filename-hint" class="hint mt-1 block text-xs" style="color: var(--fg-muted);">Extension will be added automatically</span>
 	</div>
 
-	<div class="form-group">
+	<div class="form-group mb-4">
 		<label for="export-select-format">
 			Format
 			{#if selectedFileType === 'duckdb'}
@@ -82,7 +82,7 @@
 	</div>
 
 	{#if showDuckDBOptions}
-		<div class="form-group">
+		<div class="form-group mb-4">
 			<label for="export-input-tablename">Table Name</label>
 			<input
 				id="export-input-tablename"
@@ -93,11 +93,11 @@
 				placeholder="e.g., my_data"
 				aria-describedby="export-tablename-hint"
 			/>
-			<span id="export-tablename-hint" class="hint">Name of the table in the DuckDB database</span>
+			<span id="export-tablename-hint" class="hint mt-1 block text-xs" style="color: var(--fg-muted);">Name of the table in the DuckDB database</span>
 		</div>
 	{/if}
 
-	<div class="form-group">
+	<div class="form-group mb-0">
 		<label for="export-select-destination">Destination</label>
 		<select
 			id="export-select-destination"
@@ -108,7 +108,7 @@
 				<option value={dest.value}>{dest.label}</option>
 			{/each}
 		</select>
-		<span id="export-destination-hint" class="hint" aria-live="polite">
+		<span id="export-destination-hint" class="hint mt-1 block text-xs" style="color: var(--fg-muted);" aria-live="polite">
 			{#if config.destination === 'download'}
 				File will be downloaded to your browser
 			{:else}
@@ -119,24 +119,9 @@
 </div>
 
 <style>
-	.form-group {
-		margin-bottom: var(--space-4);
-	}
-
-	.form-group:last-child {
-		margin-bottom: 0;
-	}
-
-	.form-group label {
+	label {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-	}
-
-	.hint {
-		display: block;
-		margin-top: var(--space-1);
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
 	}
 </style>

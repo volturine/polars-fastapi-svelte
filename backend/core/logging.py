@@ -12,6 +12,7 @@ from collections.abc import Callable
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pyarrow as pa
 from fastapi import Request, Response
@@ -36,9 +37,12 @@ _logger = logging.getLogger('core.logging')
 
 
 def _day_from_ts(ts: datetime | None) -> date:
+    """Get the date in the configured timezone for daily table partitioning."""
+    tz = ZoneInfo(settings.timezone)
     if isinstance(ts, datetime):
-        return ts.date()
-    return datetime.now(UTC).date()
+        # Convert to configured timezone before extracting date
+        return ts.astimezone(tz).date()
+    return datetime.now(tz).date()
 
 
 class IcebergLogWriter:

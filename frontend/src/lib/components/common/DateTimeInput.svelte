@@ -41,18 +41,25 @@
 	}
 </script>
 
-<div class="datetime-input">
-	<input type="date" id={id ? `${id}-date` : undefined} value={dateValue} onchange={handleDateChange} />
-	<div class="time-wrapper">
+<div class="flex gap-2">
+	<input type="date" id={id ? `${id}-date` : undefined} value={dateValue} onchange={handleDateChange} class="min-w-0 flex-1" />
+	<div class="relative min-w-0 flex-1">
 		<input
 			type="time"
 			id={id ? `${id}-time` : undefined}
 			value={timeValue}
 			onchange={handleTimeChange}
 			disabled={!dateValue}
+			class="w-full pr-6 disabled:cursor-not-allowed disabled:opacity-50"
 		/>
 		{#if timeValue}
-			<button type="button" class="clear-btn" onclick={clearTime} title="Clear time">
+			<button
+				type="button"
+				class="clear-btn absolute right-1 top-1/2 -translate-y-1/2 flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded-sm border-none bg-transparent p-0 transition-all"
+				onclick={clearTime}
+				title="Clear time"
+				style="color: var(--fg-muted);"
+			>
 				<X size={12} />
 			</button>
 		{/if}
@@ -60,51 +67,6 @@
 </div>
 
 <style>
-	.datetime-input {
-		display: flex;
-		gap: var(--space-2);
-	}
-
-	.datetime-input > input {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.time-wrapper {
-		position: relative;
-		flex: 1;
-		min-width: 0;
-	}
-
-	.time-wrapper input {
-		width: 100%;
-		padding-right: var(--space-6);
-	}
-
-	.time-wrapper input:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.clear-btn {
-		position: absolute;
-		right: var(--space-1);
-		top: 50%;
-		transform: translateY(-50%);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 18px;
-		height: 18px;
-		padding: 0;
-		background: transparent;
-		border: none;
-		border-radius: var(--radius-sm);
-		color: var(--fg-muted);
-		cursor: pointer;
-		transition: all var(--transition);
-	}
-
 	.clear-btn:hover {
 		background-color: var(--bg-hover);
 		color: var(--fg-primary);

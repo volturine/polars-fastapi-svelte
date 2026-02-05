@@ -54,34 +54,14 @@
 	const iconSize = $derived(size === 'xs' ? 11 : size === 'md' ? 14 : 12);
 </script>
 
-<span class="column-type-badge" style="{containerStyle} {sizeStyles}" title={config.description}>
+<span
+	class="inline-flex items-center rounded-sm font-semibold whitespace-nowrap leading-none select-none transition-all hover:opacity-90"
+	style="{containerStyle} {sizeStyles} font-family: var(--font-mono, monospace);"
+	title={config.description}
+>
 	{#if showIcon}
 		{@const IconComponent = config.icon}
 		<IconComponent size={iconSize} strokeWidth={2.5} />
 	{/if}
-	<span class="label">{config.label}</span>
+	<span class="font-semibold tracking-tight">{config.label}</span>
 </span>
-
-<style>
-	.column-type-badge {
-		display: inline-flex;
-		align-items: center;
-		border-radius: var(--radius-sm, 4px);
-		font-weight: 600;
-		font-family: var(--font-mono, monospace);
-		white-space: nowrap;
-		transition: all 0.15s ease;
-		line-height: 1;
-		user-select: none;
-	}
-
-	.label {
-		font-weight: 600;
-		letter-spacing: 0.01em;
-	}
-
-	/* Optional: subtle hover effect */
-	.column-type-badge:hover {
-		opacity: 0.9;
-	}
-</style>

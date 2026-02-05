@@ -91,6 +91,3 @@
 	{/if}
 </div>
 
-<style>
-	/* All styles defined globally in app.css */
-</style>

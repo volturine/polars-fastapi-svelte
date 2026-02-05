@@ -148,14 +148,10 @@
 	const listboxId = $derived(id ? `${id}-datasource-listbox` : 'datasource-listbox');
 </script>
 
-<div
-	class="datasource-picker"
-	class:mode-single={mode === 'single'}
-	class:mode-multi={mode === 'multi'}
->
+<div class="relative w-full">
 	<input
 		type="text"
-		class="picker-input"
+		class="w-full rounded-sm border px-3 py-2 text-sm focus:outline-none"
 		bind:value={search}
 		onfocus={handleFocus}
 		onblur={handleBlur}
@@ -166,16 +162,23 @@
 		id={inputId}
 		role="combobox"
 		aria-controls={listboxId}
+		style="border-color: var(--panel-border); background-color: var(--panel-bg); color: var(--fg-primary); font-family: var(--font-mono);"
 	/>
 
 	{#if showPicker}
-		<div class="picker-dropdown" role="listbox" id={listboxId} aria-label="Available datasources">
+		<div
+			class="absolute left-0 right-0 top-full z-50 mt-1 max-h-[200px] overflow-y-auto rounded-sm border"
+			role="listbox"
+			id={listboxId}
+			aria-label="Available datasources"
+			style="background-color: var(--panel-bg); border-color: var(--panel-border); box-shadow: var(--shadow-dropdown);"
+		>
 			{#if filteredOptions().length === 0}
-				<div class="picker-empty">No datasources found</div>
+				<div class="p-4 text-center text-sm" style="color: var(--fg-muted);">No datasources found</div>
 			{:else}
 				{#each filteredOptions() as ds (ds.id)}
 					<button
-						class="picker-option"
+						class="picker-option flex w-full cursor-pointer items-center justify-between border-b bg-transparent px-3 py-2 text-left text-sm last:border-b-0"
 						class:selected={isSelected(ds.id)}
 						class:highlighted={ds.id === highlightId}
 						onmousedown={(e) => {
@@ -185,10 +188,11 @@
 						role="option"
 						aria-selected={isSelected(ds.id)}
 						type="button"
+						style="border-color: var(--panel-border); color: var(--fg-primary); font-family: var(--font-mono);"
 					>
-						<span class="option-name">{ds.name}</span>
+						<span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{ds.name}</span>
 						{#if ds.id === highlightId}
-							<span class="option-badge current">current</span>
+							<span class="ml-2 rounded-sm border px-2 py-1 text-xs" style="background-color: var(--info-bg); border-color: var(--info-border); color: var(--info-fg);">current</span>
 						{:else if ds.source_type === 'file'}
 							<FileTypeBadge
 								path={(ds.config?.file_path as string) ?? ''}
@@ -209,15 +213,20 @@
 	{/if}
 
 	{#if mode === 'multi' && showChips && selectedDatasources().length > 0}
-		<div class="picker-chips">
+		<div class="mt-2 flex flex-wrap gap-2">
 			{#each selectedDatasources() as ds (ds.id)}
-				<span class="chip" class:highlighted={ds.id === highlightId}>
+				<span
+					class="chip inline-flex items-center gap-1 rounded-sm border px-2 py-1 text-xs"
+					class:highlighted={ds.id === highlightId}
+					style="background-color: var(--badge-bg); border-color: var(--badge-border); color: var(--badge-fg);"
+				>
 					{ds.name}
 					<button
-						class="chip-remove"
+						class="chip-remove inline-flex h-4 w-4 cursor-pointer items-center justify-center rounded-sm border-none bg-transparent p-0"
 						onclick={() => deselect(ds.id)}
 						aria-label={`Remove ${ds.name}`}
 						type="button"
+						style="color: var(--fg-muted);"
 					>
 						<X size={12} />
 					</button>
@@ -227,7 +236,7 @@
 	{/if}
 
 	{#if mode === 'multi' && showBulkActions && filteredOptions().length > 0}
-		<div class="picker-actions">
+		<div class="mt-2 flex gap-2">
 			<button class="btn-secondary btn-sm" onclick={selectAll} type="button">Select All</button>
 			<button class="btn-secondary btn-sm" onclick={deselectAll} type="button">Deselect All</button>
 		</div>
@@ -235,60 +244,8 @@
 </div>
 
 <style>
-	.datasource-picker {
-		position: relative;
-		width: 100%;
-	}
-
-	.picker-input {
-		width: 100%;
-		padding: var(--space-2) var(--space-3);
-		font-size: var(--text-sm);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--panel-bg);
-		color: var(--fg-primary);
-		font-family: var(--font-mono);
-	}
-
-	.picker-input:focus {
-		outline: none;
+	input:focus {
 		border-color: var(--accent-primary);
-	}
-
-	.picker-dropdown {
-		position: absolute;
-		top: 100%;
-		left: 0;
-		right: 0;
-		margin-top: var(--space-1);
-		background-color: var(--panel-bg);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-sm);
-		box-shadow: var(--shadow-dropdown);
-		z-index: var(--z-dropdown);
-		max-height: 200px;
-		overflow-y: auto;
-	}
-
-	.picker-option {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		width: 100%;
-		padding: var(--space-2) var(--space-3);
-		background: none;
-		border: none;
-		cursor: pointer;
-		text-align: left;
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-		color: var(--fg-primary);
-		border-bottom: 1px solid var(--panel-border);
-	}
-
-	.picker-option:last-child {
-		border-bottom: none;
 	}
 
 	.picker-option:hover {
@@ -303,83 +260,14 @@
 		border-left: 3px solid var(--accent-primary);
 	}
 
-	.option-name {
-		flex: 1;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.option-badge {
-		font-size: var(--text-xs);
-		padding: var(--space-1) var(--space-2);
-		background-color: var(--badge-bg);
-		border: 1px solid var(--badge-border);
-		border-radius: var(--radius-sm);
-		color: var(--badge-fg);
-		margin-left: var(--space-2);
-	}
-
-	.option-badge.current {
-		background-color: var(--info-bg);
-		border-color: var(--info-border);
-		color: var(--info-fg);
-	}
-
-	.picker-chips {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-2);
-		margin-top: var(--space-2);
-	}
-
-	.chip {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		padding: var(--space-1) var(--space-2);
-		background-color: var(--badge-bg);
-		border: 1px solid var(--badge-border);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-xs);
-		color: var(--badge-fg);
-	}
-
 	.chip.highlighted {
 		background-color: var(--info-bg);
 		border-color: var(--info-border);
 		color: var(--info-fg);
 	}
 
-	.chip-remove {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0;
-		background: none;
-		border: none;
-		cursor: pointer;
-		color: var(--fg-muted);
-		border-radius: var(--radius-sm);
-		width: 16px;
-		height: 16px;
-	}
-
 	.chip-remove:hover {
 		color: var(--fg-primary);
 		background-color: var(--bg-hover);
-	}
-
-	.picker-actions {
-		display: flex;
-		gap: var(--space-2);
-		margin-top: var(--space-2);
-	}
-
-	.picker-empty {
-		padding: var(--space-4);
-		text-align: center;
-		color: var(--fg-muted);
-		font-size: var(--text-sm);
 	}
 </style>

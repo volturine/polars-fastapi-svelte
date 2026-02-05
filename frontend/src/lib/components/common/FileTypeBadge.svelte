@@ -72,14 +72,13 @@
 </script>
 
 <span
-	class="file-type-badge"
-	class:minimal={variant === 'minimal'}
-	class:outline={variant === 'outline'}
+	class="inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-sm border font-medium uppercase tracking-wide transition-all {variant === 'minimal' ? 'border-none p-0' : ''}"
 	style:font-size={styles.fontSize}
-	style:padding={styles.padding}
+	style:padding={variant === 'minimal' ? '0' : styles.padding}
 	style:color={styles.color}
 	style:border-color={styles.borderColor}
 	style:background-color={styles.backgroundColor}
+	style="font-family: var(--font-mono);"
 	role="img"
 	aria-label="{config.label} file type"
 	title={config.description}
@@ -89,30 +88,3 @@
 	{/if}
 	{config.label}
 </span>
-
-<style>
-	.file-type-badge {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		font-family: var(--font-mono);
-		font-weight: var(--font-medium);
-		border-radius: var(--radius-sm);
-		border-width: 1px;
-		border-style: solid;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		flex-shrink: 0;
-		white-space: nowrap;
-		transition: all var(--transition);
-	}
-
-	.file-type-badge.minimal {
-		border: none;
-		padding: 0;
-	}
-
-	.file-type-badge.outline {
-		border-width: 1px;
-	}
-</style>

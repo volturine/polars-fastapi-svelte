@@ -102,20 +102,15 @@
 	});
 </script>
 
-<div class="code-editor" style:height>
-	<div class="editor-host" use:init></div>
+<div
+	class="overflow-hidden rounded-md border"
+	style:height
+	style="border-color: var(--border-primary); background-color: var(--bg-tertiary);"
+>
+	<div class="h-full" use:init></div>
 </div>
 
 <style>
-	.code-editor {
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-md);
-		overflow: hidden;
-		background-color: var(--bg-tertiary);
-	}
-	.editor-host {
-		height: 100%;
-	}
 	:global(.cm-editor) {
 		height: 100%;
 		font-size: 0.85rem;

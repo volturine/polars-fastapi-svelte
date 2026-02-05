@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from core.config import settings
-from core.database import get_db
+from core.database import clear_engine_override, get_db, set_engine_override
 from main import app
 from modules.analysis.models import Analysis, AnalysisDataSource
 from modules.datasource.models import DataSource
@@ -29,8 +29,12 @@ def test_engine():
 
 @pytest.fixture(scope='function')
 def test_db_session(test_engine):
+    # Set the engine override so run_db uses the test engine
+    set_engine_override(test_engine)
     with Session(test_engine) as session:
         yield session
+    # Clear the override after the test
+    clear_engine_override()
 
 
 @pytest.fixture(scope='function')

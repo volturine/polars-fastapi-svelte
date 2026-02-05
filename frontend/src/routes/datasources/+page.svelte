@@ -7,6 +7,7 @@
 	import DatasourcePreview from '$lib/components/datasources/DatasourcePreview.svelte';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import { formatDateDisplay } from '$lib/utils/datetime';
+	import { goto } from '$app/navigation';
 
 	const queryClient = useQueryClient();
 
@@ -74,7 +75,6 @@
 		}
 		return null;
 	}
-
 
 	function formatRowCount(count: number | null): string {
 		if (count === null) return '-';
@@ -166,25 +166,27 @@
 							<span class="col-actions">
 								{#if confirmingDelete === datasource.id}
 									<div class="confirm-actions">
+										<span class="confirm-label">Delete?</span>
 										<button
 											onclick={() => confirmDelete(datasource.id)}
 											class="btn btn-danger btn-sm"
 											disabled={deleteMutation.isPending}
 										>
-											Confirm
+											Yes
 										</button>
-										<button onclick={cancelDelete} class="btn btn-secondary btn-sm">
-											Cancel
-										</button>
+										<button onclick={cancelDelete} class="btn btn-secondary btn-sm"> No </button>
 									</div>
 								{:else}
 									<div class="action-buttons">
-										<a href={resolve(`/datasources/${datasource.id}`)} class="btn btn-ghost btn-sm">
+										<button
+											onclick={() => goto(resolve(`/datasources/${datasource.id}`))}
+											class="btn btn-ghost btn-sm"
+										>
 											Edit
-										</a>
+										</button>
 										<button
 											onclick={() => handleDelete(datasource.id)}
-											class="btn btn-ghost btn-sm"
+											class="btn btn-ghost btn-sm btn-delete"
 											disabled={deleteMutation.isPending}
 										>
 											Delete
@@ -319,6 +321,8 @@
 	}
 	.col-actions {
 		white-space: nowrap;
+		display: flex;
+		align-items: center;
 	}
 
 	.expand-btn {
@@ -348,13 +352,21 @@
 	}
 	.confirm-actions {
 		display: flex;
+		align-items: center;
 		gap: var(--space-2);
+	}
+	.confirm-label {
+		font-size: var(--text-xs);
+		color: var(--error-fg);
+		font-weight: var(--font-medium);
 	}
 	.action-buttons {
 		display: flex;
+		align-items: center;
 		gap: var(--space-2);
 	}
-	.action-buttons a {
-		text-decoration: none;
+
+	.btn-delete:hover:not(:disabled) {
+		color: var(--error-fg);
 	}
 </style>

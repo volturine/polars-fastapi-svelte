@@ -15,6 +15,7 @@
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import ColumnTypeDropdown from '$lib/components/common/ColumnTypeDropdown.svelte';
 	import { formatDateDisplay } from '$lib/utils/datetime';
+	import { resolveColumnType } from '$lib/utils/columnTypes';
 
 	const queryClient = useQueryClient();
 	const datasourceId = $derived(page.params.id);
@@ -151,7 +152,11 @@
 			columns = [];
 			return;
 		}
-		columns = value.columns.map((col) => ({ ...col }));
+		// Normalize dtypes to handle parameterized types like "Datetime(time_unit='us', time_zone=None)"
+		columns = value.columns.map((col) => ({
+			...col,
+			dtype: resolveColumnType(col.dtype)
+		}));
 	}
 
 	function isCsv(datasource: DataSource): boolean {

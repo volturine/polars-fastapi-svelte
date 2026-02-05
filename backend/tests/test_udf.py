@@ -430,6 +430,10 @@ class TestUdfAPI:
 
     def test_list_udfs_endpoint(self, client):
         """Test listing UDFs via API."""
+        # Get initial count (may include seeded UDFs)
+        initial_response = client.get('/api/v1/udf')
+        initial_count = len(initial_response.json())
+
         # Create some UDFs
         for i in range(3):
             udf_data = {
@@ -444,7 +448,7 @@ class TestUdfAPI:
 
         assert response.status_code == 200
         result = response.json()
-        assert len(result) == 3
+        assert len(result) == initial_count + 3
 
     def test_list_udfs_with_query_filter(self, client):
         """Test listing UDFs with query filter via API."""

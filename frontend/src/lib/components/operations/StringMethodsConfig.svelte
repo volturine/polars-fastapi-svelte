@@ -102,8 +102,8 @@
 	{#if needsParam('start') || needsParam('end')}
 		<div class="form-section" role="group" aria-labelledby="slice-params-heading">
 			<h4 id="slice-params-heading">Slice Parameters</h4>
-			<div class="inline-group">
-				<div class="input-group">
+			<div class="flex gap-4">
+				<div class="input-group flex-1">
 					<label for="str-input-start">Start Index:</label>
 					<input
 						id="str-input-start"
@@ -114,7 +114,7 @@
 					/>
 					<span id="str-start-help" class="sr-only">Starting index for substring</span>
 				</div>
-				<div class="input-group">
+				<div class="input-group flex-1">
 					<label for="str-input-end">End Index (optional):</label>
 					<input
 						id="str-input-end"
@@ -272,19 +272,6 @@
 </div>
 
 <style>
-	.warning-box {
-		font-size: var(--text-sm);
-		color: var(--error-fg);
-		margin-top: var(--space-2);
-		margin-bottom: 0;
-	}
-	.inline-group {
-		display: flex;
-		gap: var(--space-4);
-	}
-	.input-group {
-		flex: 1;
-	}
 	.input-group label {
 		display: block;
 		font-size: var(--text-sm);

@@ -17,7 +17,7 @@
 </script>
 
 <div class="config-panel" role="region" aria-label="Drop columns configuration">
-	<h3>Drop Columns</h3>
+	<h3 class="mb-2">Drop Columns</h3>
 
 	<p class="description">Select the columns you want to drop (remove) from the dataset.</p>
 
@@ -42,9 +42,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	h3 {
-		margin-bottom: var(--space-2);
-	}
-</style>

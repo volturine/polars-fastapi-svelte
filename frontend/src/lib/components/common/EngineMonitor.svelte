@@ -64,7 +64,9 @@
 				{enginesStore.count}
 			</span>
 		{/if}
-		<ChevronDown size={12} class="chevron transition-transform" class:rotate-180={expanded} />
+		<span class="transition-transform" class:rotate-180={expanded}>
+			<ChevronDown size={12} />
+		</span>
 	</button>
 
 	{#if expanded}

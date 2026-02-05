@@ -176,18 +176,25 @@
 </script>
 
 <div
-	class="step-node"
+	class="step-node relative w-[min(65%)]"
 	class:view-node={step.type === 'view'}
 	class:greyed-out={isDragging}
 	class:drag-target={isOtherDragging}
 >
-	<div class="connection-point top"></div>
+	<div
+		class="connection-point absolute left-1/2 -translate-x-1/2 -top-1 z-[2] h-2 w-2 rounded-full"
+		style="background-color: var(--fg-muted); border: 2px solid var(--bg-primary);"
+	></div>
 
-	<div class="step-content" role="listitem">
-		<div class="step-header">
+	<div
+		class="step-content rounded-sm border p-4 transition-all"
+		role="listitem"
+		style="background-color: var(--bg-primary); border-color: var(--border-primary); box-shadow: var(--card-shadow);"
+	>
+		<div class="mb-3 flex items-center gap-2">
 			<!-- Drag handle (6-dot grip) -->
 			<button
-				class="drag-handle"
+				class="drag-handle flex flex-shrink-0 cursor-grab items-center justify-center rounded-sm border-none bg-transparent p-1 opacity-40 transition-all select-none"
 				class:dragging
 				title="Drag to reorder"
 				type="button"
@@ -197,6 +204,7 @@
 				onpointercancel={finishDrag}
 				onclick={handleClick}
 				data-drag-handle="true"
+				style="color: var(--fg-muted);"
 			>
 				<svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor">
 					<circle cx="2" cy="2" r="1.5" />
@@ -208,37 +216,67 @@
 				</svg>
 			</button>
 
-			<span class="step-icon">{currentStepInfo.icon}</span>
-			<span class="step-type">{label}</span>
-			<span class="step-number">#{index + 1}</span>
+			<span class="flex-shrink-0 text-base">{currentStepInfo.icon}</span>
+			<span class="flex-1 text-sm font-semibold">{label}</span>
+			<span class="flex-shrink-0 text-xs" style="color: var(--fg-muted);">#{index + 1}</span>
 		</div>
 
-		<div class="step-summary" class:inactive={!isApplied}>{summary}</div>
+		<div
+			class="step-summary mb-3 rounded-sm px-3 py-2 text-xs"
+			class:inactive={!isApplied}
+			style="background-color: var(--bg-tertiary); color: var(--fg-tertiary);"
+		>
+			{summary}
+		</div>
 
-		<div class="step-actions">
+		<div class="flex gap-2">
 			<button
-				class="action-btn apply-toggle"
+				class="action-btn flex-1 cursor-pointer rounded-sm border bg-transparent p-2 text-xs font-medium uppercase tracking-widest transition-all"
 				class:inactive={!isApplied}
 				onclick={() => onToggleApply(step.id)}
 				type="button"
 				title={isApplied ? 'Disable step' : 'Enable step'}
+				style="border-color: var(--border-primary); color: var(--fg-secondary); font-size: 0.625rem;"
 			>
 				{isApplied ? 'disable' : 'enable'}
 			</button>
-			<button class="action-btn" onclick={() => onEdit(step.id)} type="button"> edit </button>
-			<button class="action-btn danger" onclick={() => onDelete(step.id)} type="button">
+			<button
+				class="action-btn flex-1 cursor-pointer rounded-sm border bg-transparent p-2 text-xs font-medium transition-all"
+				onclick={() => onEdit(step.id)}
+				type="button"
+				style="border-color: var(--border-primary); color: var(--fg-secondary);"
+			>
+				edit
+			</button>
+			<button
+				class="action-btn danger flex-1 cursor-pointer rounded-sm border bg-transparent p-2 text-xs font-medium transition-all"
+				onclick={() => onDelete(step.id)}
+				type="button"
+				style="border-color: var(--border-primary); color: var(--fg-secondary);"
+			>
 				delete
 			</button>
 		</div>
 
 		{#if step.type === 'export' && datasourceId}
-			<div class="export-section">
+			<div class="mt-3 border-t pt-3" style="border-color: var(--border-primary);">
 				{#if exportError}
-					<div class="export-error">{exportError}</div>
+					<div
+						class="mb-2 rounded-sm border p-2 text-xs"
+						style="background-color: var(--error-bg); color: var(--error-fg); border-color: var(--error-border);"
+					>
+						{exportError}
+					</div>
 				{/if}
-				<button class="export-btn" onclick={handleExport} disabled={isExporting} type="button">
+				<button
+					class="export-btn flex w-full cursor-pointer items-center justify-center gap-2 rounded-sm border-none px-3 py-2 text-xs font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+					onclick={handleExport}
+					disabled={isExporting}
+					type="button"
+					style="background-color: var(--accent-primary); color: var(--bg-primary);"
+				>
 					{#if isExporting}
-						<span class="spinner-sm"></span>
+						<span class="spinner spinner-sm"></span>
 						Exporting...
 					{:else if step.config.destination === 'download'}
 						<Download size={14} />
@@ -252,7 +290,7 @@
 		{/if}
 
 		{#if step.type === 'view' && datasourceId && analysisId}
-			<div class="view-preview expanded">
+			<div class="mt-3 border-t pt-3" style="border-color: var(--border-secondary);">
 				<InlineDataTable
 					{analysisId}
 					{datasourceId}
@@ -264,86 +302,37 @@
 		{/if}
 	</div>
 
-	<div class="connection-point bottom"></div>
+	<div
+		class="connection-point absolute left-1/2 -translate-x-1/2 -bottom-1 z-[2] h-2 w-2 rounded-full"
+		style="background-color: var(--fg-muted); border: 2px solid var(--bg-primary);"
+	></div>
 </div>
 
 <style>
-	.step-node {
-		width: min(65%);
-	}
 	.step-node.view-node {
 		width: 85%;
 		min-width: 320px;
 	}
+
 	.step-node.greyed-out {
 		opacity: 0.4;
 		filter: grayscale(50%);
 	}
 
-	.connection-point {
-		position: absolute;
-		left: 50%;
-		transform: translateX(-50%);
-		width: 8px;
-		height: 8px;
-		background-color: var(--fg-muted);
-		border: 2px solid var(--bg-primary);
-		border-radius: 50%;
-		z-index: 2;
-	}
-	.connection-point.top {
-		top: -4px;
-	}
-	.connection-point.bottom {
-		bottom: -4px;
-	}
-
-	.step-content {
-		background-color: var(--bg-primary);
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		padding: var(--space-4);
-		transition: all var(--transition);
-		box-shadow: var(--card-shadow);
-	}
 	.step-content:hover {
 		border-color: var(--border-tertiary);
 		transform: translateY(-1px);
 	}
 
-	.step-header {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-	}
-
-	.drag-handle {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-1);
-		background: transparent;
-		border: none;
-		cursor: grab;
-		opacity: 0.4;
-		color: var(--fg-muted);
-		border-radius: var(--radius-sm);
-		transition:
-			opacity 0.15s,
-			background-color 0.15s;
-		flex-shrink: 0;
-		user-select: none;
-		-webkit-user-select: none;
-		appearance: none;
-	}
 	.drag-handle:hover {
 		opacity: 1;
 		background-color: var(--bg-hover);
 	}
+
 	.drag-handle:active {
 		cursor: grabbing;
 	}
+
 	.drag-handle.dragging {
 		user-select: none;
 		-webkit-user-select: none;
@@ -357,119 +346,35 @@
 		-webkit-touch-callout: none;
 	}
 
-	.step-icon {
-		font-size: var(--text-base);
-		flex-shrink: 0;
-	}
-	.step-type {
-		font-size: var(--text-sm);
-		font-weight: 600;
-		flex: 1;
-	}
-	.step-number {
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
-		flex-shrink: 0;
-	}
-
-	.step-summary {
-		padding: var(--space-2) var(--space-3);
-		background-color: var(--bg-tertiary);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-xs);
-		color: var(--fg-tertiary);
-		margin-bottom: var(--space-3);
-	}
 	.step-summary.inactive {
-		background-color: var(--bg-secondary);
-		color: var(--fg-muted);
+		background-color: var(--bg-secondary) !important;
+		color: var(--fg-muted) !important;
 		border: 1px dashed var(--border-primary);
 	}
 
-	.step-actions {
-		display: flex;
-		gap: var(--space-2);
-	}
-
-	.view-preview {
-		margin-top: var(--space-3);
-		border-top: 1px solid var(--border-secondary);
-		padding-top: var(--space-3);
-	}
-
-	.action-btn {
-		flex: 1;
-		padding: var(--space-2);
-		background-color: transparent;
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		font-size: var(--text-xs);
-		font-weight: 500;
-		color: var(--fg-secondary);
-		transition: all var(--transition);
-	}
 	.action-btn:hover {
 		background-color: var(--bg-hover);
 		color: var(--fg-primary);
 	}
-	.action-btn.apply-toggle {
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		font-size: 0.625rem;
-	}
-	.action-btn.apply-toggle.inactive {
+
+	.action-btn.inactive {
 		border-style: dashed;
 		color: var(--fg-muted);
 	}
-	.action-btn.apply-toggle.inactive:hover {
+
+	.action-btn.inactive:hover {
 		background-color: var(--bg-tertiary);
 		color: var(--fg-secondary);
 	}
+
 	.action-btn.danger:hover {
 		background-color: var(--error-bg);
 		border-color: var(--error-border);
 		color: var(--error-fg);
 	}
 
-	.export-section {
-		margin-top: var(--space-3);
-		padding-top: var(--space-3);
-		border-top: 1px solid var(--border-primary);
-	}
-
-	.export-btn {
-		width: 100%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border: none;
-		border-radius: var(--radius-sm);
-		font-size: var(--text-xs);
-		font-weight: 500;
-		cursor: pointer;
-		transition: opacity var(--transition);
-	}
 	.export-btn:hover:not(:disabled) {
 		opacity: 0.9;
-	}
-	.export-btn:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.export-error {
-		padding: var(--space-2);
-		margin-bottom: var(--space-2);
-		background-color: var(--error-bg);
-		color: var(--error-fg);
-		border: 1px solid var(--error-border);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-xs);
 	}
 
 	.step-node.drag-target .step-content {

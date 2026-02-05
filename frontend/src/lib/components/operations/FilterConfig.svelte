@@ -3,7 +3,6 @@
 	import { X, Plus } from 'lucide-svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import DateTimeInput from '$lib/components/common/DateTimeInput.svelte';
-	
 
 	const uid = $props.id();
 
@@ -34,10 +33,8 @@
 		value_type: 'string'
 	};
 
-	let {
-		schema,
-		config = $bindable({ conditions: [defaultCondition], logic: 'AND' })
-	}: Props = $props();
+	let { schema, config = $bindable({ conditions: [defaultCondition], logic: 'AND' }) }: Props =
+		$props();
 
 	const conditions = $derived(config.conditions ?? [defaultCondition]);
 	const logic = $derived(config.logic ?? 'AND');
@@ -73,7 +70,6 @@
 		if (dtype.includes('bool')) return 'boolean';
 		return 'string';
 	}
-
 
 	function getOperatorsForType(type: string, isColumnMode: boolean): string[] {
 		if (isColumnMode) return COMPARISON_OPS;
@@ -194,14 +190,21 @@
 						OR
 					</button>
 				</div>
-				<button type="button" class="btn-add" onclick={addCondition} aria-label="Add filter condition">
+				<button
+					type="button"
+					class="btn-add"
+					onclick={addCondition}
+					aria-label="Add filter condition"
+				>
 					<Plus size={16} aria-hidden="true" />
 				</button>
 			</div>
 		</div>
 
 		{#if conditions.length === 0}
-			<p class="empty-message" role="status">No conditions configured. Click "+ Add" to create one.</p>
+			<p class="empty-message" role="status">
+				No conditions configured. Click "+ Add" to create one.
+			</p>
 		{:else}
 			<div class="conditions-list" role="list" aria-label="Filter conditions" aria-live="polite">
 				{#each conditions as cond, i (i)}
@@ -523,6 +526,7 @@
 		gap: var(--space-3);
 		align-items: flex-start;
 		flex-wrap: wrap;
+		position: relative;
 	}
 
 	.field-group {
@@ -568,5 +572,13 @@
 		color: var(--fg-muted);
 		font-size: var(--text-sm);
 		font-style: italic;
+	}
+
+	.condition-card :global(.column-select) {
+		position: static;
+	}
+	.condition-card :global(.column-menu) {
+		top: inherit;
+		margin-top: 48px;
 	}
 </style>

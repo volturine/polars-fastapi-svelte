@@ -132,23 +132,27 @@
 </svelte:head>
 
 <QueryClientProvider client={queryClient}>
-	<div class="app">
-		<header class="header">
-			<div class="header-content">
-				<a href={resolve('/')} class="logo" data-sveltekit-reload>
-					<span class="logo-text">polars</span>
-					<span class="logo-divider">/</span>
-					<span class="logo-sub">analysis</span>
+	<div class="flex h-screen flex-col">
+		<header
+			class="sticky top-0 z-header border-b backdrop-blur-sm"
+			style="border-color: var(--border-primary); background-color: var(--bg-primary);"
+		>
+			<div class="mx-auto flex max-w-[1200px] items-center gap-6 px-6 py-3">
+				<a href={resolve('/')} class="flex items-center gap-1 text-base font-semibold no-underline" data-sveltekit-reload>
+					<span style="color: var(--fg-primary);">polars</span>
+					<span style="color: var(--fg-muted);">/</span>
+					<span style="color: var(--fg-tertiary);">analysis</span>
 				</a>
 
-				<nav class="nav">
+				<nav class="flex items-center gap-1">
 					{#each navItems as item (item.href)}
 						<a
 							href={resolve(item.href as '/')}
-							class="nav-link"
+							class="rounded-sm border border-transparent px-3 py-2 text-sm no-underline transition-all"
 							class:active={currentPath === item.href ||
 								(currentPath.startsWith('/analysis') && item.href === '/') ||
 								(currentPath.startsWith('/udfs') && item.href === '/udfs')}
+							style="color: var(--fg-tertiary);"
 							data-sveltekit-reload
 						>
 							{item.label}
@@ -156,10 +160,11 @@
 					{/each}
 				</nav>
 
-				<div class="header-actions">
+				<div class="ml-auto flex items-center gap-2">
 					<EngineMonitor />
 					<button
-						class="theme-toggle"
+						class="flex items-center justify-center rounded-sm border p-2 transition-all"
+						style="background-color: var(--bg-primary); border-color: var(--border-primary); color: var(--fg-secondary); box-shadow: var(--card-shadow);"
 						onclick={toggleTheme}
 						title="Toggle theme"
 						aria-label="Toggle theme"
@@ -174,7 +179,7 @@
 			</div>
 		</header>
 
-		<main class="main">
+		<main class="min-h-0 flex-1 overflow-y-auto" style="background-color: var(--bg-secondary);">
 			{@render children()}
 		</main>
 	</div>
@@ -185,95 +190,21 @@
 		height: 100%;
 		overflow: hidden;
 	}
-	.app {
-		height: 100vh;
-		display: flex;
-		flex-direction: column;
-	}
-	.header {
-		border-bottom: 1px solid var(--border-primary);
-		background-color: var(--bg-primary);
-		position: sticky;
-		top: 0;
-		z-index: var(--z-header);
-		backdrop-filter: blur(8px);
-	}
-	.header-content {
-		max-width: 1200px;
-		margin: 0 auto;
-		padding: var(--space-3) var(--space-6);
-		display: flex;
-		align-items: center;
-		gap: var(--space-6);
-	}
-	.logo {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-		text-decoration: none;
-		font-weight: var(--font-semibold);
-		font-size: var(--text-base);
-	}
-	.logo-text {
-		color: var(--fg-primary);
-	}
-	.logo-divider {
-		color: var(--fg-muted);
-	}
-	.logo-sub {
-		color: var(--fg-tertiary);
-	}
-	.nav {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-	}
-	.nav-link {
-		padding: var(--space-2) var(--space-3);
-		text-decoration: none;
-		color: var(--fg-tertiary);
-		font-size: var(--text-sm);
-		border-radius: var(--radius-sm);
-		transition: all var(--transition);
-		border: 1px solid transparent;
-	}
-	.nav-link:hover {
+
+	nav a:hover {
 		color: var(--fg-primary);
 		background-color: var(--bg-hover);
 		border-color: var(--border-primary);
 	}
-	.nav-link.active {
+
+	nav a.active {
 		color: var(--fg-primary);
 		background-color: var(--bg-tertiary);
 		border-color: var(--border-primary);
 	}
-	.header-actions {
-		margin-left: auto;
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-	.theme-toggle {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-2);
-		background-color: var(--bg-primary);
-		border: 1px solid var(--border-primary);
-		color: var(--fg-secondary);
-		cursor: pointer;
-		border-radius: var(--radius-sm);
-		transition: all var(--transition);
-		box-shadow: var(--card-shadow);
-	}
-	.theme-toggle:hover {
+
+	header button:hover {
 		background-color: var(--bg-hover);
 		color: var(--fg-primary);
-	}
-	.main {
-		flex: 1;
-		background-color: var(--bg-secondary);
-		overflow-y: auto;
-		min-height: 0;
 	}
 </style>

@@ -28,7 +28,6 @@
 		}
 	}
 
-
 	function formatDate(date: string): string {
 		const now = new Date();
 		const year = getYearDisplay(date);
@@ -42,17 +41,21 @@
 </script>
 
 <div
-	class="card"
+	class="card group relative cursor-pointer overflow-hidden rounded-sm border transition-all hover:-translate-y-px"
 	class:selected
 	onclick={handleClick}
 	onkeypress={handleKeyPress}
 	role="button"
 	tabindex="0"
+	style="background-color: var(--bg-primary); border-color: var(--border-primary); box-shadow: var(--card-shadow);"
 >
-	<div class="thumbnail">
+	<div
+		class="relative flex aspect-video w-full items-center justify-center border-b"
+		style="background-color: var(--bg-tertiary); border-color: var(--border-primary);"
+	>
 		<input
 			type="checkbox"
-			class="checkbox"
+			class="checkbox absolute left-2 top-2 z-[2] m-0 h-[18px] w-[18px] cursor-pointer opacity-0 transition-opacity group-hover:opacity-100"
 			class:visible={anySelected}
 			checked={selected}
 			onchange={(e) => {
@@ -61,143 +64,60 @@
 			}}
 			onclick={(e) => e.stopPropagation()}
 			aria-label={`Select ${analysis.name}`}
+			style="accent-color: var(--accent-primary);"
 		/>
 		{#if analysis.thumbnail}
-			<img src={analysis.thumbnail} alt={analysis.name} />
+			<img src={analysis.thumbnail} alt={analysis.name} class="h-full w-full object-cover" />
 		{:else}
-			<div class="placeholder">
+			<div style="color: var(--fg-faint);">
 				<ChartBar size={32} strokeWidth={1.5} />
 			</div>
 		{/if}
 	</div>
 
-	<div class="content">
-		<div class="header">
-			<h3>{analysis.name}</h3>
+	<div class="p-4">
+		<div class="mb-2 flex items-start justify-between gap-3">
+			<h3 class="m-0 min-w-0 flex-1 truncate text-sm font-semibold">{analysis.name}</h3>
 			<button
-				class="btn-delete"
+				class="btn-delete flex flex-shrink-0 items-center justify-center rounded-sm border p-1 opacity-0 transition-all group-hover:opacity-100"
 				onclick={(e) => {
 					e.stopPropagation();
 					onDelete(analysis.id);
 				}}
 				aria-label="Delete analysis"
+				style="background-color: transparent; border-color: var(--border-primary); color: var(--fg-muted);"
 			>
 				<Trash2 size={14} />
 			</button>
 		</div>
 
-		<div class="metadata">
-			<span class="date">{formatDate(analysis.updated_at)}</span>
+		<div class="text-xs" style="color: var(--fg-muted);">
+			<span>{formatDate(analysis.updated_at)}</span>
 		</div>
 	</div>
 </div>
 
 <style>
-	.card {
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		overflow: hidden;
-		cursor: pointer;
-		transition: all var(--transition);
-		background-color: var(--bg-primary);
-		box-shadow: var(--card-shadow);
-		position: relative;
-	}
 	.card:hover {
 		border-color: var(--border-tertiary);
-		transform: translateY(-1px);
 	}
+
 	.card:focus {
 		outline: none;
 		border-color: var(--border-focus);
 	}
+
 	.card.selected {
 		border-color: var(--accent-primary);
 	}
 
-	/* Checkbox */
-	.checkbox {
-		position: absolute;
-		top: var(--space-2);
-		left: var(--space-2);
-		z-index: 2;
-		width: 18px;
-		height: 18px;
-		margin: 0;
-		cursor: pointer;
-		opacity: 0;
-		transition: opacity var(--transition);
-		accent-color: var(--accent-primary);
-	}
-	.card:hover .checkbox,
 	.checkbox.visible {
 		opacity: 1;
 	}
 
-	/* Delete button: hover-only */
-	.btn-delete {
-		flex-shrink: 0;
-		background-color: transparent;
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		padding: var(--space-1);
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--fg-muted);
-		transition: all var(--transition);
-		opacity: 0;
-	}
-	.card:hover .btn-delete {
-		opacity: 1;
-	}
 	.btn-delete:hover {
 		background-color: var(--error-bg);
 		border-color: var(--error-border);
 		color: var(--error-fg);
-	}
-
-	.thumbnail {
-		position: relative;
-		width: 100%;
-		aspect-ratio: 16 / 9;
-		background-color: var(--bg-tertiary);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-bottom: 1px solid var(--border-primary);
-	}
-	.thumbnail img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-	.placeholder {
-		color: var(--fg-faint);
-	}
-	.content {
-		padding: var(--space-4);
-	}
-	.header {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: var(--space-3);
-		margin-bottom: var(--space-2);
-	}
-	h3 {
-		margin: 0;
-		font-size: var(--text-sm);
-		font-weight: var(--font-semibold);
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.metadata {
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
 	}
 </style>

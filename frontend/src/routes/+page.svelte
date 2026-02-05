@@ -156,13 +156,13 @@
 	});
 </script>
 
-<div class="container">
-	<header class="page-header">
-		<div class="header-text">
-			<h1>Analyses</h1>
-			<p class="subtitle">Browse and manage your data analyses</p>
+<div class="mx-auto box-border min-h-full max-w-[1200px] px-6 py-7 md:px-4 md:py-4">
+	<header class="mb-8 flex flex-col items-stretch justify-between gap-6 border-b pb-6 md:flex-row md:items-start" style="border-color: var(--border-primary);">
+		<div>
+			<h1 class="m-0 mb-2 text-2xl font-semibold">Analyses</h1>
+			<p class="subtitle m-0 text-sm" style="color: var(--fg-tertiary);">Browse and manage your data analyses</p>
 		</div>
-		<button class="btn-primary btn-new" onclick={createNew}>
+		<button class="btn-primary w-full justify-center md:w-auto" onclick={createNew}>
 			<Plus size={16} />
 			New Analysis
 		</button>
@@ -170,25 +170,25 @@
 
 	<main>
 		{#if query.isPending}
-			<div class="loading">
-				<div class="skeleton-grid">
+			<div class="py-4">
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
 					{#each Array(6) as _, i (i)}
-						<div class="skeleton-card">
-							<div class="skeleton-thumbnail"></div>
-							<div class="skeleton-content">
-								<div class="skeleton-title"></div>
-								<div class="skeleton-text"></div>
-								<div class="skeleton-text small"></div>
+						<div class="overflow-hidden rounded-sm border" style="border-color: var(--border-primary); background: var(--bg-primary);">
+							<div class="aspect-video w-full animate-shimmer" style="background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%); background-size: 200% 100%;"></div>
+							<div class="p-4">
+								<div class="mb-3 h-4 w-[70%] animate-shimmer rounded-sm" style="background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%); background-size: 200% 100%;"></div>
+								<div class="mb-3 h-3.5 animate-shimmer rounded-sm" style="background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%); background-size: 200% 100%;"></div>
+								<div class="h-3.5 w-1/2 animate-shimmer rounded-sm" style="background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%); background-size: 200% 100%;"></div>
 							</div>
 						</div>
 					{/each}
 				</div>
 			</div>
 		{:else if query.isError}
-			<div class="error-box error-state">
-				<div class="error-icon">!</div>
-				<h2>Failed to load analyses</h2>
-				<p>{query.error.message}</p>
+			<div class="error-box flex min-h-[400px] flex-col items-center justify-center px-6 py-12 text-center">
+				<div class="mb-6 flex h-12 w-12 items-center justify-center rounded-sm text-xl font-bold">!</div>
+				<h2 class="m-0 mb-2 text-lg font-semibold">Failed to load analyses</h2>
+				<p class="m-0 mb-6 max-w-[400px] text-sm">{query.error.message}</p>
 				<button class="btn-primary" onclick={() => query.refetch()}>Try again</button>
 			</div>
 		{:else if query.data}
@@ -202,15 +202,17 @@
 					onSort={handleSort}
 				/>
 				{#if selectionCount > 0}
-					<div class="selection-toolbar">
-						<span class="selection-count">{selectionCount} selected</span>
-						<div class="selection-actions">
-							<button class="btn-text" onclick={selectAll}> Select All </button>
-							<button class="btn-text" onclick={clearSelection}>
+					<div class="mb-4 flex items-center justify-between rounded-sm border px-4 py-3" style="background-color: var(--bg-secondary); border-color: var(--border-primary);">
+						<span class="text-sm font-medium" style="color: var(--fg-primary);">{selectionCount} selected</span>
+						<div class="flex items-center gap-2">
+							<button class="btn-text flex items-center gap-1 rounded-sm border border-transparent bg-transparent px-3 py-2 text-sm transition-all" onclick={selectAll}>
+								Select All
+							</button>
+							<button class="btn-text flex items-center gap-1 rounded-sm border border-transparent bg-transparent px-3 py-2 text-sm transition-all" onclick={clearSelection}>
 								<X size={14} />
 								Clear
 							</button>
-							<button class="btn-danger" onclick={requestBulkDelete}>
+							<button class="btn-danger flex items-center gap-1" onclick={requestBulkDelete}>
 								<Trash2 size={14} />
 								Delete
 							</button>
@@ -218,8 +220,8 @@
 					</div>
 				{/if}
 				{#if filteredAndSortedAnalyses.length === 0}
-					<div class="no-results">
-						<p>No analyses match your search.</p>
+					<div class="rounded-sm border border-dashed px-6 py-12 text-center" style="border-color: var(--border-primary);">
+						<p class="m-0 text-sm" style="color: var(--fg-tertiary);">No analyses match your search.</p>
 					</div>
 				{:else}
 					<GalleryGrid
@@ -257,82 +259,6 @@
 />
 
 <style>
-	.container {
-		max-width: 1200px;
-		margin: 0 auto;
-		padding: var(--space-7) var(--space-6);
-		min-height: 100%;
-		box-sizing: border-box;
-	}
-	.page-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: var(--space-6);
-		margin-bottom: var(--space-8);
-		padding-bottom: var(--space-6);
-		border-bottom: 1px solid var(--border-primary);
-	}
-	.header-text h1 {
-		margin: 0 0 var(--space-2) 0;
-		font-size: var(--text-2xl);
-		font-weight: var(--font-semibold);
-	}
-	.subtitle {
-		margin: 0;
-		font-size: var(--text-sm);
-		color: var(--fg-tertiary);
-	}
-	.loading {
-		padding: var(--space-4) 0;
-	}
-	.skeleton-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-		gap: var(--space-4);
-	}
-	.skeleton-card {
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		overflow: hidden;
-		background: var(--bg-primary);
-	}
-	.skeleton-thumbnail {
-		width: 100%;
-		aspect-ratio: 16 / 9;
-		background: linear-gradient(
-			90deg,
-			var(--bg-tertiary) 25%,
-			var(--bg-hover) 50%,
-			var(--bg-tertiary) 75%
-		);
-		background-size: 200% 100%;
-		animation: shimmer 1.5s infinite;
-	}
-	.skeleton-content {
-		padding: var(--space-4);
-	}
-	.skeleton-title,
-	.skeleton-text {
-		height: 14px;
-		background: linear-gradient(
-			90deg,
-			var(--bg-tertiary) 25%,
-			var(--bg-hover) 50%,
-			var(--bg-tertiary) 75%
-		);
-		background-size: 200% 100%;
-		animation: shimmer 1.5s infinite;
-		border-radius: var(--radius-sm);
-		margin-bottom: var(--space-3);
-	}
-	.skeleton-title {
-		height: 16px;
-		width: 70%;
-	}
-	.skeleton-text.small {
-		width: 50%;
-	}
 	@keyframes shimmer {
 		0% {
 			background-position: 200% 0;
@@ -341,120 +267,17 @@
 			background-position: -200% 0;
 		}
 	}
-	.error-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-12) var(--space-6);
-		text-align: center;
-		min-height: 400px;
-	}
-	.error-icon {
-		width: 48px;
-		height: 48px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: var(--radius-sm);
-		font-size: var(--text-xl);
-		font-weight: var(--font-bold);
-		margin-bottom: var(--space-6);
-	}
-	.error-state h2 {
-		margin: 0 0 var(--space-2) 0;
-		font-size: var(--text-lg);
-		font-weight: var(--font-semibold);
-	}
-	.error-state p {
-		margin: 0 0 var(--space-6) 0;
-		font-size: var(--text-sm);
-		max-width: 400px;
-	}
-	.no-results {
-		text-align: center;
-		padding: var(--space-12) var(--space-6);
-		border: 1px dashed var(--border-primary);
-		border-radius: var(--radius-sm);
-	}
-	.no-results p {
-		margin: 0;
-		font-size: var(--text-sm);
-		color: var(--fg-tertiary);
+
+	.animate-shimmer {
+		animation: shimmer 1.5s infinite;
 	}
 
-	/* Selection Toolbar */
-	.selection-toolbar {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: var(--space-3) var(--space-4);
-		background-color: var(--bg-secondary);
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		margin-bottom: var(--space-4);
-	}
-	.selection-count {
-		font-size: var(--text-sm);
-		font-weight: var(--font-medium);
-		color: var(--fg-primary);
-	}
-	.selection-actions {
-		display: flex;
-		gap: var(--space-2);
-		align-items: center;
-	}
 	.btn-text {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-		padding: var(--space-2) var(--space-3);
-		background: transparent;
-		border: 1px solid transparent;
-		border-radius: var(--radius-sm);
-		font-size: var(--text-sm);
 		color: var(--fg-secondary);
-		cursor: pointer;
-		transition: all var(--transition);
 	}
+
 	.btn-text:hover {
 		background-color: var(--bg-hover);
 		color: var(--fg-primary);
-	}
-	.btn-danger {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-		padding: var(--space-2) var(--space-3);
-		background-color: var(--error-bg);
-		border: 1px solid var(--error-border);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-sm);
-		font-weight: var(--font-medium);
-		color: var(--error-fg);
-		cursor: pointer;
-		transition: all var(--transition);
-	}
-	.btn-danger:hover {
-		background-color: var(--error-fg);
-		border-color: var(--error-fg);
-		color: var(--bg-primary);
-	}
-
-	@media (max-width: 768px) {
-		.container {
-			padding: var(--space-4);
-		}
-		.page-header {
-			flex-direction: column;
-			align-items: stretch;
-		}
-		.btn-new {
-			width: 100%;
-			justify-content: center;
-		}
-		.skeleton-grid {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>

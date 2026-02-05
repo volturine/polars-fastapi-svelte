@@ -14,7 +14,7 @@
 	const anySelected = $derived(selectedIds.size > 0);
 </script>
 
-<div class="grid">
+<div class="grid w-full grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
 	{#each analyses as analysis (analysis.id)}
 		<AnalysisCard
 			{analysis}
@@ -25,17 +25,3 @@
 		/>
 	{/each}
 </div>
-
-<style>
-	.grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-		gap: var(--space-4);
-		width: 100%;
-	}
-	@media (max-width: 640px) {
-		.grid {
-			grid-template-columns: 1fr;
-		}
-	}
-</style>

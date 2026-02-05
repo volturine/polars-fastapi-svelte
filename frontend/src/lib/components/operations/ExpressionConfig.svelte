@@ -30,6 +30,7 @@
 		<textarea
 			id="expr-textarea-expression"
 			data-testid="expr-expression-textarea"
+			class="w-full resize-y mb-2"
 			bind:value={config.expression}
 			placeholder="e.g., pl.col(&quot;price&quot;) * 1.2"
 			rows="4"
@@ -39,7 +40,7 @@
 			>Enter a Polars expression using pl.col() to reference columns</span
 		>
 
-		<div id="expr-syntax-help" class="help-text" aria-label="Syntax help">
+		<div id="expr-syntax-help" class="help-text text-sm leading-relaxed p-3 rounded-sm" style="color: var(--fg-tertiary); background-color: var(--form-help-bg); border: 1px solid var(--form-help-border); border-left: 3px solid var(--form-help-accent);" aria-label="Syntax help">
 			<strong>Polars Expression Syntax:</strong><br />
 			Use <code>pl.col("column")</code> to reference columns.<br />
 			Examples:<br />
@@ -70,27 +71,11 @@
 			onChange={(val) => insertColumn(val)}
 			placeholder="Select column to insert..."
 		/>
-		<p class="help-text">Select a column to insert it into the expression above.</p>
+		<p class="text-sm mt-2" style="color: var(--fg-tertiary);">Select a column to insert it into the expression above.</p>
 	</div>
 </div>
 
 <style>
-	/* Component-specific styles - dropdown pattern defined in app.css */
-	textarea {
-		width: 100%;
-		resize: vertical;
-		margin-bottom: var(--space-2);
-	}
-	.help-text {
-		font-size: var(--text-sm);
-		color: var(--fg-tertiary);
-		line-height: 1.6;
-		padding: var(--space-3);
-		background-color: var(--form-help-bg);
-		border: 1px solid var(--form-help-border);
-		border-left: 3px solid var(--form-help-accent);
-		border-radius: var(--radius-sm);
-	}
 	.help-text code {
 		background-color: var(--bg-tertiary);
 		padding: var(--space-1) var(--space-2);

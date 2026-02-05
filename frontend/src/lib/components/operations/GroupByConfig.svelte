@@ -89,8 +89,8 @@
 	<div class="form-section" role="group" aria-labelledby="{uid}-agg-heading">
 		<h4 id="{uid}-agg-heading">Aggregations</h4>
 
-		<div class="add-aggregation" role="group" aria-label="Add aggregation form">
-			<div class="agg-column-dropdown">
+		<div class="flex flex-wrap gap-2 mb-4" role="group" aria-label="Add aggregation form">
+			<div class="flex-[2] min-w-[160px]">
 				<ColumnDropdown
 					{schema}
 					value={newAggregation.column}
@@ -103,6 +103,7 @@
 			<select
 				id="{uid}-agg-function"
 				data-testid="agg-function-select"
+				class="flex-1 min-w-[120px]"
 				bind:value={newAggregation.function}
 			>
 				{#each aggregationFunctions as func (func)}
@@ -113,6 +114,7 @@
 			<input
 				id="{uid}-agg-alias"
 				type="text"
+				class="flex-[2] min-w-[160px]"
 				bind:value={newAggregation.alias}
 				placeholder="Alias (optional)"
 			/>
@@ -121,6 +123,8 @@
 				id="{uid}-agg-add"
 				data-testid="agg-add-button"
 				type="button"
+				class="add-btn px-4 py-2 border-none rounded-sm cursor-pointer"
+				style="background-color: var(--accent-primary); color: var(--bg-primary);"
 				onclick={addAggregation}
 				disabled={!newAggregation.column}
 				aria-label="Add aggregation"
@@ -132,19 +136,21 @@
 		{#if safeAggregations.length > 0}
 			<div
 				id="aggregations-list"
-				class="aggregations-list"
+				class="flex flex-col gap-2"
 				role="list"
 				aria-label="Configured aggregations"
 			>
 				{#each safeAggregations as agg, i (i)}
-					<div class="aggregation-item" role="listitem">
-						<span class="agg-details">
+					<div class="flex justify-between items-center p-3 rounded-sm" style="background-color: var(--panel-bg); border: 1px solid var(--panel-border);" role="listitem">
+						<span class="text-sm" style="font-family: var(--font-mono); color: var(--fg-primary);">
 							{agg.function}({agg.column}) as {agg.alias}
 						</span>
 						<button
 							id={`agg-btn-remove-${i}`}
 							data-testid={`agg-remove-button-${i}`}
 							type="button"
+							class="remove-btn px-3 py-1 text-sm rounded-sm cursor-pointer"
+							style="background-color: var(--error-bg); color: var(--error-fg); border: 1px solid var(--error-border);"
 							onclick={() => removeAggregation(i)}
 							aria-label={`Remove aggregation ${agg.alias}`}
 						>
@@ -158,65 +164,11 @@
 </div>
 
 <style>
-	.add-aggregation {
-		display: flex;
-		gap: var(--space-2);
-		margin-bottom: var(--space-4);
-		flex-wrap: wrap;
-	}
-	.agg-column-dropdown {
-		flex: 2;
-		min-width: 160px;
-	}
-	.add-aggregation select {
-		flex: 1;
-		min-width: 120px;
-	}
-	.add-aggregation input {
-		flex: 2;
-		min-width: 160px;
-	}
-	.add-aggregation button {
-		padding: var(--space-2) var(--space-4);
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border: none;
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-	}
-	.add-aggregation button:disabled {
-		background-color: var(--bg-muted);
+	.add-btn:disabled {
+		background-color: var(--bg-muted) !important;
 		cursor: not-allowed;
-		color: var(--fg-muted);
+		color: var(--fg-muted) !important;
 		border: 1px solid var(--border-secondary);
-	}
-	.aggregations-list {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-	.aggregation-item {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: var(--space-3);
-		background-color: var(--panel-bg);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-sm);
-	}
-	.agg-details {
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-		color: var(--fg-primary);
-	}
-	.aggregation-item button {
-		padding: var(--space-1) var(--space-3);
-		background-color: var(--error-bg);
-		color: var(--error-fg);
-		border: 1px solid var(--error-border);
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		font-size: var(--text-sm);
 	}
 	button:hover:not(:disabled) {
 		opacity: 0.9;

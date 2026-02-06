@@ -100,7 +100,7 @@
 		{#if rightSchema}
 			<div
 				id="join-schema-preview"
-				class="mt-2 p-2 rounded-sm"
+				class="mt-2 p-2"
 				style="background-color: var(--panel-bg);"
 				aria-live="polite"
 			>
@@ -119,7 +119,7 @@
 		</select>
 		<div
 			id="join-type-help"
-			class="text-sm leading-relaxed p-3 rounded-sm mt-2"
+			class="text-sm leading-relaxed p-3 mt-2"
 			style="color: var(--fg-tertiary); background-color: var(--form-help-bg); border: 1px solid var(--form-help-border); border-left: 3px solid var(--form-help-accent);"
 			aria-describedby="join-type-help"
 		>
@@ -139,7 +139,7 @@
 					id="join-btn-add-column"
 					data-testid="join-add-column-button"
 					type="button"
-					class="btn-add py-1 px-3 border-none rounded-sm cursor-pointer text-sm"
+					class="btn-add py-1 px-3 border-none cursor-pointer text-sm"
 					style="background-color: var(--primary-bg); color: var(--primary-fg);"
 					onclick={addJoinColumn}
 					aria-label="Add join column pair"
@@ -156,7 +156,7 @@
 
 			{#each config.join_columns ?? [] as joinCol, _index (joinCol.id)}
 				<div
-					class="flex gap-2 items-end mb-3 p-3 rounded-sm"
+					class="flex gap-2 items-end mb-3 p-3"
 					style="background-color: var(--panel-bg);"
 					role="group"
 					aria-label={`Join column pair ${_index + 1}`}
@@ -191,7 +191,7 @@
 						id={`join-btn-remove-${_index}`}
 						data-testid={`join-remove-button-${_index}`}
 						type="button"
-						class="btn-remove p-2 bg-transparent rounded-sm cursor-pointer"
+						class="btn-remove p-2 bg-transparent cursor-pointer"
 						style="color: var(--error-fg); border: 1px solid var(--error-fg);"
 						onclick={() => removeJoinColumn(joinCol.id)}
 						aria-label={`Remove join column pair ${_index + 1}`}
@@ -245,7 +245,7 @@
 		/>
 		<div
 			id="join-suffix-hint"
-			class="text-sm leading-relaxed p-3 rounded-sm mt-2"
+			class="text-sm leading-relaxed p-3 mt-2"
 			style="color: var(--fg-tertiary); background-color: var(--form-help-bg); border: 1px solid var(--form-help-border); border-left: 3px solid var(--form-help-accent);"
 		>
 			Suffix for columns from the right dataset (when names collide)

@@ -42,7 +42,7 @@
 
 		<div
 			id="expr-syntax-help"
-			class="help-text text-sm leading-relaxed p-3 rounded-sm"
+			class="help-text text-sm leading-relaxed p-3"
 			style="color: var(--fg-tertiary); background-color: var(--form-help-bg); border: 1px solid var(--form-help-border); border-left: 3px solid var(--form-help-accent);"
 			aria-label="Syntax help"
 		>

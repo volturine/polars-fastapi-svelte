@@ -44,7 +44,7 @@
 
 {#if active && info && position}
 	<div
-		class="pointer-events-none fixed z-[9999] flex items-center gap-2 whitespace-nowrap rounded-md border-2 px-3 py-2 text-sm"
+		class="pointer-events-none fixed z-[9999] flex items-center gap-2 whitespace-nowrap border-2 px-3 py-2 text-sm"
 		class:reorder={isReorder}
 		style="left: {position.x + 12}px; top: {position.y +
 			12}px; background: var(--bg-primary); border-color: {isReorder

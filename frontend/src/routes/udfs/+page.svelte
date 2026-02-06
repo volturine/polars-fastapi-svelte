@@ -121,9 +121,7 @@
 	>
 		<div>
 			<h1 class="m-0 mb-2 text-2xl">UDF Library</h1>
-			<p class="m-0 text-fg-tertiary">
-				Reusable Python transforms stored globally
-			</p>
+			<p class="m-0 text-fg-tertiary">Reusable Python transforms stored globally</p>
 		</div>
 		<div class="flex flex-wrap gap-2">
 			<button class="btn-secondary" onclick={() => (importOpen = true)}>
@@ -153,9 +151,7 @@
 		</div>
 	{:else if query.data}
 		{#if query.data.length === 0}
-			<div
-				class="rounded-sm border border-dashed border-border-primary p-8 text-center"
-			>
+			<div class="rounded-sm border border-dashed border-border-primary p-8 text-center">
 				<p>No UDFs yet.</p>
 				<button class="btn-primary" onclick={openNew}>Create your first UDF</button>
 			</div>
@@ -163,7 +159,7 @@
 			<div class="flex flex-col gap-3">
 				{#each query.data as udf (udf.id)}
 					<div
-						class="row flex flex-col justify-between gap-4 rounded-sm border border-border-primary bg-bg-primary p-4 md:flex-row"
+						class="row flex flex-col justify-between gap-4 border border-border-primary bg-bg-primary p-4 md:flex-row"
 					>
 						<div class="flex flex-col gap-2">
 							<div class="flex items-center gap-3">
@@ -187,8 +183,7 @@
 							{#if udf.tags?.length}
 								<div class="flex flex-wrap gap-2">
 									{#each udf.tags as tag (tag)}
-										<span
-											class="rounded-sm bg-bg-tertiary px-1.5 py-0.5 text-xs text-fg-muted"
+										<span class="rounded-sm bg-bg-tertiary px-1.5 py-0.5 text-xs text-fg-muted"
 											>{tag}</span
 										>
 									{/each}

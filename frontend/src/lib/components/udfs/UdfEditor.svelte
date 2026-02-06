@@ -176,7 +176,7 @@
 			</div>
 
 			<div
-				class="flex flex-col gap-3 p-4 rounded-sm border"
+				class="flex flex-col gap-3 p-4 border"
 				style="background-color: var(--bg-primary); border-color: var(--border-primary);"
 			>
 				<UdfSignatureBuilder {inputs} onChange={updateInputs} />
@@ -191,7 +191,7 @@
 			</div>
 
 			<div
-				class="flex flex-col gap-3 p-4 rounded-sm border"
+				class="flex flex-col gap-3 p-4 border"
 				style="background-color: var(--bg-primary); border-color: var(--border-primary);"
 			>
 				<div class="flex justify-between items-center">

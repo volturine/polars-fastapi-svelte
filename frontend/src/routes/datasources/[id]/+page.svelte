@@ -381,7 +381,7 @@
 	<header class="mb-6 flex items-center justify-between gap-4 border-b border-primary pb-6">
 		<div class="flex items-center gap-4">
 			<button
-				class="btn-back flex h-9 w-9 items-center justify-center rounded-sm border border-primary bg-tertiary p-0 text-fg-secondary transition-all hover:bg-hover hover:text-fg-primary"
+				class="btn-back flex h-9 w-9 items-center justify-center border border-primary bg-tertiary p-0 text-fg-secondary transition-all hover:bg-hover hover:text-fg-primary"
 				onclick={handleBack}
 			>
 				<ArrowLeft size={20} />
@@ -476,7 +476,7 @@
 		{/if}
 
 		{#if updateMutation.isSuccess}
-			<div class="success-box mb-4 flex items-center gap-2 rounded-sm border p-3 text-sm">
+			<div class="success-box mb-4 flex items-center gap-2 border p-3 text-sm">
 				<p class="m-0">Changes saved successfully!</p>
 			</div>
 		{/if}
@@ -492,7 +492,7 @@
 							value={name}
 							oninput={(e) => handleNameChange(e.currentTarget.value)}
 							placeholder="Data source name"
-							class="input-base rounded-sm border px-3 py-2 text-sm transition-colors"
+							class="input-base border px-3 py-2 text-sm transition-colors"
 						/>
 					</div>
 
@@ -572,7 +572,7 @@
 							<p>Error loading schema</p>
 						</div>
 					{:else if columns.length > 0}
-						<div class="overflow-hidden rounded-sm border border-primary">
+						<div class="overflow-hidden border border-primary">
 							<div
 								class="grid grid-cols-[50px_2fr_140px_1fr] items-center gap-3 bg-tertiary px-4 py-3 text-xs font-semibold uppercase tracking-wide text-fg-tertiary"
 							>
@@ -588,7 +588,7 @@
 									<span class="text-xs text-fg-muted">{index + 1}</span>
 									<input
 										type="text"
-										class="input-base w-full rounded-sm border px-3 py-2 text-sm"
+										class="input-base w-full border px-3 py-2 text-sm"
 										value={column.name}
 										oninput={(e) => handleColumnNameChange(index, e.currentTarget.value)}
 									/>
@@ -625,7 +625,7 @@
 								id="csv-delimiter"
 								value={csvConfig.delimiter}
 								onchange={(e) => handleCsvConfigChange('delimiter', e.currentTarget.value)}
-								class="input-base rounded-sm border px-3 py-2 text-sm"
+								class="input-base border px-3 py-2 text-sm"
 							>
 								<option value=",">Comma (,)</option>
 								<option value=";">Semicolon (;)</option>
@@ -643,7 +643,7 @@
 								id="csv-quote"
 								value={csvConfig.quote_char}
 								onchange={(e) => handleCsvConfigChange('quote_char', e.currentTarget.value)}
-								class="input-base rounded-sm border px-3 py-2 text-sm"
+								class="input-base border px-3 py-2 text-sm"
 							>
 								<option value="&quot;">Double Quote (")</option>
 								<option value="'">Single Quote (')</option>
@@ -661,7 +661,7 @@
 								id="csv-encoding"
 								value={csvConfig.encoding}
 								onchange={(e) => handleCsvConfigChange('encoding', e.currentTarget.value)}
-								class="input-base rounded-sm border px-3 py-2 text-sm"
+								class="input-base border px-3 py-2 text-sm"
 							>
 								<option value="utf8">UTF-8</option>
 								<option value="utf8-lossy">UTF-8 (lossy)</option>
@@ -681,7 +681,7 @@
 								value={csvConfig.skip_rows}
 								oninput={(e) =>
 									handleCsvConfigChange('skip_rows', parseInt(e.currentTarget.value) || 0)}
-								class="input-base rounded-sm border px-3 py-2 text-sm"
+								class="input-base border px-3 py-2 text-sm"
 							/>
 							<span class="m-0 text-xs text-fg-muted">Number of rows to skip at the start</span>
 						</div>
@@ -715,7 +715,7 @@
 								value={excelConfig.sheet_name}
 								oninput={(e) => handleExcelConfigChange('sheet_name', e.currentTarget.value)}
 								placeholder="Sheet1"
-								class="input-base rounded-sm border px-3 py-2 text-sm"
+								class="input-base border px-3 py-2 text-sm"
 							/>
 						</div>
 
@@ -729,7 +729,7 @@
 								value={excelConfig.table_name}
 								oninput={(e) => handleExcelConfigChange('table_name', e.currentTarget.value)}
 								placeholder="Optional"
-								class="input-base rounded-sm border px-3 py-2 text-sm"
+								class="input-base border px-3 py-2 text-sm"
 							/>
 						</div>
 					</div>
@@ -744,7 +744,7 @@
 							value={excelConfig.named_range}
 							oninput={(e) => handleExcelConfigChange('named_range', e.currentTarget.value)}
 							placeholder="Optional"
-							class="input-base rounded-sm border px-3 py-2 text-sm"
+							class="input-base border px-3 py-2 text-sm"
 						/>
 					</div>
 
@@ -762,7 +762,7 @@
 									value={excelConfig.start_row}
 									oninput={(e) =>
 										handleExcelConfigChange('start_row', parseInt(e.currentTarget.value) || 0)}
-									class="input-base rounded-sm border px-3 py-2 text-sm"
+									class="input-base border px-3 py-2 text-sm"
 								/>
 								<span class="m-0 text-xs text-fg-muted">Excel row: {excelConfig.start_row + 1}</span
 								>
@@ -779,7 +779,7 @@
 									value={excelConfig.start_col}
 									oninput={(e) =>
 										handleExcelConfigChange('start_col', parseInt(e.currentTarget.value) || 0)}
-									class="input-base rounded-sm border px-3 py-2 text-sm"
+									class="input-base border px-3 py-2 text-sm"
 								/>
 								<span class="m-0 text-xs text-fg-muted"
 									>Excel column: {cellLabel(excelConfig.start_col)}</span
@@ -796,7 +796,7 @@
 									value={excelConfig.end_col}
 									oninput={(e) =>
 										handleExcelConfigChange('end_col', parseInt(e.currentTarget.value) || 0)}
-									class="input-base rounded-sm border px-3 py-2 text-sm"
+									class="input-base border px-3 py-2 text-sm"
 								/>
 								<span class="m-0 text-xs text-fg-muted"
 									>Excel column: {cellLabel(excelConfig.end_col)}</span

@@ -190,7 +190,9 @@
 
 <div class="w-full my-2 overflow-hidden border select-text bg-panel border-panel">
 	{#if isLoading}
-		<div class="flex flex-col items-center justify-center gap-3 p-8 pointer-events-none text-fg-tertiary">
+		<div
+			class="flex flex-col items-center justify-center gap-3 p-8 pointer-events-none text-fg-tertiary"
+		>
 			<div class="spinner-md"></div>
 			<p class="m-0 text-fg-tertiary">Loading preview...</p>
 		</div>
@@ -200,7 +202,10 @@
 			<p class="m-0 text-fg-tertiary">{error.message}</p>
 		</div>
 	{:else if headerGroups.length > 0 && data}
-		<div class="flex justify-between items-center px-4 py-3 text-xs border-b text-fg-tertiary border-panel" style="background: var(--panel-header-bg);">
+		<div
+			class="flex justify-between items-center px-4 py-3 text-xs border-b text-fg-tertiary border-panel"
+			style="background: var(--panel-header-bg);"
+		>
 			<span>
 				Showing {startRow.toLocaleString()}-{endRow.toLocaleString()} of {data.total_rows.toLocaleString()}
 				rows
@@ -244,7 +249,9 @@
 				</thead>
 				<tbody>
 					{#each rows as row (row.id)}
-						<tr class="border-b transition-colors last:border-b-0 border-table even:bg-secondary hover:!bg-hover">
+						<tr
+							class="border-b transition-colors last:border-b-0 border-table even:bg-secondary hover:!bg-hover"
+						>
 							{#each row.getVisibleCells() as cell (cell.id)}
 								<td
 									class="px-4 py-3 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px] text-[0.8125rem] select-text text-fg-secondary"
@@ -260,9 +267,12 @@
 		</div>
 
 		{#if totalPages > 1}
-			<div class="flex justify-between items-center px-4 py-3 border-t border-panel" style="background: var(--panel-header-bg);">
+			<div
+				class="flex justify-between items-center px-4 py-3 border-t border-panel"
+				style="background: var(--panel-header-bg);"
+			>
 				<button
-					class="px-4 py-2 border rounded-sm cursor-pointer transition-all border-primary bg-panel hover:bg-hover hover:border-secondary disabled:opacity-40 disabled:cursor-not-allowed"
+					class="px-4 py-2 border cursor-pointer transition-all border-primary bg-panel hover:bg-hover hover:border-secondary disabled:opacity-40 disabled:cursor-not-allowed"
 					onclick={prevPage}
 					disabled={currentPage === 1}
 				>
@@ -270,7 +280,7 @@
 				</button>
 				<span class="text-xs text-fg-tertiary">Page {currentPage} of {totalPages}</span>
 				<button
-					class="px-4 py-2 border rounded-sm cursor-pointer transition-all border-primary bg-panel hover:bg-hover hover:border-secondary disabled:opacity-40 disabled:cursor-not-allowed"
+					class="px-4 py-2 border cursor-pointer transition-all border-primary bg-panel hover:bg-hover hover:border-secondary disabled:opacity-40 disabled:cursor-not-allowed"
 					onclick={nextPage}
 					disabled={currentPage >= totalPages}
 				>

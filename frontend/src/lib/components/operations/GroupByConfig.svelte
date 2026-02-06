@@ -123,7 +123,7 @@
 				id="{uid}-agg-add"
 				data-testid="agg-add-button"
 				type="button"
-				class="add-btn px-4 py-2 border-none rounded-sm cursor-pointer"
+				class="add-btn px-4 py-2 border-none cursor-pointer"
 				style="background-color: var(--accent-primary); color: var(--bg-primary);"
 				onclick={addAggregation}
 				disabled={!newAggregation.column}
@@ -142,7 +142,7 @@
 			>
 				{#each safeAggregations as agg, i (i)}
 					<div
-						class="flex justify-between items-center p-3 rounded-sm"
+						class="flex justify-between items-center p-3"
 						style="background-color: var(--panel-bg); border: 1px solid var(--panel-border);"
 						role="listitem"
 					>
@@ -153,7 +153,7 @@
 							id={`agg-btn-remove-${i}`}
 							data-testid={`agg-remove-button-${i}`}
 							type="button"
-							class="remove-btn px-3 py-1 text-sm rounded-sm cursor-pointer"
+							class="remove-btn px-3 py-1 text-sm cursor-pointer"
 							style="background-color: var(--error-bg); color: var(--error-fg); border: 1px solid var(--error-border);"
 							onclick={() => removeAggregation(i)}
 							aria-label={`Remove aggregation ${agg.alias}`}

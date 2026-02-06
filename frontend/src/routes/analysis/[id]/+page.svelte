@@ -507,7 +507,7 @@
 					<div class="tabs flex items-center overflow-x-auto w-full gap-1">
 						{#each analysisStore.tabs.filter((t) => t.type === 'datasource') as tab (tab.id)}
 							<button
-								class="tab inline-flex items-center bg-transparent border-none cursor-pointer text-sm font-medium uppercase px-2 py-1 text-fg-muted transition-all duration-[160ms] gap-1 tracking-[0.06em] rounded-sm hover:text-fg-secondary hover:bg-hover"
+								class="tab inline-flex items-center bg-transparent border-none cursor-pointer text-sm font-medium uppercase px-2 py-1 text-fg-muted transition-all duration-[160ms] gap-1 tracking-[0.06em] hover:text-fg-secondary hover:bg-hover"
 								class:active={analysisStore.activeTab?.id === tab.id}
 								onclick={() => handleSelectTab(tab.id)}
 								type="button"
@@ -534,7 +534,7 @@
 							</button>
 						{/each}
 						<button
-							class="tab add-tab inline-flex items-center bg-transparent border-none cursor-pointer text-sm font-semibold uppercase px-2 py-1 text-fg-muted transition-all duration-[160ms] gap-1 tracking-[0.06em] rounded-sm hover:text-fg-secondary hover:bg-hover"
+							class="tab add-tab inline-flex items-center bg-transparent border-none cursor-pointer text-sm font-semibold uppercase px-2 py-1 text-fg-muted transition-all duration-[160ms] gap-1 tracking-[0.06em] hover:text-fg-secondary hover:bg-hover"
 							onclick={() => openDatasourceModal('add')}
 							type="button"
 						>
@@ -560,7 +560,7 @@
 			>
 				<div class="relative items-center px-1">
 					<button
-						class="mode-toggle flex items-center cursor-pointer text-sm py-2 bg-tertiary border border-primary rounded-sm text-fg-secondary gap-2 transition-all duration-[160ms] hover:bg-hover hover:border-secondary"
+						class="mode-toggle flex items-center cursor-pointer text-sm py-2 bg-tertiary border border-primary text-fg-secondary gap-2 transition-all duration-[160ms] hover:bg-hover hover:border-secondary"
 						onclick={() => (showModeDropdown = !showModeDropdown)}
 						type="button"
 					>
@@ -574,7 +574,7 @@
 							style="top: calc(100% + 4px);"
 						>
 							<button
-								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary rounded-sm transition-colors duration-[160ms] hover:bg-hover"
+								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary transition-colors duration-[160ms] hover:bg-hover"
 								onclick={() => setMode('viewing')}
 								type="button"
 							>
@@ -582,7 +582,7 @@
 								<span>Viewing</span>
 							</button>
 							<button
-								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary rounded-sm transition-colors duration-[160ms] hover:bg-hover"
+								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary transition-colors duration-[160ms] hover:bg-hover"
 								onclick={() => setMode('editing')}
 								type="button"
 							>

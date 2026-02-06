@@ -14,7 +14,16 @@
 		onBulkDelete?: () => void;
 	}
 
-	let { searchQuery, sortOption, onSearch, onSort, selectionCount = 0, onSelectAll, onClearSelection, onBulkDelete }: Props = $props();
+	let {
+		searchQuery,
+		sortOption,
+		onSearch,
+		onSort,
+		selectionCount = 0,
+		onSelectAll,
+		onClearSelection,
+		onBulkDelete
+	}: Props = $props();
 </script>
 
 <div class="mb-7 flex flex-wrap items-center gap-4 max-sm:flex-col max-sm:items-stretch">
@@ -29,12 +38,12 @@
 			placeholder="Search analyses..."
 			value={searchQuery}
 			oninput={(e) => onSearch((e.target as HTMLInputElement).value)}
-			class="search-input w-full rounded-sm border py-3 pl-10 pr-10 font-mono text-sm transition-all"
+			class="search-input w-full border py-3 pl-10 pr-10 font-mono text-sm transition-all"
 			style="border-color: var(--border-primary); color: var(--fg-primary); background-color: var(--bg-primary);"
 		/>
 		{#if searchQuery}
 			<button
-				class="clear-btn absolute right-2 top-1/2 flex -translate-y-1/2 cursor-pointer items-center justify-center rounded-sm border-none bg-transparent p-1 transition-all"
+				class="clear-btn absolute right-2 top-1/2 flex -translate-y-1/2 cursor-pointer items-center justify-center border-none bg-transparent p-1 transition-all"
 				onclick={() => onSearch('')}
 				aria-label="Clear search"
 				style="color: var(--fg-muted);"
@@ -56,7 +65,7 @@
 			id="sort-select"
 			value={sortOption}
 			onchange={(e) => onSort((e.target as HTMLSelectElement).value as SortOption)}
-			class="sort-select cursor-pointer appearance-none rounded-sm border bg-no-repeat py-2 pl-3 pr-8 font-mono text-sm transition-colors max-sm:flex-1"
+			class="sort-select cursor-pointer appearance-none border bg-no-repeat py-2 pl-3 pr-8 font-mono text-sm transition-colors max-sm:flex-1"
 			style="border-color: var(--border-primary); color: var(--fg-primary); background-color: var(--bg-primary); background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23737373' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E&quot;); background-position: right 0.5rem center;"
 		>
 			<option value="newest">Newest</option>

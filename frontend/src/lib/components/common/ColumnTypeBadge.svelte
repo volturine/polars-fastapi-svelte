@@ -55,7 +55,7 @@
 </script>
 
 <span
-	class="inline-flex items-center rounded-sm font-semibold whitespace-nowrap leading-none select-none transition-all hover:opacity-90"
+	class="inline-flex items-center font-semibold whitespace-nowrap leading-none select-none transition-all hover:opacity-90"
 	style="{containerStyle} {sizeStyles} font-family: var(--font-mono, monospace);"
 	title={config.description}
 >

@@ -115,7 +115,11 @@
 		<div class="grid grid-cols-[1fr_auto] gap-2 border-b p-4 border-panel">
 			<div class="flex flex-col gap-1">
 				<h4 class="m-0 text-sm font-semibold text-fg-primary">Data directory</h4>
-				<div class="flex flex-wrap items-center gap-1" role="navigation" aria-label="Path breadcrumb">
+				<div
+					class="flex flex-wrap items-center gap-1"
+					role="navigation"
+					aria-label="Path breadcrumb"
+				>
 					{#each crumbs as crumb, index (crumb.path)}
 						<button
 							type="button"
@@ -131,10 +135,15 @@
 					{/each}
 				</div>
 				<span class="break-all text-xs text-fg-muted">{path}</span>
-				<span class="text-xs text-fg-muted">Select files or choose a folder for parquet datasets.</span>
+				<span class="text-xs text-fg-muted"
+					>Select files or choose a folder for parquet datasets.</span
+				>
 			</div>
 			<div class="flex items-center justify-end gap-2">
-				<button class="cursor-pointer border-none bg-transparent p-0 text-xs text-accent" onclick={oncancel}>
+				<button
+					class="cursor-pointer border-none bg-transparent p-0 text-xs text-accent"
+					onclick={oncancel}
+				>
 					Close
 				</button>
 			</div>
@@ -152,7 +161,7 @@
 					{#each entries as entry (entry.path)}
 						<button
 							type="button"
-							class="flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm border p-2 px-3 text-left bg-primary border-primary hover:bg-hover"
+							class="flex w-full cursor-pointer items-center justify-between gap-2 border p-2 px-3 text-left bg-primary border-primary hover:bg-hover"
 							onclick={() => (entry.is_dir ? load(entry.path) : onselect(entry.path, false))}
 							disabled={loading}
 						>
@@ -170,7 +179,7 @@
 		<div class="flex justify-between gap-2 border-t p-3 border-panel">
 			<div class="flex items-center gap-2">
 				<button
-					class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border disabled:cursor-not-allowed disabled:opacity-50 bg-primary border-primary text-fg-secondary hover:bg-hover hover:text-fg-primary"
+					class="inline-flex h-8 w-8 cursor-pointer items-center justify-center border disabled:cursor-not-allowed disabled:opacity-50 bg-primary border-primary text-fg-secondary hover:bg-hover hover:text-fg-primary"
 					onclick={up}
 					disabled={!canUp}
 					aria-label="Go up"
@@ -178,7 +187,7 @@
 					←
 				</button>
 				<button
-					class="cursor-pointer rounded-sm border px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50 bg-secondary text-fg-primary border-primary hover:bg-hover hover:border-secondary"
+					class="cursor-pointer border px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50 bg-secondary text-fg-primary border-primary hover:bg-hover hover:border-secondary"
 					onclick={() => onselect(path, true)}
 					disabled={loading || !path}
 				>
@@ -186,7 +195,7 @@
 				</button>
 			</div>
 			<button
-				class="cursor-pointer rounded-sm border px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50 bg-secondary text-fg-primary border-primary hover:bg-hover hover:border-secondary"
+				class="cursor-pointer border px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50 bg-secondary text-fg-primary border-primary hover:bg-hover hover:border-secondary"
 				onclick={() => load(path)}
 				disabled={loading}
 			>

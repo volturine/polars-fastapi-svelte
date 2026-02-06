@@ -103,7 +103,7 @@
 </script>
 
 <div
-	class="overflow-hidden rounded-md border"
+	class="overflow-hidden border"
 	style:height
 	style="border-color: var(--border-primary); background-color: var(--bg-tertiary);"
 >

@@ -162,9 +162,7 @@
 		alt=""
 		bind:this={dragImageEl}
 	/>
-	<h3 class="m-0 mb-3 shrink-0 text-sm uppercase tracking-widest text-fg-primary">
-		Operations
-	</h3>
+	<h3 class="m-0 mb-3 shrink-0 text-sm uppercase tracking-widest text-fg-primary">Operations</h3>
 	<div
 		class="step-list flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden"
 		role="list"
@@ -192,9 +190,7 @@
 	</div>
 
 	<div class="mt-4 shrink-0 border-t border-panel-border pt-3">
-		<h4 class="m-0 mb-2 text-xs uppercase tracking-wide text-fg-muted">
-			Quick Insert
-		</h4>
+		<h4 class="m-0 mb-2 text-xs uppercase tracking-wide text-fg-muted">Quick Insert</h4>
 		<div class="flex flex-col gap-2">
 			<select
 				class="rounded-sm border border-panel-border bg-bg-secondary p-2 text-fg-primary"
@@ -208,7 +204,7 @@
 			</select>
 			<div class="grid grid-cols-2 gap-2">
 				<button
-					class="fallback-btn cursor-pointer rounded-sm border border-panel-border bg-transparent p-2 text-fg-primary transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+					class="fallback-btn cursor-pointer border border-panel-border bg-transparent p-2 text-fg-primary transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
 					type="button"
 					disabled={!selectedType}
 					onclick={() => {
@@ -221,7 +217,7 @@
 					Add to end
 				</button>
 				<button
-					class="fallback-btn cursor-pointer rounded-sm border border-panel-border bg-transparent p-2 text-fg-primary transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+					class="fallback-btn cursor-pointer border border-panel-border bg-transparent p-2 text-fg-primary transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
 					type="button"
 					disabled={!selectedType}
 					onclick={() => {

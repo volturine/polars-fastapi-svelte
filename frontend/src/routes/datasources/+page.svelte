@@ -121,9 +121,7 @@
 			<div
 				class="rounded-sm border border-dashed border-border-secondary bg-bg-primary p-12 text-center"
 			>
-				<div
-					class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-sm text-xl text-fg-muted"
-				>
+				<div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center text-xl text-fg-muted">
 					+
 				</div>
 				<p class="m-0 mb-6 text-fg-tertiary">No data sources yet.</p>

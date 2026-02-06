@@ -72,7 +72,7 @@
 		<h3 class="m-0 text-sm font-semibold truncate text-[var(--fg-primary)]">{datasourceName}</h3>
 		<div class="flex gap-1 shrink-0">
 			<button
-				class="flex items-center gap-1.5 py-1.5 px-3 border border-transparent rounded-[var(--radius-sm)] bg-transparent text-[var(--fg-tertiary)] text-xs font-medium cursor-pointer transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)]"
+				class="flex items-center gap-1.5 py-1.5 px-3 border border-transparent bg-transparent text-[var(--fg-tertiary)] text-xs font-medium cursor-pointer transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)]"
 				class:!bg-[var(--accent-bg)]={viewMode === 'data'}
 				class:!text-[var(--accent-fg)]={viewMode === 'data'}
 				class:!border-[var(--accent-border)]={viewMode === 'data'}
@@ -82,7 +82,7 @@
 				Data
 			</button>
 			<button
-				class="flex items-center gap-1.5 py-1.5 px-3 border border-transparent rounded-[var(--radius-sm)] bg-transparent text-[var(--fg-tertiary)] text-xs font-medium cursor-pointer transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)]"
+				class="flex items-center gap-1.5 py-1.5 px-3 border border-transparent bg-transparent text-[var(--fg-tertiary)] text-xs font-medium cursor-pointer transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)]"
 				class:!bg-[var(--accent-bg)]={viewMode === 'schema'}
 				class:!text-[var(--accent-fg)]={viewMode === 'schema'}
 				class:!border-[var(--accent-border)]={viewMode === 'schema'}
@@ -105,7 +105,7 @@
 				class="flex items-center gap-3 px-4 py-3 border-b bg-[var(--bg-secondary)] border-[var(--border-primary)]"
 			>
 				<button
-					class="py-1 px-2.5 rounded-[var(--radius-sm)] border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--fg-primary)] text-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+					class="py-1 px-2.5 border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--fg-primary)] text-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={goPrev}
 					disabled={!canPrev || isLoading}
 				>
@@ -113,7 +113,7 @@
 				</button>
 				<span class="text-xs text-[var(--fg-tertiary)]">Page {page}</span>
 				<button
-					class="py-1 px-2.5 rounded-[var(--radius-sm)] border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--fg-primary)] text-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+					class="py-1 px-2.5 border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--fg-primary)] text-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={goNext}
 					disabled={!canNext || isLoading}
 				>

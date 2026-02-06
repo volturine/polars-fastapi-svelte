@@ -309,7 +309,7 @@
 					</label>
 					{#if saveToLibrary}
 						<div
-							class="flex flex-col gap-2 p-3 rounded-sm"
+							class="flex flex-col gap-2 p-3"
 							style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary);"
 						>
 							<input type="text" placeholder="UDF name" bind:value={saveName} />
@@ -345,7 +345,7 @@
 
 	{#if (config.expressions ?? []).length > 0}
 		<div
-			class="flex flex-col gap-2 p-3 rounded-md"
+			class="flex flex-col gap-2 p-3"
 			style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary);"
 			role="list"
 		>
@@ -354,7 +354,7 @@
 			</h4>
 			{#each config.expressions ?? [] as expr, index (index)}
 				<div
-					class="item flex justify-between items-center py-2 px-3 rounded-sm"
+					class="item flex justify-between items-center py-2 px-3"
 					style="background-color: var(--bg-primary); border: 1px solid var(--border-primary);"
 					class:editing={editIndex === index}
 					role="listitem"
@@ -376,7 +376,7 @@
 					<div class="flex gap-1 shrink-0">
 						<button
 							type="button"
-							class="w-6 h-6 p-0 inline-flex items-center justify-center bg-transparent rounded-sm cursor-pointer text-base leading-none"
+							class="w-6 h-6 p-0 inline-flex items-center justify-center bg-transparent cursor-pointer text-base leading-none"
 							style="color: var(--fg-muted); border: 1px solid transparent;"
 							onclick={() => editExpression(index)}
 							aria-label="Edit"
@@ -395,7 +395,7 @@
 						</button>
 						<button
 							type="button"
-							class="btn-remove w-6 h-6 p-0 inline-flex items-center justify-center bg-transparent rounded-sm cursor-pointer text-base leading-none"
+							class="btn-remove w-6 h-6 p-0 inline-flex items-center justify-center bg-transparent cursor-pointer text-base leading-none"
 							style="color: var(--fg-muted); border: 1px solid transparent;"
 							onclick={() => removeExpression(index)}
 							aria-label="Remove">×</button
@@ -406,7 +406,7 @@
 		</div>
 	{:else}
 		<p
-			class="p-6 text-center rounded-md"
+			class="p-6 text-center"
 			style="color: var(--fg-muted); background-color: var(--bg-tertiary); border: 1px dashed var(--border-primary);"
 		>
 			No columns configured yet.

@@ -69,7 +69,7 @@
 		{value}
 		onchange={handleChange}
 		{disabled}
-		class="cursor-pointer rounded-sm border transition-all disabled:cursor-not-allowed disabled:opacity-60 hover:not-disabled:border-[var(--border-primary)] hover:not-disabled:bg-[var(--bg-primary)] focus:outline-2 focus:outline-offset-2 focus:outline-[var(--accent-primary)] focus:border-[var(--accent-primary)] max-[480px]:w-full {size ===
+		class="cursor-pointer border transition-all disabled:cursor-not-allowed disabled:opacity-60 hover:not-disabled:border-[var(--border-primary)] hover:not-disabled:bg-[var(--bg-primary)] focus:outline-2 focus:outline-offset-2 focus:outline-[var(--accent-primary)] focus:border-[var(--accent-primary)] max-[480px]:w-full {size ===
 		'sm'
 			? 'px-2 py-1 text-xs'
 			: size === 'lg'

@@ -78,7 +78,7 @@
 					{title}
 				</h2>
 				<button
-					class="flex cursor-pointer items-center justify-center rounded-sm border-none bg-transparent p-1 transition-all text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)]"
+					class="flex cursor-pointer items-center justify-center border-none bg-transparent p-1 transition-all text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)]"
 					onclick={onCancel}
 					aria-label="Close dialog"
 				>
@@ -96,13 +96,13 @@
 				class="flex justify-end gap-3 border-t p-4 max-sm:flex-col-reverse border-[var(--border-primary)]"
 			>
 				<button
-					class="cursor-pointer rounded-sm border bg-transparent px-4 py-2 font-mono text-sm font-medium transition-all max-sm:w-full text-[var(--fg-primary)] border-[var(--border-secondary)] hover:bg-[var(--bg-hover)]"
+					class="cursor-pointer border bg-transparent px-4 py-2 font-mono text-sm font-medium transition-all max-sm:w-full text-[var(--fg-primary)] border-[var(--border-secondary)] hover:bg-[var(--bg-hover)]"
 					onclick={onCancel}
 				>
 					{cancelText}
 				</button>
 				<button
-					class="cursor-pointer rounded-sm border px-4 py-2 font-mono text-sm font-medium transition-all max-sm:w-full bg-[var(--error-bg)] text-[var(--error-fg)] border-[var(--error-border)] hover:opacity-85"
+					class="cursor-pointer border px-4 py-2 font-mono text-sm font-medium transition-all max-sm:w-full bg-[var(--error-bg)] text-[var(--error-fg)] border-[var(--error-border)] hover:opacity-85"
 					onclick={onConfirm}
 				>
 					{confirmText}

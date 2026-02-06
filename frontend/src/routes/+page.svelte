@@ -175,12 +175,12 @@
 			<div class="py-4">
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
 					{#each Array(6) as _, i (i)}
-						<div class="bg-primary overflow-hidden rounded-sm border border-primary">
+						<div class="bg-primary overflow-hidden border border-primary">
 							<div class="aspect-video w-full animate-shimmer shimmer-bg"></div>
 							<div class="p-4">
-								<div class="mb-3 h-4 w-[70%] animate-shimmer shimmer-bg rounded-sm"></div>
-								<div class="mb-3 h-3.5 animate-shimmer shimmer-bg rounded-sm"></div>
-								<div class="h-3.5 w-1/2 animate-shimmer shimmer-bg rounded-sm"></div>
+								<div class="mb-3 h-4 w-[70%] animate-shimmer shimmer-bg"></div>
+								<div class="mb-3 h-3.5 animate-shimmer shimmer-bg"></div>
+								<div class="h-3.5 w-1/2 animate-shimmer shimmer-bg"></div>
 							</div>
 						</div>
 					{/each}
@@ -190,9 +190,7 @@
 			<div
 				class="error-box flex min-h-[400px] flex-col items-center justify-center px-6 py-12 text-center"
 			>
-				<div class="mb-6 flex h-12 w-12 items-center justify-center rounded-sm text-xl font-bold">
-					!
-				</div>
+				<div class="mb-6 flex h-12 w-12 items-center justify-center text-xl font-bold">!</div>
 				<h2 class="m-0 mb-2 text-lg font-semibold">Failed to load analyses</h2>
 				<p class="m-0 mb-6 max-w-[400px] text-sm">{query.error.message}</p>
 				<button class="btn-primary" onclick={() => query.refetch()}>Try again</button>
@@ -273,5 +271,4 @@
 	.animate-shimmer {
 		animation: shimmer 1.5s infinite;
 	}
-
 </style>

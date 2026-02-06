@@ -183,7 +183,7 @@
 	class:drag-target={isOtherDragging}
 >
 	<div
-		class="absolute left-1/2 -top-1 z-[2] h-2 w-2 -translate-x-1/2 rounded-full border-2"
+		class="absolute left-1/2 -top-1 z-[2] h-2 w-2 -translate-x-1/2 border-2"
 		style="background-color: var(--fg-muted); border-color: var(--bg-primary);"
 	></div>
 
@@ -194,7 +194,7 @@
 		<div class="mb-3 flex items-center gap-2">
 			<!-- Drag handle (6-dot grip) -->
 			<button
-				class="drag-handle flex shrink-0 cursor-grab items-center justify-center rounded-sm border-none bg-transparent p-1 opacity-40 transition-all select-none text-fg-muted hover:opacity-100 hover:bg-hover active:cursor-grabbing"
+				class="drag-handle flex shrink-0 cursor-grab items-center justify-center border-none bg-transparent p-1 opacity-40 transition-all select-none text-fg-muted hover:opacity-100 hover:bg-hover active:cursor-grabbing"
 				class:dragging
 				title="Drag to reorder"
 				type="button"
@@ -221,7 +221,7 @@
 		</div>
 
 		<div
-			class="step-summary mb-3 rounded-sm px-3 py-2 text-xs bg-tertiary text-fg-tertiary"
+			class="step-summary mb-3 px-3 py-2 text-xs bg-tertiary text-fg-tertiary"
 			class:inactive={!isApplied}
 		>
 			{summary}
@@ -229,7 +229,7 @@
 
 		<div class="flex gap-2">
 			<button
-				class="action-btn flex-1 cursor-pointer rounded-sm border border-primary bg-transparent p-2 font-medium uppercase tracking-widest text-[0.625rem] text-fg-secondary hover:bg-hover hover:text-fg-primary transition-all"
+				class="action-btn flex-1 cursor-pointer border border-primary bg-transparent p-2 font-medium uppercase tracking-widest text-[0.625rem] text-fg-secondary hover:bg-hover hover:text-fg-primary transition-all"
 				class:inactive={!isApplied}
 				onclick={() => onToggleApply(step.id)}
 				type="button"
@@ -238,14 +238,14 @@
 				{isApplied ? 'disable' : 'enable'}
 			</button>
 			<button
-				class="action-btn flex-1 cursor-pointer rounded-sm border border-primary bg-transparent p-2 text-xs font-medium transition-all text-fg-secondary hover:bg-hover hover:text-fg-primary"
+				class="action-btn flex-1 cursor-pointer border border-primary bg-transparent p-2 text-xs font-medium transition-all text-fg-secondary hover:bg-hover hover:text-fg-primary"
 				onclick={() => onEdit(step.id)}
 				type="button"
 			>
 				edit
 			</button>
 			<button
-				class="action-btn danger flex-1 cursor-pointer rounded-sm border border-primary bg-transparent p-2 text-xs font-medium transition-all text-fg-secondary hover:bg-error hover:border-error hover:text-error"
+				class="action-btn danger flex-1 cursor-pointer border border-primary bg-transparent p-2 text-xs font-medium transition-all text-fg-secondary hover:bg-error hover:border-error hover:text-error"
 				onclick={() => onDelete(step.id)}
 				type="button"
 			>
@@ -256,12 +256,12 @@
 		{#if step.type === 'export' && datasourceId}
 			<div class="mt-3 border-t border-primary pt-3">
 				{#if exportError}
-					<div class="mb-2 rounded-sm border border-error bg-error p-2 text-xs text-error">
+					<div class="mb-2 border border-error bg-error p-2 text-xs text-error">
 						{exportError}
 					</div>
 				{/if}
 				<button
-					class="export-btn flex w-full cursor-pointer items-center justify-center gap-2 rounded-sm border-none px-3 py-2 text-xs font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50 bg-accent text-bg-primary hover:opacity-90 hover:enabled:opacity-90"
+					class="export-btn flex w-full cursor-pointer items-center justify-center gap-2 border-none px-3 py-2 text-xs font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50 bg-accent text-bg-primary hover:opacity-90 hover:enabled:opacity-90"
 					onclick={handleExport}
 					disabled={isExporting}
 					type="button"
@@ -294,7 +294,7 @@
 	</div>
 
 	<div
-		class="absolute left-1/2 -bottom-1 z-[2] h-2 w-2 -translate-x-1/2 rounded-full border-2"
+		class="absolute left-1/2 -bottom-1 z-[2] h-2 w-2 -translate-x-1/2 border-2"
 		style="background-color: var(--fg-muted); border-color: var(--bg-primary);"
 	></div>
 </div>

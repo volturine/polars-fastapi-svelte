@@ -63,12 +63,12 @@
 			>Index Columns <span class="text-xs" style="color: var(--fg-muted);">(rows)</span></span
 		>
 		<div
-			class="grid gap-2 p-2 rounded-sm max-h-[150px] overflow-y-auto"
+			class="grid gap-2 p-2 max-h-[150px] overflow-y-auto"
 			style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); border: 1px solid var(--border-primary); background-color: var(--bg-secondary);"
 		>
 			{#each schema.columns as column (column.name)}
 				<label
-					class="checkbox-label flex items-center gap-2 px-2 py-1 rounded-sm cursor-pointer text-sm hover:bg-[var(--bg-hover)]"
+					class="checkbox-label flex items-center gap-2 px-2 py-1 cursor-pointer text-sm hover:bg-[var(--bg-hover)]"
 				>
 					<input
 						id={`pivot-checkbox-index-${column.name}`}
@@ -124,7 +124,7 @@
 			<button
 				id="pivot-btn-refresh"
 				data-testid="pivot-refresh-button"
-				class="refresh-button w-full py-2 px-3 border-none rounded-sm text-sm font-medium cursor-pointer flex items-center justify-center gap-2 transition-all"
+				class="refresh-button w-full py-2 px-3 border-none text-sm font-medium cursor-pointer flex items-center justify-center gap-2 transition-all"
 				style="background-color: var(--accent-primary); color: var(--bg-primary);"
 				onclick={onRefreshSchema}
 				disabled={!isConfigValid || isRefreshing}

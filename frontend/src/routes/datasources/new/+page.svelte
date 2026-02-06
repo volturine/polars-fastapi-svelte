@@ -588,7 +588,7 @@
 					<span class="text-sm font-medium text-fg-secondary">Source</span>
 					<div class="flex flex-col gap-3">
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-sm border border-primary p-3 transition-all hover:border-secondary hover:bg-hover"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border border-primary p-3 transition-all hover:border-secondary hover:bg-hover"
 						>
 							<input
 								type="radio"
@@ -602,7 +602,7 @@
 							<span class="text-xs text-fg-muted">Upload one or many files in one step</span>
 						</label>
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-sm border border-primary p-3 transition-all hover:border-secondary hover:bg-hover"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border border-primary p-3 transition-all hover:border-secondary hover:bg-hover"
 						>
 							<input
 								type="radio"
@@ -634,7 +634,7 @@
 							Select one or more files. Names are derived from filenames.
 						</p>
 						{#if selectedFiles.length > 0}
-							<div class="mt-3 rounded-sm border border-primary bg-tertiary p-3">
+							<div class="mt-3 border border-primary bg-tertiary p-3">
 								<div
 									class="mb-2 flex items-center justify-between border-b border-primary pb-2 text-sm text-fg-secondary"
 								>
@@ -673,7 +673,7 @@
 								bind:value={fileName}
 								placeholder="My Dataset"
 								disabled={loading}
-								class="input-base rounded-sm border px-3 py-2 text-sm"
+								class="input-base border px-3 py-2 text-sm"
 							/>
 							{#if file}
 								<p class="m-0 text-sm text-fg-secondary">Selected: {file.name}</p>
@@ -682,7 +682,7 @@
 					{/if}
 
 					{#if showBulkResults && bulkResults.length > 0}
-						<div class="mt-4 rounded-sm border border-primary bg-tertiary p-4">
+						<div class="mt-4 border border-primary bg-tertiary p-4">
 							<h4 class="m-0 mb-3 text-sm font-semibold text-fg-secondary">Upload Results</h4>
 							{#each bulkResults as result (result.name)}
 								<div
@@ -712,7 +712,7 @@
 							bind:value={pathName}
 							placeholder="My Dataset"
 							disabled={loading}
-							class="input-base rounded-sm border px-3 py-2 text-sm"
+							class="input-base border px-3 py-2 text-sm"
 						/>
 					</div>
 
@@ -725,7 +725,7 @@
 							placeholder="/path/to/data"
 							oninput={handlePathInput}
 							disabled={loading}
-							class="input-base rounded-sm border px-3 py-2 text-sm"
+							class="input-base border px-3 py-2 text-sm"
 						/>
 						<div class="flex flex-wrap items-center gap-2">
 							<button class="btn-secondary" type="button" onclick={openPicker} disabled={loading}
@@ -755,7 +755,7 @@
 							placeholder={'{"ignore_errors": true, "rechunk": false}'}
 							rows="3"
 							disabled={loading}
-							class="resize-y rounded-sm border px-3 py-2 text-sm input-base"
+							class="resize-y border px-3 py-2 text-sm input-base"
 						></textarea>
 						<p class="m-0 text-xs leading-relaxed text-fg-muted">
 							Advanced Polars scan options in JSON format. Common options: <code
@@ -862,7 +862,7 @@
 						</div>
 
 						{#if preflightId}
-							<div class="overflow-hidden rounded-sm border border-primary bg-primary">
+							<div class="overflow-hidden border border-primary bg-primary">
 								<div class="flex flex-wrap gap-3 px-3 py-2 text-xs bg-tertiary text-fg-muted">
 									<span>Start row: {startRow + 1}</span>
 									<span>Start col: {cellLabel(startCol)}</span>
@@ -931,7 +931,7 @@
 					<label for="db-type" class="text-sm font-medium text-fg-secondary">Database Type</label>
 					<div class="flex flex-col gap-3">
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-sm border p-3 transition-all border-primary"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 transition-all border-primary"
 						>
 							<input
 								type="radio"
@@ -945,7 +945,7 @@
 							<span class="text-xs text-fg-muted">In-memory or file-based analytics database</span>
 						</label>
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-sm border p-3 transition-all border-primary"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 transition-all border-primary"
 						>
 							<input
 								type="radio"
@@ -961,7 +961,7 @@
 							>
 						</label>
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-sm border p-3 transition-all border-primary"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 transition-all border-primary"
 						>
 							<input
 								type="radio"
@@ -1015,7 +1015,7 @@
 							placeholder="SELECT * FROM read_csv_auto('data.csv')"
 							rows="5"
 							disabled={loading}
-							class="resize-y rounded-sm border px-3 py-2 text-sm input-base"
+							class="resize-y border px-3 py-2 text-sm input-base"
 						></textarea>
 						<p class="m-0 text-xs text-fg-muted">
 							DuckDB can read CSV, Parquet, JSON directly: read_csv_auto(), read_parquet(),
@@ -1076,7 +1076,7 @@
 							>
 							{#if icebergResolvedPath}
 								<span
-									class="break-all rounded-sm border px-1.5 py-0.5 text-xs text-fg-secondary bg-secondary border-secondary"
+									class="break-all border px-1.5 py-0.5 text-xs text-fg-secondary bg-secondary border-secondary"
 									>{icebergResolvedPath}</span
 								>
 							{/if}
@@ -1121,7 +1121,7 @@
 							placeholder={'{"s3.region": "us-east-1"}'}
 							rows="3"
 							disabled={loading}
-							class="resize-y rounded-sm border px-3 py-2 text-sm input-base"
+							class="resize-y border px-3 py-2 text-sm input-base"
 						></textarea>
 						<p class="m-0 text-xs text-fg-muted">JSON map of storage options for S3/GCS/Azure</p>
 					</div>
@@ -1167,7 +1167,7 @@
 							placeholder="SELECT * FROM table"
 							rows="5"
 							disabled={loading}
-							class="resize-y rounded-sm border px-3 py-2 text-sm input-base"
+							class="resize-y border px-3 py-2 text-sm input-base"
 						></textarea>
 					</div>
 

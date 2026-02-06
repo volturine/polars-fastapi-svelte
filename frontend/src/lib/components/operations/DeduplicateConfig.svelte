@@ -29,7 +29,7 @@
 		<div class="flex flex-col gap-3">
 			{#each keepStrategies as strategy (strategy.value)}
 				<label
-					class="strategy-option flex cursor-pointer items-start gap-3 rounded-sm border p-3 transition-all"
+					class="strategy-option flex cursor-pointer items-start gap-3 border p-3 transition-all"
 					style="background-color: var(--bg-primary); border-color: var(--border-primary);"
 				>
 					<input

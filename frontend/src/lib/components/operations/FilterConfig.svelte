@@ -192,7 +192,7 @@
 				</div>
 				<button
 					type="button"
-					class="btn-add flex h-7 w-7 cursor-pointer items-center justify-center rounded-sm border border-primary bg-tertiary p-0 text-fg-secondary hover:bg-hover hover:text-fg-primary"
+					class="btn-add flex h-7 w-7 cursor-pointer items-center justify-center border border-primary bg-tertiary p-0 text-fg-secondary hover:bg-hover hover:text-fg-primary"
 					onclick={addCondition}
 					aria-label="Add filter condition"
 				>
@@ -218,10 +218,7 @@
 					{@const isNull = isNullOperator(cond.operator)}
 					{@const ops = getOperatorsForType(colType, isColumn)}
 
-					<div
-						class="condition-card rounded-sm border border-secondary bg-panel p-3"
-						role="listitem"
-					>
+					<div class="condition-card border border-secondary bg-panel p-3" role="listitem">
 						<div class="mb-3 flex items-center gap-2 border-b border-primary pb-2">
 							<span class="text-xs font-semibold text-fg-muted">#{i + 1}</span>
 							{#if cond.column}
@@ -229,7 +226,7 @@
 							{/if}
 							<button
 								type="button"
-								class="btn-remove ml-auto flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm border border-transparent bg-transparent p-0 text-fg-muted transition-all hover:border-error hover:bg-error hover:text-error disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-transparent disabled:hover:bg-transparent disabled:hover:text-fg-muted"
+								class="btn-remove ml-auto flex h-6 w-6 cursor-pointer items-center justify-center border border-transparent bg-transparent p-0 text-fg-muted transition-all hover:border-error hover:bg-error hover:text-error disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-transparent disabled:hover:bg-transparent disabled:hover:text-fg-muted"
 								onclick={() => removeCondition(i)}
 								disabled={conditions.length === 1}
 								aria-label={`Remove condition ${i + 1}`}
@@ -352,9 +349,7 @@
 							{:else}
 								<div class="flex flex-col gap-1 min-w-[140px] flex-[2]">
 									<span class="text-xs font-normal text-fg-muted">Value</span>
-									<div
-										class="flex items-center h-9 px-3 rounded-sm text-sm italic bg-tertiary text-fg-muted"
-									>
+									<div class="flex items-center h-9 px-3 text-sm italic bg-tertiary text-fg-muted">
 										<span>No value needed</span>
 									</div>
 								</div>

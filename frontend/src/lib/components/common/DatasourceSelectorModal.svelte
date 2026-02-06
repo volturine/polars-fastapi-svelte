@@ -102,7 +102,7 @@
 					{mode === 'change' ? 'Change Datasource' : 'Add Datasource'}
 				</h2>
 				<button
-					class="flex cursor-pointer items-center justify-center rounded-sm border-none bg-transparent p-1 transition-all text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)]"
+					class="flex cursor-pointer items-center justify-center border-none bg-transparent p-1 transition-all text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)]"
 					onclick={handleClose}
 					aria-label="Close"
 				>
@@ -111,7 +111,7 @@
 			</div>
 			<div class="flex flex-col gap-4 overflow-y-auto p-4">
 				<input
-					class="w-full rounded-sm border px-3 py-3 text-sm transition-all focus:outline-none border-[var(--panel-border)] text-[var(--fg-primary)] bg-[var(--bg-primary)] focus:border-[var(--accent-primary)]"
+					class="w-full border px-3 py-3 text-sm transition-all focus:outline-none border-[var(--panel-border)] text-[var(--fg-primary)] bg-[var(--bg-primary)] focus:border-[var(--accent-primary)]"
 					type="text"
 					bind:this={searchInput}
 					bind:value={searchQuery}
@@ -129,7 +129,7 @@
 					{:else}
 						{#each filteredDatasources as ds (ds.id)}
 							<button
-								class="flex cursor-pointer items-center justify-between rounded-sm border border-transparent bg-transparent p-3 text-left transition-all hover:bg-[var(--bg-hover)] hover:border-[var(--panel-border)]"
+								class="flex cursor-pointer items-center justify-between border border-transparent bg-transparent p-3 text-left transition-all hover:bg-[var(--bg-hover)] hover:border-[var(--panel-border)]"
 								onclick={() => handleSelect(ds.id, ds.name)}
 							>
 								<span class="text-sm font-medium text-[var(--fg-primary)]">{ds.name}</span>

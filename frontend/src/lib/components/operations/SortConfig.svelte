@@ -70,7 +70,7 @@
 				id="{uid}-ascending"
 				data-testid="sort-ascending-button"
 				type="button"
-				class="flex items-center justify-center w-8 h-8 p-0 cursor-pointer transition-all bg-[var(--bg-tertiary)] text-[var(--fg-secondary)] border border-[var(--border-primary)] rounded-l-[var(--radius-sm)] border-r-0 hover:bg-[var(--bg-secondary)] hover:text-[var(--fg-primary)]"
+				class="flex items-center justify-center w-8 h-8 p-0 cursor-pointer transition-all bg-[var(--bg-tertiary)] text-[var(--fg-secondary)] border border-[var(--border-primary)] border-r-0 hover:bg-[var(--bg-secondary)] hover:text-[var(--fg-primary)]"
 				class:!bg-[var(--accent-primary)]={!newDescending}
 				class:!text-[var(--bg-primary)]={!newDescending}
 				class:!border-[var(--accent-primary)]={!newDescending}
@@ -85,7 +85,7 @@
 				id="{uid}-descending"
 				data-testid="sort-descending-button"
 				type="button"
-				class="flex items-center justify-center w-8 h-8 p-0 cursor-pointer transition-all bg-[var(--bg-tertiary)] text-[var(--fg-secondary)] border border-[var(--border-primary)] rounded-r-[var(--radius-sm)] hover:bg-[var(--bg-secondary)] hover:text-[var(--fg-primary)]"
+				class="flex items-center justify-center w-8 h-8 p-0 cursor-pointer transition-all bg-[var(--bg-tertiary)] text-[var(--fg-secondary)] border border-[var(--border-primary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--fg-primary)]"
 				class:!bg-[var(--accent-primary)]={newDescending}
 				class:!text-[var(--bg-primary)]={newDescending}
 				class:!border-[var(--accent-primary)]={newDescending}
@@ -102,7 +102,7 @@
 			id="{uid}-add"
 			data-testid="sort-add-button"
 			type="button"
-			class="flex items-center gap-1 py-2 px-4 border-none rounded-sm cursor-pointer whitespace-nowrap bg-[var(--accent-primary)] text-[var(--bg-primary)] disabled:bg-[var(--border-primary)] disabled:cursor-not-allowed disabled:text-[var(--fg-muted)]"
+			class="flex items-center gap-1 py-2 px-4 border-none cursor-pointer whitespace-nowrap bg-[var(--accent-primary)] text-[var(--bg-primary)] disabled:bg-[var(--border-primary)] disabled:cursor-not-allowed disabled:text-[var(--fg-muted)]"
 			onclick={addSortRule}
 			disabled={!newColumn}
 			aria-label="Add sort rule"
@@ -115,7 +115,7 @@
 	{#if safeConfig.columns.length > 0}
 		<div
 			id="sort-rules-list"
-			class="p-4 rounded-md mb-4 bg-[var(--panel-muted-bg)] border border-[var(--panel-muted-border)]"
+			class="p-4 mb-4 bg-[var(--panel-muted-bg)] border border-[var(--panel-muted-border)]"
 			role="region"
 			aria-labelledby="sort-order-heading"
 		>
@@ -124,7 +124,7 @@
 			</h4>
 			{#each safeConfig.columns as column, i (column)}
 				<div
-					class="flex justify-between items-center py-2 px-3 rounded-sm mb-2 last:mb-0 bg-[var(--panel-bg)] border border-[var(--panel-border)]"
+					class="flex justify-between items-center py-2 px-3 mb-2 last:mb-0 bg-[var(--panel-bg)] border border-[var(--panel-border)]"
 					role="group"
 					aria-label={`Sort rule ${i + 1}: ${column}`}
 				>
@@ -139,7 +139,7 @@
 							id={`sort-btn-asc-${i}`}
 							data-testid={`sort-ascending-rule-${i}`}
 							type="button"
-							class="flex items-center justify-center w-7 h-7 p-0 bg-transparent rounded-sm cursor-pointer transition-all text-[var(--fg-secondary)] border border-transparent hover:bg-[var(--bg-tertiary)] hover:text-[var(--fg-primary)]"
+							class="flex items-center justify-center w-7 h-7 p-0 bg-transparent cursor-pointer transition-all text-[var(--fg-secondary)] border border-transparent hover:bg-[var(--bg-tertiary)] hover:text-[var(--fg-primary)]"
 							class:!bg-[var(--accent-primary)]={!safeConfig.descending[i]}
 							class:!text-[var(--bg-primary)]={!safeConfig.descending[i]}
 							onclick={() => setDirection(i, false)}
@@ -153,7 +153,7 @@
 							id={`sort-btn-desc-${i}`}
 							data-testid={`sort-descending-rule-${i}`}
 							type="button"
-							class="flex items-center justify-center w-7 h-7 p-0 bg-transparent rounded-sm cursor-pointer transition-all text-[var(--fg-secondary)] border border-transparent hover:bg-[var(--bg-tertiary)] hover:text-[var(--fg-primary)]"
+							class="flex items-center justify-center w-7 h-7 p-0 bg-transparent cursor-pointer transition-all text-[var(--fg-secondary)] border border-transparent hover:bg-[var(--bg-tertiary)] hover:text-[var(--fg-primary)]"
 							class:!bg-[var(--accent-primary)]={safeConfig.descending[i]}
 							class:!text-[var(--bg-primary)]={safeConfig.descending[i]}
 							onclick={() => setDirection(i, true)}
@@ -167,7 +167,7 @@
 							id={`sort-btn-remove-${i}`}
 							data-testid={`sort-remove-rule-${i}`}
 							type="button"
-							class="flex items-center justify-center w-7 h-7 p-0 bg-transparent rounded-sm cursor-pointer transition-all text-[var(--fg-secondary)] border border-transparent hover:!bg-[var(--error-bg)] hover:!text-[var(--error-fg)] hover:!border-[var(--error-border)]"
+							class="flex items-center justify-center w-7 h-7 p-0 bg-transparent cursor-pointer transition-all text-[var(--fg-secondary)] border border-transparent hover:!bg-[var(--error-bg)] hover:!text-[var(--error-fg)] hover:!border-[var(--error-border)]"
 							onclick={() => removeSortRule(i)}
 							title="Remove"
 							aria-label={`Remove sort rule for ${column}`}
@@ -181,7 +181,7 @@
 	{:else}
 		<p
 			id="sort-empty-state"
-			class="py-8 text-center rounded-md mb-4 text-[var(--fg-muted)] bg-[var(--panel-muted-bg)] border border-[var(--panel-muted-border)]"
+			class="py-8 text-center mb-4 text-[var(--fg-muted)] bg-[var(--panel-muted-bg)] border border-[var(--panel-muted-border)]"
 			role="status"
 		>
 			No sort rules configured. Add a column to sort by.

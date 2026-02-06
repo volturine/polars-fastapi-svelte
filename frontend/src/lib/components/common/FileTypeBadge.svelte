@@ -72,7 +72,7 @@
 </script>
 
 <span
-	class="inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-sm border font-medium uppercase tracking-wide transition-all {variant ===
+	class="inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap border font-medium uppercase tracking-wide transition-all {variant ===
 	'minimal'
 		? 'border-none p-0'
 		: ''}"

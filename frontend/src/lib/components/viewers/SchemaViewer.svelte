@@ -9,8 +9,11 @@
 	let { schema }: Props = $props();
 </script>
 
-<div class="overflow-hidden rounded-md border bg-panel border-panel">
-	<div class="flex justify-between items-center px-5 py-4 border-b border-primary" style="background: var(--panel-header-bg);">
+<div class="overflow-hidden border bg-panel border-panel">
+	<div
+		class="flex justify-between items-center px-5 py-4 border-b border-primary"
+		style="background: var(--panel-header-bg);"
+	>
 		<h3 class="m-0 text-lg font-semibold text-fg-primary">Schema</h3>
 		{#if schema.row_count !== null}
 			<span class="text-sm text-fg-muted">{schema.row_count.toLocaleString()} rows</span>

@@ -151,7 +151,7 @@
 <div class="relative w-full">
 	<input
 		type="text"
-		class="w-full rounded-sm border border-panel-border bg-panel-bg px-3 py-2 font-mono text-sm text-fg-primary focus:border-accent-primary focus:outline-none"
+		class="w-full border border-panel-border bg-panel-bg px-3 py-2 font-mono text-sm text-fg-primary focus:border-accent-primary focus:outline-none"
 		bind:value={search}
 		onfocus={handleFocus}
 		onblur={handleBlur}
@@ -172,9 +172,7 @@
 			aria-label="Available datasources"
 		>
 			{#if filteredOptions().length === 0}
-				<div class="p-4 text-center text-sm text-fg-muted">
-					No datasources found
-				</div>
+				<div class="p-4 text-center text-sm text-fg-muted">No datasources found</div>
 			{:else}
 				{#each filteredOptions() as ds (ds.id)}
 					<button
@@ -191,8 +189,7 @@
 					>
 						<span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{ds.name}</span>
 						{#if ds.id === highlightId}
-							<span
-								class="ml-2 rounded-sm border border-info-border bg-info-bg px-2 py-1 text-xs text-info-fg"
+							<span class="ml-2 border border-info-border bg-info-bg px-2 py-1 text-xs text-info-fg"
 								>current</span
 							>
 						{:else if ds.source_type === 'file'}
@@ -218,12 +215,12 @@
 		<div class="mt-2 flex flex-wrap gap-2">
 			{#each selectedDatasources() as ds (ds.id)}
 				<span
-					class="chip inline-flex items-center gap-1 rounded-sm border border-badge-border bg-badge-bg px-2 py-1 text-xs text-badge-fg"
+					class="chip inline-flex items-center gap-1 border border-badge-border bg-badge-bg px-2 py-1 text-xs text-badge-fg"
 					class:highlighted={ds.id === highlightId}
 				>
 					{ds.name}
 					<button
-						class="chip-remove inline-flex h-4 w-4 cursor-pointer items-center justify-center rounded-sm border-none bg-transparent p-0 text-fg-muted hover:bg-bg-hover hover:text-fg-primary"
+						class="chip-remove inline-flex h-4 w-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-fg-muted hover:bg-bg-hover hover:text-fg-primary"
 						onclick={() => deselect(ds.id)}
 						aria-label={`Remove ${ds.name}`}
 						type="button"

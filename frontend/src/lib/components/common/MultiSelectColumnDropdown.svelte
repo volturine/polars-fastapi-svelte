@@ -94,7 +94,7 @@
 				>
 					<button
 						type="button"
-						class="select-action-btn flex-1 cursor-pointer rounded-sm border bg-transparent px-2 py-1 text-xs transition-all"
+						class="select-action-btn flex-1 cursor-pointer border bg-transparent px-2 py-1 text-xs transition-all"
 						onclick={(e) => {
 							e.stopPropagation();
 							selectAll();
@@ -105,7 +105,7 @@
 					</button>
 					<button
 						type="button"
-						class="select-action-btn flex-1 cursor-pointer rounded-sm border bg-transparent px-2 py-1 text-xs transition-all"
+						class="select-action-btn flex-1 cursor-pointer border bg-transparent px-2 py-1 text-xs transition-all"
 						onclick={(e) => {
 							e.stopPropagation();
 							deselectAll();
@@ -119,7 +119,7 @@
 			<div class="column-options">
 				{#each filteredColumns as column (column.name)}
 					<label
-						class="multi-select-option flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 transition-colors"
+						class="multi-select-option flex cursor-pointer items-center gap-2 px-3 py-2 transition-colors"
 						style="color: var(--fg-primary);"
 					>
 						<input
@@ -145,7 +145,7 @@
 
 {#if selectedCount > 0}
 	<div
-		class="mt-2 max-h-[60px] overflow-y-auto rounded-sm border p-2 text-xs"
+		class="mt-2 max-h-[60px] overflow-y-auto border p-2 text-xs"
 		style="background-color: var(--bg-secondary); border-color: var(--border-secondary); color: var(--fg-secondary);"
 	>
 		{value.join(', ')}

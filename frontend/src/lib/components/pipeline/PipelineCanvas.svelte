@@ -257,7 +257,7 @@
 
 				{#if canDrop}
 					<div
-						class="my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center rounded-md border-2 border-dashed px-4 py-2 text-center transition-all border-[var(--fg-faint)] bg-transparent hover:border-[var(--fg-muted)] hover:bg-[var(--bg-hover)]"
+						class="my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center transition-all border-[var(--fg-faint)] bg-transparent hover:border-[var(--fg-muted)] hover:bg-[var(--bg-hover)]"
 						class:!border-[var(--fg-primary)]={hoverIndex === 0}
 						class:!bg-[var(--bg-tertiary)]={hoverIndex === 0}
 						class:!border-[var(--error-border)]={hoverIndex === 0 && !drag.valid}
@@ -309,7 +309,7 @@
 					/>
 					{#if canDrop}
 						<div
-							class="my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center rounded-md border-2 border-dashed px-4 py-2 text-center transition-all border-[var(--fg-faint)] bg-transparent hover:border-[var(--fg-muted)] hover:bg-[var(--bg-hover)]"
+							class="my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center transition-all border-[var(--fg-faint)] bg-transparent hover:border-[var(--fg-muted)] hover:bg-[var(--bg-hover)]"
 							class:!border-[var(--fg-primary)]={hoverIndex === 0}
 							class:!bg-[var(--bg-tertiary)]={hoverIndex === 0}
 							class:!border-[var(--error-border)]={hoverIndex === 0 && !drag.valid}
@@ -374,7 +374,7 @@
 							{/if}
 							{#if canDrop}
 								<div
-									class="my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center rounded-md border-2 border-dashed px-4 py-2 text-center transition-all border-[var(--fg-faint)] bg-transparent hover:border-[var(--fg-muted)] hover:bg-[var(--bg-hover)]"
+									class="my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center transition-all border-[var(--fg-faint)] bg-transparent hover:border-[var(--fg-muted)] hover:bg-[var(--bg-hover)]"
 									class:!border-[var(--fg-primary)]={hoverIndex === i + 1}
 									class:!bg-[var(--bg-tertiary)]={hoverIndex === i + 1}
 									class:!border-[var(--error-border)]={hoverIndex === i + 1 && !drag.valid}

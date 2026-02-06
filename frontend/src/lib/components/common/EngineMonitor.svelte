@@ -58,9 +58,7 @@
 	>
 		<Cpu size={16} />
 		{#if enginesStore.count > 0}
-			<span
-				class="min-w-[18px] rounded-full px-2 text-center text-xs font-semibold bg-accent text-bg-primary"
-			>
+			<span class="min-w-[18px] px-2 text-center text-xs font-semibold bg-accent text-bg-primary">
 				{enginesStore.count}
 			</span>
 		{/if}
@@ -77,7 +75,7 @@
 			<div class="flex items-center justify-between border-b p-3 bg-secondary border-primary">
 				<span class="text-sm font-semibold text-fg-primary">Active Engines</span>
 				<button
-					class="flex cursor-pointer items-center justify-center rounded-sm border-none bg-transparent p-1 transition-all text-fg-muted hover:bg-hover hover:text-fg-primary"
+					class="flex cursor-pointer items-center justify-center border-none bg-transparent p-1 transition-all text-fg-muted hover:bg-hover hover:text-fg-primary"
 					onclick={() => (expanded = false)}
 				>
 					<X size={14} />
@@ -127,7 +125,7 @@
 									</div>
 								</div>
 								<button
-									class="flex cursor-pointer items-center justify-center rounded-sm border p-1 transition-all disabled:cursor-not-allowed disabled:opacity-50 bg-transparent border-primary text-fg-muted hover:bg-error hover:border-error hover:text-error-fg"
+									class="flex cursor-pointer items-center justify-center border p-1 transition-all disabled:cursor-not-allowed disabled:opacity-50 bg-transparent border-primary text-fg-muted hover:bg-error hover:border-error hover:text-error-fg"
 									onclick={() => handleKill(engine.analysis_id)}
 									disabled={killing === engine.analysis_id}
 									title="Shutdown engine"

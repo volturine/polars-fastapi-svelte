@@ -74,7 +74,7 @@
 				class:completed={step > 1}
 			>
 				<span
-					class="step-number flex h-7 w-7 items-center justify-center rounded-sm border border-border-secondary text-xs font-semibold text-fg-muted bg-bg-primary"
+					class="step-number flex h-7 w-7 items-center justify-center border border-border-secondary text-xs font-semibold text-fg-muted bg-bg-primary"
 				>
 					{step > 1 ? '✓' : '1'}
 				</span>
@@ -90,7 +90,7 @@
 				class:completed={step > 2}
 			>
 				<span
-					class="step-number flex h-7 w-7 items-center justify-center rounded-sm border border-border-secondary text-xs font-semibold text-fg-muted bg-bg-primary"
+					class="step-number flex h-7 w-7 items-center justify-center border border-border-secondary text-xs font-semibold text-fg-muted bg-bg-primary"
 				>
 					{step > 2 ? '✓' : '2'}
 				</span>
@@ -100,9 +100,12 @@
 				class="step-line min-w-[40px] flex-1 h-px bg-border-primary"
 				class:completed={step > 2}
 			></div>
-			<div class="step flex items-center gap-2 border-border-secondary text-fg-muted bg-bg-primary" class:active={step === 3}>
+			<div
+				class="step flex items-center gap-2 border-border-secondary text-fg-muted bg-bg-primary"
+				class:active={step === 3}
+			>
 				<span
-					class="step-number flex h-7 w-7 items-center justify-center rounded-sm border border-border-secondary text-xs font-semibold text-fg-muted bg-bg-primary"
+					class="step-number flex h-7 w-7 items-center justify-center border border-border-secondary text-xs font-semibold text-fg-muted bg-bg-primary"
 				>
 					3
 				</span>
@@ -115,9 +118,7 @@
 		{#if step === 1}
 			<div class="card">
 				<h2 class="m-0 mb-2 text-lg font-semibold">Analysis Details</h2>
-				<p class="mb-6 text-fg-tertiary">
-					Give your analysis a name and optional description.
-				</p>
+				<p class="mb-6 text-fg-tertiary">Give your analysis a name and optional description.</p>
 
 				<div class="mb-5 flex flex-col gap-2">
 					<label for="name" class="block text-sm font-medium text-fg-secondary">
@@ -128,7 +129,7 @@
 						type="text"
 						bind:value={name}
 						placeholder="My Data Analysis"
-						class="w-full rounded-sm border border-border-secondary bg-bg-primary p-3 text-sm focus:border-border-focus"
+						class="w-full border border-border-secondary bg-bg-primary p-3 text-sm focus:border-border-focus"
 					/>
 				</div>
 				<div class="mb-5 flex flex-col gap-2">
@@ -140,16 +141,14 @@
 						bind:value={description}
 						placeholder="Describe what this analysis does..."
 						rows="4"
-						class="min-h-[100px] w-full resize-y rounded-sm border border-border-secondary bg-bg-primary p-3 text-sm focus:border-border-focus"
+						class="min-h-[100px] w-full resize-y border border-border-secondary bg-bg-primary p-3 text-sm focus:border-border-focus"
 					></textarea>
 				</div>
 			</div>
 		{:else if step === 2}
 			<div class="card">
 				<h2 class="m-0 mb-2 text-lg font-semibold">Select Data Sources</h2>
-				<p class="mb-6 text-fg-tertiary">
-					Choose one or more data sources for this analysis.
-				</p>
+				<p class="mb-6 text-fg-tertiary">Choose one or more data sources for this analysis.</p>
 
 				{#if datasourcesQuery.isLoading}
 					<div class="info-box">Loading data sources...</div>
@@ -180,14 +179,10 @@
 		{:else if step === 3}
 			<div class="card">
 				<h2 class="m-0 mb-2 text-lg font-semibold">Review & Create</h2>
-				<p class="mb-6 text-fg-tertiary">
-					Review your analysis configuration before creating.
-				</p>
+				<p class="mb-6 text-fg-tertiary">Review your analysis configuration before creating.</p>
 
 				<div class="mb-6 border-b border-border-primary pb-6">
-					<h3
-						class="m-0 mb-4 text-sm font-semibold uppercase tracking-wide text-fg-tertiary"
-					>
+					<h3 class="m-0 mb-4 text-sm font-semibold uppercase tracking-wide text-fg-tertiary">
 						Details
 					</h3>
 					<dl class="m-0">
@@ -205,17 +200,13 @@
 				</div>
 
 				<div>
-					<h3
-						class="m-0 mb-4 text-sm font-semibold uppercase tracking-wide text-fg-tertiary"
-					>
+					<h3 class="m-0 mb-4 text-sm font-semibold uppercase tracking-wide text-fg-tertiary">
 						Data Sources ({selectedDatasourceIds.length})
 					</h3>
 					<ul class="m-0 list-none p-0">
 						{#if datasourcesQuery.data}
 							{#each datasourcesQuery.data.filter( (ds) => selectedDatasourceIds.includes(ds.id) ) as ds (ds.id)}
-								<li
-									class="flex items-center gap-3 border-b border-border-primary py-2"
-								>
+								<li class="flex items-center gap-3 border-b border-border-primary py-2">
 									<span class="text-fg-primary">{ds.name}</span>
 									<span class="text-xs text-fg-muted">
 										{#if ds.source_type === 'file'}

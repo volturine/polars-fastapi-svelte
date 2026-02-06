@@ -229,7 +229,7 @@
 
 		<div class="flex gap-2">
 			<button
-				class="action-btn flex-1 cursor-pointer rounded-sm border border-primary bg-transparent p-2 text-[0.625rem] font-medium uppercase tracking-widest transition-all text-fg-secondary hover:bg-hover hover:text-fg-primary"
+				class="action-btn flex-1 cursor-pointer rounded-sm border border-primary bg-transparent p-2 font-medium uppercase tracking-widest text-[0.625rem] text-fg-secondary hover:bg-hover hover:text-fg-primary transition-all"
 				class:inactive={!isApplied}
 				onclick={() => onToggleApply(step.id)}
 				type="button"

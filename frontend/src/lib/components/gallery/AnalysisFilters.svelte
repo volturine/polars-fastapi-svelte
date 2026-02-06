@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Search, X } from 'lucide-svelte';
+	import { Search, X, Trash2 } from 'lucide-svelte';
 
 	export type SortOption = 'newest' | 'oldest' | 'name-asc' | 'name-desc';
 
@@ -8,9 +8,13 @@
 		sortOption: SortOption;
 		onSearch: (query: string) => void;
 		onSort: (option: SortOption) => void;
+		selectionCount?: number;
+		onSelectAll?: () => void;
+		onClearSelection?: () => void;
+		onBulkDelete?: () => void;
 	}
 
-	let { searchQuery, sortOption, onSearch, onSort }: Props = $props();
+	let { searchQuery, sortOption, onSearch, onSort, selectionCount = 0, onSelectAll, onClearSelection, onBulkDelete }: Props = $props();
 </script>
 
 <div class="mb-7 flex flex-wrap items-center gap-4 max-sm:flex-col max-sm:items-stretch">
@@ -26,7 +30,7 @@
 			value={searchQuery}
 			oninput={(e) => onSearch((e.target as HTMLInputElement).value)}
 			class="search-input w-full rounded-sm border py-3 pl-10 pr-10 font-mono text-sm transition-all"
-			style="border-color: var(--border-primary); color: var(--fg-primary); background-color: var(--bg-primary); box-shadow: var(--card-shadow);"
+			style="border-color: var(--border-primary); color: var(--fg-primary); background-color: var(--bg-primary);"
 		/>
 		{#if searchQuery}
 			<button
@@ -61,6 +65,28 @@
 			<option value="name-desc">Z-A</option>
 		</select>
 	</div>
+
+	{#if selectionCount > 0}
+		<div class="ml-auto flex items-center gap-2">
+			<button
+				class="btn-text flex items-center gap-1 border border-transparent bg-transparent px-3 py-2 text-sm transition-all"
+				onclick={onSelectAll}
+			>
+				Select All
+			</button>
+			<button
+				class="btn-text flex items-center gap-1 border border-transparent bg-transparent px-3 py-2 text-sm transition-all"
+				onclick={onClearSelection}
+			>
+				<X size={14} />
+				Clear
+			</button>
+			<button class="btn-danger flex items-center gap-1" onclick={onBulkDelete}>
+				<Trash2 size={14} />
+				Delete
+			</button>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -86,5 +112,14 @@
 
 	.sort-select:hover {
 		border-color: var(--border-tertiary);
+	}
+
+	.btn-text {
+		color: var(--fg-secondary);
+	}
+
+	.btn-text:hover {
+		background-color: var(--bg-hover);
+		color: var(--fg-primary);
 	}
 </style>

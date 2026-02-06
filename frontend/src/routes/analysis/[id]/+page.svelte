@@ -436,20 +436,14 @@
 </script>
 
 {#if analysisQuery.isLoading}
-	<div
-		class="info-box flex flex-col items-center justify-center text-center gap-4"
-		style="height: calc(100vh - 60px);"
-	>
+	<div class="info-box flex h-full flex-col items-center justify-center text-center gap-4">
 		<div class="spinner"></div>
 		<p class="m-0">Loading analysis...</p>
 	</div>
 {:else if analysisQuery.isError}
-	<div
-		class="error-box flex flex-col items-center justify-center text-center gap-4"
-		style="height: calc(100vh - 60px);"
-	>
+	<div class="error-box flex h-full flex-col items-center justify-center text-center gap-4">
 		<div
-			class="flex items-center justify-center text-xl font-bold w-[52px] h-[52px] rounded-sm shadow-soft"
+			class="flex items-center justify-center text-xl font-bold w-[52px] h-[52px] border border-border-primary"
 		>
 			!
 		</div>
@@ -464,9 +458,9 @@
 		>
 	</div>
 {:else if analysisQuery.data}
-	<div class="flex flex-col bg-secondary" style="height: calc(100vh - 60px);">
+	<div class="flex h-full flex-col bg-secondary">
 		<header
-			class="flex items-stretch sticky top-0 h-12 bg-panel border-b border-panel"
+			class="flex items-stretch sticky top-0 h-12 bg-panel border-y border-panel"
 			style="z-index: var(--z-header);"
 		>
 			<div
@@ -564,9 +558,9 @@
 				class="header-right flex items-center justify-end h-full box-border border-l border-panel"
 				style="width: var(--operations-panel-width, 280px); transition: width var(--transition);"
 			>
-				<div class="relative items-center px-4">
+				<div class="relative items-center px-1">
 					<button
-						class="mode-toggle flex items-center cursor-pointer text-sm px-3 py-2 bg-tertiary border border-primary rounded-sm text-fg-secondary gap-2 transition-all duration-[160ms] hover:bg-hover hover:border-secondary"
+						class="mode-toggle flex items-center cursor-pointer text-sm py-2 bg-tertiary border border-primary rounded-sm text-fg-secondary gap-2 transition-all duration-[160ms] hover:bg-hover hover:border-secondary"
 						onclick={() => (showModeDropdown = !showModeDropdown)}
 						type="button"
 					>
@@ -576,11 +570,11 @@
 
 					{#if showModeDropdown}
 						<div
-							class="absolute left-0 min-w-[140px] bg-panel border border-panel rounded-sm shadow-soft p-1 z-[100]"
+							class="absolute left-0 min-w-[140px] bg-panel border border-panel p-1 z-[100]"
 							style="top: calc(100% + 4px);"
 						>
 							<button
-								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 px-3 py-2 text-fg-secondary rounded-sm transition-colors duration-[160ms] hover:bg-hover"
+								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary rounded-sm transition-colors duration-[160ms] hover:bg-hover"
 								onclick={() => setMode('viewing')}
 								type="button"
 							>
@@ -588,7 +582,7 @@
 								<span>Viewing</span>
 							</button>
 							<button
-								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 px-3 py-2 text-fg-secondary rounded-sm transition-colors duration-[160ms] hover:bg-hover"
+								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary rounded-sm transition-colors duration-[160ms] hover:bg-hover"
 								onclick={() => setMode('editing')}
 								type="button"
 							>
@@ -622,7 +616,7 @@
 		<div class="flex flex-1 overflow-hidden select-none bg-secondary" role="application">
 			{#if isEditingMode}
 				<div
-					class="left-pane flex-shrink-0 overflow-hidden flex box-border bg-panel border-r border-panel"
+					class="left-pane flex-shrink-0 overflow-hidden flex h-full box-border bg-panel border-r border-panel"
 					style="width: var(--operations-panel-width, 280px); transition: width var(--transition), visibility var(--transition);"
 					class:collapsed={leftPaneCollapsed}
 				>
@@ -653,7 +647,7 @@
 
 			{#if isEditingMode}
 				<div
-					class="right-pane flex-shrink-0 overflow-hidden flex box-border bg-panel border-l border-panel"
+					class="right-pane flex-shrink-0 overflow-hidden flex h-full box-border bg-panel border-l border-panel"
 					style="width: var(--operations-panel-width, 280px); transition: width var(--transition), visibility var(--transition);"
 					class:collapsed={rightPaneCollapsed}
 				>

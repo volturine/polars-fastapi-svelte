@@ -377,7 +377,7 @@
 	}
 </script>
 
-<div class="mx-auto min-h-full max-w-[900px] p-6">
+<div class="mx-auto max-w-[900px] p-6">
 	<header class="mb-6 flex items-center justify-between gap-4 border-b border-primary pb-6">
 		<div class="flex items-center gap-4">
 			<button
@@ -481,7 +481,7 @@
 			</div>
 		{/if}
 
-		<div class="rounded-md border border-primary bg-primary p-6">
+		<div class="border border-primary bg-primary p-6">
 			{#if activeTab === 'general'}
 				<div class="flex flex-col gap-5">
 					<div class="flex flex-col gap-2">
@@ -833,7 +833,6 @@
 	select:focus {
 		outline: none;
 		border-color: var(--border-focus);
-		box-shadow: 0 0 0 3px var(--accent-bg);
 	}
 
 	input:disabled,

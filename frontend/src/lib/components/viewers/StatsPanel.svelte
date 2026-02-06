@@ -10,13 +10,13 @@
 	let hasStats = $derived(stats && Object.keys(stats).length > 0);
 </script>
 
-<div class="overflow-hidden rounded-md border bg-panel border-panel">
+<div class="overflow-hidden border bg-panel border-panel">
 	<div class="px-5 py-4 border-b border-primary" style="background: var(--panel-header-bg);">
 		<h3 class="m-0">Summary Statistics</h3>
 	</div>
 
 	<div class="grid gap-4 p-5" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-		<div class="flex items-center gap-4 p-4 rounded-md border transition-all bg-tertiary border-primary hover:-translate-y-0.5 hover:shadow-soft">
+		<div class="flex items-center gap-4 p-4 border transition-all bg-tertiary border-primary">
 			<div class="text-3xl leading-none">📊</div>
 			<div class="flex-1">
 				<div class="text-xs font-medium uppercase tracking-wider mb-1 text-fg-muted">
@@ -28,7 +28,7 @@
 			</div>
 		</div>
 
-		<div class="flex items-center gap-4 p-4 rounded-md border transition-all bg-tertiary border-primary hover:-translate-y-0.5 hover:shadow-soft">
+		<div class="flex items-center gap-4 p-4 border transition-all bg-tertiary border-primary">
 			<div class="text-3xl leading-none">📋</div>
 			<div class="flex-1">
 				<div class="text-xs font-medium uppercase tracking-wider mb-1 text-fg-muted">
@@ -40,7 +40,7 @@
 			</div>
 		</div>
 
-		<div class="flex items-center gap-4 p-4 rounded-md border transition-all bg-tertiary border-primary hover:-translate-y-0.5 hover:shadow-soft">
+		<div class="flex items-center gap-4 p-4 border transition-all bg-tertiary border-primary">
 			<div class="text-3xl leading-none">🔢</div>
 			<div class="flex-1">
 				<div class="text-xs font-medium uppercase tracking-wider mb-1 text-fg-muted">
@@ -60,7 +60,7 @@
 			</h4>
 			<div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));">
 				{#each Object.entries(stats) as [column, columnStats] (column)}
-					<div class="p-3 rounded-md border bg-tertiary border-primary">
+					<div class="p-3 border bg-tertiary border-primary">
 						<div class="text-sm font-semibold font-mono mb-2 pb-2 border-b text-fg-primary border-primary">
 							{column}
 						</div>

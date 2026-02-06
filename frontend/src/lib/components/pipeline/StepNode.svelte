@@ -188,7 +188,7 @@
 	></div>
 
 	<div
-		class="step-content card-base rounded-sm border p-4 transition-all hover:border-tertiary hover:-translate-y-px"
+		class="step-content card-base border p-4 transition-all hover:border-tertiary"
 		role="listitem"
 	>
 		<div class="mb-3 flex items-center gap-2">

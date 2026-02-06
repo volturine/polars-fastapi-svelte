@@ -12,7 +12,7 @@ export class ConfigStore {
 		this.loading = true;
 		this.error = null;
 
-		getConfig().match(
+		await getConfig().match(
 			(config) => {
 				this.config = config;
 				this.loading = false;

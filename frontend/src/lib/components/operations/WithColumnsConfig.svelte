@@ -445,11 +445,6 @@
 		border-color: var(--accent-primary);
 		background-color: var(--bg-hover);
 	}
-	.item-actions button:hover {
-		color: var(--fg-primary);
-		background-color: var(--bg-tertiary);
-		border-color: var(--border-primary);
-	}
 	.btn-remove:hover {
 		color: var(--error-fg);
 		background-color: var(--error-bg);

@@ -41,13 +41,13 @@
 	}
 </script>
 
-<div class="flex gap-2">
+<div class="flex gap-1 overflow-hidden">
 	<input
 		type="date"
 		id={id ? `${id}-date` : undefined}
 		value={dateValue}
 		onchange={handleDateChange}
-		class="min-w-0 flex-1"
+		class="min-w-0 flex-1 px-1.5 py-1 text-xs"
 	/>
 	<div class="relative min-w-0 flex-1">
 		<input
@@ -56,7 +56,7 @@
 			value={timeValue}
 			onchange={handleTimeChange}
 			disabled={!dateValue}
-			class="w-full pr-6 disabled:cursor-not-allowed disabled:opacity-50"
+			class="w-full px-1.5 py-1 pr-6 text-xs disabled:cursor-not-allowed disabled:opacity-50"
 		/>
 		{#if timeValue}
 			<button

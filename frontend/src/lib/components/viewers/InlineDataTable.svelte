@@ -188,7 +188,7 @@
 	}
 </script>
 
-<div class="w-full my-2 overflow-hidden rounded-md border select-text bg-panel border-panel" style="box-shadow: var(--panel-shadow);">
+<div class="w-full my-2 overflow-hidden border select-text bg-panel border-panel">
 	{#if isLoading}
 		<div class="flex flex-col items-center justify-center gap-3 p-8 pointer-events-none text-fg-tertiary">
 			<div class="spinner-md"></div>
@@ -213,32 +213,30 @@
 					{#each headerGroups as headerGroup (headerGroup.id)}
 						<tr>
 							{#each headerGroup.headers as header (header.id)}
-								<th class="p-0 text-left font-semibold text-[0.8125rem] uppercase tracking-wide border-b-2 border-table">
+								<th class="p-0 text-left font-semibold text-[0.8125rem] border-b-2 border-table">
 									<button
-										class="flex items-center gap-1 px-4 py-3 bg-transparent border-none cursor-pointer transition-colors hover:bg-hover"
-										style="font-size: inherit; font-weight: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;"
+										class="flex flex-col items-start gap-1 px-4 py-3 bg-transparent border-none cursor-pointer transition-colors hover:bg-hover"
+										style="font-size: inherit; font-weight: inherit; color: inherit;"
 										onclick={() => toggleSort(header.id)}
 									>
-										<span class="text-sm">
+										<span class="flex items-center gap-1.5 text-sm">
 											{typeof header.column.columnDef.header === 'string'
 												? header.column.columnDef.header
 												: header.id}
+											{#if getSortDirection(header.id)}
+												<span class="text-xs text-accent">
+													{getSortDirection(header.id) === 'asc' ? '↑' : '↓'}
+												</span>
+											{/if}
 										</span>
-										{#if getSortDirection(header.id)}
-											<span class="text-xs text-accent">
-												{getSortDirection(header.id) === 'asc' ? '↑' : '↓'}
-											</span>
-										{/if}
-									</button>
-									{#if getColumnType(header.id)}
-										<div class="inline-block ml-2 align-middle">
+										{#if getColumnType(header.id)}
 											<ColumnTypeBadge
 												columnType={getColumnType(header.id)}
 												size="xs"
 												showIcon={false}
 											/>
-										</div>
-									{/if}
+										{/if}
+									</button>
 								</th>
 							{/each}
 						</tr>

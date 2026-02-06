@@ -64,7 +64,7 @@
 	}
 </script>
 
-<div class="mx-auto flex min-h-[calc(100vh-60px)] max-w-[720px] flex-col gap-6 px-6 py-7">
+<div class="mx-auto flex max-w-[720px] flex-col gap-6 px-6 py-7">
 	<div class="mb-8">
 		<h1 class="m-0 mb-6 text-2xl font-semibold">New Analysis</h1>
 		<div class="flex items-center gap-2">

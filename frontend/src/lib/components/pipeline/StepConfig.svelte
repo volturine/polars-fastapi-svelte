@@ -182,7 +182,7 @@
 
 {#if step === null}
 	<div
-		class="step-config box-border flex w-full flex-col items-center justify-center overflow-y-auto bg-panel-bg text-fg-primary"
+		class="step-config box-border flex h-full min-h-0 w-full flex-col items-center justify-center overflow-y-auto bg-panel-bg text-fg-primary"
 	>
 		<div
 			class="flex flex-col items-center justify-center p-6 text-center text-fg-muted"
@@ -194,10 +194,10 @@
 	</div>
 {:else}
 	<div
-		class="step-config box-border flex w-full flex-col overflow-y-auto bg-panel-bg text-fg-primary"
+		class="step-config box-border flex h-full min-h-0 w-full flex-col overflow-y-auto bg-panel-bg text-fg-primary"
 	>
 		<div
-			class="config-header relative flex items-center justify-between bg-panel-bg p-4 shadow-[inset_0_-1px_0_var(--panel-border),inset_0_-3px_0_var(--panel-border),inset_0_-5px_0_var(--panel-border)]"
+			class="config-header relative flex items-center justify-between border-b border-border-primary bg-panel-bg p-4"
 		>
 			<h3
 				class="m-0 text-sm font-semibold uppercase tracking-widest text-fg-primary"

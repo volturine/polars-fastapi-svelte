@@ -140,7 +140,7 @@
 
 <div class="datasource-node relative w-[65%]" class:drag-active={isDragActive}>
 	<div
-		class="node-content bg-primary border-secondary shadow-card rounded-md border p-4 transition-all hover:border-accent hover:shadow-card-hover"
+		class="node-content bg-primary border-secondary border p-4 transition-all hover:border-accent"
 	>
 		<!-- Header with icon and badge -->
 		<div class="mb-4 flex items-center justify-between border-b border-primary pb-3">

@@ -99,7 +99,7 @@
 	}
 </script>
 
-<div class="relative overflow-hidden rounded-md border bg-panel border-panel" style="box-shadow: var(--panel-shadow);">
+<div class="relative overflow-hidden border bg-panel border-panel">
 	{#if loading}
 		<div class="flex flex-col items-center justify-center gap-4 p-12 pointer-events-none text-fg-tertiary">
 			<div class="spinner"></div>

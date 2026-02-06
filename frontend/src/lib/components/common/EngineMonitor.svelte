@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Cpu, X, ChevronDown, LoaderCircle } from 'lucide-svelte';
 	import { onClickOutside } from 'runed';
+	import { untrack } from 'svelte';
 	import { enginesStore } from '$lib/stores/engines.svelte';
 	import { toEpochDisplay } from '$lib/utils/datetime';
 
@@ -8,7 +9,7 @@
 	let killing = $state<string | null>(null);
 
 	$effect(() => {
-		enginesStore.startPolling();
+		untrack(() => enginesStore.startPolling());
 		return () => enginesStore.stopPolling();
 	});
 
@@ -48,16 +49,18 @@
 
 <div class="relative">
 	<button
-		class="flex cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-xs transition-all bg-primary border-primary text-fg-tertiary shadow-card"
-		class:bg-hover={expanded}
-		class:text-fg-primary={expanded}
+		class="flex cursor-pointer items-center gap-2 border border-transparent px-3 py-2 text-xs transition-all text-fg-tertiary hover:text-fg-primary"
+		class:!bg-bg-hover={expanded}
+		class:!text-fg-primary={expanded}
 		class:text-fg-secondary={enginesStore.count > 0}
 		onclick={toggleExpanded}
 		title="Engine Monitor"
 	>
 		<Cpu size={16} />
 		{#if enginesStore.count > 0}
-			<span class="min-w-[18px] rounded-full px-2 text-center text-xs font-semibold bg-accent text-bg-primary">
+			<span
+				class="min-w-[18px] rounded-full px-2 text-center text-xs font-semibold bg-accent text-bg-primary"
+			>
 				{enginesStore.count}
 			</span>
 		{/if}
@@ -68,9 +71,8 @@
 
 	{#if expanded}
 		<div
-			class="absolute right-0 top-[calc(100%+0.5rem)] z-[100] w-[280px] overflow-hidden rounded-sm border bg-primary border-primary"
+			class="absolute right-0 top-full z-[100] w-[280px] overflow-hidden border bg-primary border-primary"
 			bind:this={dropdownRef}
-			style="box-shadow: var(--dialog-shadow);"
 		>
 			<div class="flex items-center justify-between border-b p-3 bg-secondary border-primary">
 				<span class="text-sm font-semibold text-fg-primary">Active Engines</span>
@@ -85,7 +87,9 @@
 			<div class="max-h-[300px] overflow-y-auto">
 				{#if enginesStore.count === 0}
 					{#if enginesStore.loading}
-						<div class="flex items-center justify-center gap-2 p-6 text-center text-sm text-fg-muted">
+						<div
+							class="flex items-center justify-center gap-2 p-6 text-center text-sm text-fg-muted"
+						>
 							<LoaderCircle size={16} class="animate-spin" />
 							<span>Loading...</span>
 						</div>
@@ -146,9 +150,5 @@
 				</div>
 			{/if}
 		</div>
-		<button
-			class="fixed inset-0 z-[99] cursor-default border-none bg-transparent"
-			aria-label="Close engine monitor"
-		></button>
 	{/if}
 </div>

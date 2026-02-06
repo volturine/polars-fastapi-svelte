@@ -88,7 +88,7 @@
 		aria-label="Close modal"
 	>
 		<div
-			class="flex max-h-[80vh] w-full max-w-[480px] flex-col rounded-md border focus:outline-none max-sm:max-w-full bg-[var(--panel-bg)] border-[var(--panel-border)] shadow-[var(--shadow-lg)] animate-[slideIn_var(--transition)]"
+			class="flex max-h-[80vh] w-full max-w-[480px] flex-col border focus:outline-none max-sm:max-w-full bg-[var(--panel-bg)] border-[var(--panel-border)] animate-[slideIn_var(--transition)]"
 			bind:this={modalRef}
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}

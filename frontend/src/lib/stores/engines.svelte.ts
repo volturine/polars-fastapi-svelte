@@ -17,7 +17,7 @@ export class EnginesStore {
 		this.loading = true;
 		this.error = null;
 
-		listEngines().match(
+		await listEngines().match(
 			(response) => {
 				this.engines = response.engines;
 				this.loading = false;
@@ -30,7 +30,7 @@ export class EnginesStore {
 	}
 
 	async shutdownEngine(analysisId: string): Promise<void> {
-		shutdownEngineApi(analysisId).match(
+		await shutdownEngineApi(analysisId).match(
 			() => {
 				this.engines = this.engines.filter((e) => e.analysis_id !== analysisId);
 			},

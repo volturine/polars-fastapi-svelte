@@ -155,7 +155,7 @@
 </script>
 
 <div
-	class="step-library flex w-full flex-col gap-3 overflow-hidden bg-panel-bg px-3 py-4"
+	class="step-library flex h-full min-h-0 w-full flex-col gap-3 overflow-hidden bg-panel-bg px-3 py-4"
 >
 	<img
 		class="drag-preview pointer-events-none fixed -left-[9999px] -top-[9999px] h-px w-px opacity-0"
@@ -171,7 +171,7 @@
 	>
 		{#each stepTypes as stepType (stepType.type)}
 			<button
-				class="step-button relative flex cursor-grab items-center justify-start gap-3 rounded-md border border-transparent bg-transparent p-3 text-left transition-colors hover:border-border-secondary hover:bg-bg-hover"
+				class="step-button relative flex cursor-grab items-center justify-start gap-3 border border-transparent bg-transparent p-3 text-left transition-colors hover:border-border-secondary hover:bg-bg-hover"
 				class:dragging
 				onclick={() => handleClick(stepType.type)}
 				onpointerdown={(event) => startDrag(event, stepType.type)}

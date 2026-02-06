@@ -115,7 +115,7 @@
 	}
 </script>
 
-<div class="mx-auto min-h-full max-w-[1100px] px-6 py-7">
+<div class="mx-auto max-w-[1100px] px-6 py-7">
 	<header
 		class="mb-6 flex flex-col items-stretch justify-between gap-6 border-b border-border-primary pb-5 md:flex-row md:items-start"
 	>

@@ -9,6 +9,7 @@
 	import { initializeStores } from '$lib/stores/context.svelte';
 	import { configStore } from '$lib/stores/config.svelte';
 	import { installAuditListeners, setAuditPage, track } from '$lib/utils/audit-log';
+	import { untrack } from 'svelte';
 	import '$lib/../app.css';
 
 	let { children } = $props();
@@ -27,7 +28,7 @@
 
 	$effect(() => {
 		if (typeof window === 'undefined') return;
-		configStore.fetch();
+		untrack(() => configStore.fetch());
 	});
 
 	$effect(() => {
@@ -134,7 +135,7 @@
 <QueryClientProvider client={queryClient}>
 	<div class="flex h-screen flex-col">
 		<header
-			class="sticky top-0 z-header border-b border-border-primary bg-bg-primary backdrop-blur-sm"
+			class="sticky top-0 z-header bg-panel"
 		>
 			<div class="mx-auto flex max-w-[1200px] items-center gap-6 px-6 py-3">
 				<a
@@ -151,7 +152,7 @@
 					{#each navItems as item (item.href)}
 						<a
 							href={resolve(item.href as '/')}
-							class="nav-link rounded-sm border border-transparent px-3 py-2 text-sm text-fg-tertiary no-underline transition-all hover:border-border-primary hover:bg-bg-hover hover:text-fg-primary"
+							class="nav-link border border-transparent px-3 py-1.5 text-sm text-fg-tertiary no-underline transition-colors hover:text-fg-primary"
 							class:active={currentPath === item.href ||
 								(currentPath.startsWith('/analysis') && item.href === '/') ||
 								(currentPath.startsWith('/udfs') && item.href === '/udfs')}
@@ -165,7 +166,7 @@
 				<div class="ml-auto flex items-center gap-2">
 					<EngineMonitor />
 					<button
-						class="theme-toggle flex items-center justify-center rounded-sm border border-border-primary bg-bg-primary p-2 text-fg-secondary shadow-[var(--card-shadow)] transition-all hover:bg-bg-hover hover:text-fg-primary"
+						class="theme-toggle flex items-center justify-center border border-border-primary bg-bg-primary p-2 text-fg-secondary transition-all hover:bg-bg-hover hover:text-fg-primary"
 						onclick={toggleTheme}
 						title="Toggle theme"
 						aria-label="Toggle theme"
@@ -194,7 +195,6 @@
 
 	.nav-link.active {
 		color: var(--fg-primary);
-		background-color: var(--bg-tertiary);
-		border-color: var(--border-primary);
+		border-bottom: 1px solid var(--fg-primary);
 	}
 </style>

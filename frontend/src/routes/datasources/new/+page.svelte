@@ -545,7 +545,7 @@
 	}
 </script>
 
-<div class="mx-auto box-border min-h-full max-w-[800px] p-8">
+<div class="mx-auto box-border max-w-[800px] p-8">
 	<header class="mb-8 flex items-center justify-between">
 		<h1 class="m-0 text-2xl font-semibold">Add Data Source</h1>
 		<a href={resolve('/datasources')} class="btn-secondary no-underline" data-sveltekit-reload
@@ -581,7 +581,7 @@
 		<div class="error-box">{error}</div>
 	{/if}
 
-	<div class="card-base rounded-md p-8">
+	<div class="card-base border p-8">
 		{#if activeTab === 'file'}
 			<div class="flex flex-col gap-6">
 				<div class="flex flex-col gap-2">
@@ -783,7 +783,7 @@
 				{/if}
 
 				{#if fileMode === 'upload' && file?.name.endsWith('.xlsx')}
-					<div class="flex flex-col gap-4 rounded-md border p-4 bg-tertiary border-primary">
+					<div class="flex flex-col gap-4 border p-4 bg-tertiary border-primary">
 						<h3 class="m-0 text-sm font-semibold text-fg-secondary">Excel Table Selection</h3>
 						<div class="grid grid-cols-2 gap-4">
 							<div class="flex flex-col gap-2">
@@ -1239,7 +1239,6 @@
 	textarea:focus {
 		outline: none;
 		border-color: var(--border-focus);
-		box-shadow: 0 0 0 3px var(--accent-bg);
 	}
 
 	input:disabled,

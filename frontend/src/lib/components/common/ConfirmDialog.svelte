@@ -65,7 +65,7 @@
 		role="presentation"
 	>
 		<div
-			class="w-full max-w-[400px] animate-[slideIn_160ms_ease] overflow-hidden rounded-sm border max-sm:max-w-full bg-[var(--dialog-bg)] border-[var(--border-primary)] shadow-[var(--dialog-shadow)] focus:outline-none"
+			class="w-full max-w-[400px] animate-[slideIn_160ms_ease] overflow-hidden border max-sm:max-w-full bg-[var(--dialog-bg)] border-[var(--border-primary)] focus:outline-none"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="dialog-title"

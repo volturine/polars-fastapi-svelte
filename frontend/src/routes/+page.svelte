@@ -9,7 +9,7 @@
 	import EmptyState from '$lib/components/gallery/EmptyState.svelte';
 	import AnalysisFilters from '$lib/components/gallery/AnalysisFilters.svelte';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-	import { Plus, Trash2, X } from 'lucide-svelte';
+	import { Plus } from 'lucide-svelte';
 	import type { SortOption } from '$lib/components/gallery/AnalysisFilters.svelte';
 	import { toEpochDisplay } from '$lib/utils/datetime';
 
@@ -156,7 +156,7 @@
 	});
 </script>
 
-<div class="mx-auto box-border min-h-full max-w-[1200px] px-6 py-7 md:px-4 md:py-4">
+<div class="mx-auto box-border max-w-[1200px] px-8 py-8 md:px-4 md:py-4">
 	<header
 		class="mb-8 flex flex-col items-stretch justify-between gap-6 border-b border-primary pb-6 md:flex-row md:items-start"
 	>
@@ -206,33 +206,11 @@
 					sortOption={sortOption.current}
 					onSearch={handleSearch}
 					onSort={handleSort}
+					{selectionCount}
+					onSelectAll={selectAll}
+					onClearSelection={clearSelection}
+					onBulkDelete={requestBulkDelete}
 				/>
-				{#if selectionCount > 0}
-					<div
-						class="bg-secondary mb-4 flex items-center justify-between rounded-sm border border-primary px-4 py-3"
-					>
-						<span class="text-fg-primary text-sm font-medium">{selectionCount} selected</span>
-						<div class="flex items-center gap-2">
-							<button
-								class="btn-text flex items-center gap-1 rounded-sm border border-transparent bg-transparent px-3 py-2 text-sm transition-all"
-								onclick={selectAll}
-							>
-								Select All
-							</button>
-							<button
-								class="btn-text flex items-center gap-1 rounded-sm border border-transparent bg-transparent px-3 py-2 text-sm transition-all"
-								onclick={clearSelection}
-							>
-								<X size={14} />
-								Clear
-							</button>
-							<button class="btn-danger flex items-center gap-1" onclick={requestBulkDelete}>
-								<Trash2 size={14} />
-								Delete
-							</button>
-						</div>
-					</div>
-				{/if}
 				{#if filteredAndSortedAnalyses.length === 0}
 					<div class="rounded-sm border border-dashed border-primary px-6 py-12 text-center">
 						<p class="text-fg-tertiary m-0 text-sm">No analyses match your search.</p>
@@ -296,12 +274,4 @@
 		animation: shimmer 1.5s infinite;
 	}
 
-	.btn-text {
-		color: var(--fg-secondary);
-	}
-
-	.btn-text:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-primary);
-	}
 </style>

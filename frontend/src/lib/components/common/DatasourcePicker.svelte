@@ -166,7 +166,7 @@
 
 	{#if showPicker}
 		<div
-			class="absolute left-0 right-0 top-full z-50 mt-1 max-h-[200px] overflow-y-auto rounded-sm border border-panel-border bg-panel-bg shadow-[var(--shadow-dropdown)]"
+			class="absolute left-0 right-0 top-full z-50 mt-1 max-h-[200px] overflow-y-auto border border-panel-border bg-panel-bg"
 			role="listbox"
 			id={listboxId}
 			aria-label="Available datasources"

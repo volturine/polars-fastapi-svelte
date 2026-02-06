@@ -105,13 +105,12 @@
 	onkeydown={handleBackdropKeydown}
 >
 	<div
-		class="flex w-full max-w-[720px] max-h-[70vh] flex-col rounded-md border bg-panel border-panel"
+		class="flex w-full max-w-[720px] max-h-[70vh] flex-col border bg-panel border-panel"
 		role="dialog"
 		aria-modal="true"
 		tabindex="-1"
 		onclick={stopPickerEvent}
 		onkeydown={stopPickerEvent}
-		style="box-shadow: var(--dialog-shadow);"
 	>
 		<div class="grid grid-cols-[1fr_auto] gap-2 border-b p-4 border-panel">
 			<div class="flex flex-col gap-1">

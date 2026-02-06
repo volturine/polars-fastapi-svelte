@@ -41,22 +41,21 @@
 </script>
 
 <div
-	class="card group relative cursor-pointer overflow-hidden rounded-sm border transition-all hover:-translate-y-px"
+	class="analysis-card group relative cursor-pointer overflow-hidden transition-all"
 	class:selected
 	onclick={handleClick}
 	onkeypress={handleKeyPress}
 	role="button"
 	tabindex="0"
-	style="background-color: var(--bg-primary); border-color: var(--border-primary); box-shadow: var(--card-shadow);"
+	style="background-color: var(--bg-primary);"
 >
 	<div
-		class="relative flex aspect-video w-full items-center justify-center border-b"
-		style="background-color: var(--bg-tertiary); border-color: var(--border-primary);"
+		class="relative flex aspect-video w-full items-center justify-center"
+		style="background-color: var(--bg-tertiary);"
 	>
 		<input
 			type="checkbox"
-			class="checkbox absolute left-2 top-2 z-[2] m-0 h-[18px] w-[18px] cursor-pointer opacity-0 transition-opacity group-hover:opacity-100"
-			class:visible={anySelected}
+			class="absolute left-5 top-5 h-[18px] w-[18px]"
 			checked={selected}
 			onchange={(e) => {
 				e.stopPropagation();
@@ -64,31 +63,24 @@
 			}}
 			onclick={(e) => e.stopPropagation()}
 			aria-label={`Select ${analysis.name}`}
-			style="accent-color: var(--accent-primary);"
 		/>
 		{#if analysis.thumbnail}
 			<img src={analysis.thumbnail} alt={analysis.name} class="h-full w-full object-cover" />
 		{:else}
-			<div style="color: var(--fg-faint);">
-				<ChartBar size={32} strokeWidth={1.5} />
-			</div>
+			<ChartBar size={32} style="color: var(--fg-faint);" />
 		{/if}
 	</div>
 
 	<div class="p-4">
 		<div class="mb-2 flex items-start justify-between gap-3">
 			<h3 class="m-0 min-w-0 flex-1 truncate text-sm font-semibold">{analysis.name}</h3>
-			<button
-				class="btn-delete flex flex-shrink-0 items-center justify-center rounded-sm border p-1 opacity-0 transition-all group-hover:opacity-100"
+			<Trash2
+				size={16}
 				onclick={(e) => {
 					e.stopPropagation();
 					onDelete(analysis.id);
 				}}
-				aria-label="Delete analysis"
-				style="background-color: transparent; border-color: var(--border-primary); color: var(--fg-muted);"
-			>
-				<Trash2 size={14} />
-			</button>
+			/>
 		</div>
 
 		<div class="text-xs" style="color: var(--fg-muted);">
@@ -98,26 +90,7 @@
 </div>
 
 <style>
-	.card:hover {
-		border-color: var(--border-tertiary);
-	}
-
-	.card:focus {
+	.analysis-card:focus {
 		outline: none;
-		border-color: var(--border-focus);
-	}
-
-	.card.selected {
-		border-color: var(--accent-primary);
-	}
-
-	.checkbox.visible {
-		opacity: 1;
-	}
-
-	.btn-delete:hover {
-		background-color: var(--error-bg);
-		border-color: var(--error-border);
-		color: var(--error-fg);
 	}
 </style>

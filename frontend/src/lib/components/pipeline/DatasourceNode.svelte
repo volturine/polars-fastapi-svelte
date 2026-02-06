@@ -145,7 +145,7 @@
 		<!-- Header with icon and badge -->
 		<div class="mb-4 flex items-center justify-between border-b border-primary pb-3">
 			<div class="flex items-center gap-2">
-				<div class="flex h-6 w-6 items-center justify-center rounded-sm bg-accent text-fg-primary">
+				<div class="flex h-6 w-6 items-center justify-center rounded-sm bg-accent text-bg-primary">
 					{#if sourceType === 'file'}
 						<FileText size={14} />
 					{:else if sourceType === 'database'}
@@ -187,7 +187,7 @@
 							aria-label="Edit tab name"
 						/>
 						<button
-							class="icon-btn save inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-sm border border-success text-success bg-primary p-0 leading-none transition-all hover:bg-success"
+							class="icon-btn save inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-sm border border-success text-success bg-primary p-0 leading-none transition-all hover:bg-success hover:text-fg-primary"
 							onclick={commitEdit}
 							type="button"
 							aria-label="Save"
@@ -195,7 +195,7 @@
 							<Check size={12} class="shrink-0" />
 						</button>
 						<button
-							class="icon-btn cancel inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-sm border border-error text-error bg-primary p-0 leading-none transition-all hover:bg-error"
+							class="icon-btn cancel inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-sm border border-error text-error bg-primary p-0 leading-none transition-all hover:bg-error hover:text-fg-primary"
 							onclick={cancelEdit}
 							type="button"
 							aria-label="Cancel"

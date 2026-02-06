@@ -1217,6 +1217,10 @@ tr:hover {
 	border-color: var(--table-border);
 }
 
+.border-accent {
+	border-color: var(--accent-primary);
+}
+
 /* Combined input styles */
 .input-base {
 	border-color: var(--input-border);
@@ -1228,6 +1232,15 @@ tr:hover {
 	background-color: var(--bg-primary);
 	border-color: var(--border-primary);
 	box-shadow: var(--card-shadow);
+}
+
+/* Shadow utilities */
+.shadow-card {
+	box-shadow: var(--shadow-card);
+}
+
+.shadow-card-hover {
+	box-shadow: var(--shadow-card-hover);
 }
 
 /* Panel styles */

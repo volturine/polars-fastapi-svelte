@@ -258,7 +258,10 @@
 				</thead>
 				<tbody>
 					{#each rows as row (row.id)}
-						<tr class="table-row border-b transition-colors last:border-b-0" style="border-color: var(--table-border);">
+						<tr
+							class="table-row border-b transition-colors last:border-b-0"
+							style="border-color: var(--table-border);"
+						>
 							{#each row.getVisibleCells() as cell (cell.id)}
 								<td
 									class="px-4 py-3 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px] text-[0.8125rem] select-text"
@@ -287,7 +290,9 @@
 				>
 					Previous
 				</button>
-				<span class="text-xs" style="color: var(--fg-tertiary);">Page {currentPage} of {totalPages}</span>
+				<span class="text-xs" style="color: var(--fg-tertiary);"
+					>Page {currentPage} of {totalPages}</span
+				>
 				<button
 					class="pagination-btn px-4 py-2 border rounded-sm cursor-pointer transition-all"
 					style="border-color: var(--border-primary); background: var(--panel-bg);"

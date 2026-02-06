@@ -157,7 +157,9 @@
 </script>
 
 <div class="mx-auto box-border min-h-full max-w-[1200px] px-6 py-7 md:px-4 md:py-4">
-	<header class="mb-8 flex flex-col items-stretch justify-between gap-6 border-b border-primary pb-6 md:flex-row md:items-start">
+	<header
+		class="mb-8 flex flex-col items-stretch justify-between gap-6 border-b border-primary pb-6 md:flex-row md:items-start"
+	>
 		<div>
 			<h1 class="m-0 mb-2 text-2xl font-semibold">Analyses</h1>
 			<p class="m-0 text-sm text-fg-tertiary">Browse and manage your data analyses</p>
@@ -185,8 +187,12 @@
 				</div>
 			</div>
 		{:else if query.isError}
-			<div class="error-box flex min-h-[400px] flex-col items-center justify-center px-6 py-12 text-center">
-				<div class="mb-6 flex h-12 w-12 items-center justify-center rounded-sm text-xl font-bold">!</div>
+			<div
+				class="error-box flex min-h-[400px] flex-col items-center justify-center px-6 py-12 text-center"
+			>
+				<div class="mb-6 flex h-12 w-12 items-center justify-center rounded-sm text-xl font-bold">
+					!
+				</div>
 				<h2 class="m-0 mb-2 text-lg font-semibold">Failed to load analyses</h2>
 				<p class="m-0 mb-6 max-w-[400px] text-sm">{query.error.message}</p>
 				<button class="btn-primary" onclick={() => query.refetch()}>Try again</button>
@@ -202,13 +208,21 @@
 					onSort={handleSort}
 				/>
 				{#if selectionCount > 0}
-					<div class="bg-secondary mb-4 flex items-center justify-between rounded-sm border border-primary px-4 py-3">
+					<div
+						class="bg-secondary mb-4 flex items-center justify-between rounded-sm border border-primary px-4 py-3"
+					>
 						<span class="text-fg-primary text-sm font-medium">{selectionCount} selected</span>
 						<div class="flex items-center gap-2">
-							<button class="btn-text flex items-center gap-1 rounded-sm border border-transparent bg-transparent px-3 py-2 text-sm transition-all" onclick={selectAll}>
+							<button
+								class="btn-text flex items-center gap-1 rounded-sm border border-transparent bg-transparent px-3 py-2 text-sm transition-all"
+								onclick={selectAll}
+							>
 								Select All
 							</button>
-							<button class="btn-text flex items-center gap-1 rounded-sm border border-transparent bg-transparent px-3 py-2 text-sm transition-all" onclick={clearSelection}>
+							<button
+								class="btn-text flex items-center gap-1 rounded-sm border border-transparent bg-transparent px-3 py-2 text-sm transition-all"
+								onclick={clearSelection}
+							>
 								<X size={14} />
 								Clear
 							</button>
@@ -260,7 +274,12 @@
 
 <style>
 	.shimmer-bg {
-		background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%);
+		background: linear-gradient(
+			90deg,
+			var(--bg-tertiary) 25%,
+			var(--bg-hover) 50%,
+			var(--bg-tertiary) 75%
+		);
 		background-size: 200% 100%;
 	}
 

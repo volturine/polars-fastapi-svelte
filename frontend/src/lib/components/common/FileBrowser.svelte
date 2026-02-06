@@ -119,7 +119,11 @@
 		>
 			<div class="flex flex-col gap-1">
 				<h4 class="m-0 text-sm font-semibold" style="color: var(--fg-primary);">Data directory</h4>
-				<div class="flex flex-wrap items-center gap-1" role="navigation" aria-label="Path breadcrumb">
+				<div
+					class="flex flex-wrap items-center gap-1"
+					role="navigation"
+					aria-label="Path breadcrumb"
+				>
 					{#each crumbs as crumb, index (crumb.path)}
 						<button
 							type="button"
@@ -136,7 +140,9 @@
 					{/each}
 				</div>
 				<span class="break-all text-xs" style="color: var(--fg-muted);">{path}</span>
-				<span class="text-xs" style="color: var(--fg-muted);">Select files or choose a folder for parquet datasets.</span>
+				<span class="text-xs" style="color: var(--fg-muted);"
+					>Select files or choose a folder for parquet datasets.</span
+				>
 			</div>
 			<div class="flex items-center justify-end gap-2">
 				<button

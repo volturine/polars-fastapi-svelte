@@ -93,12 +93,20 @@
 </script>
 
 <div class="mx-auto min-h-full max-w-[1000px] p-6">
-	<header class="mb-8 flex items-start justify-between gap-6 border-b pb-6" style="border-color: var(--border-primary);">
+	<header
+		class="mb-8 flex items-start justify-between gap-6 border-b pb-6"
+		style="border-color: var(--border-primary);"
+	>
 		<div>
 			<h1 class="m-0 mb-2 text-2xl font-semibold">Data Sources</h1>
 			<p class="m-0" style="color: var(--fg-tertiary);">Manage your data connections and files</p>
 		</div>
-		<a href={resolve('/datasources/new')} class="btn-primary no-underline" style="box-shadow: var(--card-shadow);" data-sveltekit-reload>
+		<a
+			href={resolve('/datasources/new')}
+			class="btn-primary no-underline"
+			style="box-shadow: var(--card-shadow);"
+			data-sveltekit-reload
+		>
 			<Plus size={16} />
 			Add Data Source
 		</a>
@@ -114,16 +122,30 @@
 		</div>
 	{:else if query.data}
 		{#if query.data.length === 0}
-			<div class="rounded-sm border border-dashed p-12 text-center" style="background-color: var(--bg-primary); border-color: var(--border-secondary);">
-				<div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-sm border text-xl" style="border-color: var(--border-primary); color: var(--fg-muted);">+</div>
+			<div
+				class="rounded-sm border border-dashed p-12 text-center"
+				style="background-color: var(--bg-primary); border-color: var(--border-secondary);"
+			>
+				<div
+					class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-sm border text-xl"
+					style="border-color: var(--border-primary); color: var(--fg-muted);"
+				>
+					+
+				</div>
 				<p class="m-0 mb-6" style="color: var(--fg-tertiary);">No data sources yet.</p>
 				<a href={resolve('/datasources/new')} class="btn btn-primary" data-sveltekit-reload
 					>Create your first data source</a
 				>
 			</div>
 		{:else}
-			<div class="overflow-hidden rounded-sm border" style="background-color: var(--bg-primary); border-color: var(--border-primary);">
-				<div class="grid grid-cols-[48px_1fr_100px_90px_90px_110px_140px] items-center gap-4 border-b px-5 py-4 text-xs font-semibold uppercase tracking-wide" style="background-color: var(--bg-tertiary); border-color: var(--border-primary); color: var(--fg-tertiary);">
+			<div
+				class="overflow-hidden rounded-sm border"
+				style="background-color: var(--bg-primary); border-color: var(--border-primary);"
+			>
+				<div
+					class="grid grid-cols-[48px_1fr_100px_90px_90px_110px_140px] items-center gap-4 border-b px-5 py-4 text-xs font-semibold uppercase tracking-wide"
+					style="background-color: var(--bg-tertiary); border-color: var(--border-primary); color: var(--fg-tertiary);"
+				>
 					<span></span>
 					<span>Name</span>
 					<span>Type</span>
@@ -133,8 +155,15 @@
 					<span>Actions</span>
 				</div>
 				{#each query.data as datasource (datasource.id)}
-					<div class="list-item border-b" style="border-color: var(--border-primary);" class:expanded={isExpanded(datasource.id)}>
-						<div class="list-row grid grid-cols-[48px_1fr_100px_90px_90px_110px_140px] items-center gap-4 px-5 py-4" style="color: var(--fg-secondary);">
+					<div
+						class="list-item border-b"
+						style="border-color: var(--border-primary);"
+						class:expanded={isExpanded(datasource.id)}
+					>
+						<div
+							class="list-row grid grid-cols-[48px_1fr_100px_90px_90px_110px_140px] items-center gap-4 px-5 py-4"
+							style="color: var(--fg-secondary);"
+						>
 							<span>
 								<button
 									class="expand-btn flex h-7 w-7 items-center justify-center rounded-sm border border-transparent bg-transparent transition-all"
@@ -150,7 +179,9 @@
 									{/if}
 								</button>
 							</span>
-							<span class="overflow-hidden text-ellipsis whitespace-nowrap font-medium">{datasource.name}</span>
+							<span class="overflow-hidden text-ellipsis whitespace-nowrap font-medium"
+								>{datasource.name}</span
+							>
 							<span>
 								{#if datasource.source_type === 'file'}
 									<FileTypeBadge path={(datasource.config?.file_path as string) ?? ''} size="sm" />
@@ -197,7 +228,10 @@
 							</span>
 						</div>
 						{#if isExpanded(datasource.id)}
-							<div class="border-t p-4" style="background: var(--bg-secondary); border-color: var(--border-primary);">
+							<div
+								class="border-t p-4"
+								style="background: var(--bg-secondary); border-color: var(--border-primary);"
+							>
 								<DatasourcePreview datasourceId={datasource.id} datasourceName={datasource.name} />
 							</div>
 						{/if}

@@ -138,7 +138,11 @@
 			style="border-color: var(--border-primary); background-color: var(--bg-primary);"
 		>
 			<div class="mx-auto flex max-w-[1200px] items-center gap-6 px-6 py-3">
-				<a href={resolve('/')} class="flex items-center gap-1 text-base font-semibold no-underline" data-sveltekit-reload>
+				<a
+					href={resolve('/')}
+					class="flex items-center gap-1 text-base font-semibold no-underline"
+					data-sveltekit-reload
+				>
 					<span style="color: var(--fg-primary);">polars</span>
 					<span style="color: var(--fg-muted);">/</span>
 					<span style="color: var(--fg-tertiary);">analysis</span>

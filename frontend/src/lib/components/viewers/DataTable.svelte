@@ -118,13 +118,19 @@
 			<p class="m-0">No data available</p>
 		</div>
 	{:else if headerGroups.length > 0}
-		<div class="table-wrapper overflow-x-auto overflow-y-auto max-h-[600px]" style="background: var(--panel-bg);">
+		<div
+			class="table-wrapper overflow-x-auto overflow-y-auto max-h-[600px]"
+			style="background: var(--panel-bg);"
+		>
 			<table class="w-full border-collapse text-sm">
 				<thead class="sticky top-0 z-50" style="background: var(--table-header-bg);">
 					{#each headerGroups as headerGroup (headerGroup.id)}
 						<tr>
 							{#each headerGroup.headers as header (header.id)}
-								<th class="p-0 text-left font-semibold border-b-2" style="border-color: var(--table-border);">
+								<th
+									class="p-0 text-left font-semibold border-b-2"
+									style="border-color: var(--table-border);"
+								>
 									<button
 										class="column-header flex items-center justify-between w-full px-4 py-3 bg-transparent border-none cursor-pointer text-sm font-semibold transition-colors"
 										style="color: var(--fg-primary);"
@@ -148,7 +154,10 @@
 				</thead>
 				<tbody>
 					{#each rows as row (row.id)}
-						<tr class="table-row border-b transition-colors last:border-b-0" style="border-color: var(--table-border);">
+						<tr
+							class="table-row border-b transition-colors last:border-b-0"
+							style="border-color: var(--table-border);"
+						>
 							{#each row.getVisibleCells() as cell (cell.id)}
 								<td
 									class="px-4 py-3 whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px] text-sm"

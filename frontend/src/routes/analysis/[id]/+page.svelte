@@ -436,15 +436,27 @@
 </script>
 
 {#if analysisQuery.isLoading}
-	<div class="info-box flex flex-col items-center justify-center text-center gap-4" style="height: calc(100vh - 60px);">
+	<div
+		class="info-box flex flex-col items-center justify-center text-center gap-4"
+		style="height: calc(100vh - 60px);"
+	>
 		<div class="spinner"></div>
 		<p class="m-0">Loading analysis...</p>
 	</div>
 {:else if analysisQuery.isError}
-	<div class="error-box flex flex-col items-center justify-center text-center gap-4" style="height: calc(100vh - 60px);">
-		<div class="flex items-center justify-center text-xl font-bold w-[52px] h-[52px] rounded-sm shadow-soft">!</div>
+	<div
+		class="error-box flex flex-col items-center justify-center text-center gap-4"
+		style="height: calc(100vh - 60px);"
+	>
+		<div
+			class="flex items-center justify-center text-xl font-bold w-[52px] h-[52px] rounded-sm shadow-soft"
+		>
+			!
+		</div>
 		<h2 class="m-0">Error loading analysis</h2>
-		<p class="m-0">{analysisQuery.error instanceof Error ? analysisQuery.error.message : 'Unknown error'}</p>
+		<p class="m-0">
+			{analysisQuery.error instanceof Error ? analysisQuery.error.message : 'Unknown error'}
+		</p>
 		<button
 			class="btn-primary mt-4"
 			onclick={() => goto(resolve('/'), { invalidateAll: true })}
@@ -453,8 +465,14 @@
 	</div>
 {:else if analysisQuery.data}
 	<div class="flex flex-col bg-secondary" style="height: calc(100vh - 60px);">
-		<header class="flex items-stretch sticky top-0 h-12 bg-panel border-b border-panel" style="z-index: var(--z-header);">
-			<div class="header-left flex items-center h-full box-border border-r border-panel" style="width: var(--operations-panel-width, 280px); transition: width var(--transition);">
+		<header
+			class="flex items-stretch sticky top-0 h-12 bg-panel border-b border-panel"
+			style="z-index: var(--z-header);"
+		>
+			<div
+				class="header-left flex items-center h-full box-border border-r border-panel"
+				style="width: var(--operations-panel-width, 280px); transition: width var(--transition);"
+			>
 				<div class="flex-1 flex flex-col min-w-0 overflow-hidden px-4">
 					<h1
 						contenteditable="true"
@@ -472,7 +490,10 @@
 						{analysisQuery.data.name}
 					</h1>
 					{#if analysisQuery.data.description}
-						<span class="text-xs whitespace-nowrap overflow-hidden text-ellipsis text-fg-muted tracking-[0.02em]">{analysisQuery.data.description}</span>
+						<span
+							class="text-xs whitespace-nowrap overflow-hidden text-ellipsis text-fg-muted tracking-[0.02em]"
+							>{analysisQuery.data.description}</span
+						>
 					{/if}
 				</div>
 			</div>
@@ -498,7 +519,9 @@
 								type="button"
 							>
 								<span class="inline-flex items-center min-w-0">
-									<span class="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">{tab.name}</span>
+									<span class="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]"
+										>{tab.name}</span
+									>
 								</span>
 								{#if analysisStore.tabs.length > 1}
 									<span
@@ -516,7 +539,11 @@
 								{/if}
 							</button>
 						{/each}
-						<button class="tab add-tab inline-flex items-center bg-transparent border-none cursor-pointer text-sm font-semibold uppercase px-2 py-1 text-fg-muted transition-all duration-[160ms] gap-1 tracking-[0.06em] rounded-sm hover:text-fg-secondary hover:bg-hover" onclick={() => openDatasourceModal('add')} type="button">
+						<button
+							class="tab add-tab inline-flex items-center bg-transparent border-none cursor-pointer text-sm font-semibold uppercase px-2 py-1 text-fg-muted transition-all duration-[160ms] gap-1 tracking-[0.06em] rounded-sm hover:text-fg-secondary hover:bg-hover"
+							onclick={() => openDatasourceModal('add')}
+							type="button"
+						>
 							+
 						</button>
 					</div>
@@ -533,7 +560,10 @@
 					{rightPaneCollapsed ? '<' : '>'}
 				</button>
 			</div>
-			<div class="header-right flex items-center justify-end h-full box-border border-l border-panel" style="width: var(--operations-panel-width, 280px); transition: width var(--transition);">
+			<div
+				class="header-right flex items-center justify-end h-full box-border border-l border-panel"
+				style="width: var(--operations-panel-width, 280px); transition: width var(--transition);"
+			>
 				<div class="relative items-center px-4">
 					<button
 						class="mode-toggle flex items-center cursor-pointer text-sm px-3 py-2 bg-tertiary border border-primary rounded-sm text-fg-secondary gap-2 transition-all duration-[160ms] hover:bg-hover hover:border-secondary"
@@ -545,12 +575,23 @@
 					</button>
 
 					{#if showModeDropdown}
-						<div class="absolute left-0 min-w-[140px] bg-panel border border-panel rounded-sm shadow-soft p-1 z-[100]" style="top: calc(100% + 4px);">
-							<button class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 px-3 py-2 text-fg-secondary rounded-sm transition-colors duration-[160ms] hover:bg-hover" onclick={() => setMode('viewing')} type="button">
+						<div
+							class="absolute left-0 min-w-[140px] bg-panel border border-panel rounded-sm shadow-soft p-1 z-[100]"
+							style="top: calc(100% + 4px);"
+						>
+							<button
+								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 px-3 py-2 text-fg-secondary rounded-sm transition-colors duration-[160ms] hover:bg-hover"
+								onclick={() => setMode('viewing')}
+								type="button"
+							>
 								<span class="font-bold text-accent">{isEditingMode ? '○' : '●'}</span>
 								<span>Viewing</span>
 							</button>
-							<button class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 px-3 py-2 text-fg-secondary rounded-sm transition-colors duration-[160ms] hover:bg-hover" onclick={() => setMode('editing')} type="button">
+							<button
+								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 px-3 py-2 text-fg-secondary rounded-sm transition-colors duration-[160ms] hover:bg-hover"
+								onclick={() => setMode('editing')}
+								type="button"
+							>
 								<span class="font-bold text-accent">{isEditingMode ? '●' : '○'}</span>
 								<span>Editing</span>
 							</button>
@@ -580,12 +621,20 @@
 
 		<div class="flex flex-1 overflow-hidden select-none bg-secondary" role="application">
 			{#if isEditingMode}
-				<div class="left-pane flex-shrink-0 overflow-hidden flex box-border bg-panel border-r border-panel" style="width: var(--operations-panel-width, 280px); transition: width var(--transition), visibility var(--transition);" class:collapsed={leftPaneCollapsed}>
+				<div
+					class="left-pane flex-shrink-0 overflow-hidden flex box-border bg-panel border-r border-panel"
+					style="width: var(--operations-panel-width, 280px); transition: width var(--transition), visibility var(--transition);"
+					class:collapsed={leftPaneCollapsed}
+				>
 					<StepLibrary onAddStep={handleAddStep} onInsertStep={handleInsertStep} />
 				</div>
 			{/if}
 
-			<div class="center-pane flex-1 min-w-[200px] flex bg-secondary" class:readonly={!isEditingMode} class:expanded={!isEditingMode}>
+			<div
+				class="center-pane flex-1 min-w-[200px] flex bg-secondary"
+				class:readonly={!isEditingMode}
+				class:expanded={!isEditingMode}
+			>
 				<PipelineCanvas
 					steps={analysisStore.pipeline}
 					{analysisId}
@@ -603,7 +652,11 @@
 			</div>
 
 			{#if isEditingMode}
-				<div class="right-pane flex-shrink-0 overflow-hidden flex box-border bg-panel border-l border-panel" style="width: var(--operations-panel-width, 280px); transition: width var(--transition), visibility var(--transition);" class:collapsed={rightPaneCollapsed}>
+				<div
+					class="right-pane flex-shrink-0 overflow-hidden flex box-border bg-panel border-l border-panel"
+					style="width: var(--operations-panel-width, 280px); transition: width var(--transition), visibility var(--transition);"
+					class:collapsed={rightPaneCollapsed}
+				>
 					<StepConfig
 						bind:step={selectedStepState}
 						schema={analysisStore.calculatedSchema}
@@ -630,7 +683,9 @@
 
 <style>
 	@keyframes spin {
-		to { transform: rotate(360deg); }
+		to {
+			transform: rotate(360deg);
+		}
 	}
 	.spinner {
 		width: 32px;
@@ -650,24 +705,46 @@
 		visibility: hidden;
 		pointer-events: none;
 	}
-	.save-button.saved { color: var(--success-fg); }
+	.save-button.saved {
+		color: var(--success-fg);
+	}
 	.save-button.unsaved {
 		background-color: var(--warning-bg);
 		color: var(--warning-fg);
 		border-left: 1px solid var(--warning-border);
 	}
-	.save-button:disabled { opacity: 0.5; cursor: not-allowed; }
-	.tab.active { color: var(--fg-primary); background-color: var(--bg-secondary); }
-	.left-pane.collapsed, .right-pane.collapsed { width: 0; border: none; }
-	.left-pane :global(> *), .right-pane :global(> *) {
+	.save-button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+	.tab.active {
+		color: var(--fg-primary);
+		background-color: var(--bg-secondary);
+	}
+	.left-pane.collapsed,
+	.right-pane.collapsed {
+		width: 0;
+		border: none;
+	}
+	.left-pane :global(> *),
+	.right-pane :global(> *) {
 		width: 100%;
 		visibility: visible;
 		transition: visibility var(--transition);
 	}
-	.left-pane.collapsed :global(> *), .right-pane.collapsed :global(> *) { visibility: hidden; }
-	.center-pane :global(> *) { width: 100%; }
-	.center-pane.expanded { flex: 1; }
-	.readonly { opacity: 0.7; }
+	.left-pane.collapsed :global(> *),
+	.right-pane.collapsed :global(> *) {
+		visibility: hidden;
+	}
+	.center-pane :global(> *) {
+		width: 100%;
+	}
+	.center-pane.expanded {
+		flex: 1;
+	}
+	.readonly {
+		opacity: 0.7;
+	}
 	.readonly :global(.step-node),
 	.readonly :global(.step-button),
 	.readonly :global(.drag-handle),

@@ -206,14 +206,22 @@
 				No conditions configured. Click "+ Add" to create one.
 			</p>
 		{:else}
-			<div class="flex flex-col gap-3" role="list" aria-label="Filter conditions" aria-live="polite">
+			<div
+				class="flex flex-col gap-3"
+				role="list"
+				aria-label="Filter conditions"
+				aria-live="polite"
+			>
 				{#each conditions as cond, i (i)}
 					{@const colType = getColumnType(cond.column)}
 					{@const isColumn = cond.value_type === 'column'}
 					{@const isNull = isNullOperator(cond.operator)}
 					{@const ops = getOperatorsForType(colType, isColumn)}
 
-					<div class="condition-card rounded-sm border border-secondary bg-panel p-3" role="listitem">
+					<div
+						class="condition-card rounded-sm border border-secondary bg-panel p-3"
+						role="listitem"
+					>
 						<div class="mb-3 flex items-center gap-2 border-b border-primary pb-2">
 							<span class="text-xs font-semibold text-fg-muted">#{i + 1}</span>
 							{#if cond.column}
@@ -232,7 +240,9 @@
 
 						<div class="relative flex flex-wrap items-start gap-3">
 							<div class="flex min-w-[120px] flex-1 flex-col gap-1">
-								<label class="mb-0 text-xs font-normal text-fg-muted" for="{uid}-column-{i}">Column</label>
+								<label class="mb-0 text-xs font-normal text-fg-muted" for="{uid}-column-{i}"
+									>Column</label
+								>
 								<ColumnDropdown
 									{schema}
 									value={cond.column}
@@ -242,7 +252,9 @@
 							</div>
 
 							<div class="flex flex-col gap-1 min-w-[100px] flex-1">
-								<label class="text-xs font-normal mb-0 text-fg-muted" for="{uid}-operator-{i}">Operator</label>
+								<label class="text-xs font-normal mb-0 text-fg-muted" for="{uid}-operator-{i}"
+									>Operator</label
+								>
 								<select
 									id="{uid}-operator-{i}"
 									data-testid={`filter-operator-select-${i}`}
@@ -340,7 +352,9 @@
 							{:else}
 								<div class="flex flex-col gap-1 min-w-[140px] flex-[2]">
 									<span class="text-xs font-normal text-fg-muted">Value</span>
-									<div class="flex items-center h-9 px-3 rounded-sm text-sm italic bg-tertiary text-fg-muted">
+									<div
+										class="flex items-center h-9 px-3 rounded-sm text-sm italic bg-tertiary text-fg-muted"
+									>
 										<span>No value needed</span>
 									</div>
 								</div>

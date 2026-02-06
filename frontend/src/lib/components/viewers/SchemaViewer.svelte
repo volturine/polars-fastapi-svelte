@@ -19,7 +19,9 @@
 	>
 		<h3 class="m-0 text-lg font-semibold" style="color: var(--fg-primary);">Schema</h3>
 		{#if schema.row_count !== null}
-			<span class="text-sm" style="color: var(--fg-muted);">{schema.row_count.toLocaleString()} rows</span>
+			<span class="text-sm" style="color: var(--fg-muted);"
+				>{schema.row_count.toLocaleString()} rows</span
+			>
 		{/if}
 	</div>
 

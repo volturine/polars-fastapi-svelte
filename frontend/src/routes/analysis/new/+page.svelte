@@ -68,7 +68,11 @@
 	<div class="mb-8">
 		<h1 class="m-0 mb-6 text-2xl font-semibold">New Analysis</h1>
 		<div class="flex items-center gap-2">
-			<div class="step flex items-center gap-2" class:active={step === 1} class:completed={step > 1}>
+			<div
+				class="step flex items-center gap-2"
+				class:active={step === 1}
+				class:completed={step > 1}
+			>
 				<span
 					class="step-number flex h-7 w-7 items-center justify-center rounded-sm border text-xs font-semibold"
 					style="border-color: var(--border-secondary); color: var(--fg-muted); background-color: var(--bg-primary);"
@@ -77,8 +81,16 @@
 				</span>
 				<span class="text-sm" style="color: var(--fg-muted);">Details</span>
 			</div>
-			<div class="step-line min-w-[40px] flex-1 h-px" style="background-color: var(--border-primary);" class:completed={step > 1}></div>
-			<div class="step flex items-center gap-2" class:active={step === 2} class:completed={step > 2}>
+			<div
+				class="step-line min-w-[40px] flex-1 h-px"
+				style="background-color: var(--border-primary);"
+				class:completed={step > 1}
+			></div>
+			<div
+				class="step flex items-center gap-2"
+				class:active={step === 2}
+				class:completed={step > 2}
+			>
 				<span
 					class="step-number flex h-7 w-7 items-center justify-center rounded-sm border text-xs font-semibold"
 					style="border-color: var(--border-secondary); color: var(--fg-muted); background-color: var(--bg-primary);"
@@ -87,7 +99,11 @@
 				</span>
 				<span class="text-sm" style="color: var(--fg-muted);">Data Source</span>
 			</div>
-			<div class="step-line min-w-[40px] flex-1 h-px" style="background-color: var(--border-primary);" class:completed={step > 2}></div>
+			<div
+				class="step-line min-w-[40px] flex-1 h-px"
+				style="background-color: var(--border-primary);"
+				class:completed={step > 2}
+			></div>
 			<div class="step flex items-center gap-2" class:active={step === 3}>
 				<span
 					class="step-number flex h-7 w-7 items-center justify-center rounded-sm border text-xs font-semibold"
@@ -102,9 +118,14 @@
 
 	<div class="mb-6 flex-1">
 		{#if step === 1}
-			<div class="rounded-sm border p-6" style="background-color: var(--bg-primary); border-color: var(--border-primary); box-shadow: var(--card-shadow);">
+			<div
+				class="rounded-sm border p-6"
+				style="background-color: var(--bg-primary); border-color: var(--border-primary); box-shadow: var(--card-shadow);"
+			>
 				<h2 class="m-0 mb-2 text-lg font-semibold">Analysis Details</h2>
-				<p class="mb-6" style="color: var(--fg-tertiary);">Give your analysis a name and optional description.</p>
+				<p class="mb-6" style="color: var(--fg-tertiary);">
+					Give your analysis a name and optional description.
+				</p>
 
 				<div class="mb-5 flex flex-col gap-2">
 					<label for="name" class="block text-sm font-medium" style="color: var(--fg-secondary);">
@@ -120,7 +141,11 @@
 					/>
 				</div>
 				<div class="mb-5 flex flex-col gap-2">
-					<label for="description" class="block text-sm font-medium" style="color: var(--fg-secondary);">Description</label>
+					<label
+						for="description"
+						class="block text-sm font-medium"
+						style="color: var(--fg-secondary);">Description</label
+					>
 					<textarea
 						id="description"
 						bind:value={description}
@@ -132,9 +157,14 @@
 				</div>
 			</div>
 		{:else if step === 2}
-			<div class="rounded-sm border p-6" style="background-color: var(--bg-primary); border-color: var(--border-primary); box-shadow: var(--card-shadow);">
+			<div
+				class="rounded-sm border p-6"
+				style="background-color: var(--bg-primary); border-color: var(--border-primary); box-shadow: var(--card-shadow);"
+			>
 				<h2 class="m-0 mb-2 text-lg font-semibold">Select Data Sources</h2>
-				<p class="mb-6" style="color: var(--fg-tertiary);">Choose one or more data sources for this analysis.</p>
+				<p class="mb-6" style="color: var(--fg-tertiary);">
+					Choose one or more data sources for this analysis.
+				</p>
 
 				{#if datasourcesQuery.isLoading}
 					<div class="info-box">Loading data sources...</div>
@@ -143,7 +173,10 @@
 						Error loading data sources: {datasourcesQuery.error.message}
 					</div>
 				{:else if datasourcesQuery.data && datasourcesQuery.data.length === 0}
-					<div class="rounded-sm border border-dashed p-8 text-center" style="border-color: var(--border-primary); color: var(--fg-tertiary);">
+					<div
+						class="rounded-sm border border-dashed p-8 text-center"
+						style="border-color: var(--border-primary); color: var(--fg-tertiary);"
+					>
 						<p>No data sources available.</p>
 						<a href={resolve('/datasources/new')} class="btn btn-secondary" data-sveltekit-reload
 							>Create Data Source</a
@@ -161,12 +194,22 @@
 				{/if}
 			</div>
 		{:else if step === 3}
-			<div class="rounded-sm border p-6" style="background-color: var(--bg-primary); border-color: var(--border-primary); box-shadow: var(--card-shadow);">
+			<div
+				class="rounded-sm border p-6"
+				style="background-color: var(--bg-primary); border-color: var(--border-primary); box-shadow: var(--card-shadow);"
+			>
 				<h2 class="m-0 mb-2 text-lg font-semibold">Review & Create</h2>
-				<p class="mb-6" style="color: var(--fg-tertiary);">Review your analysis configuration before creating.</p>
+				<p class="mb-6" style="color: var(--fg-tertiary);">
+					Review your analysis configuration before creating.
+				</p>
 
 				<div class="mb-6 border-b pb-6" style="border-color: var(--border-primary);">
-					<h3 class="m-0 mb-4 text-sm font-semibold uppercase tracking-wide" style="color: var(--fg-tertiary);">Details</h3>
+					<h3
+						class="m-0 mb-4 text-sm font-semibold uppercase tracking-wide"
+						style="color: var(--fg-tertiary);"
+					>
+						Details
+					</h3>
 					<dl class="m-0">
 						<div class="mb-2 flex gap-4">
 							<dt class="w-[100px] shrink-0" style="color: var(--fg-muted);">Name</dt>
@@ -182,11 +225,19 @@
 				</div>
 
 				<div>
-					<h3 class="m-0 mb-4 text-sm font-semibold uppercase tracking-wide" style="color: var(--fg-tertiary);">Data Sources ({selectedDatasourceIds.length})</h3>
+					<h3
+						class="m-0 mb-4 text-sm font-semibold uppercase tracking-wide"
+						style="color: var(--fg-tertiary);"
+					>
+						Data Sources ({selectedDatasourceIds.length})
+					</h3>
 					<ul class="m-0 list-none p-0">
 						{#if datasourcesQuery.data}
 							{#each datasourcesQuery.data.filter( (ds) => selectedDatasourceIds.includes(ds.id) ) as ds (ds.id)}
-								<li class="flex items-center gap-3 border-b py-2" style="border-color: var(--border-primary);">
+								<li
+									class="flex items-center gap-3 border-b py-2"
+									style="border-color: var(--border-primary);"
+								>
 									<span style="color: var(--fg-primary);">{ds.name}</span>
 									<span class="text-xs" style="color: var(--fg-muted);">
 										{#if ds.source_type === 'file'}

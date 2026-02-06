@@ -519,7 +519,9 @@
 							{/if}
 							<div class="flex flex-col gap-1">
 								<span class="text-xs uppercase tracking-wide text-fg-muted">Created</span>
-								<span class="text-sm font-medium text-fg-primary">{formatDate(datasource.created_at)}</span>
+								<span class="text-sm font-medium text-fg-primary"
+									>{formatDate(datasource.created_at)}</span
+								>
 							</div>
 							{#if schemaQuery.data}
 								<div class="flex flex-col gap-1">
@@ -537,7 +539,9 @@
 								</div>
 								<div class="flex flex-col gap-1">
 									<span class="text-xs uppercase tracking-wide text-fg-muted">Columns</span>
-									<span class="text-sm font-medium text-fg-primary">{schemaQuery.data.columns.length}</span>
+									<span class="text-sm font-medium text-fg-primary"
+										>{schemaQuery.data.columns.length}</span
+									>
 								</div>
 							{/if}
 						</div>
@@ -569,14 +573,18 @@
 						</div>
 					{:else if columns.length > 0}
 						<div class="overflow-hidden rounded-sm border border-primary">
-							<div class="grid grid-cols-[50px_2fr_140px_1fr] items-center gap-3 bg-tertiary px-4 py-3 text-xs font-semibold uppercase tracking-wide text-fg-tertiary">
+							<div
+								class="grid grid-cols-[50px_2fr_140px_1fr] items-center gap-3 bg-tertiary px-4 py-3 text-xs font-semibold uppercase tracking-wide text-fg-tertiary"
+							>
 								<span>#</span>
 								<span>Column Name</span>
 								<span>Type</span>
 								<span>Sample Value</span>
 							</div>
 							{#each columns as column, index (index)}
-								<div class="table-row grid grid-cols-[50px_2fr_140px_1fr] items-center gap-3 border-t border-primary px-4 py-3 hover:bg-hover">
+								<div
+									class="table-row grid grid-cols-[50px_2fr_140px_1fr] items-center gap-3 border-t border-primary px-4 py-3 hover:bg-hover"
+								>
 									<span class="text-xs text-fg-muted">{index + 1}</span>
 									<input
 										type="text"
@@ -589,7 +597,10 @@
 										onChange={(val) => handleColumnTypeChange(index, val)}
 										placeholder="Select type..."
 									/>
-									<span class="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap text-sm text-fg-muted" title={column.sample_value ?? ''}>
+									<span
+										class="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap text-sm text-fg-muted"
+										title={column.sample_value ?? ''}
+									>
 										{column.sample_value ?? '-'}
 									</span>
 								</div>
@@ -607,7 +618,9 @@
 
 					<div class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
 						<div class="flex flex-col gap-2">
-							<label for="csv-delimiter" class="text-sm font-medium text-fg-secondary">Delimiter</label>
+							<label for="csv-delimiter" class="text-sm font-medium text-fg-secondary"
+								>Delimiter</label
+							>
 							<select
 								id="csv-delimiter"
 								value={csvConfig.delimiter}
@@ -623,7 +636,9 @@
 						</div>
 
 						<div class="flex flex-col gap-2">
-							<label for="csv-quote" class="text-sm font-medium text-fg-secondary">Quote Character</label>
+							<label for="csv-quote" class="text-sm font-medium text-fg-secondary"
+								>Quote Character</label
+							>
 							<select
 								id="csv-quote"
 								value={csvConfig.quote_char}
@@ -639,7 +654,9 @@
 
 					<div class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
 						<div class="flex flex-col gap-2">
-							<label for="csv-encoding" class="text-sm font-medium text-fg-secondary">Encoding</label>
+							<label for="csv-encoding" class="text-sm font-medium text-fg-secondary"
+								>Encoding</label
+							>
 							<select
 								id="csv-encoding"
 								value={csvConfig.encoding}
@@ -654,7 +671,9 @@
 						</div>
 
 						<div class="flex flex-col gap-2">
-							<label for="csv-skip-rows" class="text-sm font-medium text-fg-secondary">Skip Rows</label>
+							<label for="csv-skip-rows" class="text-sm font-medium text-fg-secondary"
+								>Skip Rows</label
+							>
 							<input
 								id="csv-skip-rows"
 								type="number"
@@ -676,7 +695,9 @@
 							onchange={(e) => handleCsvConfigChange('has_header', e.currentTarget.checked)}
 							class="h-4 w-4 cursor-pointer"
 						/>
-						<label for="csv-header" class="m-0 text-sm font-medium text-fg-secondary">First row is header</label>
+						<label for="csv-header" class="m-0 text-sm font-medium text-fg-secondary"
+							>First row is header</label
+						>
 					</div>
 				</div>
 			{:else if activeTab === 'excel' && excel}
@@ -685,7 +706,9 @@
 
 					<div class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
 						<div class="flex flex-col gap-2">
-							<label for="excel-sheet" class="text-sm font-medium text-fg-secondary">Sheet Name</label>
+							<label for="excel-sheet" class="text-sm font-medium text-fg-secondary"
+								>Sheet Name</label
+							>
 							<input
 								id="excel-sheet"
 								type="text"
@@ -697,7 +720,9 @@
 						</div>
 
 						<div class="flex flex-col gap-2">
-							<label for="excel-table" class="text-sm font-medium text-fg-secondary">Table Name</label>
+							<label for="excel-table" class="text-sm font-medium text-fg-secondary"
+								>Table Name</label
+							>
 							<input
 								id="excel-table"
 								type="text"
@@ -710,7 +735,9 @@
 					</div>
 
 					<div class="flex flex-col gap-2">
-						<label for="excel-range" class="text-sm font-medium text-fg-secondary">Named Range</label>
+						<label for="excel-range" class="text-sm font-medium text-fg-secondary"
+							>Named Range</label
+						>
 						<input
 							id="excel-range"
 							type="text"
@@ -725,7 +752,9 @@
 						<h4 class="m-0 mb-4 text-sm font-semibold text-fg-secondary">Table Bounds</h4>
 						<div class="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
 							<div class="flex flex-col gap-2">
-								<label for="start-row" class="text-sm font-medium text-fg-secondary">Start Row (0-based)</label>
+								<label for="start-row" class="text-sm font-medium text-fg-secondary"
+									>Start Row (0-based)</label
+								>
 								<input
 									id="start-row"
 									type="number"
@@ -735,11 +764,14 @@
 										handleExcelConfigChange('start_row', parseInt(e.currentTarget.value) || 0)}
 									class="input-base rounded-sm border px-3 py-2 text-sm"
 								/>
-								<span class="m-0 text-xs text-fg-muted">Excel row: {excelConfig.start_row + 1}</span>
+								<span class="m-0 text-xs text-fg-muted">Excel row: {excelConfig.start_row + 1}</span
+								>
 							</div>
 
 							<div class="flex flex-col gap-2">
-								<label for="start-col" class="text-sm font-medium text-fg-secondary">Start Column</label>
+								<label for="start-col" class="text-sm font-medium text-fg-secondary"
+									>Start Column</label
+								>
 								<input
 									id="start-col"
 									type="number"
@@ -749,11 +781,14 @@
 										handleExcelConfigChange('start_col', parseInt(e.currentTarget.value) || 0)}
 									class="input-base rounded-sm border px-3 py-2 text-sm"
 								/>
-								<span class="m-0 text-xs text-fg-muted">Excel column: {cellLabel(excelConfig.start_col)}</span>
+								<span class="m-0 text-xs text-fg-muted"
+									>Excel column: {cellLabel(excelConfig.start_col)}</span
+								>
 							</div>
 
 							<div class="flex flex-col gap-2">
-								<label for="end-col" class="text-sm font-medium text-fg-secondary">End Column</label>
+								<label for="end-col" class="text-sm font-medium text-fg-secondary">End Column</label
+								>
 								<input
 									id="end-col"
 									type="number"
@@ -763,7 +798,9 @@
 										handleExcelConfigChange('end_col', parseInt(e.currentTarget.value) || 0)}
 									class="input-base rounded-sm border px-3 py-2 text-sm"
 								/>
-								<span class="m-0 text-xs text-fg-muted">Excel column: {cellLabel(excelConfig.end_col)}</span>
+								<span class="m-0 text-xs text-fg-muted"
+									>Excel column: {cellLabel(excelConfig.end_col)}</span
+								>
 							</div>
 						</div>
 					</div>
@@ -776,7 +813,9 @@
 							onchange={(e) => handleExcelConfigChange('has_header', e.currentTarget.checked)}
 							class="h-4 w-4 cursor-pointer"
 						/>
-						<label for="excel-header" class="m-0 text-sm font-medium text-fg-secondary">First row is header</label>
+						<label for="excel-header" class="m-0 text-sm font-medium text-fg-secondary"
+							>First row is header</label
+						>
 					</div>
 				</div>
 			{/if}

@@ -163,11 +163,13 @@
 		alt=""
 		bind:this={dragImageEl}
 	/>
-	<h3
-		class="m-0 mb-3 shrink-0 text-sm uppercase tracking-widest"
-		style="color: var(--fg-primary);"
-	>Operations</h3>
-	<div class="step-list flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden" role="list">
+	<h3 class="m-0 mb-3 shrink-0 text-sm uppercase tracking-widest" style="color: var(--fg-primary);">
+		Operations
+	</h3>
+	<div
+		class="step-list flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden"
+		role="list"
+	>
 		{#each stepTypes as stepType (stepType.type)}
 			<button
 				class="step-button relative flex cursor-grab items-center justify-start gap-3 rounded-md border border-transparent bg-transparent p-3 text-left transition-colors"
@@ -183,18 +185,21 @@
 			>
 				<span class="shrink-0 text-xl" data-drag-handle="true">{stepType.icon}</span>
 				<div class="flex min-w-0 flex-col items-start gap-0.5">
-					<span class="text-sm font-semibold" style="color: var(--fg-primary);">{stepType.label}</span>
-					<span class="truncate text-xs" style="color: var(--fg-muted);">{stepType.description}</span>
+					<span class="text-sm font-semibold" style="color: var(--fg-primary);"
+						>{stepType.label}</span
+					>
+					<span class="truncate text-xs" style="color: var(--fg-muted);"
+						>{stepType.description}</span
+					>
 				</div>
 			</button>
 		{/each}
 	</div>
 
 	<div class="mt-4 shrink-0 border-t pt-3" style="border-color: var(--panel-border);">
-		<h4
-			class="m-0 mb-2 text-xs uppercase tracking-wide"
-			style="color: var(--fg-muted);"
-		>Quick Insert</h4>
+		<h4 class="m-0 mb-2 text-xs uppercase tracking-wide" style="color: var(--fg-muted);">
+			Quick Insert
+		</h4>
 		<div class="flex flex-col gap-2">
 			<select
 				class="rounded-sm border p-2"

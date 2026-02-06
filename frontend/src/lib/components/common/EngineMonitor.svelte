@@ -92,7 +92,10 @@
 			<div class="max-h-[300px] overflow-y-auto">
 				{#if enginesStore.count === 0}
 					{#if enginesStore.loading}
-						<div class="flex items-center justify-center gap-2 p-6 text-center text-sm" style="color: var(--fg-muted);">
+						<div
+							class="flex items-center justify-center gap-2 p-6 text-center text-sm"
+							style="color: var(--fg-muted);"
+						>
 							<LoaderCircle size={16} class="animate-spin" />
 							<span>Loading...</span>
 						</div>
@@ -104,10 +107,17 @@
 				{:else}
 					<ul class="m-0 list-none p-0">
 						{#each enginesStore.engines as engine (engine.analysis_id)}
-							<li class="engine-item flex items-center gap-3 border-b p-3 last:border-b-0" style="border-color: var(--border-primary);">
+							<li
+								class="engine-item flex items-center gap-3 border-b p-3 last:border-b-0"
+								style="border-color: var(--border-primary);"
+							>
 								<div class="min-w-0 flex-1">
 									<div class="flex items-center gap-2">
-										<span class="font-mono text-xs" style="color: var(--fg-primary);" title={engine.analysis_id}>
+										<span
+											class="font-mono text-xs"
+											style="color: var(--fg-primary);"
+											title={engine.analysis_id}
+										>
 											{engine.analysis_id.slice(0, 8)}...
 										</span>
 										<span
@@ -158,7 +168,10 @@
 				</div>
 			{/if}
 		</div>
-		<button class="fixed inset-0 z-[99] cursor-default border-none bg-transparent" aria-label="Close engine monitor"></button>
+		<button
+			class="fixed inset-0 z-[99] cursor-default border-none bg-transparent"
+			aria-label="Close engine monitor"
+		></button>
 	{/if}
 </div>
 

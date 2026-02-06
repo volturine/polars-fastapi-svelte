@@ -185,7 +185,10 @@
 		class="step-config box-border flex w-full flex-col items-center justify-center overflow-y-auto"
 		style="background-color: var(--panel-bg); color: var(--fg-primary);"
 	>
-		<div class="flex flex-col items-center justify-center p-6 text-center" style="color: var(--fg-muted);">
+		<div
+			class="flex flex-col items-center justify-center p-6 text-center"
+			style="color: var(--fg-muted);"
+		>
 			<div class="mb-4 text-4xl opacity-50">⚙️</div>
 			<h3 class="m-0 mb-2 text-lg" style="color: var(--fg-primary);">No step selected</h3>
 			<p class="m-0 text-sm">Click on a pipeline step to configure it</p>
@@ -200,14 +203,19 @@
 			class="config-header relative flex items-center justify-between p-4"
 			style="background-color: var(--panel-bg); box-shadow: inset 0 -1px 0 var(--panel-border), inset 0 -3px 0 var(--panel-border), inset 0 -5px 0 var(--panel-border);"
 		>
-			<h3 class="m-0 text-sm font-semibold uppercase tracking-widest" style="color: var(--fg-primary);">Configure Step</h3>
+			<h3
+				class="m-0 text-sm font-semibold uppercase tracking-widest"
+				style="color: var(--fg-primary);"
+			>
+				Configure Step
+			</h3>
 			<button
 				class="close-button flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border-none bg-transparent p-0 text-2xl leading-none transition-all"
 				onclick={() => onClose?.()}
 				type="button"
 				title="Close"
-				style="color: var(--fg-muted);"
-			>×</button>
+				style="color: var(--fg-muted);">×</button
+			>
 		</div>
 
 		<div class="config-body flex-1 overflow-y-auto p-3" style="background-color: var(--panel-bg);">
@@ -296,7 +304,9 @@
 				<ViewConfig schema={inputSchema} bind:config={draftConfig as unknown as ViewConfigData} />
 			{:else if step.type === 'datasource'}
 				<div class="p-6 text-center" style="background-color: var(--panel-bg);">
-					<p class="m-0 mb-3" style="color: var(--fg-tertiary);">Datasource options are set during upload.</p>
+					<p class="m-0 mb-3" style="color: var(--fg-tertiary);">
+						Datasource options are set during upload.
+					</p>
 				</div>
 			{:else if step.type === 'sample'}
 				<SampleConfig bind:config={draftConfig as unknown as SampleConfigData} />
@@ -329,13 +339,15 @@
 				/>
 			{:else}
 				<div class="p-6 text-center" style="background-color: var(--panel-bg);">
-					<p class="m-0 mb-3" style="color: var(--fg-tertiary);">Configuration for {step.type} is not yet implemented</p>
+					<p class="m-0 mb-3" style="color: var(--fg-tertiary);">
+						Configuration for {step.type} is not yet implemented
+					</p>
 					<button
 						class="cursor-pointer rounded-sm border-none px-5 py-2 font-mono"
 						onclick={() => onClose?.()}
 						type="button"
-						style="background-color: var(--accent-primary); color: var(--bg-primary);"
-					>Close</button>
+						style="background-color: var(--accent-primary); color: var(--bg-primary);">Close</button
+					>
 				</div>
 			{/if}
 		</div>

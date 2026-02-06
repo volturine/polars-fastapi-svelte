@@ -174,7 +174,9 @@
 			style="background-color: var(--panel-bg); border-color: var(--panel-border); box-shadow: var(--shadow-dropdown);"
 		>
 			{#if filteredOptions().length === 0}
-				<div class="p-4 text-center text-sm" style="color: var(--fg-muted);">No datasources found</div>
+				<div class="p-4 text-center text-sm" style="color: var(--fg-muted);">
+					No datasources found
+				</div>
 			{:else}
 				{#each filteredOptions() as ds (ds.id)}
 					<button
@@ -192,7 +194,11 @@
 					>
 						<span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{ds.name}</span>
 						{#if ds.id === highlightId}
-							<span class="ml-2 rounded-sm border px-2 py-1 text-xs" style="background-color: var(--info-bg); border-color: var(--info-border); color: var(--info-fg);">current</span>
+							<span
+								class="ml-2 rounded-sm border px-2 py-1 text-xs"
+								style="background-color: var(--info-bg); border-color: var(--info-border); color: var(--info-fg);"
+								>current</span
+							>
 						{:else if ds.source_type === 'file'}
 							<FileTypeBadge
 								path={(ds.config?.file_path as string) ?? ''}

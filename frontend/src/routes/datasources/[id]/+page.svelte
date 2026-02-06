@@ -377,21 +377,25 @@
 	}
 </script>
 
-<div class="container">
-	<header class="page-header">
-		<div class="header-left">
-			<button class="btn-back" onclick={handleBack}>
+<div class="mx-auto min-h-full max-w-[900px] p-6">
+	<header class="mb-6 flex items-center justify-between gap-4 border-b pb-6" style="border-color: var(--border-primary);">
+		<div class="flex items-center gap-4">
+			<button
+				class="btn-back flex h-9 w-9 items-center justify-center rounded-sm border p-0 transition-all"
+				style="background: var(--bg-tertiary); border-color: var(--border-primary); color: var(--fg-secondary);"
+				onclick={handleBack}
+			>
 				<ArrowLeft size={20} />
 			</button>
-			<div class="header-text">
-				<h1>Edit Data Source</h1>
+			<div>
+				<h1 class="m-0 mb-1 text-2xl font-semibold">Edit Data Source</h1>
 				{#if datasourceQuery.data}
-					<p class="subtitle">{datasourceQuery.data.name}</p>
+					<p class="m-0 text-sm" style="color: var(--fg-tertiary);">{datasourceQuery.data.name}</p>
 				{/if}
 			</div>
 		</div>
 		<button
-			class="btn-primary"
+			class="btn-primary flex items-center gap-2"
 			onclick={handleSave}
 			disabled={!hasChanges || updateMutation.isPending}
 		>
@@ -406,16 +410,16 @@
 	</header>
 
 	{#if datasourceQuery.isLoading}
-		<div class="loading-state">
+		<div class="flex flex-col items-center justify-center gap-4 p-12" style="color: var(--fg-muted);">
 			<Loader size={32} class="spin" />
 			<p>Loading data source...</p>
 		</div>
 	{:else if datasourceQuery.isError}
-		<div class="error-box">
+		<div class="error-box mb-4 flex items-start gap-3">
 			<CircleAlert size={20} />
-			<div>
-				<p class="error-title">Error loading data source</p>
-				<p class="error-message">
+			<div class="flex flex-col gap-1">
+				<p class="m-0 font-semibold">Error loading data source</p>
+				<p class="m-0 text-sm opacity-80">
 					{datasourceQuery.error instanceof Error ? datasourceQuery.error.message : 'Unknown error'}
 				</p>
 			</div>
@@ -425,31 +429,39 @@
 		{@const csv = isCsv(datasource)}
 		{@const excel = isExcel(datasource)}
 
-		<div class="tabs">
+		<div class="mb-6 flex gap-2 border-b-2" style="border-color: var(--border-primary);">
 			<button
-				class="tab"
+				class="tab -mb-0.5 border-b-2 border-transparent px-5 py-3 text-sm font-medium transition-all"
 				class:active={activeTab === 'general'}
 				onclick={() => (activeTab = 'general')}
+				style="color: var(--fg-muted);"
 			>
 				General
 			</button>
 			<button
-				class="tab"
+				class="tab -mb-0.5 border-b-2 border-transparent px-5 py-3 text-sm font-medium transition-all"
 				class:active={activeTab === 'schema'}
 				onclick={() => (activeTab = 'schema')}
+				style="color: var(--fg-muted);"
 			>
 				Schema
 			</button>
 			{#if csv}
-				<button class="tab" class:active={activeTab === 'csv'} onclick={() => (activeTab = 'csv')}>
+				<button
+					class="tab -mb-0.5 border-b-2 border-transparent px-5 py-3 text-sm font-medium transition-all"
+					class:active={activeTab === 'csv'}
+					onclick={() => (activeTab = 'csv')}
+					style="color: var(--fg-muted);"
+				>
 					CSV Options
 				</button>
 			{/if}
 			{#if excel}
 				<button
-					class="tab"
+					class="tab -mb-0.5 border-b-2 border-transparent px-5 py-3 text-sm font-medium transition-all"
 					class:active={activeTab === 'excel'}
 					onclick={() => (activeTab = 'excel')}
+					style="color: var(--fg-muted);"
 				>
 					Excel Options
 				</button>
@@ -457,11 +469,11 @@
 		</div>
 
 		{#if updateMutation.isError}
-			<div class="error-box">
+			<div class="error-box mb-4 flex items-start gap-3">
 				<CircleAlert size={20} />
-				<div>
-					<p class="error-title">Error saving changes</p>
-					<p class="error-message">
+				<div class="flex flex-col gap-1">
+					<p class="m-0 font-semibold">Error saving changes</p>
+					<p class="m-0 text-sm opacity-80">
 						{updateMutation.error instanceof Error ? updateMutation.error.message : 'Unknown error'}
 					</p>
 				</div>
@@ -469,141 +481,146 @@
 		{/if}
 
 		{#if updateMutation.isSuccess}
-			<div class="success-box">
-				<p>Changes saved successfully!</p>
+			<div class="success-box mb-4 flex items-center gap-2 rounded-sm border p-3 text-sm" style="background-color: var(--success-bg); border-color: var(--success-border); color: var(--success-fg);">
+				<p class="m-0">Changes saved successfully!</p>
 			</div>
 		{/if}
 
-		<div class="content">
+		<div class="rounded-md border p-6" style="background-color: var(--bg-primary); border-color: var(--border-primary);">
 			{#if activeTab === 'general'}
-				<div class="form">
-					<div class="form-group">
-						<label for="datasource-name">Name</label>
+				<div class="flex flex-col gap-5">
+					<div class="flex flex-col gap-2">
+						<label for="datasource-name" class="text-sm font-medium" style="color: var(--fg-secondary);">Name</label>
 						<input
 							id="datasource-name"
 							type="text"
 							value={name}
 							oninput={(e) => handleNameChange(e.currentTarget.value)}
 							placeholder="Data source name"
+							class="rounded-sm border px-3 py-2 text-sm transition-colors"
+							style="border-color: var(--input-border); background-color: var(--input-bg);"
 						/>
 					</div>
 
-					<div class="info-section">
-						<h3>Source Information</h3>
-						<div class="info-grid">
-							<div class="info-item">
-								<span class="info-label">Type</span>
-								<span class="info-value">{datasource.source_type}</span>
+					<div class="mt-4 border-t pt-4" style="border-color: var(--border-primary);">
+						<h3 class="m-0 mb-4 text-sm font-semibold" style="color: var(--fg-secondary);">Source Information</h3>
+						<div class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
+							<div class="flex flex-col gap-1">
+								<span class="text-xs uppercase tracking-wide" style="color: var(--fg-muted);">Type</span>
+								<span class="text-sm font-medium" style="color: var(--fg-primary);">{datasource.source_type}</span>
 							</div>
 							{#if isFile(datasource)}
 								{@const config = datasource.config as unknown as FileDataSourceConfig}
-								<div class="info-item">
-									<span class="info-label">File Type</span>
+								<div class="flex flex-col gap-1">
+									<span class="text-xs uppercase tracking-wide" style="color: var(--fg-muted);">File Type</span>
 									<FileTypeBadge path={config.file_path} size="sm" />
 								</div>
 							{/if}
 							{#if isIceberg(datasource)}
 								{@const config = datasource.config as unknown as IcebergDataSourceConfig}
-								<div class="info-item">
-									<span class="info-label">Metadata Path</span>
-									<span class="info-value path-value">{config.metadata_path}</span>
+								<div class="flex flex-col gap-1">
+									<span class="text-xs uppercase tracking-wide" style="color: var(--fg-muted);">Metadata Path</span>
+									<span class="break-all text-xs" style="color: var(--fg-secondary);">{config.metadata_path}</span>
 								</div>
 							{/if}
-							<div class="info-item">
-								<span class="info-label">Created</span>
-								<span class="info-value">{formatDate(datasource.created_at)}</span>
+							<div class="flex flex-col gap-1">
+								<span class="text-xs uppercase tracking-wide" style="color: var(--fg-muted);">Created</span>
+								<span class="text-sm font-medium" style="color: var(--fg-primary);">{formatDate(datasource.created_at)}</span>
 							</div>
 							{#if schemaQuery.data}
-								<div class="info-item">
-									<span class="info-label">Rows</span>
-									<span class="info-value">
+								<div class="flex flex-col gap-1">
+									<span class="text-xs uppercase tracking-wide" style="color: var(--fg-muted);">Rows</span>
+									<span class="text-sm font-medium" style="color: var(--fg-primary);">
 										{schemaQuery.data.row_count?.toLocaleString() ?? 'Unknown'}
 									</span>
 									<button
-										class="btn-secondary btn-inline"
+										class="btn-secondary btn-inline mt-1 self-start px-2.5 py-1 text-xs"
 										onclick={handleRefreshRows}
 										disabled={schemaQuery.isFetching}
 									>
 										{schemaQuery.isFetching ? 'Refreshing...' : 'Refresh'}
 									</button>
 								</div>
-								<div class="info-item">
-									<span class="info-label">Columns</span>
-									<span class="info-value">{schemaQuery.data.columns.length}</span>
+								<div class="flex flex-col gap-1">
+									<span class="text-xs uppercase tracking-wide" style="color: var(--fg-muted);">Columns</span>
+									<span class="text-sm font-medium" style="color: var(--fg-primary);">{schemaQuery.data.columns.length}</span>
 								</div>
 							{/if}
 						</div>
 					</div>
 				</div>
 			{:else if activeTab === 'schema'}
-				<div class="schema-section">
-					<div class="section-header">
-						<h3>Column Schema</h3>
-						<p class="hint">
+				<div class="flex flex-col gap-4">
+					<div>
+						<h3 class="m-0 mb-2 text-base font-semibold">Column Schema</h3>
+						<p class="m-0 text-xs" style="color: var(--fg-muted);">
 							Adjust column names and types. Changes will trigger re-processing of the file.
 						</p>
 					</div>
 
 					{#if isSavingParsing}
-						<div class="loading-state">
+						<div class="flex flex-col items-center justify-center gap-4 p-12" style="color: var(--fg-muted);">
 							<Loader size={24} class="spin" />
 							<p>Refreshing schema...</p>
 						</div>
 					{:else if schemaQuery.isLoading}
-						<div class="loading-state">
+						<div class="flex flex-col items-center justify-center gap-4 p-12" style="color: var(--fg-muted);">
 							<Loader size={24} class="spin" />
 							<p>Loading schema...</p>
 						</div>
 					{:else if schemaQuery.isError}
-						<div class="error-box">
+						<div class="error-box flex items-center gap-2">
 							<CircleAlert size={20} />
 							<p>Error loading schema</p>
 						</div>
 					{:else if columns.length > 0}
-						<div class="schema-table">
-							<div class="table-header">
-								<span class="col-index">#</span>
-								<span class="col-name">Column Name</span>
-								<span class="col-type">Type</span>
-								<span class="col-sample">Sample Value</span>
+						<div class="overflow-hidden rounded-sm border" style="border-color: var(--border-primary);">
+							<div class="grid grid-cols-[50px_2fr_140px_1fr] items-center gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide" style="background-color: var(--bg-tertiary); color: var(--fg-tertiary);">
+								<span>#</span>
+								<span>Column Name</span>
+								<span>Type</span>
+								<span>Sample Value</span>
 							</div>
 							{#each columns as column, index (index)}
-								<div class="table-row">
-									<span class="col-index">{index + 1}</span>
+								<div class="table-row grid grid-cols-[50px_2fr_140px_1fr] items-center gap-3 border-t px-4 py-3" style="border-color: var(--border-primary);">
+									<span class="text-xs" style="color: var(--fg-muted);">{index + 1}</span>
 									<input
 										type="text"
-										class="col-name-input"
+										class="w-full rounded-sm border px-3 py-2 text-sm"
+										style="border-color: var(--input-border); background-color: var(--input-bg);"
 										value={column.name}
 										oninput={(e) => handleColumnNameChange(index, e.currentTarget.value)}
 									/>
-								<ColumnTypeDropdown
-									value={column.dtype}
-									onChange={(val) => handleColumnTypeChange(index, val)}
-									placeholder="Select type..."
-								/>
-									<span class="col-sample" title={column.sample_value ?? ''}>
-										{column.sample_value ?? '—'}
+									<ColumnTypeDropdown
+										value={column.dtype}
+										onChange={(val) => handleColumnTypeChange(index, val)}
+										placeholder="Select type..."
+									/>
+									<span class="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap text-sm" style="color: var(--fg-muted);" title={column.sample_value ?? ''}>
+										{column.sample_value ?? '-'}
 									</span>
 								</div>
 							{/each}
 						</div>
 					{:else}
-						<div class="empty-state">
-							<p>No schema information available.</p>
+						<div class="p-8 text-center" style="color: var(--fg-muted);">
+							<p class="m-0">No schema information available.</p>
 						</div>
 					{/if}
 				</div>
 			{:else if activeTab === 'csv' && csv}
-				<div class="form">
-					<h3>CSV Configuration</h3>
+				<div class="flex flex-col gap-5">
+					<h3 class="m-0 text-base font-semibold">CSV Configuration</h3>
 
-					<div class="form-row">
-						<div class="form-group">
-							<label for="csv-delimiter">Delimiter</label>
+					<div class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
+						<div class="flex flex-col gap-2">
+							<label for="csv-delimiter" class="text-sm font-medium" style="color: var(--fg-secondary);">Delimiter</label>
 							<select
 								id="csv-delimiter"
 								value={csvConfig.delimiter}
 								onchange={(e) => handleCsvConfigChange('delimiter', e.currentTarget.value)}
+								class="rounded-sm border px-3 py-2 text-sm"
+								style="border-color: var(--input-border); background-color: var(--input-bg);"
 							>
 								<option value=",">Comma (,)</option>
 								<option value=";">Semicolon (;)</option>
@@ -613,12 +630,14 @@
 							</select>
 						</div>
 
-						<div class="form-group">
-							<label for="csv-quote">Quote Character</label>
+						<div class="flex flex-col gap-2">
+							<label for="csv-quote" class="text-sm font-medium" style="color: var(--fg-secondary);">Quote Character</label>
 							<select
 								id="csv-quote"
 								value={csvConfig.quote_char}
 								onchange={(e) => handleCsvConfigChange('quote_char', e.currentTarget.value)}
+								class="rounded-sm border px-3 py-2 text-sm"
+								style="border-color: var(--input-border); background-color: var(--input-bg);"
 							>
 								<option value="&quot;">Double Quote (")</option>
 								<option value="'">Single Quote (')</option>
@@ -627,13 +646,15 @@
 						</div>
 					</div>
 
-					<div class="form-row">
-						<div class="form-group">
-							<label for="csv-encoding">Encoding</label>
+					<div class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
+						<div class="flex flex-col gap-2">
+							<label for="csv-encoding" class="text-sm font-medium" style="color: var(--fg-secondary);">Encoding</label>
 							<select
 								id="csv-encoding"
 								value={csvConfig.encoding}
 								onchange={(e) => handleCsvConfigChange('encoding', e.currentTarget.value)}
+								class="rounded-sm border px-3 py-2 text-sm"
+								style="border-color: var(--input-border); background-color: var(--input-bg);"
 							>
 								<option value="utf8">UTF-8</option>
 								<option value="utf8-lossy">UTF-8 (lossy)</option>
@@ -642,8 +663,8 @@
 							</select>
 						</div>
 
-						<div class="form-group">
-							<label for="csv-skip-rows">Skip Rows</label>
+						<div class="flex flex-col gap-2">
+							<label for="csv-skip-rows" class="text-sm font-medium" style="color: var(--fg-secondary);">Skip Rows</label>
 							<input
 								id="csv-skip-rows"
 								type="number"
@@ -651,65 +672,74 @@
 								value={csvConfig.skip_rows}
 								oninput={(e) =>
 									handleCsvConfigChange('skip_rows', parseInt(e.currentTarget.value) || 0)}
+								class="rounded-sm border px-3 py-2 text-sm"
+								style="border-color: var(--input-border); background-color: var(--input-bg);"
 							/>
-							<span class="hint">Number of rows to skip at the start</span>
+							<span class="m-0 text-xs" style="color: var(--fg-muted);">Number of rows to skip at the start</span>
 						</div>
 					</div>
 
-					<div class="form-group checkbox-group">
+					<div class="flex items-center gap-2">
 						<input
 							id="csv-header"
 							type="checkbox"
 							checked={csvConfig.has_header}
 							onchange={(e) => handleCsvConfigChange('has_header', e.currentTarget.checked)}
+							class="h-4 w-4 cursor-pointer"
 						/>
-						<label for="csv-header">First row is header</label>
+						<label for="csv-header" class="m-0 text-sm font-medium" style="color: var(--fg-secondary);">First row is header</label>
 					</div>
 				</div>
 			{:else if activeTab === 'excel' && excel}
-				<div class="form">
-					<h3>Excel Configuration</h3>
+				<div class="flex flex-col gap-5">
+					<h3 class="m-0 text-base font-semibold">Excel Configuration</h3>
 
-					<div class="form-row">
-						<div class="form-group">
-							<label for="excel-sheet">Sheet Name</label>
+					<div class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
+						<div class="flex flex-col gap-2">
+							<label for="excel-sheet" class="text-sm font-medium" style="color: var(--fg-secondary);">Sheet Name</label>
 							<input
 								id="excel-sheet"
 								type="text"
 								value={excelConfig.sheet_name}
 								oninput={(e) => handleExcelConfigChange('sheet_name', e.currentTarget.value)}
 								placeholder="Sheet1"
+								class="rounded-sm border px-3 py-2 text-sm"
+								style="border-color: var(--input-border); background-color: var(--input-bg);"
 							/>
 						</div>
 
-						<div class="form-group">
-							<label for="excel-table">Table Name</label>
+						<div class="flex flex-col gap-2">
+							<label for="excel-table" class="text-sm font-medium" style="color: var(--fg-secondary);">Table Name</label>
 							<input
 								id="excel-table"
 								type="text"
 								value={excelConfig.table_name}
 								oninput={(e) => handleExcelConfigChange('table_name', e.currentTarget.value)}
 								placeholder="Optional"
+								class="rounded-sm border px-3 py-2 text-sm"
+								style="border-color: var(--input-border); background-color: var(--input-bg);"
 							/>
 						</div>
 					</div>
 
-					<div class="form-group">
-						<label for="excel-range">Named Range</label>
+					<div class="flex flex-col gap-2">
+						<label for="excel-range" class="text-sm font-medium" style="color: var(--fg-secondary);">Named Range</label>
 						<input
 							id="excel-range"
 							type="text"
 							value={excelConfig.named_range}
 							oninput={(e) => handleExcelConfigChange('named_range', e.currentTarget.value)}
 							placeholder="Optional"
+							class="rounded-sm border px-3 py-2 text-sm"
+							style="border-color: var(--input-border); background-color: var(--input-bg);"
 						/>
 					</div>
 
-					<div class="bounds-section">
-						<h4>Table Bounds</h4>
-						<div class="form-row">
-							<div class="form-group">
-								<label for="start-row">Start Row (0-based)</label>
+					<div class="rounded-sm border p-4" style="background-color: var(--bg-tertiary); border-color: var(--border-primary);">
+						<h4 class="m-0 mb-4 text-sm font-semibold" style="color: var(--fg-secondary);">Table Bounds</h4>
+						<div class="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
+							<div class="flex flex-col gap-2">
+								<label for="start-row" class="text-sm font-medium" style="color: var(--fg-secondary);">Start Row (0-based)</label>
 								<input
 									id="start-row"
 									type="number"
@@ -717,12 +747,14 @@
 									value={excelConfig.start_row}
 									oninput={(e) =>
 										handleExcelConfigChange('start_row', parseInt(e.currentTarget.value) || 0)}
+									class="rounded-sm border px-3 py-2 text-sm"
+									style="border-color: var(--input-border); background-color: var(--input-bg);"
 								/>
-								<span class="hint">Excel row: {excelConfig.start_row + 1}</span>
+								<span class="m-0 text-xs" style="color: var(--fg-muted);">Excel row: {excelConfig.start_row + 1}</span>
 							</div>
 
-							<div class="form-group">
-								<label for="start-col">Start Column</label>
+							<div class="flex flex-col gap-2">
+								<label for="start-col" class="text-sm font-medium" style="color: var(--fg-secondary);">Start Column</label>
 								<input
 									id="start-col"
 									type="number"
@@ -730,12 +762,14 @@
 									value={excelConfig.start_col}
 									oninput={(e) =>
 										handleExcelConfigChange('start_col', parseInt(e.currentTarget.value) || 0)}
+									class="rounded-sm border px-3 py-2 text-sm"
+									style="border-color: var(--input-border); background-color: var(--input-bg);"
 								/>
-								<span class="hint">Excel column: {cellLabel(excelConfig.start_col)}</span>
+								<span class="m-0 text-xs" style="color: var(--fg-muted);">Excel column: {cellLabel(excelConfig.start_col)}</span>
 							</div>
 
-							<div class="form-group">
-								<label for="end-col">End Column</label>
+							<div class="flex flex-col gap-2">
+								<label for="end-col" class="text-sm font-medium" style="color: var(--fg-secondary);">End Column</label>
 								<input
 									id="end-col"
 									type="number"
@@ -743,20 +777,23 @@
 									value={excelConfig.end_col}
 									oninput={(e) =>
 										handleExcelConfigChange('end_col', parseInt(e.currentTarget.value) || 0)}
+									class="rounded-sm border px-3 py-2 text-sm"
+									style="border-color: var(--input-border); background-color: var(--input-bg);"
 								/>
-								<span class="hint">Excel column: {cellLabel(excelConfig.end_col)}</span>
+								<span class="m-0 text-xs" style="color: var(--fg-muted);">Excel column: {cellLabel(excelConfig.end_col)}</span>
 							</div>
 						</div>
 					</div>
 
-					<div class="form-group checkbox-group">
+					<div class="flex items-center gap-2">
 						<input
 							id="excel-header"
 							type="checkbox"
 							checked={excelConfig.has_header}
 							onchange={(e) => handleExcelConfigChange('has_header', e.currentTarget.checked)}
+							class="h-4 w-4 cursor-pointer"
 						/>
-						<label for="excel-header">First row is header</label>
+						<label for="excel-header" class="m-0 text-sm font-medium" style="color: var(--fg-secondary);">First row is header</label>
 					</div>
 				</div>
 			{/if}
@@ -765,108 +802,9 @@
 </div>
 
 <style>
-	.container {
-		max-width: 900px;
-		margin: 0 auto;
-		padding: var(--space-6);
-		min-height: 100%;
-	}
-
-	.page-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		gap: var(--space-4);
-		margin-bottom: var(--space-6);
-		padding-bottom: var(--space-6);
-		border-bottom: 1px solid var(--border-primary);
-	}
-
-	.header-left {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-	}
-
-	.btn-back {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 36px;
-		height: 36px;
-		padding: 0;
-		background: var(--bg-tertiary);
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		color: var(--fg-secondary);
-		cursor: pointer;
-		transition: all var(--transition);
-	}
-
 	.btn-back:hover {
 		background: var(--bg-hover);
 		color: var(--fg-primary);
-	}
-
-	.header-text h1 {
-		margin: 0 0 var(--space-1) 0;
-		font-size: var(--text-2xl);
-		font-weight: var(--font-semibold);
-	}
-
-	.subtitle {
-		margin: 0;
-		color: var(--fg-tertiary);
-		font-size: var(--text-sm);
-	}
-
-	.btn-primary {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-4);
-		background: var(--primary-bg);
-		color: var(--primary-fg);
-		border: none;
-		border-radius: var(--radius-sm);
-		font-weight: var(--font-medium);
-		cursor: pointer;
-		transition: all var(--transition);
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		background: var(--primary-hover);
-	}
-
-	.btn-primary:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-	.btn-inline {
-		margin-top: var(--space-1);
-		align-self: flex-start;
-		padding: 4px 10px;
-		font-size: var(--text-xs);
-	}
-
-	.tabs {
-		display: flex;
-		gap: var(--space-2);
-		border-bottom: 2px solid var(--border-primary);
-		margin-bottom: var(--space-6);
-	}
-
-	.tab {
-		padding: var(--space-3) var(--space-5);
-		background: none;
-		border: none;
-		border-bottom: 2px solid transparent;
-		cursor: pointer;
-		font-size: var(--text-sm);
-		font-weight: var(--font-medium);
-		color: var(--fg-muted);
-		margin-bottom: -2px;
-		transition: all var(--transition);
 	}
 
 	.tab:hover {
@@ -878,265 +816,21 @@
 		border-bottom-color: var(--accent-primary);
 	}
 
-	.content {
-		background-color: var(--bg-primary);
-		padding: var(--space-6);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--border-primary);
+	.table-row:hover {
+		background-color: var(--bg-hover);
 	}
 
-	.form {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-5);
-	}
-
-	.form-group {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-
-	.form-row {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: var(--space-4);
-	}
-
-	label {
-		font-weight: var(--font-medium);
-		font-size: var(--text-sm);
-		color: var(--fg-secondary);
-	}
-
-	input[type='text'],
-	input[type='number'],
-	select {
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--input-border);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-sm);
-		background-color: var(--input-bg);
-		transition: border-color var(--transition);
-	}
-
-	input[type='text']:focus,
-	input[type='number']:focus,
+	input:focus,
 	select:focus {
 		outline: none;
 		border-color: var(--border-focus);
 		box-shadow: 0 0 0 3px var(--accent-bg);
 	}
 
-	.hint {
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
-		margin: 0;
-	}
-
-	.checkbox-group {
-		flex-direction: row;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.checkbox-group input {
-		width: auto;
-	}
-
-	.checkbox-group label {
-		margin: 0;
-	}
-
-	input[type='checkbox'] {
-		width: 1rem;
-		height: 1rem;
-		cursor: pointer;
-	}
-
-	.info-section {
-		margin-top: var(--space-4);
-		padding-top: var(--space-4);
-		border-top: 1px solid var(--border-primary);
-	}
-
-	.info-section h3 {
-		margin: 0 0 var(--space-4) 0;
-		font-size: var(--text-sm);
-		font-weight: var(--font-semibold);
-		color: var(--fg-secondary);
-	}
-
-	.info-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: var(--space-4);
-	}
-
-	.info-item {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-1);
-	}
-
-	.info-label {
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.info-value {
-		font-size: var(--text-sm);
-		font-weight: var(--font-medium);
-		color: var(--fg-primary);
-	}
-	.path-value {
-		word-break: break-all;
-		font-size: var(--text-xs);
-		color: var(--fg-secondary);
-	}
-
-	.schema-section {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
-	}
-
-	.section-header h3 {
-		margin: 0 0 var(--space-2) 0;
-		font-size: var(--text-base);
-		font-weight: var(--font-semibold);
-	}
-
-	.schema-table {
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		overflow: hidden;
-	}
-
-	.table-header,
-	.table-row {
-		display: grid;
-		grid-template-columns: 50px 2fr 140px 1fr;
-		align-items: center;
-		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4);
-	}
-
-	.table-header {
-		background-color: var(--bg-tertiary);
-		font-size: var(--text-xs);
-		font-weight: var(--font-semibold);
-		color: var(--fg-tertiary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.table-row {
-		border-top: 1px solid var(--border-primary);
-	}
-
-	.table-row:hover {
-		background-color: var(--bg-hover);
-	}
-
-	.col-index {
-		color: var(--fg-muted);
-		font-size: var(--text-xs);
-	}
-
-	.col-name-input {
-		width: 100%;
-	}
-
-	.col-sample {
-		font-size: var(--text-sm);
-		color: var(--fg-muted);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		max-width: 200px;
-	}
-
-	.bounds-section {
-		padding: var(--space-4);
-		background-color: var(--bg-tertiary);
-		border-radius: var(--radius-sm);
-		border: 1px solid var(--border-primary);
-	}
-
-	.bounds-section h4 {
-		margin: 0 0 var(--space-4) 0;
-		font-size: var(--text-sm);
-		font-weight: var(--font-semibold);
-		color: var(--fg-secondary);
-	}
-
-	.loading-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-4);
-		padding: var(--space-12);
-		color: var(--fg-muted);
-	}
-
-	.error-box {
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-3);
-		padding: var(--space-4);
-		background-color: var(--error-bg);
-		border: 1px solid var(--error-border);
-		border-radius: var(--radius-sm);
-		color: var(--error-fg);
-		margin-bottom: var(--space-4);
-	}
-
-	.error-box div {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-1);
-	}
-
-	.error-title {
-		font-weight: var(--font-semibold);
-		margin: 0;
-	}
-
-	.error-message {
-		font-size: var(--text-sm);
-		margin: 0;
-		opacity: 0.8;
-	}
-
-	.success-box {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-3) var(--space-4);
-		background-color: var(--success-bg);
-		border: 1px solid var(--success-border);
-		border-radius: var(--radius-sm);
-		color: var(--success-fg);
-		margin-bottom: var(--space-4);
-	}
-
-	.success-box p {
-		margin: 0;
-		font-size: var(--text-sm);
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: var(--space-8);
-		color: var(--fg-muted);
-	}
-
-	.empty-state p {
-		margin: 0;
+	input:disabled,
+	select:disabled {
+		background: var(--bg-tertiary);
+		cursor: not-allowed;
 	}
 
 	:global(.spin) {

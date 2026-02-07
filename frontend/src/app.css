@@ -67,6 +67,7 @@
 
 	/* Panel widths */
 	--operations-panel-width: 400px;
+	--datasource-panel-width: 520px;
 
 	/* Pipeline component spacing */
 	--pipeline-connection-height: 18px;
@@ -2654,4 +2655,29 @@ body.touch-dragging .pipeline-canvas {
 	.udfs-page .row {
 		flex-direction: column;
 	}
+}
+
+/* Datasources page */
+.datasource-item.selected {
+	background-color: var(--accent-bg);
+	border-left: 2px solid var(--accent-primary);
+}
+
+.action-icon {
+	border-radius: var(--radius-sm);
+	transition-property: color, background-color;
+	transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+	transition-duration: 150ms;
+	color: var(--fg-muted);
+}
+
+.action-icon:hover {
+	color: var(--fg-primary);
+	background-color: var(--bg-hover);
+}
+
+/* Tab active state */
+.tab.active {
+	color: var(--accent-primary);
+	border-bottom-color: var(--info-border);
 }

@@ -2,11 +2,12 @@
 	import { createQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { resolve } from '$app/paths';
 	import { listDatasources, deleteDatasource } from '$lib/api/datasource';
-	import { Plus, ChevronDown, ChevronUp } from 'lucide-svelte';
+	import { Plus, Trash2 } from 'lucide-svelte';
 	import type { DataSource } from '$lib/types/datasource';
 	import DatasourcePreview from '$lib/components/datasources/DatasourcePreview.svelte';
+	import DatasourceConfigPanel from '$lib/components/datasources/DatasourceConfigPanel.svelte';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
-	import { formatDateDisplay } from '$lib/utils/datetime';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 
 	const queryClient = useQueryClient();
@@ -15,9 +16,7 @@
 		queryKey: ['datasources'],
 		queryFn: async () => {
 			const result = await listDatasources();
-			if (result.isErr()) {
-				throw new Error(result.error.message);
-			}
+			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		}
 	}));
@@ -25,194 +24,137 @@
 	const deleteMutation = createMutation(() => ({
 		mutationFn: async (id: string) => {
 			const result = await deleteDatasource(id);
-			if (result.isErr()) {
-				throw new Error(result.error.message);
-			}
+			if (result.isErr()) throw new Error(result.error.message);
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['datasources'] });
+			if (selectedId === deletingId) {
+				selectDatasource(null);
+			}
 		}
 	}));
 
-	let confirmingDelete = $state<string | null>(null);
-	let expandedPreview = $state<string | null>(null);
+	let selectedId = $state<string | null>(page.url.searchParams.get('id'));
+	let showConfig = $state<string | null>(page.url.searchParams.get('id'));
+	let deletingId = $state<string | null>(null);
+
+	const datasources = $derived(query.data ?? []);
+	const selectedDatasource = $derived(datasources.find((d) => d.id === selectedId) ?? null);
+
+	function selectDatasource(id: string | null) {
+		selectedId = id;
+		showConfig = id;
+		const url = id ? `/datasources?id=${id}` : '/datasources';
+		goto(resolve(url as '/'), { replaceState: true });
+	}
 
 	function handleDelete(id: string) {
-		confirmingDelete = id;
-	}
-
-	function confirmDelete(id: string) {
+		deletingId = id;
 		deleteMutation.mutate(id);
-		confirmingDelete = null;
 	}
 
-	function cancelDelete() {
-		confirmingDelete = null;
-	}
-
-	function togglePreview(id: string) {
-		expandedPreview = expandedPreview === id ? null : id;
-	}
-
-	function isExpanded(id: string): boolean {
-		return expandedPreview === id;
-	}
-
-	function getColumnCount(datasource: DataSource): number {
-		if (datasource.schema_cache && typeof datasource.schema_cache === 'object') {
-			const schema = datasource.schema_cache as { columns?: unknown[] };
-			if (Array.isArray(schema.columns)) {
-				return schema.columns.length;
-			}
-		}
-		return 0;
-	}
-
-	function getRowCount(datasource: DataSource): number | null {
-		if (datasource.schema_cache && typeof datasource.schema_cache === 'object') {
-			const schema = datasource.schema_cache as { row_count?: number | null };
-			return schema.row_count ?? null;
-		}
-		return null;
-	}
-
-	function formatRowCount(count: number | null): string {
-		if (count === null) return '-';
-		if (count >= 1_000_000) {
-			return `${(count / 1_000_000).toFixed(1)}M`;
-		}
-		if (count >= 1_000) {
-			return `${(count / 1_000).toFixed(1)}K`;
-		}
-		return count.toLocaleString();
-	}
-
-	function formatDate(dateString: string): string {
-		return formatDateDisplay(dateString);
+	function handleConfigSaved() {
+		queryClient.invalidateQueries({ queryKey: ['datasources'] });
 	}
 </script>
 
-<div class="mx-auto max-w-250 p-6">
-	<header class="mb-8 flex items-start justify-between gap-6 border-b border-primary pb-6">
-		<div>
-			<h1 class="m-0 mb-2 text-2xl font-semibold">Data Sources</h1>
-			<p class="m-0 text-fg-tertiary">Manage your data connections and files</p>
-		</div>
-		<a
-			href={resolve('/datasources/new')}
-			class="btn-primary inline-flex items-center gap-2 no-underline"
-			data-sveltekit-reload
-		>
-			<Plus size={16} />
-			Add Data Source
-		</a>
-	</header>
+<div class="flex h-full">
+	<!-- Left Pane -->
+	<aside class="w-(--datasource-panel-width) border-r border-primary flex flex-col bg-bg-primary shrink-0">
+		<!-- Header -->
+		<header class="flex items-center justify-between px-4 py-3 border-b border-primary">
+			<h1 class="text-sm font-semibold">Data Sources</h1>
+			<a
+				href={resolve('/datasources/new')}
+				class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 no-underline bg-accent text-bg-primary border border-info"
+				data-sveltekit-reload
+			>
+				<Plus size={14} />
+				Add
+			</a>
+		</header>
 
-	{#if query.isLoading}
-		<div class="info-box text-center">Loading data sources...</div>
-	{:else if query.isError}
-		<div class="error-box">
-			Error loading data sources: {query.error instanceof Error
-				? query.error.message
-				: 'Unknown error'}
-		</div>
-	{:else if query.data}
-		{#if query.data.length === 0}
-			<div class="rounded-sm border border-dashed border-primary bg-bg-primary p-12 text-center">
-				<div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center text-xl text-fg-muted">
-					+
+		<!-- Datasource List -->
+		<div class="flex-1 overflow-y-auto">
+			{#if query.isLoading}
+				<div class="p-8 text-center text-sm text-fg-muted">
+					Loading...
 				</div>
-				<p class="m-0 mb-6 text-fg-tertiary">No data sources yet.</p>
-				<a href={resolve('/datasources/new')} class="btn btn-primary" data-sveltekit-reload
-					>Create your first data source</a
-				>
-			</div>
-		{:else}
-			<div class="overflow-hidden bg-bg-primary">
-				<div
-					class="grid grid-cols-[48px_1fr_100px_90px_90px_110px_140px] items-center gap-4 bg-bg-tertiary px-5 py-4 text-xs font-semibold uppercase tracking-wide text-fg-tertiary"
-				>
-					<span></span>
-					<span>Name</span>
-					<span>Type</span>
-					<span>Rows</span>
-					<span>Columns</span>
-					<span>Created</span>
-					<span>Actions</span>
+			{:else if query.isError}
+				<div class="error-box m-4 text-sm">
+					Error: {query.error instanceof Error ? query.error.message : 'Unknown error'}
 				</div>
-				{#each query.data as datasource (datasource.id)}
+			{:else if datasources.length === 0}
+				<div class="p-8 text-center">
+					<p class="text-sm text-fg-muted mb-4">No data sources yet.</p>
+					<a href={resolve('/datasources/new')} class="inline-flex items-center gap-1 text-sm font-medium px-3 py-2 no-underline bg-accent text-bg-primary border border-info" data-sveltekit-reload>
+						Create your first data source
+					</a>
+				</div>
+			{:else}
+				{#each datasources as datasource (datasource.id)}
 					<div
-						class="list-row grid grid-cols-[48px_1fr_100px_90px_90px_110px_140px] items-center gap-4 border-b border-primary px-5 py-4 text-fg-secondary hover:bg-bg-hover last:border-b-0"
+						class="datasource-item border-b border-primary"
+						class:selected={selectedId === datasource.id}
 					>
-						<span>
+						<!-- Row -->
+						<div class="flex items-center justify-between px-3 py-2.5 transition-colors">
 							<button
-								class="expand-btn flex h-7 w-7 items-center justify-center bg-transparent p-0 text-fg-secondary transition-all hover:border-primary hover:bg-bg-hover hover:text-fg-primary"
-								onclick={() => togglePreview(datasource.id)}
-								aria-expanded={isExpanded(datasource.id)}
-								aria-label={isExpanded(datasource.id) ? 'Collapse preview' : 'Expand preview'}
+								class="flex items-center gap-3 min-w-0 flex-1 text-left bg-transparent p-0 border-transparent"
+								onclick={() => selectDatasource(datasource.id)}
 							>
-								{#if isExpanded(datasource.id)}
-									<ChevronUp size={16} />
+								{#if datasource.source_type === 'file'}
+									<FileTypeBadge path={(datasource.config?.file_path as string) ?? ''} size="sm" />
 								{:else}
-									<ChevronDown size={16} />
+									<FileTypeBadge
+										sourceType={datasource.source_type as 'database' | 'api' | 'iceberg' | 'duckdb'}
+										size="sm"
+									/>
 								{/if}
+								<span
+									class="font-medium truncate text-sm"
+									class:text-accent-primary={selectedId === datasource.id}
+								>
+									{datasource.name}
+								</span>
 							</button>
-						</span>
-						<span class="overflow-hidden text-ellipsis whitespace-nowrap font-medium"
-							>{datasource.name}</span
-						>
-						<span>
-							{#if datasource.source_type === 'file'}
-								<FileTypeBadge path={(datasource.config?.file_path as string) ?? ''} size="sm" />
-							{:else}
-								<FileTypeBadge
-									sourceType={datasource.source_type as 'database' | 'api' | 'iceberg' | 'duckdb'}
-									size="sm"
-								/>
-							{/if}
-						</span>
-						<span class="tabular-nums">{formatRowCount(getRowCount(datasource))}</span>
-						<span class="tabular-nums">{getColumnCount(datasource)}</span>
-						<span class="text-fg-muted">{formatDate(datasource.created_at)}</span>
-						<span class="flex items-center whitespace-nowrap">
-							{#if confirmingDelete === datasource.id}
-								<div class="flex items-center gap-2">
-									<span class="text-xs font-medium text-error-fg">Delete?</span>
-									<button
-										onclick={() => confirmDelete(datasource.id)}
-										class="btn btn-danger btn-sm"
-										disabled={deleteMutation.isPending}
-									>
-										Yes
-									</button>
-									<button onclick={cancelDelete} class="btn btn-secondary btn-sm"> No </button>
-								</div>
-							{:else}
-								<div class="flex items-center gap-2">
-									<button
-										onclick={() => goto(resolve(`/datasources/${datasource.id}`))}
-										class="btn btn-ghost btn-sm"
-									>
-										Edit
-									</button>
-									<button
-										onclick={() => handleDelete(datasource.id)}
-										class="btn btn-ghost btn-sm btn-delete hover:text-error-fg"
-										disabled={deleteMutation.isPending}
-									>
-										Delete
-									</button>
-								</div>
-							{/if}
-						</span>
-					</div>
-					{#if isExpanded(datasource.id)}
-						<div class="border-t border-primary bg-bg-secondary p-4">
-							<DatasourcePreview datasourceId={datasource.id} datasourceName={datasource.name} />
+							<div class="flex items-center shrink-0">
+								<button
+									class="action-icon p-1.5 bg-transparent border-transparent hover:text-error-fg"
+									title="Delete"
+									onclick={() => handleDelete(datasource.id)}
+									disabled={deleteMutation.isPending && deletingId === datasource.id}
+								>
+									{#if deleteMutation.isPending && deletingId === datasource.id}
+										<span class="animate-spin">⟳</span>
+									{:else}
+										<Trash2 size={14} />
+									{/if}
+								</button>
+							</div>
 						</div>
-					{/if}
+
+						<!-- Inline Config Panel -->
+						{#if showConfig === datasource.id}
+							<DatasourceConfigPanel {datasource} onSave={handleConfigSaved} />
+						{/if}
+					</div>
 				{/each}
+			{/if}
+		</div>
+	</aside>
+
+	<!-- Right Pane -->
+	<main class="flex-1 overflow-hidden">
+		{#if selectedDatasource}
+			<DatasourcePreview datasourceId={selectedDatasource.id} />
+		{:else}
+			<div class="h-full flex items-center justify-center text-fg-muted bg-secondary">
+				<div class="text-center">
+					<p class="text-lg font-medium mb-2">No datasource selected</p>
+					<p class="text-sm">Select a datasource from the list to preview</p>
+				</div>
 			</div>
 		{/if}
-	{/if}
+	</main>
 </div>

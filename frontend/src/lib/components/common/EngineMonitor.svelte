@@ -35,6 +35,9 @@
 
 	function toggleExpanded() {
 		expanded = !expanded;
+		if (expanded) {
+			enginesStore.fetch();
+		}
 	}
 
 	let dropdownRef = $state<HTMLElement>();
@@ -102,13 +105,15 @@
 										<span class="font-mono text-xs text-fg-primary" title={engine.analysis_id}>
 											{engine.analysis_id.slice(0, 8)}...
 										</span>
-										<span
-											class="rounded-full px-2 py-px text-xs font-medium uppercase bg-tertiary text-fg-muted"
-											class:!bg-success={engine.status === 'healthy'}
-											class:!text-success={engine.status === 'healthy'}
-										>
-											{engine.status}
-										</span>
+						<span
+							class="rounded-full px-2 py-px text-xs font-medium uppercase"
+							class:bg-accent-bg={engine.status === 'healthy'}
+							class:text-accent-primary={engine.status === 'healthy'}
+							class:bg-tertiary={engine.status !== 'healthy'}
+							class:text-fg-muted={engine.status !== 'healthy'}
+						>
+							{engine.status}
+						</span>
 									</div>
 									<div class="mt-1 flex items-center gap-2">
 										{#if engine.current_job_id}

@@ -9,9 +9,7 @@ export class EnginesStore {
 
 	private interval: number | null = null;
 
-	get count(): number {
-		return this.engines.length;
-	}
+	count = $derived(this.engines.length);
 
 	async fetch(): Promise<void> {
 		this.loading = true;
@@ -44,8 +42,12 @@ export class EnginesStore {
 	async startPolling(): Promise<void> {
 		if (this.interval !== null) return;
 
-		// Ensure config is loaded before polling
-		await configStore.fetch();
+		// Try to load config but don't block polling if it fails
+		try {
+			await configStore.fetch();
+		} catch {
+			// Config fetch failed — use default interval
+		}
 
 		this.fetch();
 

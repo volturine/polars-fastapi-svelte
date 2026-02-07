@@ -17,12 +17,13 @@
 		data: Record<string, unknown>[];
 		columnTypes?: Record<string, string>;
 		loading?: boolean;
+		fillContainer?: boolean;
 		onSort?: (column: string, direction: 'asc' | 'desc') => void;
 	}
 
 	type RowData = Record<string, unknown>;
 
-	let { columns, data, columnTypes = {}, loading = false, onSort }: Props = $props();
+	let { columns, data, columnTypes = {}, loading = false, fillContainer = false, onSort }: Props = $props();
 
 	let sorting = $state<SortingState>([]);
 
@@ -99,7 +100,7 @@
 	}
 </script>
 
-<div class="relative overflow-hidden border bg-panel border-primary">
+<div class="relative overflow-hidden border bg-panel border-primary" class:h-full={fillContainer} class:flex={fillContainer} class:flex-col={fillContainer}>
 	{#if loading}
 		<div
 			class="flex flex-col items-center justify-center gap-4 p-12 pointer-events-none text-fg-tertiary"
@@ -114,7 +115,7 @@
 			<p class="m-0">No data available</p>
 		</div>
 	{:else if headerGroups.length > 0}
-		<div class="overflow-x-auto overflow-y-auto max-h-150 bg-panel">
+		<div class="overflow-x-auto overflow-y-auto bg-panel" class:max-h-150={!fillContainer} class:flex-1={fillContainer}>
 			<table class="w-full border-collapse text-sm">
 				<thead class="sticky top-0 z-50 bg-table-header">
 					{#each headerGroups as headerGroup (headerGroup.id)}

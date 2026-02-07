@@ -1,193 +1,134 @@
-# CSS Variable Migration Taskfile
+# CSS Var Migration Taskfile
 
-## Objective
-Migrate all `var(--...)` usage from `.svelte` files to use CSS utility classes defined in `app.css`, ensuring consistent styling and maintainability across the application.
+Comprehensive task list for removing CSS variable usage from Svelte components and establishing utility-first styling approach
 
-## Scope
-All `.svelte` files in `frontend/src/**/*` containing `var(--...)` references in:
-- Inline styles (`style="..."`)
-- Class attributes with Tailwind utilities using `var(--...)`
-- `<style>` blocks
+---
 
-## Constraints
-- No `var(--...)` usage allowed in `.svelte` files
-- Must use existing utility classes from `app.css`
-- Add new utility classes only if absolutely necessary
-- Preserve all visual styling and behavior
+Remove all `var(--...)` usage from `frontend/src/**/*.svelte` and avoid JS-computed styles for styling tokens
 
-## Non-goals
-- Refactoring component logic or structure
-- Changing design tokens in `app.css`
-- Performance optimizations beyond the migration
-- Breaking changes to component APIs
+---
 
-## Inventory of Affected Areas
+All `.svelte` files in `frontend/src/**/*` containing `var(--...)` references in inline styles, class attributes, or `<style>` blocks
 
-### Common Components (4 files)
-- `ColumnTypeBadge.svelte` - Type color styling
-- `LockButton.svelte` - Button states and colors
-- `FileTypeBadge.svelte` - File type colors
-- `FileBrowser.svelte` - Link and button styling
+---
 
-### Operations Components (2 files)
-- `DeduplicateConfig.svelte` - Border and background colors
-- `GroupByConfig.svelte` - Border and background colors
+No `var(--...)` usage allowed in inline styles, class attributes, or `<style>` blocks; no Tailwind arbitrary `var` classes; avoid JS-computed styles for colors/spacing; allow inline style only for dynamic positioning
 
-### Pipeline Components (2 files)
-- `StepNode.svelte` - Node styling and interactions
-- `DragPreview.svelte` - Drag preview appearance
-- `PipelineCanvas.svelte` - Canvas styling and states
+---
 
-### Viewers (2 files)
-- `InlineDataTable.svelte` - Table row styling
-- `DataTable.svelte` - Table row styling
+Refactoring component logic, changing design tokens, performance optimizations, or breaking API changes
 
-### UDF Components (1 file)
-- `UdfEditor.svelte` - Editor container styling
+---
 
-### Routes (1 file)
-- `analysis/[id]/+page.svelte` - Header and tab styling
+## Inventory by Area
 
-Total: 13 files with ~100+ var(--...) usages
+### Common
+ColumnTypeBadge.svelte, LockButton.svelte, FileTypeBadge.svelte, FileBrowser.svelte, MultiSelectColumnDropdown.svelte, DateTimeInput.svelte, DatasourceSelectorModal.svelte, DatasourcePicker.svelte, ConfirmDialog.svelte, CodeEditor.svelte, ColumnTypeSelect.svelte, EngineMonitor.svelte
 
-## app.css Utility Additions
-Most required utilities already exist. Add these if needed:
+### Operations
+DeduplicateConfig.svelte, GroupByConfig.svelte, PivotConfig.svelte, JoinConfig.svelte, WithColumnsConfig.svelte, RenameConfig.svelte, ExpressionConfig.svelte, FilterConfig.svelte, SortConfig.svelte
 
-```css
-/* Missing utility classes (if any) */
-.font-mono {
-  font-family: var(--font-mono);
-}
+### Pipeline
+StepNode.svelte, DragPreview.svelte, PipelineCanvas.svelte, StepLibrary.svelte, StepConfig.svelte, DatasourceNode.svelte, ConnectionLine.svelte
 
-.z-header {
-  z-index: var(--z-header);
-}
+### Viewers
+InlineDataTable.svelte, DataTable.svelte
 
-.panel-width {
-  width: var(--operations-panel-width, 280px);
-  transition: width var(--transition), visibility var(--transition);
-}
+### Udfs
+UdfEditor.svelte, UdfPickerModal.svelte
 
-.space-1 {
-  margin: var(--space-1);
-}
+### Gallery
+AnalysisFilters.svelte
 
-.animate-fade-in {
-  animation: var(--animate-fade-in);
-}
-```
+### Datasources
+DatasourcePreview.svelte
+
+### Routes
+analysis/[id]/+page.svelte, datasources/new/+page.svelte, datasources/+page.svelte, datasources/[id]/+page.svelte, analysis/new/+page.svelte, +layout.svelte, +page.svelte
+
+---
+
+## App.css Utilities
+
+bg-transparent, border-transparent, border-info, text-info-fg, text-info-border, bg-muted, bg-dialog, bg-overlay, bg-accent-bg, bg-info, bg-border-primary, shadow-drag, radius-sm, z-header, panel-width, h-pipeline-connection, code-inline, type-badge classes, file-badge classes, insert-pill classes, confirm dialog classes, CodeMirror classes, shimmer class, analysis header classes, editable title, save-button state, step status, nav-link active
+
+---
+
+## Utilities Still Needed
+
+accent-fg is not defined; recommend using text-accent-primary instead
+
+---
 
 ## Per-file Checklist
 
-### Common Components
+ColumnTypeBadge: remove `<style>`, use type-badge classes
 
-#### ColumnTypeBadge.svelte
-- [ ] Replace `<style>` block var(--font-mono) with `.font-mono` class
-- [ ] Replace all type color vars (--type-*-fg/bg/border) with `.type-badge.category-*` classes
-- [ ] Replace `--color-transparent` with `.bg-transparent` class
+FileTypeBadge: remove JS style object, use file-badge + size/variant classes
 
-#### LockButton.svelte
-- [ ] Replace `border-[var(--color-transparent)]` with `border-transparent`
-- [ ] Replace `background: var(--warning-border)` with `.bg-warning-border`
-- [ ] Replace `background: var(--accent-primary)` with `.bg-accent-primary`
-- [ ] Replace `color: var(--warning-contrast)` with `.text-warning-contrast`
-- [ ] Replace `background: var(--bg-tertiary)` with `.bg-tertiary`
-- [ ] Replace `color: var(--fg-muted)` with `.text-fg-muted`
+LockButton: remove var border and move lock-btn styles to app.css
 
-#### FileTypeBadge.svelte
-- [ ] Replace ternary `var(--color-transparent)` with conditional classes `.bg-transparent`
+FileBrowser: bg-transparent class
 
-#### FileBrowser.svelte
-- [ ] Replace `bg-[var(--color-transparent)]` with `bg-transparent`
-- [ ] Replace `text-accent` with `text-accent-primary`
+MultiSelectColumnDropdown: select-action-btn hover class in app.css
 
-### Operations Components
+DateTimeInput: clear-btn hover/active class in app.css
 
-#### DeduplicateConfig.svelte
-- [ ] Replace `border-color: var(--info-border)` with `border-info`
-- [ ] Replace `background-color: var(--bg-hover)` with `bg-hover`
+DatasourceSelectorModal: replace var classes with utilities, use animate-fade-in/slide-up
 
-#### GroupByConfig.svelte
-- [ ] Replace `background-color: var(--bg-muted)` with `bg-muted`
-- [ ] Replace `color: var(--fg-muted)` with `text-fg-muted`
-- [ ] Replace `border: 1px solid var(--border-primary)` with `border-primary`
+DatasourcePicker: picker-option/chip highlight classes
 
-### Pipeline Components
+ConfirmDialog: confirm-* classes
 
-#### StepNode.svelte
-- [ ] Replace `bg-[var(--color-transparent)]` with `bg-transparent`
-- [ ] Replace `bg-[var(--bg-tertiary)]` with `bg-tertiary`
-- [ ] Replace `border-[var(--border-primary)]` with `border-primary`
-- [ ] Replace `bg-[var(--bg-secondary)]` with `bg-secondary`
-- [ ] Replace `color: var(--fg-muted)` with `text-fg-muted`
-- [ ] Replace `background-color: var(--bg-tertiary)` with `bg-tertiary`
-- [ ] Replace `color: var(--fg-secondary)` with `text-fg-secondary`
-- [ ] Replace `border-color: var(--info-border)` with `border-info`
+CodeEditor: replace var usage in JS theme/highlight with class-based highlight and CSS in app.css
 
-#### DragPreview.svelte
-- [ ] Replace `background: var(--bg-primary)` with `bg-primary`
-- [ ] Replace `border-color: var(--info-border)` with `border-info`
-- [ ] Replace `box-shadow: var(--shadow-drag)` with `shadow-drag`
-- [ ] Replace `background: var(--warning-bg)` with `bg-warning`
-- [ ] Replace `border-color: var(--warning-border)` with `border-warning`
+ColumnTypeSelect: replace hover/focus var classes with utilities and replace inline min-width with size classes
 
-#### PipelineCanvas.svelte
-- [ ] Replace all `bg-[var(--color-transparent)]` with `bg-transparent`
-- [ ] Replace all `border-[var(--border-primary)]` with `border-primary`
-- [ ] Replace all `bg-[var(--bg-hover)]` with `bg-hover`
-- [ ] Replace all `border-[var(--info-border)]` with `border-info`
-- [ ] Replace all `bg-[var(--bg-tertiary)]` with `bg-tertiary`
-- [ ] Replace all `border-[var(--error-border)]` with `border-error`
-- [ ] Replace all `bg-[var(--error-bg)]` with `bg-error`
-- [ ] Replace `text-[var(--fg-primary)]` with `text-fg-primary`
+EngineMonitor: bg-transparent class
 
-### Viewers
+DragPreview: use .drag-preview + .reorder and keep inline left/top only
 
-#### InlineDataTable.svelte
-- [ ] Replace `bg-[var(--color-transparent)]` with `bg-transparent`
+ConnectionLine: use classes for colors and height
 
-#### DataTable.svelte
-- [ ] Replace `bg-[var(--color-transparent)]` with `bg-transparent`
+StepNode: move inactive/dashed state to app.css
 
-### UDF Components
+PipelineCanvas: replace var classes with insert-pill classes
 
-#### UdfEditor.svelte
-- [ ] Replace `background-color: var(--bg-tertiary)` with `bg-tertiary`
-- [ ] Replace `border: 1px solid var(--border-primary)` with `border-primary`
-- [ ] Replace `border-radius: var(--radius-sm)` with `radius-sm`
-- [ ] Replace `color: var(--fg-secondary)` with `text-fg-secondary`
-- [ ] Replace `background-color: var(--bg-hover)` with `bg-hover`
-- [ ] Replace `color: var(--fg-primary)` with `text-fg-primary`
+StepLibrary: bg-transparent class
 
-### Routes
+StepConfig: bg-transparent class
 
-#### analysis/[id]/+page.svelte
-- [ ] Replace `bg-[var(--color-transparent)]` (multiple instances) with `bg-transparent`
-- [ ] Replace `text-fg-muted` (already correct, verify)
-- [ ] Replace `bg-hover` (already correct, verify)
-- [ ] Replace `border-primary` (already correct, verify)
-- [ ] Replace `text-fg-primary` (already correct, verify)
-- [ ] Replace `bg-[var(--bg-hover)]` with `bg-hover`
-- [ ] Replace `border-[var(--border-primary)]` with `border-primary`
-- [ ] Replace `border-[var(--info-border)]` with `border-info`
-- [ ] Replace `bg-[var(--bg-tertiary)]` with `bg-tertiary`
-- [ ] Replace `color: var(--success-fg)` with `text-success`
-- [ ] Replace `background-color: var(--warning-bg)` with `bg-warning`
-- [ ] Replace `color: var(--warning-fg)` with `text-warning`
-- [ ] Replace `border-left: 1px solid var(--warning-border)` with `border-warning`
-- [ ] Replace `color: var(--fg-primary)` with `text-fg-primary`
-- [ ] Replace `background-color: var(--bg-secondary)` with `bg-secondary`
-- [ ] Replace `transition: visibility var(--transition)` with `transition` class or inline
-- [ ] Replace `z-index: var(--z-header)` with `z-header`
-- [ ] Replace `width: var(--operations-panel-width, 280px)` with `panel-width`
-- [ ] Replace `transition: width var(--transition)` with part of `panel-width` class
+DatasourceNode: drag-active style class in app.css
+
+InlineDataTable/DataTable: bg-transparent
+
+UdfEditor/UdfPickerModal: move var styles to app.css
+
+AnalysisFilters: move focus/hover styles to app.css, replace bg-transparent/border-transparent
+
+DatasourcePreview: replace var classes with utilities and address accent-fg
+
+analysis/[id]: move var styles in `<style>` to app.css and replace var classes
+
+datasources/new: + code-inline class, tab active classes
+
+datasources/[id]: tab active
+
+datasources/+page: bg-transparent
+
+analysis/new: step states
+
++layout: nav-link active
+
++page: shimmer class in app.css
+
+---
 
 ## Validation Steps
-1. **Build Check**: Run `npm run build` to ensure no CSS compilation errors
-2. **Visual Regression**: Manually test each component for visual changes
-3. **Grep Verification**: Confirm `grep -r "var(--" frontend/src/**/*.svelte` returns no results
-4. **Utility Coverage**: Verify all used CSS variables have corresponding utility classes
-5. **Dark/Light Mode**: Test theme switching on affected components
-6. **Responsive Design**: Check mobile/tablet layouts for pipeline and analysis pages
-7. **Performance**: Ensure no impact on bundle size or runtime performance</content>
+
+Repo-wide grep for `var(--` in svelte
+
+npm run check/build if desired
+
+spot-check UI</content>
 <parameter name="filePath">docs/css-var-migration-taskfile.md

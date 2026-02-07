@@ -1479,6 +1479,50 @@ button.btn-sm {
 	border-color: var(--warning-border);
 }
 
+/* Additional background utilities */
+.bg-panel-header {
+	background-color: var(--panel-header-bg);
+}
+
+.bg-table-header {
+	background-color: var(--table-header-bg);
+}
+
+.bg-overlay-soft {
+	background-color: var(--overlay-soft);
+}
+
+.bg-panel-muted {
+	background-color: var(--panel-muted-bg);
+}
+
+.bg-primary-action {
+	background-color: var(--primary-bg);
+}
+
+.bg-warning-fg {
+	background-color: var(--warning-fg);
+}
+
+/* Additional text utilities */
+.text-primary-fg {
+	color: var(--primary-fg);
+}
+
+.text-warning-contrast {
+	color: var(--warning-contrast);
+}
+
+/* Other utilities */
+.accent-primary {
+	accent-color: var(--accent-primary);
+}
+
+.connector-dot {
+	background-color: var(--fg-muted);
+	border-color: var(--border-primary);
+}
+
 /* Combined input styles */
 .input-base {
 	border-color: var(--border-primary);

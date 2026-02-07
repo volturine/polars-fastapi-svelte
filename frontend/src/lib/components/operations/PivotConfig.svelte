@@ -43,7 +43,7 @@
 
 	<div class="mb-4">
 		<label for="pivot-column"
-			>Pivot Column <span class="text-xs" style="color: var(--fg-muted);"
+			>Pivot Column <span class="text-xs text-fg-muted"
 				>(values become new columns)</span
 			></label
 		>
@@ -53,14 +53,14 @@
 			onChange={(val) => (config.columns = val)}
 			placeholder="Select column..."
 		/>
-		<span id="pivot-column-help" class="text-xs" style="color: var(--fg-muted);"
+		<span id="pivot-column-help" class="text-xs text-fg-muted"
 			>Select the column whose unique values will become new columns</span
 		>
 	</div>
 
 	<div class="mb-4" role="group" aria-labelledby="index-columns-label">
 		<span id="index-columns-label" class="group-label"
-			>Index Columns <span class="text-xs" style="color: var(--fg-muted);">(rows)</span></span
+			>Index Columns <span class="text-xs text-fg-muted">(rows)</span></span
 		>
 		<div class="chip-grid grid gap-2 p-2 max-h-[150px] overflow-y-auto">
 			{#each schema.columns as column (column.name)}
@@ -72,7 +72,7 @@
 						data-testid={`pivot-index-checkbox-${column.name}`}
 						type="checkbox"
 						name="pivot-index"
-						style="accent-color: var(--accent-primary);"
+						class="accent-primary"
 						checked={safeIndex.includes(column.name)}
 						onchange={() => toggleIndexColumn(column.name)}
 						aria-label={`Include ${column.name} as index column`}
@@ -84,8 +84,7 @@
 		{#if safeIndex.length > 0}
 			<div
 				id="pivot-index-summary"
-				class="mt-2 text-xs"
-				style="color: var(--fg-muted);"
+				class="mt-2 text-xs text-fg-muted"
 				aria-live="polite"
 			>
 				{safeIndex.length} selected
@@ -121,8 +120,7 @@
 			<button
 				id="pivot-btn-refresh"
 				data-testid="pivot-refresh-button"
-				class="refresh-button w-full py-2 px-3 border-none text-sm font-medium cursor-pointer flex items-center justify-center gap-2 transition-all"
-				style="background-color: var(--accent-primary); color: var(--bg-primary);"
+				class="refresh-button w-full py-2 px-3 border-none text-sm font-medium cursor-pointer flex items-center justify-center gap-2 transition-all accent-btn"
 				onclick={onRefreshSchema}
 				disabled={!isConfigValid || isRefreshing}
 				type="button"
@@ -135,7 +133,7 @@
 					Refresh Output Columns
 				{/if}
 			</button>
-			<p class="text-xs mt-1" style="color: var(--fg-muted);">
+			<p class="text-xs mt-1 text-fg-muted">
 				Click to compute the resulting columns after pivot
 			</p>
 		</div>

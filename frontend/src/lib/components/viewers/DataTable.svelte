@@ -116,7 +116,7 @@
 	{:else if headerGroups.length > 0}
 		<div class="overflow-x-auto overflow-y-auto max-h-[600px] bg-panel">
 			<table class="w-full border-collapse text-sm">
-				<thead class="sticky top-0 z-50" style="background: var(--table-header-bg);">
+				<thead class="sticky top-0 z-50 bg-table-header">
 					{#each headerGroups as headerGroup (headerGroup.id)}
 						<tr>
 							{#each headerGroup.headers as header (header.id)}
@@ -161,7 +161,7 @@
 	{/if}
 
 	{#if !loading && data.length > 0}
-		<div class="px-4 py-3 border-t border-primary" style="background: var(--panel-header-bg);">
+		<div class="px-4 py-3 border-t border-primary bg-panel-header">
 			<span class="text-xs text-fg-tertiary">
 				Showing {data.length.toLocaleString()} row{data.length !== 1 ? 's' : ''}
 			</span>

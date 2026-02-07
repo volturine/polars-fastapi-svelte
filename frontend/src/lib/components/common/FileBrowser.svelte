@@ -96,8 +96,7 @@
 </script>
 
 <div
-	class="fixed inset-0 z-[1000] flex items-center justify-center p-4"
-	style="background: var(--overlay-soft);"
+	class="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-overlay-soft"
 	role="button"
 	tabindex="0"
 	aria-label="Close file picker"

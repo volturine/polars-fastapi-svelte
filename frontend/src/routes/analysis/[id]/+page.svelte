@@ -460,12 +460,10 @@
 {:else if analysisQuery.data}
 	<div class="flex h-full flex-col bg-secondary">
 		<header
-			class="flex items-stretch sticky top-0 h-12 bg-panel border-y border-primary"
-			style="z-index: var(--z-header);"
+			class="analysis-header flex items-stretch sticky top-0 h-12 bg-panel border-y border-primary"
 		>
 			<div
-				class="header-left flex items-center h-full box-border border-r border-primary"
-				style="width: var(--operations-panel-width, 280px); transition: width var(--transition);"
+				class="header-left flex items-center h-full box-border border-r border-primary panel-width"
 			>
 				<div class="flex-1 flex flex-col min-w-0 overflow-hidden px-4">
 					<h1
@@ -555,8 +553,7 @@
 				</button>
 			</div>
 			<div
-				class="header-right flex items-center justify-end h-full box-border border-l border-primary"
-				style="width: var(--operations-panel-width, 280px); transition: width var(--transition);"
+				class="header-right flex items-center justify-end h-full box-border border-l border-primary panel-width"
 			>
 				<div class="relative items-center px-1">
 					<button
@@ -616,8 +613,7 @@
 		<div class="flex flex-1 overflow-hidden select-none bg-secondary" role="application">
 			{#if isEditingMode}
 				<div
-					class="left-pane flex-shrink-0 overflow-hidden flex h-full box-border bg-panel border-r border-primary"
-					style="width: var(--operations-panel-width, 280px); transition: width var(--transition), visibility var(--transition);"
+					class="left-pane flex-shrink-0 overflow-hidden flex h-full box-border bg-panel border-r border-primary panel-width"
 					class:collapsed={leftPaneCollapsed}
 				>
 					<StepLibrary onAddStep={handleAddStep} onInsertStep={handleInsertStep} />
@@ -647,8 +643,7 @@
 
 			{#if isEditingMode}
 				<div
-					class="right-pane flex-shrink-0 overflow-hidden flex h-full box-border bg-panel border-l border-primary"
-					style="width: var(--operations-panel-width, 280px); transition: width var(--transition), visibility var(--transition);"
+					class="right-pane flex-shrink-0 overflow-hidden flex h-full box-border bg-panel border-l border-primary panel-width"
 					class:collapsed={rightPaneCollapsed}
 				>
 					<StepConfig
@@ -676,6 +671,15 @@
 <DragPreview />
 
 <style>
+	.analysis-header {
+		z-index: var(--z-header);
+	}
+
+	.panel-width {
+		width: var(--operations-panel-width, 280px);
+		transition: width var(--transition), visibility var(--transition);
+	}
+
 	@keyframes spin {
 		to {
 			transform: rotate(360deg);

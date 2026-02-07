@@ -106,8 +106,7 @@
 				<div class="flex-1">
 					<label
 						for="str-input-start"
-						class="block text-sm font-medium mb-1"
-						style="color: var(--fg-secondary);">Start Index:</label
+						class="block text-sm font-medium mb-1 text-fg-secondary">Start Index:</label
 					>
 					<input
 						id="str-input-start"
@@ -121,8 +120,7 @@
 				<div class="flex-1">
 					<label
 						for="str-input-end"
-						class="block text-sm font-medium mb-1"
-						style="color: var(--fg-secondary);">End Index (optional):</label
+						class="block text-sm font-medium mb-1 text-fg-secondary">End Index (optional):</label
 					>
 					<input
 						id="str-input-end"
@@ -146,8 +144,7 @@
 			<div>
 				<label
 					for="str-input-pattern"
-					class="block text-sm font-medium mb-1"
-					style="color: var(--fg-secondary);">Pattern to find:</label
+					class="block text-sm font-medium mb-1 text-fg-secondary">Pattern to find:</label
 				>
 				<input
 					id="str-input-pattern"
@@ -164,8 +161,7 @@
 			<div>
 				<label
 					for="str-input-replacement"
-					class="block text-sm font-medium mb-1"
-					style="color: var(--fg-secondary);">Replacement:</label
+					class="block text-sm font-medium mb-1 text-fg-secondary">Replacement:</label
 				>
 				<input
 					id="str-input-replacement"
@@ -188,8 +184,7 @@
 			<div>
 				<label
 					for="str-input-extract-pattern"
-					class="block text-sm font-medium mb-1"
-					style="color: var(--fg-secondary);">Regex Pattern:</label
+					class="block text-sm font-medium mb-1 text-fg-secondary">Regex Pattern:</label
 				>
 				<input
 					id="str-input-extract-pattern"
@@ -206,8 +201,7 @@
 			<div>
 				<label
 					for="str-input-group-index"
-					class="block text-sm font-medium mb-1"
-					style="color: var(--fg-secondary);">Group Index:</label
+					class="block text-sm font-medium mb-1 text-fg-secondary">Group Index:</label
 				>
 				<input
 					id="str-input-group-index"
@@ -230,8 +224,7 @@
 			<div>
 				<label
 					for="str-input-delimiter-only"
-					class="block text-sm font-medium mb-1"
-					style="color: var(--fg-secondary);">Delimiter:</label
+					class="block text-sm font-medium mb-1 text-fg-secondary">Delimiter:</label
 				>
 				<input
 					id="str-input-delimiter-only"
@@ -254,8 +247,7 @@
 			<div>
 				<label
 					for="str-input-delimiter"
-					class="block text-sm font-medium mb-1"
-					style="color: var(--fg-secondary);">Delimiter:</label
+					class="block text-sm font-medium mb-1 text-fg-secondary">Delimiter:</label
 				>
 				<input
 					id="str-input-delimiter"
@@ -272,8 +264,7 @@
 			<div>
 				<label
 					for="str-input-part-index"
-					class="block text-sm font-medium mb-1"
-					style="color: var(--fg-secondary);">Part Index:</label
+					class="block text-sm font-medium mb-1 text-fg-secondary">Part Index:</label
 				>
 				<input
 					id="str-input-part-index"

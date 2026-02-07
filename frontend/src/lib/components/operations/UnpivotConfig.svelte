@@ -26,7 +26,7 @@
 			onChange={(val) => (config.index = val)}
 			placeholder="Select index columns..."
 		/>
-		<span class="mt-1 block text-xs" style="color: var(--fg-tertiary);"
+		<span class="mt-1 block text-xs text-fg-tertiary"
 			>Columns to use as identifiers</span
 		>
 	</div>
@@ -39,7 +39,7 @@
 			onChange={(val) => (config.on = val)}
 			placeholder="Select columns to unpivot..."
 		/>
-		<span class="mt-1 block text-xs" style="color: var(--fg-tertiary);"
+		<span class="mt-1 block text-xs text-fg-tertiary"
 			>Columns that will be transformed to rows</span
 		>
 	</div>

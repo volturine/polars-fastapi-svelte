@@ -72,7 +72,7 @@
 </script>
 
 <span
-	class="inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap border font-medium uppercase tracking-wide transition-all {variant ===
+	class="inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap border font-medium uppercase tracking-wide transition-all font-mono {variant ===
 	'minimal'
 		? 'border-none p-0'
 		: ''}"
@@ -81,7 +81,6 @@
 	style:color={styles.color}
 	style:border-color={styles.borderColor}
 	style:background-color={styles.backgroundColor}
-	style="font-family: var(--font-mono);"
 	role="img"
 	aria-label="{config.label} file type"
 	title={config.description}

@@ -75,7 +75,7 @@
 			onChange={(val) => insertColumn(val)}
 			placeholder="Select column to insert..."
 		/>
-		<p class="text-sm mt-2" style="color: var(--fg-tertiary);">
+		<p class="text-sm mt-2 text-fg-tertiary">
 			Select a column to insert it into the expression above.
 		</p>
 	</div>

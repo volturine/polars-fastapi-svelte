@@ -218,19 +218,17 @@
 </script>
 
 <div
-	class="pipeline-canvas flex-1 overflow-y-auto p-6"
-	style="background-color: var(--bg-secondary); min-height: 400px;"
+	class="pipeline-canvas flex-1 overflow-y-auto p-6 bg-secondary min-h-[400px]"
 >
 	{#if steps.length === 0 && !datasource}
 		<div
-			class="empty-state flex min-h-[400px] h-full flex-col items-center justify-center text-center"
-			style="color: var(--fg-muted);"
+			class="empty-state flex min-h-[400px] h-full flex-col items-center justify-center text-center text-fg-muted"
 		>
-			<LayoutGrid size={32} strokeWidth={1.5} class="mb-4" style="color: var(--fg-faint);" />
-			<h3 class="m-0 mb-2 text-base font-semibold" style="color: var(--fg-secondary);">
+			<LayoutGrid size={32} strokeWidth={1.5} class="mb-4 text-fg-faint" />
+			<h3 class="m-0 mb-2 text-base font-semibold text-fg-secondary">
 				No pipeline steps
 			</h3>
-			<p class="m-0 text-sm" style="color: var(--fg-muted);">
+			<p class="m-0 text-sm text-fg-muted">
 				Drag operations from the library and drop here
 			</p>
 			<div

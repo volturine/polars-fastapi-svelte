@@ -78,11 +78,11 @@
 		<div class="flex flex-col gap-1">
 			{#if currentDatasource}
 				<strong>{currentDatasource.name}</strong>
-				<span class="text-xs" style="color: var(--fg-tertiary);"
+				<span class="text-xs text-fg-tertiary"
 					>{schema.columns.length} columns</span
 				>
 			{:else}
-				<span style="color: var(--fg-muted);">No active datasource selected</span>
+				<span class="text-fg-muted">No active datasource selected</span>
 			{/if}
 		</div>
 	</div>
@@ -93,7 +93,7 @@
 		</div>
 
 		{#if datasourceOptions.length === 0}
-			<p class="my-2 italic" style="color: var(--fg-muted);">
+			<p class="my-2 italic text-fg-muted">
 				Add another datasource to enable unions.
 			</p>
 		{:else}
@@ -120,8 +120,7 @@
 			<span>Allow missing columns (fill with nulls)</span>
 		</label>
 		<p
-			class="text-sm leading-relaxed mt-2 p-3"
-			style="color: var(--fg-tertiary); background-color: var(--form-help-bg); border: 1px solid var(--border-primary); border-left: 3px solid var(--info-border);"
+			class="text-sm leading-relaxed mt-2 p-3 help-box"
 		>
 			When enabled, missing columns are created with null values to keep all rows. Disable to
 			require identical schemas.

@@ -100,8 +100,7 @@
 		{#if rightSchema}
 			<div
 				id="join-schema-preview"
-				class="mt-2 p-2"
-				style="background-color: var(--panel-bg);"
+				class="mt-2 p-2 bg-panel"
 				aria-live="polite"
 			>
 				<strong>{rightSchema.columns.length} columns</strong>
@@ -138,8 +137,7 @@
 					id="join-btn-add-column"
 					data-testid="join-add-column-button"
 					type="button"
-					class="btn-add py-1 px-3 border-none cursor-pointer text-sm"
-					style="background-color: var(--primary-bg); color: var(--primary-fg);"
+					class="btn-add py-1 px-3 border-none cursor-pointer text-sm bg-primary-action text-primary-fg"
 					onclick={addJoinColumn}
 					aria-label="Add join column pair"
 				>
@@ -155,16 +153,14 @@
 
 			{#each config.join_columns ?? [] as joinCol, _index (joinCol.id)}
 				<div
-					class="flex gap-2 items-end mb-3 p-3"
-					style="background-color: var(--panel-bg);"
+					class="flex gap-2 items-end mb-3 p-3 bg-panel"
 					role="group"
 					aria-label={`Join column pair ${_index + 1}`}
 				>
 					<div class="flex-1">
 						<label
 							for={`join-left-${joinCol.id}`}
-							class="block text-xs mb-1"
-							style="color: var(--fg-muted);">Left Column</label
+							class="block text-xs mb-1 text-fg-muted">Left Column</label
 						>
 						<ColumnDropdown
 							{schema}
@@ -176,8 +172,7 @@
 					<div class="flex-1">
 						<label
 							for={`join-right-${joinCol.id}`}
-							class="block text-xs mb-1"
-							style="color: var(--fg-muted);">Right Column</label
+							class="block text-xs mb-1 text-fg-muted">Right Column</label
 						>
 						<ColumnDropdown
 							schema={{ columns: rightColumns, row_count: rightSchema?.row_count ?? 0 }}
@@ -190,8 +185,7 @@
 						id={`join-btn-remove-${_index}`}
 						data-testid={`join-remove-button-${_index}`}
 						type="button"
-						class="btn-remove p-2 bg-[var(--color-transparent)] cursor-pointer"
-						style="color: var(--error-fg); border: 1px solid var(--error-border);"
+						class="btn-remove p-2 bg-[var(--color-transparent)] cursor-pointer text-error-fg border border-error"
 						onclick={() => removeJoinColumn(joinCol.id)}
 						aria-label={`Remove join column pair ${_index + 1}`}
 					>

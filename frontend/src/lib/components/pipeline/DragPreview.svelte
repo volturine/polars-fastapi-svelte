@@ -54,11 +54,10 @@
 			: ''}"
 	>
 		<span class="text-base">{info.icon}</span>
-		<span class="font-semibold" style="color: var(--fg-primary);">{info.label}</span>
+		<span class="font-semibold text-fg-primary">{info.label}</span>
 		{#if isReorder}
 			<span
-				class="rounded-sm px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide"
-				style="background: var(--warning-fg); color: var(--warning-contrast);">Move</span
+				class="rounded-sm px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide bg-warning-fg text-warning-contrast">Move</span
 			>
 		{/if}
 	</div>

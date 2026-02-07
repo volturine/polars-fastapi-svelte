@@ -48,12 +48,10 @@
 		class="lock-btn acquire flex items-center gap-2 border border-[var(--color-transparent)] px-3 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed {isLocked
 			? 'cursor-not-allowed'
 			: 'cursor-pointer hover:opacity-90'}"
+		class:locked={isLocked}
 		onclick={handleAcquire}
 		disabled={isLocked}
 		type="button"
-		style="background: {isLocked ? 'var(--bg-tertiary)' : 'var(--accent-primary)'}; color: {isLocked
-			? 'var(--fg-muted)'
-			: 'var(--warning-contrast)'};"
 	>
 		<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
 			{#if isLocked}
@@ -73,5 +71,15 @@
 <style>
 	.lock-btn.release:hover {
 		background: var(--warning-border);
+	}
+
+	.lock-btn.acquire {
+		background: var(--accent-primary);
+		color: var(--warning-contrast);
+	}
+
+	.lock-btn.acquire.locked {
+		background: var(--bg-tertiary);
+		color: var(--fg-muted);
 	}
 </style>

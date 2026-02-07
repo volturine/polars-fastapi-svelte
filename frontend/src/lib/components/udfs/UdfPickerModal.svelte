@@ -30,7 +30,7 @@
 			<input type="text" placeholder="Search UDFs..." bind:value={search} />
 			<div class="flex flex-col gap-2 max-h-[360px] overflow-auto">
 				{#if filtered.length === 0}
-					<p class="m-0" style="color: var(--fg-muted);">No matching UDFs.</p>
+					<p class="m-0 text-fg-muted">No matching UDFs.</p>
 				{:else}
 					{#each filtered as udf (udf.id)}
 						<button class="row" type="button" onclick={() => onSelect(udf)}>
@@ -41,18 +41,18 @@
 										{#each udf.signature.inputs as input, i (i)}
 											<ColumnTypeBadge columnType={input.dtype} size="xs" showIcon={false} />
 											{#if i < udf.signature.inputs.length - 1}
-												<span class="text-xs mx-0.5" style="color: var(--fg-muted);">,</span>
+												<span class="text-xs mx-0.5 text-fg-muted">,</span>
 											{/if}
 										{/each}
 									{:else}
-										<span class="text-xs uppercase tracking-wide" style="color: var(--fg-muted);"
+										<span class="text-xs uppercase tracking-wide text-fg-muted"
 											>No inputs</span
 										>
 									{/if}
 								</div>
 							</div>
 							{#if udf.description}
-								<p class="mt-2 mb-0 text-sm" style="color: var(--fg-secondary);">
+								<p class="mt-2 mb-0 text-sm text-fg-secondary">
 									{udf.description}
 								</p>
 							{/if}

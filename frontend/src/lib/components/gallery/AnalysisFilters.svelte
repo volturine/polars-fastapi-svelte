@@ -29,9 +29,8 @@
 <div class="mb-7 flex flex-wrap items-center gap-4 max-sm:flex-col max-sm:items-stretch">
 	<div class="relative min-w-[220px] max-w-[420px] flex-1 max-sm:max-w-none">
 		<Search
-			class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+			class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted"
 			size={16}
-			style="color: var(--fg-muted);"
 		/>
 		<input
 			type="text"
@@ -42,10 +41,9 @@
 		/>
 		{#if searchQuery}
 			<button
-				class="clear-btn absolute right-2 top-1/2 flex -translate-y-1/2 cursor-pointer items-center justify-center border-none bg-[var(--color-transparent)] p-1 transition-all"
+				class="clear-btn absolute right-2 top-1/2 flex -translate-y-1/2 cursor-pointer items-center justify-center border-none bg-[var(--color-transparent)] p-1 transition-all text-fg-muted"
 				onclick={() => onSearch('')}
 				aria-label="Clear search"
-				style="color: var(--fg-muted);"
 			>
 				<X size={14} />
 			</button>
@@ -55,8 +53,7 @@
 	<div class="flex items-center gap-2 max-sm:justify-between">
 		<label
 			for="sort-select"
-			class="whitespace-nowrap text-xs font-medium"
-			style="color: var(--fg-muted);"
+			class="whitespace-nowrap text-xs font-medium text-fg-muted"
 		>
 			Sort:
 		</label>

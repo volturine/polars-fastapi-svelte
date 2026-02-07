@@ -11,7 +11,7 @@
 </script>
 
 <div class="overflow-hidden border bg-panel border-primary">
-	<div class="px-5 py-4 border-b border-primary" style="background: var(--panel-header-bg);">
+	<div class="px-5 py-4 border-b border-primary bg-panel-header">
 		<h3 class="m-0">Summary Statistics</h3>
 	</div>
 

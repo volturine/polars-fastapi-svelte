@@ -84,8 +84,7 @@
 		{#if dateColumns.length === 0}
 			<p
 				id="ts-no-columns-warning"
-				class="text-sm mt-2 mb-0"
-				style="color: var(--error-fg);"
+				class="text-sm mt-2 mb-0 text-error-fg"
 				role="alert"
 			>
 				No date/time columns detected in schema
@@ -140,7 +139,7 @@
 					>
 				{/each}
 			</select>
-			<p class="text-sm mt-2 mb-0" style="color: var(--fg-muted);">
+			<p class="text-sm mt-2 mb-0 text-fg-muted">
 				Convert datetime to integer timestamp in the specified time unit.
 			</p>
 		</div>
@@ -149,7 +148,7 @@
 			<h4 id="ts-period-heading">Time Period</h4>
 			<div class="flex gap-2">
 				<div class="flex-1">
-					<label for="ts-input-value" class="block text-sm mb-1" style="color: var(--fg-secondary);"
+					<label for="ts-input-value" class="block text-sm mb-1 text-fg-secondary"
 						>Value:</label
 					>
 					<input
@@ -163,7 +162,7 @@
 					/>
 				</div>
 				<div class="flex-1">
-					<label for="ts-select-unit" class="block text-sm mb-1" style="color: var(--fg-secondary);"
+					<label for="ts-select-unit" class="block text-sm mb-1 text-fg-secondary"
 						>Unit:</label
 					>
 					<select

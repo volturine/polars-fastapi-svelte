@@ -41,17 +41,15 @@
 </script>
 
 <div
-	class="analysis-card group relative cursor-pointer overflow-hidden transition-all"
+	class="analysis-card group relative cursor-pointer overflow-hidden transition-all bg-primary"
 	class:selected
 	onclick={handleClick}
 	onkeypress={handleKeyPress}
 	role="button"
 	tabindex="0"
-	style="background-color: var(--bg-primary);"
 >
 	<div
-		class="relative flex aspect-video w-full items-center justify-center"
-		style="background-color: var(--bg-tertiary);"
+		class="relative flex aspect-video w-full items-center justify-center bg-tertiary"
 	>
 		<input
 			type="checkbox"
@@ -67,7 +65,7 @@
 		{#if analysis.thumbnail}
 			<img src={analysis.thumbnail} alt={analysis.name} class="h-full w-full object-cover" />
 		{:else}
-			<ChartBar size={32} style="color: var(--fg-faint);" />
+			<ChartBar size={32} class="text-fg-faint" />
 		{/if}
 	</div>
 
@@ -83,7 +81,7 @@
 			/>
 		</div>
 
-		<div class="text-xs" style="color: var(--fg-muted);">
+		<div class="text-xs text-fg-muted">
 			<span>{formatDate(analysis.updated_at)}</span>
 		</div>
 	</div>

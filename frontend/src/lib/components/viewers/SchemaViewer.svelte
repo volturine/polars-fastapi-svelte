@@ -11,8 +11,7 @@
 
 <div class="overflow-hidden border bg-panel border-primary">
 	<div
-		class="flex justify-between items-center px-5 py-4 border-b border-primary"
-		style="background: var(--panel-header-bg);"
+		class="flex justify-between items-center px-5 py-4 border-b border-primary bg-panel-header"
 	>
 		<h3 class="m-0 text-lg font-semibold text-fg-primary">Schema</h3>
 		{#if schema.row_count !== null}
@@ -22,8 +21,7 @@
 
 	<div class="max-h-[500px] overflow-y-auto">
 		<div
-			class="grid gap-4 px-5 py-3 border-b text-xs font-semibold uppercase tracking-wider border-primary text-fg-muted"
-			style="grid-template-columns: 2fr 1.5fr 1fr; background: var(--table-header-bg);"
+			class="schema-header-grid grid gap-4 px-5 py-3 border-b text-xs font-semibold uppercase tracking-wider border-primary text-fg-muted bg-table-header"
 		>
 			<div>Column</div>
 			<div>Type</div>
@@ -32,8 +30,7 @@
 
 		{#each schema.columns as column (column.name)}
 			<div
-				class="grid gap-4 px-5 py-3.5 border-b transition-colors last:border-b-0 border-primary hover:bg-hover"
-				style="grid-template-columns: 2fr 1.5fr 1fr;"
+				class="schema-header-grid grid gap-4 px-5 py-3.5 border-b transition-colors last:border-b-0 border-primary hover:bg-hover"
 			>
 				<div class="flex items-center gap-2 font-medium text-fg-primary">
 					<span class="font-mono text-sm">{column.name}</span>
@@ -52,3 +49,9 @@
 		{/each}
 	</div>
 </div>
+
+<style>
+	.schema-header-grid {
+		grid-template-columns: 2fr 1.5fr 1fr;
+	}
+</style>

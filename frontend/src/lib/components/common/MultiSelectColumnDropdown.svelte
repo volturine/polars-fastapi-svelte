@@ -114,20 +114,18 @@
 			<div class="column-options">
 				{#each filteredColumns as column (column.name)}
 					<label
-						class="multi-select-option flex cursor-pointer items-center gap-2 px-3 py-2 transition-colors"
-						style="color: var(--fg-primary);"
+						class="multi-select-option flex cursor-pointer items-center gap-2 px-3 py-2 transition-colors text-fg-primary"
 					>
 						<input
 							type="checkbox"
 							checked={selectedSet.has(column.name)}
 							onchange={() => toggleColumn(column.name)}
 							onclick={(e) => e.stopPropagation()}
-							class="m-0 cursor-pointer"
-							style="accent-color: var(--accent-primary);"
+							class="m-0 cursor-pointer accent-primary"
 						/>
 						<span class="flex flex-1 items-center justify-start gap-2">
 							<ColumnTypeBadge columnType={column.dtype} size="xs" />
-							<span class="text-left text-sm" style="color: var(--fg-primary);">{column.name}</span>
+							<span class="text-left text-sm text-fg-primary">{column.name}</span>
 						</span>
 					</label>
 				{:else}

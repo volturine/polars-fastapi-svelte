@@ -62,7 +62,7 @@
 			placeholder="e.g., my_data"
 			aria-describedby="export-filename-hint"
 		/>
-		<span id="export-filename-hint" class="hint mt-1 block text-xs" style="color: var(--fg-muted);"
+		<span id="export-filename-hint" class="hint mt-1 block text-xs text-fg-muted"
 			>Extension will be added automatically</span
 		>
 	</div>
@@ -97,8 +97,8 @@
 			/>
 			<span
 				id="export-tablename-hint"
-				class="hint mt-1 block text-xs"
-				style="color: var(--fg-muted);">Name of the table in the DuckDB database</span
+				class="hint mt-1 block text-xs text-fg-muted"
+				>Name of the table in the DuckDB database</span
 			>
 		</div>
 	{/if}
@@ -116,8 +116,7 @@
 		</select>
 		<span
 			id="export-destination-hint"
-			class="hint mt-1 block text-xs"
-			style="color: var(--fg-muted);"
+			class="hint mt-1 block text-xs text-fg-muted"
 			aria-live="polite"
 		>
 			{#if config.destination === 'download'}

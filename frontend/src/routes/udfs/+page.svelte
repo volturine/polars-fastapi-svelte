@@ -235,7 +235,7 @@
 					bind:value={importText}
 					class="font-mono"
 				></textarea>
-				<label class="flex items-center gap-2" style="color: var(--fg-secondary);">
+				<label class="flex items-center gap-2 text-fg-secondary">
 					<input type="checkbox" bind:checked={overwriteImport} />
 					Overwrite existing by name
 				</label>

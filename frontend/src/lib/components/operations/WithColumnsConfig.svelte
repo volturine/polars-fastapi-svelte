@@ -217,7 +217,7 @@
 </script>
 
 <div class="config-panel" role="region" aria-label="With columns configuration">
-	<h3 class="m-0 mb-4 text-sm uppercase tracking-wider" style="color: var(--fg-muted);">
+	<h3 class="m-0 mb-4 text-sm uppercase tracking-wider text-fg-muted">
 		With Columns
 	</h3>
 
@@ -242,11 +242,11 @@
 		{:else}
 			<div class="flex flex-col gap-3">
 				<div class="flex gap-3 items-center">
-					<label class="inline-flex items-center gap-2 text-sm" style="color: var(--fg-secondary);">
+					<label class="inline-flex items-center gap-2 text-sm text-fg-secondary">
 						<input type="radio" bind:group={useLibrary} value={false} />
 						Inline UDF
 					</label>
-					<label class="inline-flex items-center gap-2 text-sm" style="color: var(--fg-secondary);">
+					<label class="inline-flex items-center gap-2 text-sm text-fg-secondary">
 						<input type="radio" bind:group={useLibrary} value={true} />
 						Library UDF
 					</label>
@@ -259,14 +259,14 @@
 						</button>
 						{#if exprUdfId}
 							{@const selectedUdf = (udfQuery.data ?? []).find((item) => item.id === exprUdfId)}
-							<span class="text-xs" style="color: var(--fg-muted);"
+							<span class="text-xs text-fg-muted"
 								>Selected: {selectedUdf?.name ?? exprUdfId}</span
 							>
 						{:else}
-							<span class="text-xs" style="color: var(--fg-muted);">No UDF selected</span>
+							<span class="text-xs text-fg-muted">No UDF selected</span>
 						{/if}
 					</div>
-					<span class="text-xs uppercase tracking-wider" style="color: var(--fg-muted);"
+					<span class="text-xs uppercase tracking-wider text-fg-muted"
 						>Input columns</span
 					>
 					<MultiSelectColumnDropdown
@@ -276,7 +276,7 @@
 						placeholder="Select input columns..."
 					/>
 				{:else}
-					<span class="text-xs uppercase tracking-wider" style="color: var(--fg-muted);"
+					<span class="text-xs uppercase tracking-wider text-fg-muted"
 						>Input columns</span
 					>
 					<MultiSelectColumnDropdown
@@ -287,22 +287,20 @@
 					/>
 
 					<div class="flex items-center justify-between">
-						<span class="text-xs uppercase tracking-wider" style="color: var(--fg-muted);"
+						<span class="text-xs uppercase tracking-wider text-fg-muted"
 							>Function</span
 						>
 						<button type="button" class="btn-ghost btn-sm" onclick={openEditor}>Expand</button>
 					</div>
 					<textarea
-						class="resize-y min-h-[100px] text-sm"
-						style="font-family: var(--font-mono);"
+						class="resize-y min-h-[100px] text-sm font-mono"
 						rows="5"
 						placeholder="def udf(*args):&#10;    return ..."
 						bind:value={exprCode}
 						oninput={() => (codeEdited = true)}
 					></textarea>
 					<label
-						class="inline-flex items-center gap-2 text-sm mt-2"
-						style="color: var(--fg-secondary);"
+						class="inline-flex items-center gap-2 text-sm mt-2 text-fg-secondary"
 					>
 						<input type="checkbox" bind:checked={saveToLibrary} />
 						Save to UDF Library
@@ -342,11 +340,10 @@
 
 	{#if (config.expressions ?? []).length > 0}
 		<div
-			class="flex flex-col gap-2 p-3"
-			style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary);"
+			class="flex flex-col gap-2 p-3 save-box"
 			role="list"
 		>
-			<h4 class="m-0 mb-3 text-xs uppercase tracking-wider" style="color: var(--fg-muted);">
+			<h4 class="m-0 mb-3 text-xs uppercase tracking-wider text-fg-muted">
 				Columns
 			</h4>
 			{#each config.expressions ?? [] as expr, index (index)}
@@ -357,11 +354,10 @@
 				>
 					<div class="flex items-center gap-3 min-w-0">
 						<span
-							class="font-semibold max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap"
-							style="color: var(--fg-primary);"
+							class="font-semibold max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap text-fg-primary"
 							title={expr.name}>{expr.name}</span
 						>
-						<span class="text-xs" style="color: var(--fg-muted);">
+						<span class="text-xs text-fg-muted">
 							{expr.type === 'column'
 								? `← ${expr.column ?? ''}`
 								: expr.type === 'udf'
@@ -372,8 +368,7 @@
 					<div class="flex gap-1 shrink-0">
 						<button
 							type="button"
-							class="w-6 h-6 p-0 inline-flex items-center justify-center bg-[var(--color-transparent)] cursor-pointer text-base leading-none"
-							style="color: var(--fg-muted); border: 1px solid var(--color-transparent);"
+							class="w-6 h-6 p-0 inline-flex items-center justify-center bg-[var(--color-transparent)] cursor-pointer text-base leading-none text-fg-muted border border-transparent"
 							onclick={() => editExpression(index)}
 							aria-label="Edit"
 						>
@@ -391,8 +386,7 @@
 						</button>
 						<button
 							type="button"
-							class="btn-remove w-6 h-6 p-0 inline-flex items-center justify-center bg-[var(--color-transparent)] cursor-pointer text-base leading-none"
-							style="color: var(--fg-muted); border: 1px solid var(--color-transparent);"
+							class="btn-remove w-6 h-6 p-0 inline-flex items-center justify-center bg-[var(--color-transparent)] cursor-pointer text-base leading-none text-fg-muted border border-transparent"
 							onclick={() => removeExpression(index)}
 							aria-label="Remove">×</button
 						>
@@ -414,7 +408,7 @@
 		</div>
 		<div class="modal-body">
 			<CodeEditor bind:value={exprCode} height="400px" onEdit={() => (codeEdited = true)} />
-			<p class="text-sm m-0" style="color: var(--fg-muted);">
+			<p class="text-sm m-0 text-fg-muted">
 				Define a function named <code>udf</code> that returns a value per row.
 			</p>
 		</div>

@@ -203,8 +203,7 @@
 		</div>
 	{:else if headerGroups.length > 0 && data}
 		<div
-			class="flex justify-between items-center px-4 py-3 text-xs border-b text-fg-tertiary border-primary"
-			style="background: var(--panel-header-bg);"
+			class="flex justify-between items-center px-4 py-3 text-xs border-b text-fg-tertiary border-primary bg-panel-header"
 		>
 			<span>
 				Showing {startRow.toLocaleString()}-{endRow.toLocaleString()} of {data.total_rows.toLocaleString()}
@@ -214,7 +213,7 @@
 
 		<div class="overflow-x-auto overflow-y-auto max-h-[400px]">
 			<table class="w-full border-collapse">
-				<thead class="sticky top-0 z-10" style="background: var(--table-header-bg);">
+				<thead class="sticky top-0 z-10 bg-table-header">
 					{#each headerGroups as headerGroup (headerGroup.id)}
 						<tr>
 							{#each headerGroup.headers as header (header.id)}
@@ -268,8 +267,7 @@
 
 		{#if totalPages > 1}
 			<div
-				class="flex justify-between items-center px-4 py-3 border-t border-primary"
-				style="background: var(--panel-header-bg);"
+				class="flex justify-between items-center px-4 py-3 border-t border-primary bg-panel-header"
 			>
 				<button
 					class="px-4 py-2 border cursor-pointer transition-all border-primary bg-panel hover:bg-hover hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed"

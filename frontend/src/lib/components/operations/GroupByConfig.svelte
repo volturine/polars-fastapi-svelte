@@ -123,8 +123,7 @@
 				id="{uid}-agg-add"
 				data-testid="agg-add-button"
 				type="button"
-				class="add-btn px-4 py-2 border-none cursor-pointer"
-				style="background-color: var(--accent-primary); color: var(--bg-primary);"
+				class="add-btn px-4 py-2 border-none cursor-pointer accent-btn"
 				onclick={addAggregation}
 				disabled={!newAggregation.column}
 				aria-label="Add aggregation"
@@ -142,7 +141,7 @@
 			>
 				{#each safeAggregations as agg, i (i)}
 					<div class="flex justify-between items-center p-3 item-row" role="listitem">
-						<span class="text-sm" style="font-family: var(--font-mono); color: var(--fg-primary);">
+						<span class="text-sm font-mono text-fg-primary">
 							{agg.function}({agg.column}) as {agg.alias}
 						</span>
 						<button

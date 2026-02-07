@@ -46,15 +46,14 @@
 </script>
 
 <div class="config-panel" role="region" aria-label="Rename configuration">
-	<h3 class="m-0 mb-4 text-sm uppercase tracking-wider" style="color: var(--fg-muted);">
+	<h3 class="m-0 mb-4 text-sm uppercase tracking-wider text-fg-muted">
 		Rename Configuration
 	</h3>
 
 	<div class="mb-5" role="group" aria-labelledby="rename-columns-heading">
 		<h4
 			id="rename-columns-heading"
-			class="m-0 mb-3 text-xs uppercase tracking-wider"
-			style="color: var(--fg-muted);"
+			class="m-0 mb-3 text-xs uppercase tracking-wider text-fg-muted"
 		>
 			Select Column to Rename
 		</h4>
@@ -101,33 +100,28 @@
 	{#if mappings.length > 0}
 		<div
 			id="rename-mappings-list"
-			class="flex flex-col gap-2 p-3 mb-4"
-			style="background-color: var(--panel-muted-bg); border: 1px solid var(--border-primary);"
+			class="flex flex-col gap-2 p-3 mb-4 bg-panel-muted border border-primary"
 			role="list"
 			aria-label="Configured renames"
 		>
-			<h4 class="mt-0 mb-2 text-xs uppercase tracking-wider" style="color: var(--fg-muted);">
+			<h4 class="mt-0 mb-2 text-xs uppercase tracking-wider text-fg-muted">
 				Renames
 			</h4>
 			{#each mappings as mapping (mapping.oldName)}
 				<div
-					class="flex justify-between items-center py-2 px-3"
-					style="background-color: var(--panel-bg); border: 1px solid var(--border-primary);"
+					class="flex justify-between items-center py-2 px-3 item-row"
 					role="listitem"
 				>
 					<div
-						class="flex items-center gap-2 min-w-0 text-sm"
-						style="font-family: var(--font-mono);"
+						class="flex items-center gap-2 min-w-0 text-sm font-mono"
 					>
 						<span
-							class="font-semibold max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap"
-							style="color: var(--fg-primary);"
+							class="font-semibold max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap text-fg-primary"
 							title={mapping.oldName}>{mapping.oldName}</span
 						>
-						<span style="color: var(--fg-muted);" aria-hidden="true">→</span>
+						<span class="text-fg-muted" aria-hidden="true">→</span>
 						<span
-							class="font-semibold max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap"
-							style="color: var(--accent-primary);"
+							class="font-semibold max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap text-accent-primary"
 							title={mapping.newName}>{mapping.newName}</span
 						>
 					</div>
@@ -135,8 +129,7 @@
 						id={`rename-btn-remove-${mapping.oldName}`}
 						data-testid={`rename-remove-button-${mapping.oldName}`}
 						type="button"
-						class="remove-btn w-7 h-7 inline-flex items-center justify-center cursor-pointer text-lg leading-none"
-						style="background-color: var(--color-transparent); color: var(--fg-muted); border: 1px solid var(--color-transparent);"
+						class="remove-btn w-7 h-7 inline-flex items-center justify-center cursor-pointer text-lg leading-none bg-transparent text-fg-muted border border-transparent"
 						onclick={() => removeMapping(mapping.oldName)}
 						aria-label={`Remove rename: ${mapping.oldName} to ${mapping.newName}`}
 					>

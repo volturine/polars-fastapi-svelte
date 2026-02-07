@@ -95,9 +95,7 @@
 				placeholder="e.g., my_data"
 				aria-describedby="export-tablename-hint"
 			/>
-			<span
-				id="export-tablename-hint"
-				class="hint mt-1 block text-xs text-fg-muted"
+			<span id="export-tablename-hint" class="hint mt-1 block text-xs text-fg-muted"
 				>Name of the table in the DuckDB database</span
 			>
 		</div>

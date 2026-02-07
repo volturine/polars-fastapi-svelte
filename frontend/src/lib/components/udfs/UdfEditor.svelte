@@ -130,19 +130,17 @@
 	const canSave = $derived(name.trim().length > 0 && code.trim().length > 0);
 </script>
 
-<div class="max-w-[960px] mx-auto p-6 h-full overflow-auto">
+<div class="max-w-240 mx-auto p-6 h-full overflow-auto">
 	<header
 		class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mb-6 pb-5 border-b border-primary"
 	>
 		<div class="flex items-center gap-3">
-			<button class="btn-back" onclick={handleBack}>
+			<button class="btn-back" onclick={handleBack} type="button">
 				<ArrowLeft size={18} />
 			</button>
 			<div>
 				<h1>{mode === 'create' ? 'New UDF' : 'Edit UDF'}</h1>
-				<p class="m-0 text-fg-tertiary">
-					Reusable Python transforms for your pipelines
-				</p>
+				<p class="m-0 text-fg-tertiary">Reusable Python transforms for your pipelines</p>
 			</div>
 		</div>
 		<button class="btn-primary" onclick={() => saveMutation.mutate()} disabled={!canSave || saving}>
@@ -161,22 +159,16 @@
 					<input id="udf-name" type="text" bind:value={name} placeholder="UDF name" />
 				</div>
 				<div class="flex flex-col gap-2">
-					<label for="udf-description" class="text-sm text-fg-secondary"
-						>Description</label
-					>
+					<label for="udf-description" class="text-sm text-fg-secondary">Description</label>
 					<textarea id="udf-description" rows="3" bind:value={description}></textarea>
 				</div>
 				<div class="flex flex-col gap-2">
-					<label for="udf-tags" class="text-sm text-fg-secondary"
-						>Tags (comma-separated)</label
-					>
+					<label for="udf-tags" class="text-sm text-fg-secondary">Tags (comma-separated)</label>
 					<input id="udf-tags" type="text" bind:value={tags} placeholder="math, text, date" />
 				</div>
 			</div>
 
-			<div
-				class="flex flex-col gap-3 p-4 border bg-primary border-primary"
-			>
+			<div class="flex flex-col gap-3 p-4 border bg-primary border-primary">
 				<UdfSignatureBuilder {inputs} onChange={updateInputs} />
 				<div class="flex flex-col gap-2">
 					<label for="udf-output">Output dtype</label>
@@ -188,14 +180,10 @@
 				</div>
 			</div>
 
-			<div
-				class="flex flex-col gap-3 p-4 border bg-primary border-primary"
-			>
+			<div class="flex flex-col gap-3 p-4 border bg-primary border-primary">
 				<div class="flex justify-between items-center">
 					<h4 class="m-0 text-sm text-fg-secondary">Code</h4>
-					<span class="text-xs text-fg-muted"
-						>Define a function named <code>udf</code></span
-					>
+					<span class="text-xs text-fg-muted">Define a function named <code>udf</code></span>
 				</div>
 				<CodeEditor bind:value={code} height="360px" />
 			</div>
@@ -206,22 +194,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	.btn-back {
-		width: 36px;
-		height: 36px;
-		padding: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background-color: var(--bg-tertiary);
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		color: var(--fg-secondary);
-	}
-	.btn-back:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-primary);
-	}
-</style>

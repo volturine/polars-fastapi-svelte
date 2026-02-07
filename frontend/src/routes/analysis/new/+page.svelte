@@ -64,7 +64,7 @@
 	}
 </script>
 
-<div class="mx-auto flex max-w-[720px] flex-col gap-6 px-6 py-7">
+<div class="mx-auto flex max-w-180 flex-col gap-6 px-6 py-7">
 	<div class="mb-8">
 		<h1 class="m-0 mb-6 text-2xl font-semibold">New Analysis</h1>
 		<div class="flex items-center gap-2">
@@ -81,7 +81,7 @@
 				<span class="text-sm text-fg-muted">Details</span>
 			</div>
 			<div
-				class="step-line min-w-[40px] flex-1 h-px bg-border-primary"
+				class="step-line min-w-10 flex-1 h-px bg-border-primary"
 				class:completed={step > 1}
 			></div>
 			<div
@@ -97,7 +97,7 @@
 				<span class="text-sm text-fg-muted">Data Source</span>
 			</div>
 			<div
-				class="step-line min-w-[40px] flex-1 h-px bg-border-primary"
+				class="step-line min-w-10 flex-1 h-px bg-border-primary"
 				class:completed={step > 2}
 			></div>
 			<div
@@ -141,7 +141,7 @@
 						bind:value={description}
 						placeholder="Describe what this analysis does..."
 						rows="4"
-						class="min-h-[100px] w-full resize-y border border-primary bg-bg-primary p-3 text-sm focus:border-info"
+						class="min-h-25 w-full resize-y border border-primary bg-bg-primary p-3 text-sm focus:border-info"
 					></textarea>
 				</div>
 			</div>
@@ -187,12 +187,12 @@
 					</h3>
 					<dl class="m-0">
 						<div class="mb-2 flex gap-4">
-							<dt class="w-[100px] shrink-0 text-fg-muted">Name</dt>
+							<dt class="w-25 shrink-0 text-fg-muted">Name</dt>
 							<dd class="m-0">{name}</dd>
 						</div>
 						{#if description}
 							<div class="mb-2 flex gap-4">
-								<dt class="w-[100px] shrink-0 text-fg-muted">Description</dt>
+								<dt class="w-25 shrink-0 text-fg-muted">Description</dt>
 								<dd class="m-0">{description}</dd>
 							</div>
 						{/if}
@@ -262,26 +262,3 @@
 		{/if}
 	</div>
 </div>
-
-<style>
-	.step.active .step-number {
-		border-color: var(--info-border);
-		background-color: var(--info-border);
-		color: var(--bg-primary);
-	}
-
-	.step.active span:not(.step-number) {
-		color: var(--fg-primary);
-		font-weight: var(--font-medium);
-	}
-
-	.step.completed .step-number {
-		border-color: var(--info-border);
-		background-color: var(--success-bg);
-		color: var(--success-fg);
-	}
-
-	.step-line.completed {
-		background-color: var(--info-border);
-	}
-</style>

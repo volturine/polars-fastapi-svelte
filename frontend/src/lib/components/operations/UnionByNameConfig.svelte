@@ -78,9 +78,7 @@
 		<div class="flex flex-col gap-1">
 			{#if currentDatasource}
 				<strong>{currentDatasource.name}</strong>
-				<span class="text-xs text-fg-tertiary"
-					>{schema.columns.length} columns</span
-				>
+				<span class="text-xs text-fg-tertiary">{schema.columns.length} columns</span>
 			{:else}
 				<span class="text-fg-muted">No active datasource selected</span>
 			{/if}
@@ -93,9 +91,7 @@
 		</div>
 
 		{#if datasourceOptions.length === 0}
-			<p class="my-2 italic text-fg-muted">
-				Add another datasource to enable unions.
-			</p>
+			<p class="my-2 italic text-fg-muted">Add another datasource to enable unions.</p>
 		{:else}
 			<DatasourcePicker
 				datasources={datasourceOptions}
@@ -119,9 +115,7 @@
 			<input id="allow-missing" type="checkbox" bind:checked={config.allow_missing} />
 			<span>Allow missing columns (fill with nulls)</span>
 		</label>
-		<p
-			class="text-sm leading-relaxed mt-2 p-3 help-box"
-		>
+		<p class="text-sm leading-relaxed mt-2 p-3 help-box">
 			When enabled, missing columns are created with null values to keep all rows. Disable to
 			require identical schemas.
 		</p>

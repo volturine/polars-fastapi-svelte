@@ -46,12 +46,31 @@
 			aria-label="Syntax help"
 		>
 			<strong>Polars Expression Syntax:</strong><br />
-			Use <code>pl.col("column")</code> to reference columns.<br />
+			Use
+			<code class="rounded-[3px] bg-tertiary px-2 py-1 font-mono text-[0.85em] text-accent-primary"
+				>pl.col("column")</code
+			>
+			to reference columns.<br />
 			Examples:<br />
-			• <code>pl.col("price") * 1.2</code> - Multiply<br />
-			• <code>pl.col("value").cast(pl.Float64)</code> - Cast type<br />
-			• <code>pl.col("name").str.to_uppercase()</code> - String method<br />
-			• <code>pl.col("date").dt.year()</code> - Date component
+			•
+			<code class="rounded-[3px] bg-tertiary px-2 py-1 font-mono text-[0.85em] text-accent-primary"
+				>pl.col("price") * 1.2</code
+			>
+			- Multiply<br />
+			•
+			<code class="rounded-[3px] bg-tertiary px-2 py-1 font-mono text-[0.85em] text-accent-primary"
+				>pl.col("value").cast(pl.Float64)</code
+			>
+			- Cast type<br />
+			•
+			<code class="rounded-[3px] bg-tertiary px-2 py-1 font-mono text-[0.85em] text-accent-primary"
+				>pl.col("name").str.to_uppercase()</code
+			>
+			- String method<br />
+			•
+			<code class="rounded-[3px] bg-tertiary px-2 py-1 font-mono text-[0.85em] text-accent-primary"
+				>pl.col("date").dt.year()</code
+			> - Date component
 		</div>
 	</div>
 
@@ -80,14 +99,3 @@
 		</p>
 	</div>
 </div>
-
-<style>
-	.help-text code {
-		background-color: var(--bg-tertiary);
-		padding: var(--space-1) var(--space-2);
-		border-radius: 3px;
-		font-family: var(--font-mono);
-		font-size: 0.85em;
-		color: var(--accent-primary);
-	}
-</style>

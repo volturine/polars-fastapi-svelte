@@ -91,7 +91,7 @@
 				<div class="flex gap-2 border-b p-2 bg-secondary border-primary">
 					<button
 						type="button"
-						class="select-action-btn flex-1 cursor-pointer border bg-[var(--color-transparent)] px-2 py-1 text-xs transition-all border-primary text-fg-secondary"
+						class="select-action-btn flex-1 cursor-pointer border bg-transparent px-2 py-1 text-xs transition-all border-primary text-fg-secondary"
 						onclick={(e) => {
 							e.stopPropagation();
 							selectAll();
@@ -101,7 +101,7 @@
 					</button>
 					<button
 						type="button"
-						class="select-action-btn flex-1 cursor-pointer border bg-[var(--color-transparent)] px-2 py-1 text-xs transition-all border-primary text-fg-secondary"
+						class="select-action-btn flex-1 cursor-pointer border bg-transparent px-2 py-1 text-xs transition-all border-primary text-fg-secondary"
 						onclick={(e) => {
 							e.stopPropagation();
 							deselectAll();
@@ -137,19 +137,7 @@
 </div>
 
 {#if selectedCount > 0}
-	<div class="mt-2 max-h-[60px] overflow-y-auto border p-2 text-xs select-mono">
+	<div class="mt-2 max-h-15 overflow-y-auto border p-2 text-xs select-mono">
 		{value.join(', ')}
 	</div>
 {/if}
-
-<style>
-	.select-action-btn:hover {
-		background-color: var(--bg-hover);
-		border-color: var(--info-border);
-		color: var(--info-border);
-	}
-
-	.multi-select-option:hover {
-		background-color: var(--bg-hover);
-	}
-</style>

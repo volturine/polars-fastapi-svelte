@@ -217,9 +217,7 @@
 </script>
 
 <div class="config-panel" role="region" aria-label="With columns configuration">
-	<h3 class="m-0 mb-4 text-sm uppercase tracking-wider text-fg-muted">
-		With Columns
-	</h3>
+	<h3 class="m-0 mb-4 text-sm uppercase tracking-wider text-fg-muted">With Columns</h3>
 
 	<div class="flex flex-col gap-3 mb-5">
 		<select bind:value={exprType}>
@@ -259,16 +257,12 @@
 						</button>
 						{#if exprUdfId}
 							{@const selectedUdf = (udfQuery.data ?? []).find((item) => item.id === exprUdfId)}
-							<span class="text-xs text-fg-muted"
-								>Selected: {selectedUdf?.name ?? exprUdfId}</span
-							>
+							<span class="text-xs text-fg-muted">Selected: {selectedUdf?.name ?? exprUdfId}</span>
 						{:else}
 							<span class="text-xs text-fg-muted">No UDF selected</span>
 						{/if}
 					</div>
-					<span class="text-xs uppercase tracking-wider text-fg-muted"
-						>Input columns</span
-					>
+					<span class="text-xs uppercase tracking-wider text-fg-muted">Input columns</span>
 					<MultiSelectColumnDropdown
 						{schema}
 						value={exprArgs}
@@ -276,9 +270,7 @@
 						placeholder="Select input columns..."
 					/>
 				{:else}
-					<span class="text-xs uppercase tracking-wider text-fg-muted"
-						>Input columns</span
-					>
+					<span class="text-xs uppercase tracking-wider text-fg-muted">Input columns</span>
 					<MultiSelectColumnDropdown
 						{schema}
 						value={exprArgs}
@@ -287,21 +279,17 @@
 					/>
 
 					<div class="flex items-center justify-between">
-						<span class="text-xs uppercase tracking-wider text-fg-muted"
-							>Function</span
-						>
+						<span class="text-xs uppercase tracking-wider text-fg-muted">Function</span>
 						<button type="button" class="btn-ghost btn-sm" onclick={openEditor}>Expand</button>
 					</div>
 					<textarea
-						class="resize-y min-h-[100px] text-sm font-mono"
+						class="resize-y min-h-25 text-sm font-mono"
 						rows="5"
 						placeholder="def udf(*args):&#10;    return ..."
 						bind:value={exprCode}
 						oninput={() => (codeEdited = true)}
 					></textarea>
-					<label
-						class="inline-flex items-center gap-2 text-sm mt-2 text-fg-secondary"
-					>
+					<label class="inline-flex items-center gap-2 text-sm mt-2 text-fg-secondary">
 						<input type="checkbox" bind:checked={saveToLibrary} />
 						Save to UDF Library
 					</label>
@@ -339,22 +327,19 @@
 	</div>
 
 	{#if (config.expressions ?? []).length > 0}
-		<div
-			class="flex flex-col gap-2 p-3 save-box"
-			role="list"
-		>
-			<h4 class="m-0 mb-3 text-xs uppercase tracking-wider text-fg-muted">
-				Columns
-			</h4>
+		<div class="flex flex-col gap-2 p-3 save-box" role="list">
+			<h4 class="m-0 mb-3 text-xs uppercase tracking-wider text-fg-muted">Columns</h4>
 			{#each config.expressions ?? [] as expr, index (index)}
 				<div
 					class="item item-row flex justify-between items-center py-2 px-3"
 					class:editing={editIndex === index}
+					class:border-info={editIndex === index}
+					class:bg-hover={editIndex === index}
 					role="listitem"
 				>
 					<div class="flex items-center gap-3 min-w-0">
 						<span
-							class="font-semibold max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap text-fg-primary"
+							class="font-semibold max-w-30 overflow-hidden text-ellipsis whitespace-nowrap text-fg-primary"
 							title={expr.name}>{expr.name}</span
 						>
 						<span class="text-xs text-fg-muted">
@@ -368,7 +353,7 @@
 					<div class="flex gap-1 shrink-0">
 						<button
 							type="button"
-							class="w-6 h-6 p-0 inline-flex items-center justify-center bg-[var(--color-transparent)] cursor-pointer text-base leading-none text-fg-muted border border-transparent"
+							class="w-6 h-6 p-0 inline-flex items-center justify-center bg-transparent cursor-pointer text-base leading-none text-fg-muted border border-transparent"
 							onclick={() => editExpression(index)}
 							aria-label="Edit"
 						>
@@ -386,7 +371,7 @@
 						</button>
 						<button
 							type="button"
-							class="btn-remove w-6 h-6 p-0 inline-flex items-center justify-center bg-[var(--color-transparent)] cursor-pointer text-base leading-none text-fg-muted border border-transparent"
+							class="btn-remove w-6 h-6 p-0 inline-flex items-center justify-center bg-transparent cursor-pointer text-base leading-none text-fg-muted border border-transparent hover:text-error-fg hover:bg-error hover:border-error"
 							onclick={() => removeExpression(index)}
 							aria-label="Remove">×</button
 						>
@@ -424,15 +409,3 @@
 	onSelect={handlePick}
 	onClose={() => (pickerOpen = false)}
 />
-
-<style>
-	.item.editing {
-		border-color: var(--info-border);
-		background-color: var(--bg-hover);
-	}
-	.btn-remove:hover {
-		color: var(--error-fg);
-		background-color: var(--error-bg);
-		border-color: var(--error-border);
-	}
-</style>

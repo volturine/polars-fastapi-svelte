@@ -43,9 +43,7 @@
 
 	<div class="mb-4">
 		<label for="pivot-column"
-			>Pivot Column <span class="text-xs text-fg-muted"
-				>(values become new columns)</span
-			></label
+			>Pivot Column <span class="text-xs text-fg-muted">(values become new columns)</span></label
 		>
 		<ColumnDropdown
 			{schema}
@@ -62,10 +60,10 @@
 		<span id="index-columns-label" class="group-label"
 			>Index Columns <span class="text-xs text-fg-muted">(rows)</span></span
 		>
-		<div class="chip-grid grid gap-2 p-2 max-h-[150px] overflow-y-auto">
+		<div class="chip-grid grid gap-2 p-2 max-h-37.5 overflow-y-auto">
 			{#each schema.columns as column (column.name)}
 				<label
-					class="checkbox-label flex items-center gap-2 px-2 py-1 cursor-pointer text-sm hover:bg-[var(--bg-hover)]"
+					class="checkbox-label flex items-center gap-2 px-2 py-1 cursor-pointer text-sm hover:bg-hover"
 				>
 					<input
 						id={`pivot-checkbox-index-${column.name}`}
@@ -82,11 +80,7 @@
 			{/each}
 		</div>
 		{#if safeIndex.length > 0}
-			<div
-				id="pivot-index-summary"
-				class="mt-2 text-xs text-fg-muted"
-				aria-live="polite"
-			>
+			<div id="pivot-index-summary" class="mt-2 text-xs text-fg-muted" aria-live="polite">
 				{safeIndex.length} selected
 			</div>
 		{/if}
@@ -120,40 +114,23 @@
 			<button
 				id="pivot-btn-refresh"
 				data-testid="pivot-refresh-button"
-				class="refresh-button w-full py-2 px-3 border-none text-sm font-medium cursor-pointer flex items-center justify-center gap-2 transition-all accent-btn"
+				class="w-full py-2 px-3 border-none text-sm font-medium cursor-pointer flex items-center justify-center gap-2 transition-all accent-btn hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
 				onclick={onRefreshSchema}
 				disabled={!isConfigValid || isRefreshing}
 				type="button"
 				aria-busy={isRefreshing}
 			>
 				{#if isRefreshing}
-					<span class="spinner" aria-hidden="true"></span>
+					<span
+						class="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"
+						aria-hidden="true"
+					></span>
 					Refreshing...
 				{:else}
 					Refresh Output Columns
 				{/if}
 			</button>
-			<p class="text-xs mt-1 text-fg-muted">
-				Click to compute the resulting columns after pivot
-			</p>
+			<p class="text-xs mt-1 text-fg-muted">Click to compute the resulting columns after pivot</p>
 		</div>
 	{/if}
 </div>
-
-<style>
-	.refresh-button:hover:not(:disabled) {
-		opacity: 0.9;
-	}
-	.refresh-button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-	.refresh-button .spinner {
-		width: 14px;
-		height: 14px;
-		border: 2px solid currentColor;
-		border-top-color: var(--color-transparent);
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-</style>

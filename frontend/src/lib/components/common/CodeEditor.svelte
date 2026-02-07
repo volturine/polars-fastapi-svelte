@@ -2,8 +2,6 @@
 	import { EditorView, basicSetup } from 'codemirror';
 	import { EditorState } from '@codemirror/state';
 	import { python } from '@codemirror/lang-python';
-	import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
-	import { tags } from '@lezer/highlight';
 
 	interface Props {
 		value?: string;
@@ -18,48 +16,31 @@
 
 	const theme = EditorView.theme(
 		{
-			'&': { backgroundColor: 'var(--bg-tertiary)', color: 'var(--fg-primary)' },
-			'.cm-content': { caretColor: 'var(--fg-primary)' },
-			'.cm-cursor': { borderLeftColor: 'var(--border-primary)' },
-			'.cm-scroller': { fontFamily: 'var(--font-mono)' },
-			'.cm-gutters': {
-				backgroundColor: 'var(--bg-tertiary)',
-				color: 'var(--fg-muted)',
-				borderRight: '1px solid var(--border-primary)'
+			'&': { backgroundColor: '#1f232b', color: '#e6edf3' },
+			'.cm-content': { caretColor: '#e6edf3' },
+			'.cm-cursor': { borderLeftColor: '#2f333b' },
+			'.cm-scroller': {
+				fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
 			},
-			'.cm-activeLineGutter': { backgroundColor: 'var(--bg-hover)' },
-			'.cm-activeLine': { backgroundColor: 'var(--bg-hover)' },
+			'.cm-gutters': {
+				backgroundColor: '#1f232b',
+				color: '#9aa4b2',
+				borderRight: '1px solid #2f333b'
+			},
+			'.cm-activeLineGutter': { backgroundColor: '#2a2f3a' },
+			'.cm-activeLine': { backgroundColor: '#2a2f3a' },
 			'.cm-selectionMatch': {
-				backgroundColor: 'var(--editor-selection-match)'
+				backgroundColor: '#394052'
 			},
 			'&.cm-focused .cm-selectionBackground': {
-				backgroundColor: 'var(--editor-selection)'
+				backgroundColor: '#2f3b52'
 			},
 			'.cm-selectionBackground': {
-				backgroundColor: 'var(--editor-selection-passive)'
+				backgroundColor: '#2a3346'
 			}
 		},
 		{ dark: true }
 	);
-
-	const highlight = HighlightStyle.define([
-		{ tag: tags.keyword, color: 'var(--editor-syntax-keyword)' },
-		{ tag: tags.operator, color: 'var(--editor-syntax-operator)' },
-		{ tag: tags.variableName, color: 'var(--editor-syntax-variable)' },
-		{ tag: tags.function(tags.variableName), color: 'var(--editor-syntax-function)' },
-		{ tag: tags.definition(tags.variableName), color: 'var(--editor-syntax-definition)' },
-		{ tag: tags.string, color: 'var(--editor-syntax-string)' },
-		{ tag: tags.number, color: 'var(--editor-syntax-number)' },
-		{ tag: tags.bool, color: 'var(--editor-syntax-boolean)' },
-		{ tag: tags.null, color: 'var(--editor-syntax-null)' },
-		{ tag: tags.comment, color: 'var(--editor-syntax-comment)', fontStyle: 'italic' },
-		{ tag: tags.className, color: 'var(--editor-syntax-class)' },
-		{
-			tag: tags.definition(tags.function(tags.variableName)),
-			color: 'var(--editor-syntax-function)'
-		},
-		{ tag: tags.propertyName, color: 'var(--editor-syntax-property)' }
-	]);
 
 	function init(host: HTMLElement) {
 		const state = EditorState.create({
@@ -68,7 +49,6 @@
 				basicSetup,
 				python(),
 				theme,
-				syntaxHighlighting(highlight),
 				EditorView.updateListener.of((update) => {
 					if (!update.docChanged) return;
 					if (programmatic) return;
@@ -108,13 +88,3 @@
 <div class="overflow-hidden border bg-tertiary border-primary" style:height>
 	<div class="h-full" use:init></div>
 </div>
-
-<style>
-	:global(.cm-editor) {
-		height: 100%;
-		font-size: 0.85rem;
-	}
-	:global(.cm-focused) {
-		outline: none;
-	}
-</style>

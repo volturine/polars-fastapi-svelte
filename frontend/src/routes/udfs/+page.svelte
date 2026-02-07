@@ -115,7 +115,7 @@
 	}
 </script>
 
-<div class="mx-auto max-w-[1100px] px-6 py-7">
+<div class="udfs-page mx-auto max-w-275 px-6 py-7">
 	<header
 		class="mb-6 flex flex-col items-stretch justify-between gap-6 border-b border-primary pb-5 md:flex-row md:items-start"
 	>
@@ -140,7 +140,7 @@
 	</header>
 
 	<div class="mb-4 flex items-center gap-3">
-		<input type="text" placeholder="Search UDFs..." bind:value={search} class="max-w-[360px]" />
+		<input type="text" placeholder="Search UDFs..." bind:value={search} class="max-w-90" />
 	</div>
 
 	{#if query.isLoading}
@@ -250,11 +250,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	@media (max-width: 900px) {
-		.row {
-			flex-direction: column;
-		}
-	}
-</style>

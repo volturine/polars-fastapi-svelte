@@ -545,7 +545,7 @@
 	}
 </script>
 
-<div class="mx-auto box-border max-w-[800px] p-8">
+<div class="datasource-new-page mx-auto box-border max-w-200 p-8">
 	<header class="mb-8 flex items-center justify-between">
 		<h1 class="m-0 text-2xl font-semibold">Add Data Source</h1>
 		<a href={resolve('/datasources')} class="btn-secondary no-underline" data-sveltekit-reload
@@ -555,21 +555,21 @@
 
 	<div class="mb-8 flex gap-2 border-b-2 border-primary">
 		<button
-			class="tab -mb-0.5 border-b-2 border-[var(--color-transparent)] px-6 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
+			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
 			class:active={activeTab === 'file'}
 			onclick={() => (activeTab = 'file')}
 		>
 			File Upload
 		</button>
 		<button
-			class="tab -mb-0.5 border-b-2 border-[var(--color-transparent)] px-6 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
+			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
 			class:active={activeTab === 'database'}
 			onclick={() => (activeTab = 'database')}
 		>
 			Database
 		</button>
 		<button
-			class="tab -mb-0.5 border-b-2 border-[var(--color-transparent)] px-6 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
+			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
 			class:active={activeTab === 'api'}
 			onclick={() => (activeTab = 'api')}
 		>
@@ -641,7 +641,7 @@
 									<span>{selectedFiles.length} file(s) selected</span>
 									<button
 										type="button"
-										class="btn-text border-none bg-[var(--color-transparent)] p-0 text-xs text-accent-primary hover:underline"
+										class="btn-text border-none bg-transparent p-0 text-xs text-accent-primary hover:underline"
 										onclick={clearBulkSelection}
 										disabled={loading}>Clear all</button
 									>
@@ -654,7 +654,7 @@
 										>
 										<button
 											type="button"
-											class="btn-remove border-none bg-[var(--color-transparent)] p-1 text-lg leading-none text-fg-muted hover:text-error-fg"
+											class="btn-remove border-none bg-transparent p-1 text-lg leading-none text-fg-muted hover:text-error-fg"
 											onclick={() => removeBulkFile(index)}
 											disabled={loading}>x</button
 										>
@@ -695,7 +695,7 @@
 										>{result.name}</span
 									>
 									{#if result.error}
-										<span class="max-w-[200px] overflow-hidden text-ellipsis text-xs text-fg-muted"
+										<span class="max-w-50 overflow-hidden text-ellipsis text-xs text-fg-muted"
 											>{result.error}</span
 										>
 									{/if}
@@ -759,21 +759,11 @@
 						></textarea>
 						<p class="m-0 text-xs leading-relaxed text-fg-muted">
 							Advanced Polars scan options in JSON format. Common options: <code
-								class="rounded px-1 py-0.5 text-xs bg-[var(--code-inline-bg)] text-[var(--code-inline-fg)] border border-[var(--code-inline-border)]"
-								>ignore_errors</code
+								class="code-inline rounded px-1 py-0.5 text-xs">ignore_errors</code
 							>,
-							<code
-								class="rounded px-1 py-0.5 text-xs bg-[var(--code-inline-bg)] text-[var(--code-inline-fg)] border border-[var(--code-inline-border)]"
-								>rechunk</code
-							>,
-							<code
-								class="rounded px-1 py-0.5 text-xs bg-[var(--code-inline-bg)] text-[var(--code-inline-fg)] border border-[var(--code-inline-border)]"
-								>low_memory</code
-							>,
-							<code
-								class="rounded px-1 py-0.5 text-xs bg-[var(--code-inline-bg)] text-[var(--code-inline-fg)] border border-[var(--code-inline-border)]"
-								>n_rows</code
-							>.
+							<code class="code-inline rounded px-1 py-0.5 text-xs">rechunk</code>,
+							<code class="code-inline rounded px-1 py-0.5 text-xs">low_memory</code>,
+							<code class="code-inline rounded px-1 py-0.5 text-xs">n_rows</code>.
 						</p>
 					</div>
 
@@ -903,7 +893,7 @@
 											</button>
 											{#each row as cell, colIndex (colIndex)}
 												<button
-													class="cell cursor-pointer border-b border-r border-primary bg-[var(--color-transparent)] p-2 text-left text-xs text-fg-secondary"
+													class="cell cursor-pointer border-b border-r border-primary bg-transparent p-2 text-left text-xs text-fg-secondary"
 													onclick={() => handleStartCol(startCol + colIndex)}
 												>
 													{cell ?? ''}
@@ -1230,29 +1220,3 @@
 		{/if}
 	</div>
 </div>
-
-<style>
-	.tab.active {
-		color: var(--accent-primary);
-		border-bottom-color: var(--info-border);
-	}
-
-	.radio-option:has(input:checked) {
-		background: var(--accent-bg);
-		border-color: var(--info-border);
-	}
-
-	input:focus,
-	select:focus,
-	textarea:focus {
-		outline: none;
-		border-color: var(--info-border);
-	}
-
-	input:disabled,
-	select:disabled,
-	textarea:disabled {
-		background: var(--bg-tertiary);
-		cursor: not-allowed;
-	}
-</style>

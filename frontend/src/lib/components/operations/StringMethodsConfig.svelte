@@ -104,9 +104,8 @@
 			<h4 id="slice-params-heading">Slice Parameters</h4>
 			<div class="flex gap-4">
 				<div class="flex-1">
-					<label
-						for="str-input-start"
-						class="block text-sm font-medium mb-1 text-fg-secondary">Start Index:</label
+					<label for="str-input-start" class="block text-sm font-medium mb-1 text-fg-secondary"
+						>Start Index:</label
 					>
 					<input
 						id="str-input-start"
@@ -118,9 +117,8 @@
 					<span id="str-start-help" class="sr-only">Starting index for substring</span>
 				</div>
 				<div class="flex-1">
-					<label
-						for="str-input-end"
-						class="block text-sm font-medium mb-1 text-fg-secondary">End Index (optional):</label
+					<label for="str-input-end" class="block text-sm font-medium mb-1 text-fg-secondary"
+						>End Index (optional):</label
 					>
 					<input
 						id="str-input-end"
@@ -142,9 +140,8 @@
 		<div class="form-section" role="group" aria-labelledby="replace-params-heading">
 			<h4 id="replace-params-heading">Replace Parameters</h4>
 			<div>
-				<label
-					for="str-input-pattern"
-					class="block text-sm font-medium mb-1 text-fg-secondary">Pattern to find:</label
+				<label for="str-input-pattern" class="block text-sm font-medium mb-1 text-fg-secondary"
+					>Pattern to find:</label
 				>
 				<input
 					id="str-input-pattern"
@@ -159,9 +156,8 @@
 				>
 			</div>
 			<div>
-				<label
-					for="str-input-replacement"
-					class="block text-sm font-medium mb-1 text-fg-secondary">Replacement:</label
+				<label for="str-input-replacement" class="block text-sm font-medium mb-1 text-fg-secondary"
+					>Replacement:</label
 				>
 				<input
 					id="str-input-replacement"
@@ -199,9 +195,8 @@
 				>
 			</div>
 			<div>
-				<label
-					for="str-input-group-index"
-					class="block text-sm font-medium mb-1 text-fg-secondary">Group Index:</label
+				<label for="str-input-group-index" class="block text-sm font-medium mb-1 text-fg-secondary"
+					>Group Index:</label
 				>
 				<input
 					id="str-input-group-index"
@@ -245,9 +240,8 @@
 		<div class="form-section" role="group" aria-labelledby="split-params-heading">
 			<h4 id="split-params-heading">Split & Take Parameters</h4>
 			<div>
-				<label
-					for="str-input-delimiter"
-					class="block text-sm font-medium mb-1 text-fg-secondary">Delimiter:</label
+				<label for="str-input-delimiter" class="block text-sm font-medium mb-1 text-fg-secondary"
+					>Delimiter:</label
 				>
 				<input
 					id="str-input-delimiter"
@@ -262,9 +256,8 @@
 				>
 			</div>
 			<div>
-				<label
-					for="str-input-part-index"
-					class="block text-sm font-medium mb-1 text-fg-secondary">Part Index:</label
+				<label for="str-input-part-index" class="block text-sm font-medium mb-1 text-fg-secondary"
+					>Part Index:</label
 				>
 				<input
 					id="str-input-part-index"

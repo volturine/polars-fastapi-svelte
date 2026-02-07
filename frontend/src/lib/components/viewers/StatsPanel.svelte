@@ -10,7 +10,7 @@
 	let hasStats = $derived(stats && Object.keys(stats).length > 0);
 </script>
 
-<div class="overflow-hidden border bg-panel border-primary">
+<div class="stats-panel overflow-hidden border bg-panel border-primary">
 	<div class="px-5 py-4 border-b border-primary bg-panel-header">
 		<h3 class="m-0">Summary Statistics</h3>
 	</div>
@@ -106,13 +106,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	.stats-summary {
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-	}
-
-	.stats-columns {
-		grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-	}
-</style>

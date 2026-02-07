@@ -46,15 +46,10 @@
 </script>
 
 <div class="config-panel" role="region" aria-label="Rename configuration">
-	<h3 class="m-0 mb-4 text-sm uppercase tracking-wider text-fg-muted">
-		Rename Configuration
-	</h3>
+	<h3 class="m-0 mb-4 text-sm uppercase tracking-wider text-fg-muted">Rename Configuration</h3>
 
 	<div class="mb-5" role="group" aria-labelledby="rename-columns-heading">
-		<h4
-			id="rename-columns-heading"
-			class="m-0 mb-3 text-xs uppercase tracking-wider text-fg-muted"
-		>
+		<h4 id="rename-columns-heading" class="m-0 mb-3 text-xs uppercase tracking-wider text-fg-muted">
 			Select Column to Rename
 		</h4>
 		<ColumnDropdown
@@ -76,8 +71,8 @@
 			data-testid="rename-new-name-input"
 			type="text"
 			class="w-full disabled:cursor-not-allowed"
-			style:background-color={!formOldName ? 'var(--bg-muted)' : undefined}
-			style:color={!formOldName ? 'var(--fg-muted)' : undefined}
+			class:bg-muted={!formOldName}
+			class:text-fg-muted={!formOldName}
 			bind:value={formNewName}
 			placeholder={formOldName ? `New name for ${formOldName}` : 'Select a column first'}
 			aria-label="Enter new column name"
@@ -88,7 +83,7 @@
 			id="rename-btn-add"
 			data-testid="rename-add-button"
 			type="button"
-			class="add-btn accent-btn py-2 px-4 cursor-pointer whitespace-nowrap font-semibold"
+			class="add-btn accent-btn py-2 px-4 cursor-pointer whitespace-nowrap font-semibold hover:opacity-90 disabled:bg-panel-muted disabled:border-primary disabled:text-fg-muted disabled:cursor-not-allowed"
 			onclick={addMapping}
 			disabled={!canAdd}
 			aria-label="Add rename mapping"
@@ -104,24 +99,17 @@
 			role="list"
 			aria-label="Configured renames"
 		>
-			<h4 class="mt-0 mb-2 text-xs uppercase tracking-wider text-fg-muted">
-				Renames
-			</h4>
+			<h4 class="mt-0 mb-2 text-xs uppercase tracking-wider text-fg-muted">Renames</h4>
 			{#each mappings as mapping (mapping.oldName)}
-				<div
-					class="flex justify-between items-center py-2 px-3 item-row"
-					role="listitem"
-				>
-					<div
-						class="flex items-center gap-2 min-w-0 text-sm font-mono"
-					>
+				<div class="flex justify-between items-center py-2 px-3 item-row" role="listitem">
+					<div class="flex items-center gap-2 min-w-0 text-sm font-mono">
 						<span
-							class="font-semibold max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap text-fg-primary"
+							class="font-semibold max-w-40 overflow-hidden text-ellipsis whitespace-nowrap text-fg-primary"
 							title={mapping.oldName}>{mapping.oldName}</span
 						>
 						<span class="text-fg-muted" aria-hidden="true">→</span>
 						<span
-							class="font-semibold max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap text-accent-primary"
+							class="font-semibold max-w-40 overflow-hidden text-ellipsis whitespace-nowrap text-accent-primary"
 							title={mapping.newName}>{mapping.newName}</span
 						>
 					</div>
@@ -129,7 +117,7 @@
 						id={`rename-btn-remove-${mapping.oldName}`}
 						data-testid={`rename-remove-button-${mapping.oldName}`}
 						type="button"
-						class="remove-btn w-7 h-7 inline-flex items-center justify-center cursor-pointer text-lg leading-none bg-transparent text-fg-muted border border-transparent"
+						class="remove-btn w-7 h-7 inline-flex items-center justify-center cursor-pointer text-lg leading-none bg-transparent text-fg-muted border border-transparent hover:text-fg-primary hover:bg-hover hover:border-primary"
 						onclick={() => removeMapping(mapping.oldName)}
 						aria-label={`Remove rename: ${mapping.oldName} to ${mapping.newName}`}
 					>
@@ -144,20 +132,3 @@
 		</p>
 	{/if}
 </div>
-
-<style>
-	.add-btn:disabled {
-		background-color: var(--panel-muted-bg) !important;
-		border-color: var(--border-primary) !important;
-		cursor: not-allowed;
-		color: var(--fg-muted) !important;
-	}
-	.remove-btn:hover:not(:disabled) {
-		color: var(--fg-primary);
-		background-color: var(--bg-hover);
-		border-color: var(--border-primary);
-	}
-	button:hover:not(:disabled) {
-		opacity: 0.9;
-	}
-</style>

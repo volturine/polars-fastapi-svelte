@@ -82,11 +82,7 @@
 				col.dtype.toLowerCase() === 'datetime'}
 		/>
 		{#if dateColumns.length === 0}
-			<p
-				id="ts-no-columns-warning"
-				class="text-sm mt-2 mb-0 text-error-fg"
-				role="alert"
-			>
+			<p id="ts-no-columns-warning" class="text-sm mt-2 mb-0 text-error-fg" role="alert">
 				No date/time columns detected in schema
 			</p>
 		{/if}
@@ -148,9 +144,7 @@
 			<h4 id="ts-period-heading">Time Period</h4>
 			<div class="flex gap-2">
 				<div class="flex-1">
-					<label for="ts-input-value" class="block text-sm mb-1 text-fg-secondary"
-						>Value:</label
-					>
+					<label for="ts-input-value" class="block text-sm mb-1 text-fg-secondary">Value:</label>
 					<input
 						id="ts-input-value"
 						data-testid="ts-value-input"
@@ -162,9 +156,7 @@
 					/>
 				</div>
 				<div class="flex-1">
-					<label for="ts-select-unit" class="block text-sm mb-1 text-fg-secondary"
-						>Unit:</label
-					>
+					<label for="ts-select-unit" class="block text-sm mb-1 text-fg-secondary">Unit:</label>
 					<select
 						id="ts-select-unit"
 						data-testid="ts-unit-select"

@@ -29,7 +29,7 @@
 		<div class="flex flex-col gap-3">
 			{#each keepStrategies as strategy (strategy.value)}
 				<label
-					class="strategy-option flex cursor-pointer items-start gap-3 border p-3 transition-all bg-primary border-primary"
+					class="flex cursor-pointer items-start gap-3 border p-3 transition-all bg-primary border-primary hover:border-info hover:bg-hover"
 				>
 					<input
 						type="radio"
@@ -63,10 +63,3 @@
 		{/if}
 	</div>
 </div>
-
-<style>
-	.strategy-option:hover {
-		border-color: var(--info-border);
-		background-color: var(--bg-hover);
-	}
-</style>

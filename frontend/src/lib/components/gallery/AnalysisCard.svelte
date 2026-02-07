@@ -48,12 +48,10 @@
 	role="button"
 	tabindex="0"
 >
-	<div
-		class="relative flex aspect-video w-full items-center justify-center bg-tertiary"
-	>
+	<div class="relative flex aspect-video w-full items-center justify-center bg-tertiary">
 		<input
 			type="checkbox"
-			class="absolute left-5 top-5 h-[18px] w-[18px]"
+			class="absolute left-5 top-5 h-4.5 w-4.5"
 			checked={selected}
 			onchange={(e) => {
 				e.stopPropagation();
@@ -86,9 +84,3 @@
 		</div>
 	</div>
 </div>
-
-<style>
-	.analysis-card:focus {
-		outline: none;
-	}
-</style>

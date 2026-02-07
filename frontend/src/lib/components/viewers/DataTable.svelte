@@ -114,7 +114,7 @@
 			<p class="m-0">No data available</p>
 		</div>
 	{:else if headerGroups.length > 0}
-		<div class="overflow-x-auto overflow-y-auto max-h-[600px] bg-panel">
+		<div class="overflow-x-auto overflow-y-auto max-h-150 bg-panel">
 			<table class="w-full border-collapse text-sm">
 				<thead class="sticky top-0 z-50 bg-table-header">
 					{#each headerGroups as headerGroup (headerGroup.id)}
@@ -122,7 +122,7 @@
 							{#each headerGroup.headers as header (header.id)}
 								<th class="p-0 text-left font-semibold border-b-2 border-primary">
 									<button
-										class="flex items-center justify-between w-full px-4 py-3 bg-[var(--color-transparent)] border-none cursor-pointer text-sm font-semibold transition-colors text-fg-primary hover:bg-hover"
+										class="flex items-center justify-between w-full px-4 py-3 bg-transparent border-none cursor-pointer text-sm font-semibold transition-colors text-fg-primary hover:bg-hover"
 										onclick={() => toggleSort(header.id)}
 									>
 										<span class="font-mono">
@@ -144,11 +144,11 @@
 				<tbody>
 					{#each rows as row (row.id)}
 						<tr
-							class="border-b transition-colors last:border-b-0 border-primary even:bg-secondary hover:!bg-hover"
+							class="border-b transition-colors last:border-b-0 border-primary even:bg-secondary hover:bg-hover!"
 						>
 							{#each row.getVisibleCells() as cell (cell.id)}
 								<td
-									class="px-4 py-3 whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px] text-sm text-fg-secondary"
+									class="px-4 py-3 whitespace-nowrap overflow-hidden text-ellipsis max-w-75 text-sm text-fg-secondary"
 								>
 									{formatValue(cell.getValue() as TableCellValue, cell.column.id)}
 								</td>

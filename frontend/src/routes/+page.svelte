@@ -156,7 +156,7 @@
 	});
 </script>
 
-<div class="mx-auto box-border max-w-[1200px] px-8 py-8 md:px-4 md:py-4">
+<div class="mx-auto box-border max-w-300 px-8 py-8 md:px-4 md:py-4">
 	<header
 		class="mb-8 flex flex-col items-stretch justify-between gap-6 border-b border-primary pb-6 md:flex-row md:items-start"
 	>
@@ -188,11 +188,11 @@
 			</div>
 		{:else if query.isError}
 			<div
-				class="error-box flex min-h-[400px] flex-col items-center justify-center px-6 py-12 text-center"
+				class="error-box flex min-h-100 flex-col items-center justify-center px-6 py-12 text-center"
 			>
 				<div class="mb-6 flex h-12 w-12 items-center justify-center text-xl font-bold">!</div>
 				<h2 class="m-0 mb-2 text-lg font-semibold">Failed to load analyses</h2>
-				<p class="m-0 mb-6 max-w-[400px] text-sm">{query.error.message}</p>
+				<p class="m-0 mb-6 max-w-100 text-sm">{query.error.message}</p>
 				<button class="btn-primary" onclick={() => query.refetch()}>Try again</button>
 			</div>
 		{:else if query.data}
@@ -247,28 +247,3 @@
 	onConfirm={confirmBulkDelete}
 	onCancel={cancelBulkDelete}
 />
-
-<style>
-	.shimmer-bg {
-		background: linear-gradient(
-			90deg,
-			var(--bg-tertiary) 25%,
-			var(--bg-hover) 50%,
-			var(--bg-tertiary) 75%
-		);
-		background-size: 200% 100%;
-	}
-
-	@keyframes shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-
-	.animate-shimmer {
-		animation: shimmer 1.5s infinite;
-	}
-</style>

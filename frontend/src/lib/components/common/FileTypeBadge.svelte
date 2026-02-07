@@ -52,35 +52,22 @@
 
 	// Size configurations
 	const sizeConfig = {
-		sm: { fontSize: '10px', padding: '2px 6px', iconSize: 12 },
-		md: { fontSize: '11px', padding: '2px 8px', iconSize: 14 },
-		lg: { fontSize: '12px', padding: '3px 10px', iconSize: 16 }
+		sm: { iconSize: 12 },
+		md: { iconSize: 14 },
+		lg: { iconSize: 16 }
 	};
 
-	let styles = $derived({
-		fontSize: sizeConfig[size].fontSize,
-		padding: sizeConfig[size].padding,
-		color: variant === 'minimal' ? config.colors.color : config.colors.color,
-		borderColor: variant === 'outline' ? config.colors.color : config.colors.borderColor,
-		backgroundColor:
-			variant === 'outline'
-				? 'var(--color-transparent)'
-				: variant === 'minimal'
-					? 'var(--color-transparent)'
-					: config.colors.backgroundColor
+	const sizeClass = $derived(`size-${size}`);
+	const variantClass = $derived(variant === 'default' ? '' : `variant-${variant}`);
+	const typeClass = $derived.by(() => {
+		if (sourceType) return `source-${sourceType}`;
+		const typed = config.type;
+		return `file-${typed}`;
 	});
 </script>
 
 <span
-	class="inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap border font-medium uppercase tracking-wide transition-all font-mono {variant ===
-	'minimal'
-		? 'border-none p-0'
-		: ''}"
-	style:font-size={styles.fontSize}
-	style:padding={variant === 'minimal' ? '0' : styles.padding}
-	style:color={styles.color}
-	style:border-color={styles.borderColor}
-	style:background-color={styles.backgroundColor}
+	class="file-badge {typeClass} {sizeClass} {variantClass}"
 	role="img"
 	aria-label="{config.label} file type"
 	title={config.description}

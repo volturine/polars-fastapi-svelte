@@ -211,7 +211,7 @@
 			</span>
 		</div>
 
-		<div class="overflow-x-auto overflow-y-auto max-h-[400px]">
+		<div class="overflow-x-auto overflow-y-auto max-h-100">
 			<table class="w-full border-collapse">
 				<thead class="sticky top-0 z-10 bg-table-header">
 					{#each headerGroups as headerGroup (headerGroup.id)}
@@ -219,8 +219,7 @@
 							{#each headerGroup.headers as header (header.id)}
 								<th class="p-0 text-left font-semibold text-[0.8125rem] border-b-2 border-primary">
 									<button
-										class="flex flex-col items-start gap-1 px-4 py-3 bg-[var(--color-transparent)] border-none cursor-pointer transition-colors hover:bg-hover"
-										style="font-size: inherit; font-weight: inherit; color: inherit;"
+										class="inline-table-sort-btn flex flex-col items-start gap-1 px-4 py-3 bg-transparent border-none cursor-pointer transition-colors hover:bg-hover"
 										onclick={() => toggleSort(header.id)}
 									>
 										<span class="flex items-center gap-1.5 text-sm">
@@ -249,11 +248,11 @@
 				<tbody>
 					{#each rows as row (row.id)}
 						<tr
-							class="border-b transition-colors last:border-b-0 border-primary even:bg-secondary hover:!bg-hover"
+							class="border-b transition-colors last:border-b-0 border-primary even:bg-secondary hover:bg-hover!"
 						>
 							{#each row.getVisibleCells() as cell (cell.id)}
 								<td
-									class="px-4 py-3 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px] text-[0.8125rem] select-text text-fg-secondary"
+									class="px-4 py-3 whitespace-nowrap overflow-hidden text-ellipsis max-w-62.5 text-[0.8125rem] select-text text-fg-secondary"
 									class:text-xs={isListType(getColumnType(cell.column.id))}
 								>
 									{formatValue(cell.getValue() as TableCellValue, cell.column.id)}

@@ -98,11 +98,7 @@
 			}}
 		/>
 		{#if rightSchema}
-			<div
-				id="join-schema-preview"
-				class="mt-2 p-2 bg-panel"
-				aria-live="polite"
-			>
+			<div id="join-schema-preview" class="mt-2 p-2 bg-panel" aria-live="polite">
 				<strong>{rightSchema.columns.length} columns</strong>
 			</div>
 		{/if}
@@ -137,7 +133,7 @@
 					id="join-btn-add-column"
 					data-testid="join-add-column-button"
 					type="button"
-					class="btn-add py-1 px-3 border-none cursor-pointer text-sm bg-primary-action text-primary-fg"
+					class="btn-add py-1 px-3 border-none cursor-pointer text-sm bg-primary-action text-primary-fg hover:bg-primary-hover"
 					onclick={addJoinColumn}
 					aria-label="Add join column pair"
 				>
@@ -158,9 +154,8 @@
 					aria-label={`Join column pair ${_index + 1}`}
 				>
 					<div class="flex-1">
-						<label
-							for={`join-left-${joinCol.id}`}
-							class="block text-xs mb-1 text-fg-muted">Left Column</label
+						<label for={`join-left-${joinCol.id}`} class="block text-xs mb-1 text-fg-muted"
+							>Left Column</label
 						>
 						<ColumnDropdown
 							{schema}
@@ -170,9 +165,8 @@
 						/>
 					</div>
 					<div class="flex-1">
-						<label
-							for={`join-right-${joinCol.id}`}
-							class="block text-xs mb-1 text-fg-muted">Right Column</label
+						<label for={`join-right-${joinCol.id}`} class="block text-xs mb-1 text-fg-muted"
+							>Right Column</label
 						>
 						<ColumnDropdown
 							schema={{ columns: rightColumns, row_count: rightSchema?.row_count ?? 0 }}
@@ -185,7 +179,7 @@
 						id={`join-btn-remove-${_index}`}
 						data-testid={`join-remove-button-${_index}`}
 						type="button"
-						class="btn-remove p-2 bg-[var(--color-transparent)] cursor-pointer text-error-fg border border-error"
+						class="btn-remove p-2 bg-transparent cursor-pointer text-error-fg border border-error hover:bg-error"
 						onclick={() => removeJoinColumn(joinCol.id)}
 						aria-label={`Remove join column pair ${_index + 1}`}
 					>
@@ -241,12 +235,3 @@
 		</div>
 	</div>
 </div>
-
-<style>
-	.btn-add:hover {
-		background-color: var(--primary-hover);
-	}
-	.btn-remove:hover {
-		background-color: var(--error-bg);
-	}
-</style>

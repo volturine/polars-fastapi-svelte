@@ -176,7 +176,7 @@
 				{#if isEditing}
 					<div class="flex items-center gap-1">
 						<input
-							class="min-w-[100px] border border-primary bg-primary px-2 py-0.5 text-sm outline-none"
+							class="min-w-25 border border-primary bg-primary px-2 py-0.5 text-sm outline-none"
 							bind:value={draftName}
 							onkeydown={(e) => {
 								if (e.key === 'Enter') commitEdit();
@@ -306,7 +306,7 @@
 				{#if engineExpanded}
 					<div class="flex flex-col gap-2 border-t border-primary bg-primary p-3">
 						<div class="flex items-center gap-3">
-							<label for="threads-input" class="min-w-[60px] text-xs text-fg-secondary"
+							<label for="threads-input" class="min-w-15 text-xs text-fg-secondary"
 								>Threads</label
 							>
 							<input
@@ -319,11 +319,11 @@
 								onchange={(e) => setThreads(parseInt(e.currentTarget.value) || 0)}
 							/>
 							{#if isUsingDefaultThreads}
-								<span class="min-w-[50px] text-[9px] italic text-fg-tertiary">(default)</span>
+								<span class="min-w-12.5 text-[9px] italic text-fg-tertiary">(default)</span>
 							{/if}
 						</div>
 						<div class="flex items-center gap-3">
-							<label for="memory-select" class="min-w-[60px] text-xs text-fg-secondary"
+							<label for="memory-select" class="min-w-15 text-xs text-fg-secondary"
 								>Memory</label
 							>
 							<select
@@ -337,7 +337,7 @@
 								{/each}
 							</select>
 							{#if isUsingDefaultMemory}
-								<span class="min-w-[50px] text-[9px] italic text-fg-tertiary">(default)</span>
+								<span class="min-w-12.5 text-[9px] italic text-fg-tertiary">(default)</span>
 							{/if}
 						</div>
 					</div>
@@ -359,31 +359,6 @@
 	</div>
 
 	<div
-		class="absolute bottom-[-5px] left-1/2 z-[2] h-2.5 w-2.5 -translate-x-1/2 bg-primary border-2 border-info"
+		class="absolute -bottom-1.25 left-1/2 z-2 h-2.5 w-2.5 -translate-x-1/2 bg-primary border-2 border-info"
 	></div>
 </div>
-
-<style>
-	:global(.spinning) {
-		animation: spin 1s linear infinite;
-	}
-
-	@keyframes spin {
-		from {
-			transform: rotate(0deg);
-		}
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
-	.chevron.expanded {
-		transform: rotate(180deg);
-	}
-
-	.datasource-node.drag-active .node-content {
-		border-color: var(--info-border);
-		border-style: dashed;
-		opacity: 0.85;
-	}
-</style>

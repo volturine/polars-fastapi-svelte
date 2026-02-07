@@ -166,7 +166,7 @@
 
 	{#if showPicker}
 		<div
-			class="absolute left-0 right-0 top-full z-50 mt-1 max-h-[200px] overflow-y-auto border border-primary bg-panel-bg"
+			class="absolute left-0 right-0 top-full z-50 mt-1 max-h-50 overflow-y-auto border border-primary bg-panel-bg"
 			role="listbox"
 			id={listboxId}
 			aria-label="Available datasources"
@@ -176,7 +176,7 @@
 			{:else}
 				{#each filteredOptions() as ds (ds.id)}
 					<button
-						class="picker-option flex w-full cursor-pointer items-center justify-between border-b border-primary bg-[var(--color-transparent)] px-3 py-2 font-mono text-left text-sm text-fg-primary last:border-b-0 hover:bg-bg-hover"
+						class="picker-option flex w-full cursor-pointer items-center justify-between border-b border-primary bg-transparent px-3 py-2 font-mono text-left text-sm text-fg-primary last:border-b-0 hover:bg-bg-hover"
 						class:selected={isSelected(ds.id)}
 						class:highlighted={ds.id === highlightId}
 						onmousedown={(e) => {
@@ -220,7 +220,7 @@
 				>
 					{ds.name}
 					<button
-						class="chip-remove inline-flex h-4 w-4 cursor-pointer items-center justify-center border-none bg-[var(--color-transparent)] p-0 text-fg-muted hover:bg-bg-hover hover:text-fg-primary"
+						class="chip-remove inline-flex h-4 w-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-fg-muted hover:bg-bg-hover hover:text-fg-primary"
 						onclick={() => deselect(ds.id)}
 						aria-label={`Remove ${ds.name}`}
 						type="button"
@@ -239,19 +239,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	.picker-option.selected {
-		background-color: var(--accent-bg);
-	}
-
-	.picker-option.highlighted {
-		border-left: 3px solid var(--info-border);
-	}
-
-	.chip.highlighted {
-		background-color: var(--info-bg);
-		border-color: var(--info-border);
-		color: var(--info-fg);
-	}
-</style>

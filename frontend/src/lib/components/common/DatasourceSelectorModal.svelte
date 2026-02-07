@@ -80,7 +80,7 @@
 
 {#if show}
 	<div
-		class="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-[var(--overlay-bg)] animate-[fadeIn_var(--transition)]"
+		class="fixed inset-0 z-1000 flex items-center justify-center p-4 bg-overlay animate-fade-in"
 		onclick={handleClose}
 		onkeydown={handleBackdropKeydown}
 		role="button"
@@ -88,7 +88,7 @@
 		aria-label="Close modal"
 	>
 		<div
-			class="flex max-h-[80vh] w-full max-w-[480px] flex-col border focus:outline-none max-sm:max-w-full bg-[var(--panel-bg)] border-[var(--border-primary)] animate-[slideIn_var(--transition)]"
+			class="flex max-h-[80vh] w-full max-w-120 flex-col border focus:outline-none max-sm:max-w-full bg-panel border-primary animate-slide-up"
 			bind:this={modalRef}
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
@@ -97,12 +97,12 @@
 			aria-labelledby="modal-title"
 			tabindex="-1"
 		>
-			<div class="flex items-center justify-between border-b p-4 border-[var(--border-primary)]">
-				<h2 id="modal-title" class="m-0 text-sm font-semibold text-[var(--fg-primary)]">
+			<div class="flex items-center justify-between border-b p-4 border-primary">
+				<h2 id="modal-title" class="m-0 text-sm font-semibold text-fg-primary">
 					{mode === 'change' ? 'Change Datasource' : 'Add Datasource'}
 				</h2>
 				<button
-					class="flex cursor-pointer items-center justify-center border-none bg-[var(--color-transparent)] p-1 transition-all text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)]"
+					class="flex cursor-pointer items-center justify-center border-none bg-transparent p-1 transition-all text-fg-muted hover:bg-hover hover:text-fg-primary"
 					onclick={handleClose}
 					aria-label="Close"
 				>
@@ -111,29 +111,27 @@
 			</div>
 			<div class="flex flex-col gap-4 overflow-y-auto p-4">
 				<input
-					class="w-full border px-3 py-3 text-sm transition-all focus:outline-none border-[var(--border-primary)] text-[var(--fg-primary)] bg-[var(--bg-primary)] focus:border-[var(--info-border)]"
+					class="w-full border px-3 py-3 text-sm transition-all focus:outline-none border-primary text-fg-primary bg-primary focus:border-info"
 					type="text"
 					bind:this={searchInput}
 					bind:value={searchQuery}
 					placeholder="Search datasources..."
 				/>
-				<div class="flex max-h-[300px] flex-col gap-1 overflow-y-auto">
+				<div class="flex max-h-75 flex-col gap-1 overflow-y-auto">
 					{#if isLoading}
-						<div class="flex items-center justify-center p-8 text-sm text-[var(--fg-muted)]">
-							Loading...
-						</div>
+						<div class="flex items-center justify-center p-8 text-sm text-fg-muted">Loading...</div>
 					{:else if filteredDatasources.length === 0}
-						<div class="flex items-center justify-center p-8 text-sm text-[var(--fg-muted)]">
+						<div class="flex items-center justify-center p-8 text-sm text-fg-muted">
 							{searchQuery ? 'No matching datasources' : 'No datasources available'}
 						</div>
 					{:else}
 						{#each filteredDatasources as ds (ds.id)}
 							<button
-								class="flex cursor-pointer items-center justify-between border border-[var(--color-transparent)] bg-[var(--color-transparent)] p-3 text-left transition-all hover:bg-[var(--bg-hover)] hover:border-[var(--border-primary)]"
+								class="flex cursor-pointer items-center justify-between border border-transparent bg-transparent p-3 text-left transition-all hover:bg-hover hover:border-primary"
 								onclick={() => handleSelect(ds.id, ds.name)}
 							>
-								<span class="text-sm font-medium text-[var(--fg-primary)]">{ds.name}</span>
-								<span class="flex items-center gap-1 text-[var(--fg-muted)]">
+								<span class="text-sm font-medium text-fg-primary">{ds.name}</span>
+								<span class="flex items-center gap-1 text-fg-muted">
 									{#if ds.source_type === 'file'}
 										<FileTypeBadge path={ds.config.file_path as string} size="sm" showIcon={true} />
 									{:else}
@@ -152,25 +150,3 @@
 		</div>
 	</div>
 {/if}
-
-<style>
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
-
-	@keyframes slideIn {
-		from {
-			transform: translateY(-10px);
-			opacity: 0;
-		}
-		to {
-			transform: translateY(0);
-			opacity: 1;
-		}
-	}
-</style>

@@ -90,7 +90,7 @@
 		<h4 id="{uid}-agg-heading">Aggregations</h4>
 
 		<div class="flex flex-wrap gap-2 mb-4" role="group" aria-label="Add aggregation form">
-			<div class="flex-[2] min-w-[160px]">
+			<div class="flex-2 min-w-40">
 				<ColumnDropdown
 					{schema}
 					value={newAggregation.column}
@@ -103,7 +103,7 @@
 			<select
 				id="{uid}-agg-function"
 				data-testid="agg-function-select"
-				class="flex-1 min-w-[120px]"
+				class="flex-1 min-w-30"
 				bind:value={newAggregation.function}
 			>
 				{#each aggregationFunctions as func (func)}
@@ -114,7 +114,7 @@
 			<input
 				id="{uid}-agg-alias"
 				type="text"
-				class="flex-[2] min-w-[160px]"
+				class="flex-2 min-w-40"
 				bind:value={newAggregation.alias}
 				placeholder="Alias (optional)"
 			/>
@@ -123,7 +123,7 @@
 				id="{uid}-agg-add"
 				data-testid="agg-add-button"
 				type="button"
-				class="add-btn px-4 py-2 border-none cursor-pointer accent-btn"
+				class="px-4 py-2 border border-transparent cursor-pointer accent-btn hover:opacity-90 disabled:bg-muted disabled:text-fg-muted disabled:border-primary disabled:cursor-not-allowed"
 				onclick={addAggregation}
 				disabled={!newAggregation.column}
 				aria-label="Add aggregation"
@@ -160,15 +160,3 @@
 		{/if}
 	</div>
 </div>
-
-<style>
-	.add-btn:disabled {
-		background-color: var(--bg-muted) !important;
-		cursor: not-allowed;
-		color: var(--fg-muted) !important;
-		border: 1px solid var(--border-primary);
-	}
-	button:hover:not(:disabled) {
-		opacity: 0.9;
-	}
-</style>

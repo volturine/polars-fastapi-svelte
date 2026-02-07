@@ -443,7 +443,7 @@
 {:else if analysisQuery.isError}
 	<div class="error-box flex h-full flex-col items-center justify-center text-center gap-4">
 		<div
-			class="flex items-center justify-center text-xl font-bold w-[52px] h-[52px] border border-primary"
+			class="flex items-center justify-center text-xl font-bold w-13 h-13 border border-primary"
 		>
 			!
 		</div>
@@ -458,7 +458,7 @@
 		>
 	</div>
 {:else if analysisQuery.data}
-	<div class="flex h-full flex-col bg-secondary">
+	<div class="analysis-page flex h-full flex-col bg-secondary">
 		<header
 			class="analysis-header flex items-stretch sticky top-0 h-12 bg-panel border-y border-primary"
 		>
@@ -491,7 +491,7 @@
 			</div>
 			<div class="flex-1 min-w-0 overflow-hidden flex items-center justify-center gap-0">
 				<button
-					class="collapse-arrow collapse-arrow-left w-6 h-full flex items-center justify-center bg-[var(--color-transparent)] border-none text-lg cursor-pointer flex-shrink-0 text-fg-muted transition-colors duration-[160ms] border-r border-primary hover:text-fg-primary hover:bg-hover"
+					class="collapse-arrow collapse-arrow-left w-6 h-full flex items-center justify-center bg-transparent border-none text-lg cursor-pointer shrink-0 text-fg-muted transition-colors duration-160 border-r border-primary hover:text-fg-primary hover:bg-hover"
 					class:collapsed={leftPaneCollapsed}
 					class:hidden={!isEditingMode}
 					onclick={() => (leftPaneCollapsed = !leftPaneCollapsed)}
@@ -505,13 +505,13 @@
 					<div class="tabs flex items-center overflow-x-auto w-full gap-1">
 						{#each analysisStore.tabs.filter((t) => t.type === 'datasource') as tab (tab.id)}
 							<button
-								class="tab inline-flex items-center bg-[var(--color-transparent)] border-none cursor-pointer text-sm font-medium uppercase px-2 py-1 text-fg-muted transition-all duration-[160ms] gap-1 tracking-[0.06em] hover:text-fg-secondary hover:bg-hover"
+								class="tab inline-flex items-center bg-transparent border-none cursor-pointer text-sm font-medium uppercase px-2 py-1 text-fg-muted transition-all duration-160 gap-1 tracking-[0.06em] hover:text-fg-secondary hover:bg-hover"
 								class:active={analysisStore.activeTab?.id === tab.id}
 								onclick={() => handleSelectTab(tab.id)}
 								type="button"
 							>
 								<span class="inline-flex items-center min-w-0">
-									<span class="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]"
+									<span class="whitespace-nowrap overflow-hidden text-ellipsis max-w-37.5"
 										>{tab.name}</span
 									>
 								</span>
@@ -532,7 +532,7 @@
 							</button>
 						{/each}
 						<button
-							class="tab add-tab inline-flex items-center bg-[var(--color-transparent)] border-none cursor-pointer text-sm font-semibold uppercase px-2 py-1 text-fg-muted transition-all duration-[160ms] gap-1 tracking-[0.06em] hover:text-fg-secondary hover:bg-hover"
+							class="tab add-tab inline-flex items-center bg-transparent border-none cursor-pointer text-sm font-semibold uppercase px-2 py-1 text-fg-muted transition-all duration-160 gap-1 tracking-[0.06em] hover:text-fg-secondary hover:bg-hover"
 							onclick={() => openDatasourceModal('add')}
 							type="button"
 						>
@@ -541,7 +541,7 @@
 					</div>
 				</div>
 				<button
-					class="collapse-arrow collapse-arrow-right w-6 h-full flex items-center justify-center bg-[var(--color-transparent)] border-none text-lg cursor-pointer flex-shrink-0 text-fg-muted transition-colors duration-[160ms] border-l border-primary hover:text-fg-primary hover:bg-hover"
+					class="collapse-arrow collapse-arrow-right w-6 h-full flex items-center justify-center bg-transparent border-none text-lg cursor-pointer shrink-0 text-fg-muted transition-colors duration-160 border-l border-primary hover:text-fg-primary hover:bg-hover"
 					class:collapsed={rightPaneCollapsed}
 					class:hidden={!isEditingMode}
 					onclick={() => (rightPaneCollapsed = !rightPaneCollapsed)}
@@ -557,7 +557,7 @@
 			>
 				<div class="relative items-center px-1">
 					<button
-						class="mode-toggle flex items-center cursor-pointer text-sm py-2 bg-tertiary border border-primary text-fg-secondary gap-2 transition-all duration-[160ms] hover:bg-hover hover:border-primary"
+						class="mode-toggle flex items-center cursor-pointer text-sm py-2 bg-tertiary border border-primary text-fg-secondary gap-2 transition-all duration-160 hover:bg-hover hover:border-primary"
 						onclick={() => (showModeDropdown = !showModeDropdown)}
 						type="button"
 					>
@@ -567,11 +567,10 @@
 
 					{#if showModeDropdown}
 						<div
-							class="absolute left-0 min-w-[140px] bg-panel border border-primary p-1 z-[100]"
-							style="top: calc(100% + 4px);"
+							class="mode-dropdown absolute left-0 min-w-35 bg-panel border border-primary p-1 z-100"
 						>
 							<button
-								class="mode-option flex items-center w-full bg-[var(--color-transparent)] border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary transition-colors duration-[160ms] hover:bg-hover"
+								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary transition-colors duration-160 hover:bg-hover"
 								onclick={() => setMode('viewing')}
 								type="button"
 							>
@@ -579,7 +578,7 @@
 								<span>Viewing</span>
 							</button>
 							<button
-								class="mode-option flex items-center w-full bg-[var(--color-transparent)] border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary transition-colors duration-[160ms] hover:bg-hover"
+								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary transition-colors duration-160 hover:bg-hover"
 								onclick={() => setMode('editing')}
 								type="button"
 							>
@@ -591,7 +590,7 @@
 				</div>
 
 				<button
-					class="save-button flex-1 h-full bg-[var(--color-transparent)] border-none text-sm font-medium cursor-pointer transition-all duration-[160ms]"
+					class="save-button flex-1 h-full bg-transparent border-none text-sm font-medium cursor-pointer transition-all duration-160"
 					class:saved={saveStatus.current === 'saved'}
 					class:unsaved={saveStatus.current === 'unsaved'}
 					onclick={handleSave}
@@ -613,7 +612,7 @@
 		<div class="flex flex-1 overflow-hidden select-none bg-secondary" role="application">
 			{#if isEditingMode}
 				<div
-					class="left-pane flex-shrink-0 overflow-hidden flex h-full box-border bg-panel border-r border-primary panel-width"
+					class="left-pane shrink-0 overflow-hidden flex h-full box-border bg-panel border-r border-primary panel-width"
 					class:collapsed={leftPaneCollapsed}
 				>
 					<StepLibrary onAddStep={handleAddStep} onInsertStep={handleInsertStep} />
@@ -621,7 +620,7 @@
 			{/if}
 
 			<div
-				class="center-pane flex-1 min-w-[200px] flex bg-secondary"
+				class="center-pane flex-1 min-w-50 flex bg-secondary"
 				class:readonly={!isEditingMode}
 				class:expanded={!isEditingMode}
 			>
@@ -643,7 +642,7 @@
 
 			{#if isEditingMode}
 				<div
-					class="right-pane flex-shrink-0 overflow-hidden flex h-full box-border bg-panel border-l border-primary panel-width"
+					class="right-pane shrink-0 overflow-hidden flex h-full box-border bg-panel border-l border-primary panel-width"
 					class:collapsed={rightPaneCollapsed}
 				>
 					<StepConfig
@@ -669,91 +668,3 @@
 />
 
 <DragPreview />
-
-<style>
-	.analysis-header {
-		z-index: var(--z-header);
-	}
-
-	.panel-width {
-		width: var(--operations-panel-width, 280px);
-		transition: width var(--transition), visibility var(--transition);
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-	.spinner {
-		width: 32px;
-		height: 32px;
-		border: 2px solid var(--border-primary);
-		border-top-color: var(--info-border);
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-	.editable-title:focus {
-		background-color: var(--bg-hover);
-		border-radius: var(--radius-sm);
-		padding: 0 var(--space-1);
-		margin: 0 calc(var(--space-1) * -1);
-	}
-	.collapse-arrow.hidden {
-		visibility: hidden;
-		pointer-events: none;
-	}
-	.save-button.saved {
-		color: var(--success-fg);
-	}
-	.save-button.unsaved {
-		background-color: var(--warning-bg);
-		color: var(--warning-fg);
-		border-left: 1px solid var(--warning-border);
-	}
-	.save-button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-	.tab.active {
-		color: var(--fg-primary);
-		background-color: var(--bg-secondary);
-	}
-	.left-pane.collapsed,
-	.right-pane.collapsed {
-		width: 0;
-		border: none;
-	}
-	.left-pane :global(> *),
-	.right-pane :global(> *) {
-		width: 100%;
-		visibility: visible;
-		transition: visibility var(--transition);
-	}
-	.left-pane.collapsed :global(> *),
-	.right-pane.collapsed :global(> *) {
-		visibility: hidden;
-	}
-	.center-pane :global(> *) {
-		width: 100%;
-	}
-	.center-pane.expanded {
-		flex: 1;
-	}
-	.readonly {
-		opacity: 0.7;
-	}
-	.readonly :global(.step-node),
-	.readonly :global(.step-button),
-	.readonly :global(.drag-handle),
-	.readonly :global(.action-btn),
-	.readonly :global(.drop-slot),
-	.readonly :global(.datasource-node) {
-		pointer-events: none !important;
-	}
-	.header-right :global(.mode-toggle-container),
-	.header-right :global(.mode-toggle-container *) {
-		pointer-events: auto !important;
-		opacity: 1 !important;
-	}
-</style>

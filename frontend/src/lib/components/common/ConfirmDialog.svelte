@@ -61,11 +61,11 @@
 
 {#if show}
 	<div
-		class="fixed inset-0 z-[1000] flex animate-[fadeIn_160ms_ease] items-center justify-center p-4 bg-[var(--overlay-bg)]"
+		class="fixed inset-0 z-1000 flex animate-fade-in items-center justify-center p-4 bg-overlay"
 		role="presentation"
 	>
 		<div
-			class="w-full max-w-[400px] animate-[slideIn_160ms_ease] overflow-hidden border max-sm:max-w-full bg-[var(--dialog-bg)] border-[var(--border-primary)] focus:outline-none"
+			class="w-full max-w-100 animate-slide-up overflow-hidden border max-sm:max-w-full bg-dialog border-primary focus:outline-none"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="dialog-title"
@@ -73,12 +73,12 @@
 			tabindex="-1"
 			bind:this={dialogRef}
 		>
-			<div class="flex items-center justify-between border-b p-4 border-[var(--border-primary)]">
-				<h2 id="dialog-title" class="m-0 text-base font-semibold text-[var(--fg-primary)]">
+			<div class="flex items-center justify-between border-b p-4 border-primary">
+				<h2 id="dialog-title" class="m-0 text-base font-semibold text-fg-primary">
 					{title}
 				</h2>
 				<button
-					class="flex cursor-pointer items-center justify-center border-none bg-[var(--color-transparent)] p-1 transition-all text-[var(--fg-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)]"
+					class="flex cursor-pointer items-center justify-center border-none bg-transparent p-1 transition-all text-fg-muted hover:bg-hover hover:text-fg-primary"
 					onclick={onCancel}
 					aria-label="Close dialog"
 				>
@@ -87,22 +87,20 @@
 			</div>
 
 			<div class="p-6">
-				<p id="dialog-message" class="m-0 text-sm leading-relaxed text-[var(--fg-secondary)]">
+				<p id="dialog-message" class="m-0 text-sm leading-relaxed text-fg-secondary">
 					{message}
 				</p>
 			</div>
 
-			<div
-				class="flex justify-end gap-3 border-t p-4 max-sm:flex-col-reverse border-[var(--border-primary)]"
-			>
+			<div class="flex justify-end gap-3 border-t p-4 max-sm:flex-col-reverse border-primary">
 				<button
-					class="cursor-pointer border bg-[var(--color-transparent)] px-4 py-2 font-mono text-sm font-medium transition-all max-sm:w-full text-[var(--fg-primary)] border-[var(--border-primary)] hover:bg-[var(--bg-hover)]"
+					class="cursor-pointer border bg-transparent px-4 py-2 font-mono text-sm font-medium transition-all max-sm:w-full text-fg-primary border-primary hover:bg-hover"
 					onclick={onCancel}
 				>
 					{cancelText}
 				</button>
 				<button
-					class="cursor-pointer border px-4 py-2 font-mono text-sm font-medium transition-all max-sm:w-full bg-[var(--error-bg)] text-[var(--error-fg)] border-[var(--error-border)] hover:opacity-85"
+					class="cursor-pointer border px-4 py-2 font-mono text-sm font-medium transition-all max-sm:w-full bg-error text-error-fg border-error hover:opacity-85"
 					onclick={onConfirm}
 				>
 					{confirmText}
@@ -111,25 +109,3 @@
 		</div>
 	</div>
 {/if}
-
-<style>
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
-
-	@keyframes slideIn {
-		from {
-			transform: translateY(-10px);
-			opacity: 0;
-		}
-		to {
-			transform: translateY(0);
-			opacity: 1;
-		}
-	}
-</style>

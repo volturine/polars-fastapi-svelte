@@ -38,9 +38,7 @@
 
 	<div class="form-section">
 		<h4>Columns to Explode</h4>
-		<p class="mb-3 text-sm text-fg-tertiary">
-			Select one or more list/array columns to explode
-		</p>
+		<p class="mb-3 text-sm text-fg-tertiary">Select one or more list/array columns to explode</p>
 
 		{#if !hasListColumns}
 			<div class="warning-box">

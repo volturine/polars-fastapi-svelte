@@ -41,9 +41,7 @@
 		<div class="flex flex-col gap-2">
 			{#each inputs as input, index (index)}
 				<div class="grid grid-cols-1 md:grid-cols-[32px_1fr_200px_auto] gap-2 items-center">
-					<span class="text-xs text-left md:text-center text-fg-muted"
-						>{index + 1}</span
-					>
+					<span class="text-xs text-left md:text-center text-fg-muted">{index + 1}</span>
 					<input
 						type="text"
 						placeholder="Label"

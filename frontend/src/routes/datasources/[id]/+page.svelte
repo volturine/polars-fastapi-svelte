@@ -377,7 +377,7 @@
 	}
 </script>
 
-<div class="mx-auto max-w-[900px] p-6">
+<div class="datasource-detail-page mx-auto max-w-225 p-6">
 	<header class="mb-6 flex items-center justify-between gap-4 border-b border-primary pb-6">
 		<div class="flex items-center gap-4">
 			<button
@@ -430,14 +430,14 @@
 
 		<div class="mb-6 flex gap-2 border-b-2 border-primary">
 			<button
-				class="tab -mb-0.5 border-b-2 border-[var(--color-transparent)] px-5 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
+				class="tab -mb-0.5 border-b-2 border-transparent px-5 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
 				class:active={activeTab === 'general'}
 				onclick={() => (activeTab = 'general')}
 			>
 				General
 			</button>
 			<button
-				class="tab -mb-0.5 border-b-2 border-[var(--color-transparent)] px-5 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
+				class="tab -mb-0.5 border-b-2 border-transparent px-5 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
 				class:active={activeTab === 'schema'}
 				onclick={() => (activeTab = 'schema')}
 			>
@@ -445,7 +445,7 @@
 			</button>
 			{#if csv}
 				<button
-					class="tab -mb-0.5 border-b-2 border-[var(--color-transparent)] px-5 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
+					class="tab -mb-0.5 border-b-2 border-transparent px-5 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
 					class:active={activeTab === 'csv'}
 					onclick={() => (activeTab = 'csv')}
 				>
@@ -454,7 +454,7 @@
 			{/if}
 			{#if excel}
 				<button
-					class="tab -mb-0.5 border-b-2 border-[var(--color-transparent)] px-5 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
+					class="tab -mb-0.5 border-b-2 border-transparent px-5 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
 					class:active={activeTab === 'excel'}
 					onclick={() => (activeTab = 'excel')}
 				>
@@ -583,7 +583,7 @@
 							</div>
 							{#each columns as column, index (index)}
 								<div
-									class="table-row grid grid-cols-[50px_2fr_140px_1fr] items-center gap-3 border-t border-primary px-4 py-3 hover:bg-hover"
+									class="table-row grid-cols-[50px_2fr_140px_1fr] items-center gap-3 border-t border-primary px-4 py-3 hover:bg-hover"
 								>
 									<span class="text-xs text-fg-muted">{index + 1}</span>
 									<input
@@ -598,7 +598,7 @@
 										placeholder="Select type..."
 									/>
 									<span
-										class="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap text-sm text-fg-muted"
+										class="max-w-50 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-fg-muted"
 										title={column.sample_value ?? ''}
 									>
 										{column.sample_value ?? '-'}
@@ -822,35 +822,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	.tab.active {
-		color: var(--accent-primary);
-		border-bottom-color: var(--info-border);
-	}
-
-	input:focus,
-	select:focus {
-		outline: none;
-		border-color: var(--info-border);
-	}
-
-	input:disabled,
-	select:disabled {
-		background: var(--bg-tertiary);
-		cursor: not-allowed;
-	}
-
-	:global(.spin) {
-		animation: spin 1s linear infinite;
-	}
-
-	@keyframes spin {
-		from {
-			transform: rotate(0deg);
-		}
-		to {
-			transform: rotate(360deg);
-		}
-	}
-</style>

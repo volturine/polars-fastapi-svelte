@@ -65,27 +65,25 @@
 	}
 </script>
 
-<div class="rounded-md overflow-hidden bg-[var(--bg-primary)]">
-	<div
-		class="flex justify-between items-center px-4 py-3 border-b bg-[var(--bg-tertiary)] border-[var(--border-primary)]"
-	>
-		<h3 class="m-0 text-sm font-semibold truncate text-[var(--fg-primary)]">{datasourceName}</h3>
+<div class="rounded-md overflow-hidden bg-primary">
+	<div class="flex justify-between items-center px-4 py-3 border-b bg-tertiary border-primary">
+		<h3 class="m-0 text-sm font-semibold truncate text-fg-primary">{datasourceName}</h3>
 		<div class="flex gap-1 shrink-0">
 			<button
-				class="flex items-center gap-1.5 py-1.5 px-3 border border-[var(--color-transparent)] bg-[var(--color-transparent)] text-[var(--fg-tertiary)] text-xs font-medium cursor-pointer transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)]"
-				class:!bg-[var(--accent-bg)]={viewMode === 'data'}
-				class:!text-[var(--accent-fg)]={viewMode === 'data'}
-				class:!border-[var(--info-border)]={viewMode === 'data'}
+				class="flex items-center gap-1.5 py-1.5 px-3 border border-transparent bg-transparent text-fg-tertiary text-xs font-medium cursor-pointer transition-colors hover:bg-hover hover:text-fg-primary"
+				class:bg-accent-bg={viewMode === 'data'}
+				class:text-accent-primary={viewMode === 'data'}
+				class:border-info={viewMode === 'data'}
 				onclick={() => (viewMode = 'data')}
 			>
 				<Table size={14} />
 				Data
 			</button>
 			<button
-				class="flex items-center gap-1.5 py-1.5 px-3 border border-[var(--color-transparent)] bg-[var(--color-transparent)] text-[var(--fg-tertiary)] text-xs font-medium cursor-pointer transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--fg-primary)]"
-				class:!bg-[var(--accent-bg)]={viewMode === 'schema'}
-				class:!text-[var(--accent-fg)]={viewMode === 'schema'}
-				class:!border-[var(--info-border)]={viewMode === 'schema'}
+				class="flex items-center gap-1.5 py-1.5 px-3 border border-transparent bg-transparent text-fg-tertiary text-xs font-medium cursor-pointer transition-colors hover:bg-hover hover:text-fg-primary"
+				class:bg-accent-bg={viewMode === 'schema'}
+				class:text-accent-primary={viewMode === 'schema'}
+				class:border-info={viewMode === 'schema'}
 				onclick={() => (viewMode = 'schema')}
 			>
 				<FileBracesCorner size={14} />
@@ -97,23 +95,21 @@
 	{#if viewMode === 'data'}
 		{#if error}
 			<div class="p-8 text-center">
-				<p class="m-0 mb-2 font-semibold text-[var(--error-fg)]">Failed to load preview</p>
-				<p class="m-0 text-xs text-[var(--fg-tertiary)]">{error.message}</p>
+				<p class="m-0 mb-2 font-semibold text-error-fg">Failed to load preview</p>
+				<p class="m-0 text-xs text-fg-tertiary">{error.message}</p>
 			</div>
 		{:else}
-			<div
-				class="flex items-center gap-3 px-4 py-3 border-b bg-[var(--bg-secondary)] border-[var(--border-primary)]"
-			>
+			<div class="flex items-center gap-3 px-4 py-3 border-b bg-secondary border-primary">
 				<button
-					class="py-1 px-2.5 border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--fg-primary)] text-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+					class="py-1 px-2.5 border border-primary bg-primary text-fg-primary text-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={goPrev}
 					disabled={!canPrev || isLoading}
 				>
 					Prev
 				</button>
-				<span class="text-xs text-[var(--fg-tertiary)]">Page {page}</span>
+				<span class="text-xs text-fg-tertiary">Page {page}</span>
 				<button
-					class="py-1 px-2.5 border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--fg-primary)] text-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+					class="py-1 px-2.5 border border-primary bg-primary text-fg-primary text-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={goNext}
 					disabled={!canNext || isLoading}
 				>
@@ -128,28 +124,26 @@
 			/>
 		{/if}
 	{:else}
-		<div class="max-h-[300px] overflow-y-auto">
+		<div class="max-h-75 overflow-y-auto">
 			{#if isLoading}
-				<div class="p-8 text-center pointer-events-none text-[var(--fg-tertiary)]">
-					Loading schema...
-				</div>
+				<div class="p-8 text-center pointer-events-none text-fg-tertiary">Loading schema...</div>
 			{:else if error}
 				<div class="p-8 text-center">
-					<p class="m-0 mb-2 font-semibold text-[var(--error-fg)]">Failed to load schema</p>
-					<p class="m-0 text-xs text-[var(--fg-tertiary)]">{error.message}</p>
+					<p class="m-0 mb-2 font-semibold text-error-fg">Failed to load schema</p>
+					<p class="m-0 text-xs text-fg-tertiary">{error.message}</p>
 				</div>
 			{:else}
 				<div
-					class="grid grid-cols-2 px-4 py-2 text-xs font-semibold sticky top-0 border-b bg-[var(--bg-tertiary)] border-[var(--border-primary)] text-[var(--fg-muted)]"
+					class="grid grid-cols-2 px-4 py-2 text-xs font-semibold sticky top-0 border-b bg-tertiary border-primary text-fg-muted"
 				>
 					<span>Column</span>
 					<span>Type</span>
 				</div>
 				{#each schema as column (column.name)}
 					<div
-						class="grid grid-cols-2 py-2 px-4 border-b border-[var(--border-primary)] last:border-b-0 hover:bg-[var(--bg-hover)]"
+						class="grid grid-cols-2 py-2 px-4 border-b border-primary last:border-b-0 hover:bg-hover"
 					>
-						<span class="font-mono text-[0.8125rem] text-[var(--fg-primary)]">{column.name}</span>
+						<span class="font-mono text-[0.8125rem] text-fg-primary">{column.name}</span>
 						<ColumnTypeBadge columnType={column.dtype} size="xs" showIcon={true} />
 					</div>
 				{/each}

@@ -173,8 +173,11 @@
 				<div class="flex" role="radiogroup" aria-label="Condition logic">
 					<button
 						type="button"
-						class="logic-btn flex cursor-pointer items-center justify-center border border-primary bg-[var(--color-transparent)] px-2 py-1 text-xs text-fg-muted transition-all hover:bg-hover hover:text-fg-secondary"
+						class="logic-btn flex cursor-pointer items-center justify-center border border-primary bg-transparent px-2 py-1 text-xs text-fg-muted transition-all hover:bg-hover hover:text-fg-secondary"
 						class:active={config.logic === 'AND'}
+						class:bg-accent-primary={config.logic === 'AND'}
+						class:text-bg-primary={config.logic === 'AND'}
+						class:border-info={config.logic === 'AND'}
 						onclick={() => (config.logic = 'AND')}
 						aria-pressed={config.logic === 'AND'}
 					>
@@ -182,8 +185,11 @@
 					</button>
 					<button
 						type="button"
-						class="logic-btn flex cursor-pointer items-center justify-center border border-primary bg-[var(--color-transparent)] px-2 py-1 text-xs text-fg-muted transition-all hover:bg-hover hover:text-fg-secondary"
+						class="logic-btn flex cursor-pointer items-center justify-center border border-primary bg-transparent px-2 py-1 text-xs text-fg-muted transition-all hover:bg-hover hover:text-fg-secondary"
 						class:active={config.logic === 'OR'}
+						class:bg-accent-primary={config.logic === 'OR'}
+						class:text-bg-primary={config.logic === 'OR'}
+						class:border-info={config.logic === 'OR'}
 						onclick={() => (config.logic = 'OR')}
 						aria-pressed={config.logic === 'OR'}
 					>
@@ -218,7 +224,10 @@
 					{@const isNull = isNullOperator(cond.operator)}
 					{@const ops = getOperatorsForType(colType, isColumn)}
 
-					<div class="condition-card border border-primary bg-panel p-3" role="listitem">
+					<div
+						class="condition-card filter-config border border-primary bg-panel p-3"
+						role="listitem"
+					>
 						<div class="mb-3 flex items-center gap-2 border-b border-primary pb-2">
 							<span class="text-xs font-semibold text-fg-muted">#{i + 1}</span>
 							{#if cond.column}
@@ -226,7 +235,7 @@
 							{/if}
 							<button
 								type="button"
-								class="btn-remove ml-auto flex h-6 w-6 cursor-pointer items-center justify-center border border-[var(--color-transparent)] bg-[var(--color-transparent)] p-0 text-fg-muted transition-all hover:border-error hover:bg-error hover:text-error disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[var(--color-transparent)] disabled:hover:bg-[var(--color-transparent)] disabled:hover:text-fg-muted"
+								class="btn-remove ml-auto flex h-6 w-6 cursor-pointer items-center justify-center border border-transparent bg-transparent p-0 text-fg-muted transition-all hover:border-error hover:bg-error hover:text-error disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-transparent disabled:hover:bg-transparent disabled:hover:text-fg-muted"
 								onclick={() => removeCondition(i)}
 								disabled={conditions.length === 1}
 								aria-label={`Remove condition ${i + 1}`}
@@ -236,7 +245,7 @@
 						</div>
 
 						<div class="relative flex flex-wrap items-start gap-3">
-							<div class="flex min-w-[120px] flex-1 flex-col gap-1">
+							<div class="flex min-w-30 flex-1 flex-col gap-1">
 								<label class="mb-0 text-xs font-normal text-fg-muted" for="{uid}-column-{i}"
 									>Column</label
 								>
@@ -248,7 +257,7 @@
 								/>
 							</div>
 
-							<div class="flex flex-col gap-1 min-w-[100px] flex-1">
+							<div class="flex flex-col gap-1 min-w-25 flex-1">
 								<label class="text-xs font-normal mb-0 text-fg-muted" for="{uid}-operator-{i}"
 									>Operator</label
 								>
@@ -265,14 +274,17 @@
 							</div>
 
 							{#if !isNull}
-								<div class="flex flex-col gap-1 min-w-[140px] flex-[2]">
+								<div class="flex flex-col gap-1 min-w-35 flex-2">
 									<div class="flex items-center justify-between gap-2">
 										<span class="text-xs font-normal text-fg-muted">Compare to</span>
 										<div class="flex" role="radiogroup" aria-label="Value mode">
 											<button
 												type="button"
-												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer transition-all border border-primary bg-[var(--color-transparent)] text-fg-muted hover:bg-hover hover:text-fg-secondary"
+												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer transition-all border border-primary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
 												class:active={!isColumn}
+												class:bg-accent-primary={!isColumn}
+												class:text-bg-primary={!isColumn}
+												class:border-info={!isColumn}
 												onclick={() => handleModeChange(i, 'value')}
 												aria-pressed={!isColumn}
 											>
@@ -280,8 +292,11 @@
 											</button>
 											<button
 												type="button"
-												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer transition-all border border-primary bg-[var(--color-transparent)] text-fg-muted hover:bg-hover hover:text-fg-secondary"
+												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer transition-all border border-primary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
 												class:active={isColumn}
+												class:bg-accent-primary={isColumn}
+												class:text-bg-primary={isColumn}
+												class:border-info={isColumn}
 												onclick={() => handleModeChange(i, 'column')}
 												aria-pressed={isColumn}
 											>
@@ -347,7 +362,7 @@
 									{/if}
 								</div>
 							{:else}
-								<div class="flex flex-col gap-1 min-w-[140px] flex-[2]">
+								<div class="flex flex-col gap-1 min-w-35 flex-2">
 									<span class="text-xs font-normal text-fg-muted">Value</span>
 									<div class="flex items-center h-9 px-3 text-sm italic bg-tertiary text-fg-muted">
 										<span>No value needed</span>
@@ -361,29 +376,3 @@
 		{/if}
 	</div>
 </div>
-
-<style>
-	.logic-btn:first-child,
-	.mode-btn:first-child {
-		border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-		border-right: none;
-	}
-	.logic-btn:last-child,
-	.mode-btn:last-child {
-		border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-	}
-	.logic-btn.active,
-	.mode-btn.active {
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border-color: var(--info-border);
-	}
-
-	.condition-card :global(.column-select) {
-		position: static;
-	}
-	.condition-card :global(.column-menu) {
-		top: inherit;
-		margin-top: 48px;
-	}
-</style>

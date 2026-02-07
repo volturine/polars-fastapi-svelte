@@ -51,9 +51,6 @@
 		return filtered as typeof allTypesByCategory;
 	});
 
-	// Calculate select width based on size
-	const selectWidth = $derived(size === 'sm' ? '140px' : size === 'lg' ? '200px' : '160px');
-
 	function handleChange(e: Event) {
 		const target = e.currentTarget as HTMLSelectElement;
 		value = target.value;
@@ -62,21 +59,20 @@
 </script>
 
 <div
-	class="inline-flex flex-wrap items-center gap-2 max-[480px]:flex-col max-[480px]:items-stretch"
+	class="inline-flex flex-wrap items-center gap-2 max-[480px]s:flex-col max-[480px]:items-stretch"
 >
 	<select
 		{id}
 		{value}
 		onchange={handleChange}
 		{disabled}
-		class="cursor-pointer border transition-all disabled:cursor-not-allowed disabled:opacity-60 hover:not-disabled:border-[var(--border-primary)] hover:not-disabled:bg-[var(--bg-primary)] focus:outline-2 focus:outline-offset-2 focus:outline-[var(--info-border)] focus:border-[var(--info-border)] max-[480px]:w-full {size ===
+		class="cursor-pointer border transition-all disabled:cursor-not-allowed disabled:opacity-60 hover:not-disabled:border-primary hover:not-disabled:bg-primary focus:outline-2 focus:outline-offset-2 focus:outline-info focus:border-info max-[480px]:w-full {size ===
 		'sm'
-			? 'px-2 py-1 text-xs'
+			? 'px-2 py-1 text-xs select-width-sm'
 			: size === 'lg'
-				? 'px-3 py-2 text-[0.9375rem]'
-				: 'px-2.5 py-1.5 text-sm'}"
+				? 'px-3 py-2 text-[0.9375rem] select-width-lg'
+				: 'px-2.5 py-1.5 text-sm select-width-md'}"
 		class:select-mono={true}
-		style="min-width: {selectWidth};"
 	>
 		{#if placeholder}
 			<option value="">{placeholder}</option>

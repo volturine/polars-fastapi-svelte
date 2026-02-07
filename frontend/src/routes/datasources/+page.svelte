@@ -92,7 +92,7 @@
 	}
 </script>
 
-<div class="mx-auto max-w-[1000px] p-6">
+<div class="mx-auto max-w-250 p-6">
 	<header class="mb-8 flex items-start justify-between gap-6 border-b border-primary pb-6">
 		<div>
 			<h1 class="m-0 mb-2 text-2xl font-semibold">Data Sources</h1>
@@ -146,7 +146,7 @@
 					>
 						<span>
 							<button
-								class="expand-btn flex h-7 w-7 items-center justify-center bg-[var(--color-transparent)] p-0 text-fg-secondary transition-all hover:border-primary hover:bg-bg-hover hover:text-fg-primary"
+								class="expand-btn flex h-7 w-7 items-center justify-center bg-transparent p-0 text-fg-secondary transition-all hover:border-primary hover:bg-bg-hover hover:text-fg-primary"
 								onclick={() => togglePreview(datasource.id)}
 								aria-expanded={isExpanded(datasource.id)}
 								aria-label={isExpanded(datasource.id) ? 'Collapse preview' : 'Expand preview'}

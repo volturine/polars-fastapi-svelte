@@ -96,7 +96,7 @@
 </script>
 
 <div
-	class="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-overlay-soft"
+	class="fixed inset-0 z-1000 flex items-center justify-center p-4 bg-overlay-soft"
 	role="button"
 	tabindex="0"
 	aria-label="Close file picker"
@@ -104,7 +104,7 @@
 	onkeydown={handleBackdropKeydown}
 >
 	<div
-		class="flex w-full max-w-[720px] max-h-[70vh] flex-col border bg-panel border-primary"
+		class="flex w-full max-w-180 max-h-[70vh] flex-col border bg-panel border-primary"
 		role="dialog"
 		aria-modal="true"
 		tabindex="-1"
@@ -122,7 +122,7 @@
 					{#each crumbs as crumb, index (crumb.path)}
 						<button
 							type="button"
-							class="cursor-pointer border-none bg-[var(--color-transparent)] p-0 text-xs text-fg-secondary hover:text-fg-primary hover:underline disabled:text-fg-muted disabled:cursor-default disabled:no-underline"
+							class="cursor-pointer border-none bg-transparent p-0 text-xs text-fg-secondary hover:text-fg-primary hover:underline disabled:text-fg-muted disabled:cursor-default disabled:no-underline"
 							onclick={() => load(crumb.path)}
 							disabled={loading}
 						>
@@ -140,7 +140,7 @@
 			</div>
 			<div class="flex items-center justify-end gap-2">
 				<button
-					class="cursor-pointer border-none bg-[var(--color-transparent)] p-0 text-xs text-accent"
+					class="cursor-pointer border-none bg-transparent p-0 text-xs text-accent"
 					onclick={oncancel}
 				>
 					Close

@@ -217,20 +217,14 @@
 	});
 </script>
 
-<div
-	class="pipeline-canvas flex-1 overflow-y-auto p-6 bg-secondary min-h-[400px]"
->
+<div class="pipeline-canvas flex-1 overflow-y-auto p-6 bg-secondary min-h-100">
 	{#if steps.length === 0 && !datasource}
 		<div
-			class="empty-state flex min-h-[400px] h-full flex-col items-center justify-center text-center text-fg-muted"
+			class="empty-state flex min-h-100 h-full flex-col items-center justify-center text-center text-fg-muted"
 		>
 			<LayoutGrid size={32} strokeWidth={1.5} class="mb-4 text-fg-faint" />
-			<h3 class="m-0 mb-2 text-base font-semibold text-fg-secondary">
-				No pipeline steps
-			</h3>
-			<p class="m-0 text-sm text-fg-muted">
-				Drag operations from the library and drop here
-			</p>
+			<h3 class="m-0 mb-2 text-base font-semibold text-fg-secondary">No pipeline steps</h3>
+			<p class="m-0 text-sm text-fg-muted">Drag operations from the library and drop here</p>
 			<div
 				class="insert-zone empty-drop flex w-full cursor-default flex-col items-center py-2 transition-all"
 				class:ready={canDrop}
@@ -255,14 +249,12 @@
 
 				{#if canDrop}
 					<div
-						class="my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center transition-all border-[var(--border-primary)] bg-[var(--color-transparent)] hover:border-[var(--border-primary)] hover:bg-[var(--bg-hover)]"
-						class:!border-[var(--info-border)]={hoverIndex === 0}
-						class:!bg-[var(--bg-tertiary)]={hoverIndex === 0}
-						class:!border-[var(--error-border)]={hoverIndex === 0 && !drag.valid}
-						class:!bg-[var(--error-bg)]={hoverIndex === 0 && !drag.valid}
+						class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center transition-all"
+						class:active={hoverIndex === 0}
+						class:invalid={hoverIndex === 0 && !drag.valid}
 					>
 						{#if hoverIndex === 0}
-							<span class="font-mono text-sm font-medium lowercase text-[var(--fg-primary)]"
+							<span class="insert-label font-mono text-sm font-medium lowercase"
 								>{drag.type ?? 'step'}</span
 							>
 						{/if}
@@ -307,14 +299,12 @@
 					/>
 					{#if canDrop}
 						<div
-							class="my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center transition-all border-[var(--border-primary)] bg-[var(--color-transparent)] hover:border-[var(--border-primary)] hover:bg-[var(--bg-hover)]"
-							class:!border-[var(--info-border)]={hoverIndex === 0}
-							class:!bg-[var(--bg-tertiary)]={hoverIndex === 0}
-							class:!border-[var(--error-border)]={hoverIndex === 0 && !drag.valid}
-							class:!bg-[var(--error-bg)]={hoverIndex === 0 && !drag.valid}
+							class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center transition-all"
+							class:active={hoverIndex === 0}
+							class:invalid={hoverIndex === 0 && !drag.valid}
 						>
 							{#if hoverIndex === 0}
-								<span class="font-mono text-sm font-medium lowercase text-[var(--fg-primary)]"
+								<span class="insert-label font-mono text-sm font-medium lowercase"
 									>{drag.type ?? 'step'}</span
 								>
 							{/if}
@@ -372,14 +362,12 @@
 							{/if}
 							{#if canDrop}
 								<div
-									class="my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center transition-all border-[var(--border-primary)] bg-[var(--color-transparent)] hover:border-[var(--border-primary)] hover:bg-[var(--bg-hover)]"
-									class:!border-[var(--info-border)]={hoverIndex === i + 1}
-									class:!bg-[var(--bg-tertiary)]={hoverIndex === i + 1}
-									class:!border-[var(--error-border)]={hoverIndex === i + 1 && !drag.valid}
-									class:!bg-[var(--error-bg)]={hoverIndex === i + 1 && !drag.valid}
+									class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center transition-all"
+									class:active={hoverIndex === i + 1}
+									class:invalid={hoverIndex === i + 1 && !drag.valid}
 								>
 									{#if hoverIndex === i + 1}
-										<span class="font-mono text-sm font-medium lowercase text-[var(--fg-primary)]"
+										<span class="insert-label font-mono text-sm font-medium lowercase"
 											>{drag.type ?? 'step'}</span
 										>
 									{/if}
@@ -404,18 +392,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	:global(body.touch-dragging) .pipeline-canvas {
-		overflow: hidden;
-		touch-action: none;
-	}
-
-	.insert-zone.ready {
-		cursor: pointer;
-	}
-
-	.insert-zone.ready:hover :global(.connection-line) {
-		color: var(--accent-primary);
-	}
-</style>

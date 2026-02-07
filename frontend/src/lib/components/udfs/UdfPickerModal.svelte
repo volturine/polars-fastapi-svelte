@@ -28,12 +28,12 @@
 		</div>
 		<div class="modal-body">
 			<input type="text" placeholder="Search UDFs..." bind:value={search} />
-			<div class="flex flex-col gap-2 max-h-[360px] overflow-auto">
+			<div class="flex flex-col gap-2 max-h-90 overflow-auto">
 				{#if filtered.length === 0}
 					<p class="m-0 text-fg-muted">No matching UDFs.</p>
 				{:else}
 					{#each filtered as udf (udf.id)}
-						<button class="row" type="button" onclick={() => onSelect(udf)}>
+						<button class="row udf-row" type="button" onclick={() => onSelect(udf)}>
 							<div class="flex justify-between gap-3 font-medium">
 								<span>{udf.name}</span>
 								<div class="flex items-center gap-1 flex-wrap">
@@ -45,9 +45,7 @@
 											{/if}
 										{/each}
 									{:else}
-										<span class="text-xs uppercase tracking-wide text-fg-muted"
-											>No inputs</span
-										>
+										<span class="text-xs uppercase tracking-wide text-fg-muted">No inputs</span>
 									{/if}
 								</div>
 							</div>
@@ -66,19 +64,3 @@
 		</div>
 	</div>
 {/if}
-
-<style>
-	/* modal-backdrop, modal, modal-header, modal-close, modal-body, modal-footer — global in app.css */
-	.row {
-		text-align: left;
-		padding: var(--space-3);
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		background-color: var(--bg-secondary);
-		color: var(--fg-primary);
-		cursor: pointer;
-	}
-	.row:hover {
-		background-color: var(--bg-hover);
-	}
-</style>

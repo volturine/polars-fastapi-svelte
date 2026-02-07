@@ -61,7 +61,7 @@
 		{#if timeValue}
 			<button
 				type="button"
-				class="clear-btn absolute right-1 top-1/2 -translate-y-1/2 flex h-[18px] w-[18px] cursor-pointer items-center justify-center border-none bg-[var(--color-transparent)] p-0 transition-all text-fg-muted"
+				class="clear-btn absolute right-1 top-1/2 -translate-y-1/2 flex h-4.5 w-4.5 cursor-pointer items-center justify-center border-none bg-transparent p-0 transition-all text-fg-muted"
 				onclick={clearTime}
 				title="Clear time"
 			>
@@ -70,14 +70,3 @@
 		{/if}
 	</div>
 </div>
-
-<style>
-	.clear-btn:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-primary);
-	}
-
-	.clear-btn:active {
-		background-color: var(--bg-tertiary);
-	}
-</style>

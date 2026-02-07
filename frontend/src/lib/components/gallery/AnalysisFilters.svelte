@@ -27,7 +27,7 @@
 </script>
 
 <div class="mb-7 flex flex-wrap items-center gap-4 max-sm:flex-col max-sm:items-stretch">
-	<div class="relative min-w-[220px] max-w-[420px] flex-1 max-sm:max-w-none">
+	<div class="relative min-w-55 max-w-105 flex-1 max-sm:max-w-none">
 		<Search
 			class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted"
 			size={16}
@@ -41,7 +41,7 @@
 		/>
 		{#if searchQuery}
 			<button
-				class="clear-btn absolute right-2 top-1/2 flex -translate-y-1/2 cursor-pointer items-center justify-center border-none bg-[var(--color-transparent)] p-1 transition-all text-fg-muted"
+				class="clear-btn absolute right-2 top-1/2 flex -translate-y-1/2 cursor-pointer items-center justify-center border-none bg-transparent p-1 transition-all text-fg-muted"
 				onclick={() => onSearch('')}
 				aria-label="Clear search"
 			>
@@ -51,10 +51,7 @@
 	</div>
 
 	<div class="flex items-center gap-2 max-sm:justify-between">
-		<label
-			for="sort-select"
-			class="whitespace-nowrap text-xs font-medium text-fg-muted"
-		>
+		<label for="sort-select" class="whitespace-nowrap text-xs font-medium text-fg-muted">
 			Sort:
 		</label>
 		<select
@@ -73,13 +70,13 @@
 	{#if selectionCount > 0}
 		<div class="ml-auto flex items-center gap-2">
 			<button
-				class="btn-text flex items-center gap-1 border border-[var(--color-transparent)] bg-[var(--color-transparent)] px-3 py-2 text-sm transition-all"
+				class="btn-text flex items-center gap-1 border border-transparent bg-transparent px-3 py-2 text-sm transition-all"
 				onclick={onSelectAll}
 			>
 				Select All
 			</button>
 			<button
-				class="btn-text flex items-center gap-1 border border-[var(--color-transparent)] bg-[var(--color-transparent)] px-3 py-2 text-sm transition-all"
+				class="btn-text flex items-center gap-1 border border-transparent bg-transparent px-3 py-2 text-sm transition-all"
 				onclick={onClearSelection}
 			>
 				<X size={14} />
@@ -92,38 +89,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	.search-input:focus {
-		outline: none;
-		border-color: var(--info-border);
-		box-shadow: 0 0 0 2px color-mix(in srgb, var(--info-border) 20%, var(--color-transparent));
-	}
-
-	.search-input::placeholder {
-		color: var(--fg-muted);
-	}
-
-	.clear-btn:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-primary);
-	}
-
-	.sort-select:focus {
-		outline: none;
-		border-color: var(--info-border);
-	}
-
-	.sort-select:hover {
-		border-color: var(--border-primary);
-	}
-
-	.btn-text {
-		color: var(--fg-secondary);
-	}
-
-	.btn-text:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-primary);
-	}
-</style>

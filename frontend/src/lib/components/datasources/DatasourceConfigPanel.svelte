@@ -15,6 +15,7 @@
 	} from '$lib/types/datasource';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import ColumnTypeDropdown from '$lib/components/common/ColumnTypeDropdown.svelte';
+	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import { formatDateDisplay } from '$lib/utils/datetime';
 	import { resolveColumnType } from '$lib/utils/columnTypes';
 
@@ -179,21 +180,21 @@
 		return ds.source_type === 'iceberg';
 	}
 
+	function isReadonly(ds: DataSource): boolean {
+		// Check if datasource has read_only flag in config (e.g., DuckDB)
+		if (ds.config && 'read_only' in ds.config) {
+			return ds.config.read_only === true;
+		}
+		// Database, API, and Iceberg sources have readonly schema
+		if (ds.source_type === 'database' || ds.source_type === 'api' || ds.source_type === 'iceberg') {
+			return true;
+		}
+		return false;
+	}
+
 	function handleNameChange(newName: string) {
 		name = newName;
 		hasChanges = true;
-	}
-
-	function handleColumnNameChange(index: number, newName: string) {
-		columns = columns.map((col, i) => (i === index ? { ...col, name: newName } : col));
-		hasChanges = true;
-		schemaModified = true;
-	}
-
-	function handleColumnTypeChange(index: number, newType: string) {
-		columns = columns.map((col, i) => (i === index ? { ...col, dtype: newType } : col));
-		hasChanges = true;
-		schemaModified = true;
 	}
 
 	function handleCsvConfigChange<K extends keyof typeof csvConfig>(key: K, value: (typeof csvConfig)[K]) {
@@ -361,6 +362,12 @@
 							<span class="uppercase tracking-wide text-fg-muted">Created</span>
 							<span class="font-medium text-fg-primary">{formatDateDisplay(ds.created_at)}</span>
 						</div>
+						<div class="flex flex-col gap-1">
+							<span class="uppercase tracking-wide text-fg-muted">Schema</span>
+							<span class="font-medium {isReadonly(ds) ? 'text-warning-fg' : 'text-success-fg'}">
+								{isReadonly(ds) ? 'Read-only' : 'Editable'}
+							</span>
+						</div>
 						{#if schemaQuery.data}
 							<div class="flex flex-col gap-1">
 								<span class="uppercase tracking-wide text-fg-muted">Rows</span>
@@ -417,36 +424,13 @@
 								class:border-primary={index > 0}
 							>
 								<span class="text-xs text-fg-faint">{index + 1}</span>
-								<input
-									type="text"
-									class="input-base w-full border px-2 py-1 text-xs"
-									value={column.name}
-									oninput={(e) => handleColumnNameChange(index, e.currentTarget.value)}
-								/>
-								<ColumnTypeDropdown
-									value={column.dtype}
-									onChange={(val) => handleColumnTypeChange(index, val)}
-									placeholder="Type..."
-								/>
+								<span class="text-sm text-fg-primary truncate">{column.name}</span>
+								<ColumnTypeBadge columnType={column.dtype} size="sm" />
 							</div>
 						{/each}
 					</div>
 
-					{#if hasChanges}
-						<button
-							class="btn btn-primary w-full flex items-center justify-center gap-2"
-							onclick={handleSave}
-							disabled={updateMutation.isPending}
-						>
-							{#if updateMutation.isPending}
-								<Loader size={16} class="spin" />
-								Saving...
-							{:else}
-								<Save size={16} />
-								Save Changes
-							{/if}
-						</button>
-					{/if}
+
 				{:else}
 					<div class="py-6 text-center text-fg-muted text-sm">
 						<p class="m-0">No schema information available.</p>

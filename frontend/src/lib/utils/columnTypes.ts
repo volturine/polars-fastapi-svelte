@@ -29,7 +29,16 @@
  */
 
 import type { ComponentType } from 'svelte';
-import { Type, Hash, Binary, Calendar, ToggleLeft, Layers, HelpCircle, File } from 'lucide-svelte';
+import {
+	Type,
+	Hash,
+	Binary,
+	Calendar,
+	ToggleLeft,
+	Layers,
+	CircleQuestionMark,
+	File
+} from 'lucide-svelte';
 
 /**
  * Supported column types (Polars data types)
@@ -211,7 +220,7 @@ export const CATEGORY_REGISTRY: Record<ColumnTypeCategory, CategoryConfig> = {
 			borderColor: 'var(--type-other-border)',
 			backgroundColor: 'var(--type-other-bg)'
 		},
-		icon: HelpCircle
+		icon: CircleQuestionMark
 	}
 };
 
@@ -459,7 +468,7 @@ export const COLUMN_TYPE_REGISTRY: Record<ColumnType, ColumnTypeConfig> = {
 		canonicalName: 'Binary',
 		category: 'other',
 		colors: CATEGORY_REGISTRY.other.colors,
-		icon: HelpCircle,
+		icon: CircleQuestionMark,
 		description: 'Binary data',
 		aliases: []
 	},
@@ -469,7 +478,7 @@ export const COLUMN_TYPE_REGISTRY: Record<ColumnType, ColumnTypeConfig> = {
 		canonicalName: 'Object',
 		category: 'other',
 		colors: CATEGORY_REGISTRY.other.colors,
-		icon: HelpCircle,
+		icon: CircleQuestionMark,
 		description: 'Python object (mixed type)',
 		aliases: []
 	},
@@ -479,7 +488,7 @@ export const COLUMN_TYPE_REGISTRY: Record<ColumnType, ColumnTypeConfig> = {
 		canonicalName: 'Null',
 		category: 'other',
 		colors: CATEGORY_REGISTRY.other.colors,
-		icon: HelpCircle,
+		icon: CircleQuestionMark,
 		description: 'Null type',
 		aliases: []
 	},

@@ -1452,6 +1452,14 @@ button.btn-sm {
 	color: var(--info-border);
 }
 
+.bg-info-bg {
+	background-color: var(--info-bg);
+}
+
+.border-info-border {
+	border-color: var(--info-border);
+}
+
 /* Background colors */
 .bg-primary {
 	background-color: var(--bg-primary);

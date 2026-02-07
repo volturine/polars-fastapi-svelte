@@ -2,7 +2,7 @@
 	import { createQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { resolve } from '$app/paths';
 	import { listDatasources, deleteDatasource } from '$lib/api/datasource';
-	import { Plus, Trash2 } from 'lucide-svelte';
+	import { Plus, Trash2, Search } from 'lucide-svelte';
 	import type { DataSource } from '$lib/types/datasource';
 	import DatasourcePreview from '$lib/components/datasources/DatasourcePreview.svelte';
 	import DatasourceConfigPanel from '$lib/components/datasources/DatasourceConfigPanel.svelte';
@@ -37,8 +37,16 @@
 	let selectedId = $state<string | null>(page.url.searchParams.get('id'));
 	let showConfig = $state<string | null>(page.url.searchParams.get('id'));
 	let deletingId = $state<string | null>(null);
+	let searchQuery = $state('');
 
 	const datasources = $derived(query.data ?? []);
+	const filteredDatasources = $derived(
+		searchQuery
+			? datasources.filter((d) =>
+					d.name.toLowerCase().includes(searchQuery.toLowerCase())
+				)
+			: datasources
+	);
 	const selectedDatasource = $derived(datasources.find((d) => d.id === selectedId) ?? null);
 
 	function selectDatasource(id: string | null) {
@@ -62,16 +70,27 @@
 	<!-- Left Pane -->
 	<aside class="w-(--datasource-panel-width) border-r border-primary flex flex-col bg-bg-primary shrink-0">
 		<!-- Header -->
-		<header class="flex items-center justify-between px-4 py-3 border-b border-primary">
-			<h1 class="text-sm font-semibold">Data Sources</h1>
-			<a
-				href={resolve('/datasources/new')}
-				class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 no-underline bg-accent text-bg-primary border border-info"
-				data-sveltekit-reload
-			>
-				<Plus size={14} />
-				Add
-			</a>
+		<header class="flex flex-col gap-2 px-4 py-3 border-b border-primary">
+			<div class="flex items-center justify-between">
+				<h1 class="text-sm font-semibold">Data Sources</h1>
+				<a
+					href={resolve('/datasources/new')}
+					class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 no-underline bg-accent text-bg-primary border border-info"
+					data-sveltekit-reload
+				>
+					<Plus size={14} />
+					Add
+				</a>
+			</div>
+			<div class="relative">
+				<Search size={14} class="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted" />
+				<input
+					type="text"
+					placeholder="Search datasources..."
+					class="w-full bg-transparent border border-primary px-3 py-1.5 pl-8 text-sm"
+					bind:value={searchQuery}
+				/>
+			</div>
 		</header>
 
 		<!-- Datasource List -->
@@ -91,8 +110,12 @@
 						Create your first data source
 					</a>
 				</div>
+			{:else if filteredDatasources.length === 0}
+				<div class="p-8 text-center text-sm text-fg-muted">
+					No datasources match "{searchQuery}"
+				</div>
 			{:else}
-				{#each datasources as datasource (datasource.id)}
+				{#each filteredDatasources as datasource (datasource.id)}
 					<div
 						class="datasource-item border-b border-primary"
 						class:selected={selectedId === datasource.id}

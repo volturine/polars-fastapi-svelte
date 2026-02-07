@@ -6,11 +6,31 @@
 
 @import 'tailwindcss';
 
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes slide-up {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
 /* ============================================
-   TAILWIND THEME CUSTOMIZATION
+   CSS VARIABLES - DESIGN TOKENS
    ============================================ */
 
-@theme {
+:root {
 	/* Font families */
 	--font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Consolas', 'Monaco', monospace;
 	--font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -42,32 +62,6 @@
 	--animate-fade-in: fade-in 160ms ease;
 	--animate-slide-up: slide-up 160ms ease;
 
-	@keyframes fade-in {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
-
-	@keyframes slide-up {
-		from {
-			opacity: 0;
-			transform: translateY(10px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-}
-
-/* ============================================
-   CSS VARIABLES - DESIGN TOKENS
-   ============================================ */
-
-:root {
 	/* Transitions */
 	--transition: 160ms ease;
 

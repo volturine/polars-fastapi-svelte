@@ -393,3 +393,17 @@ When testing new features, verify:
 2. Check for: missing dependencies in `$derived`/`$effect`, `$state` update loops
 3. Open DevTools console, run `npm run check` for TypeScript errors
 4. **Never ignore timeouts** - they signal something is wrong
+
+## Datasource Architecture
+
+Datasources are immutable sources of truth: schema and location cannot be changed after creation, only configuration options.
+
+Schema updates are rejected at API level with "Datasource schemas are read-only and cannot be modified" error.
+
+Location fields (file_path, connection_string, url, db_path, metadata_path) are immutable; users must create new datasources for location changes.
+
+Frontend schema tab displays read-only inputs (disabled) that visually match editable state to maintain UI consistency.
+
+Refresh button in General tab triggers schema re-extraction from source data.
+
+Schema change detection compares column names, types, and nullability to identify modifications and show warnings.

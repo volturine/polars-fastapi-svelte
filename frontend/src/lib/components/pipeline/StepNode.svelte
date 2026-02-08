@@ -2,7 +2,7 @@
 	import type { PipelineStep } from '$lib/types/analysis';
 	import { drag, type DropTarget } from '$lib/stores/drag.svelte';
 	import InlineDataTable from '$lib/components/viewers/InlineDataTable.svelte';
-	import { Download, Save } from 'lucide-svelte';
+	import { Download, Save, GripVertical } from 'lucide-svelte';
 	import { exportData, downloadBlob, type ExportRequest } from '$lib/api/compute';
 	import { defaultStepType, stepTypes } from '$lib/components/pipeline/utils';
 
@@ -202,14 +202,7 @@
 				onclick={handleClick}
 				data-drag-handle="true"
 			>
-				<svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor">
-					<circle cx="2" cy="2" r="1.5" />
-					<circle cx="8" cy="2" r="1.5" />
-					<circle cx="2" cy="8" r="1.5" />
-					<circle cx="8" cy="8" r="1.5" />
-					<circle cx="2" cy="14" r="1.5" />
-					<circle cx="8" cy="14" r="1.5" />
-				</svg>
+				<GripVertical size={16} />
 			</button>
 
 			<span class="shrink-0 text-base">{currentStepInfo.icon}</span>

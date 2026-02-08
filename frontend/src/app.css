@@ -2086,6 +2086,256 @@ body.touch-dragging .pipeline-canvas {
 	color: inherit;
 }
 
+.dataset-table__table {
+	table-layout: fixed;
+}
+
+.dataset-table__th {
+	position: relative;
+	border-right: 1px solid var(--border-primary);
+}
+
+.dataset-table__th:last-child {
+	border-right: none;
+}
+
+.dataset-table__resizer {
+	position: absolute;
+	top: 0;
+	right: -3px;
+	width: 5px;
+	height: 100%;
+	cursor: col-resize;
+	background: transparent;
+	transform: translateX(2px);
+	padding: 0;
+}
+
+.dataset-table__resizer--active .dataset-table__resizer-line {
+	opacity: 1;
+}
+
+.dataset-table__cell {
+	position: relative;
+	padding-right: 2.25rem;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-height: 30px;
+	display: flex;
+	align-items: center;
+	min-width: 0;
+}
+
+.dataset-table__header {
+	min-height: 32px;
+	gap: 0.5rem;
+}
+
+.dataset-table__header-actions {
+	display: inline-flex;
+	gap: 0.25rem;
+}
+
+.dataset-table__drag-slot {
+	width: 1rem;
+	height: 1rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.dataset-table__header-actions--right {
+	align-self: center;
+	flex-shrink: 0;
+}
+
+.dataset-table__header-left {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+	flex: 1;
+	min-width: 0;
+}
+
+.dataset-table__drag,
+.dataset-table__pin-icon {
+	align-self: center;
+}
+
+.dataset-table__type-text {
+	font-size: 0.7rem;
+	color: var(--fg-muted);
+}
+
+.dataset-table__sort-label {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	align-items: flex-start;
+	align-self: flex-start;
+	min-width: 0;
+}
+
+.dataset-table__label-text {
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.dataset-table__drag {
+	border: none;
+	background: transparent;
+	color: var(--fg-muted);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: grab;
+}
+
+.dataset-table__drag svg {
+	stroke: currentColor;
+}
+
+.dataset-table__drag:hover {
+	color: var(--fg-primary);
+}
+
+.dataset-table__pin-icon {
+	color: var(--fg-muted);
+}
+
+.dataset-table__th--drag {
+	outline: 2px dashed var(--border-primary);
+}
+
+.dataset-table__th--dragging {
+	opacity: 0.6;
+}
+
+.dataset-table__drag:active {
+	cursor: grabbing;
+}
+
+.dataset-table__sort-label--drag {
+	outline: 2px dashed var(--border-primary);
+}
+
+.dataset-table__header-btn {
+	border: none;
+	background: transparent;
+	color: var(--fg-muted);
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.dataset-table__header-btn:hover {
+	color: var(--fg-primary);
+}
+
+.dataset-table__column-menu {
+	position: absolute;
+	right: 0.25rem;
+	top: 2.4rem;
+	background: var(--bg-primary);
+	border: 1px solid var(--border-primary);
+	z-index: var(--z-tooltip);
+	padding: 0.5rem;
+	min-width: 160px;
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.dataset-table__menu-search {
+	width: 100px;
+	border: 1px solid var(--border-primary);
+	background: var(--bg-primary);
+	color: var(--fg-primary);
+	padding: 0.35rem 0.5rem;
+	font-size: 0.75rem;
+}
+
+.dataset-table__td {
+	padding: 0;
+}
+
+.dataset-table__value {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: block;
+}
+
+.dataset-table__copy {
+	position: absolute;
+	top: 50%;
+	right: 0.5rem;
+	transform: translateY(-50%);
+	opacity: 0;
+	color: var(--fg-muted);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background-color: transparent;
+	transition:
+		opacity var(--transition),
+		color var(--transition);
+	padding: 0;
+}
+
+.dataset-table__copy svg {
+	stroke: currentColor;
+	fill: none;
+}
+
+.dataset-table__cell:hover .dataset-table__copy {
+	opacity: 1;
+}
+
+.dataset-table__copy:hover {
+	color: var(--fg-primary);
+}
+
+.dataset-table__tooltip {
+	position: fixed;
+	left: var(--tip-left);
+	top: var(--tip-top);
+	max-width: min(420px, 80vw);
+	padding: 0.5rem 0.75rem;
+	border: 1px solid var(--border-primary);
+	background: var(--bg-primary);
+	color: var(--fg-primary);
+	font-size: 0.8125rem;
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+	z-index: var(--z-tooltip);
+	white-space: normal;
+	word-break: break-word;
+}
+
+
+.dataset-table--compact .dataset-table__cell {
+	padding-top: 0.5rem;
+	padding-bottom: 0.5rem;
+}
+
+@media (max-width: 640px) {
+	.dataset-table__copy {
+		opacity: 1;
+		width: 1.75rem;
+		height: 1.75rem;
+	}
+
+	.dataset-table__resizer {
+		width: 8px;
+	}
+}
+
 .filter-config .condition-card .column-select {
 	position: static;
 }

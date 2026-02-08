@@ -9,6 +9,7 @@
 	import UdfPickerModal from '$lib/components/udfs/UdfPickerModal.svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
+	import { Pencil, X } from 'lucide-svelte';
 
 	interface WithColumnsExpr {
 		name: string;
@@ -357,24 +358,16 @@
 							onclick={() => editExpression(index)}
 							aria-label="Edit"
 						>
-							<svg
-								width="14"
-								height="14"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-							>
-								<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-								<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-							</svg>
+							<Pencil size={14} />
 						</button>
 						<button
 							type="button"
 							class="btn-remove w-6 h-6 p-0 inline-flex items-center justify-center bg-transparent cursor-pointer text-base leading-none text-fg-muted border border-transparent hover:text-error-fg hover:bg-error hover:border-error"
 							onclick={() => removeExpression(index)}
-							aria-label="Remove">×</button
+							aria-label="Remove"
 						>
+							<X size={14} />
+						</button>
 					</div>
 				</div>
 			{/each}

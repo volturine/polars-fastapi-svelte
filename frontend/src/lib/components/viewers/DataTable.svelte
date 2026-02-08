@@ -4,12 +4,18 @@
 		getCoreRowModel,
 		getSortedRowModel,
 		type ColumnDef,
+		type ColumnSizingInfoState,
+		type ColumnSizingState,
+		type ColumnPinningState,
 		type SortingState,
 		type HeaderGroup,
 		type Row
 	} from '@tanstack/table-core';
+	import { Check, Copy, GripVertical, Pin, Settings2 } from 'lucide-svelte';
+	import { onClickOutside } from 'runed';
+	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import type { TableCellValue } from '$lib/types/api-responses';
-
+	import { resolveColumnType } from '$lib/utils/columnTypes';
 	import { formatDateTimeDisplay, formatDateDisplay } from '$lib/utils/datetime';
 
 	interface Props {
@@ -19,13 +25,100 @@
 		loading?: boolean;
 		fillContainer?: boolean;
 		onSort?: (column: string, direction: 'asc' | 'desc') => void;
+		showTypeBadges?: boolean;
+		showFooter?: boolean;
+		density?: 'default' | 'compact';
+		enableResize?: boolean;
+		enableCopy?: boolean;
+		maxHeight?: '100' | '150';
+		columnSearch?: string;
 	}
 
 	type RowData = Record<string, unknown>;
 
-	let { columns, data, columnTypes = {}, loading = false, fillContainer = false, onSort }: Props = $props();
+	let {
+		columns,
+		data,
+		columnTypes = {},
+		loading = false,
+		fillContainer = false,
+		onSort,
+		showTypeBadges = false,
+		showFooter = true,
+		density = 'default',
+		enableResize = true,
+		enableCopy = true,
+		maxHeight = '150',
+		columnSearch = $bindable('')
+	}: Props = $props();
 
 	let sorting = $state<SortingState>([]);
+	let columnSizing = $state<ColumnSizingState>({});
+	let columnSizingInfo = $state<ColumnSizingInfoState>({
+		columnSizingStart: [],
+		deltaOffset: null,
+		deltaPercentage: null,
+		isResizingColumn: false,
+		startOffset: null,
+		startSize: null
+	});
+	let columnVisibility = $state<Record<string, boolean>>({});
+	let columnOrder = $state<string[]>([]);
+	let columnPinning = $state<ColumnPinningState>({ left: [], right: [] });
+	let columnMenuRef = $state<HTMLElement>();
+	let activeColumn = $state<string | null>(null);
+	let sizingReady = $state(false);
+	let dragColumn = $state<string | null>(null);
+	let dragOver = $state<string | null>(null);
+	let copied = $state<Record<string, boolean>>({});
+	let tip = $state<{ text: string; x: number; y: number } | null>(null);
+	let hover = $state<string | null>(null);
+	let timer = $state<number | null>(null);
+	let tipRef = $state<HTMLDivElement>();
+	let scrollRef = $state<HTMLDivElement>();
+
+	const hardMin = 220;
+	const defaultWidth = 150;
+	const hoverDelay = 400;
+	let panelWidth = $state(0);
+	const softMin = $derived(
+		columns.length ? Math.max(defaultWidth, Math.floor(panelWidth / columns.length)) : defaultWidth
+	);
+
+	let initialSize = $state(defaultWidth);
+
+	$effect(() => {
+		initialSize = softMin;
+		sizingReady = false;
+	});
+
+	$effect(() => {
+		columnsKey;
+		columnOrder = [...columns];
+		columnVisibility = {};
+		columnPinning = { left: [], right: [] };
+		columnSizing = {};
+		columnSizingInfo = {
+			columnSizingStart: [],
+			deltaOffset: null,
+			deltaPercentage: null,
+			isResizingColumn: false,
+			startOffset: null,
+			startSize: null
+		};
+		sizingReady = false;
+	});
+
+	$effect(() => {
+		const node = scrollRef;
+		if (!node) return;
+		const observer = new ResizeObserver(() => {
+			panelWidth = node.clientWidth;
+			ensureSizingReady();
+		});
+		observer.observe(node);
+		return () => observer.disconnect();
+	});
 
 	const table = $derived.by(() => {
 		if (data.length === 0 || columns.length === 0) return null;
@@ -33,7 +126,9 @@
 		const columnDefs: ColumnDef<RowData>[] = columns.map((col) => ({
 			id: col,
 			accessorKey: col,
-			header: col
+			header: col,
+			size: initialSize,
+			minSize: hardMin
 		}));
 
 		return createTable({
@@ -41,23 +136,202 @@
 			columns: columnDefs,
 			state: {
 				sorting,
-				columnPinning: { left: [], right: [] },
-				columnVisibility: {},
+				columnSizing,
+				columnSizingInfo,
+				columnPinning,
+				columnVisibility: effectiveVisibility,
 				expanded: {},
 				grouping: [],
 				rowSelection: {},
-				columnOrder: []
+				columnOrder
 			},
 			onSortingChange: () => {},
+			onColumnVisibilityChange: (updater) => {
+				columnVisibility = typeof updater === 'function' ? updater(columnVisibility) : updater;
+			},
+			onColumnOrderChange: (updater) => {
+				columnOrder = typeof updater === 'function' ? updater(columnOrder) : updater;
+			},
+			onColumnPinningChange: (updater) => {
+				columnPinning = typeof updater === 'function' ? updater(columnPinning) : updater;
+			},
+			onColumnSizingChange: (updater) => {
+				const next = typeof updater === 'function' ? updater(columnSizing) : updater;
+				columnSizing = normalizeSizing(next);
+			},
+			onColumnSizingInfoChange: (updater) => {
+				columnSizingInfo = typeof updater === 'function' ? updater(columnSizingInfo) : updater;
+			},
 			getCoreRowModel: getCoreRowModel(),
 			getSortedRowModel: getSortedRowModel(),
 			onStateChange: () => {},
+			columnResizeMode: 'onChange',
+			enableColumnResizing: enableResize,
 			renderFallbackValue: null
 		});
 	});
 
 	const headerGroups = $derived<HeaderGroup<RowData>[]>(table ? table.getHeaderGroups() : []);
 	const rows = $derived<Row<RowData>[]>(table ? table.getRowModel().rows : []);
+	const compact = $derived(density === 'compact');
+	const resizing = $derived(columnSizingInfo.isResizingColumn !== false);
+	const columnsKey = $derived(columns.join('|'));
+	const effectiveVisibility = $derived(
+		columns.reduce(
+			(acc, col) => {
+				const term = columnSearch.trim().toLowerCase();
+				const matches = term ? col.toLowerCase().includes(term) : true;
+				acc[col] = (columnVisibility[col] ?? true) && matches;
+				return acc;
+			},
+			{} as Record<string, boolean>
+		)
+	);
+
+	function normalizeSizing(next: ColumnSizingState): ColumnSizingState {
+		const safe = Object.fromEntries(
+			Object.entries(next).map(([key, value]) => [key, Math.max(hardMin, value)])
+		);
+		if (!panelWidth) return safe;
+		const order = columnOrder.length ? columnOrder : columns;
+		const visible = order.filter((col) => columnVisibility[col] ?? true);
+		if (!visible.length) return safe;
+		const total = visible.reduce((sum, col) => {
+			const current = safe[col] ?? columnSizing[col] ?? initialSize;
+			return sum + current;
+		}, 0);
+		if (total >= panelWidth) return safe;
+		const last = visible[visible.length - 1];
+		const lastSize = safe[last] ?? columnSizing[last] ?? initialSize;
+		return { ...safe, [last]: lastSize + (panelWidth - total) };
+	}
+
+	function toggleColumnVisibility(columnId: string) {
+		const visible = columnVisibility[columnId] ?? true;
+		columnVisibility = { ...columnVisibility, [columnId]: !visible };
+	}
+
+	function pinColumn(columnId: string, side: 'left' | 'right' | 'none') {
+		const left = (columnPinning.left ?? []).filter((id) => id !== columnId);
+		const right = (columnPinning.right ?? []).filter((id) => id !== columnId);
+		if (side === 'left') {
+			columnPinning = { left: [...left, columnId], right };
+			return;
+		}
+		if (side === 'right') {
+			columnPinning = { left, right: [...right, columnId] };
+			return;
+		}
+		columnPinning = { left, right };
+	}
+
+	function moveColumn(columnId: string, direction: 'left' | 'right') {
+		const order = columnOrder.length ? [...columnOrder] : [...columns];
+		const currentIndex = order.indexOf(columnId);
+		if (currentIndex === -1) return;
+		const nextIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1;
+		if (nextIndex < 0 || nextIndex >= order.length) return;
+		const updated = [...order];
+		const [item] = updated.splice(currentIndex, 1);
+		updated.splice(nextIndex, 0, item);
+		columnOrder = updated;
+	}
+
+	function toggleColumnMenu(columnId: string) {
+		activeColumn = activeColumn === columnId ? null : columnId;
+	}
+
+	function handleDragStart(event: DragEvent, columnId: string) {
+		dragColumn = columnId;
+		if (event.dataTransfer) {
+			event.dataTransfer.effectAllowed = 'move';
+			event.dataTransfer.setData('text/plain', columnId);
+		}
+		const target = event.currentTarget as HTMLElement;
+		const header = target.closest('th') as HTMLElement | null;
+		if (header && event.dataTransfer) {
+			event.dataTransfer.setDragImage(header, 12, 12);
+		}
+	}
+
+	function handleDragEnd() {
+		dragColumn = null;
+		dragOver = null;
+	}
+
+	function handleDragOver(event: DragEvent, columnId: string) {
+		event.preventDefault();
+		if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+		dragOver = columnId;
+	}
+
+	function handleDragLeave(columnId: string) {
+		if (dragOver !== columnId) return;
+		dragOver = null;
+	}
+
+	function handleDrop(event: DragEvent, columnId: string) {
+		event.preventDefault();
+		event.stopPropagation();
+		const source = dragColumn;
+		if (!source || source === columnId) {
+			dragColumn = null;
+			dragOver = null;
+			return;
+		}
+		const order = columnOrder.length ? [...columnOrder] : [...columns];
+		const sourceIndex = order.indexOf(source);
+		const targetIndex = order.indexOf(columnId);
+		if (sourceIndex === -1 || targetIndex === -1) {
+			dragColumn = null;
+			dragOver = null;
+			return;
+		}
+		const updated = [...order];
+		const [item] = updated.splice(sourceIndex, 1);
+		const adjustedTarget = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+		updated.splice(adjustedTarget, 0, item);
+		columnOrder = updated;
+		dragColumn = null;
+		dragOver = null;
+	}
+
+	function setSort(columnId: string, direction: 'asc' | 'desc' | 'none') {
+		if (direction === 'none') {
+			sorting = [];
+			return;
+		}
+		sorting = [{ id: columnId, desc: direction === 'desc' }];
+		if (onSort) {
+			onSort(columnId, direction);
+		}
+	}
+
+	function ensureSizingReady() {
+		if (sizingReady) return;
+		const total = columns.length * initialSize;
+		if (total >= panelWidth) {
+			sizingReady = true;
+			return;
+		}
+		const extra = panelWidth - total;
+		const add = Math.floor(extra / columns.length);
+		const seeded = columns.reduce((acc, col) => {
+			acc[col] = initialSize + add;
+			return acc;
+		}, {} as ColumnSizingState);
+		columnSizing = seeded;
+		sizingReady = true;
+	}
+
+	onClickOutside(
+		() => columnMenuRef,
+		() => {
+			if (activeColumn) {
+				activeColumn = null;
+			}
+		}
+	);
 
 	function getTemporalType(dtype: string | undefined): 'date' | 'datetime' | null {
 		if (!dtype) return null;
@@ -70,12 +344,33 @@
 
 	function formatValue(value: TableCellValue, columnId: string): string {
 		if (value === null || value === undefined) return '—';
-		const temporal = getTemporalType(columnTypes[columnId]);
+		const temporal = getTemporalType(resolveColumnType(columnTypes[columnId]));
 		if (temporal === 'date') return formatDateDisplay(value as string);
 		if (temporal === 'datetime') return formatDateTimeDisplay(value as string);
 		if (typeof value === 'number') return value.toLocaleString();
 		if (typeof value === 'boolean') return value ? 'true' : 'false';
+		if (Array.isArray(value)) {
+			return (
+				'[' +
+				value
+					.map((item) => {
+						if (typeof item === 'number') return item.toLocaleString();
+						if (item === null || item === undefined) return 'null';
+						return String(item);
+					})
+					.join(', ') +
+				']'
+			);
+		}
 		return String(value);
+	}
+
+	function getColumnType(columnId: string): string {
+		return resolveColumnType(columnTypes[columnId]);
+	}
+
+	function isListType(columnType: string): boolean {
+		return columnType.includes('List') || columnType === 'list';
 	}
 
 	function toggleSort(columnId: string) {
@@ -98,9 +393,94 @@
 		if (!sort) return false;
 		return sort.desc ? 'desc' : 'asc';
 	}
+
+	async function copyValue(event: MouseEvent, id: string, value: string) {
+		event.preventDefault();
+		event.stopPropagation();
+		if (!navigator?.clipboard) return;
+		const result = await navigator.clipboard.writeText(value).then(
+			() => true,
+			() => false
+		);
+		if (!result) return;
+		copied = { ...copied, [id]: true };
+		window.setTimeout(() => {
+			copied = { ...copied, [id]: false };
+		}, 1400);
+	}
+
+	function tipHide(id: string) {
+		if (hover !== id) return;
+		hover = null;
+		if (timer) {
+			window.clearTimeout(timer);
+			timer = null;
+		}
+		tip = null;
+	}
+
+	function tipShow(event: MouseEvent, id: string, value: string) {
+		const target = event.currentTarget as HTMLElement;
+		const valueEl = target.querySelector('[data-cell-value="true"]') as HTMLElement | null;
+		if (!valueEl) return;
+		const overflow = valueEl.scrollWidth > valueEl.clientWidth;
+		hover = id;
+		if (timer) {
+			window.clearTimeout(timer);
+			timer = null;
+		}
+		if (!overflow) {
+			tip = null;
+			return;
+		}
+		const rect = valueEl.getBoundingClientRect();
+		const pending = {
+			text: value,
+			x: rect.left + rect.width / 2,
+			y: rect.bottom + 8
+		};
+		const currentHover = hover;
+		timer = window.setTimeout(() => {
+			if (hover !== id || currentHover !== id) return;
+			tip = pending;
+		}, hoverDelay);
+	}
+
+	function tipMove(event: MouseEvent, id: string) {
+		if (hover !== id || !tip || !tipRef) return;
+		const target = event.currentTarget as HTMLElement;
+		const valueEl = target.querySelector('[data-cell-value="true"]') as HTMLElement | null;
+		if (!valueEl) return;
+		const rect = valueEl.getBoundingClientRect();
+		tip = { ...tip, x: rect.left + rect.width / 2, y: rect.bottom + 8 };
+	}
+
+	$effect(() => {
+		const current = tip;
+		const ref = tipRef;
+		if (!current || !ref) return;
+		window.requestAnimationFrame(() => {
+			const width = ref.offsetWidth;
+			const height = ref.offsetHeight;
+			const maxX = window.innerWidth - width - 12;
+			const left = Math.min(Math.max(12, current.x - width / 2), maxX);
+			const below = current.y + height + 12 <= window.innerHeight;
+			const top = below ? current.y : current.y - height - 12;
+			ref.style.setProperty('--tip-left', `${left}px`);
+			ref.style.setProperty('--tip-top', `${top}px`);
+		});
+	});
+
 </script>
 
-<div class="relative overflow-hidden border bg-panel border-primary" class:h-full={fillContainer} class:flex={fillContainer} class:flex-col={fillContainer}>
+<div
+	class="dataset-table relative overflow-hidden bg-panel"
+	class:h-full={fillContainer}
+	class:flex={fillContainer}
+	class:flex-col={fillContainer}
+	class:dataset-table--compact={compact}
+	class:dataset-table--resizing={resizing}
+>
 	{#if loading}
 		<div
 			class="flex flex-col items-center justify-center gap-4 p-12 pointer-events-none text-fg-tertiary"
@@ -115,28 +495,127 @@
 			<p class="m-0">No data available</p>
 		</div>
 	{:else if headerGroups.length > 0}
-		<div class="overflow-x-auto overflow-y-auto bg-panel" class:max-h-150={!fillContainer} class:flex-1={fillContainer}>
-			<table class="w-full border-collapse text-sm">
-				<thead class="sticky top-0 z-50 bg-table-header">
+		<div
+			class="dataset-table__scroll overflow-x-auto overflow-y-auto bg-panel"
+			class:max-h-150={!fillContainer && maxHeight === '150'}
+			class:max-h-100={!fillContainer && maxHeight === '100'}
+			class:flex-1={fillContainer}
+			bind:this={scrollRef}
+		>
+			<table
+				class="dataset-table__table w-full border-collapse text-sm"
+				style={`width: ${table?.getTotalSize() ?? 0}px`}
+			>
+				<thead class="dataset-table__thead sticky top-0 z-50 bg-table-header">
 					{#each headerGroups as headerGroup (headerGroup.id)}
 						<tr>
-							{#each headerGroup.headers as header (header.id)}
-								<th class="p-0 text-left font-semibold border-b-2 border-primary">
-									<button
-										class="flex items-center justify-between w-full px-4 py-3 bg-transparent border-none cursor-pointer text-sm font-semibold transition-colors text-fg-primary hover:bg-hover"
-										onclick={() => toggleSort(header.id)}
+							{#each headerGroup.headers as header, index (header.id)}
+								<th
+									class="dataset-table__th p-0 text-left font-semibold border-b border-primary"
+									class:dataset-table__th--drag={dragOver === header.id}
+									class:dataset-table__th--dragging={dragColumn === header.id}
+									style={`width: ${header.getSize()}px`}
+									ondragover={(event) => handleDragOver(event, header.id)}
+									ondragleave={() => handleDragLeave(header.id)}
+									ondrop={(event) => handleDrop(event, header.id)}
+								>
+									<div
+										class="dataset-table__header flex items-start justify-between w-full px-4 py-2"
+										style={`width: ${header.getSize()}px`}
 									>
-										<span class="font-mono">
-											{typeof header.column.columnDef.header === 'string'
-												? header.column.columnDef.header
-												: header.id}
-										</span>
-										{#if getSortDirection(header.id)}
-											<span class="ml-2 text-base text-accent">
-												{getSortDirection(header.id) === 'asc' ? '↑' : '↓'}
-											</span>
-										{/if}
-									</button>
+										<div class="dataset-table__header-left">
+											<div class="dataset-table__header-actions">
+												<div class="dataset-table__drag-slot">
+													{#if (columnPinning.left ?? []).includes(header.id) || (columnPinning.right ?? []).includes(header.id)}
+														<Pin class="dataset-table__pin-icon" size={12} />
+													{:else}
+														<button
+															class="dataset-table__drag"
+															draggable={true}
+															ondragstart={(event) => handleDragStart(event, header.id)}
+															ondragend={handleDragEnd}
+															aria-label="Drag to reorder"
+														>
+															<GripVertical size={12} />
+														</button>
+													{/if}
+												</div>
+											</div>
+											<div class="dataset-table__sort-label" role="presentation">
+												<span
+													class="dataset-table__label-text font-mono text-sm font-semibold text-fg-primary"
+												>
+													{typeof header.column.columnDef.header === 'string'
+														? header.column.columnDef.header
+														: header.id}
+												</span>
+												{#if showTypeBadges}
+													{#if getColumnType(header.id)}
+														<ColumnTypeBadge
+															columnType={getColumnType(header.id)}
+															size="xs"
+															showIcon={false}
+														/>
+													{:else}
+														<span class="dataset-table__type-text">—</span>
+													{/if}
+												{/if}
+											</div>
+										</div>
+										<div class="dataset-table__header-actions dataset-table__header-actions--right">
+											<button
+												class="dataset-table__header-btn"
+												onclick={() => toggleColumnMenu(header.id)}
+												aria-label="Column options"
+											>
+												<Settings2 size={12} />
+											</button>
+										</div>
+									</div>
+									{#if enableResize}
+										<button
+											class="dataset-table__resizer"
+											onmousedown={header.getResizeHandler()}
+											ontouchstart={header.getResizeHandler()}
+											aria-label="Resize column"
+											style={`transform: translateX(${columnSizingInfo.deltaOffset ?? 0}px)`}
+											class:dataset-table__resizer--active={header.column.getIsResizing()}
+										></button>
+									{/if}
+									{#if activeColumn === header.id}
+										<div class="dataset-table__column-menu" bind:this={columnMenuRef}>
+											<button
+												class="dataset-table__menu-btn"
+												onclick={() => setSort(header.id, 'asc')}>Sort A-Z</button
+											>
+											<button
+												class="dataset-table__menu-btn"
+												onclick={() => setSort(header.id, 'desc')}>Sort Z-A</button
+											>
+											<button
+												class="dataset-table__menu-btn"
+												onclick={() => setSort(header.id, 'none')}>Clear sort</button
+											>
+											<button
+												class="dataset-table__menu-btn"
+												onclick={() => pinColumn(header.id, 'left')}>Pin left</button
+											>
+											<button
+												class="dataset-table__menu-btn"
+												onclick={() => pinColumn(header.id, 'right')}>Pin right</button
+											>
+											<button
+												class="dataset-table__menu-btn"
+												onclick={() => pinColumn(header.id, 'none')}>Unpin</button
+											>
+											<button
+												class="dataset-table__menu-btn"
+												onclick={() => toggleColumnVisibility(header.id)}
+											>
+												{(columnVisibility[header.id] ?? true) ? 'Hide column' : 'Show column'}
+											</button>
+										</div>
+									{/if}
 								</th>
 							{/each}
 						</tr>
@@ -145,13 +624,34 @@
 				<tbody>
 					{#each rows as row (row.id)}
 						<tr
-							class="border-b transition-colors last:border-b-0 border-primary even:bg-secondary hover:bg-hover!"
+							class="dataset-table__row border-b transition-colors last:border-b-0 border-primary even:bg-secondary hover:bg-hover!"
 						>
 							{#each row.getVisibleCells() as cell (cell.id)}
-								<td
-									class="px-4 py-3 whitespace-nowrap overflow-hidden text-ellipsis max-w-75 text-sm text-fg-secondary"
-								>
-									{formatValue(cell.getValue() as TableCellValue, cell.column.id)}
+								{@const display = formatValue(cell.getValue() as TableCellValue, cell.column.id)}
+								<td class="dataset-table__td" style={`width: ${cell.column.getSize()}px`}>
+									<div
+										class="dataset-table__cell px-4 text-sm text-fg-secondary"
+										class:text-xs={isListType(getColumnType(cell.column.id))}
+										role="presentation"
+										onmouseenter={(event) => tipShow(event, cell.id, display)}
+										onmousemove={(event) => tipMove(event, cell.id)}
+										onmouseleave={() => tipHide(cell.id)}
+									>
+										<span class="dataset-table__value" data-cell-value="true">{display}</span>
+										{#if enableCopy}
+											<button
+												class="dataset-table__copy"
+												aria-label="Copy cell value"
+												onclick={(event) => copyValue(event, cell.id, display)}
+											>
+												{#if copied[cell.id]}
+													<Check size={14} />
+												{:else}
+													<Copy size={14} />
+												{/if}
+											</button>
+										{/if}
+									</div>
 								</td>
 							{/each}
 						</tr>
@@ -161,11 +661,18 @@
 		</div>
 	{/if}
 
-	{#if !loading && data.length > 0}
+	{#if showFooter && !loading && data.length > 0}
 		<div class="px-4 py-3 border-t border-primary bg-panel-header">
 			<span class="text-xs text-fg-tertiary">
 				Showing {data.length.toLocaleString()} row{data.length !== 1 ? 's' : ''}
 			</span>
 		</div>
 	{/if}
+
+	{#if tip}
+		<div class="dataset-table__tooltip" bind:this={tipRef}>
+			{tip.text}
+		</div>
+	{/if}
+
 </div>

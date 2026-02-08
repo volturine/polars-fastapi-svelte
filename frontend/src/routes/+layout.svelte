@@ -19,19 +19,14 @@
 	initializeStores();
 
 	// Use runed's PersistedState for persisted theme state across tabs/sessions
-	const theme = new PersistedState<'light' | 'dark'>('theme', 'light');
+	const themeAttribute =
+		typeof document === 'undefined' ? null : document.documentElement.getAttribute('data-theme');
+	const initialTheme = themeAttribute === 'dark' ? 'dark' : 'light';
+	const theme = new PersistedState<'light' | 'dark'>('theme', initialTheme);
 	let currentPath = $derived(page.url.pathname);
 
 	$effect(() => {
 		document.documentElement.setAttribute('data-theme', theme.current);
-	});
-
-	$effect(() => {
-		if (typeof window === 'undefined') return;
-		const saved = localStorage.getItem('theme');
-		if (saved) return;
-		const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-		theme.current = prefersDark ? 'dark' : 'light';
 	});
 
 	$effect(() => {

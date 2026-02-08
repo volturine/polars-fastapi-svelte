@@ -11,6 +11,7 @@
 
 	let page = $state(1);
 	let rowLimit = $state(100);
+	let columnSearch = $state('');
 
 	$effect(() => {
 		datasourceId;
@@ -81,6 +82,12 @@
 			>
 				Next
 			</button>
+			<input
+				type="text"
+				class="input-base border px-2 py-1 text-xs ml-auto w-60"
+				placeholder="Filter columns"
+				bind:value={columnSearch}
+			/>
 		</div>
 		<div class="flex-1 overflow-hidden">
 			<DataTable
@@ -89,6 +96,8 @@
 				columnTypes={data?.column_types ?? {}}
 				loading={isLoading}
 				fillContainer
+				bind:columnSearch
+				showTypeBadges
 			/>
 		</div>
 	{/if}

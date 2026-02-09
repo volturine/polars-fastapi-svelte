@@ -46,9 +46,7 @@ export function hasLock(resourceId: string): boolean {
 	return state.locked && state.byMe;
 }
 
-export function getLockPayload(
-	resourceId: string
-): { clientId: string; lockToken: string } | null {
+export function getLockPayload(resourceId: string): { clientId: string; lockToken: string } | null {
 	const state = getLockState(resourceId);
 	if (!state.byMe || !state.lockToken) return null;
 	const { clientId } = getClientIdentity();

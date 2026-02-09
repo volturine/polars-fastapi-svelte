@@ -1,433 +1,176 @@
 # AGENTS.md
 
-This file provides guidance to AI coding assistants (OpenCode, Copilot, Claude Code) when working with code in this repository.
+**MANDATORY READ FOR AI ASSISTANTS** - OpenCode, Copilot, Claude Code must follow this guidance when working on this repository.
 
-## Model Configuration
+Guidance for AI coding assistants working on this repository.
 
-Default Model: minimax m2.1 free
+**Stack:** SvelteKit 2 + FastAPI + SQLite
 
-## General Guidelines
+## Workflow
 
-As an autonomous agent you will:
+1. **Explore** → Read relevant files, understand context
+2. **Plan** → Create plan with `/plan`, get approval before coding
+3. **Code** → Implement solution
+4. **Review** → Use Second Opinion agent before completing
+5. **Commit** → Create well-formed commit
 
-1. Follow the **Explore → Plan → Code → Commit** workflow for complex tasks
-2. Use `vibe_check` after planning and before major actions
-3. Use `vibe_distill` when plans become overly complex
-4. Record resolved issues with `vibe_learn` to improve future sessions
-5. Use the **Second Opinion** agent before completing any significant task
+Use `vibe_check` after planning. Use `vibe_learn` to record discoveries.
 
-### Backend (Python/FastAPI)
+## Backend (Python/FastAPI)
 
-- Use async/await for all database operations
-- Follow RORO pattern: service functions receive Pydantic input, return Pydantic output
-- Use type hints everywhere
-- Use Pydantic V2 with `model_config = ConfigDict(from_attributes=True)`
-- Use SQLAlchemy `Mapped` type hints for models
-- Keep routes thin - business logic goes in services
+- Use async/await for all DB operations
+- Follow RORO: Pydantic in, Pydantic out
+- Type hints everywhere
+- Pydantic V2 with `model_config = ConfigDict(from_attributes=True)`
+- SQLAlchemy `Mapped` types for models
+- Keep routes thin - logic in services
+- File naming: `snake_case.py`
 
-### Frontend (Svelte/TypeScript)
+## Frontend (Svelte 5 + TypeScript)
 
-ALWAYS use Svelte 5 runes - never legacy syntax:
+### Runes Only
 
 ```svelte
 <script lang="ts">
   let count = $state(0);
   let doubled = $derived(count * 2);
-  $effect(() => {
-    console.log(`Count: ${count}`);
-  });
-  interface Props {
-    name: string;
-  }
   let { name }: Props = $props();
   let value = $bindable(0);
+  
+  $effect(() => { /* side effects only */ });
 </script>
 ```
 
-NEVER use legacy syntax:
-
-- `let x = 0` for reactive state (use `$state()`)
-- `$: x = ...` for derived values (use `$derived()`)
-- `export let` for props (use `$props()`)
-- `onMount` lifecycle (use `$effect()`)
+**Never use:** `let x = 0`, `$: x = ...`, `export let`, `onMount`
 
 ### Data Fetching
 
-Use TanStack Query for server state:
-
-```svelte
-<script lang="ts">
-  import { createQuery } from '@tanstack/svelte-query';
-  const query = createQuery({
-    queryKey: ['items'],
-    queryFn: fetchItems
-  });
-</script>
+```typescript
+import { createQuery } from '@tanstack/svelte-query';
+const query = createQuery({ queryKey: ['items'], queryFn: fetchItems });
 ```
 
 ### Styling
 
-- **Do not use inline styles** in `.svelte` (except dynamic positioning like drag preview left/top).
-- **Do not use CSS vars in Svelte markup** (`var(--...)` in class attributes or `<style>` blocks). Move styling into `frontend/src/app.css`.
-- **Prefer utility classes** and component classes defined in `frontend/src/app.css`.
-- **Avoid `@apply`** in `app.css` (breaks with custom utility classes). Use explicit CSS properties instead.
-- **Component `<style>` blocks should be avoided** unless absolutely necessary; put shared styles in `app.css`.
-- **Active/selected states** should use theme accent classes (`bg-accent-bg`, `text-accent-primary`, `border-info`) instead of hardcoded colors.
+- No inline styles (except dynamic positioning)
+- No CSS vars in markup - use `app.css`
+- Prefer utility classes from `app.css`
+- Avoid `@apply` in CSS
+- Avoid component `<style>` blocks
+- Use `border-tertiary` for table/view borders (matches header)
+- Use theme accents: `bg-accent-bg`, `text-accent-primary`, `border-info`
 
 ### File Naming
 
-- Backend: `snake_case.py`
-- Frontend components: `PascalCase.svelte`
-- Frontend utilities: `kebab-case.ts`
-- Stores: `*.svelte.ts` (enables runes outside components)
+- Components: `PascalCase.svelte`
+- Utilities: `kebab-case.ts`
+- Stores: `*.svelte.ts`
 
-### Import Patterns
+### Imports
 
 ```typescript
-// Frontend - use $lib alias
+// Use $lib alias
 import { apiRequest } from "$lib/api/client";
 import { authStore } from "$lib/stores/auth.svelte";
 ```
 
-```python
-# Backend - use relative imports within modules
-from core.config import settings
-from modules.auth.schemas import UserResponse
-```
+### Patterns
 
-### Config Defaults Pattern
-
-When creating steps with configs, always provide proper defaults at creation time:
+**Config Defaults:** Centralize in `step-config-defaults.ts`
 
 ```typescript
-// In step-config-defaults.ts - centralize all default configs
-export function getDefaultConfig(stepType: string): StepConfig {
-  const defaults: Record<string, StepConfig> = {
-    select: { columns: [] },
-    filter: { conditions: [{ column: '', operator: '=', value: '' }], logic: 'AND' },
-    join: { how: 'inner', right_source: '', join_columns: [], right_columns: [], suffix: '_right' },
-    // ... one entry per operation type
-  };
+export function getDefaultConfig(stepType: string) {
+  const defaults = { select: { columns: [] }, filter: { conditions: [] } };
   return JSON.parse(JSON.stringify(defaults[stepType] ?? {}));
 }
-
-// Use when building steps
-import { getDefaultConfig } from '$lib/utils/step-config-defaults';
-
-function buildStep(type: string): PipelineStep {
-  return { 
-    id: makeId(), 
-    type, 
-    config: getDefaultConfig(type) as Record<string, unknown>, 
-    depends_on: [] 
-  };
-}
 ```
 
-### Icon Migration Patterns
+**Icons:** Use Lucide. Store as component references, render as `<Icon />`.
 
-Replace emoji and custom icons with Lucide equivalents: close buttons use `X`, sort arrows use `ArrowUp`/`ArrowDown`, dropdown chevrons use `ChevronDown`, file navigation use `ArrowUp`.
+**Dynamic Styles:** Use Svelte actions (e.g., `use:setWidth`) not inline styles.
 
-Remove non-ASCII glyphs (em dash, arrows, bullets) with ASCII equivalents or appropriate icons.
+**$effect Rules:**
+- ✗ Never for data validation/initialization
+- ✓ DOM manipulation, API calls, localStorage, event listeners
+- Prefer `$derived` for computed values
 
-### Svelte Actions for Dynamic Styles
+## Code Style
 
-Use Svelte actions like `use:setWidth` to apply dynamic widths without inline styles, avoiding lint errors. For offsets, use CSS vars like `--resize-offset` set via actions.
+From `STYLE_GUIDE.md`:
 
-Width attributes cause Svelte check errors; replace with actions or CSS classes.
+- Prefer `const` over `let`
+- Avoid `else` - use early returns
+- Single word names where possible
+- Keep functions unified unless composable
+- Avoid unnecessary destructuring
+- Avoid `try/catch` where possible
+- No `any` type
 
-### Pipeline Step Icons
-
-Store Lucide icons as imported component references in `stepTypes` array; render directly as `<stepType.icon />` instead of icon strings, enabling proper component rendering.
-
-### Nested Button Elements
-
-Nested `<button>` elements in tabs cause warnings; replace tab container with `<div>` and use separate buttons.
-
-### Border Color Consistency
-
-Use `border-tertiary` (same color as `--bg-tertiary`) for all borders in data tables and views to create a cleaner, more cohesive appearance that matches the table header background.
-
-### Svelte 5 $effect Patterns
-
-**DO NOT use `$effect` for data validation or initialization** - these are code smells indicating data should be fixed at the source:
-
-```svelte
-<!-- BAD: Defensive $effect in config component -->
-<script>
-  let { config = $bindable({}) }: Props = $props();
-  
-  $effect(() => {
-    if (!config || typeof config !== 'object') {
-      config = { columns: [] };
-    }
-  });
-</script>
-
-<!-- GOOD: Centralize defaults at step creation -->
-<!-- In step-config-defaults.ts -->
-export function getDefaultConfig(stepType: string) {
-  const defaults = {
-    select: { columns: [] },
-    filter: { conditions: [], logic: 'AND' },
-    // ...
-  };
-  return defaults[stepType] ?? {};
-}
-
-<!-- In +page.svelte -->
-function buildStep(type: string) {
-  return { 
-    id: makeId(), 
-    type, 
-    config: getDefaultConfig(type),  // Proper defaults
-    depends_on: [] 
-  };
-}
-```
-
-**Legitimate `$effect` uses:**
-- DOM manipulation (theme changes, focus management)
-- External side effects (API calls, localStorage)
-- Event listener setup/cleanup
-- Syncing internal UI state (SvelteSet) when external config changes
-
-**Prefer `$derived` for computed values:**
-```svelte
-<!-- GOOD -->
-let selectedColumns = $derived(new SvelteSet(config.columns ?? []));
-```
-
-**Config Normalization for Backward Compatibility:**
-When loading saved data that might have malformed configs, normalize once in the store:
-```typescript
-// In analysis.svelte.ts
-private normalizeSteps(steps: PipelineStep[]) {
-  return steps.map(step => ({
-    ...step,
-    config: normalizeConfig(step.type, step.config)
-  }));
-}
-```
-
-### Runed Utilities
-
-This project uses [Runed](https://runed.dev/docs) for Svelte 5 utilities:
-
-```typescript
-import {
-  PersistedState,
-  Debounced,
-  FiniteStateMachine,
-  onClickOutside,
-  Previous,
-} from "runed";
-
-// Debounced state for search inputs
-const searchQuery = $state("");
-const debouncedSearch = new Debounced(() => searchQuery, 200);
-
-// Finite state machine for complex state transitions
-type SaveStates = "saved" | "unsaved" | "saving";
-type SaveEvents = "markUnsaved" | "startSave" | "saveComplete" | "saveError";
-const saveStatus = new FiniteStateMachine<SaveStates, SaveEvents>("saved", {
-  saved: { markUnsaved: "unsaved" },
-  unsaved: { startSave: "saving" },
-  saving: { saveComplete: "saved", saveError: "unsaved" },
-});
-
-// Persist state to localStorage
-const settings = new PersistedState("user-settings", { theme: "dark" });
-
-// Click outside detection for modals/dropdowns
-let modalRef = $state<HTMLElement>();
-onClickOutside(
-  () => modalRef,
-  () => closeModal(),
-);
-
-// Track previous values
-const prevValue = new Previous(() => someValue);
-if (prevValue.hasChanged()) {
-  /* react to change */
-}
-```
-
-## Project Overview
-
-Full-stack template: SvelteKit 2 frontend + FastAPI backend + SQLite database.
-
-## Common Commands
-
-### Backend (from `backend/` directory)
+## Commands
 
 ```bash
-uv sync --extra dev                        # Install dependencies
-uv run main.py                             # Start dev server (port 8000)
-uv run pytest                              # Run tests
-uv run pytest -k "test_name"               # Run tests matching pattern
-uv run pytest path/to/test_file.py         # Run specific test file
-uv run ruff format . && uv run ruff check --fix .  # Format and lint
-uv run mypy .                              # Type check
+# Backend
+cd backend && uv sync --extra dev && uv run main.py
+uv run pytest && uv run ruff format . && uv run ruff check --fix . && uv run mypy .
+
+# Frontend  
+cd frontend && npm install && npm run dev
+npm run check && npm run lint && npm run format
 ```
-
-### Frontend (from `frontend/` directory)
-
-```bash
-npm install                 # Install dependencies
-npm run dev                 # Start dev server (port 5173)
-npm run build               # Production build
-npm run test                # Run all tests
-npm run test -- src/lib/foo # Run tests in specific directory
-npm run test -- --ui        # Run tests with UI
-npm run check               # TypeScript check
-npm run lint && npm run format  # Lint and format
-```
-
-## Available Agents
-
-### Subagents
-
-| Agent | Description | When to Use |
-|-------|-------------|-------------|
-| **Second Opinion** | Validates implementations, provides independent code review | Before completing ANY task |
-| **E2E Testing** | Playwright-based end-to-end testing with structured reporting | Automated UI testing |
-| **Docks** | Technical documentation writer with concise, friendly tone | Always use when writing docs |
-| **Learn** | Extracts non-obvious learnings to AGENTS.md files | After sessions to record discoveries |
-| **Researcher** | Web research using Perplexity for docs and best practices | When current information is needed |
-| **Debugger** | Systematic investigation and root cause analysis | When debugging complex issues |
-
-### Slash Commands
-
-| Command | Description |
-|---------|-------------|
-| `/prd-generator` | Creates detailed PRDs from feature requests |
-| `/tasklist-generator` | Creates implementation task lists from PRDs |
-| `/plan` | Create implementation plan before coding |
-| `/review` | Quick code review using Second Opinion agent |
-| `/clarify` | Ask clarifying questions before starting work |
-| `/rmslop` | Removes AI-generated code slop (extra comments, defensive checks) |
-| `/spellcheck` | Checks spelling/grammar in markdown file changes |
-
-## MCP Servers
-
-| Server | Description |
-|--------|-------------|
-| **Svelte** | Svelte documentation, autofixer, and playground links (remote) |
-| **Perplexity** | AI search, research, and reasoning capabilities |
-| **Playwright** | Remote browser automation for E2E testing (remote) |
-| **Vibe Check** | Metacognitive oversight to prevent tunnel vision and over-engineering |
-| **Filesystem** | File system operations (read, write, list, search within project directory) |
-| **Memory** | Knowledge graph for storing and retrieving entities, relations, and observations |
-| **Fetch** | HTTP requests to fetch URLs from the internet |
-| **Sequential Thinking** | Dynamic reflective problem-solving with adaptive chain-of-thought |
-
-### Vibe Check Tools
-
-- `vibe_check` - Pattern interrupt that challenges assumptions during planning/implementation/review
-- `vibe_distill` - Simplifies complex plans back to minimal viable approach
-- `vibe_learn` - Records mistakes and solutions for future pattern recognition
-
-### Sequential Thinking
-
-Use `sequential-thinking` for:
-- Complex multi-step problem solving
-- Planning and design with room for revision
-- Breaking down complex problems
-- Analysis that might need course correction
-- Hypothesis generation and verification
-
-## Recommended Workflows
-
-### Explore → Plan → Code → Commit
-
-For most features and bug fixes:
-
-1. **Explore**: Read relevant files, understand the codebase context
-2. **Plan**: Create a plan (use `/plan`), get approval before coding
-3. **Code**: Implement the solution
-4. **Review**: Use Second Opinion agent to validate
-5. **Commit**: Create a well-formed commit
-
-### Test-Driven Development
-
-For algorithmic or well-defined work:
-
-1. Write tests based on expected input/output
-2. Run tests, confirm they fail
-3. Implement code to pass tests
-4. Refactor if needed
-5. Commit tests and implementation together
-
-## Environment Setup
-
-Copy `.env.example` to `.env` in both `backend/` and `frontend/` directories.
-
-## Git Restrictions
-
-- NEVER push to remote repositories
-- Only local commits are allowed
-- To share changes, create a pull request or ask a maintainer to push
 
 ## Testing
 
-### Playwright E2E Testing Strategy
+- Create new analysis per test session
+- Report results in table format
+- Never ignore timeouts - investigate immediately
+- Check DevTools + `npm run check` if UI unresponsive
 
-This project uses Playwright MCP for end-to-end testing with a subagent-based approach to keep the main processing agent uncluttered.
+## Git
 
-#### Quick Start
+- NEVER push to remote
+- Local commits only
+- Create PRs for sharing changes
 
-```bash
-# Start services
-cd backend && uv run main.py &
-cd frontend && npm run dev -- --port 5173 --host &
-```
+## Key Learnings
 
-#### Testing Workflow
-
-1. Create a new analysis for each test session (avoid state pollution)
-2. Use descriptive names like `E2E Test - Phase 5 Operations`
-3. Report results in table format with status, feature, and notes
-4. Update `E2E_TEST_RESULTS.md` after each session
-
-#### Testing Checklist
-
-When testing new features, verify:
-
-- [ ] Config panel opens correctly
-- [ ] Step appears in pipeline
-- [ ] Save succeeds
-- [ ] Preview/data loads correctly
-- [ ] Error handling works
-- [ ] Update E2E_TEST_RESULTS.md
-
-#### Playwright MCP Limitations
-
-| Feature | Status | Workaround |
-|---------|--------|------------|
-| Host file access | Blocked | Check `./data` local directory |
-| Drag-drop operations | Partial | Manual verification |
-| WebSocket connections | Errors non-critical | Ignore HMR errors |
-
-### Frontend Responsiveness During Testing
-
-**CRITICAL**: If any operation times out or UI becomes unresponsive during testing:
-
-1. **Investigate immediately** - likely indicates infinite loop or uncaught exception
-2. Check for: missing dependencies in `$derived`/`$effect`, `$state` update loops
-3. Open DevTools console, run `npm run check` for TypeScript errors
-4. **Never ignore timeouts** - they signal something is wrong
+- **Border consistency:** Use `border-tertiary` everywhere in tables
+- **Nested buttons:** Replace tab containers with `<div>` + separate buttons
+- **Width attributes:** Use Svelte actions, not attributes (causes check errors)
+- **Step icons:** Store Lucide components, render as `<stepType.icon />`
+- **Config defaults:** Centralize defaults at creation, not in components
 
 ## Datasource Architecture
 
-Datasources are immutable sources of truth: schema and location cannot be changed after creation, only configuration options.
+Datasources are immutable. Schema and location cannot change after creation. Refresh button re-extracts schema from source. Frontend shows read-only schema inputs.
 
-Schema updates are rejected at API level with "Datasource schemas are read-only and cannot be modified" error.
+## Runed Utilities
 
-Location fields (file_path, connection_string, url, db_path, metadata_path) are immutable; users must create new datasources for location changes.
+```typescript
+import { PersistedState, Debounced, FiniteStateMachine, onClickOutside } from "runed";
+```
 
-Frontend schema tab displays read-only inputs (disabled) that visually match editable state to maintain UI consistency.
+## Agents
 
-Refresh button in General tab triggers schema re-extraction from source data.
+| Agent | When to Use |
+|-------|-------------|
+| **Second Opinion** | Before completing ANY task |
+| **E2E Testing** | Automated UI testing |
+| **Docks** | Writing documentation |
+| **Learn** | After sessions to record discoveries |
 
-Schema change detection compares column names, types, and nullability to identify modifications and show warnings.
+## MCP Servers
+
+| Server | Purpose |
+|--------|---------|
+| **Svelte** | Documentation and autofixer |
+| **Perplexity** | Research |
+| **Playwright** | Browser automation |
+| **Vibe Check** | Prevent tunnel vision |
+| **Sequential Thinking** | Complex problem solving |
+
+## Slash Commands
+
+- `/plan` - Create implementation plan
+- `/review` - Code review
+- `/clarify` - Ask clarifying questions
+- `/rmslop` - Clean up AI slop

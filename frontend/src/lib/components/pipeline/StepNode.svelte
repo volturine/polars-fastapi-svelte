@@ -4,7 +4,7 @@
 	import InlineDataTable from '$lib/components/viewers/InlineDataTable.svelte';
 	import { Download, Save, GripVertical } from 'lucide-svelte';
 	import { exportData, downloadBlob, type ExportRequest } from '$lib/api/compute';
-	import { defaultStepType, stepTypes } from '$lib/components/pipeline/utils';
+	import { getStepTypeConfig } from '$lib/components/pipeline/utils';
 
 	interface Props {
 		step: PipelineStep;
@@ -43,7 +43,7 @@
 	const dragThreshold = 8;
 
 	// Derived values from declarative config
-	let stepConfig = $derived(stepTypes[step.type] ?? defaultStepType);
+	let stepConfig = $derived(getStepTypeConfig(step.type));
 	let Icon = $derived(stepConfig.icon);
 	let label = $derived(stepConfig.typeLabel);
 	let summary = $derived(stepConfig.summary(step.config as Record<string, unknown>));

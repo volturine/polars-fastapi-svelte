@@ -1,11 +1,3 @@
-function truncate(items: string[], max = 3, len = 20): string {
-	if (!items?.length) return '';
-	const shown = items
-		.slice(0, max)
-		.map((item) => (item.length > len ? item.slice(0, len - 1) + '…' : item));
-	return items.length > max ? `${shown.join(', ')} +${items.length - max}` : shown.join(', ');
-}
-
 import {
 	ArrowUpDown,
 	BarChart3,
@@ -31,6 +23,14 @@ import {
 	ListChecks,
 	Trash2
 } from 'lucide-svelte';
+
+function truncate(items: string[], max = 3, len = 20): string {
+	if (!items?.length) return '';
+	const shown = items
+		.slice(0, max)
+		.map((item) => (item.length > len ? item.slice(0, len - 1) + '…' : item));
+	return items.length > max ? `${shown.join(', ')} +${items.length - max}` : shown.join(', ');
+}
 
 type StepTypeConfig = {
 	label: string;
@@ -340,4 +340,8 @@ const defaultStepType: StepTypeConfig = {
 	summary: () => 'click to configure'
 };
 
-export { type StepTypeConfig, defaultStepType, stepTypes };
+function getStepTypeConfig(type: string): StepTypeConfig {
+	return stepTypes[type] ?? defaultStepType;
+}
+
+export { type StepTypeConfig, defaultStepType, stepTypes, getStepTypeConfig };

@@ -98,6 +98,7 @@ export function getDefaultConfig(stepType: string) {
 
 From `STYLE_GUIDE.md`:
 
+- No temporary workarounds allowed
 - Prefer `const` over `let`
 - Avoid `else` - use early returns
 - Single word names where possible
@@ -138,6 +139,8 @@ npm run check && npm run lint && npm run format
 - **Width attributes:** Use Svelte actions, not attributes (causes check errors)
 - **Step icons:** Store Lucide components, render as `<stepType.icon />`
 - **Config defaults:** Centralize defaults at creation, not in components
+- **Border Color Consistency:** Use `border-tertiary` (same color as `--bg-tertiary`) for all borders in data tables and views to create a cleaner, more cohesive appearance that matches the table header background.
+- **Svelte Component Typing:** When using dynamic Lucide icons in Svelte components, type as `typeof Filter` instead of `Component<IconProps>` to avoid TypeScript narrowing issues. Use helper functions if needed to maintain type safety when accessing from `Record<string, T>`.
 
 ## Datasource Architecture
 

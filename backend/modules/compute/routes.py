@@ -31,6 +31,7 @@ def preview_step(
         page=request.page,
         analysis_id=request.analysis_id,
         resource_config=resource_config,
+        request_json=request.model_dump(mode='json'),
     )
 
 
@@ -151,6 +152,7 @@ def export_data(
         filename=request.filename,
         destination=request.destination.value,
         analysis_id=request.analysis_id,
+        request_json=request.model_dump(mode='json'),
     )
 
     if request.destination == schemas.ExportDestination.DOWNLOAD:

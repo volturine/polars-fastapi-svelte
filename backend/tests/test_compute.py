@@ -1,9 +1,11 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import select
 
 from modules.compute.engine import PolarsComputeEngine
 from modules.datasource.models import DataSource
+from modules.engine_runs.models import EngineRun
 
 
 class TestComputePreview:
@@ -138,6 +140,121 @@ class TestComputePreview:
             response = client.post('/api/v1/compute/preview', json=payload)
 
             assert response.status_code == 200
+
+    def test_preview_logs_engine_run(self, client, sample_datasource: DataSource, test_db_session):
+        payload = {
+            'datasource_id': sample_datasource.id,
+            'pipeline_steps': [
+                {
+                    'id': 'step1',
+                    'type': 'filter',
+                    'config': {'column': 'age', 'operator': '>', 'value': 25},
+                }
+            ],
+            'target_step_id': 'step1',
+            'row_limit': 10,
+            'page': 1,
+        }
+
+        with patch('modules.compute.service.get_manager') as mock_get_manager:
+            mock_manager = MagicMock()
+            mock_engine = MagicMock()
+
+            mock_engine.preview.return_value = 'preview-job-126'
+            mock_engine.get_result.side_effect = [
+                None,
+                {
+                    'data': {
+                        'schema': {'name': 'String'},
+                        'data': [{'name': 'Bob'}],
+                        'row_count': 1,
+                        'query_plans': {'optimized': 'opt', 'unoptimized': 'unopt'},
+                    },
+                    'error': None,
+                },
+            ]
+
+            mock_manager.get_engine.return_value = None
+            mock_manager.get_or_create_engine.return_value = mock_engine
+            mock_get_manager.return_value = mock_manager
+
+            response = client.post('/api/v1/compute/preview', json=payload)
+
+            assert response.status_code == 200
+
+        result = test_db_session.execute(select(EngineRun))
+        runs = result.scalars().all()
+        assert len(runs) == 1
+
+        run = runs[0]
+        assert run.kind == 'preview'
+        assert run.status == 'success'
+        assert run.request_json['datasource_id'] == sample_datasource.id
+        assert 'data' not in run.result_json
+        assert run.result_json['query_plans']['optimized'] == 'opt'
+
+
+class TestComputeExport:
+    def test_export_logs_engine_run(self, client, sample_datasource: DataSource, test_db_session):
+        payload = {
+            'datasource_id': sample_datasource.id,
+            'pipeline_steps': [
+                {
+                    'id': 'step1',
+                    'type': 'select',
+                    'config': {'columns': ['name']},
+                }
+            ],
+            'target_step_id': 'step1',
+            'format': 'csv',
+            'filename': 'export-test',
+            'destination': 'download',
+        }
+
+        def write_export(*_args, **kwargs):
+            output_path = kwargs.get('output_path')
+            if not output_path:
+                return None
+            with open(output_path, 'wb') as handle:
+                handle.write(b'id,name\n1,Alice\n')
+            return None
+
+        with patch('modules.compute.service.get_manager') as mock_get_manager:
+            mock_manager = MagicMock()
+            mock_engine = MagicMock()
+
+            mock_engine.export.side_effect = write_export
+            mock_engine.get_result.side_effect = [
+                None,
+                {
+                    'data': {
+                        'row_count': 1,
+                        'export_format': 'csv',
+                        'query_plans': {'optimized': 'opt', 'unoptimized': 'unopt'},
+                    },
+                    'error': None,
+                },
+            ]
+
+            mock_manager.get_engine.return_value = None
+            mock_manager.get_or_create_engine.return_value = mock_engine
+            mock_get_manager.return_value = mock_manager
+
+            response = client.post('/api/v1/compute/export', json=payload)
+
+            assert response.status_code == 200
+
+        result = test_db_session.execute(select(EngineRun))
+        runs = result.scalars().all()
+        assert len(runs) == 1
+
+        run = runs[0]
+        assert run.kind == 'export'
+        assert run.status == 'success'
+        assert run.request_json['datasource_id'] == sample_datasource.id
+        assert 'data' not in run.result_json
+        assert run.result_json['query_plans']['optimized'] == 'opt'
+        assert run.result_json['file_size_bytes'] > 0
 
 
 def _build_fake_dataframe() -> MagicMock:

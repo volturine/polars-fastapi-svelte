@@ -453,6 +453,19 @@ class PolarsComputeEngine:
         return normalize_timezones(last_frame)
 
     @staticmethod
+    def _get_query_plans(lf: pl.LazyFrame) -> dict | None:
+        if not hasattr(lf, 'explain'):
+            return None
+
+        optimized = lf.explain(optimized=True)
+        unoptimized = lf.explain(optimized=False)
+
+        return {
+            'optimized': optimized,
+            'unoptimized': unoptimized,
+        }
+
+    @staticmethod
     def _execute_preview(
         datasource_config: dict,
         pipeline_steps: list[dict],
@@ -469,6 +482,8 @@ class PolarsComputeEngine:
             additional_datasources,
         )
 
+        query_plans = PolarsComputeEngine._get_query_plans(lf)
+
         # Get schema from lazy frame (no collection needed)
         schema_obj = lf.collect_schema()
         schema = {col: str(dtype) for col, dtype in schema_obj.items()}
@@ -481,6 +496,7 @@ class PolarsComputeEngine:
             'schema': schema,
             'row_count': preview_df.height,  # Rows in this preview page
             'data': preview_df.to_dicts(),
+            'query_plans': query_plans,
         }
 
     @staticmethod
@@ -500,6 +516,8 @@ class PolarsComputeEngine:
             additional_datasources,
         )
 
+        query_plans = PolarsComputeEngine._get_query_plans(lf)
+
         logger.debug(f'Job {job_id}: Writing export file')
 
         # Collect full dataset and write to file
@@ -513,6 +531,7 @@ class PolarsComputeEngine:
             'output_path': output_path,
             'export_format': export_format,
             'row_count': row_count,
+            'query_plans': query_plans,
         }
 
     @staticmethod

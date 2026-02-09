@@ -1,6 +1,8 @@
 import logging
 import os
 import tempfile
+import time
+from datetime import UTC, datetime
 
 import duckdb
 from sqlalchemy import select
@@ -12,9 +14,54 @@ from modules.compute.core.exports import get_export_format
 from modules.compute.manager import get_manager
 from modules.compute.utils import await_engine_result, build_datasource_config, find_step_index
 from modules.datasource.models import DataSource
+from modules.engine_runs import service as engine_run_service
 from modules.udf.models import Udf
 
 logger = logging.getLogger(__name__)
+
+
+def _build_preview_result_metadata(
+    data: dict,
+    page: int,
+    row_limit: int,
+    offset: int,
+) -> dict:
+    schema = data.get('schema', {}) or {}
+    rows = data.get('data', []) or []
+    query_plans = data.get('query_plans')
+
+    result: dict = {
+        'schema': schema,
+        'columns': list(schema.keys()),
+        'row_count': data.get('row_count', 0),
+        'page': page,
+        'row_limit': row_limit,
+        'offset': offset,
+        'page_size': len(rows),
+    }
+
+    if query_plans:
+        result['query_plans'] = query_plans
+
+    return result
+
+
+def _build_export_result_metadata(
+    data: dict,
+    file_size_bytes: int,
+) -> dict:
+    query_plans = data.get('query_plans')
+
+    result: dict = {
+        'row_count': data.get('row_count', 0),
+        'export_format': data.get('export_format'),
+        'file_size_bytes': file_size_bytes,
+    }
+
+    if query_plans:
+        result['query_plans'] = query_plans
+
+    return result
 
 
 def _get_additional_datasources(session: Session, pipeline_steps: list[dict]) -> dict[str, dict]:
@@ -91,6 +138,7 @@ def preview_step(
     timeout: int | None = None,
     analysis_id: str | None = None,
     resource_config: dict | None = None,
+    request_json: dict | None = None,
 ):
     """Preview the result of executing pipeline up to a specific step with pagination."""
     from modules.compute.schemas import StepPreviewResponse
@@ -98,9 +146,23 @@ def preview_step(
     if timeout is None:
         timeout = settings.job_timeout
 
+    started_at = datetime.now(UTC)
+    started_perf = time.perf_counter()
     if not analysis_id:
         # Create a temporary analysis_id for datasource preview
         analysis_id = f'__preview__{datasource_id}'
+
+    run_analysis_id = analysis_id
+
+    request_payload = request_json or {
+        'analysis_id': run_analysis_id,
+        'datasource_id': datasource_id,
+        'pipeline_steps': pipeline_steps,
+        'target_step_id': target_step_id,
+        'row_limit': row_limit,
+        'page': page,
+        'resource_config': resource_config,
+    }
 
     result = session.execute(select(DataSource).where(DataSource.id == datasource_id))  # type: ignore[arg-type]
     datasource = result.scalar_one_or_none()
@@ -137,24 +199,64 @@ def preview_step(
         additional_datasources=additional_datasources,
     )
 
-    result_data = await_engine_result(engine, timeout)
-    error = result_data.get('error')
-    if error:
-        raise PipelineExecutionError(
-            f'Preview failed: {error}',
-            details={'operation': 'preview', 'datasource_id': datasource_id},
+    try:
+        result_data = await_engine_result(engine, timeout)
+        error = result_data.get('error')
+        if error:
+            raise PipelineExecutionError(
+                f'Preview failed: {error}',
+                details={'operation': 'preview', 'datasource_id': datasource_id},
+            )
+
+        data = result_data.get('data', {})
+        offset = (page - 1) * row_limit
+        result_meta = _build_preview_result_metadata(
+            data=data,
+            page=page,
+            row_limit=row_limit,
+            offset=offset,
         )
 
-    data = result_data.get('data', {})
-    return StepPreviewResponse(
-        step_id=target_step_id,
-        columns=list(data.get('schema', {}).keys()),
-        column_types=data.get('schema', {}),
-        data=data.get('data', []),
-        total_rows=data.get('row_count', 0),
-        page=page,
-        page_size=len(data.get('data', [])),
-    )
+        completed_at = datetime.now(UTC)
+        duration_ms = int((time.perf_counter() - started_perf) * 1000)
+        payload = engine_run_service.create_engine_run_payload(
+            analysis_id=run_analysis_id,
+            datasource_id=datasource_id,
+            kind='preview',
+            status='success',
+            request_json=request_payload,
+            result_json=result_meta,
+            created_at=started_at,
+            completed_at=completed_at,
+            duration_ms=duration_ms,
+        )
+        engine_run_service.create_engine_run(session, payload)
+
+        return StepPreviewResponse(
+            step_id=target_step_id,
+            columns=list(data.get('schema', {}).keys()),
+            column_types=data.get('schema', {}),
+            data=data.get('data', []),
+            total_rows=data.get('row_count', 0),
+            page=page,
+            page_size=len(data.get('data', [])),
+        )
+    except Exception as exc:
+        completed_at = datetime.now(UTC)
+        duration_ms = int((time.perf_counter() - started_perf) * 1000)
+        payload = engine_run_service.create_engine_run_payload(
+            analysis_id=run_analysis_id,
+            datasource_id=datasource_id,
+            kind='preview',
+            status='failed',
+            request_json=request_payload,
+            error_message=str(exc),
+            created_at=started_at,
+            completed_at=completed_at,
+            duration_ms=duration_ms,
+        )
+        engine_run_service.create_engine_run(session, payload)
+        raise
 
 
 def get_step_schema(
@@ -225,6 +327,7 @@ def export_data(
     destination: str = 'download',
     timeout: int | None = None,
     analysis_id: str | None = None,
+    request_json: dict | None = None,
 ) -> tuple[bytes, str, str]:
     """
     Export pipeline result to file.
@@ -235,6 +338,20 @@ def export_data(
     """
     if timeout is None:
         timeout = settings.job_timeout
+
+    started_at = datetime.now(UTC)
+    started_perf = time.perf_counter()
+    run_analysis_id = analysis_id
+
+    request_payload = request_json or {
+        'analysis_id': run_analysis_id,
+        'datasource_id': datasource_id,
+        'pipeline_steps': pipeline_steps,
+        'target_step_id': target_step_id,
+        'format': export_format,
+        'filename': filename,
+        'destination': destination,
+    }
 
     result = session.execute(select(DataSource).where(DataSource.id == datasource_id))  # type: ignore[arg-type]
     datasource = result.scalar_one_or_none()
@@ -283,53 +400,110 @@ def export_data(
     tmp_output = tempfile.mktemp(suffix=ext)
 
     try:
-        # Use the new export method that writes full data directly to file
-        engine.export(
-            datasource_config=datasource_config,
-            pipeline_steps=export_steps,
-            output_path=tmp_output,
-            export_format=actual_format,
-            additional_datasources=additional_datasources,
-        )
-
-        result_data = await_engine_result(engine, timeout)
-        error = result_data.get('error')
-        if error:
-            if temp_engine:
-                manager.shutdown_engine(temp_engine_id)
-            raise PipelineExecutionError(
-                f'Export failed: {error}',
-                details={'operation': 'export', 'datasource_id': datasource_id, 'export_format': export_format},
+        try:
+            # Use the new export method that writes full data directly to file
+            engine.export(
+                datasource_config=datasource_config,
+                pipeline_steps=export_steps,
+                output_path=tmp_output,
+                export_format=actual_format,
+                additional_datasources=additional_datasources,
             )
 
-        if temp_engine:
-            manager.shutdown_engine(temp_engine_id)
+            result_data = await_engine_result(engine, timeout)
+            error = result_data.get('error')
+            if error:
+                if temp_engine:
+                    manager.shutdown_engine(temp_engine_id)
+                raise PipelineExecutionError(
+                    f'Export failed: {error}',
+                    details={'operation': 'export', 'datasource_id': datasource_id, 'export_format': export_format},
+                )
 
-        data = result_data.get('data', {})
-        row_count = data.get('row_count', 0)
-        logger.info(f'Export completed: {row_count} rows written to {export_format}')
+            if temp_engine:
+                manager.shutdown_engine(temp_engine_id)
 
-        # Handle DuckDB conversion
-        if export_format == 'duckdb':
-            tmp_db_path = tempfile.mktemp(suffix='.duckdb')
-            try:
-                conn = duckdb.connect(tmp_db_path)
-                conn.execute('CREATE TABLE data AS SELECT * FROM read_parquet(?)', [tmp_output])
-                conn.close()
+            data = result_data.get('data', {})
+            row_count = data.get('row_count', 0)
+            logger.info(f'Export completed: {row_count} rows written to {export_format}')
 
-                with open(tmp_db_path, 'rb') as f:
-                    file_bytes = f.read()
+            # Handle DuckDB conversion
+            if export_format == 'duckdb':
+                tmp_db_path = tempfile.mktemp(suffix='.duckdb')
+                try:
+                    conn = duckdb.connect(tmp_db_path)
+                    conn.execute('CREATE TABLE data AS SELECT * FROM read_parquet(?)', [tmp_output])
+                    conn.close()
 
-                return file_bytes, f'{filename}.duckdb', 'application/octet-stream'
-            finally:
-                if os.path.exists(tmp_db_path):
-                    os.unlink(tmp_db_path)
+                    with open(tmp_db_path, 'rb') as f:
+                        file_bytes = f.read()
 
-        # Read the exported file
-        with open(tmp_output, 'rb') as f:
-            file_bytes = f.read()
+                    completed_at = datetime.now(UTC)
+                    duration_ms = int((time.perf_counter() - started_perf) * 1000)
+                    result_meta = _build_export_result_metadata(
+                        data=data,
+                        file_size_bytes=len(file_bytes),
+                    )
+                    payload = engine_run_service.create_engine_run_payload(
+                        analysis_id=run_analysis_id,
+                        datasource_id=datasource_id,
+                        kind='export',
+                        status='success',
+                        request_json=request_payload,
+                        result_json=result_meta,
+                        created_at=started_at,
+                        completed_at=completed_at,
+                        duration_ms=duration_ms,
+                    )
+                    engine_run_service.create_engine_run(session, payload)
 
-        return file_bytes, f'{filename}{ext}', content_type
+                    return file_bytes, f'{filename}.duckdb', 'application/octet-stream'
+                finally:
+                    if os.path.exists(tmp_db_path):
+                        os.unlink(tmp_db_path)
+
+            # Read the exported file
+            with open(tmp_output, 'rb') as f:
+                file_bytes = f.read()
+
+            completed_at = datetime.now(UTC)
+            duration_ms = int((time.perf_counter() - started_perf) * 1000)
+            result_meta = _build_export_result_metadata(
+                data=data,
+                file_size_bytes=len(file_bytes),
+            )
+            payload = engine_run_service.create_engine_run_payload(
+                analysis_id=run_analysis_id,
+                datasource_id=datasource_id,
+                kind='export',
+                status='success',
+                request_json=request_payload,
+                result_json=result_meta,
+                created_at=started_at,
+                completed_at=completed_at,
+                duration_ms=duration_ms,
+            )
+            engine_run_service.create_engine_run(session, payload)
+
+            return file_bytes, f'{filename}{ext}', content_type
+        except Exception as exc:
+            completed_at = datetime.now(UTC)
+            duration_ms = int((time.perf_counter() - started_perf) * 1000)
+            if temp_engine:
+                manager.shutdown_engine(temp_engine_id)
+            payload = engine_run_service.create_engine_run_payload(
+                analysis_id=run_analysis_id,
+                datasource_id=datasource_id,
+                kind='export',
+                status='failed',
+                request_json=request_payload,
+                error_message=str(exc),
+                created_at=started_at,
+                completed_at=completed_at,
+                duration_ms=duration_ms,
+            )
+            engine_run_service.create_engine_run(session, payload)
+            raise
     finally:
         # Clean up temp file
         if os.path.exists(tmp_output):

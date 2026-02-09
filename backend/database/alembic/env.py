@@ -6,6 +6,9 @@ from sqlmodel import SQLModel
 
 # Import the Base and settings
 from core.config import settings
+from modules.engine_runs import models as engine_runs_models
+
+_ = engine_runs_models.EngineRun
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

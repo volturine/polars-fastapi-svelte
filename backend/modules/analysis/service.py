@@ -106,7 +106,9 @@ def update_analysis(
     if data.pipeline_steps is not None or data.tabs is not None:
         pipeline_definition = {
             'steps': (
-                [step.model_dump() for step in data.pipeline_steps] if data.pipeline_steps is not None else analysis.pipeline_definition.get('steps', [])
+                [step.model_dump() for step in data.pipeline_steps]
+                if data.pipeline_steps is not None
+                else analysis.pipeline_definition.get('steps', [])
             ),
             'datasource_ids': analysis.pipeline_definition.get('datasource_ids', []),
             'tabs': ([tab.model_dump() for tab in data.tabs] if data.tabs is not None else analysis.pipeline_definition.get('tabs', [])),

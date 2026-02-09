@@ -144,6 +144,10 @@ Store Lucide icons as imported component references in `stepTypes` array; render
 
 Nested `<button>` elements in tabs cause warnings; replace tab container with `<div>` and use separate buttons.
 
+### Border Color Consistency
+
+Use `border-tertiary` (same color as `--bg-tertiary`) for all borders in data tables and views to create a cleaner, more cohesive appearance that matches the table header background.
+
 ### Svelte 5 $effect Patterns
 
 **DO NOT use `$effect` for data validation or initialization** - these are code smells indicating data should be fixed at the source:

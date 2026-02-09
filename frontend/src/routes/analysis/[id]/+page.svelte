@@ -456,7 +456,9 @@
 	</div>
 {:else if analysisQuery.isError}
 	<div class="error-box flex h-full flex-col items-center justify-center text-center gap-4">
-		<div class="flex items-center justify-center text-xl font-bold w-13 h-13 border border-primary">
+		<div
+			class="flex items-center justify-center text-xl font-bold w-13 h-13 border border-tertiary"
+		>
 			!
 		</div>
 		<h2 class="m-0">Error loading analysis</h2>
@@ -472,10 +474,10 @@
 {:else if analysisQuery.data}
 	<div class="analysis-page flex h-full flex-col bg-secondary">
 		<header
-			class="analysis-header flex items-stretch sticky top-0 h-12 bg-panel border-y border-primary"
+			class="analysis-header flex items-stretch sticky top-0 h-12 bg-panel border-y border-tertiary"
 		>
 			<div
-				class="header-left flex items-center h-full box-border border-r border-primary panel-width"
+				class="header-left flex items-center h-full box-border border-r border-tertiary panel-width"
 			>
 				<div class="flex-1 flex flex-col min-w-0 overflow-hidden px-4">
 					<h1
@@ -503,7 +505,7 @@
 			</div>
 			<div class="flex-1 min-w-0 overflow-hidden flex items-center justify-center gap-0">
 				<button
-					class="collapse-arrow collapse-arrow-left w-6 h-full flex items-center justify-center bg-transparent border-none text-lg cursor-pointer shrink-0 text-fg-muted transition-colors duration-160 border-r border-primary hover:text-fg-primary hover:bg-hover"
+					class="collapse-arrow collapse-arrow-left w-6 h-full flex items-center justify-center bg-transparent border-none text-lg cursor-pointer shrink-0 text-fg-muted transition-colors duration-160 border-r border-tertiary hover:text-fg-primary hover:bg-hover"
 					class:collapsed={leftPaneCollapsed}
 					class:hidden={!isEditingMode}
 					onclick={() => (leftPaneCollapsed = !leftPaneCollapsed)}
@@ -555,7 +557,7 @@
 					</div>
 				</div>
 				<button
-					class="collapse-arrow collapse-arrow-right w-6 h-full flex items-center justify-center bg-transparent border-none text-lg cursor-pointer shrink-0 text-fg-muted transition-colors duration-160 border-l border-primary hover:text-fg-primary hover:bg-hover"
+					class="collapse-arrow collapse-arrow-right w-6 h-full flex items-center justify-center bg-transparent border-none text-lg cursor-pointer shrink-0 text-fg-muted transition-colors duration-160 border-l border-tertiary hover:text-fg-primary hover:bg-hover"
 					class:collapsed={rightPaneCollapsed}
 					class:hidden={!isEditingMode}
 					onclick={() => (rightPaneCollapsed = !rightPaneCollapsed)}
@@ -571,11 +573,11 @@
 				</button>
 			</div>
 			<div
-				class="header-right flex items-center justify-end h-full box-border border-l border-primary panel-width"
+				class="header-right flex items-center justify-end h-full box-border border-l border-tertiary panel-width"
 			>
 				<div class="relative items-center px-1">
 					<button
-						class="mode-toggle flex items-center cursor-pointer text-sm py-2 bg-tertiary border border-primary text-fg-secondary gap-2 transition-all duration-160 hover:bg-hover hover:border-primary"
+						class="mode-toggle flex items-center cursor-pointer text-sm py-2 bg-tertiary border border-tertiary text-fg-secondary gap-2 transition-all duration-160 hover:bg-hover hover:border-tertiary"
 						onclick={() => (showModeDropdown = !showModeDropdown)}
 						type="button"
 					>
@@ -585,32 +587,32 @@
 
 					{#if showModeDropdown}
 						<div
-							class="mode-dropdown absolute left-0 min-w-35 bg-panel border border-primary p-1 z-100"
+							class="mode-dropdown absolute left-0 min-w-35 bg-panel border border-tertiary p-1 z-100"
 						>
-								<button
-									class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary transition-colors duration-160 hover:bg-hover"
-									onclick={() => setMode('viewing')}
-									type="button"
-								>
-									{#if isEditingMode}
-										<div class="w-4 h-4 rounded-full border-2 border-accent-primary"></div>
-									{:else}
-										<div class="w-4 h-4 rounded-full bg-accent-primary"></div>
-									{/if}
-									<span>Viewing</span>
-								</button>
-								<button
-									class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary transition-colors duration-160 hover:bg-hover"
-									onclick={() => setMode('editing')}
-									type="button"
-								>
-									{#if isEditingMode}
-										<div class="w-4 h-4 rounded-full bg-accent-primary"></div>
-									{:else}
-										<div class="w-4 h-4 rounded-full border-2 border-accent-primary"></div>
-									{/if}
-									<span>Editing</span>
-								</button>
+							<button
+								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary transition-colors duration-160 hover:bg-hover"
+								onclick={() => setMode('viewing')}
+								type="button"
+							>
+								{#if isEditingMode}
+									<div class="w-4 h-4 rounded-full border-2 border-accent-primary"></div>
+								{:else}
+									<div class="w-4 h-4 rounded-full bg-accent-primary"></div>
+								{/if}
+								<span>Viewing</span>
+							</button>
+							<button
+								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary transition-colors duration-160 hover:bg-hover"
+								onclick={() => setMode('editing')}
+								type="button"
+							>
+								{#if isEditingMode}
+									<div class="w-4 h-4 rounded-full bg-accent-primary"></div>
+								{:else}
+									<div class="w-4 h-4 rounded-full border-2 border-accent-primary"></div>
+								{/if}
+								<span>Editing</span>
+							</button>
 						</div>
 					{/if}
 				</div>
@@ -651,7 +653,7 @@
 		<div class="flex flex-1 overflow-hidden select-none bg-secondary" role="application">
 			{#if isEditingMode}
 				<div
-					class="left-pane shrink-0 overflow-hidden flex h-full box-border bg-panel border-r border-primary panel-width"
+					class="left-pane shrink-0 overflow-hidden flex h-full box-border bg-panel border-r border-tertiary panel-width"
 					class:collapsed={leftPaneCollapsed}
 				>
 					<StepLibrary onAddStep={handleAddStep} onInsertStep={handleInsertStep} />
@@ -681,7 +683,7 @@
 
 			{#if isEditingMode}
 				<div
-					class="right-pane shrink-0 overflow-hidden flex h-full box-border bg-panel border-l border-primary panel-width"
+					class="right-pane shrink-0 overflow-hidden flex h-full box-border bg-panel border-l border-tertiary panel-width"
 					class:collapsed={rightPaneCollapsed}
 				>
 					<StepConfig

@@ -196,7 +196,7 @@
 		class="step-config box-border flex h-full min-h-0 w-full flex-col overflow-y-auto bg-panel-bg text-fg-primary"
 	>
 		<div
-			class="config-header relative flex items-center justify-between border-b border-primary bg-panel-bg p-4"
+			class="config-header relative flex items-center justify-between border-b border-tertiary bg-panel-bg p-4"
 		>
 			<h3 class="m-0 text-sm font-semibold uppercase tracking-widest text-fg-primary">
 				Configure Step
@@ -340,9 +340,9 @@
 				</div>
 			{/if}
 		</div>
-		<div class="flex gap-2 border-t border-primary bg-panel-bg p-3">
+		<div class="flex gap-2 border-t border-tertiary bg-panel-bg p-3">
 			<button
-				class="action-button cancel flex-1 cursor-pointer border border-primary bg-transparent px-3 py-2 font-mono text-sm font-semibold text-fg-primary transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+				class="action-button cancel flex-1 cursor-pointer border border-tertiary bg-transparent px-3 py-2 font-mono text-sm font-semibold text-fg-primary transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 				onclick={handleCancelConfig}
 				disabled={!hasChanges}
 				type="button"
@@ -350,7 +350,7 @@
 				Cancel
 			</button>
 			<button
-				class="action-button apply flex-1 cursor-pointer border border-primary bg-accent-bg px-3 py-2 font-mono text-sm font-semibold text-accent-primary transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+				class="action-button apply flex-1 cursor-pointer border border-tertiary bg-accent-bg px-3 py-2 font-mono text-sm font-semibold text-accent-primary transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 				onclick={handleApplyConfig}
 				disabled={!hasChanges}
 				type="button"

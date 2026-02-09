@@ -105,14 +105,14 @@
 	onkeydown={handleBackdropKeydown}
 >
 	<div
-		class="flex w-full max-w-180 max-h-[70vh] flex-col border bg-panel border-primary"
+		class="flex w-full max-w-180 max-h-[70vh] flex-col border bg-panel border-tertiary"
 		role="dialog"
 		aria-modal="true"
 		tabindex="-1"
 		onclick={stopPickerEvent}
 		onkeydown={stopPickerEvent}
 	>
-		<div class="grid grid-cols-[1fr_auto] gap-2 border-b p-4 border-primary">
+		<div class="grid grid-cols-[1fr_auto] gap-2 border-b p-4 border-tertiary">
 			<div class="flex flex-col gap-1">
 				<h4 class="m-0 text-sm font-semibold text-fg-primary">Data directory</h4>
 				<div
@@ -161,7 +161,7 @@
 					{#each entries as entry (entry.path)}
 						<button
 							type="button"
-							class="flex w-full cursor-pointer items-center justify-between gap-2 border p-2 px-3 text-left bg-primary border-primary hover:bg-hover"
+							class="flex w-full cursor-pointer items-center justify-between gap-2 border p-2 px-3 text-left bg-primary border-tertiary hover:bg-hover"
 							onclick={() => (entry.is_dir ? load(entry.path) : onselect(entry.path, false))}
 							disabled={loading}
 						>
@@ -176,10 +176,10 @@
 			{/if}
 		</div>
 
-		<div class="flex justify-between gap-2 border-t p-3 border-primary">
+		<div class="flex justify-between gap-2 border-t p-3 border-tertiary">
 			<div class="flex items-center gap-2">
 				<button
-					class="inline-flex h-8 w-8 cursor-pointer items-center justify-center border disabled:cursor-not-allowed disabled:opacity-50 bg-primary border-primary text-fg-secondary hover:bg-hover hover:text-fg-primary"
+					class="inline-flex h-8 w-8 cursor-pointer items-center justify-center border disabled:cursor-not-allowed disabled:opacity-50 bg-primary border-tertiary text-fg-secondary hover:bg-hover hover:text-fg-primary"
 					onclick={up}
 					disabled={!canUp}
 					aria-label="Go up"
@@ -187,7 +187,7 @@
 					<ArrowUp size={14} />
 				</button>
 				<button
-					class="cursor-pointer border px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50 bg-secondary text-fg-primary border-primary hover:bg-hover hover:border-primary"
+					class="cursor-pointer border px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50 bg-secondary text-fg-primary border-tertiary hover:bg-hover hover:border-tertiary"
 					onclick={() => onselect(path, true)}
 					disabled={loading || !path}
 				>
@@ -195,7 +195,7 @@
 				</button>
 			</div>
 			<button
-				class="cursor-pointer border px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50 bg-secondary text-fg-primary border-primary hover:bg-hover hover:border-primary"
+				class="cursor-pointer border px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50 bg-secondary text-fg-primary border-tertiary hover:bg-hover hover:border-tertiary"
 				onclick={() => load(path)}
 				disabled={loading}
 			>

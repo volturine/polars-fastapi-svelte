@@ -140,10 +140,10 @@
 
 <div class="datasource-node relative w-[65%]" class:drag-active={isDragActive}>
 	<div
-		class="node-content bg-primary border-primary border p-4 transition-all hover:border-primary"
+		class="node-content bg-primary border-tertiary border p-4 transition-all hover:border-tertiary"
 	>
 		<!-- Header with icon and badge -->
-		<div class="mb-4 flex items-center justify-between border-b border-primary pb-3">
+		<div class="mb-4 flex items-center justify-between border-b border-tertiary pb-3">
 			<div class="flex items-center gap-2">
 				<div class="flex h-6 w-6 items-center justify-center bg-accent text-bg-primary">
 					{#if sourceType === 'file'}
@@ -161,13 +161,15 @@
 				<span class="text-sm font-semibold">source</span>
 			</div>
 			<span
-				class="rounded-sm border border-primary bg-tertiary text-fg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide"
+				class="rounded-sm border border-tertiary bg-tertiary text-fg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide"
 				>root</span
 			>
 		</div>
 
 		<!-- Tab Section -->
-		<div class="mb-3 flex items-center justify-between border border-primary bg-secondary p-2 px-3">
+		<div
+			class="mb-3 flex items-center justify-between border border-tertiary bg-secondary p-2 px-3"
+		>
 			<div class="info-label flex items-center gap-2 text-xs uppercase tracking-wide text-fg-muted">
 				<PanelLeft size={12} class="opacity-60" />
 				<span>Tab name</span>
@@ -176,7 +178,7 @@
 				{#if isEditing}
 					<div class="flex items-center gap-1">
 						<input
-							class="min-w-25 border border-primary bg-primary px-2 py-0.5 text-sm outline-none"
+							class="min-w-25 border border-tertiary bg-primary px-2 py-0.5 text-sm outline-none"
 							bind:value={draftName}
 							onkeydown={(e) => {
 								if (e.key === 'Enter') commitEdit();
@@ -205,7 +207,7 @@
 					<span class="text-sm font-medium">{tabName ?? datasource?.name ?? 'Untitled'}</span>
 					{#if onRenameTab}
 						<button
-							class="icon-btn edit inline-flex h-5 w-5 cursor-pointer items-center justify-center border border-primary text-fg-muted bg-primary p-0 opacity-50 leading-none transition-all hover:border-primary hover:text-fg-primary hover:bg-tertiary hover:opacity-100"
+							class="icon-btn edit inline-flex h-5 w-5 cursor-pointer items-center justify-center border border-tertiary text-fg-muted bg-primary p-0 opacity-50 leading-none transition-all hover:border-tertiary hover:text-fg-primary hover:bg-tertiary hover:opacity-100"
 							onclick={startEdit}
 							type="button"
 							aria-label="Edit tab name"
@@ -226,7 +228,7 @@
 				<span>Dataset</span>
 			</div>
 			{#if datasource}
-				<div class="flex flex-col gap-2 border border-primary bg-tertiary p-3">
+				<div class="flex flex-col gap-2 border border-tertiary bg-tertiary p-3">
 					<div class="flex items-center justify-between">
 						<div class="text-sm font-semibold">{datasource.name}</div>
 						<div class="flex items-center gap-2">
@@ -246,7 +248,7 @@
 						</div>
 					</div>
 					<!-- Row count section -->
-					<div class="flex items-center border-t border-primary pt-2">
+					<div class="flex items-center border-t border-tertiary pt-2">
 						{#if rowCount !== null}
 							<span class="flex items-center gap-1 text-xs text-fg-muted">
 								<Hash size={10} />
@@ -254,7 +256,7 @@
 							</span>
 						{:else}
 							<button
-								class="calc-rows-btn flex cursor-pointer items-center gap-1 border border-primary bg-secondary text-fg-muted px-2 py-0.5 text-[10px] transition-all disabled:cursor-not-allowed disabled:opacity-70 hover:border-primary hover:text-fg-primary"
+								class="calc-rows-btn flex cursor-pointer items-center gap-1 border border-tertiary bg-secondary text-fg-muted px-2 py-0.5 text-[10px] transition-all disabled:cursor-not-allowed disabled:opacity-70 hover:border-tertiary hover:text-fg-primary"
 								onclick={calculateRowCount}
 								disabled={isLoadingRowCount}
 								type="button"
@@ -272,7 +274,7 @@
 					</div>
 				</div>
 			{:else}
-				<div class="rounded-sm border border-dashed border-primary p-3 text-center">
+				<div class="rounded-sm border border-dashed border-tertiary p-3 text-center">
 					<span class="text-xs text-fg-muted">No datasource connected</span>
 				</div>
 			{/if}
@@ -280,7 +282,7 @@
 
 		<!-- Engine Resources Section -->
 		{#if analysisId}
-			<div class="mb-3 overflow-hidden border border-primary">
+			<div class="mb-3 overflow-hidden border border-tertiary">
 				<button
 					class="engine-header flex w-full cursor-pointer items-center justify-between border-none bg-secondary p-2 px-3 transition-all hover:bg-tertiary"
 					onclick={() => (engineExpanded = !engineExpanded)}
@@ -304,12 +306,12 @@
 				</button>
 
 				{#if engineExpanded}
-					<div class="flex flex-col gap-2 border-t border-primary bg-primary p-3">
+					<div class="flex flex-col gap-2 border-t border-tertiary bg-primary p-3">
 						<div class="flex items-center gap-3">
 							<label for="threads-input" class="min-w-15 text-xs text-fg-secondary">Threads</label>
 							<input
 								id="threads-input"
-								class="resource-input flex-1 border border-primary bg-secondary text-fg-primary p-1 px-2 font-mono text-xs focus:border-info focus:outline-none"
+								class="resource-input flex-1 border border-tertiary bg-secondary text-fg-primary p-1 px-2 font-mono text-xs focus:border-info focus:outline-none"
 								type="number"
 								min="1"
 								max="64"
@@ -324,7 +326,7 @@
 							<label for="memory-select" class="min-w-15 text-xs text-fg-secondary">Memory</label>
 							<select
 								id="memory-select"
-								class="resource-input flex-1 border border-primary bg-secondary text-fg-primary p-1 px-2 font-mono text-xs focus:border-info focus:outline-none"
+								class="resource-input flex-1 border border-tertiary bg-secondary text-fg-primary p-1 px-2 font-mono text-xs focus:border-info focus:outline-none"
 								value={effectiveMemoryGb}
 								onchange={(e) => setMemoryGb(parseInt(e.currentTarget.value) || 0)}
 							>
@@ -344,7 +346,7 @@
 		<!-- Action Button -->
 		{#if onChangeDatasource}
 			<button
-				class="change-source-btn flex w-full cursor-pointer items-center justify-center gap-2 border border-primary bg-secondary text-fg-secondary p-2 px-3 text-xs font-medium transition-all hover:bg-tertiary hover:text-fg-primary hover:border-info [&:hover_svg]:opacity-100"
+				class="change-source-btn flex w-full cursor-pointer items-center justify-center gap-2 border border-tertiary bg-secondary text-fg-secondary p-2 px-3 text-xs font-medium transition-all hover:bg-tertiary hover:text-fg-primary hover:border-info [&:hover_svg]:opacity-100"
 				onclick={onChangeDatasource}
 				type="button"
 			>

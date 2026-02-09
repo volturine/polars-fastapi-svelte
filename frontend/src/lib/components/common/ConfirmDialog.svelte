@@ -65,7 +65,7 @@
 		role="presentation"
 	>
 		<div
-			class="w-full max-w-100 animate-slide-up overflow-hidden border max-sm:max-w-full bg-dialog border-primary focus:outline-none"
+			class="w-full max-w-100 animate-slide-up overflow-hidden border max-sm:max-w-full bg-dialog border-tertiary focus:outline-none"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="dialog-title"
@@ -73,7 +73,7 @@
 			tabindex="-1"
 			bind:this={dialogRef}
 		>
-			<div class="flex items-center justify-between border-b p-4 border-primary">
+			<div class="flex items-center justify-between border-b p-4 border-tertiary">
 				<h2 id="dialog-title" class="m-0 text-base font-semibold text-fg-primary">
 					{title}
 				</h2>
@@ -92,9 +92,9 @@
 				</p>
 			</div>
 
-			<div class="flex justify-end gap-3 border-t p-4 max-sm:flex-col-reverse border-primary">
+			<div class="flex justify-end gap-3 border-t p-4 max-sm:flex-col-reverse border-tertiary">
 				<button
-					class="cursor-pointer border bg-transparent px-4 py-2 font-mono text-sm font-medium transition-all max-sm:w-full text-fg-primary border-primary hover:bg-hover"
+					class="cursor-pointer border bg-transparent px-4 py-2 font-mono text-sm font-medium transition-all max-sm:w-full text-fg-primary border-tertiary hover:bg-hover"
 					onclick={onCancel}
 				>
 					{cancelText}

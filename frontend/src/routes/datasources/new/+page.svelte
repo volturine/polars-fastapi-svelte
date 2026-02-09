@@ -553,7 +553,7 @@
 		>
 	</header>
 
-	<div class="mb-8 flex gap-2 border-b-2 border-primary">
+	<div class="mb-8 flex gap-2 border-b-2 border-tertiary">
 		<button
 			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
 			class:active={activeTab === 'file'}
@@ -588,7 +588,7 @@
 					<span class="text-sm font-medium text-fg-secondary">Source</span>
 					<div class="flex flex-col gap-3">
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border border-primary p-3 transition-all hover:border-primary hover:bg-hover"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border border-tertiary p-3 transition-all hover:border-tertiary hover:bg-hover"
 						>
 							<input
 								type="radio"
@@ -602,7 +602,7 @@
 							<span class="text-xs text-fg-muted">Upload one or many files in one step</span>
 						</label>
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border border-primary p-3 transition-all hover:border-primary hover:bg-hover"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border border-tertiary p-3 transition-all hover:border-tertiary hover:bg-hover"
 						>
 							<input
 								type="radio"
@@ -634,9 +634,9 @@
 							Select one or more files. Names are derived from filenames.
 						</p>
 						{#if selectedFiles.length > 0}
-							<div class="mt-3 border border-primary bg-tertiary p-3">
+							<div class="mt-3 border border-tertiary bg-tertiary p-3">
 								<div
-									class="mb-2 flex items-center justify-between border-b border-primary pb-2 text-sm text-fg-secondary"
+									class="mb-2 flex items-center justify-between border-b border-tertiary pb-2 text-sm text-fg-secondary"
 								>
 									<span>{selectedFiles.length} file(s) selected</span>
 									<button
@@ -647,7 +647,7 @@
 									>
 								</div>
 								{#each selectedFiles as selectedFile, index (index)}
-									<div class="flex items-center justify-between border-b border-primary p-2">
+									<div class="flex items-center justify-between border-b border-tertiary p-2">
 										<span
 											class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-fg-primary"
 											>{selectedFile.name}</span
@@ -682,11 +682,11 @@
 					{/if}
 
 					{#if showBulkResults && bulkResults.length > 0}
-						<div class="mt-4 border border-primary bg-tertiary p-4">
+						<div class="mt-4 border border-tertiary bg-tertiary p-4">
 							<h4 class="m-0 mb-3 text-sm font-semibold text-fg-secondary">Upload Results</h4>
 							{#each bulkResults as result (result.name)}
 								<div
-									class="flex items-center gap-2 border-b border-primary p-2 text-sm"
+									class="flex items-center gap-2 border-b border-tertiary p-2 text-sm"
 									class:text-success={result.success}
 									class:text-error={!result.success}
 								>
@@ -787,7 +787,7 @@
 				{/if}
 
 				{#if fileMode === 'upload' && file?.name.endsWith('.xlsx')}
-					<div class="flex flex-col gap-4 border p-4 bg-tertiary border-primary">
+					<div class="flex flex-col gap-4 border p-4 bg-tertiary border-tertiary">
 						<h3 class="m-0 text-sm font-semibold text-fg-secondary">Excel Table Selection</h3>
 						<div class="grid grid-cols-2 gap-4">
 							<div class="flex flex-col gap-2">
@@ -866,7 +866,7 @@
 						</div>
 
 						{#if preflightId}
-							<div class="overflow-hidden border border-primary bg-primary">
+							<div class="overflow-hidden border border-tertiary bg-primary">
 								<div class="flex flex-wrap gap-3 px-3 py-2 text-xs bg-tertiary text-fg-muted">
 									<span>Start row: {startRow + 1}</span>
 									<span>Start col: {cellLabel(startCol)}</span>
@@ -878,11 +878,11 @@
 								<div class="max-h-80 overflow-auto">
 									<div class="preview-row grid grid-flow-col auto-cols-[minmax(120px,1fr)]">
 										<div
-											class="cell border-b border-r border-primary bg-tertiary p-2 text-left text-xs font-semibold text-fg-primary"
+											class="cell border-b border-r border-tertiary bg-tertiary p-2 text-left text-xs font-semibold text-fg-primary"
 										></div>
 										{#each previewGrid[0] ?? [] as _cell, index (index)}
 											<button
-												class="cell cursor-pointer border-b border-r border-primary bg-tertiary p-2 text-left text-xs font-semibold text-fg-primary"
+												class="cell cursor-pointer border-b border-r border-tertiary bg-tertiary p-2 text-left text-xs font-semibold text-fg-primary"
 												onclick={() => handleEndCol(startCol + index)}
 											>
 												{cellLabel(startCol + index)}
@@ -892,14 +892,14 @@
 									{#each previewGrid as row, rowIndex (rowIndex)}
 										<div class="preview-row grid grid-flow-col auto-cols-[minmax(120px,1fr)]">
 											<button
-												class="cell cursor-pointer border-b border-r border-primary bg-tertiary p-2 text-left text-xs font-semibold text-fg-primary"
+												class="cell cursor-pointer border-b border-r border-tertiary bg-tertiary p-2 text-left text-xs font-semibold text-fg-primary"
 												onclick={() => handleStartRow(startRow + rowIndex)}
 											>
 												{startRow + rowIndex + 1}
 											</button>
 											{#each row as cell, colIndex (colIndex)}
 												<button
-													class="cell cursor-pointer border-b border-r border-primary bg-transparent p-2 text-left text-xs text-fg-secondary"
+													class="cell cursor-pointer border-b border-r border-tertiary bg-transparent p-2 text-left text-xs text-fg-secondary"
 													onclick={() => handleStartCol(startCol + colIndex)}
 												>
 													{cell ?? ''}
@@ -935,7 +935,7 @@
 					<label for="db-type" class="text-sm font-medium text-fg-secondary">Database Type</label>
 					<div class="flex flex-col gap-3">
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 transition-all border-primary"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 transition-all border-tertiary"
 						>
 							<input
 								type="radio"
@@ -949,7 +949,7 @@
 							<span class="text-xs text-fg-muted">In-memory or file-based analytics database</span>
 						</label>
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 transition-all border-primary"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 transition-all border-tertiary"
 						>
 							<input
 								type="radio"
@@ -965,7 +965,7 @@
 							>
 						</label>
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 transition-all border-primary"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 transition-all border-tertiary"
 						>
 							<input
 								type="radio"
@@ -1080,7 +1080,7 @@
 							>
 							{#if icebergResolvedPath}
 								<span
-									class="break-all border px-1.5 py-0.5 text-xs text-fg-secondary bg-secondary border-primary"
+									class="break-all border px-1.5 py-0.5 text-xs text-fg-secondary bg-secondary border-tertiary"
 									>{icebergResolvedPath}</span
 								>
 							{/if}

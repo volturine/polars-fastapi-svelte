@@ -65,10 +65,10 @@
 <div class="flex h-full">
 	<!-- Left Pane -->
 	<aside
-		class="w-(--datasource-panel-width) border-r border-primary flex flex-col bg-bg-primary shrink-0"
+		class="w-(--datasource-panel-width) border-r border-tertiary flex flex-col bg-bg-primary shrink-0"
 	>
 		<!-- Header -->
-		<header class="flex flex-col gap-2 px-4 py-3 border-b border-primary">
+		<header class="flex flex-col gap-2 px-4 py-3 border-b border-tertiary h-[100px] box-border">
 			<div class="flex items-center justify-between">
 				<h1 class="text-sm font-semibold">Data Sources</h1>
 				<a
@@ -85,7 +85,7 @@
 				<input
 					type="text"
 					placeholder="Search datasources..."
-					class="w-full bg-transparent border border-primary px-3 py-1.5 pl-8 text-sm"
+					class="w-full bg-transparent border border-tertiary px-3 py-1 pl-8 text-sm"
 					bind:value={searchQuery}
 				/>
 			</div>
@@ -117,7 +117,7 @@
 			{:else}
 				{#each filteredDatasources as datasource (datasource.id)}
 					<div
-						class="datasource-item border-b border-primary"
+						class="datasource-item border-b border-tertiary"
 						class:selected={selectedId === datasource.id}
 					>
 						<!-- Row -->

@@ -84,7 +84,7 @@
 			id="rename-btn-add"
 			data-testid="rename-add-button"
 			type="button"
-			class="add-btn accent-btn py-2 px-4 cursor-pointer whitespace-nowrap font-semibold hover:opacity-90 disabled:bg-panel-muted disabled:border-primary disabled:text-fg-muted disabled:cursor-not-allowed"
+			class="add-btn accent-btn py-2 px-4 cursor-pointer whitespace-nowrap font-semibold hover:opacity-90 disabled:bg-panel-muted disabled:border-tertiary disabled:text-fg-muted disabled:cursor-not-allowed"
 			onclick={addMapping}
 			disabled={!canAdd}
 			aria-label="Add rename mapping"
@@ -96,7 +96,7 @@
 	{#if mappings.length > 0}
 		<div
 			id="rename-mappings-list"
-			class="flex flex-col gap-2 p-3 mb-4 bg-panel-muted border border-primary"
+			class="flex flex-col gap-2 p-3 mb-4 bg-panel-muted border border-tertiary"
 			role="list"
 			aria-label="Configured renames"
 		>
@@ -118,7 +118,7 @@
 						id={`rename-btn-remove-${mapping.oldName}`}
 						data-testid={`rename-remove-button-${mapping.oldName}`}
 						type="button"
-						class="remove-btn w-7 h-7 inline-flex items-center justify-center cursor-pointer text-lg leading-none bg-transparent text-fg-muted border border-transparent hover:text-fg-primary hover:bg-hover hover:border-primary"
+						class="remove-btn w-7 h-7 inline-flex items-center justify-center cursor-pointer text-lg leading-none bg-transparent text-fg-muted border border-transparent hover:text-fg-primary hover:bg-hover hover:border-tertiary"
 						onclick={() => removeMapping(mapping.oldName)}
 						aria-label={`Remove rename: ${mapping.oldName} to ${mapping.newName}`}
 					>

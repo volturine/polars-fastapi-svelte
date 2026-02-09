@@ -132,7 +132,7 @@
 
 <div class="max-w-240 mx-auto p-6 h-full overflow-auto">
 	<header
-		class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mb-6 pb-5 border-b border-primary"
+		class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mb-6 pb-5 border-b border-tertiary"
 	>
 		<div class="flex items-center gap-3">
 			<button class="btn-back" onclick={handleBack} type="button">
@@ -168,7 +168,7 @@
 				</div>
 			</div>
 
-			<div class="flex flex-col gap-3 p-4 border bg-primary border-primary">
+			<div class="flex flex-col gap-3 p-4 border bg-primary border-tertiary">
 				<UdfSignatureBuilder {inputs} onChange={updateInputs} />
 				<div class="flex flex-col gap-2">
 					<label for="udf-output">Output dtype</label>
@@ -180,7 +180,7 @@
 				</div>
 			</div>
 
-			<div class="flex flex-col gap-3 p-4 border bg-primary border-primary">
+			<div class="flex flex-col gap-3 p-4 border bg-primary border-tertiary">
 				<div class="flex justify-between items-center">
 					<h4 class="m-0 text-sm text-fg-secondary">Code</h4>
 					<span class="text-xs text-fg-muted">Define a function named <code>udf</code></span>

@@ -122,7 +122,7 @@
 				id="{uid}-agg-add"
 				data-testid="agg-add-button"
 				type="button"
-				class="px-4 py-2 border border-transparent cursor-pointer accent-btn hover:opacity-90 disabled:bg-muted disabled:text-fg-muted disabled:border-primary disabled:cursor-not-allowed"
+				class="px-4 py-2 border border-transparent cursor-pointer accent-btn hover:opacity-90 disabled:bg-muted disabled:text-fg-muted disabled:border-tertiary disabled:cursor-not-allowed"
 				onclick={addAggregation}
 				disabled={!newAggregation.column}
 				aria-label="Add aggregation"

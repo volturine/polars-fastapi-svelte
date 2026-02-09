@@ -66,9 +66,9 @@
 			</div>
 		</div>
 	{:else}
-		<div class="flex items-center gap-3 px-4 py-2 border-b border-primary bg-tertiary shrink-0">
+		<div class="flex items-center gap-3 px-4 py-2 border-b border-tertiary bg-tertiary shrink-0">
 			<button
-				class="py-1 px-2.5 border border-primary bg-primary text-fg-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+				class="py-1 px-2.5 border border-tertiary bg-primary text-fg-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed"
 				onclick={goPrev}
 				disabled={!canPrev || isLoading}
 			>
@@ -76,7 +76,7 @@
 			</button>
 			<span class="text-xs text-fg-muted">Page {page}</span>
 			<button
-				class="py-1 px-2.5 border border-primary bg-primary text-fg-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+				class="py-1 px-2.5 border border-tertiary bg-primary text-fg-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed"
 				onclick={goNext}
 				disabled={!canNext || isLoading}
 			>

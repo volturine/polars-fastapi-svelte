@@ -167,7 +167,7 @@
 				<div class="ml-auto flex items-center gap-2">
 					<EngineMonitor />
 					<button
-						class="theme-toggle flex items-center justify-center border border-primary bg-bg-primary p-2 text-fg-secondary transition-all hover:bg-bg-hover hover:text-fg-primary"
+						class="theme-toggle flex items-center justify-center border border-tertiary bg-bg-primary p-2 text-fg-secondary transition-all hover:bg-bg-hover hover:text-fg-primary"
 						onclick={toggleTheme}
 						title="Toggle theme"
 						aria-label="Toggle theme"

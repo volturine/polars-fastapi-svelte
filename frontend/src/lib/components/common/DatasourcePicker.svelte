@@ -151,7 +151,7 @@
 <div class="relative w-full">
 	<input
 		type="text"
-		class="w-full border border-primary bg-panel-bg px-3 py-2 font-mono text-sm text-fg-primary focus:border-info focus:outline-none"
+		class="w-full border border-tertiary bg-panel-bg px-3 py-2 font-mono text-sm text-fg-primary focus:border-info focus:outline-none"
 		bind:value={search}
 		onfocus={handleFocus}
 		onblur={handleBlur}
@@ -166,7 +166,7 @@
 
 	{#if showPicker}
 		<div
-			class="absolute left-0 right-0 top-full z-50 mt-1 max-h-50 overflow-y-auto border border-primary bg-panel-bg"
+			class="absolute left-0 right-0 top-full z-50 mt-1 max-h-50 overflow-y-auto border border-tertiary bg-panel-bg"
 			role="listbox"
 			id={listboxId}
 			aria-label="Available datasources"
@@ -176,7 +176,7 @@
 			{:else}
 				{#each filteredOptions() as ds (ds.id)}
 					<button
-						class="picker-option flex w-full cursor-pointer items-center justify-between border-b border-primary bg-transparent px-3 py-2 font-mono text-left text-sm text-fg-primary last:border-b-0 hover:bg-bg-hover"
+						class="picker-option flex w-full cursor-pointer items-center justify-between border-b border-tertiary bg-transparent px-3 py-2 font-mono text-left text-sm text-fg-primary last:border-b-0 hover:bg-bg-hover"
 						class:selected={isSelected(ds.id)}
 						class:highlighted={ds.id === highlightId}
 						onmousedown={(e) => {
@@ -215,7 +215,7 @@
 		<div class="mt-2 flex flex-wrap gap-2">
 			{#each selectedDatasources() as ds (ds.id)}
 				<span
-					class="chip inline-flex items-center gap-1 border border-primary bg-badge-bg px-2 py-1 text-xs text-badge-fg"
+					class="chip inline-flex items-center gap-1 border border-tertiary bg-badge-bg px-2 py-1 text-xs text-badge-fg"
 					class:highlighted={ds.id === highlightId}
 				>
 					{ds.name}

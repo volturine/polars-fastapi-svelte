@@ -72,9 +72,9 @@
 
 	{#if expanded}
 		<div
-			class="absolute right-0 top-full z-engine w-70 overflow-hidden border bg-primary border-primary"
+			class="absolute right-0 top-full z-engine w-70 overflow-hidden border bg-primary border-tertiary"
 		>
-			<div class="flex items-center justify-between border-b p-3 bg-secondary border-primary">
+			<div class="flex items-center justify-between border-b p-3 bg-secondary border-tertiary">
 				<span class="text-sm font-semibold text-fg-primary">Active Engines</span>
 				<button
 					class="flex cursor-pointer items-center justify-center border-none bg-transparent p-1 transition-all text-fg-muted hover:bg-hover hover:text-fg-primary"
@@ -101,7 +101,7 @@
 				{:else}
 					<ul class="m-0 list-none p-0">
 						{#each enginesStore.engines as engine (engine.analysis_id)}
-							<li class="flex items-center gap-3 border-b p-3 last:border-b-0 border-primary">
+							<li class="flex items-center gap-3 border-b p-3 last:border-b-0 border-tertiary">
 								<div class="min-w-0 flex-1">
 									<div class="flex items-center gap-2">
 										<span class="font-mono text-xs text-fg-primary" title={engine.analysis_id}>
@@ -129,7 +129,7 @@
 									</div>
 								</div>
 								<button
-									class="flex cursor-pointer items-center justify-center border p-1 transition-all disabled:cursor-not-allowed disabled:opacity-50 bg-transparent border-primary text-fg-muted hover:bg-error hover:border-error hover:text-error-fg"
+									class="flex cursor-pointer items-center justify-center border p-1 transition-all disabled:cursor-not-allowed disabled:opacity-50 bg-transparent border-tertiary text-fg-muted hover:bg-error hover:border-error hover:text-error-fg"
 									onclick={() => handleKill(engine.analysis_id)}
 									disabled={killing === engine.analysis_id}
 									title="Shutdown engine"

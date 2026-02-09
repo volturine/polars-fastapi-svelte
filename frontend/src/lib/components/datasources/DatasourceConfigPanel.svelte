@@ -286,7 +286,7 @@
 	const excel = $derived(isExcel(ds));
 </script>
 
-<div class="border-t border-primary bg-bg-secondary">
+<div class="border-t border-tertiary bg-bg-secondary">
 	{#if updateMutation.isError}
 		<div class="error-box m-4 mb-0 flex items-start gap-3">
 			<CircleAlert size={20} />
@@ -305,7 +305,7 @@
 		</div>
 	{/if}
 
-	<div class="flex gap-0 border-b border-primary px-4 pt-3">
+	<div class="flex gap-0 border-b border-tertiary px-4 pt-3">
 		<button
 			class="tab -mb-px bg-transparent border-b-2 border-transparent px-3 py-1.5 text-xs font-medium text-fg-muted transition-all hover:text-fg-secondary"
 			class:active={activeTab === 'general'}
@@ -357,7 +357,7 @@
 					/>
 				</div>
 
-				<div class="border-t border-primary pt-4">
+				<div class="border-t border-tertiary pt-4">
 					<h3 class="m-0 mb-3 text-xs font-semibold text-fg-secondary">Source Information</h3>
 					<div class="space-y-3 text-xs">
 						<!-- Type & Schema -->
@@ -452,7 +452,7 @@
 					</div>
 				</div>
 
-				<div class="border-t border-primary pt-4 flex items-center justify-between gap-3">
+				<div class="border-t border-tertiary pt-4 flex items-center justify-between gap-3">
 					<button
 						class="btn btn-secondary flex items-center gap-2"
 						onclick={handleRefresh}
@@ -517,9 +517,9 @@
 						<p class="text-sm">Loading schema...</p>
 					</div>
 				{:else if columns.length > 0}
-					<div class="border border-primary">
+					<div class="border border-tertiary">
 						<div
-							class="grid grid-cols-[24px_1fr_140px] items-center gap-x-2 bg-tertiary px-3 py-2 text-xs font-semibold uppercase tracking-wide text-fg-muted border-b border-primary"
+							class="grid grid-cols-[24px_1fr_140px] items-center gap-x-2 bg-tertiary px-3 py-2 text-xs font-semibold uppercase tracking-wide text-fg-muted border-b border-tertiary"
 						>
 							<span>#</span>
 							<span>Column</span>
@@ -529,7 +529,7 @@
 							<div
 								class="grid grid-cols-[24px_1fr_140px] items-center gap-x-2 px-3 py-1.5"
 								class:border-t={index > 0}
-								class:border-primary={index > 0}
+								class:border-tertiary={index > 0}
 							>
 								<span class="text-xs text-fg-faint">{index + 1}</span>
 								<span class="text-xs text-fg-primary">{column.name}</span>
@@ -692,7 +692,7 @@
 					/>
 				</div>
 
-				<div class="border border-primary bg-tertiary p-3">
+				<div class="border border-tertiary bg-tertiary p-3">
 					<h4 class="m-0 mb-3 text-xs font-semibold text-fg-secondary">Table Bounds</h4>
 					<div class="grid grid-cols-3 gap-3">
 						<div class="flex flex-col gap-1.5">

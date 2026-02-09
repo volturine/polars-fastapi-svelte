@@ -88,7 +88,7 @@
 		aria-label="Close modal"
 	>
 		<div
-			class="flex max-h-[80vh] w-full max-w-120 flex-col border focus:outline-none max-sm:max-w-full bg-panel border-primary animate-slide-up"
+			class="flex max-h-[80vh] w-full max-w-120 flex-col border focus:outline-none max-sm:max-w-full bg-panel border-tertiary animate-slide-up"
 			bind:this={modalRef}
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
@@ -97,7 +97,7 @@
 			aria-labelledby="modal-title"
 			tabindex="-1"
 		>
-			<div class="flex items-center justify-between border-b p-4 border-primary">
+			<div class="flex items-center justify-between border-b p-4 border-tertiary">
 				<h2 id="modal-title" class="m-0 text-sm font-semibold text-fg-primary">
 					{mode === 'change' ? 'Change Datasource' : 'Add Datasource'}
 				</h2>
@@ -111,7 +111,7 @@
 			</div>
 			<div class="flex flex-col gap-4 overflow-y-auto p-4">
 				<input
-					class="w-full border px-3 py-3 text-sm transition-all focus:outline-none border-primary text-fg-primary bg-primary focus:border-info"
+					class="w-full border px-3 py-3 text-sm transition-all focus:outline-none border-tertiary text-fg-primary bg-primary focus:border-info"
 					type="text"
 					bind:this={searchInput}
 					bind:value={searchQuery}
@@ -127,7 +127,7 @@
 					{:else}
 						{#each filteredDatasources as ds (ds.id)}
 							<button
-								class="flex cursor-pointer items-center justify-between border border-transparent bg-transparent p-3 text-left transition-all hover:bg-hover hover:border-primary"
+								class="flex cursor-pointer items-center justify-between border border-transparent bg-transparent p-3 text-left transition-all hover:bg-hover hover:border-tertiary"
 								onclick={() => handleSelect(ds.id, ds.name)}
 							>
 								<span class="text-sm font-medium text-fg-primary">{ds.name}</span>

@@ -158,7 +158,7 @@
 
 <div class="mx-auto box-border max-w-300 px-8 py-8 md:px-4 md:py-4">
 	<header
-		class="mb-8 flex flex-col items-stretch justify-between gap-6 border-b border-primary pb-6 md:flex-row md:items-start"
+		class="mb-8 flex flex-col items-stretch justify-between gap-6 border-b border-tertiary pb-6 md:flex-row md:items-start"
 	>
 		<div>
 			<h1 class="m-0 mb-2 text-2xl font-semibold">Analyses</h1>
@@ -175,7 +175,7 @@
 			<div class="py-4">
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
 					{#each Array(6) as _, i (i)}
-						<div class="bg-primary overflow-hidden border border-primary">
+						<div class="bg-primary overflow-hidden border border-tertiary">
 							<div class="aspect-video w-full animate-shimmer shimmer-bg"></div>
 							<div class="p-4">
 								<div class="mb-3 h-4 w-[70%] animate-shimmer shimmer-bg"></div>
@@ -210,7 +210,7 @@
 					onBulkDelete={requestBulkDelete}
 				/>
 				{#if filteredAndSortedAnalyses.length === 0}
-					<div class="rounded-sm border border-dashed border-primary px-6 py-12 text-center">
+					<div class="rounded-sm border border-dashed border-tertiary px-6 py-12 text-center">
 						<p class="text-fg-tertiary m-0 text-sm">No analyses match your search.</p>
 					</div>
 				{:else}

@@ -185,7 +185,7 @@
 	<div class="absolute left-1/2 -top-1 z-2 h-2 w-2 -translate-x-1/2 border-2 connector-dot"></div>
 
 	<div
-		class="step-content card-base border p-4 transition-all hover:border-primary"
+		class="step-content card-base border p-4 transition-all hover:border-tertiary"
 		role="listitem"
 	>
 		<div class="mb-3 flex items-center gap-2">
@@ -219,7 +219,7 @@
 
 		<div class="flex gap-2">
 			<button
-				class="action-btn flex-1 cursor-pointer border border-primary bg-transparent p-2 font-medium uppercase tracking-widest text-[0.625rem] text-fg-secondary hover:bg-hover hover:text-fg-primary transition-all"
+				class="action-btn flex-1 cursor-pointer border border-tertiary bg-transparent p-2 font-medium uppercase tracking-widest text-[0.625rem] text-fg-secondary hover:bg-hover hover:text-fg-primary transition-all"
 				class:inactive={!isApplied}
 				onclick={() => onToggleApply(step.id)}
 				type="button"
@@ -228,14 +228,14 @@
 				{isApplied ? 'disable' : 'enable'}
 			</button>
 			<button
-				class="action-btn flex-1 cursor-pointer border border-primary bg-transparent p-2 text-xs font-medium transition-all text-fg-secondary hover:bg-hover hover:text-fg-primary"
+				class="action-btn flex-1 cursor-pointer border border-tertiary bg-transparent p-2 text-xs font-medium transition-all text-fg-secondary hover:bg-hover hover:text-fg-primary"
 				onclick={() => onEdit(step.id)}
 				type="button"
 			>
 				edit
 			</button>
 			<button
-				class="action-btn danger flex-1 cursor-pointer border border-primary bg-transparent p-2 text-xs font-medium transition-all text-fg-secondary hover:bg-error hover:border-error hover:text-error"
+				class="action-btn danger flex-1 cursor-pointer border border-tertiary bg-transparent p-2 text-xs font-medium transition-all text-fg-secondary hover:bg-error hover:border-error hover:text-error"
 				onclick={() => onDelete(step.id)}
 				type="button"
 			>
@@ -244,7 +244,7 @@
 		</div>
 
 		{#if step.type === 'export' && datasourceId}
-			<div class="mt-3 border-t border-primary pt-3">
+			<div class="mt-3 border-t border-tertiary pt-3">
 				{#if exportError}
 					<div class="mb-2 border border-error bg-error p-2 text-xs text-error">
 						{exportError}
@@ -271,7 +271,7 @@
 		{/if}
 
 		{#if step.type === 'view' && datasourceId && analysisId}
-			<div class="mt-3 border-t border-primary pt-3">
+			<div class="mt-3 border-t border-tertiary pt-3">
 				<InlineDataTable
 					{analysisId}
 					{datasourceId}

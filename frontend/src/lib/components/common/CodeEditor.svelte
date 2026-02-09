@@ -85,6 +85,6 @@
 	});
 </script>
 
-<div class="overflow-hidden border bg-tertiary border-primary" style:height>
+<div class="overflow-hidden border bg-tertiary border-tertiary" style:height>
 	<div class="h-full" use:init></div>
 </div>

@@ -172,7 +172,7 @@
 				<div class="flex" role="radiogroup" aria-label="Condition logic">
 					<button
 						type="button"
-						class="logic-btn flex cursor-pointer items-center justify-center border border-primary bg-transparent px-2 py-1 text-xs text-fg-muted transition-all hover:bg-hover hover:text-fg-secondary"
+						class="logic-btn flex cursor-pointer items-center justify-center border border-tertiary bg-transparent px-2 py-1 text-xs text-fg-muted transition-all hover:bg-hover hover:text-fg-secondary"
 						class:active={config.logic === 'AND'}
 						onclick={() => (config.logic = 'AND')}
 						aria-pressed={config.logic === 'AND'}
@@ -181,7 +181,7 @@
 					</button>
 					<button
 						type="button"
-						class="logic-btn flex cursor-pointer items-center justify-center border border-primary bg-transparent px-2 py-1 text-xs text-fg-muted transition-all hover:bg-hover hover:text-fg-secondary"
+						class="logic-btn flex cursor-pointer items-center justify-center border border-tertiary bg-transparent px-2 py-1 text-xs text-fg-muted transition-all hover:bg-hover hover:text-fg-secondary"
 						class:active={config.logic === 'OR'}
 						onclick={() => (config.logic = 'OR')}
 						aria-pressed={config.logic === 'OR'}
@@ -191,7 +191,7 @@
 				</div>
 				<button
 					type="button"
-					class="btn-add flex h-7 w-7 cursor-pointer items-center justify-center border border-primary bg-tertiary p-0 text-fg-secondary hover:bg-hover hover:text-fg-primary"
+					class="btn-add flex h-7 w-7 cursor-pointer items-center justify-center border border-tertiary bg-tertiary p-0 text-fg-secondary hover:bg-hover hover:text-fg-primary"
 					onclick={addCondition}
 					aria-label="Add filter condition"
 				>
@@ -218,10 +218,10 @@
 					{@const ops = getOperatorsForType(colType, isColumn)}
 
 					<div
-						class="condition-card filter-config border border-primary bg-panel p-3"
+						class="condition-card filter-config border border-tertiary bg-panel p-3"
 						role="listitem"
 					>
-						<div class="mb-3 flex items-center gap-2 border-b border-primary pb-2">
+						<div class="mb-3 flex items-center gap-2 border-b border-tertiary pb-2">
 							<span class="text-xs font-semibold text-fg-muted">#{i + 1}</span>
 							{#if cond.column}
 								<span class="text-sm font-medium text-fg-primary">{cond.column}</span>
@@ -273,7 +273,7 @@
 										<div class="flex" role="radiogroup" aria-label="Value mode">
 											<button
 												type="button"
-												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer transition-all border border-primary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
+												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer transition-all border border-tertiary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
 												class:active={!isColumn}
 												onclick={() => handleModeChange(i, 'value')}
 												aria-pressed={!isColumn}
@@ -282,7 +282,7 @@
 											</button>
 											<button
 												type="button"
-												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer transition-all border border-primary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
+												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer transition-all border border-tertiary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
 												class:active={isColumn}
 												onclick={() => handleModeChange(i, 'column')}
 												aria-pressed={isColumn}

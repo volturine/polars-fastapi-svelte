@@ -95,7 +95,7 @@
 		</div>
 	{:else if data?.columns?.length}
 		<div
-			class="flex justify-between items-center px-4 py-3 text-xs border-b text-fg-tertiary border-primary bg-panel-header"
+			class="flex justify-between items-center px-4 py-3 text-xs border-b text-fg-tertiary border-tertiary bg-panel-header"
 		>
 			<span>
 				Showing {startRow.toLocaleString()}-{endRow.toLocaleString()} of {data.total_rows.toLocaleString()}
@@ -122,10 +122,10 @@
 
 		{#if totalPages > 1}
 			<div
-				class="flex justify-between items-center px-4 py-3 border-t border-primary bg-panel-header"
+				class="flex justify-between items-center px-4 py-3 border-t border-tertiary bg-panel-header"
 			>
 				<button
-					class="px-4 py-2 border cursor-pointer transition-all border-primary bg-panel hover:bg-hover hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed"
+					class="px-4 py-2 border cursor-pointer transition-all border-tertiary bg-panel hover:bg-hover hover:border-tertiary disabled:opacity-40 disabled:cursor-not-allowed"
 					onclick={prevPage}
 					disabled={currentPage === 1}
 				>
@@ -133,7 +133,7 @@
 				</button>
 				<span class="text-xs text-fg-tertiary">Page {currentPage} of {totalPages}</span>
 				<button
-					class="px-4 py-2 border cursor-pointer transition-all border-primary bg-panel hover:bg-hover hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed"
+					class="px-4 py-2 border cursor-pointer transition-all border-tertiary bg-panel hover:bg-hover hover:border-tertiary disabled:opacity-40 disabled:cursor-not-allowed"
 					onclick={nextPage}
 					disabled={currentPage >= totalPages}
 				>

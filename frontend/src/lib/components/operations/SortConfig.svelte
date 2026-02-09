@@ -98,7 +98,7 @@
 			id="{uid}-add"
 			data-testid="sort-add-button"
 			type="button"
-			class="flex items-center gap-1 py-2 px-4 border-none cursor-pointer whitespace-nowrap bg-accent-bg text-accent-primary disabled:bg-border-primary disabled:cursor-not-allowed disabled:text-fg-muted"
+			class="flex items-center gap-1 py-2 px-4 border-none cursor-pointer whitespace-nowrap bg-accent-bg text-accent-primary disabled:bg-border-tertiary disabled:cursor-not-allowed disabled:text-fg-muted"
 			onclick={addSortRule}
 			disabled={!newColumn}
 			aria-label="Add sort rule"
@@ -111,14 +111,14 @@
 	{#if safeConfig.columns.length > 0}
 		<div
 			id="sort-rules-list"
-			class="p-4 mb-4 bg-panel-muted border border-primary"
+			class="p-4 mb-4 bg-panel-muted border border-tertiary"
 			role="region"
 			aria-labelledby="sort-order-heading"
 		>
 			<h4 id="sort-order-heading" class="mt-0 mb-3 text-sm uppercase text-fg-muted">Sort Order</h4>
 			{#each safeConfig.columns as column, i (column)}
 				<div
-					class="flex justify-between items-center py-2 px-3 mb-2 last:mb-0 bg-panel border border-primary"
+					class="flex justify-between items-center py-2 px-3 mb-2 last:mb-0 bg-panel border border-tertiary"
 					role="group"
 					aria-label={`Sort rule ${i + 1}: ${column}`}
 				>
@@ -173,7 +173,7 @@
 	{:else}
 		<p
 			id="sort-empty-state"
-			class="py-8 text-center mb-4 text-fg-muted bg-panel-muted border border-primary"
+			class="py-8 text-center mb-4 text-fg-muted bg-panel-muted border border-tertiary"
 			role="status"
 		>
 			No sort rules configured. Add a column to sort by.

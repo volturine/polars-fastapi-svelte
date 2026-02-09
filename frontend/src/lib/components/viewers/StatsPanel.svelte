@@ -12,13 +12,13 @@
 	let hasStats = $derived(stats && Object.keys(stats).length > 0);
 </script>
 
-<div class="stats-panel overflow-hidden border bg-panel border-primary">
-	<div class="px-5 py-4 border-b border-primary bg-panel-header">
+<div class="stats-panel overflow-hidden border bg-panel border-tertiary">
+	<div class="px-5 py-4 border-b border-tertiary bg-panel-header">
 		<h3 class="m-0">Summary Statistics</h3>
 	</div>
 
 	<div class="stats-summary grid gap-4 p-5">
-		<div class="flex items-center gap-4 p-4 border transition-all bg-tertiary border-primary">
+		<div class="flex items-center gap-4 p-4 border transition-all bg-tertiary border-tertiary">
 			<BarChart3 size={24} class="text-fg-primary" />
 			<div class="flex-1">
 				<div class="text-xs font-medium uppercase tracking-wider mb-1 text-fg-muted">
@@ -30,7 +30,7 @@
 			</div>
 		</div>
 
-		<div class="flex items-center gap-4 p-4 border transition-all bg-tertiary border-primary">
+		<div class="flex items-center gap-4 p-4 border transition-all bg-tertiary border-tertiary">
 			<ListChecks size={24} class="text-fg-primary" />
 			<div class="flex-1">
 				<div class="text-xs font-medium uppercase tracking-wider mb-1 text-fg-muted">
@@ -42,7 +42,7 @@
 			</div>
 		</div>
 
-		<div class="flex items-center gap-4 p-4 border transition-all bg-tertiary border-primary">
+		<div class="flex items-center gap-4 p-4 border transition-all bg-tertiary border-tertiary">
 			<Binary size={24} class="text-fg-primary" />
 			<div class="flex-1">
 				<div class="text-xs font-medium uppercase tracking-wider mb-1 text-fg-muted">
@@ -62,9 +62,9 @@
 			</h4>
 			<div class="stats-columns grid gap-3">
 				{#each Object.entries(stats) as [column, columnStats] (column)}
-					<div class="p-3 border bg-tertiary border-primary">
+					<div class="p-3 border bg-tertiary border-tertiary">
 						<div
-							class="text-sm font-semibold font-mono mb-2 pb-2 border-b text-fg-primary border-primary"
+							class="text-sm font-semibold font-mono mb-2 pb-2 border-b text-fg-primary border-tertiary"
 						>
 							{column}
 						</div>

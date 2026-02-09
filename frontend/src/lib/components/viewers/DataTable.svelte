@@ -495,7 +495,7 @@
 						<tr>
 							{#each headerGroup.headers as header (header.id)}
 								<th
-									class="dataset-table__th p-0 text-left font-semibold border-b border-primary"
+									class="dataset-table__th p-0 text-left font-semibold border-b border-tertiary"
 									class:dataset-table__th--drag={dragOver === header.id}
 									class:dataset-table__th--dragging={dragColumn === header.id}
 									use:setWidth={header.getSize()}
@@ -606,9 +606,7 @@
 				</thead>
 				<tbody>
 					{#each rows as row (row.id)}
-						<tr
-							class="dataset-table__row border-b transition-colors last:border-b-0 border-primary even:bg-secondary hover:bg-hover!"
-						>
+						<tr class="dataset-table__row transition-colors even:bg-secondary hover:bg-hover!">
 							{#each row.getVisibleCells() as cell (cell.id)}
 								{@const display = formatValue(cell.getValue() as TableCellValue, cell.column.id)}
 								<td class="dataset-table__td" use:setWidth={cell.column.getSize()}>
@@ -645,7 +643,7 @@
 	{/if}
 
 	{#if showFooter && !loading && data.length > 0}
-		<div class="px-4 py-3 border-t border-primary bg-panel-header">
+		<div class="px-4 py-3 border-t border-tertiary bg-panel-header">
 			<span class="text-xs text-fg-tertiary">
 				Showing {data.length.toLocaleString()} row{data.length !== 1 ? 's' : ''}
 			</span>

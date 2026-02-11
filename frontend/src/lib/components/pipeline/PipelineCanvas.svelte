@@ -1,9 +1,10 @@
 <script lang="ts">
-	import type { PipelineStep } from '$lib/types/analysis';
+	import type { PipelineStep, AnalysisTab } from '$lib/types/analysis';
 	import type { DataSource } from '$lib/types/datasource';
 	import { drag, type DropTarget } from '$lib/stores/drag.svelte';
 	import { LayoutGrid } from 'lucide-svelte';
 	import StepNode from './StepNode.svelte';
+	import OutputNode from './OutputNode.svelte';
 	import ConnectionLine from './ConnectionLine.svelte';
 	import DatasourceNode from './DatasourceNode.svelte';
 
@@ -13,6 +14,7 @@
 		datasourceId?: string;
 		datasource?: DataSource | null;
 		tabName?: string;
+		activeTab?: AnalysisTab | null;
 		onStepClick: (id: string) => void;
 		onStepDelete: (id: string) => void;
 		onStepToggle: (id: string) => void;
@@ -28,6 +30,7 @@
 		datasourceId,
 		datasource = null,
 		tabName: _tabName,
+		activeTab = null,
 		onStepClick,
 		onStepDelete,
 		onStepToggle,
@@ -274,6 +277,7 @@
 				{datasource}
 				{analysisId}
 				tabName={_tabName}
+				{activeTab}
 				onChangeDatasource={_onChangeDatasource}
 				onRenameTab={_onRenameTab}
 			/>
@@ -389,6 +393,20 @@
 					{/if}
 				{/if}
 			{/each}
+			{#if steps.length > 0}
+				<div class="insert-spacer flex items-center justify-center py-2" aria-hidden="true">
+					<ConnectionLine
+						fromStepIndex={steps.length - 1}
+						toStepIndex={steps.length}
+						totalSteps={steps.length + 1}
+					/>
+				</div>
+			{:else}
+				<div class="insert-spacer flex items-center justify-center py-2" aria-hidden="true">
+					<ConnectionLine fromStepIndex={-1} toStepIndex={0} totalSteps={1} />
+				</div>
+			{/if}
+		<OutputNode {steps} {analysisId} {datasourceId} {activeTab} datasource={datasource} />
 		</div>
 	{/if}
 </div>

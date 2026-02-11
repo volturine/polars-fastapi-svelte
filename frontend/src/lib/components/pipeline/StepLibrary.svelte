@@ -197,7 +197,7 @@
 			icon: LayoutGrid,
 			description: 'Union rows from multiple datasources'
 		},
-		{ type: 'export', label: 'Export', icon: Upload, description: 'Export data to file' }
+		{ type: 'export', label: 'Export', icon: Upload, description: 'Download data' }
 	];
 
 	// Quick insert selected type

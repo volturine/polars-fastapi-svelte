@@ -1,7 +1,18 @@
 <script lang="ts">
 	import { createQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
+	import { resolve } from '$app/paths';
 	import { getDatasource, updateDatasource, getDatasourceSchema } from '$lib/api/datasource';
-	import { Save, Loader, CircleAlert, RefreshCw } from 'lucide-svelte';
+	import { listEngineRuns, type EngineRun } from '$lib/api/engine-runs';
+	import {
+		Save,
+		Loader,
+		CircleAlert,
+		RefreshCw,
+		Eye,
+		Download,
+		CircleCheck,
+		CircleX
+	} from 'lucide-svelte';
 	import type {
 		DataSource,
 		SchemaInfo,
@@ -43,6 +54,16 @@
 		enabled: !!datasource.id
 	}));
 
+	const runsQuery = createQuery(() => ({
+		queryKey: ['datasource-runs', datasource.id],
+		queryFn: async () => {
+			const result = await listEngineRuns({ datasource_id: datasource.id, limit: 50 });
+			if (result.isErr()) throw new Error(result.error.message);
+			return result.value;
+		},
+		enabled: !!datasource.id
+	}));
+
 	const updateMutation = createMutation(() => ({
 		mutationFn: async (update: { name: string; config: Record<string, unknown> }) => {
 			const result = await updateDatasource(datasource.id, update);
@@ -64,7 +85,7 @@
 	let refreshError = $state<string | null>(null);
 	let schemaChanged = $state(false);
 	let schemaDiff = $state<{ added: string[]; removed: string[]; types: string[] } | null>(null);
-	let activeTab = $state<'general' | 'schema' | 'csv' | 'excel'>('general');
+	let activeTab = $state<'general' | 'schema' | 'csv' | 'excel' | 'runs'>('general');
 
 	// Reset state when datasource changes
 	$effect(() => {
@@ -284,6 +305,23 @@
 	const ds = $derived(datasourceQuery.data ?? datasource);
 	const csv = $derived(isCsv(ds));
 	const excel = $derived(isExcel(ds));
+	const runs = $derived(runsQuery.data ?? []);
+
+	function formatDuration(ms: number | null): string {
+		if (ms === null) return '-';
+		if (ms < 1000) return `${ms}ms`;
+		return `${(ms / 1000).toFixed(2)}s`;
+	}
+
+	function getDatasourceTag(run: EngineRun): 'created' | 'updated' | null {
+		const result = run.result_json;
+		if (!result || typeof result !== 'object') return null;
+		if (result.datasource_id !== datasource.id) return null;
+		const kind = run.kind as string;
+		if (kind === 'export' || kind === 'datasource_create') return 'created';
+		if (kind === 'datasource_update') return 'updated';
+		return null;
+	}
 </script>
 
 <div class="border-t border-tertiary bg-bg-secondary">
@@ -338,6 +376,16 @@
 				Excel
 			</button>
 		{/if}
+		<button
+			class="tab -mb-px bg-transparent border-b-2 border-transparent px-3 py-1.5 text-xs font-medium text-fg-muted transition-all hover:text-fg-secondary"
+			class:active={activeTab === 'runs'}
+			onclick={() => (activeTab = 'runs')}
+		>
+			Runs
+			{#if runs.length > 0}
+				<span class="ml-1 text-fg-tertiary">({runs.length})</span>
+			{/if}
+		</button>
 	</div>
 
 	<div class="p-4">
@@ -775,6 +823,98 @@
 							Save Changes
 						{/if}
 					</button>
+				{/if}
+			</div>
+		{:else if activeTab === 'runs'}
+			<div class="flex flex-col gap-3">
+				{#if runsQuery.isLoading}
+					<div class="flex flex-col items-center justify-center gap-3 py-8 text-fg-muted">
+						<Loader size={24} class="spin" />
+						<p class="text-sm">Loading runs...</p>
+					</div>
+				{:else if runs.length === 0}
+					<div class="py-6 text-center text-fg-muted text-sm">
+						<p class="m-0">No engine runs associated with this datasource.</p>
+						<p class="m-0 mt-1 text-fg-tertiary">
+							Runs will appear here when this datasource is used in analyses.
+						</p>
+					</div>
+				{:else}
+					<div class="border border-tertiary">
+						<div
+							class="grid grid-cols-[1fr_80px_80px_100px] items-center gap-x-2 bg-tertiary px-3 py-2 text-xs font-semibold uppercase tracking-wide text-fg-muted border-b border-tertiary"
+						>
+							<span>Type</span>
+							<span>Status</span>
+							<span>Duration</span>
+							<span>Created</span>
+						</div>
+						{#each runs as run, index (run.id)}
+							{@const dsTag = getDatasourceTag(run)}
+							<div
+								class="grid grid-cols-[1fr_80px_80px_100px] items-center gap-x-2 px-3 py-2"
+								class:border-t={index > 0}
+								class:border-tertiary={index > 0}
+							>
+								<div class="flex items-center gap-2 text-xs">
+									{#if (run.kind as string) === 'preview'}
+										<Eye size={14} class="text-info-fg shrink-0" />
+										<span>Preview</span>
+									{:else if (run.kind as string) === 'datasource_create'}
+										<Save size={14} class="text-accent-primary shrink-0" />
+										<span>Create</span>
+									{:else if (run.kind as string) === 'datasource_update'}
+										<RefreshCw size={14} class="text-warning-fg shrink-0" />
+										<span>Update</span>
+									{:else}
+										<Download size={14} class="text-success-fg shrink-0" />
+										<span>Export</span>
+									{/if}
+									{#if dsTag === 'created'}
+										<span
+											class="text-[10px] px-1.5 py-0.5 bg-accent-bg text-accent-primary rounded"
+											title="This datasource was created from this export"
+										>
+											CREATED
+										</span>
+									{:else if dsTag === 'updated'}
+										<span
+											class="text-[10px] px-1.5 py-0.5 bg-warning-bg text-warning-fg rounded"
+											title="This datasource was updated in this run"
+										>
+											UPDATED
+										</span>
+									{/if}
+								</div>
+								<div class="flex items-center gap-1.5 text-xs">
+									{#if run.status === 'success'}
+										<CircleCheck size={14} class="text-success-fg" />
+										<span class="text-success-fg">Success</span>
+									{:else}
+										<CircleX size={14} class="text-error-fg" />
+										<span class="text-error-fg">Failed</span>
+									{/if}
+								</div>
+								<span class="text-xs font-mono text-fg-secondary">
+									{formatDuration(run.duration_ms)}
+								</span>
+								<span class="text-xs text-fg-tertiary">
+									{formatDateDisplay(run.created_at)}
+								</span>
+							</div>
+						{/each}
+					</div>
+					{#if runs.length >= 50}
+						<p class="text-xs text-fg-tertiary text-center">
+							Showing last 50 runs.
+							<a
+								href="{resolve('/builds')}?datasource_id={datasource.id}"
+								class="text-accent-primary hover:underline"
+							>
+								View all runs
+							</a>
+						</p>
+					{/if}
 				{/if}
 			</div>
 		{/if}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { useQueryClient } from '@tanstack/svelte-query';
 	import {
 		uploadFile,
 		uploadBulkFiles,
@@ -21,6 +22,7 @@
 	type Tab = 'file' | 'database' | 'api';
 	type DatabaseType = 'duckdb' | 'iceberg' | 'other';
 
+	const queryClient = useQueryClient();
 	let activeTab = $state<Tab>('file');
 	let databaseType = $state<DatabaseType>('duckdb');
 	let loading = $state(false);
@@ -53,7 +55,7 @@
 	// Iceberg state
 	let icebergName = $state('');
 	let icebergMetadataPath = $state('');
-	let icebergSnapshotId = $state<number | null>(null);
+	let icebergSnapshotId = $state('');
 	let icebergReader = $state('');
 	let icebergStorageOptions = $state('');
 	let icebergResolvedPath = $state('');
@@ -134,6 +136,7 @@
 				showBulkResults = true;
 				if (response.successful === response.total) {
 					selectedFiles = [];
+					queryClient.invalidateQueries({ queryKey: ['datasources'] });
 					goto(resolve('/datasources'), { invalidateAll: true });
 				}
 			},
@@ -318,9 +321,11 @@
 					loading = false;
 					return;
 				}
+				queryClient.invalidateQueries({ queryKey: ['datasources'] });
 				goto(resolve('/datasources'), { invalidateAll: true });
 			} else {
 				await uploadFile(file, fileName);
+				queryClient.invalidateQueries({ queryKey: ['datasources'] });
 				goto(resolve('/datasources'), { invalidateAll: true });
 			}
 		} catch (err) {
@@ -374,7 +379,7 @@
 			loading = false;
 			return;
 		}
-
+		queryClient.invalidateQueries({ queryKey: ['datasources'] });
 		goto(resolve('/datasources'), { invalidateAll: true });
 	}
 
@@ -429,6 +434,7 @@
 			return;
 		}
 
+		queryClient.invalidateQueries({ queryKey: ['datasources'] });
 		goto(resolve('/datasources'), { invalidateAll: true });
 	}
 
@@ -458,7 +464,7 @@
 			'/metadata'
 		);
 
-		const snapshotId = icebergSnapshotId ?? null;
+		const snapshotId = icebergSnapshotId.trim() || null;
 
 		let storageOptions: Record<string, string> | null = null;
 		if (icebergStorageOptions.trim()) {
@@ -488,6 +494,7 @@
 			return;
 		}
 
+		queryClient.invalidateQueries({ queryKey: ['datasources'] });
 		goto(resolve('/datasources'), { invalidateAll: true });
 	}
 
@@ -517,6 +524,7 @@
 
 		try {
 			await connectDatabase(dbName, connectionString, query);
+			queryClient.invalidateQueries({ queryKey: ['datasources'] });
 			goto(resolve('/datasources'), { invalidateAll: true });
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Connection failed';
@@ -536,6 +544,7 @@
 
 		try {
 			await connectApi(apiName, apiUrl, apiMethod);
+			queryClient.invalidateQueries({ queryKey: ['datasources'] });
 			goto(resolve('/datasources'), { invalidateAll: true });
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Connection failed';
@@ -1093,7 +1102,7 @@
 						>
 						<input
 							id="iceberg-snapshot"
-							type="number"
+							type="text"
 							bind:value={icebergSnapshotId}
 							placeholder="7051579356916758811"
 							disabled={loading}

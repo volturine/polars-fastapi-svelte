@@ -22,6 +22,7 @@ export class AnalysisStore {
 	engineDefaults = $state<EngineDefaults | null>(null);
 	loading = $state(false);
 	error = $state<string | null>(null);
+	loadId = $state(0);
 
 	activeTab = $derived.by(() => {
 		const match = this.tabs.find((tab) => tab.id === this.activeTabId) ?? null;
@@ -57,12 +58,63 @@ export class AnalysisStore {
 		return schemaStore.getLastOutput() ?? baseSchema;
 	});
 
+	applyAnalysis(analysis: Analysis): void {
+		const previousId = this.current?.id ?? null;
+		this.current = analysis;
+		if (previousId !== analysis.id) {
+			this.activeTabId = null;
+			this.sourceSchemas.clear();
+		}
+
+		const definition = analysis.pipeline_definition as {
+			steps?: PipelineStep[];
+			tabs?: AnalysisTab[];
+			datasource_ids?: string[];
+		};
+
+		const tabs = analysis.tabs?.length ? analysis.tabs : definition?.tabs;
+		if (tabs && tabs.length && tabs[0].steps !== undefined) {
+			const normalized = this.normalizeTabSteps(tabs);
+			this.setTabs(normalized);
+			this.savedTabs = normalized;
+			this.loading = false;
+			this.error = null;
+			return;
+		}
+
+		const legacySteps = definition?.steps ?? [];
+
+		if (tabs && tabs.length) {
+			const migratedTabs = tabs.map((tab, index) => ({
+				...tab,
+				steps: index === 0 ? legacySteps : []
+			}));
+			const normalized = this.normalizeTabSteps(migratedTabs);
+			this.setTabs(normalized);
+			this.savedTabs = normalized;
+			this.loading = false;
+			this.error = null;
+			return;
+		}
+
+		const defaults = this.buildTabs(definition?.datasource_ids ?? [], legacySteps);
+		const normalized = this.normalizeTabSteps(defaults);
+		this.setTabs(normalized);
+		this.savedTabs = normalized;
+		this.loading = false;
+		this.error = null;
+	}
+
 	loadAnalysis(id: string): ResultAsync<void, ApiError> {
+		const token = this.loadId + 1;
+		this.loadId = token;
+		this.reset();
 		this.loading = true;
 		this.error = null;
 
 		return getAnalysis(id)
 			.andThen((analysis) => {
+				if (this.loadId !== token) return ok(undefined);
 				this.current = analysis;
 
 				const definition = analysis.pipeline_definition as {
@@ -102,6 +154,7 @@ export class AnalysisStore {
 				return ok(undefined);
 			})
 			.mapErr((error) => {
+				if (this.loadId !== token) return error;
 				this.error = error.message;
 				this.loading = false;
 				return error;

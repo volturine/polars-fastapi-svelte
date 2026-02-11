@@ -1,7 +1,10 @@
+import uuid
+
 from sqlalchemy import select
 
 from modules.analysis.models import Analysis, AnalysisDataSource
 from modules.datasource.models import DataSource
+from tests.conftest import acquire_lock
 
 
 class TestAnalysisCreate:
@@ -232,7 +235,13 @@ class TestAnalysisList:
 
 class TestAnalysisUpdate:
     def test_update_analysis_name(self, client, sample_analysis: Analysis):
-        payload = {'name': 'Updated Analysis Name', 'tabs': []}
+        client_id, lock_token = acquire_lock(client, sample_analysis.id)
+        payload = {
+            'name': 'Updated Analysis Name',
+            'tabs': [],
+            'client_id': client_id,
+            'lock_token': lock_token,
+        }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
 
@@ -243,7 +252,13 @@ class TestAnalysisUpdate:
         assert result['description'] == sample_analysis.description
 
     def test_update_analysis_description(self, client, sample_analysis: Analysis):
-        payload = {'description': 'Updated description', 'tabs': []}
+        client_id, lock_token = acquire_lock(client, sample_analysis.id)
+        payload = {
+            'description': 'Updated description',
+            'tabs': [],
+            'client_id': client_id,
+            'lock_token': lock_token,
+        }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
 
@@ -254,6 +269,7 @@ class TestAnalysisUpdate:
         assert result['name'] == sample_analysis.name
 
     def test_update_analysis_pipeline_steps(self, client, sample_analysis: Analysis):
+        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         payload = {
             'pipeline_steps': [
                 {
@@ -272,6 +288,8 @@ class TestAnalysisUpdate:
                     'datasource_id': sample_analysis.pipeline_definition['datasource_ids'][0],
                 }
             ],
+            'client_id': client_id,
+            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -285,7 +303,13 @@ class TestAnalysisUpdate:
         assert result['tabs']
 
     def test_update_analysis_status(self, client, sample_analysis: Analysis):
-        payload = {'status': 'completed', 'tabs': []}
+        client_id, lock_token = acquire_lock(client, sample_analysis.id)
+        payload = {
+            'status': 'completed',
+            'tabs': [],
+            'client_id': client_id,
+            'lock_token': lock_token,
+        }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
 
@@ -295,11 +319,14 @@ class TestAnalysisUpdate:
         assert result['status'] == 'completed'
 
     def test_update_analysis_multiple_fields(self, client, sample_analysis: Analysis):
+        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         payload: dict[str, object] = {
             'name': 'Updated Name',
             'description': 'Updated Description',
             'status': 'running',
             'tabs': [],
+            'client_id': client_id,
+            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -312,7 +339,12 @@ class TestAnalysisUpdate:
         assert result['status'] == 'running'
 
     def test_update_analysis_not_found(self, client):
-        payload = {'name': 'Updated Name', 'tabs': []}
+        payload = {
+            'name': 'Updated Name',
+            'tabs': [],
+            'client_id': str(uuid.uuid4()),
+            'lock_token': str(uuid.uuid4()),
+        }
 
         response = client.put('/api/v1/analysis/non-existent-id', json=payload)
 
@@ -320,7 +352,12 @@ class TestAnalysisUpdate:
         assert 'not found' in response.json()['detail']
 
     def test_update_analysis_empty_payload(self, client, sample_analysis: Analysis):
-        payload: dict[str, object] = {'tabs': []}
+        client_id, lock_token = acquire_lock(client, sample_analysis.id)
+        payload: dict[str, object] = {
+            'tabs': [],
+            'client_id': client_id,
+            'lock_token': lock_token,
+        }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
 

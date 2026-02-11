@@ -1,10 +1,10 @@
 # AGENTS.md
 
-**MANDATORY READ FOR AI ASSISTANTS** - OpenCode, Copilot, Claude Code must follow this guidance when working on this repository.
+**MANDATORY READ FOR AI ASSISTANTS** — all assistants must follow this guidance in this repository.
 
-Guidance for AI coding assistants working on this repository.
+This document defines strict, non-negotiable rules for assisting in this codebase.
 
-**Stack:** SvelteKit 2 + FastAPI + SQLite
+**Stack (context):** SvelteKit 2 + FastAPI + SQLite
 
 ## Workflow
 
@@ -15,6 +15,12 @@ Guidance for AI coding assistants working on this repository.
 5. **Commit** → Create well-formed commit
 
 Use `vibe_check` after planning. Use `vibe_learn` to record discoveries.
+
+## Non-Negotiables (Strict Enforcement)
+
+- **No workaround solutions.** Do not ship hacks, temporary fixes, or “good enough” patches. Fix root causes or stop and ask for direction.
+- **No hidden compromises.** If a requested change conflicts with rules or quality, state it and propose an acceptable alternative.
+- **No silent behavior changes.** All behavior changes must be explicit, intentional, and documented in the response.
 
 ## Backend (Python/FastAPI)
 
@@ -36,18 +42,18 @@ Use `vibe_check` after planning. Use `vibe_learn` to record discoveries.
   let doubled = $derived(count * 2);
   let { name }: Props = $props();
   let value = $bindable(0);
-  
+
   $effect(() => { /* side effects only */ });
 </script>
 ```
 
-**Never use:** `let x = 0`, `$: x = ...`, `export let`, `onMount`
+**Never use:** `let x = 0` (use `$state`), `$: x = ...`, `export let`, `onMount`
 
 ### Data Fetching
 
 ```typescript
-import { createQuery } from '@tanstack/svelte-query';
-const query = createQuery({ queryKey: ['items'], queryFn: fetchItems });
+import { createQuery } from "@tanstack/svelte-query";
+const query = createQuery({ queryKey: ["items"], queryFn: fetchItems });
 ```
 
 ### Styling
@@ -89,16 +95,18 @@ export function getDefaultConfig(stepType: string) {
 
 **Dynamic Styles:** Use Svelte actions (e.g., `use:setWidth`) not inline styles.
 
-**$effect Rules:**
-- ✗ Never for data validation/initialization
-- ✓ DOM manipulation, API calls, localStorage, event listeners
-- Prefer `$derived` for computed values
+**$effect Rules (Strict):**
+
+- **Allowed only for side effects** that cannot be expressed via `$derived` or pure functions.
+- **Allowed examples:** DOM access, event listeners, subscriptions, timers, network calls, localStorage/sessionStorage.
+- **Explicitly forbidden:** data initialization, validation, derived state, mapping, filtering, sorting, or transforming props/state.
+- **Requirement:** if `$effect` is used, include a one-line comment explaining why `$derived` is not sufficient.
 
 ## Code Style
 
 From `STYLE_GUIDE.md`:
 
-- No temporary workarounds allowed
+- **No temporary workarounds. Ever.** If a real fix is not possible, stop and request guidance.
 - Prefer `const` over `let`
 - Avoid `else` - use early returns
 - Single word names where possible
@@ -114,7 +122,7 @@ From `STYLE_GUIDE.md`:
 cd backend && uv sync --extra dev && uv run main.py
 uv run pytest && uv run ruff format . && uv run ruff check --fix . && uv run mypy .
 
-# Frontend  
+# Frontend
 cd frontend && npm install && npm run dev
 npm run check && npm run lint && npm run format
 ```
@@ -141,6 +149,14 @@ npm run check && npm run lint && npm run format
 - **Config defaults:** Centralize defaults at creation, not in components
 - **Border Color Consistency:** Use `border-tertiary` (same color as `--bg-tertiary`) for all borders in data tables and views to create a cleaner, more cohesive appearance that matches the table header background.
 - **Svelte Component Typing:** When using dynamic Lucide icons in Svelte components, type as `typeof Filter` instead of `Component<IconProps>` to avoid TypeScript narrowing issues. Use helper functions if needed to maintain type safety when accessing from `Record<string, T>`.
+- **Column Dropdown Width Matching:** When implementing column dropdown menus, set `.column-menu` to `min-width: 100%; width: 100%; max-width: 100%;` to ensure the popup width exactly matches the trigger field, preventing awkward width mismatches in filter UIs.
+- **Number Input Cursor Stability:** For numeric inputs in filter configurations, use `oninput` without immediate coercion and only coerce to number on `onblur` to prevent cursor jumping during typing. This allows smooth editing while maintaining data integrity.
+- **Iceberg Table Export Snapshots:** When exporting data to Iceberg tables, use `table.overwrite(df)` for existing tables to replace data in a single snapshot, avoiding the empty intermediate snapshots that occur with append operations or manual file management.
+- **Preview Trigger Exclusion:** To prevent unnecessary preview refreshes, exclude export configuration fields (like `output`) from the `datasourceKey` derivation in data table components, ensuring edits to export settings don't trigger preview runs.
+- **Filter Layout Responsiveness:** In complex filter UIs, use `min-w-55` and `min-w-37.5` custom utilities with flexible layouts to accommodate varying column name lengths without cramping the interface.
+- **Svelte Action-Based Positioning for Popovers:** Use Svelte actions to set CSS variables on portal elements for dynamic positioning, then consume them in dedicated CSS classes instead of inline `style=`.
+- **Inline Style Exceptions in Svelte:** Keep inline `style=` for drag previews that require runtime mouse-following, as CSS-only positioning doesn't suffice for dynamic pointer tracking.
+- **Portal Element Styling:** For elements appended to document.body via portal actions, use CSS variables set by the action to handle positioning without inline styles.
 
 ## Datasource Architecture
 
@@ -149,27 +165,32 @@ Datasources are immutable. Schema and location cannot change after creation. Ref
 ## Runed Utilities
 
 ```typescript
-import { PersistedState, Debounced, FiniteStateMachine, onClickOutside } from "runed";
+import {
+  PersistedState,
+  Debounced,
+  FiniteStateMachine,
+  onClickOutside,
+} from "runed";
 ```
 
 ## Agents
 
-| Agent | When to Use |
-|-------|-------------|
-| **Second Opinion** | Before completing ANY task |
-| **E2E Testing** | Automated UI testing |
-| **Docks** | Writing documentation |
-| **Learn** | After sessions to record discoveries |
+| Agent              | When to Use                          |
+| ------------------ | ------------------------------------ |
+| **Second Opinion** | Before completing ANY task           |
+| **E2E Testing**    | Automated UI testing                 |
+| **Docks**          | Writing documentation                |
+| **Learn**          | After sessions to record discoveries |
 
 ## MCP Servers
 
-| Server | Purpose |
-|--------|---------|
-| **Svelte** | Documentation and autofixer |
-| **Perplexity** | Research |
-| **Playwright** | Browser automation |
-| **Vibe Check** | Prevent tunnel vision |
-| **Sequential Thinking** | Complex problem solving |
+| Server                  | Purpose                     |
+| ----------------------- | --------------------------- |
+| **Svelte**              | Documentation and autofixer |
+| **Perplexity**          | Research                    |
+| **Playwright**          | Browser automation          |
+| **Vibe Check**          | Prevent tunnel vision       |
+| **Sequential Thinking** | Complex problem solving     |
 
 ## Slash Commands
 

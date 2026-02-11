@@ -219,6 +219,14 @@ export function getDefaultConfig(stepType: string): StepConfig {
  */
 export function normalizeConfig(stepType: string, config: Record<string, unknown>): StepConfig {
 	const defaults = getDefaultConfig(stepType);
+	if (stepType === 'export') {
+		const cleaned = { ...config } as Record<string, unknown>;
+		delete cleaned.datasource_type;
+		delete cleaned.iceberg_options;
+		delete cleaned.duckdb_options;
+		cleaned.destination = 'download';
+		return { ...defaults, ...cleaned };
+	}
 
 	// Handle filter-specific normalization for backward compatibility
 	if (stepType === 'filter' && Array.isArray(config.conditions)) {

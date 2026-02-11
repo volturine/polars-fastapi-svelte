@@ -378,8 +378,14 @@ def connect_datasource(
                 name=datasource.name,
                 metadata_path=iceberg_config.metadata_path,
                 snapshot_id=iceberg_config.snapshot_id,
+                snapshot_timestamp_ms=iceberg_config.snapshot_timestamp_ms,
                 storage_options=iceberg_config.storage_options,
                 reader=iceberg_config.reader,
+                catalog_type=iceberg_config.catalog_type,
+                catalog_uri=iceberg_config.catalog_uri,
+                warehouse=iceberg_config.warehouse,
+                namespace=iceberg_config.namespace,
+                table=iceberg_config.table,
             )
         raise HTTPException(
             status_code=400,

@@ -2,16 +2,21 @@ import logging
 import os
 import tempfile
 import time
+import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 
 import duckdb
+import polars as pl
+from pyiceberg.catalog import load_catalog
 from sqlalchemy import select
 from sqlmodel import Session
 
 from core.config import settings
-from core.exceptions import DataSourceNotFoundError, PipelineExecutionError
+from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError, PipelineExecutionError
 from modules.compute.core.exports import get_export_format
 from modules.compute.manager import get_manager
+from modules.compute.operations.datasource import resolve_iceberg_metadata_path
 from modules.compute.utils import await_engine_result, build_datasource_config, find_step_index
 from modules.datasource.models import DataSource
 from modules.engine_runs import service as engine_run_service
@@ -77,8 +82,7 @@ def _get_additional_datasources(session: Session, pipeline_steps: list[dict]) ->
             union_sources = [union_sources]
 
         if right_source_id and right_source_id not in additional:
-            result = session.execute(select(DataSource).where(DataSource.id == right_source_id))  # type: ignore[arg-type]
-            datasource = result.scalar_one_or_none()
+            datasource = session.get(DataSource, right_source_id)
             if datasource:
                 additional[right_source_id] = {
                     'source_type': datasource.source_type,
@@ -88,8 +92,7 @@ def _get_additional_datasources(session: Session, pipeline_steps: list[dict]) ->
         for source_id in union_sources:
             if source_id in additional:
                 continue
-            result = session.execute(select(DataSource).where(DataSource.id == source_id))  # type: ignore[arg-type]
-            datasource = result.scalar_one_or_none()
+            datasource = session.get(DataSource, source_id)
             if datasource:
                 additional[source_id] = {
                     'source_type': datasource.source_type,
@@ -138,6 +141,7 @@ def preview_step(
     timeout: int | None = None,
     analysis_id: str | None = None,
     resource_config: dict | None = None,
+    datasource_config: dict | None = None,
     request_json: dict | None = None,
 ):
     """Preview the result of executing pipeline up to a specific step with pagination."""
@@ -164,8 +168,7 @@ def preview_step(
         'resource_config': resource_config,
     }
 
-    result = session.execute(select(DataSource).where(DataSource.id == datasource_id))  # type: ignore[arg-type]
-    datasource = result.scalar_one_or_none()
+    datasource = session.get(DataSource, datasource_id)
 
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
@@ -183,7 +186,7 @@ def preview_step(
     # get_or_create_engine will restart the engine if resource_config changed
     engine = manager.get_or_create_engine(analysis_id, resource_config=resource_config)
 
-    datasource_config = build_datasource_config(datasource)
+    datasource_config = build_datasource_config(datasource, datasource_config)
 
     additional_datasources = _get_additional_datasources(session, preview_steps)
 
@@ -266,6 +269,7 @@ def get_step_schema(
     target_step_id: str,
     analysis_id: str,
     timeout: int | None = None,
+    datasource_config: dict | None = None,
 ):
     """Get the output schema of a pipeline step without returning data."""
     from modules.compute.schemas import StepSchemaResponse
@@ -273,8 +277,7 @@ def get_step_schema(
     if timeout is None:
         timeout = settings.job_timeout
 
-    result = session.execute(select(DataSource).where(DataSource.id == datasource_id))  # type: ignore[arg-type]
-    datasource = result.scalar_one_or_none()
+    datasource = session.get(DataSource, datasource_id)
 
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
@@ -289,7 +292,7 @@ def get_step_schema(
     if not engine:
         engine = manager.get_or_create_engine(analysis_id)
 
-    datasource_config = build_datasource_config(datasource)
+    datasource_config = build_datasource_config(datasource, datasource_config)
 
     additional_datasources = _get_additional_datasources(session, schema_steps)
 
@@ -325,16 +328,19 @@ def export_data(
     export_format: str = 'csv',
     filename: str = 'export',
     destination: str = 'download',
+    datasource_type: str = 'iceberg',
+    iceberg_options: dict | None = None,
+    duckdb_options: dict | None = None,
+    datasource_config: dict | None = None,
     timeout: int | None = None,
     analysis_id: str | None = None,
     request_json: dict | None = None,
-) -> tuple[bytes, str, str]:
+) -> tuple[bytes | None, str | None, str | None, str | None, str | None, dict | None]:
     """
-    Export pipeline result to file.
-    Returns (file_bytes, filename_with_ext, content_type).
+    Export pipeline result to file or datasource.
 
-    The engine subprocess writes the full dataset to a temp file,
-    then we read it and return the bytes.
+    Returns tuple:
+    (file_bytes, filename_with_ext, content_type, file_path, datasource_id, result_meta)
     """
     if timeout is None:
         timeout = settings.job_timeout
@@ -351,10 +357,13 @@ def export_data(
         'format': export_format,
         'filename': filename,
         'destination': destination,
+        'datasource_type': datasource_type,
+        'iceberg_options': iceberg_options,
+        'duckdb_options': duckdb_options,
+        'datasource_config': datasource_config,
     }
 
-    result = session.execute(select(DataSource).where(DataSource.id == datasource_id))  # type: ignore[arg-type]
-    datasource = result.scalar_one_or_none()
+    datasource = session.get(DataSource, datasource_id)
 
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
@@ -377,9 +386,16 @@ def export_data(
         engine = manager.get_or_create_engine(temp_engine_id)
         temp_engine = True
 
-    datasource_config = build_datasource_config(datasource)
+    datasource_config = build_datasource_config(datasource, datasource_config)
 
     additional_datasources = _get_additional_datasources(session, export_steps)
+
+    if destination == 'datasource' and datasource_type == 'iceberg':
+        export_format = 'parquet'
+    if destination == 'datasource' and datasource_type == 'duckdb':
+        export_format = 'duckdb'
+    if destination == 'datasource' and datasource_type == 'file' and export_format == 'duckdb':
+        raise ValueError('DuckDB format is not supported for file datasource exports')
 
     # Determine file extension and content type
     format_config = {
@@ -401,7 +417,6 @@ def export_data(
 
     try:
         try:
-            # Use the new export method that writes full data directly to file
             engine.export(
                 datasource_config=datasource_config,
                 pipeline_steps=export_steps,
@@ -427,27 +442,120 @@ def export_data(
             row_count = data.get('row_count', 0)
             logger.info(f'Export completed: {row_count} rows written to {export_format}')
 
-            # Handle DuckDB conversion
+            completed_at = datetime.now(UTC)
+            duration_ms = int((time.perf_counter() - started_perf) * 1000)
+
+            # Handle DuckDB conversion for download/filesystem/datasource
+            file_bytes = None
+            output_path = tmp_output
+            result_format = export_format
             if export_format == 'duckdb':
                 tmp_db_path = tempfile.mktemp(suffix='.duckdb')
                 try:
                     conn = duckdb.connect(tmp_db_path)
-                    conn.execute('CREATE TABLE data AS SELECT * FROM read_parquet(?)', [tmp_output])
+                    table_name = 'data'
+                    if duckdb_options:
+                        table_name = duckdb_options.get('table_name', 'data')
+                    conn.execute(f'CREATE TABLE {table_name} AS SELECT * FROM read_parquet(?)', [tmp_output])
                     conn.close()
+                    output_path = tmp_db_path
+                    result_format = 'duckdb'
+                except Exception:
+                    if os.path.exists(tmp_db_path):
+                        os.unlink(tmp_db_path)
+                    raise
+                    if os.path.exists(tmp_output):
+                        os.unlink(tmp_output)
 
-                    with open(tmp_db_path, 'rb') as f:
+            result_meta = _build_export_result_metadata(
+                data=data,
+                file_size_bytes=os.path.getsize(output_path),
+            )
+            # Download - return bytes
+            if destination == 'download':
+                payload = engine_run_service.create_engine_run_payload(
+                    analysis_id=run_analysis_id,
+                    datasource_id=datasource_id,
+                    kind='export',
+                    status='success',
+                    request_json=request_payload,
+                    result_json=result_meta,
+                    created_at=started_at,
+                    completed_at=completed_at,
+                    duration_ms=duration_ms,
+                )
+                engine_run_service.create_engine_run(session, payload)
+                with open(output_path, 'rb') as f:
+                    file_bytes = f.read()
+                return file_bytes, f'{filename}.{result_format}', content_type, None, None, result_meta
+
+            # Filesystem - save in exports dir
+            if destination == 'filesystem':
+                payload = engine_run_service.create_engine_run_payload(
+                    analysis_id=run_analysis_id,
+                    datasource_id=datasource_id,
+                    kind='export',
+                    status='success',
+                    request_json=request_payload,
+                    result_json=result_meta,
+                    created_at=started_at,
+                    completed_at=completed_at,
+                    duration_ms=duration_ms,
+                )
+                engine_run_service.create_engine_run(session, payload)
+                file_name = f'{filename}.{result_format}'
+                file_path = settings.exports_dir / file_name
+                with open(output_path, 'rb') as f:
+                    file_bytes = f.read()
+                with open(file_path, 'wb') as f:
+                    f.write(file_bytes)
+                return None, file_name, content_type, str(file_path.absolute()), None, result_meta
+
+            # Datasource - create datasource entry based on type
+            if destination == 'datasource':
+                payload = engine_run_service.create_engine_run_payload(
+                    analysis_id=run_analysis_id,
+                    datasource_id=datasource_id,
+                    kind='export',
+                    status='success',
+                    request_json=request_payload,
+                    result_json=result_meta,
+                    created_at=started_at,
+                    completed_at=completed_at,
+                    duration_ms=duration_ms,
+                )
+                engine_run_service.create_engine_run(session, payload)
+                if datasource_type == 'file':
+                    file_name = f'{filename}.{result_format}'
+                    file_path = settings.exports_dir / file_name
+                    with open(output_path, 'rb') as f:
                         file_bytes = f.read()
+                    with open(file_path, 'wb') as f:
+                        f.write(file_bytes)
 
-                    completed_at = datetime.now(UTC)
-                    duration_ms = int((time.perf_counter() - started_perf) * 1000)
-                    result_meta = _build_export_result_metadata(
-                        data=data,
-                        file_size_bytes=len(file_bytes),
+                    new_id = str(uuid.uuid4())
+                    new_datasource = DataSource(
+                        id=new_id,
+                        name=filename,
+                        source_type='file',
+                        config={
+                            'file_path': str(file_path.absolute()),
+                            'file_type': result_format,
+                            'options': {},
+                            'csv_options': None,
+                        },
+                        schema_cache=data.get('schema', {}),
+                        created_at=datetime.now(UTC),
                     )
+                    session.add(new_datasource)
+                    session.commit()
+
+                    result_meta['datasource_id'] = new_id
+                    result_meta['datasource_name'] = filename
                     payload = engine_run_service.create_engine_run_payload(
                         analysis_id=run_analysis_id,
-                        datasource_id=datasource_id,
-                        kind='export',
+                        datasource_id=new_id,
+                        kind='datasource_create',
                         status='success',
                         request_json=request_payload,
                         result_json=result_meta,
@@ -457,35 +565,146 @@ def export_data(
                     )
                     engine_run_service.create_engine_run(session, payload)
 
-                    return file_bytes, f'{filename}.duckdb', 'application/octet-stream'
-                finally:
-                    if os.path.exists(tmp_db_path):
-                        os.unlink(tmp_db_path)
+                    return None, file_name, content_type, str(file_path.absolute()), new_id, result_meta
 
-            # Read the exported file
-            with open(tmp_output, 'rb') as f:
-                file_bytes = f.read()
+                if datasource_type == 'duckdb':
+                    file_name = f'{filename}.duckdb'
+                    file_path = settings.exports_dir / file_name
+                    with open(output_path, 'rb') as f:
+                        file_bytes = f.read()
+                    with open(file_path, 'wb') as f:
+                        f.write(file_bytes)
 
-            completed_at = datetime.now(UTC)
-            duration_ms = int((time.perf_counter() - started_perf) * 1000)
-            result_meta = _build_export_result_metadata(
-                data=data,
-                file_size_bytes=len(file_bytes),
-            )
-            payload = engine_run_service.create_engine_run_payload(
-                analysis_id=run_analysis_id,
-                datasource_id=datasource_id,
-                kind='export',
-                status='success',
-                request_json=request_payload,
-                result_json=result_meta,
-                created_at=started_at,
-                completed_at=completed_at,
-                duration_ms=duration_ms,
-            )
-            engine_run_service.create_engine_run(session, payload)
+                    table_name = 'data'
+                    if duckdb_options:
+                        table_name = duckdb_options.get('table_name', 'data')
+                    new_id = str(uuid.uuid4())
+                    new_datasource = DataSource(
+                        id=new_id,
+                        name=filename,
+                        source_type='duckdb',
+                        config={
+                            'db_path': str(file_path.absolute()),
+                            'query': f'SELECT * FROM {table_name}',
+                            'read_only': True,
+                        },
+                        schema_cache=data.get('schema', {}),
+                        created_at=datetime.now(UTC),
+                    )
+                    session.add(new_datasource)
+                    session.commit()
 
-            return file_bytes, f'{filename}{ext}', content_type
+                    result_meta['datasource_id'] = new_id
+                    result_meta['datasource_name'] = filename
+                    payload = engine_run_service.create_engine_run_payload(
+                        analysis_id=run_analysis_id,
+                        datasource_id=new_id,
+                        kind='datasource_create',
+                        status='success',
+                        request_json=request_payload,
+                        result_json=result_meta,
+                        created_at=started_at,
+                        completed_at=completed_at,
+                        duration_ms=duration_ms,
+                    )
+                    engine_run_service.create_engine_run(session, payload)
+
+                    return None, file_name, content_type, str(file_path.absolute()), new_id, result_meta
+
+                if datasource_type == 'iceberg':
+                    iceberg_opts = iceberg_options or {}
+                    table_name = iceberg_opts.get('table_name', 'exported_data')
+                    namespace = iceberg_opts.get('namespace', 'exports')
+
+                    iceberg_base = settings.data_dir / 'iceberg'
+                    warehouse_path = iceberg_base / 'warehouse'
+                    catalog_path = iceberg_base / 'catalog.db'
+
+                    warehouse_path.mkdir(parents=True, exist_ok=True)
+                    if not catalog_path.exists():
+                        catalog_path.touch()
+
+                    catalog_config = {
+                        'type': 'sql',
+                        'uri': f'sqlite:///{catalog_path}',
+                        'warehouse': f'file://{warehouse_path}',
+                    }
+
+                    catalog = load_catalog('local', **catalog_config)
+                    catalog.create_namespace_if_not_exists(namespace)
+
+                    unique_table = table_name
+                    identifier = f'{namespace}.{unique_table}'
+
+                    arrow_table = pl.read_parquet(output_path).to_arrow()
+                    table = None
+                    if catalog.table_exists(identifier):
+                        table = catalog.load_table(identifier)
+                        table.overwrite(arrow_table)
+                    else:
+                        table = catalog.create_table(identifier, schema=arrow_table.schema)
+                        table.append(arrow_table)
+
+                    metadata_path = str(table.metadata_location)
+                    resolved_metadata = resolve_iceberg_metadata_path(metadata_path)
+                    table_dir = str(Path(resolved_metadata).parents[1])
+                    existing = session.execute(select(DataSource).filter_by(source_type='iceberg', name=unique_table)).scalar_one_or_none()
+                    if existing:
+                        existing_namespace = str(existing.config.get('namespace', ''))
+                        existing_catalog = str(existing.config.get('catalog_uri', ''))
+                        expected_catalog = f'sqlite:///{catalog_path}'
+                        if existing_namespace != namespace or existing_catalog != expected_catalog:
+                            existing = None
+
+                    datasource_id_value = str(uuid.uuid4())
+                    run_kind = 'datasource_create'
+                    if existing:
+                        existing.config = {
+                            **existing.config,
+                            'metadata_path': table_dir,
+                        }
+                        existing.schema_cache = data.get('schema', {})
+                        session.add(existing)
+                        session.commit()
+                        datasource_id_value = existing.id
+                        run_kind = 'datasource_update'
+                    else:
+                        new_datasource = DataSource(
+                            id=datasource_id_value,
+                            name=unique_table,
+                            source_type='iceberg',
+                            config={
+                                'catalog_type': 'sql',
+                                'catalog_uri': f'sqlite:///{catalog_path}',
+                                'warehouse': f'file://{warehouse_path}',
+                                'namespace': namespace,
+                                'table': unique_table,
+                                'metadata_path': table_dir,
+                            },
+                            schema_cache=data.get('schema', {}),
+                            created_at=datetime.now(UTC),
+                        )
+                        session.add(new_datasource)
+                        session.commit()
+
+                    result_meta['datasource_id'] = datasource_id_value
+                    result_meta['datasource_name'] = unique_table
+                    payload = engine_run_service.create_engine_run_payload(
+                        analysis_id=run_analysis_id,
+                        datasource_id=datasource_id_value,
+                        kind=run_kind,
+                        status='success',
+                        request_json=request_payload,
+                        result_json=result_meta,
+                        created_at=started_at,
+                        completed_at=completed_at,
+                        duration_ms=duration_ms,
+                    )
+                    engine_run_service.create_engine_run(session, payload)
+
+                    return None, unique_table, content_type, table_dir, datasource_id_value, result_meta
+
+            return None, None, None, None, None, result_meta
         except Exception as exc:
             completed_at = datetime.now(UTC)
             duration_ms = int((time.perf_counter() - started_perf) * 1000)
@@ -505,6 +724,144 @@ def export_data(
             engine_run_service.create_engine_run(session, payload)
             raise
     finally:
-        # Clean up temp file
         if os.path.exists(tmp_output):
             os.unlink(tmp_output)
+
+
+def list_iceberg_snapshots(session: Session, datasource_id: str):
+    from modules.compute.schemas import IcebergSnapshotInfo, IcebergSnapshotsResponse
+
+    datasource = session.get(DataSource, datasource_id)
+
+    if not datasource:
+        raise DataSourceNotFoundError(datasource_id)
+    if datasource.source_type != 'iceberg':
+        raise ValueError('Snapshots are only available for Iceberg datasources')
+
+    metadata_path = datasource.config.get('metadata_path')
+    if not metadata_path:
+        raise ValueError('Iceberg datasource missing metadata_path')
+
+    catalog_type = datasource.config.get('catalog_type')
+    catalog_uri = datasource.config.get('catalog_uri')
+    namespace = datasource.config.get('namespace')
+    table_name = datasource.config.get('table')
+    warehouse = datasource.config.get('warehouse')
+
+    if catalog_type and catalog_uri and namespace and table_name:
+        catalog_config = {
+            'type': catalog_type,
+            'uri': catalog_uri,
+        }
+        if warehouse:
+            catalog_config['warehouse'] = warehouse
+        catalog = load_catalog('local', **catalog_config)
+        identifier = f'{namespace}.{table_name}'
+        table = catalog.load_table(identifier)
+        resolved = resolve_iceberg_metadata_path(str(table.metadata_location))
+    else:
+        from pyiceberg.table import StaticTable
+
+        resolved = resolve_iceberg_metadata_path(metadata_path)
+        table = StaticTable.from_metadata(resolved)
+
+    current_snapshot = table.current_snapshot()
+    current_snapshot_id = str(current_snapshot.snapshot_id) if current_snapshot else None
+    snapshots = []
+    for snap in table.snapshots():
+        operation = None
+        if snap.summary and snap.summary.operation:
+            operation = str(snap.summary.operation)
+        snapshots.append(
+            IcebergSnapshotInfo(
+                snapshot_id=str(snap.snapshot_id),
+                timestamp_ms=snap.timestamp_ms,
+                parent_snapshot_id=str(snap.parent_snapshot_id) if snap.parent_snapshot_id is not None else None,
+                operation=operation,
+                is_current=str(snap.snapshot_id) == current_snapshot_id,
+            )
+        )
+
+    snapshots.sort(key=lambda s: s.timestamp_ms, reverse=True)
+
+    return IcebergSnapshotsResponse(
+        datasource_id=datasource_id,
+        table_path=str(Path(resolved).parents[1]),
+        snapshots=snapshots,
+    )
+
+
+def delete_iceberg_snapshot(session: Session, datasource_id: str, snapshot_id: str):
+    from modules.compute.schemas import IcebergSnapshotDeleteResponse
+
+    datasource = session.get(DataSource, datasource_id)
+
+    if not datasource:
+        raise DataSourceNotFoundError(datasource_id)
+    if datasource.source_type != 'iceberg':
+        raise ValueError('Snapshots are only available for Iceberg datasources')
+
+    try:
+        snapshot_value = int(snapshot_id)
+    except (TypeError, ValueError) as exc:
+        raise DataSourceSnapshotError('Snapshot ID must be an integer', details={'snapshot_id': snapshot_id}) from exc
+
+    catalog_type = datasource.config.get('catalog_type')
+    catalog_uri = datasource.config.get('catalog_uri')
+    namespace = datasource.config.get('namespace')
+    table_name = datasource.config.get('table')
+    warehouse = datasource.config.get('warehouse')
+    if catalog_type and catalog_uri and namespace and table_name:
+        catalog_config = {
+            'type': catalog_type,
+            'uri': catalog_uri,
+        }
+        if warehouse:
+            catalog_config['warehouse'] = warehouse
+        catalog = load_catalog('local', **catalog_config)
+        identifier = f'{namespace}.{table_name}'
+        table = catalog.load_table(identifier)
+    else:
+        raise DataSourceSnapshotError(
+            'Snapshot deletion requires a catalog-backed Iceberg datasource',
+            details={'snapshot_id': snapshot_id},
+        )
+
+    if not hasattr(table, 'maintenance'):
+        raise DataSourceSnapshotError(
+            'Snapshot deletion is not supported by the current Iceberg runtime',
+            details={'snapshot_id': snapshot_id},
+        )
+    maintenance = table.maintenance
+    if not hasattr(maintenance, 'expire_snapshots'):
+        raise DataSourceSnapshotError(
+            'Snapshot deletion is not supported by the current Iceberg runtime',
+            details={'snapshot_id': snapshot_id},
+        )
+
+    try:
+        current = table.current_snapshot()
+        if current and current.snapshot_id == snapshot_value:
+            raise DataSourceSnapshotError(
+                'Cannot delete the current snapshot',
+                details={'snapshot_id': snapshot_id},
+            )
+        available_ids = [snap.snapshot_id for snap in table.snapshots()]
+        if snapshot_value not in available_ids:
+            raise DataSourceSnapshotError(
+                f'Snapshot with snapshot id {snapshot_value} does not exist',
+                details={'snapshot_id': snapshot_id, 'available_snapshot_ids': available_ids},
+            )
+        maintenance.expire_snapshots().by_id(snapshot_value).commit()
+    except ValueError as exc:
+        raise DataSourceSnapshotError(str(exc), details={'snapshot_id': snapshot_id}) from exc
+    except NotImplementedError as exc:
+        raise DataSourceSnapshotError(
+            'Snapshot deletion is not supported by the current Iceberg catalog',
+            details={'snapshot_id': snapshot_id},
+        ) from exc
+
+    return IcebergSnapshotDeleteResponse(
+        datasource_id=datasource_id,
+        snapshot_id=snapshot_id,
+    )

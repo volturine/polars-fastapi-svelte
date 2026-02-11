@@ -1,7 +1,9 @@
 <script lang="ts">
 	import type { DataSource } from '$lib/types/datasource';
+	import type { AnalysisTab } from '$lib/types/analysis';
 	import { getDatasourceSchema } from '$lib/api/datasource';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { schemaStore } from '$lib/stores/schema.svelte';
 	import { track } from '$lib/utils/audit-log';
 	import {
 		FileText,
@@ -19,16 +21,19 @@
 	} from 'lucide-svelte';
 	import { drag } from '$lib/stores/drag.svelte';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
+	import SnapshotPicker from '$lib/components/datasources/SnapshotPicker.svelte';
 
 	interface Props {
 		datasource: DataSource | null;
 		tabName?: string;
 		analysisId?: string;
+		activeTab?: AnalysisTab | null;
 		onChangeDatasource?: () => void;
 		onRenameTab?: (name: string) => void;
 	}
 
-	let { datasource, tabName, analysisId, onChangeDatasource, onRenameTab }: Props = $props();
+	let { datasource, tabName, analysisId, activeTab, onChangeDatasource, onRenameTab }: Props =
+		$props();
 
 	let isEditing = $state(false);
 	let draftName = $state('');
@@ -91,6 +96,36 @@
 			rowCount = null;
 		}
 	});
+
+	const isIceberg = $derived(datasource?.source_type === 'iceberg');
+	function updateTimeTravelUi(updates: { open?: boolean; month?: string; day?: string }) {
+		const active = activeTab;
+		if (!active) return;
+		const nextConfig = { ...(active.datasource_config ?? {}) };
+		const currentUi = (nextConfig.time_travel_ui as Record<string, unknown>) ?? {};
+		nextConfig.time_travel_ui = { ...currentUi, ...updates };
+		analysisStore.updateTab(active.id, { datasource_config: nextConfig });
+	}
+
+	function updateSnapshotConfig(nextConfig: Record<string, unknown>) {
+		const active = activeTab;
+		if (!active) return;
+		analysisStore.updateTab(active.id, { datasource_config: nextConfig });
+		analysisStore.setActiveTab(active.id);
+	}
+
+	function handleSnapshotSelect(snapshotId: string | null, timestampMs?: number) {
+		schemaStore.reset();
+		track({
+			event: 'analysis_time_travel',
+			action: snapshotId ? 'set_snapshot' : 'set_latest',
+			target: datasource?.id ?? '',
+			meta: {
+				snapshot_id: snapshotId,
+				snapshot_timestamp_ms: timestampMs
+			}
+		});
+	}
 
 	function startEdit() {
 		if (!onRenameTab) return;
@@ -346,6 +381,20 @@
 						</div>
 					</div>
 				{/if}
+			</div>
+		{/if}
+
+		{#if isIceberg && datasource}
+			<div class="mb-3">
+				<SnapshotPicker
+					datasourceId={datasource.id}
+					datasourceConfig={activeTab?.datasource_config ?? {}}
+					label="Time Travel"
+					persistOpen
+					onConfigChange={updateSnapshotConfig}
+					onUiChange={updateTimeTravelUi}
+					onSelect={handleSnapshotSelect}
+				/>
 			</div>
 		{/if}
 

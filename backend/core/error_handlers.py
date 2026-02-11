@@ -11,6 +11,7 @@ from core.exceptions import (
     AnalysisNotFoundError,
     AppError,
     DataSourceNotFoundError,
+    DataSourceSnapshotError,
     EngineNotFoundError,
     EngineTimeoutError,
     FileNotFoundError,
@@ -39,6 +40,7 @@ EXCEPTION_STATUS_MAP = {
     PipelineValidationError: 400,
     FileValidationError: 400,
     UnsupportedExportFormatError: 400,
+    DataSourceSnapshotError: 409,
     # 408 - Timeout errors
     EngineTimeoutError: 408,
     JobTimeoutError: 408,

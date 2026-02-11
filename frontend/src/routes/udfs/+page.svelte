@@ -144,7 +144,9 @@
 	</div>
 
 	{#if query.isLoading}
-		<div class="info-box">Loading UDFs...</div>
+		<div class="flex h-full items-center justify-center">
+			<div class="spinner"></div>
+		</div>
 	{:else if query.isError}
 		<div class="error-box">
 			{query.error instanceof Error ? query.error.message : 'Error loading UDFs.'}

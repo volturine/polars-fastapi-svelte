@@ -37,6 +37,13 @@ class DataSourceValidationError(DataSourceError):
         super().__init__(message=message, error_code='DATASOURCE_VALIDATION_ERROR', details=details)
 
 
+class DataSourceSnapshotError(DataSourceError):
+    """Raised when an Iceberg snapshot operation fails."""
+
+    def __init__(self, message: str, details: dict | None = None):
+        super().__init__(message=message, error_code='DATASOURCE_SNAPSHOT_ERROR', details=details)
+
+
 class DataSourceConnectionError(DataSourceError):
     """Raised when unable to connect to a datasource."""
 

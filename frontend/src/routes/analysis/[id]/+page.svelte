@@ -26,9 +26,11 @@
 	import StepConfig from '$lib/components/pipeline/StepConfig.svelte';
 	import DragPreview from '$lib/components/pipeline/DragPreview.svelte';
 	import DatasourceSelectorModal from '$lib/components/common/DatasourceSelectorModal.svelte';
+	import { schemaStore } from '$lib/stores/schema.svelte';
 	import { ChevronDown, ChevronLeft, ChevronRight, Plus, X } from 'lucide-svelte';
 
 	const analysisId = $derived($page.params.id);
+	let lastAnalysisId = $state<string | null>(null);
 
 	let selectedStepId = $state<string | null>(null);
 	let selectedStepState = $derived.by(() => {
@@ -42,6 +44,17 @@
 
 	$effect(() => {
 		if (!analysisId) return;
+		if (lastAnalysisId !== analysisId) {
+			if (lastAnalysisId && hasLock(lastAnalysisId)) {
+				void releaseLock(lastAnalysisId);
+			}
+			stopLockCheck();
+			analysisStore.reset();
+			schemaStore.reset();
+			selectedStepId = null;
+			isEditingMode = false;
+			lastAnalysisId = analysisId;
+		}
 		draftLoaded = false;
 	});
 
@@ -155,10 +168,12 @@
 			if (result.isErr()) {
 				throw new Error(result.error.message);
 			}
-			await analysisStore.loadAnalysis(analysisId);
+			analysisStore.applyAnalysis(result.value);
 			saveStatus.send('saveComplete');
 			return result.value;
 		},
+		staleTime: 0,
+		refetchOnMount: 'always',
 		retry: false
 	}));
 
@@ -467,9 +482,8 @@
 </script>
 
 {#if analysisQuery.isLoading}
-	<div class="info-box flex h-full flex-col items-center justify-center text-center gap-4">
+	<div class="flex h-full items-center justify-center">
 		<div class="spinner"></div>
-		<p class="m-0">Loading analysis...</p>
 	</div>
 {:else if analysisQuery.isError}
 	<div class="error-box flex h-full flex-col items-center justify-center text-center gap-4">
@@ -694,6 +708,7 @@
 					{datasourceId}
 					datasource={currentDatasource}
 					tabName={analysisStore.activeTab?.name}
+					activeTab={analysisStore.activeTab}
 					onStepClick={handleSelectStep}
 					onStepDelete={handleDeleteStep}
 					onStepToggle={handleToggleStep}

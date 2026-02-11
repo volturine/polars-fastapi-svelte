@@ -172,19 +172,8 @@
 
 	<main>
 		{#if query.isPending}
-			<div class="py-4">
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
-					{#each Array(6) as _, i (i)}
-						<div class="bg-primary overflow-hidden border border-tertiary">
-							<div class="aspect-video w-full animate-shimmer shimmer-bg"></div>
-							<div class="p-4">
-								<div class="mb-3 h-4 w-[70%] animate-shimmer shimmer-bg"></div>
-								<div class="mb-3 h-3.5 animate-shimmer shimmer-bg"></div>
-								<div class="h-3.5 w-1/2 animate-shimmer shimmer-bg"></div>
-							</div>
-						</div>
-					{/each}
-				</div>
+			<div class="flex h-full items-center justify-center">
+				<div class="spinner"></div>
 			</div>
 		{:else if query.isError}
 			<div

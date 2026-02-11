@@ -533,7 +533,7 @@
 				class="dataset-table__table w-full border-collapse text-sm"
 				use:setWidth={table?.getTotalSize() ?? 0}
 			>
-				<thead class="dataset-table__thead sticky top-0 z-50 bg-table-header">
+				<thead class="dataset-table__thead sticky top-0 z-20 bg-table-header">
 					{#each headerGroups as headerGroup (headerGroup.id)}
 						<tr>
 							{#each headerGroup.headers as header (header.id)}

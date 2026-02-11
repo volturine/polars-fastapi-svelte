@@ -26,6 +26,12 @@
 	let isActiveStep = $derived(activePipeline.some((step) => step.id === stepId));
 
 	const pipelineKey = $derived(JSON.stringify(activePipeline));
+	const datasourceConfig = $derived(analysisStore.activeTab?.datasource_config ?? {});
+	const datasourceKey = $derived.by(() => {
+		const config = datasourceConfig as Record<string, unknown>;
+		const { time_travel_ui: _ui, output: _output, ...rest } = config;
+		return JSON.stringify(rest);
+	});
 
 	const query = createQuery(() => {
 		return {
@@ -36,7 +42,8 @@
 				stepId,
 				currentPage,
 				rowLimit,
-				pipelineKey
+				pipelineKey,
+				datasourceKey
 			],
 			queryFn: async (): Promise<StepPreviewResponse> => {
 				if (!isActiveStep) {
@@ -53,7 +60,8 @@
 					target_step_id: stepId,
 					row_limit: rowLimit,
 					page: currentPage,
-					resource_config: resourceConfig
+					resource_config: resourceConfig,
+					datasource_config: analysisStore.activeTab?.datasource_config ?? null
 				});
 				if (result.isErr()) {
 					throw new Error(result.error.message);
@@ -71,12 +79,13 @@
 	const canPrev = $derived(currentPage > 1);
 	const canNext = $derived(pageSize === rowLimit);
 
+	// Reset page when key dependencies change
+	const resetKey = $derived(
+		`${analysisId}-${datasourceId}-${stepId}-${pipelineKey}-${rowLimit}-${datasourceKey}`
+	);
 	$effect(() => {
-		analysisId;
-		datasourceId;
-		stepId;
-		pipelineKey;
-		rowLimit;
+		// Track resetKey to trigger page reset
+		void resetKey;
 		currentPage = 1;
 	});
 

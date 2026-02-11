@@ -5,9 +5,10 @@
 
 	interface Props {
 		datasourceId: string;
+		datasourceConfig?: Record<string, unknown> | null;
 	}
 
-	let { datasourceId }: Props = $props();
+	let { datasourceId, datasourceConfig = null }: Props = $props();
 
 	let page = $state(1);
 	let rowLimit = $state(100);
@@ -19,7 +20,7 @@
 	});
 
 	const query = createQuery(() => ({
-		queryKey: ['datasource-preview', datasourceId, page, rowLimit],
+		queryKey: ['datasource-preview', datasourceId, page, rowLimit, datasourceConfig],
 		queryFn: async (): Promise<StepPreviewResponse> => {
 			const result = await previewStepData({
 				analysis_id: '',
@@ -27,7 +28,8 @@
 				pipeline_steps: [],
 				target_step_id: 'source',
 				row_limit: rowLimit,
-				page
+				page,
+				datasource_config: datasourceConfig
 			});
 			if (result.isErr()) {
 				throw new Error(result.error.message);

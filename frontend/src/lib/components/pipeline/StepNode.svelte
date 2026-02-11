@@ -2,8 +2,9 @@
 	import type { PipelineStep } from '$lib/types/analysis';
 	import { drag, type DropTarget } from '$lib/stores/drag.svelte';
 	import InlineDataTable from '$lib/components/viewers/InlineDataTable.svelte';
-	import { Download, Save, GripVertical } from 'lucide-svelte';
+	import { Download, GripVertical } from 'lucide-svelte';
 	import { exportData, downloadBlob, type ExportRequest } from '$lib/api/compute';
+	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { getStepTypeConfig } from '$lib/components/pipeline/utils';
 
 	interface Props {
@@ -32,6 +33,7 @@
 
 	let isExporting = $state(false);
 	let exportError = $state<string | null>(null);
+	let exportSuccess = $state<string | null>(null);
 
 	let dragging = $state(false);
 	let clickConsumed = $state(false);
@@ -139,12 +141,11 @@
 
 		isExporting = true;
 		exportError = null;
+		exportSuccess = null;
 
 		const format = (step.config.format as string) || 'csv';
 		const filename = (step.config.filename as string) || 'export';
-		const destination = (step.config.destination as string) || 'filesystem';
-
-		const request: ExportRequest = {
+		const request = {
 			analysis_id: analysisId,
 			datasource_id: datasourceId,
 			pipeline_steps: allSteps.map((s) => ({
@@ -154,16 +155,27 @@
 				depends_on: s.depends_on
 			})),
 			target_step_id: step.id,
-			format: format as 'csv' | 'parquet' | 'json',
+			format: format as ExportRequest['format'],
 			filename,
-			destination: destination as 'download' | 'filesystem'
-		};
+			destination: 'download',
+			datasource_config: analysisStore.activeTab?.datasource_config ?? null
+		} as ExportRequest;
 
 		exportData(request).match(
 			(result) => {
-				if (destination === 'download' && result instanceof Blob) {
-					const ext = format === 'csv' ? '.csv' : format === 'parquet' ? '.parquet' : '.json';
+				if (result instanceof Blob) {
+					const ext =
+						format === 'csv'
+							? '.csv'
+							: format === 'parquet'
+								? '.parquet'
+								: format === 'ndjson'
+									? '.ndjson'
+									: format === 'duckdb'
+										? '.duckdb'
+										: '.json';
 					downloadBlob(result, `${filename}${ext}`);
+					exportSuccess = `Downloaded ${filename}${ext}`;
 				}
 				isExporting = false;
 			},
@@ -250,6 +262,11 @@
 						{exportError}
 					</div>
 				{/if}
+				{#if exportSuccess}
+					<div class="mb-2 border border-success bg-success-bg p-2 text-xs text-success-fg">
+						{exportSuccess}
+					</div>
+				{/if}
 				<button
 					class="export-btn flex w-full cursor-pointer items-center justify-center gap-2 border-none px-3 py-2 text-xs font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50 bg-accent text-bg-primary hover:opacity-90 hover:enabled:opacity-90"
 					onclick={handleExport}
@@ -259,12 +276,9 @@
 					{#if isExporting}
 						<span class="spinner spinner-sm"></span>
 						Exporting...
-					{:else if step.config.destination === 'download'}
+					{:else}
 						<Download size={14} />
 						Download
-					{:else}
-						<Save size={14} />
-						Save
 					{/if}
 				</button>
 			</div>

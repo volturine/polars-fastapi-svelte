@@ -69,15 +69,15 @@ def list_engine_runs(
 ) -> list[EngineRunResponseSchema]:
     stmt = select(EngineRun)
     if analysis_id is not None:
-        stmt = stmt.where(EngineRun.analysis_id == analysis_id)
+        stmt = stmt.where(EngineRun.analysis_id == analysis_id)  # type: ignore[arg-type]
     if datasource_id is not None:
-        stmt = stmt.where(EngineRun.datasource_id == datasource_id)
+        stmt = stmt.where(EngineRun.datasource_id == datasource_id)  # type: ignore[arg-type]
     if kind is not None:
-        stmt = stmt.where(EngineRun.kind == kind)
+        stmt = stmt.where(EngineRun.kind == kind)  # type: ignore[arg-type]
     if status is not None:
-        stmt = stmt.where(EngineRun.status == status)
+        stmt = stmt.where(EngineRun.status == status)  # type: ignore[arg-type]
 
-    stmt = stmt.order_by(desc(EngineRun.created_at)).limit(limit).offset(offset)
+    stmt = stmt.order_by(desc(EngineRun.created_at)).limit(limit).offset(offset)  # type: ignore[arg-type]
     result = session.execute(stmt)
     runs = result.scalars().all()
     return [EngineRunResponseSchema.model_validate(run) for run in runs]

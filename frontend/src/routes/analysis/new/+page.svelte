@@ -160,7 +160,9 @@
 				<p class="mb-6 text-fg-tertiary">Choose one or more data sources for this analysis.</p>
 
 				{#if datasourcesQuery.isLoading}
-					<div class="info-box">Loading data sources...</div>
+					<div class="flex h-full items-center justify-center">
+						<div class="spinner"></div>
+					</div>
 				{:else if datasourcesQuery.error}
 					<div class="error-box">
 						Error loading data sources: {datasourcesQuery.error.message}

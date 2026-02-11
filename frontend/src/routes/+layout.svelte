@@ -113,7 +113,9 @@
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {
-				staleTime: 1000 * 60 * 5,
+				staleTime: 0,
+				gcTime: 0,
+				refetchOnMount: 'always',
 				retry: 1
 			}
 		}
@@ -122,6 +124,7 @@
 	const navItems = [
 		{ href: '/', label: 'Analyses' },
 		{ href: '/datasources', label: 'Data Sources' },
+		{ href: '/builds', label: 'Builds' },
 		{ href: '/udfs', label: 'UDF Library' }
 	];
 </script>
@@ -154,7 +157,8 @@
 							class="nav-link border border-transparent px-3 py-1.5 text-sm text-fg-tertiary no-underline transition-colors hover:text-fg-primary"
 							class:active={currentPath === item.href ||
 								(currentPath.startsWith('/analysis') && item.href === '/') ||
-								(currentPath.startsWith('/udfs') && item.href === '/udfs')}
+								(currentPath.startsWith('/udfs') && item.href === '/udfs') ||
+								(currentPath.startsWith('/builds') && item.href === '/builds')}
 						>
 							{item.label}
 						</a>

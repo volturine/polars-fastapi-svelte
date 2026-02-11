@@ -138,7 +138,7 @@
 </div>
 
 {#if selectedCount > 0}
-	<div class="mt-2 max-h-15 overflow-y-auto border p-2 text-xs select-mono">
+	<div class="column-selected-list mt-2 max-h-15 overflow-y-auto border p-2 text-xs select-mono">
 		{value.join(', ')}
 	</div>
 {/if}

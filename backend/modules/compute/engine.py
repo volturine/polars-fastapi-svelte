@@ -348,14 +348,18 @@ class PolarsComputeEngine:
         job_id: str,
         additional_datasources: dict[str, dict] | None = None,
     ) -> pl.LazyFrame:
-        """Build the Polars transformation pipeline and return the final LazyFrame."""
-        lf = normalize_timezones(load_datasource(datasource_config))
+        """Build the Polars transformation pipeline and return the final LazyFrame.
+
+        Note: All data remains in UTC. Timezone conversion for display is handled
+        separately in _execute_preview.
+        """
+        lf = load_datasource(datasource_config)
 
         right_sources: dict[str, pl.LazyFrame] = {}
         if additional_datasources:
             for ds_id, ds_config in additional_datasources.items():
                 try:
-                    right_sources[ds_id] = normalize_timezones(load_datasource(ds_config))
+                    right_sources[ds_id] = load_datasource(ds_config)
                 except Exception as e:
                     logger.error(f'Failed to load additional datasource {ds_id}: {e}')
                     raise ValueError(f'Failed to load datasource {ds_id}: {e}')
@@ -450,7 +454,7 @@ class PolarsComputeEngine:
         last_frame = schema_map.get(last_id)
         if last_frame is None:
             raise ValueError(f'Missing frame for step {last_id}')
-        return normalize_timezones(last_frame)
+        return last_frame
 
     @staticmethod
     def _get_query_plans(lf: pl.LazyFrame) -> dict | None:
@@ -552,7 +556,6 @@ class PolarsComputeEngine:
         # Get schema from lazy frame (no full collection needed)
         schema_obj = lf.collect_schema()
         schema = {col: str(dtype) for col, dtype in schema_obj.items()}
-        lf = normalize_timezones(lf, schema_obj)
 
         return {
             'schema': schema,
@@ -578,4 +581,4 @@ class PolarsComputeEngine:
         if not handler:
             raise ValueError(f'Unsupported operation: {operation}')
 
-        return normalize_timezones(handler(lf, params, right_lf=right_lf, right_sources=right_sources))
+        return handler(lf, params, right_lf=right_lf, right_sources=right_sources)

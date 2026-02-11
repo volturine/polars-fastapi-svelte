@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
-	import { LoaderCircle, Play, Bug } from 'lucide-svelte';
 	import { previewStepData, type StepPreviewResponse } from '$lib/api/compute';
 	import { applySteps } from '$lib/utils/pipeline';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
@@ -29,8 +28,13 @@
 	const datasourceConfig = $derived(analysisStore.activeTab?.datasource_config ?? {});
 	const datasourceKey = $derived.by(() => {
 		const config = datasourceConfig as Record<string, unknown>;
-		const { time_travel_ui: _ui, output: _output, snapshot_id, snapshot_timestamp_ms, ...rest } =
-			config;
+		const {
+			time_travel_ui: _ui,
+			output: _output,
+			snapshot_id,
+			snapshot_timestamp_ms,
+			...rest
+		} = config;
 		return JSON.stringify({
 			...rest,
 			snapshot_id: snapshot_id ?? null,
@@ -101,12 +105,9 @@
 		currentPage = 1;
 	});
 
-
 	function runPreview() {
 		if (!isActiveStep) return;
-		if (!hasRun) {
-			analysisStore.previewRuns.set(runKey, true);
-		}
+		if (!hasRun) analysisStore.setPreviewRun(runKey, true);
 		query.refetch();
 	}
 
@@ -122,42 +123,28 @@
 </script>
 
 <div class="inline-preview-table w-full my-2 h-100 overflow-hidden select-text bg-panel">
-	{#if isLoading}
-		<div class="flex h-full flex-col items-center justify-center gap-3 text-fg-tertiary">
-			<LoaderCircle size={18} class="animate-spin" />
-			<p class="m-0 text-fg-tertiary">Loading</p>
-		</div>
-	{:else if error}
-		<div class="flex h-full flex-col items-center justify-center gap-3 text-fg-tertiary">
-			<Bug size={18} class="animate-spin" />
-			<p class="m-0 text-fg-tertiary">Failed</p>
-			<p class="m-0 text-fg-tertiary">{error.message}</p>
-		</div>
-	{:else if data?.columns?.length}
-		<DataTable
-			columns={data.columns}
-			data={data.data}
-			columnTypes={data.column_types}
-			bind:columnSearch
-			showHeader
-			showPagination
-			pagination={{
-				page: currentPage,
-				canPrev,
-				canNext,
-				onPrev: prevPage,
-				onNext: nextPage,
-				loading: isLoading
-			}}
-			showTypeBadges
-			showFooter={false}
-			density="compact"
-			maxHeight="100"
-		/>
-	{:else}
-		<div class="flex h-full flex-col items-center justify-center gap-3 text-fg-tertiary" role="button" tabindex="0" onclick={runPreview} onkeydown={runPreview}>
-			<Play size={18} />
-			<p class="m-0 text-fg-tertiary">Preview</p>
-		</div>
-	{/if}
+	<DataTable
+		columns={data?.columns ?? []}
+		data={data?.data ?? []}
+		columnTypes={data?.column_types ?? {}}
+		loading={isLoading}
+		analysis={true}
+		onPreview={runPreview}
+		{error}
+		fillContainer
+		bind:columnSearch
+		showHeader
+		showPagination
+		pagination={{
+			page: currentPage,
+			canPrev,
+			canNext,
+			onPrev: prevPage,
+			onNext: nextPage,
+			loading: isLoading
+		}}
+		showTypeBadges
+		maxHeight="100"
+		showFooter={false}
+	/>
 </div>

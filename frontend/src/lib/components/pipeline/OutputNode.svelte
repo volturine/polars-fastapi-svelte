@@ -142,7 +142,10 @@
 				{#if outputConfig.datasource_type === 'iceberg'}
 					<div class="grid grid-cols-2 gap-2">
 						<div class="flex flex-col gap-1">
-							<label class="text-[10px] uppercase text-fg-muted" for={`${idPrefix}-iceberg-namespace`}>
+							<label
+								class="text-[10px] uppercase text-fg-muted"
+								for={`${idPrefix}-iceberg-namespace`}
+							>
 								Namespace
 							</label>
 							<input

@@ -11,6 +11,34 @@ import { getLockPayload } from '$lib/stores/lockManager.svelte';
 import { SvelteMap } from 'svelte/reactivity';
 import { ResultAsync, err, ok } from 'neverthrow';
 import type { ApiError } from '$lib/api/client';
+import { browser } from '$app/environment';
+
+function loadPreviewRuns(): SvelteMap<string, boolean> {
+	const map = new SvelteMap<string, boolean>();
+	if (!browser) return map;
+	try {
+		const stored = sessionStorage.getItem('analysis_preview_runs');
+		if (stored) {
+			const parsed = JSON.parse(stored) as Array<[string, boolean]>;
+			for (const [key, value] of parsed) {
+				map.set(key, value);
+			}
+		}
+	} catch {
+		// Ignore parse errors
+	}
+	return map;
+}
+
+function savePreviewRuns(map: SvelteMap<string, boolean>): void {
+	if (!browser) return;
+	try {
+		const entries = Array.from(map.entries());
+		sessionStorage.setItem('analysis_preview_runs', JSON.stringify(entries));
+	} catch {
+		// Ignore storage errors
+	}
+}
 
 export class AnalysisStore {
 	current = $state<Analysis | null>(null);
@@ -24,7 +52,12 @@ export class AnalysisStore {
 	error = $state<string | null>(null);
 	loadId = $state(0);
 	lastSaved = $state<{ name: string; description: string | null } | null>(null);
-	previewRuns = $state(new SvelteMap<string, boolean>());
+	previewRuns = $state(loadPreviewRuns());
+
+	setPreviewRun(key: string, value: boolean): void {
+		this.previewRuns.set(key, value);
+		savePreviewRuns(this.previewRuns);
+	}
 
 	activeTab = $derived.by(() => {
 		const match = this.tabs.find((tab) => tab.id === this.activeTabId) ?? null;
@@ -167,7 +200,10 @@ export class AnalysisStore {
 
 	isDirty(): boolean {
 		if (!this.current) return false;
-		const savedMeta = this.lastSaved ?? { name: this.current.name, description: this.current.description ?? null };
+		const savedMeta = this.lastSaved ?? {
+			name: this.current.name,
+			description: this.current.description ?? null
+		};
 		if (this.current.name !== savedMeta.name) return true;
 		if ((this.current.description ?? null) !== savedMeta.description) return true;
 		if (this.tabs.length !== this.savedTabs.length) return true;

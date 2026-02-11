@@ -11,7 +11,16 @@
 		type HeaderGroup,
 		type Row
 	} from '@tanstack/table-core';
-	import { Check, Copy, GripVertical, Pin, Settings2 } from 'lucide-svelte';
+	import {
+		Check,
+		Copy,
+		GripVertical,
+		Pin,
+		Settings2,
+		LoaderCircle,
+		Bug,
+		Play
+	} from 'lucide-svelte';
 	import { onClickOutside } from 'runed';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import type { TableCellValue } from '$lib/types/api-responses';
@@ -23,6 +32,8 @@
 		data: Record<string, unknown>[];
 		columnTypes?: Record<string, string>;
 		loading?: boolean;
+		error?: Error | null;
+		analysis?: boolean;
 		fillContainer?: boolean;
 		onSort?: (column: string, direction: 'asc' | 'desc') => void;
 		showTypeBadges?: boolean;
@@ -37,6 +48,7 @@
 			onNext: () => void;
 			loading?: boolean;
 		};
+		onPreview?: () => void;
 		density?: 'default' | 'compact';
 		enableResize?: boolean;
 		enableCopy?: boolean;
@@ -51,6 +63,8 @@
 		data,
 		columnTypes = {},
 		loading = false,
+		error = null,
+		analysis = false,
 		fillContainer = false,
 		onSort,
 		showTypeBadges = false,
@@ -58,6 +72,7 @@
 		showHeader = false,
 		showPagination = false,
 		pagination,
+		onPreview,
 		density = 'default',
 		enableResize = true,
 		enableCopy = true,
@@ -345,6 +360,18 @@
 		sizingReady = true;
 	}
 
+	function handlePreview() {
+		if (!onPreview) return;
+		onPreview();
+	}
+
+	function handlePreviewKey(event: KeyboardEvent) {
+		if (!onPreview) return;
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		event.preventDefault();
+		onPreview();
+	}
+
 	onClickOutside(
 		() => columnMenuRef,
 		() => {
@@ -509,18 +536,38 @@
 	{/if}
 
 	{#if loading}
-		<div
-			class="flex flex-col items-center justify-center gap-4 p-12 pointer-events-none text-fg-tertiary"
-		>
-			<div class="spinner"></div>
-			<p class="text-sm m-0 text-fg-tertiary">Loading data...</p>
+		<div class="flex h-full flex-col items-center justify-center gap-3 text-fg-tertiary">
+			<LoaderCircle size={18} class="animate-spin" />
+			<p class="m-0 text-fg-tertiary">Loading</p>
+		</div>
+	{/if}
+
+	{#if error}
+		<div class="flex h-full flex-col items-center justify-center gap-3 text-fg-tertiary">
+			<Bug size={18} />
+			<p class="m-0 text-fg-tertiary">Failed</p>
+			<p class="m-0 text-fg-tertiary">{error.message}</p>
 		</div>
 	{/if}
 
 	{#if !loading && data.length === 0}
-		<div class="p-12 text-center m-0 text-fg-muted">
-			<p class="m-0">No data available</p>
-		</div>
+		{#if analysis}
+			<div
+				class="flex h-full flex-col items-center justify-center gap-3 text-fg-tertiary"
+				role="button"
+				tabindex={onPreview ? 0 : -1}
+				aria-disabled={!onPreview}
+				onclick={handlePreview}
+				onkeydown={handlePreviewKey}
+			>
+				<Play size={18} />
+				<p class="m-0 text-fg-tertiary">Preview</p>
+			</div>
+		{:else}
+			<div class="p-12 text-center m-0 text-fg-muted">
+				<p class="m-0">No data available</p>
+			</div>
+		{/if}
 	{:else if headerGroups.length > 0}
 		<div
 			class="dataset-table__scroll overflow-x-auto overflow-y-auto bg-panel"

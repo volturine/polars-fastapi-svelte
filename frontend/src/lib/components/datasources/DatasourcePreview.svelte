@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
-	import { LoaderCircle, Play, Bug } from 'lucide-svelte';
 	import { previewStepData, type StepPreviewResponse } from '$lib/api/compute';
 	import DataTable from '$lib/components/viewers/DataTable.svelte';
 
@@ -61,37 +60,25 @@
 </script>
 
 <div class="h-full flex flex-col">
-
-	{#if isLoading}
-		<div class="flex h-full flex-col items-center justify-center gap-3 text-fg-tertiary">
-			<LoaderCircle size={18} class="animate-spin" />
-			<p class="m-0 text-fg-tertiary">Loading</p>
-		</div>
-	{:else if error}
-		<div class="flex h-full flex-col items-center justify-center gap-3 text-fg-tertiary">
-			<Bug size={18} class="animate-spin" />
-			<p class="m-0 text-fg-tertiary">Failed</p>
-			<p class="m-0 text-fg-tertiary">{error.message}</p>
-		</div>
-	{:else}
-		<div class="flex-1 overflow-hidden">
-			<DataTable
-				columns={data?.columns ?? []}
-				data={data?.data ?? []}
-				columnTypes={data?.column_types ?? {}}
-				fillContainer
-				bind:columnSearch
-				showHeader
-				showPagination
-				pagination={{
-					page,
-					canPrev,
-					canNext,
-					onPrev: goPrev,
-					onNext: goNext,
-				}}
-				showTypeBadges
-			/>
-		</div>
-	{/if}
+	<div class="flex-1 overflow-hidden">
+		<DataTable
+			columns={data?.columns ?? []}
+			data={data?.data ?? []}
+			columnTypes={data?.column_types ?? {}}
+			loading={isLoading}
+			{error}
+			fillContainer
+			bind:columnSearch
+			showHeader
+			showPagination
+			pagination={{
+				page,
+				canPrev,
+				canNext,
+				onPrev: goPrev,
+				onNext: goNext
+			}}
+			showTypeBadges
+		/>
+	</div>
 </div>

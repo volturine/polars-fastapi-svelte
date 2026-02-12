@@ -1958,11 +1958,20 @@ body.touch-dragging .pipeline-canvas {
 	height: 100%;
 	cursor: col-resize;
 	background: transparent;
-	transform: translateX(calc(var(--resize-delta, 0px) + 2px));
 	padding: 0;
 }
 
-.dataset-table__resizer--active .dataset-table__resizer-line {
+.dataset-table__resizer::after {
+	content: '';
+	position: absolute;
+	opacity: 0;
+	width: 1px;
+	height: 100%;
+	background: var(--accent-primary);
+}
+
+.dataset-table__resizer:hover::after,
+.dataset-table__resizer--active::after {
 	opacity: 1;
 }
 
@@ -2071,6 +2080,10 @@ body.touch-dragging .pipeline-canvas {
 
 .dataset-table__sort-label--drag {
 	outline: 2px dashed var(--border-primary);
+}
+
+.dataset-table__drag-preview {
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .dataset-table__header-btn {

@@ -90,6 +90,9 @@
 		startOffset: null,
 		startSize: null
 	});
+
+	// Non-reactive resize tracking to avoid table re-renders during resize
+	let resizeOffset = { delta: 0, start: 0 };
 	let columnVisibility = $state<Record<string, boolean>>({});
 	let columnOrder = $state<string[]>([]);
 	let columnPinning = $state<ColumnPinningState>({ left: [], right: [] });
@@ -98,9 +101,12 @@
 	let sizingReady = $state(false);
 	let dragColumn = $state<string | null>(null);
 	let dragOver = $state<string | null>(null);
-	let copied = $state<Record<string, boolean>>({});
 	let tipRef = $state<HTMLDivElement>();
 	let scrollRef = $state<HTMLDivElement>();
+
+	// Non-reactive copy state to avoid table re-renders
+	let copiedCells = new Set<string>();
+	let copyTimers = new Map<string, number>();
 
 	// Non-reactive tooltip state to avoid table re-renders
 	let tipState = {
@@ -153,15 +159,6 @@
 		};
 	}
 
-	function setResizeOffset(node: HTMLElement, offset: number) {
-		node.style.setProperty('--resize-offset', `${offset}px`);
-		return {
-			update(next: number) {
-				node.style.setProperty('--resize-offset', `${next}px`);
-			}
-		};
-	}
-
 	const minColumnWidthPx = 220;
 	const defaultColumnWidthPx = 150;
 	const columnHoverDelayMs = 1000;
@@ -173,46 +170,6 @@
 	);
 
 	let initialSize = $state(defaultColumnWidthPx);
-
-	// $effect(() => {
-	// 	initialSize = softMin;
-	// 	sizingReady = false;
-	// });
-
-	// $effect(() => {
-	// 	if (!columnsKey) return;
-	// 	columnOrder = [...columns];
-	// 	columnVisibility = {};
-	// 	columnPinning = { left: [], right: [] };
-	// 	columnSizing = {};
-	// 	columnSizingInfo = {
-	// 		columnSizingStart: [],
-	// 		deltaOffset: null,
-	// 		deltaPercentage: null,
-	// 		isResizingColumn: false,
-	// 		startOffset: null,
-	// 		startSize: null
-	// 	};
-	// 	sizingReady = false;
-	// });
-
-	// $effect(() => {
-	// 	const node = scrollRef;
-	// 	if (!node) return;
-	// 	let rafId: number | null = null;
-	// 	const observer = new ResizeObserver(() => {
-	// 		if (rafId) cancelAnimationFrame(rafId);
-	// 		rafId = requestAnimationFrame(() => {
-	// 			panelWidth = node.clientWidth;
-	// 			ensureSizingReady();
-	// 		});
-	// 	});
-	// 	observer.observe(node);
-	// 	return () => {
-	// 		if (rafId) cancelAnimationFrame(rafId);
-	// 		observer.disconnect();
-	// 	};
-	// });
 
 	const table = $derived.by(() => {
 		if (data.length === 0 || columns.length === 0) return null;
@@ -254,7 +211,26 @@
 				columnSizing = normalizeSizing(next);
 			},
 			onColumnSizingInfoChange: (updater) => {
-				columnSizingInfo = typeof updater === 'function' ? updater(columnSizingInfo) : updater;
+				const next = typeof updater === 'function' ? updater(columnSizingInfo) : updater;
+				// Only update reactive state when resize starts/ends, not during
+				const wasResizing = columnSizingInfo.isResizingColumn !== false;
+				const isResizing = next.isResizingColumn !== false;
+
+				if (wasResizing && isResizing) {
+					// During resize - update non-reactive offset only
+					resizeOffset.delta = next.deltaOffset ?? 0;
+					resizeOffset.start = next.startOffset ?? 0;
+					// Update all resizer indicators via DOM
+					document.documentElement.style.setProperty('--resize-delta', `${resizeOffset.delta}px`);
+				} else {
+					// Resize start/end - update reactive state
+					columnSizingInfo = next;
+					resizeOffset.delta = next.deltaOffset ?? 0;
+					resizeOffset.start = next.startOffset ?? 0;
+					if (!isResizing) {
+						document.documentElement.style.removeProperty('--resize-delta');
+					}
+				}
 			},
 			getCoreRowModel: getCoreRowModel(),
 			getSortedRowModel: getSortedRowModel(),
@@ -470,16 +446,34 @@
 	async function copyValue(event: MouseEvent, id: string, value: string) {
 		event.preventDefault();
 		event.stopPropagation();
-		if (!navigator?.clipboard) return;
-		const result = await navigator.clipboard.writeText(value).then(
-			() => true,
-			() => false
-		);
-		if (!result) return;
-		copied = { ...copied, [id]: true };
-		window.setTimeout(() => {
-			copied = { ...copied, [id]: false };
+
+		// Direct DOM manipulation - show visual feedback immediately
+		const button = event.currentTarget as HTMLButtonElement;
+		if (!button) return;
+
+		// Clear existing timer if any
+		const existingTimer = copyTimers.get(id);
+		if (existingTimer) {
+			window.clearTimeout(existingTimer);
+		}
+
+		copiedCells.add(id);
+		button.classList.add('dataset-table__copy--copied');
+
+		const timer = window.setTimeout(() => {
+			copiedCells.delete(id);
+			copyTimers.delete(id);
+			button.classList.remove('dataset-table__copy--copied');
 		}, 1400);
+
+		copyTimers.set(id, timer);
+
+		// Try to copy to clipboard
+		if (!navigator?.clipboard) return;
+		const textToCopy = String(value);
+		await navigator.clipboard.writeText(textToCopy).catch(() => {
+			// Silently fail - visual feedback already shown
+		});
 	}
 
 	function tipHide(id: string) {
@@ -681,7 +675,6 @@
 									{#if enableResize}
 										<button
 											class="dataset-table__resizer"
-											use:setResizeOffset={columnSizingInfo.deltaOffset ?? 0}
 											onmousedown={header.getResizeHandler()}
 											ontouchstart={header.getResizeHandler()}
 											aria-label="Resize column"
@@ -747,11 +740,12 @@
 												aria-label="Copy cell value"
 												onclick={(event) => copyValue(event, cell.id, display)}
 											>
-												{#if copied[cell.id]}
-													<Check size={14} />
-												{:else}
-													<Copy size={14} />
-												{/if}
+												<span class="dataset-table__copy-icon dataset-table__copy-icon--copy"
+													><Copy size={14} /></span
+												>
+												<span class="dataset-table__copy-icon dataset-table__copy-icon--check"
+													><Check size={14} /></span
+												>
 											</button>
 										{/if}
 									</div>

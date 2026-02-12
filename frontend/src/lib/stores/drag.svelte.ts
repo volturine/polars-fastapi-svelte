@@ -3,6 +3,8 @@
  * Single source of truth for all drag-and-drop operations.
  */
 
+import { browser } from '$app/environment';
+
 export type DragSource = 'library' | 'canvas';
 
 export interface DropTarget {
@@ -33,9 +35,9 @@ export class DragState {
 	/** Pointer id for active drag */
 	public pointerId: number | null = $state<number | null>(null);
 
-	/** Pointer coordinates during drag - always tracked for all input types */
-	public pointerX: number | null = $state<number | null>(null);
-	public pointerY: number | null = $state<number | null>(null);
+	/** Pointer coordinates - non-reactive to avoid re-renders during drag */
+	private _pointerX: number | null = null;
+	private _pointerY: number | null = null;
 
 	/** Element with pointer capture (for cleanup on cancel/end) */
 	public capturedElement: HTMLElement | null = $state<HTMLElement | null>(null);
@@ -46,6 +48,30 @@ export class DragState {
 	/** Whether this is an insert operation (adding new step from library) */
 	public isInsert: boolean = $derived(this.source === 'library' && this.type !== null);
 
+	/** Get pointer X (non-reactive) */
+	get pointerX(): number | null {
+		return this._pointerX;
+	}
+
+	/** Get pointer Y (non-reactive) */
+	get pointerY(): number | null {
+		return this._pointerY;
+	}
+
+	/** Update CSS custom properties for visual feedback */
+	private updatePointerCss(x: number, y: number) {
+		if (!browser) return;
+		document.documentElement.style.setProperty('--drag-x', `${x}px`);
+		document.documentElement.style.setProperty('--drag-y', `${y}px`);
+	}
+
+	/** Clear CSS custom properties */
+	private clearPointerCss() {
+		if (!browser) return;
+		document.documentElement.style.removeProperty('--drag-x');
+		document.documentElement.style.removeProperty('--drag-y');
+	}
+
 	/** Start a drag operation for a new step from library */
 	start(type: string, source: DragSource, pointerId: number, pointerX: number, pointerY: number) {
 		if (this.active) return; // Prevent concurrent drags
@@ -55,8 +81,9 @@ export class DragState {
 		this.target = null;
 		this.valid = true;
 		this.pointerId = pointerId;
-		this.pointerX = pointerX;
-		this.pointerY = pointerY;
+		this._pointerX = pointerX;
+		this._pointerY = pointerY;
+		this.updatePointerCss(pointerX, pointerY);
 	}
 
 	/** Start a reorder operation for an existing step */
@@ -74,8 +101,9 @@ export class DragState {
 		this.target = null;
 		this.valid = true;
 		this.pointerId = pointerId;
-		this.pointerX = pointerX;
-		this.pointerY = pointerY;
+		this._pointerX = pointerX;
+		this._pointerY = pointerY;
+		this.updatePointerCss(pointerX, pointerY);
 	}
 
 	/** Update the current drop target */
@@ -92,8 +120,9 @@ export class DragState {
 
 	/** Update pointer position during drag */
 	public setPointer(x: number, y: number) {
-		this.pointerX = x;
-		this.pointerY = y;
+		this._pointerX = x;
+		this._pointerY = y;
+		this.updatePointerCss(x, y);
 	}
 
 	/** Set the element that has pointer capture for proper cleanup */
@@ -123,14 +152,15 @@ export class DragState {
 	/** End the drag operation and reset all state */
 	end() {
 		this.releaseCapture();
+		this.clearPointerCss();
 		this.type = null;
 		this.stepId = null;
 		this.source = null;
 		this.target = null;
 		this.valid = true;
 		this.pointerId = null;
-		this.pointerX = null;
-		this.pointerY = null;
+		this._pointerX = null;
+		this._pointerY = null;
 	}
 }
 

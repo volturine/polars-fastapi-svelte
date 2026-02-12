@@ -2140,7 +2140,7 @@ body.touch-dragging .pipeline-canvas {
 	height: 100%;
 	cursor: col-resize;
 	background: transparent;
-	transform: translateX(var(--resize-offset, 2px));
+	transform: translateX(calc(var(--resize-delta, 0px) + 2px));
 	padding: 0;
 }
 
@@ -2345,6 +2345,22 @@ tbody tr:last-child .dataset-table__td {
 .dataset-table__copy svg {
 	stroke: currentColor;
 	fill: none;
+}
+
+.dataset-table__copy-icon--copy {
+	display: block;
+}
+
+.dataset-table__copy-icon--check {
+	display: none;
+}
+
+.dataset-table__copy--copied .dataset-table__copy-icon--copy {
+	display: none;
+}
+
+.dataset-table__copy--copied .dataset-table__copy-icon--check {
+	display: block;
 }
 
 .dataset-table__cell:hover .dataset-table__copy {

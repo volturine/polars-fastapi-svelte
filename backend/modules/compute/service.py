@@ -14,12 +14,16 @@ from sqlmodel import Session
 
 from core.config import settings
 from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError, PipelineExecutionError
+from modules.analysis.models import Analysis
 from modules.compute.core.exports import get_export_format
+from modules.compute.engine import PolarsComputeEngine
 from modules.compute.manager import get_manager
 from modules.compute.operations.datasource import resolve_iceberg_metadata_path
 from modules.compute.utils import await_engine_result, build_datasource_config, find_step_index
 from modules.datasource.models import DataSource
 from modules.engine_runs import service as engine_run_service
+from modules.healthcheck import service as healthcheck_service
+from modules.healthcheck.models import HealthCheck
 from modules.udf.models import Udf
 
 logger = logging.getLogger(__name__)
@@ -69,9 +73,22 @@ def _build_export_result_metadata(
     return result
 
 
-def _get_additional_datasources(session: Session, pipeline_steps: list[dict]) -> dict[str, dict]:
+def _get_additional_datasources(
+    session: Session,
+    pipeline_steps: list[dict],
+    analysis_pipeline: dict | None = None,
+) -> dict[str, dict]:
     """Extract and fetch additional datasources referenced in pipeline steps (e.g., for joins)."""
     additional: dict[str, dict] = {}
+    pipeline_sources: dict[str, dict] | None = None
+    analysis_id: str | None = None
+    if isinstance(analysis_pipeline, dict):
+        sources = analysis_pipeline.get('sources')
+        if isinstance(sources, dict):
+            pipeline_sources = {str(key): value for key, value in sources.items() if isinstance(value, dict)}
+        pipeline_id = analysis_pipeline.get('analysis_id')
+        if pipeline_id is not None:
+            analysis_id = str(pipeline_id)
 
     for step in pipeline_steps:
         config = step.get('config', {})
@@ -81,23 +98,33 @@ def _get_additional_datasources(session: Session, pipeline_steps: list[dict]) ->
         if isinstance(union_sources, str):
             union_sources = [union_sources]
 
-        if right_source_id and right_source_id not in additional:
-            datasource = session.get(DataSource, right_source_id)
-            if datasource:
-                additional[right_source_id] = {
-                    'source_type': datasource.source_type,
-                    **datasource.config,
-                }
-
+        source_ids: list[str] = []
+        if right_source_id:
+            source_ids.append(str(right_source_id))
         for source_id in union_sources:
+            if source_id is None:
+                continue
+            source_ids.append(str(source_id))
+
+        for source_id in source_ids:
             if source_id in additional:
                 continue
-            datasource = session.get(DataSource, source_id)
-            if datasource:
-                additional[source_id] = {
-                    'source_type': datasource.source_type,
-                    **datasource.config,
-                }
+            config_override = None
+            if pipeline_sources and source_id in pipeline_sources:
+                config_override = pipeline_sources[source_id]
+            if config_override is None:
+                datasource = session.get(DataSource, source_id)
+                if datasource:
+                    config_override = {
+                        'source_type': datasource.source_type,
+                        **datasource.config,
+                    }
+            if config_override is None:
+                continue
+            if analysis_id and config_override.get('source_type') == 'analysis':
+                if str(config_override.get('analysis_id')) == analysis_id:
+                    config_override = {**config_override, 'analysis_pipeline': analysis_pipeline}
+            additional[source_id] = config_override
 
     return additional
 
@@ -188,7 +215,11 @@ def preview_step(
 
     datasource_config = build_datasource_config(datasource, datasource_config)
 
-    additional_datasources = _get_additional_datasources(session, preview_steps)
+    analysis_pipeline = None
+    if isinstance(datasource_config, dict):
+        analysis_pipeline = datasource_config.get('analysis_pipeline')
+
+    additional_datasources = _get_additional_datasources(session, preview_steps, analysis_pipeline)
 
     # Calculate offset for pagination
     offset = (page - 1) * row_limit
@@ -202,8 +233,13 @@ def preview_step(
         additional_datasources=additional_datasources,
     )
 
+    step_timings: dict = {}
+    current_step_id: str | None = None
+    query_plan: str | None = None
     try:
         result_data = await_engine_result(engine, timeout)
+        step_timings = result_data.get('step_timings', {}) if isinstance(result_data, dict) else {}
+        query_plan = result_data.get('query_plan') if isinstance(result_data, dict) else None
         error = result_data.get('error')
         if error:
             raise PipelineExecutionError(
@@ -232,6 +268,10 @@ def preview_step(
             created_at=started_at,
             completed_at=completed_at,
             duration_ms=duration_ms,
+            step_timings=step_timings,
+            query_plan=query_plan,
+            progress=1.0,
+            current_step=current_step_id,
         )
         engine_run_service.create_engine_run(session, payload)
 
@@ -257,6 +297,9 @@ def preview_step(
             created_at=started_at,
             completed_at=completed_at,
             duration_ms=duration_ms,
+            step_timings=step_timings,
+            progress=0.0,
+            current_step=current_step_id,
         )
         engine_run_service.create_engine_run(session, payload)
         raise
@@ -294,7 +337,11 @@ def get_step_schema(
 
     datasource_config = build_datasource_config(datasource, datasource_config)
 
-    additional_datasources = _get_additional_datasources(session, schema_steps)
+    analysis_pipeline = None
+    if isinstance(datasource_config, dict):
+        analysis_pipeline = datasource_config.get('analysis_pipeline')
+
+    additional_datasources = _get_additional_datasources(session, schema_steps, analysis_pipeline)
 
     # Use the new schema command that doesn't collect full data
     engine.get_schema(
@@ -388,7 +435,11 @@ def export_data(
 
     datasource_config = build_datasource_config(datasource, datasource_config)
 
-    additional_datasources = _get_additional_datasources(session, export_steps)
+    analysis_pipeline = None
+    if isinstance(datasource_config, dict):
+        analysis_pipeline = datasource_config.get('analysis_pipeline')
+
+    additional_datasources = _get_additional_datasources(session, export_steps, analysis_pipeline)
 
     if destination == 'datasource' and datasource_type == 'iceberg':
         export_format = 'parquet'
@@ -414,6 +465,8 @@ def export_data(
 
     # Create temp file for engine to write to
     tmp_output = tempfile.mktemp(suffix=ext)
+    step_timings: dict = {}
+    query_plan: str | None = None
 
     try:
         try:
@@ -426,6 +479,8 @@ def export_data(
             )
 
             result_data = await_engine_result(engine, timeout)
+            step_timings = result_data.get('step_timings', {}) if isinstance(result_data, dict) else {}
+            query_plan = result_data.get('query_plan') if isinstance(result_data, dict) else None
             error = result_data.get('error')
             if error:
                 if temp_engine:
@@ -471,6 +526,20 @@ def export_data(
                 data=data,
                 file_size_bytes=os.path.getsize(output_path),
             )
+            if destination != 'download':
+                result = session.execute(select(HealthCheck).where(HealthCheck.datasource_id == datasource_id))  # type: ignore[arg-type]
+                checks = result.scalars().all()
+                checks = [check for check in checks if check.enabled]
+                if checks:
+                    lf = PolarsComputeEngine.build_pipeline(
+                        datasource_config,
+                        export_steps,
+                        f'healthcheck-{datasource_id}',
+                        additional_datasources,
+                    )
+                    for check in checks:
+                        healthcheck_service.run_healthcheck(session, check, lf)
+
             # Download - return bytes
             if destination == 'download':
                 payload = engine_run_service.create_engine_run_payload(
@@ -483,6 +552,9 @@ def export_data(
                     created_at=started_at,
                     completed_at=completed_at,
                     duration_ms=duration_ms,
+                    step_timings=step_timings,
+                    query_plan=query_plan,
+                    progress=1.0,
                 )
                 engine_run_service.create_engine_run(session, payload)
                 with open(output_path, 'rb') as f:
@@ -501,6 +573,9 @@ def export_data(
                     created_at=started_at,
                     completed_at=completed_at,
                     duration_ms=duration_ms,
+                    step_timings=step_timings,
+                    query_plan=query_plan,
+                    progress=1.0,
                 )
                 engine_run_service.create_engine_run(session, payload)
                 file_name = f'{filename}.{result_format}'
@@ -523,6 +598,9 @@ def export_data(
                     created_at=started_at,
                     completed_at=completed_at,
                     duration_ms=duration_ms,
+                    step_timings=step_timings,
+                    query_plan=query_plan,
+                    progress=1.0,
                 )
                 engine_run_service.create_engine_run(session, payload)
                 if datasource_type == 'file':
@@ -545,6 +623,7 @@ def export_data(
                             'csv_options': None,
                         },
                         schema_cache=data.get('schema', {}),
+                        created_by_analysis_id=run_analysis_id,
                         created_at=datetime.now(UTC),
                     )
                     session.add(new_datasource)
@@ -562,6 +641,9 @@ def export_data(
                         created_at=started_at,
                         completed_at=completed_at,
                         duration_ms=duration_ms,
+                        step_timings=step_timings,
+                        query_plan=query_plan,
+                        progress=1.0,
                     )
                     engine_run_service.create_engine_run(session, payload)
 
@@ -589,6 +671,7 @@ def export_data(
                             'read_only': True,
                         },
                         schema_cache=data.get('schema', {}),
+                        created_by_analysis_id=run_analysis_id,
                         created_at=datetime.now(UTC),
                     )
                     session.add(new_datasource)
@@ -606,6 +689,9 @@ def export_data(
                         created_at=started_at,
                         completed_at=completed_at,
                         duration_ms=duration_ms,
+                        step_timings=step_timings,
+                        query_plan=query_plan,
+                        progress=1.0,
                     )
                     engine_run_service.create_engine_run(session, payload)
 
@@ -664,6 +750,7 @@ def export_data(
                             'metadata_path': table_dir,
                         }
                         existing.schema_cache = data.get('schema', {})
+                        existing.created_by_analysis_id = run_analysis_id
                         session.add(existing)
                         session.commit()
                         datasource_id_value = existing.id
@@ -682,6 +769,7 @@ def export_data(
                                 'metadata_path': table_dir,
                             },
                             schema_cache=data.get('schema', {}),
+                            created_by_analysis_id=run_analysis_id,
                             created_at=datetime.now(UTC),
                         )
                         session.add(new_datasource)
@@ -699,6 +787,9 @@ def export_data(
                         created_at=started_at,
                         completed_at=completed_at,
                         duration_ms=duration_ms,
+                        step_timings=step_timings,
+                        query_plan=query_plan,
+                        progress=1.0,
                     )
                     engine_run_service.create_engine_run(session, payload)
 
@@ -720,12 +811,63 @@ def export_data(
                 created_at=started_at,
                 completed_at=completed_at,
                 duration_ms=duration_ms,
+                step_timings=step_timings,
+                query_plan=query_plan,
+                progress=0.0,
             )
             engine_run_service.create_engine_run(session, payload)
             raise
     finally:
         if os.path.exists(tmp_output):
             os.unlink(tmp_output)
+
+
+def build_analysis_lazyframe(
+    session: Session,
+    analysis_id: str,
+    analysis_tab_id: str | None = None,
+) -> pl.LazyFrame:
+    analysis_obj = session.get(Analysis, analysis_id)
+    if not analysis_obj:
+        raise ValueError(f'Analysis {analysis_id} not found')
+
+    datasource_id, pipeline_steps = _resolve_analysis_pipeline(analysis_obj, analysis_tab_id)
+
+    datasource = session.get(DataSource, datasource_id)
+    if not datasource:
+        raise DataSourceNotFoundError(datasource_id)
+
+    datasource_config = build_datasource_config(datasource, None)
+    additional_datasources = _get_additional_datasources(session, pipeline_steps)
+    job_id = f'analysis-{analysis_id}'
+    return PolarsComputeEngine.build_pipeline(
+        datasource_config,
+        pipeline_steps,
+        job_id,
+        additional_datasources,
+    )
+
+
+def _resolve_analysis_pipeline(analysis: Analysis, analysis_tab_id: str | None = None) -> tuple[str, list[dict]]:
+    pipeline = analysis.pipeline_definition
+    tabs = pipeline.get('tabs', []) if isinstance(pipeline, dict) else []
+    if tabs:
+        selected = None
+        if analysis_tab_id:
+            selected = next((tab for tab in tabs if tab.get('id') == analysis_tab_id), None)
+        if not selected:
+            selected = next((tab for tab in tabs if tab.get('steps')), tabs[0])
+        datasource_id = selected.get('datasource_id')
+        steps = selected.get('steps', [])
+        if not datasource_id:
+            raise ValueError('Analysis tab missing datasource_id')
+        return str(datasource_id), steps
+
+    datasource_ids = pipeline.get('datasource_ids', []) if isinstance(pipeline, dict) else []
+    if not datasource_ids:
+        raise ValueError('Analysis has no datasource')
+    steps = pipeline.get('steps', []) if isinstance(pipeline, dict) else []
+    return str(datasource_ids[0]), steps
 
 
 def list_iceberg_snapshots(session: Session, datasource_id: str):

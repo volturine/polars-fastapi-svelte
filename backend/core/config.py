@@ -128,6 +128,19 @@ class Settings(BaseSettings):
     # Frontend debug panels
     public_idb_debug: bool = Field(default=True, alias='PUBLIC_IDB_DEBUG')
 
+    # SMTP configuration
+    smtp_host: str = Field(default='', alias='SMTP_HOST')
+    smtp_port: int = Field(default=587, alias='SMTP_PORT')
+    smtp_user: str = Field(default='', alias='SMTP_USER')
+    smtp_password: str = Field(default='', alias='SMTP_PASSWORD')
+
+    # Telegram configuration
+    telegram_bot_token: str = Field(default='', alias='TELEGRAM_BOT_TOKEN')
+
+    # AI configuration
+    ollama_base_url: str = Field(default='http://localhost:11434', alias='OLLAMA_BASE_URL')
+    openai_api_key: str = Field(default='', alias='OPENAI_API_KEY')
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""

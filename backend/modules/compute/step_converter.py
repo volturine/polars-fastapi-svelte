@@ -28,13 +28,16 @@ def convert_step_format(frontend_step: dict) -> dict:
     if not step_type:
         raise ValueError('Step must have a type field')
 
-    step_id = frontend_step.get('id', 'Unknown Step')
     config = frontend_step.get('config', {})
+    config = _normalize_chart_config(step_type, config)
+    normalized_type = _normalize_chart_type(step_type)
+
+    step_id = frontend_step.get('id', 'Unknown Step')
 
     return {
         'name': step_id,
-        'operation': step_type,
-        'params': convert_config_to_params(step_type, config),
+        'operation': normalized_type,
+        'params': convert_config_to_params(normalized_type, config),
     }
 
 
@@ -310,6 +313,77 @@ def convert_expression_config(config: dict) -> dict:
     }
 
 
+def convert_plot_config(config: dict) -> dict:
+    return {
+        'chart_type': config.get('chart_type') or config.get('chartType') or 'bar',
+        'x_column': config.get('x_column') or config.get('xColumn') or '',
+        'y_column': config.get('y_column') or config.get('yColumn'),
+        'bins': config.get('bins', 10),
+        'aggregation': config.get('aggregation', 'sum'),
+        'group_column': config.get('group_column') or config.get('groupColumn'),
+    }
+
+
+def _normalize_chart_type(step_type: str) -> str:
+    if step_type == 'plot_bar':
+        return 'chart'
+    if step_type == 'plot_histogram':
+        return 'chart'
+    if step_type == 'plot_scatter':
+        return 'chart'
+    if step_type == 'plot_line':
+        return 'chart'
+    if step_type == 'plot_pie':
+        return 'chart'
+    if step_type == 'plot_boxplot':
+        return 'chart'
+    return step_type
+
+
+def _normalize_chart_config(step_type: str, config: dict) -> dict:
+    chart_map = {
+        'plot_bar': 'bar',
+        'plot_histogram': 'histogram',
+        'plot_scatter': 'scatter',
+        'plot_line': 'line',
+        'plot_pie': 'pie',
+        'plot_boxplot': 'boxplot',
+    }
+    if step_type not in chart_map:
+        return config
+    return {**config, 'chart_type': chart_map[step_type]}
+
+
+def convert_ai_config(config: dict) -> dict:
+    return {
+        'provider': config.get('provider', 'ollama'),
+        'model': config.get('model', 'llama2'),
+        'input_column': config.get('input_column') or config.get('inputColumn'),
+        'output_column': config.get('output_column') or config.get('outputColumn') or 'ai_result',
+        'prompt_template': config.get('prompt_template') or config.get('promptTemplate') or 'Classify this text: {{text}}',
+        'batch_size': config.get('batch_size', 10),
+        'endpoint_url': config.get('endpoint_url') or config.get('endpointUrl'),
+        'api_key': config.get('api_key') or config.get('apiKey'),
+        'request_options': config.get('request_options') or config.get('requestOptions'),
+    }
+
+
+def convert_notification_config(config: dict) -> dict:
+    return {
+        'method': config.get('method', 'email'),
+        'recipient': config.get('recipient', ''),
+        'subject_template': config.get('subject_template') or config.get('subjectTemplate') or 'Build Complete: {{analysis_name}}',
+        'body_template': config.get('body_template')
+        or config.get('bodyTemplate')
+        or 'Analysis: {{analysis_name}}\nStatus: {{status}}\nDuration: {{duration_ms}}ms\nRows: {{row_count}}',
+        'attach_result': config.get('attach_result', False),
+        'attach_error': config.get('attach_error', True),
+        'webhook_url': config.get('webhook_url') or config.get('webhookUrl'),
+        'timeout_seconds': config.get('timeout_seconds', 20),
+        'retries': config.get('retries', 0),
+    }
+
+
 def get_converters() -> dict:
     """Return all converters dictionary."""
     return {
@@ -337,6 +411,9 @@ def get_converters() -> dict:
         'export': convert_export_config,
         'union_by_name': convert_union_by_name_config,
         'expression': convert_expression_config,
+        'chart': convert_plot_config,
+        'ai': convert_ai_config,
+        'notification': convert_notification_config,
     }
 
 
@@ -348,4 +425,4 @@ def convert_config_to_params(operation: str, config: dict) -> dict:
         return converter(config)
     except Exception as e:
         logger.error(f'Error converting {operation} config: {e}')
-        return config if isinstance(config, dict) else {}
+        raise

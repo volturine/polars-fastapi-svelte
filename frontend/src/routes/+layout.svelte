@@ -100,6 +100,7 @@
 		{ href: '/', label: 'Analyses' },
 		{ href: '/datasources', label: 'Data Sources' },
 		{ href: '/builds', label: 'Builds' },
+		{ href: '/lineage', label: 'Lineage' },
 		{ href: '/udfs', label: 'UDF Library' }
 	];
 </script>
@@ -133,7 +134,8 @@
 							class:active={currentPath === item.href ||
 								(currentPath.startsWith('/analysis') && item.href === '/') ||
 								(currentPath.startsWith('/udfs') && item.href === '/udfs') ||
-								(currentPath.startsWith('/builds') && item.href === '/builds')}
+								(currentPath.startsWith('/builds') && item.href === '/builds') ||
+								(currentPath.startsWith('/lineage') && item.href === '/lineage')}
 						>
 							{item.label}
 						</a>

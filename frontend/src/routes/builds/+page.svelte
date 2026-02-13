@@ -79,12 +79,19 @@
 
 	function getQueryPlans(run: EngineRun): { optimized: string; unoptimized: string } | null {
 		const result = run.result_json;
-		if (!result || typeof result !== 'object') return null;
-		const plans = result.query_plans as { optimized?: string; unoptimized?: string } | undefined;
-		if (!plans) return null;
+		if (result && typeof result === 'object') {
+			const plans = result.query_plans as { optimized?: string; unoptimized?: string } | undefined;
+			if (plans) {
+				return {
+					optimized: plans.optimized ?? '',
+					unoptimized: plans.unoptimized ?? ''
+				};
+			}
+		}
+		if (!run.query_plan) return null;
 		return {
-			optimized: plans.optimized ?? '',
-			unoptimized: plans.unoptimized ?? ''
+			optimized: run.query_plan,
+			unoptimized: run.query_plan
 		};
 	}
 
@@ -169,7 +176,7 @@
 							<td class="border-b border-tertiary px-3 py-2">
 								<span class="inline-flex items-center gap-1.5">
 									{#if run.kind === 'preview'}
-									<Eye size={14} class="text-accent" />
+										<Eye size={14} class="text-accent" />
 										<span>Preview</span>
 									{:else}
 										<Download size={14} class="text-success-fg" />

@@ -1,0 +1,95 @@
+from dataclasses import dataclass
+from email.message import EmailMessage
+from typing import Final
+
+import requests  # type: ignore[import-untyped]
+
+from core.config import settings
+
+
+@dataclass(frozen=True)
+class NotificationAttachment:
+    filename: str
+    content: bytes
+    content_type: str = 'text/plain'
+
+
+_TELEGRAM_BASE_URL: Final[str] = 'https://api.telegram.org'
+
+
+def render_template(template: str, context: dict[str, object]) -> str:
+    output = template
+    for key, value in context.items():
+        output = output.replace(f'{{{{{key}}}}}', str(value))
+    return output
+
+
+class NotificationService:
+    def send_email(
+        self,
+        *,
+        to: str,
+        subject: str,
+        body: str,
+        attachments: list[NotificationAttachment] | None = None,
+    ) -> None:
+        if not settings.smtp_host:
+            raise ValueError('SMTP not configured (SMTP_HOST missing)')
+        if not settings.smtp_user:
+            raise ValueError('SMTP not configured (SMTP_USER missing)')
+
+        msg = EmailMessage()
+        msg['From'] = settings.smtp_user
+        msg['To'] = to
+        msg['Subject'] = subject
+        msg.set_content(body)
+        msg.add_alternative(body, subtype='html')
+
+        for attachment in attachments or []:
+            maintype, _, subtype = attachment.content_type.partition('/')
+            if not maintype or not subtype:
+                maintype = 'text'
+                subtype = 'plain'
+            msg.add_attachment(
+                attachment.content,
+                maintype=maintype,
+                subtype=subtype,
+                filename=attachment.filename,
+            )
+
+        import smtplib
+
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+            server.starttls()
+            if settings.smtp_password:
+                server.login(settings.smtp_user, settings.smtp_password)
+            server.send_message(msg)
+
+    def send_telegram(
+        self,
+        *,
+        chat_id: str,
+        message: str,
+        attachments: list[NotificationAttachment] | None = None,
+    ) -> None:
+        if not settings.telegram_bot_token:
+            raise ValueError('Telegram bot token not configured')
+        base = f'{_TELEGRAM_BASE_URL}/bot{settings.telegram_bot_token}'
+        response = requests.post(
+            f'{base}/sendMessage',
+            json={'chat_id': chat_id, 'text': message, 'parse_mode': 'HTML'},
+            timeout=20,
+        )
+        response.raise_for_status()
+
+        for attachment in attachments or []:
+            file_response = requests.post(
+                f'{base}/sendDocument',
+                data={'chat_id': chat_id},
+                files={'document': (attachment.filename, attachment.content, attachment.content_type)},
+                timeout=30,
+            )
+            file_response.raise_for_status()
+
+
+notification_service = NotificationService()

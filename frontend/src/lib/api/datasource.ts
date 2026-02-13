@@ -292,6 +292,20 @@ export function connectIceberg(
 	});
 }
 
+export function connectAnalysisDatasource(
+	name: string,
+	analysisId: string
+): ResultAsync<DataSource, ApiError> {
+	return apiRequest<DataSource>('/v1/datasource/connect', {
+		method: 'POST',
+		body: JSON.stringify({
+			name,
+			source_type: 'analysis',
+			config: { analysis_id: analysisId }
+		})
+	});
+}
+
 export function resolveIcebergMetadata(
 	metadataPath: string
 ): ResultAsync<{ metadata_path: string }, ApiError> {
@@ -349,6 +363,43 @@ export function getDatasourceSchema(
 	}
 	const suffix = params.toString() ? `?${params.toString()}` : '';
 	return apiRequest<SchemaInfo>(`/v1/datasource/${id}/schema${suffix}`);
+}
+
+export interface ColumnStatsResponse {
+	column: string;
+	dtype: string;
+	count: number;
+	null_count: number;
+	null_percentage: number;
+	unique?: number | null;
+	mean?: number | null;
+	std?: number | null;
+	min?: number | string | null;
+	max?: number | string | null;
+	median?: number | null;
+	q25?: number | null;
+	q75?: number | null;
+	true_count?: number | null;
+	false_count?: number | null;
+	min_length?: number | null;
+	max_length?: number | null;
+	avg_length?: number | null;
+	top_values?: Array<Record<string, unknown>> | null;
+}
+
+export function getColumnStats(
+	datasourceId: string,
+	columnName: string,
+	options?: { sample?: boolean }
+): ResultAsync<ColumnStatsResponse, ApiError> {
+	const params = new URLSearchParams();
+	if (options?.sample === false) {
+		params.set('sample', 'false');
+	}
+	const suffix = params.toString() ? `?${params.toString()}` : '';
+	return apiRequest<ColumnStatsResponse>(
+		`/v1/datasource/${datasourceId}/column/${encodeURIComponent(columnName)}/stats${suffix}`
+	);
 }
 
 export function deleteDatasource(id: string): ResultAsync<void, ApiError> {

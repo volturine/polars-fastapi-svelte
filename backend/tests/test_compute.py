@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy import select
 
+from core.exceptions import PipelineValidationError
 from modules.compute.engine import PolarsComputeEngine
 from modules.datasource.models import DataSource
 from modules.engine_runs.models import EngineRun
@@ -274,11 +275,16 @@ def test_pipeline_cycle_detection(mock_apply_step: MagicMock, mock_load: MagicMo
     mock_apply_step.side_effect = lambda frame, _step, **kwargs: frame
 
     pipeline_steps = [
-        {'id': 'step1', 'type': 'filter', 'config': {}, 'depends_on': ['step2']},
-        {'id': 'step2', 'type': 'select', 'config': {}, 'depends_on': ['step1']},
+        {
+            'id': 'step1',
+            'type': 'filter',
+            'config': {'conditions': [{'column': 'col', 'operator': '>', 'value': 1}]},
+            'depends_on': ['step2'],
+        },
+        {'id': 'step2', 'type': 'select', 'config': {'columns': ['col']}, 'depends_on': ['step1']},
     ]
 
-    with pytest.raises(ValueError, match='cycle'):
+    with pytest.raises(PipelineValidationError, match='cycle'):
         PolarsComputeEngine._build_pipeline({}, pipeline_steps, 'job', MagicMock())
 
 
@@ -289,12 +295,22 @@ def test_pipeline_multiple_dependencies(mock_apply_step: MagicMock, mock_load: M
     mock_apply_step.side_effect = lambda frame, _step, **kwargs: frame
 
     pipeline_steps = [
-        {'id': 'step1', 'type': 'filter', 'config': {}, 'depends_on': []},
-        {'id': 'step2', 'type': 'select', 'config': {}, 'depends_on': ['step1', 'step3']},
-        {'id': 'step3', 'type': 'sort', 'config': {}, 'depends_on': []},
+        {
+            'id': 'step1',
+            'type': 'filter',
+            'config': {'conditions': [{'column': 'col', 'operator': '>', 'value': 1}]},
+            'depends_on': [],
+        },
+        {
+            'id': 'step2',
+            'type': 'select',
+            'config': {'columns': ['col']},
+            'depends_on': ['step1', 'step3'],
+        },
+        {'id': 'step3', 'type': 'sort', 'config': {'columns': ['col'], 'descending': [False]}, 'depends_on': []},
     ]
 
-    with pytest.raises(ValueError, match='multiple dependencies'):
+    with pytest.raises(PipelineValidationError, match='multiple dependencies'):
         PolarsComputeEngine._build_pipeline({}, pipeline_steps, 'job', MagicMock())
 
 
@@ -308,13 +324,23 @@ def test_pipeline_topological_order(mock_apply_step: MagicMock, mock_load: Magic
     mock_apply_step.return_value = fake_lf
 
     pipeline_steps = [
-        {'id': 'step1', 'type': 'filter', 'config': {}, 'depends_on': []},
-        {'id': 'step2', 'type': 'select', 'config': {}, 'depends_on': ['step1']},
-        {'id': 'step3', 'type': 'sort', 'config': {}, 'depends_on': ['step2']},
+        {
+            'id': 'step1',
+            'type': 'filter',
+            'config': {'conditions': [{'column': 'col', 'operator': '>', 'value': 1}]},
+            'depends_on': [],
+        },
+        {'id': 'step2', 'type': 'select', 'config': {'columns': ['col']}, 'depends_on': ['step1']},
+        {
+            'id': 'step3',
+            'type': 'sort',
+            'config': {'columns': ['col'], 'descending': [False]},
+            'depends_on': ['step2'],
+        },
     ]
 
-    # _build_pipeline returns a LazyFrame, not a dict
-    result = PolarsComputeEngine._build_pipeline({}, pipeline_steps, 'job', MagicMock())
+    # build_pipeline returns just the LazyFrame
+    result = PolarsComputeEngine.build_pipeline({}, pipeline_steps, 'job', MagicMock())
     assert result == fake_lf
 
 

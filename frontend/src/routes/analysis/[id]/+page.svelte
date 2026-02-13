@@ -3,10 +3,10 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { createQuery } from '@tanstack/svelte-query';
-	import { FiniteStateMachine } from 'runed';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
+	import { buildAnalysisPipelinePayload } from '$lib/utils/analysis-pipeline';
 	import {
 		acquireLock,
 		releaseLock,
@@ -14,6 +14,7 @@
 		hasLock
 	} from '$lib/stores/lockManager.svelte';
 	import { getAnalysis } from '$lib/api/analysis';
+	import { apiRequest } from '$lib/api/client';
 	import { getDatasourceSchema, listDatasources } from '$lib/api/datasource';
 	import { spawnEngine } from '$lib/api/compute';
 	import type { PipelineStep, AnalysisTab } from '$lib/types/analysis';
@@ -30,7 +31,17 @@
 	import { schemaStore } from '$lib/stores/schema.svelte';
 	import { ChevronDown, ChevronLeft, ChevronRight, Plus, X } from 'lucide-svelte';
 
-	const analysisId = $derived($page.params.id);
+	type AnalysisVersion = {
+		id: string;
+		analysis_id: string;
+		version: number;
+		name: string;
+		description: string | null;
+		pipeline_definition: Record<string, unknown>;
+		created_at: string;
+	};
+
+	const analysisId = $derived($page.params.id ?? null);
 	let lastAnalysisId = $state<string | null>(null);
 
 	let selectedStepId = $state<string | null>(null);
@@ -134,10 +145,13 @@
 	const HEARTBEAT_INTERVAL_MS = 10000;
 	let showDatasourceModal = $state(false);
 	let modalMode = $state<'add' | 'change'>('add');
+	let modalSource = $state<'datasource' | 'analysis'>('datasource');
 	let leftPaneCollapsed = $state(false);
 	let rightPaneCollapsed = $state(false);
 	let isEditingMode = $state(false);
 	let showModeDropdown = $state(false);
+	let showVersionModal = $state(false);
+	let versionError = $state<string | null>(null);
 	let keepaliveInterval: number | null = null;
 
 	// Responsive: auto-collapse panes on narrow screens
@@ -174,6 +188,25 @@
 		refetchOnMount: 'always',
 		retry: false
 	}));
+
+	const versionsQuery = createQuery(() => ({
+		queryKey: ['analysis-versions', analysisId],
+		enabled: false,
+		queryFn: async () => {
+			if (!analysisId) throw new Error('Analysis ID is required');
+			const result = await apiRequest<AnalysisVersion[]>(`/v1/analysis/${analysisId}/versions`);
+			if (result.isErr()) throw new Error(result.error.message);
+			return result.value;
+		}
+	}));
+
+	const analysisTabs = $derived.by(() => {
+		const title = analysisStore.current?.name ?? analysisQuery.data?.name ?? 'Analysis';
+		return analysisStore.tabs.map((tab) => ({
+			id: tab.id,
+			name: `${title} · ${tab.name}`
+		}));
+	});
 
 	const datasourcesQuery = createQuery(() => ({
 		queryKey: ['datasources'],
@@ -215,6 +248,63 @@
 		if (existingSchema) return;
 
 		isLoadingSchema = true;
+		const current = datasourcesQuery.data?.find((ds) => ds.id === datasourceIdValue) ?? null;
+		const analysisSourceId =
+			(analysisStore.activeTab?.datasource_config?.analysis_id as string | null) ??
+			(current?.config?.analysis_id as string | null) ??
+			null;
+		const analysisTabId =
+			(analysisStore.activeTab?.datasource_config?.analysis_tab_id as string | null) ??
+			(current?.config?.analysis_tab_id as string | null) ??
+			null;
+		const analysisPayload =
+			analysisSourceId && analysisId && analysisSourceId === analysisId
+				? buildAnalysisPipelinePayload(analysisId, analysisStore.tabs, datasourceStore.datasources)
+				: null;
+
+		if (analysisSourceId) {
+			const tabParam = analysisTabId ? `?analysis_tab_id=${encodeURIComponent(analysisTabId)}` : '';
+			const body = analysisPayload ? JSON.stringify({ pipeline: analysisPayload }) : undefined;
+			void fetch(`/api/v1/analysis/${analysisSourceId}/execute${tabParam}`, {
+				method: 'POST',
+				body,
+				headers: body ? { 'Content-Type': 'application/json' } : undefined
+			})
+				.then((response) => {
+					if (!response.ok) {
+						throw new Error('Failed to execute analysis');
+					}
+					return response.json() as Promise<{
+						schema: Record<string, string>;
+						rows: Array<Record<string, unknown>>;
+						row_count?: number;
+					}>;
+				})
+				.then((payload) => {
+					const columns = Object.entries(payload.schema).map(([name, dtype]) => ({
+						name,
+						dtype: String(dtype),
+						nullable: true
+					}));
+					analysisStore.setSourceSchema(datasourceIdValue, {
+						columns,
+						row_count: payload.row_count ?? payload.rows.length
+					});
+					isLoadingSchema = false;
+				})
+				.catch((error: unknown) => {
+					const message = error instanceof Error ? error.message : 'Failed to execute analysis';
+					track({
+						event: 'schema_error',
+						action: 'analysis_source_schema',
+						target: analysisSourceId,
+						meta: { message }
+					});
+					isLoadingSchema = false;
+				});
+			return;
+		}
+
 		getDatasourceSchema(datasourceIdValue).match(
 			(schema) => {
 				analysisStore.setSourceSchema(datasourceIdValue, schema);
@@ -265,6 +355,9 @@
 
 	function handleAddStep(type: string) {
 		if (!isEditingMode) return;
+		if (type === 'chart' && analysisStore.pipeline.some((step) => step.type === 'chart')) {
+			return;
+		}
 		const step = buildStep(type);
 		analysisStore.addStep(step);
 		selectedStepId = step.id;
@@ -273,6 +366,12 @@
 
 	function handleInsertStep(type: string, target: DropTarget) {
 		if (!isEditingMode) return;
+		if (type === 'chart' && analysisStore.pipeline.some((step) => step.type === 'chart')) {
+			return;
+		}
+		if (type === 'chart' && target.nextId) {
+			return;
+		}
 		const step = buildStep(type);
 		const inserted = analysisStore.insertStep(step, target.index, target.parentId, target.nextId);
 		if (inserted) {
@@ -445,6 +544,38 @@
 		markUnsaved();
 	}
 
+	function handleAddAnalysisTab(
+		datasourceId: string,
+		sourceAnalysisId: string,
+		name: string,
+		sourceTabId: string | null
+	) {
+		if (
+			modalMode === 'change' &&
+			analysisId &&
+			sourceAnalysisId === analysisId &&
+			sourceTabId === analysisStore.activeTabId
+		) {
+			alert('Select a different tab to avoid using the current tab as its own source.');
+			return;
+		}
+		const tab: AnalysisTab = {
+			id: `tab-analysis-${datasourceId}-${Date.now()}`,
+			name,
+			type: 'datasource',
+			parent_id: null,
+			datasource_id: datasourceId,
+			datasource_config: sourceTabId
+				? { analysis_id: sourceAnalysisId, analysis_tab_id: sourceTabId }
+				: { analysis_id: sourceAnalysisId },
+			steps: []
+		};
+		analysisStore.addTab(tab);
+		analysisStore.setActiveTab(tab.id);
+		showDatasourceModal = false;
+		markUnsaved();
+	}
+
 	function handleChangeDatasource(datasourceId: string, name: string) {
 		const active = analysisStore.activeTab;
 		if (!active) return;
@@ -453,12 +584,62 @@
 		markUnsaved();
 	}
 
-	function handleDatasourceSelect(datasourceId: string, name: string) {
+	function handleDatasourceSelect(
+		datasourceId: string,
+		name: string,
+		source: 'datasource' | 'analysis'
+	) {
+		if (source === 'analysis') {
+			const analysisTabId = datasourceId;
+			const analysisMatch = datasourcesQuery.data?.find((item) => {
+				if (item.source_type !== 'analysis') return false;
+				if (item.config?.analysis_tab_id !== analysisTabId) return false;
+				return String(item.config?.analysis_id ?? '') === String(analysisId ?? '');
+			});
+			if (analysisMatch) {
+				handleAddAnalysisTab(
+					analysisMatch.id,
+					String(analysisMatch.config?.analysis_id ?? ''),
+					name,
+					analysisTabId
+				);
+				return;
+			}
+			void fetch('/api/v1/datasource/connect', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name,
+					source_type: 'analysis',
+					config: { analysis_id: analysisId, analysis_tab_id: analysisTabId }
+				})
+			})
+				.then((response) => {
+					if (!response.ok) {
+						throw new Error('Failed to add analysis source');
+					}
+					return response.json() as Promise<{ id: string; name: string }>;
+				})
+				.then((result) => {
+					handleAddAnalysisTab(result.id, analysisId ?? '', name, analysisTabId);
+				})
+				.catch((error: unknown) => {
+					const message = error instanceof Error ? error.message : 'Failed to add analysis source';
+					track({
+						event: 'datasource_error',
+						action: 'analysis_source',
+						target: datasourceId,
+						meta: { message }
+					});
+					alert(`Failed to add analysis source: ${message}`);
+				});
+			return;
+		}
 		if (modalMode === 'change') {
 			handleChangeDatasource(datasourceId, name);
-		} else {
-			handleAddTab(datasourceId, name);
+			return;
 		}
+		handleAddTab(datasourceId, name);
 	}
 
 	function handleRemoveTab(tabId: string) {
@@ -477,11 +658,54 @@
 
 	function openDatasourceModal(mode: 'add' | 'change' = 'add') {
 		modalMode = mode;
+		modalSource = 'datasource';
 		showDatasourceModal = true;
 	}
 
 	function closeDatasourceModal() {
 		showDatasourceModal = false;
+	}
+
+	function openVersionModal() {
+		showModeDropdown = false;
+		versionError = null;
+		showVersionModal = true;
+		versionsQuery.refetch().catch(() => {
+			versionError = 'Failed to load version history';
+		});
+	}
+
+	function closeVersionModal() {
+		showVersionModal = false;
+		versionError = null;
+	}
+
+	function handleVersionKeydown(event: KeyboardEvent) {
+		if (!showVersionModal) return;
+		if (event.key !== 'Escape') return;
+		closeVersionModal();
+	}
+
+	function formatVersionDate(value: string | null | undefined): string {
+		if (!value) return 'Unknown';
+		const parsed = new Date(value);
+		if (Number.isNaN(parsed.getTime())) return 'Unknown';
+		return parsed.toLocaleString();
+	}
+
+	async function handleRestoreVersion(version: number) {
+		if (!analysisId) return;
+		versionError = null;
+		const result = await apiRequest(`/v1/analysis/${analysisId}/versions/${version}/restore`, {
+			method: 'POST'
+		});
+		if (result.isErr()) {
+			versionError = result.error.message;
+			return;
+		}
+		analysisStore.applyAnalysis(result.value as import('$lib/types/analysis').Analysis);
+		showVersionModal = false;
+		isDirty = false;
 	}
 </script>
 
@@ -588,13 +812,16 @@
 								{/if}
 							</div>
 						{/each}
-						<button
-							class="tab add-tab inline-flex items-center bg-transparent border-none cursor-pointer text-sm font-semibold uppercase px-2 py-1 text-fg-muted gap-1 tracking-[0.06em]"
-							onclick={() => openDatasourceModal('add')}
-							type="button"
-						>
-							<Plus size={14} />
-						</button>
+						<div class="flex items-center gap-1">
+							<button
+								class="tab add-tab inline-flex items-center bg-transparent border-none cursor-pointer text-sm font-semibold uppercase px-2 py-1 text-fg-muted gap-1 tracking-[0.06em]"
+								onclick={() => openDatasourceModal('add')}
+								type="button"
+								title="Add datasource tab"
+							>
+								<Plus size={14} />
+							</button>
+						</div>
 					</div>
 				</div>
 				<button
@@ -616,7 +843,7 @@
 			<div
 				class="header-right flex items-center justify-end h-full box-border border-l border-tertiary panel-width"
 			>
-				<div class="relative items-center px-1">
+				<div class="mode-toggle-container relative items-center px-1">
 					<button
 						class="mode-toggle flex items-center cursor-pointer text-sm py-2 bg-tertiary border border-tertiary text-fg-secondary gap-2 hover:bg-hover hover:border-tertiary"
 						onclick={() => (showModeDropdown = !showModeDropdown)}
@@ -653,6 +880,14 @@
 									<div class="w-4 h-4 rounded-full border-2 border-accent-primary"></div>
 								{/if}
 								<span>Editing</span>
+							</button>
+							<button
+								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary hover:bg-hover"
+								onclick={openVersionModal}
+								type="button"
+							>
+								<div class="w-4 h-4 rounded-full border-2 border-accent-primary"></div>
+								<span>Rollback</span>
 							</button>
 						</div>
 					{/if}
@@ -698,7 +933,7 @@
 			>
 				<PipelineCanvas
 					steps={analysisStore.pipeline}
-					{analysisId}
+					analysisId={analysisId ?? undefined}
 					{datasourceId}
 					datasource={currentDatasource}
 					tabName={analysisStore.activeTab?.name}
@@ -731,13 +966,74 @@
 	</div>
 {/if}
 
+<svelte:window onkeydown={handleVersionKeydown} />
+
 <DatasourceSelectorModal
 	show={showDatasourceModal}
 	datasources={datasourcesQuery.data ?? []}
 	isLoading={datasourcesQuery.isLoading}
 	mode={modalMode}
+	sourceType={modalSource}
+	{analysisTabs}
+	excludeTabId={analysisStore.activeTabId}
 	onSelect={handleDatasourceSelect}
 	onClose={closeDatasourceModal}
 />
+
+{#if showVersionModal}
+	<div class="modal-backdrop" aria-hidden="true"></div>
+	<div class="modal" role="dialog" aria-modal="true" aria-labelledby="analysis-version-title">
+		<div class="modal-header">
+			<h2 id="analysis-version-title">Version history</h2>
+			<button class="modal-close" onclick={closeVersionModal} aria-label="Close">
+				<X size={16} />
+			</button>
+		</div>
+		<div class="modal-body">
+			{#if versionError}
+				<div class="error-box m-0">
+					{versionError}
+				</div>
+			{/if}
+			{#if versionsQuery.isLoading}
+				<div class="flex items-center justify-center p-8 text-sm text-fg-muted">Loading...</div>
+			{:else if versionsQuery.isError}
+				<div class="error-box m-0">Failed to load version history.</div>
+			{:else if !versionsQuery.data?.length}
+				<p class="empty-message">No versions available.</p>
+			{:else}
+				<div class="flex flex-col gap-2">
+					{#each versionsQuery.data as version (version.id)}
+						<div
+							class="flex items-start justify-between gap-4 border border-tertiary bg-tertiary p-3"
+						>
+							<div class="flex min-w-0 flex-col gap-1">
+								<div class="text-[0.65rem] uppercase tracking-[0.1em] text-fg-muted">
+									Version {version.version} · {formatVersionDate(version.created_at)}
+								</div>
+								<div class="text-sm font-semibold text-fg-primary">
+									{version.name}
+								</div>
+								{#if version.description}
+									<div class="text-xs text-fg-muted">{version.description}</div>
+								{/if}
+							</div>
+							<button
+								class="btn-secondary btn-sm shrink-0"
+								onclick={() => handleRestoreVersion(version.version)}
+								type="button"
+							>
+								Restore
+							</button>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+		<div class="modal-footer">
+			<button class="btn-secondary" onclick={closeVersionModal}>Close</button>
+		</div>
+	</div>
+{/if}
 
 <DragPreview />

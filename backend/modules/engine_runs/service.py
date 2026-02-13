@@ -6,6 +6,7 @@ from sqlmodel import Session
 
 from modules.engine_runs.models import EngineRun
 from modules.engine_runs.schemas import EngineRunCreateSchema, EngineRunResponseSchema
+from modules.engine_runs.utils import normalize_step_timings
 
 
 def create_engine_run(
@@ -24,6 +25,10 @@ def create_engine_run(
         created_at=payload.created_at,
         completed_at=payload.completed_at,
         duration_ms=payload.duration_ms,
+        step_timings=normalize_step_timings(payload.step_timings),
+        query_plan=payload.query_plan,
+        progress=payload.progress,
+        current_step=payload.current_step,
     )
     session.add(run)
     session.commit()
@@ -42,6 +47,10 @@ def create_engine_run_payload(
     created_at: datetime | None = None,
     completed_at: datetime | None = None,
     duration_ms: int | None = None,
+    step_timings: dict | None = None,
+    query_plan: str | None = None,
+    progress: float = 0.0,
+    current_step: str | None = None,
 ) -> EngineRunCreateSchema:
     return EngineRunCreateSchema(
         id=str(uuid.uuid4()),
@@ -55,6 +64,10 @@ def create_engine_run_payload(
         created_at=created_at or datetime.now(UTC),
         completed_at=completed_at,
         duration_ms=duration_ms,
+        step_timings=step_timings or {},
+        query_plan=query_plan,
+        progress=progress,
+        current_step=current_step,
     )
 
 
@@ -81,4 +94,9 @@ def list_engine_runs(
     stmt = stmt.order_by(desc(EngineRun.created_at)).limit(limit).offset(offset)  # type: ignore[arg-type]
     result = session.execute(stmt)
     runs = result.scalars().all()
-    return [EngineRunResponseSchema.model_validate(run) for run in runs]
+    response: list[EngineRunResponseSchema] = []
+    for run in runs:
+        payload = run.model_dump()
+        payload['step_timings'] = normalize_step_timings(run.step_timings)
+        response.append(EngineRunResponseSchema.model_validate(payload))
+    return response

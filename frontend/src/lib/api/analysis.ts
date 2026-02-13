@@ -30,8 +30,47 @@ export function updateAnalysis(id: string, data: AnalysisUpdate): ResultAsync<An
 	});
 }
 
+export function listAnalysisVersions(analysisId: string): ResultAsync<AnalysisVersion[], ApiError> {
+	return apiRequest<AnalysisVersion[]>(`/v1/analysis/${analysisId}/versions`);
+}
+
+export function restoreAnalysisVersion(
+	analysisId: string,
+	version: number
+): ResultAsync<Analysis, ApiError> {
+	return apiRequest<Analysis>(`/v1/analysis/${analysisId}/versions/${version}/restore`, {
+		method: 'POST'
+	});
+}
+
 export function deleteAnalysis(id: string): ResultAsync<void, ApiError> {
 	return apiRequest<void>(`/v1/analysis/${id}`, {
 		method: 'DELETE'
+	});
+}
+
+export type AnalysisVersion = {
+	id: string;
+	analysis_id: string;
+	version: number;
+	name: string;
+	description: string | null;
+	pipeline_definition: Record<string, unknown>;
+	created_at: string;
+};
+
+export type AnalysisExecuteResponse = {
+	schema: Record<string, string>;
+	rows: Array<Record<string, unknown>>;
+	row_count?: number;
+};
+
+export function executeAnalysis(
+	analysisId: string,
+	analysisTabId?: string | null
+): ResultAsync<AnalysisExecuteResponse, ApiError> {
+	const params = analysisTabId ? `?analysis_tab_id=${encodeURIComponent(analysisTabId)}` : '';
+	return apiRequest<AnalysisExecuteResponse>(`/v1/analysis/${analysisId}/execute${params}`, {
+		method: 'POST'
 	});
 }

@@ -8,6 +8,7 @@ from starlette.concurrency import run_in_threadpool
 
 from core.config import settings
 from core.database import get_db, run_db
+from core.error_handlers import handle_errors
 from core.exceptions import DataSourceNotFoundError, DataSourceValidationError
 from modules.compute.operations.datasource import resolve_iceberg_metadata_path
 from modules.datasource import schemas, service
@@ -387,9 +388,22 @@ def connect_datasource(
                 namespace=iceberg_config.namespace,
                 table=iceberg_config.table,
             )
+        if datasource.source_type == 'analysis':
+            analysis_id = datasource.config.get('analysis_id')
+            analysis_tab_id = datasource.config.get('analysis_tab_id')
+            if not analysis_id:
+                raise HTTPException(status_code=400, detail='analysis_id required for analysis datasource')
+            return service.create_analysis_datasource(
+                session=session,
+                name=datasource.name,
+                analysis_id=str(analysis_id),
+                analysis_tab_id=str(analysis_tab_id) if analysis_tab_id else None,
+            )
         raise HTTPException(
             status_code=400,
-            detail=f'Unsupported source type: {datasource.source_type}. Use "file", "database", "api", "duckdb", or "iceberg"',
+            detail=(
+                f'Unsupported source type: {datasource.source_type}. Use "file", "database", "api", "duckdb", "iceberg", or "analysis"'
+            ),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -404,6 +418,14 @@ def list_datasources(session: Session = Depends(get_db)):
         return service.list_datasources(session)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Failed to list datasources: {str(e)}')
+
+
+@router.get('/lineage')
+@handle_errors(operation='get lineage')
+def get_lineage(session: Session = Depends(get_db)):
+    from modules.datasource.service_lineage import build_lineage
+
+    return build_lineage(session)
 
 
 @router.get('/{datasource_id}', response_model=schemas.DataSourceResponse)
@@ -434,6 +456,27 @@ def get_datasource_schema(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Failed to get schema: {str(e)}')
+
+
+@router.get('/{datasource_id}/column/{column_name}/stats', response_model=schemas.ColumnStatsResponse)
+def get_column_stats(
+    datasource_id: str,
+    column_name: str,
+    sample: bool = True,
+    session: Session = Depends(get_db),
+):
+    """Get stats for a single column in a datasource."""
+    try:
+        return service.get_column_stats(
+            session=session,
+            datasource_id=datasource_id,
+            column_name=column_name,
+            use_sample=sample,
+        )
+    except (ValueError, DataSourceNotFoundError) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'Failed to get column stats: {str(e)}')
 
 
 @router.get('/iceberg/resolve')

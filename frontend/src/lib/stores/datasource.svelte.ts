@@ -51,6 +51,11 @@ export class DatasourceStore {
 		const cached = this.schemas.get(id);
 		if (cached && !sheetName) return cached;
 
+		const datasource = this.getDatasource(id);
+		if (datasource?.source_type === 'analysis') {
+			throw new Error('Schema must be fetched via analysis output');
+		}
+
 		const result = sheetName
 			? await getDatasourceSchema(id, { sheetName })
 			: await getDatasourceSchema(id);

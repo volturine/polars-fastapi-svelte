@@ -77,6 +77,9 @@
 	--accent-bg: #f4f4f5;
 	--border-primary: #e0e0e0;
 	--color-transparent: transparent;
+	--source-analysis-fg: var(--accent-primary);
+	--source-analysis-border: var(--border-primary);
+	--source-analysis-bg: var(--accent-bg);
 
 	--success-fg: #86efac;
 	--success-bg: #14532d;
@@ -90,12 +93,15 @@
 	--error-bg: #7f1d1d;
 	--error-border: #991b1b;
 
-
 	--overlay-bg: rgba(0, 0, 0, 0.55);
 	--overlay-soft: rgba(0, 0, 0, 0.4);
 
 	/* Pipeline canvas */
 	--pipeline-grid-line: color-mix(in srgb, #09090b 6%, transparent);
+	--lineage-node: #ffffff;
+	--lineage-node-border: #e0e0e0;
+	--lineage-edge: #c4c4c4;
+	--lineage-edge-active: #09090b;
 }
 
 /* Explicit dark theme class */
@@ -116,9 +122,15 @@
 	--accent-secondary: #d4d4d4;
 	--accent-bg: #1f1f1f;
 	--border-primary: #2b2b2ba9;
-
+	--source-analysis-fg: var(--accent-primary);
+	--source-analysis-border: var(--border-primary);
+	--source-analysis-bg: var(--accent-bg);
 
 	--pipeline-grid-line: color-mix(in srgb, #fafafa 14%, transparent);
+	--lineage-node: #111111;
+	--lineage-node-border: #2b2b2b;
+	--lineage-edge: #3a3a3a;
+	--lineage-edge-active: #fafafa;
 }
 
 /* ============================================
@@ -509,6 +521,25 @@ button.btn-sm {
 	margin-bottom: 0.75rem;
 	font-size: 1rem;
 	color: var(--fg-secondary);
+}
+
+.lineage-node {
+	width: 240px;
+	background: var(--lineage-node);
+	border-color: var(--lineage-node-border);
+	cursor: grab;
+	transition:
+		box-shadow var(--transition),
+		transform var(--transition);
+}
+
+.lineage-node:active {
+	cursor: grabbing;
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+.lineage-canvas {
+	min-height: 420px;
 }
 
 /* Form Section */
@@ -1002,7 +1033,6 @@ button.btn-sm {
 	color: var(--warning-fg);
 }
 
-
 /* Background colors */
 .bg-primary {
 	background-color: var(--bg-primary);
@@ -1060,7 +1090,6 @@ button.btn-sm {
 	background-color: var(--accent-bg);
 }
 
-
 .bg-border-primary {
 	background-color: var(--border-primary);
 }
@@ -1098,8 +1127,6 @@ button.btn-sm {
 .bg-overlay-soft {
 	background-color: var(--overlay-soft);
 }
-
-
 
 .bg-warning-fg {
 	background-color: var(--warning-fg);
@@ -1494,6 +1521,12 @@ button.btn-sm {
 }
 
 .file-badge.source-duckdb {
+	color: var(--accent-primary);
+	border-color: var(--border-primary);
+	background-color: var(--accent-bg);
+}
+
+.file-badge.source-analysis {
 	color: var(--accent-primary);
 	border-color: var(--border-primary);
 	background-color: var(--accent-bg);

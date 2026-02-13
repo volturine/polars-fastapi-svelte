@@ -4,6 +4,7 @@ from sqlmodel import Session
 from core.database import get_db
 from core.error_handlers import handle_errors
 from modules.engine_runs import schemas, service
+from modules.engine_runs.models import EngineRun
 
 router = APIRouter(prefix='/engine-runs', tags=['engine-runs'])
 
@@ -28,3 +29,14 @@ def list_runs(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get('/{run_id}', response_model=schemas.EngineRunResponseSchema)
+@handle_errors(operation='get engine run')
+def get_run(run_id: str, session: Session = Depends(get_db)):
+    run = session.get(EngineRun, run_id)
+    if not run:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail='Engine run not found')
+    return schemas.EngineRunResponseSchema.model_validate(run)

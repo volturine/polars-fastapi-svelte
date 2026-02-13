@@ -25,9 +25,12 @@
 	} from '$lib/types/operation-config';
 	import { schemaStore } from '$lib/stores/schema.svelte';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { configStore } from '$lib/stores/config.svelte';
+	import { datasourceStore } from '$lib/stores/datasource.svelte';
 	import { getStepSchema, type StepSchemaResponse } from '$lib/api/compute';
 	import { track } from '$lib/utils/audit-log';
 	import { normalizeConfig } from '$lib/utils/step-config-defaults';
+	import { buildDatasourceConfig } from '$lib/utils/analysis-pipeline';
 	import FilterConfig from '$lib/components/operations/FilterConfig.svelte';
 	import SelectConfig from '$lib/components/operations/SelectConfig.svelte';
 	import GroupByConfig from '$lib/components/operations/GroupByConfig.svelte';
@@ -50,6 +53,9 @@
 	import NullCountConfig from '$lib/components/operations/NullCountConfig.svelte';
 	import ValueCountsConfig from '$lib/components/operations/ValueCountsConfig.svelte';
 	import UnpivotConfig from '$lib/components/operations/UnpivotConfig.svelte';
+	import PlotConfig from '$lib/components/operations/PlotConfig.svelte';
+	import NotificationConfig from '$lib/components/operations/NotificationConfig.svelte';
+	import AIConfig from '$lib/components/operations/AIConfig.svelte';
 	import ExportConfig from '$lib/components/operations/ExportConfig.svelte';
 	import UnionByNameConfig from '$lib/components/operations/UnionByNameConfig.svelte';
 	import { Settings2, X } from 'lucide-svelte';
@@ -89,6 +95,11 @@
 			? (schemaStore.getInput(step.id) ?? { columns: [], row_count: null })
 			: { columns: [], row_count: null }
 	);
+
+	const configFlags = $derived({
+		smtpEnabled: configStore.smtpEnabled,
+		telegramEnabled: configStore.telegramEnabled
+	});
 
 	function cloneConfig(
 		config: Record<string, unknown> | null | undefined
@@ -149,11 +160,19 @@
 			};
 		});
 
+		const datasourceConfig = buildDatasourceConfig({
+			analysisId: analysis.id,
+			tab: analysisStore.activeTab ?? null,
+			tabs: analysisStore.tabs,
+			datasources: datasourceStore.datasources
+		});
+
 		getStepSchema({
 			analysis_id: analysis.id,
 			datasource_id: datasourceId,
 			pipeline_steps: pipelineSteps,
-			target_step_id: step.id
+			target_step_id: step.id,
+			datasource_config: datasourceConfig
 		})
 			.map((response: StepSchemaResponse) => {
 				schemaStore.setPreviewSchema(step.id, response.columns, response.column_types);
@@ -226,7 +245,7 @@
 				</div>
 			{:else if isLoadingSchema}
 				<div
-				class="flex flex-col items-center justify-center gap-3 bg-primary p-6 text-center text-fg-tertiary"
+					class="flex flex-col items-center justify-center gap-3 bg-primary p-6 text-center text-fg-tertiary"
 				>
 					<div class="spinner-md"></div>
 					<p class="m-0">Loading schema...</p>
@@ -302,7 +321,7 @@
 			{:else if step.type === 'view'}
 				<ViewConfig schema={inputSchema} bind:config={draftConfig as unknown as ViewConfigData} />
 			{:else if step.type === 'datasource'}
-			<div class="bg-primary p-6 text-center">
+				<div class="bg-primary p-6 text-center">
 					<p class="m-0 mb-3 text-fg-tertiary">Datasource options are set during upload.</p>
 				</div>
 			{:else if step.type === 'sample'}
@@ -334,8 +353,20 @@
 						draftConfig as unknown as { format?: string; filename?: string; destination?: string }
 					}
 				/>
+			{:else if step.type === 'chart'}
+				<PlotConfig
+					schema={inputSchema}
+					bind:config={draftConfig as unknown as Record<string, unknown>}
+				/>
+			{:else if step.type === 'notification'}
+				<NotificationConfig
+					bind:config={draftConfig as unknown as Record<string, unknown>}
+					{configFlags}
+				/>
+			{:else if step.type === 'ai'}
+				<AIConfig bind:config={draftConfig as unknown as Record<string, unknown>} />
 			{:else}
-			<div class="bg-primary p-6 text-center">
+				<div class="bg-primary p-6 text-center">
 					<p class="m-0 mb-3 text-fg-tertiary">
 						Configuration for {step.type} is not yet implemented
 					</p>

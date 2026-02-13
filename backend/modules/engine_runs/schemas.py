@@ -1,6 +1,6 @@
 import datetime as dt
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EngineRunCreateSchema(BaseModel):
@@ -17,6 +17,10 @@ class EngineRunCreateSchema(BaseModel):
     created_at: dt.datetime
     completed_at: dt.datetime | None = None
     duration_ms: int | None = None
+    step_timings: dict = Field(default_factory=dict)
+    query_plan: str | None = None
+    progress: float = 0.0
+    current_step: str | None = None
 
 
 class EngineRunResponseSchema(BaseModel):
@@ -33,3 +37,7 @@ class EngineRunResponseSchema(BaseModel):
     created_at: dt.datetime
     completed_at: dt.datetime | None
     duration_ms: int | None
+    step_timings: dict
+    query_plan: str | None
+    progress: float
+    current_step: str | None

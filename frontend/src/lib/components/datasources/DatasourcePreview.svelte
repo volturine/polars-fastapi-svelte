@@ -2,6 +2,9 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { previewStepData, type StepPreviewResponse } from '$lib/api/compute';
 	import DataTable from '$lib/components/viewers/DataTable.svelte';
+	import { datasourceStore } from '$lib/stores/datasource.svelte';
+	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { buildAnalysisPipelinePayload } from '$lib/utils/analysis-pipeline';
 
 	interface Props {
 		datasourceId: string;
@@ -15,13 +18,48 @@
 	let columnSearch = $state('');
 
 	$effect(() => {
+		// Reset pagination when datasource selection changes; requires effect to update state.
 		if (!datasourceId) return;
 		page = 1;
 	});
 
+	$effect(() => {
+		// Reset pagination when live analysis pipeline changes; requires effect to update state.
+		if (!analysisPipeline) return;
+		page = 1;
+	});
+
+	const datasource = $derived.by(() => datasourceStore.getDatasource(datasourceId) ?? null);
+	const analysisSourceId = $derived.by(() => {
+		return (
+			(datasourceConfig?.analysis_id as string | null | undefined) ??
+			((datasource?.config as Record<string, unknown> | null)?.analysis_id as
+				| string
+				| null
+				| undefined) ??
+			null
+		);
+	});
+	const analysisPipeline = $derived.by(() => {
+		if (!analysisSourceId) return null;
+		const activeId = analysisStore.current?.id ?? null;
+		if (!activeId || activeId !== analysisSourceId) return null;
+		return buildAnalysisPipelinePayload(activeId, analysisStore.tabs, datasourceStore.datasources);
+	});
+
 	const query = createQuery(() => ({
-		queryKey: ['datasource-preview', datasourceId, page, rowLimit, datasourceConfig],
+		queryKey: [
+			'datasource-preview',
+			datasourceId,
+			page,
+			rowLimit,
+			datasourceConfig,
+			analysisPipeline
+		],
 		queryFn: async (): Promise<StepPreviewResponse> => {
+			const combinedConfig = analysisPipeline
+				? { ...(datasourceConfig ?? {}), analysis_pipeline: analysisPipeline }
+				: datasourceConfig;
 			const result = await previewStepData({
 				analysis_id: '',
 				datasource_id: datasourceId,
@@ -29,7 +67,7 @@
 				target_step_id: 'source',
 				row_limit: rowLimit,
 				page,
-				datasource_config: datasourceConfig
+				datasource_config: combinedConfig
 			});
 			if (result.isErr()) {
 				throw new Error(result.error.message);

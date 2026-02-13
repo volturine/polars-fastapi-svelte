@@ -22,6 +22,8 @@ class FrontendConfig(BaseModel):
     log_client_flush_cooldown_ms: int
     log_queue_max_size: int
     public_idb_debug: bool
+    smtp_enabled: bool
+    telegram_enabled: bool
 
 
 @router.get('', response_model=FrontendConfig)
@@ -39,4 +41,6 @@ def get_config():
         log_client_flush_cooldown_ms=settings.log_client_flush_cooldown_ms,
         log_queue_max_size=settings.log_queue_max_size,
         public_idb_debug=settings.public_idb_debug,
+        smtp_enabled=bool(settings.smtp_host and settings.smtp_user),
+        telegram_enabled=bool(settings.telegram_bot_token),
     )

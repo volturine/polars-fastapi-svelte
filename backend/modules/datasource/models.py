@@ -12,4 +12,5 @@ class DataSource(SQLModel, table=True):  # type: ignore[call-arg]
     source_type: str = Field(sa_column=Column(String, nullable=False))
     config: dict = Field(sa_column=Column(JSON, nullable=False))
     schema_cache: dict | None = Field(default=None, sa_column=Column(JSON, nullable=True))
+    created_by_analysis_id: str | None = Field(default=None, sa_column=Column(String, nullable=True))
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))

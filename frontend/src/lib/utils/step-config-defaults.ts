@@ -3,7 +3,7 @@
  * Centralizes config shape definitions to eliminate defensive $effect blocks in components.
  */
 
-import type { FilterCondition, JoinColumn } from '$lib/types/operation-config';
+import type { FilterCondition, JoinColumn, PlotConfigData } from '$lib/types/operation-config';
 
 export interface SelectConfigData {
 	columns: string[];
@@ -90,6 +90,32 @@ export interface ExportConfigData {
 	destination: string;
 }
 
+export type ChartConfigData = PlotConfigData;
+
+export interface NotificationConfigData {
+	method: 'email' | 'telegram';
+	recipient: string;
+	subject_template: string;
+	body_template: string;
+	attach_result: boolean;
+	attach_error: boolean;
+	webhook_url?: string | null;
+	timeout_seconds?: number;
+	retries?: number;
+}
+
+export interface AIConfigData {
+	provider: 'ollama' | 'openai';
+	model: string;
+	input_column: string;
+	output_column: string;
+	prompt_template: string;
+	batch_size: number;
+	endpoint_url?: string | null;
+	api_key?: string | null;
+	request_options?: Record<string, unknown> | null;
+}
+
 export type StepConfig =
 	| SelectConfigData
 	| DropConfigData
@@ -106,6 +132,9 @@ export type StepConfig =
 	| TopKConfigData
 	| ViewConfigData
 	| ExportConfigData
+	| PlotConfigData
+	| NotificationConfigData
+	| AIConfigData
 	| Record<string, unknown>;
 
 const defaultConfigs: Record<string, StepConfig> = {
@@ -186,6 +215,40 @@ const defaultConfigs: Record<string, StepConfig> = {
 		destination: 'download'
 	} satisfies ExportConfigData,
 
+	chart: {
+		chart_type: 'bar',
+		x_column: '',
+		y_column: '',
+		bins: 10,
+		aggregation: 'sum',
+		group_column: null
+	} satisfies PlotConfigData,
+
+	notification: {
+		method: 'email',
+		recipient: '',
+		subject_template: 'Build Complete: {{analysis_name}}',
+		body_template:
+			'Analysis: {{analysis_name}}\nStatus: {{status}}\nDuration: {{duration_ms}}ms\nRows: {{row_count}}',
+		attach_result: false,
+		attach_error: true,
+		webhook_url: null,
+		timeout_seconds: 20,
+		retries: 0
+	} satisfies NotificationConfigData,
+
+	ai: {
+		provider: 'ollama',
+		model: 'llama2',
+		input_column: '',
+		output_column: 'ai_result',
+		prompt_template: 'Classify this text: {{text}}',
+		batch_size: 10,
+		endpoint_url: null,
+		api_key: null,
+		request_options: null
+	} satisfies AIConfigData,
+
 	// Operations that don't need config
 	datasource: {},
 	sort: {},
@@ -204,7 +267,8 @@ const defaultConfigs: Record<string, StepConfig> = {
  * Returns a fresh copy to avoid reference sharing between steps.
  */
 export function getDefaultConfig(stepType: string): StepConfig {
-	const defaults = defaultConfigs[stepType];
+	const normalizedType = stepType.startsWith('plot_') ? 'chart' : stepType;
+	const defaults = defaultConfigs[normalizedType];
 	if (!defaults) {
 		return {};
 	}
@@ -218,7 +282,14 @@ export function getDefaultConfig(stepType: string): StepConfig {
  * Preserves all existing config fields while adding any missing defaults.
  */
 export function normalizeConfig(stepType: string, config: Record<string, unknown>): StepConfig {
-	const defaults = getDefaultConfig(stepType);
+	const normalizedType = stepType.startsWith('plot_') ? 'chart' : stepType;
+	const defaults = getDefaultConfig(normalizedType);
+
+	if (stepType.startsWith('plot_')) {
+		const chartType = stepType.replace('plot_', '');
+		const chartConfig = { ...config, chart_type: chartType };
+		return { ...defaults, ...chartConfig };
+	}
 	if (stepType === 'export') {
 		const cleaned = { ...config } as Record<string, unknown>;
 		delete cleaned.datasource_type;

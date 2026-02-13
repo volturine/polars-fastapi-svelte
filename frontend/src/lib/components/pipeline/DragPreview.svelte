@@ -3,6 +3,7 @@
 	import {
 		ArrowUpDown,
 		BarChart3,
+		BarChart4,
 		Bomb,
 		Brush,
 		Calculator,
@@ -16,12 +17,14 @@
 		Repeat,
 		Repeat2,
 		Scissors,
+		Sparkles,
 		Trophy,
 		Type,
 		Upload,
 		Wrench,
 		ListChecks,
-		Trash2
+		Trash2,
+		Bell
 	} from 'lucide-svelte';
 
 	// Step type metadata with icons and labels
@@ -47,6 +50,9 @@
 		topk: { label: 'Top K', icon: Trophy },
 		null_count: { label: 'Null Count', icon: CircleHelp },
 		value_counts: { label: 'Value Counts', icon: BarChart3 },
+		chart: { label: 'Chart', icon: BarChart4 },
+		notification: { label: 'Notify', icon: Bell },
+		ai: { label: 'AI', icon: Sparkles },
 		view: { label: 'View', icon: Eye },
 		export: { label: 'Export', icon: Upload }
 	};

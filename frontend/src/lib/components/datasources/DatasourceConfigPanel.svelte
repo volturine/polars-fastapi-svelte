@@ -22,6 +22,8 @@
 	} from '$lib/types/datasource';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
+	import ColumnStatsPanel from '$lib/components/datasources/ColumnStatsPanel.svelte';
+	import HealthChecksTab from '$lib/components/datasources/HealthChecksTab.svelte';
 	import { formatDateDisplay } from '$lib/utils/datetime';
 	import { resolveColumnType } from '$lib/utils/columnTypes';
 
@@ -51,7 +53,7 @@
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		},
-		enabled: !!datasource.id
+		enabled: !!datasource.id && datasource.source_type !== 'analysis'
 	}));
 
 	const runsQuery = createQuery(() => ({
@@ -61,7 +63,8 @@
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		},
-		enabled: !!datasource.id
+		enabled: !!datasource.id,
+		retry: false
 	}));
 
 	const updateMutation = createMutation(() => ({
@@ -85,7 +88,9 @@
 	let refreshError = $state<string | null>(null);
 	let schemaChanged = $state(false);
 	let schemaDiff = $state<{ added: string[]; removed: string[]; types: string[] } | null>(null);
-	let activeTab = $state<'general' | 'schema' | 'csv' | 'excel' | 'runs'>('general');
+	let activeTab = $state<'general' | 'schema' | 'csv' | 'excel' | 'runs' | 'health'>('general');
+	let statsOpen = $state(false);
+	let statsColumn = $state<string | null>(null);
 
 	// Reset state when datasource changes
 	$effect(() => {
@@ -259,6 +264,11 @@
 		isRefreshing = true;
 		const previousColumns = new Map(columns.map((col) => [col.name, col.dtype]));
 
+		if (datasource.source_type === 'analysis') {
+			refreshError = 'Schema refresh is unavailable for analysis datasources';
+			isRefreshing = false;
+			return;
+		}
 		try {
 			const result = await getDatasourceSchema(datasource.id, { refresh: true });
 			if (result.isErr()) {
@@ -385,6 +395,13 @@
 			{#if runs.length > 0}
 				<span class="ml-1 text-fg-tertiary">({runs.length})</span>
 			{/if}
+		</button>
+		<button
+			class="tab -mb-px bg-transparent border-b-2 border-transparent px-3 py-1.5 text-xs font-medium text-fg-muted hover:text-fg-secondary"
+			class:active={activeTab === 'health'}
+			onclick={() => (activeTab = 'health')}
+		>
+			Health Checks
 		</button>
 	</div>
 
@@ -575,9 +592,21 @@
 						</div>
 						{#each columns as column, index (index)}
 							<div
-								class="grid grid-cols-[24px_1fr_140px] items-center gap-x-2 px-3 py-1.5"
+								class="grid grid-cols-[24px_1fr_140px] items-center gap-x-2 px-3 py-1.5 hover:bg-hover cursor-pointer"
 								class:border-t={index > 0}
 								class:border-tertiary={index > 0}
+								role="button"
+								tabindex="0"
+								onclick={() => {
+									statsColumn = column.name;
+									statsOpen = true;
+								}}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										statsColumn = column.name;
+										statsOpen = true;
+									}
+								}}
 							>
 								<span class="text-xs text-fg-faint">{index + 1}</span>
 								<span class="text-xs text-fg-primary">{column.name}</span>
@@ -832,6 +861,16 @@
 						<Loader size={24} class="spin" />
 						<p class="text-sm">Loading runs...</p>
 					</div>
+				{:else if runsQuery.isError}
+					<div class="error-box flex items-start gap-3">
+						<CircleAlert size={20} />
+						<div class="flex flex-col gap-1">
+							<p class="m-0 font-semibold">Failed to load runs</p>
+							<p class="m-0 text-sm opacity-80">
+								{runsQuery.error instanceof Error ? runsQuery.error.message : 'Unknown error'}
+							</p>
+						</div>
+					</div>
 				{:else if runs.length === 0}
 					<div class="py-6 text-center text-fg-muted text-sm">
 						<p class="m-0">No engine runs associated with this datasource.</p>
@@ -917,6 +956,18 @@
 					{/if}
 				{/if}
 			</div>
+		{:else if activeTab === 'health'}
+			<HealthChecksTab datasourceId={datasource.id} />
 		{/if}
 	</div>
 </div>
+
+<ColumnStatsPanel
+	datasourceId={datasource.id}
+	columnName={statsColumn}
+	open={statsOpen}
+	onClose={() => {
+		statsOpen = false;
+		statsColumn = null;
+	}}
+/>

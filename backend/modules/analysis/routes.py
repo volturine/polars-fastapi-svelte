@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session
 
 from core.database import get_db
 from modules.analysis import schemas, service
+from modules.compute import service as compute_service
 from modules.locks import service as lock_service
 
 router = APIRouter(prefix='/analysis', tags=['analysis'])
@@ -102,6 +103,96 @@ def link_datasource(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Failed to link datasource: {str(e)}')
+
+
+@router.post('/{analysis_id}/execute')
+async def execute_analysis(
+    analysis_id: str,
+    request: Request,
+    analysis_tab_id: str | None = None,
+    session: Session = Depends(get_db),
+):
+    """Execute an analysis and return schema + sample rows."""
+    analysis_payload = None
+    body = None
+    try:
+        body = await request.json()
+    except Exception:
+        body = None
+    if isinstance(body, dict):
+        analysis_payload = body.get('pipeline')
+
+    if analysis_payload:
+        if not isinstance(analysis_payload, dict):
+            raise HTTPException(status_code=400, detail='pipeline payload must be a dict')
+        tabs = analysis_payload.get('tabs', [])
+        if not isinstance(tabs, list):
+            raise HTTPException(status_code=400, detail='pipeline tabs must be a list')
+        if analysis_tab_id:
+            selected = next((tab for tab in tabs if tab.get('id') == analysis_tab_id), None)
+        else:
+            selected = next((tab for tab in tabs if tab.get('steps')), None)
+        if not selected:
+            selected = tabs[0] if tabs else None
+        if not selected:
+            raise HTTPException(status_code=400, detail='pipeline payload missing tabs')
+        datasource_id = selected.get('datasource_id')
+        pipeline_steps = selected.get('steps', [])
+        if not datasource_id:
+            raise HTTPException(status_code=400, detail='Analysis tab missing datasource_id')
+        if not isinstance(pipeline_steps, list):
+            raise HTTPException(status_code=400, detail='Analysis tab steps must be a list')
+        config = selected.get('datasource_config') or {}
+        if config and not isinstance(config, dict):
+            raise HTTPException(status_code=400, detail='Analysis tab datasource_config must be a dict')
+        next_config = {**config}
+        payload_id = analysis_payload.get('analysis_id')
+        payload_id = str(payload_id) if payload_id is not None else None
+        if payload_id and payload_id == str(analysis_id):
+            next_config['analysis_pipeline'] = analysis_payload
+    else:
+        try:
+            analysis = service.get_analysis(session, analysis_id)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+
+        pipeline = analysis.pipeline_definition
+        tabs = pipeline.get('tabs', []) if isinstance(pipeline, dict) else []
+        if tabs:
+            selected = None
+            if analysis_tab_id:
+                selected = next((tab for tab in tabs if tab.get('id') == analysis_tab_id), None)
+            if not selected:
+                selected = next((tab for tab in tabs if tab.get('steps')), tabs[0])
+            datasource_id = selected.get('datasource_id')
+            pipeline_steps = selected.get('steps', [])
+            if not datasource_id:
+                raise HTTPException(status_code=400, detail='Analysis tab missing datasource_id')
+            next_config = selected.get('datasource_config') or {}
+        else:
+            pipeline_steps = pipeline.get('steps', []) if isinstance(pipeline, dict) else []
+            datasource_ids = pipeline.get('datasource_ids', []) if isinstance(pipeline, dict) else []
+            if not datasource_ids:
+                raise HTTPException(status_code=400, detail='Analysis has no datasource')
+            datasource_id = datasource_ids[0]
+            next_config = {}
+
+    preview = compute_service.preview_step(
+        session=session,
+        datasource_id=str(datasource_id),
+        pipeline_steps=pipeline_steps,
+        target_step_id=pipeline_steps[-1]['id'] if pipeline_steps else 'source',
+        row_limit=50,
+        page=1,
+        analysis_id=analysis_id,
+        datasource_config=next_config,
+    )
+
+    return {
+        'schema': preview.column_types,
+        'rows': preview.data,
+        'row_count': preview.total_rows,
+    }
 
 
 @router.delete('/{analysis_id}/datasources/{datasource_id}', status_code=204)

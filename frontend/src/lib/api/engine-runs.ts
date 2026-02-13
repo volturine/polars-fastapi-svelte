@@ -14,6 +14,10 @@ export interface EngineRun {
 	created_at: string;
 	completed_at: string | null;
 	duration_ms: number | null;
+	step_timings: Record<string, number>;
+	query_plan: string | null;
+	progress: number;
+	current_step: string | null;
 }
 
 export interface ListEngineRunsParams {
@@ -35,4 +39,8 @@ export function listEngineRuns(params?: ListEngineRunsParams): ResultAsync<Engin
 	if (params?.offset !== undefined) query.set('offset', String(params.offset));
 	const suffix = query.toString() ? `?${query.toString()}` : '';
 	return apiRequest<EngineRun[]>(`/v1/engine-runs${suffix}`);
+}
+
+export function getEngineRun(id: string): ResultAsync<EngineRun, ApiError> {
+	return apiRequest<EngineRun>(`/v1/engine-runs/${id}`);
 }

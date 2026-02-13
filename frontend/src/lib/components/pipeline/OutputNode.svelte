@@ -4,7 +4,9 @@
 	import { exportData, type ExportRequest } from '$lib/api/compute';
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { datasourceStore } from '$lib/stores/datasource.svelte';
 	import { Database, Check } from 'lucide-svelte';
+	import { buildDatasourceConfig } from '$lib/utils/analysis-pipeline';
 
 	interface Props {
 		steps: PipelineStep[];
@@ -59,6 +61,12 @@
 
 		const format = outputConfig.datasource_type === 'file' ? outputConfig.format : undefined;
 		const filename = outputConfig.filename;
+		const datasourceConfig = buildDatasourceConfig({
+			analysisId: analysisId ?? null,
+			tab: activeTab,
+			tabs: analysisStore.tabs,
+			datasources: datasourceStore.datasources
+		});
 		const request = {
 			analysis_id: analysisId,
 			datasource_id: datasourceId,
@@ -86,7 +94,7 @@
 							table_name: outputConfig.duckdb.table_name
 						}
 					: undefined,
-			datasource_config: analysisStore.activeTab?.datasource_config ?? null
+			datasource_config: datasourceConfig
 		} as unknown as ExportRequest;
 
 		exportData(request).match(

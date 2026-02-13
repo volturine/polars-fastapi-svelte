@@ -125,7 +125,10 @@
 		Upload,
 		Wrench,
 		ListChecks,
-		Trash2
+		Trash2,
+		BarChart4,
+		Bell,
+		Sparkles
 	} from 'lucide-svelte';
 
 	const stepTypes: StepType[] = [
@@ -190,6 +193,19 @@
 			icon: BarChart3,
 			description: 'Get value frequencies'
 		},
+		{
+			type: 'chart',
+			label: 'Chart',
+			icon: BarChart4,
+			description: 'Visualize data (leaf node)'
+		},
+		{
+			type: 'notification',
+			label: 'Notify',
+			icon: Bell,
+			description: 'Send email or Telegram alert'
+		},
+		{ type: 'ai', label: 'AI', icon: Sparkles, description: 'Transform text using AI' },
 		{ type: 'view', label: 'View', icon: Eye, description: 'Preview data at this step' },
 		{
 			type: 'union_by_name',

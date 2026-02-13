@@ -5,7 +5,9 @@
 	import { Download, GripVertical } from 'lucide-svelte';
 	import { exportData, downloadBlob, type ExportRequest } from '$lib/api/compute';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { datasourceStore } from '$lib/stores/datasource.svelte';
 	import { getStepTypeConfig } from '$lib/components/pipeline/utils';
+	import { buildDatasourceConfig } from '$lib/utils/analysis-pipeline';
 
 	interface Props {
 		step: PipelineStep;
@@ -47,7 +49,7 @@
 	// Derived values from declarative config
 	let stepConfig = $derived(getStepTypeConfig(step.type));
 	let Icon = $derived(stepConfig.icon);
-	let label = $derived(stepConfig.typeLabel);
+	let label = $derived(stepConfig.label);
 	let summary = $derived(stepConfig.summary(step.config as Record<string, unknown>));
 	let isApplied = $derived((step as PipelineStep & { is_applied?: boolean }).is_applied !== false);
 
@@ -145,6 +147,12 @@
 
 		const format = (step.config.format as string) || 'csv';
 		const filename = (step.config.filename as string) || 'export';
+		const datasourceConfig = buildDatasourceConfig({
+			analysisId: analysisId ?? null,
+			tab: analysisStore.activeTab ?? null,
+			tabs: analysisStore.tabs,
+			datasources: datasourceStore.datasources
+		});
 		const request = {
 			analysis_id: analysisId,
 			datasource_id: datasourceId,
@@ -158,7 +166,7 @@
 			format: format as ExportRequest['format'],
 			filename,
 			destination: 'download',
-			datasource_config: analysisStore.activeTab?.datasource_config ?? null
+			datasource_config: datasourceConfig
 		} as ExportRequest;
 
 		exportData(request).match(

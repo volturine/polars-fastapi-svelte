@@ -284,6 +284,7 @@ export class AnalysisStore {
 
 		const normalized = steps.map((step, index) => {
 			const isApplied = step.is_applied !== false;
+			const normalizedType = step.type.startsWith('plot_') ? 'chart' : step.type;
 			// Normalize config to ensure proper shape (handles backward compatibility)
 			const normalizedConfig = normalizeConfig(step.type, step.config as Record<string, unknown>);
 
@@ -292,6 +293,7 @@ export class AnalysisStore {
 				if (index === 0) {
 					return {
 						...step,
+						type: normalizedType,
 						config: normalizedConfig as Record<string, unknown>,
 						depends_on: [],
 						is_applied: isApplied
@@ -300,6 +302,7 @@ export class AnalysisStore {
 				const parentId = steps[index - 1]?.id ?? null;
 				return {
 					...step,
+					type: normalizedType,
 					config: normalizedConfig as Record<string, unknown>,
 					depends_on: parentId ? [parentId] : [],
 					is_applied: isApplied
@@ -308,6 +311,7 @@ export class AnalysisStore {
 
 			return {
 				...step,
+				type: normalizedType,
 				config: normalizedConfig as Record<string, unknown>,
 				is_applied: isApplied
 			};
@@ -421,6 +425,41 @@ export class AnalysisStore {
 		if (!step) return;
 		const keys = Object.keys(safeConfig);
 		this.logStep('update', step, { keys, count: keys.length });
+		const analysisId = this.current?.id ?? null;
+		const datasourceId = this.activeTab.datasource_id ?? null;
+		if (!analysisId || !datasourceId) return;
+		const configSnapshot = (this.activeTab.datasource_config ?? {}) as Record<string, unknown>;
+		const snapshotId = (configSnapshot.snapshot_id as string | null | undefined) ?? null;
+		const snapshotMs = (configSnapshot.snapshot_timestamp_ms as number | null | undefined) ?? null;
+		const snapshotKey = `${snapshotId ?? 'latest'}:${snapshotMs ?? 0}`;
+		const edges: Record<string, string[]> = {};
+		for (const item of nextPipeline) {
+			const deps = item.depends_on ?? [];
+			for (const dep of deps) {
+				const next = edges[dep] ?? [];
+				next.push(item.id);
+				edges[dep] = next;
+			}
+		}
+		const reachable: Record<string, true> = {};
+		const stack = [id];
+		while (stack.length) {
+			const current = stack.pop();
+			if (!current) continue;
+			if (reachable[current]) continue;
+			reachable[current] = true;
+			const next = edges[current] ?? [];
+			for (const child of next) {
+				if (!reachable[child]) stack.push(child);
+			}
+		}
+		for (const item of nextPipeline) {
+			if (item.type !== 'view') continue;
+			if (!reachable[item.id]) continue;
+			const rowLimit = typeof item.config?.rowLimit === 'number' ? item.config.rowLimit : 100;
+			const runKey = `${analysisId}:${datasourceId}:${snapshotKey}:${rowLimit}:${item.id}`;
+			this.setPreviewRun(runKey, true);
+		}
 	}
 
 	removeStep(id: string): void {

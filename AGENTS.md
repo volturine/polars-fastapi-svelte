@@ -9,7 +9,7 @@ This document defines strict, non-negotiable rules for assisting in this codebas
 ## Workflow
 
 1. **Explore** → Read relevant files, understand context
-2. **Plan** → Create plan with `/plan`, get approval before coding
+2. **Plan** → Create plan with `/plan` prompt in subagent
 3. **Code** → Implement solution
 4. **Review** → Use Second Opinion agent before completing
 5. **Commit** → Create well-formed commit

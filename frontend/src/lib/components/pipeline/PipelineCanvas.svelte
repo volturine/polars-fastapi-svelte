@@ -93,6 +93,14 @@
 		return deps[0] === parentId;
 	}
 
+	function isChartType(type: string | null | undefined): boolean {
+		return type === 'chart' || type?.startsWith('plot_') === true;
+	}
+
+	function hasChartStep(): boolean {
+		return steps.some((step) => step.type === 'chart');
+	}
+
 	function handleDragEnter(event: DragEvent, index: number) {
 		if (!drag.active) return;
 		event.preventDefault();
@@ -132,9 +140,28 @@
 
 		if (drag.isReorder && drag.stepId) {
 			// Moving existing step
+			const moving = steps.find((step) => step.id === drag.stepId) ?? null;
+			if (moving && moving.type === 'chart') {
+				const nextId = target.nextId ?? null;
+				if (nextId) {
+					drag.end();
+					return;
+				}
+			}
 			onMoveStep(drag.stepId, target);
 		} else if (drag.isInsert && drag.type) {
 			// Inserting new step from library
+			if (isChartType(drag.type)) {
+				if (hasChartStep()) {
+					drag.end();
+					return;
+				}
+				const nextId = target.nextId ?? null;
+				if (nextId) {
+					drag.end();
+					return;
+				}
+			}
 			onInsertStep(drag.type, target);
 		}
 

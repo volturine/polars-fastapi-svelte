@@ -20,6 +20,30 @@ class SchemaInfo(BaseModel):
     sheet_names: list[str] | None = None
 
 
+class ColumnStatsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    column: str
+    dtype: str
+    count: int
+    null_count: int
+    null_percentage: float
+    unique: int | None = None
+    mean: float | None = None
+    std: float | None = None
+    min: float | str | None = None
+    max: float | str | None = None
+    median: float | None = None
+    q25: float | None = None
+    q75: float | None = None
+    true_count: int | None = None
+    false_count: int | None = None
+    min_length: int | None = None
+    max_length: int | None = None
+    avg_length: float | None = None
+    top_values: list[dict[str, object]] | None = None
+
+
 class ExcelPreflightResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -124,6 +148,7 @@ class DataSourceResponse(BaseModel):
     source_type: str
     config: dict
     schema_cache: dict | None
+    created_by_analysis_id: str | None = None
     created_at: datetime
 
 

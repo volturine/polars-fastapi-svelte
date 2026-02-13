@@ -11,6 +11,7 @@ from core.exceptions import (
     AnalysisNotFoundError,
     AppError,
     DataSourceNotFoundError,
+    DataSourceSnapshotError,
     EngineNotFoundError,
     EngineTimeoutError,
     FileNotFoundError,
@@ -39,6 +40,7 @@ EXCEPTION_STATUS_MAP = {
     PipelineValidationError: 400,
     FileValidationError: 400,
     UnsupportedExportFormatError: 400,
+    DataSourceSnapshotError: 409,
     # 408 - Timeout errors
     EngineTimeoutError: 408,
     JobTimeoutError: 408,
@@ -72,7 +74,7 @@ def convert_exception_to_http(exc: Exception) -> HTTPException:
 
     # Generic exception - log with full traceback
     logger.error(f'Unhandled exception: {str(exc)}', exc_info=True)
-    return HTTPException(status_code=500, detail={'message': f'Internal server error: {str(exc)}'})
+    return HTTPException(status_code=500, detail='An internal error occurred')
 
 
 def handle_errors(operation: str = 'operation') -> Callable:
@@ -103,10 +105,7 @@ def handle_errors(operation: str = 'operation') -> Callable:
             except Exception as e:
                 # Convert generic exceptions
                 logger.error(f'Failed to {operation}: {str(e)}', exc_info=True)
-                raise HTTPException(
-                    status_code=500,
-                    detail={'message': f'Failed to {operation}: {str(e)}'},
-                )
+                raise HTTPException(status_code=500, detail=f'Failed to {operation}')
 
         @wraps(func)
         def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -121,10 +120,7 @@ def handle_errors(operation: str = 'operation') -> Callable:
             except Exception as e:
                 # Convert generic exceptions
                 logger.error(f'Failed to {operation}: {str(e)}', exc_info=True)
-                raise HTTPException(
-                    status_code=500,
-                    detail={'message': f'Failed to {operation}: {str(e)}'},
-                )
+                raise HTTPException(status_code=500, detail=f'Failed to {operation}')
 
         # Return the appropriate wrapper based on whether the function is async
         import inspect

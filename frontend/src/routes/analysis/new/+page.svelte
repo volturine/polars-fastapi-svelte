@@ -138,7 +138,7 @@
 						type="text"
 						bind:value={name}
 						placeholder="My Data Analysis"
-						class="w-full border border-tertiary bg-bg-primary p-3 text-sm focus:border-info"
+					class="w-full border border-tertiary bg-bg-primary p-3 text-sm focus:border-accent-primary"
 					/>
 				</div>
 				<div class="mb-5 flex flex-col gap-2">
@@ -150,7 +150,7 @@
 						bind:value={description}
 						placeholder="Describe what this analysis does..."
 						rows="4"
-						class="min-h-25 w-full resize-y border border-tertiary bg-bg-primary p-3 text-sm focus:border-info"
+					class="min-h-25 w-full resize-y border border-tertiary bg-bg-primary p-3 text-sm focus:border-accent-primary"
 					></textarea>
 				</div>
 			</div>
@@ -160,7 +160,9 @@
 				<p class="mb-6 text-fg-tertiary">Choose one or more data sources for this analysis.</p>
 
 				{#if datasourcesQuery.isLoading}
-					<div class="info-box">Loading data sources...</div>
+					<div class="flex h-full items-center justify-center">
+						<div class="spinner"></div>
+					</div>
 				{:else if datasourcesQuery.error}
 					<div class="error-box">
 						Error loading data sources: {datasourcesQuery.error.message}

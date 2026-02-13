@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
+from urllib.parse import unquote, urlparse
 
 import polars as pl
 from openpyxl import load_workbook
@@ -30,7 +31,8 @@ class DatasourceParams(OperationParams):
     db_path: str | None = None
     read_only: bool = True
     metadata_path: str | None = None
-    snapshot_id: int | None = None
+    snapshot_id: str | None = None
+    snapshot_timestamp_ms: int | None = None
     storage_options: dict | None = None
     reader: str | None = None
 
@@ -108,6 +110,28 @@ class DatasourceHandler(OperationHandler):
         if not config.metadata_path:
             raise ValueError('Datasource Iceberg loading requires metadata_path')
         metadata_path = resolve_iceberg_metadata_path(config.metadata_path)
+        snapshot_id = config.snapshot_id
+        snapshot_value: int | None = None
+        if snapshot_id is not None:
+            from pyiceberg.table import StaticTable
+
+            try:
+                snapshot_value = int(snapshot_id)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f'Iceberg snapshot ID must be an integer: {snapshot_id}') from exc
+
+            table = StaticTable.from_metadata(metadata_path)
+            snapshot = table.snapshot_by_id(snapshot_value)
+            if snapshot is None:
+                raise ValueError(f'Iceberg snapshot ID not found: {snapshot_id}')
+        if snapshot_id is None and config.snapshot_timestamp_ms is not None:
+            from pyiceberg.table import StaticTable
+
+            table = StaticTable.from_metadata(metadata_path)
+            snapshot = table.snapshot_as_of_timestamp(config.snapshot_timestamp_ms)
+            if snapshot is None:
+                raise ValueError('Iceberg snapshot not found for the selected timestamp')
+            snapshot_value = snapshot.snapshot_id
         reader = config.reader
         reader_override: Literal['native', 'pyiceberg'] | None = None
         if reader == 'native':
@@ -117,37 +141,36 @@ class DatasourceHandler(OperationHandler):
         if reader_override:
             return pl.scan_iceberg(
                 metadata_path,
-                snapshot_id=config.snapshot_id,
+                snapshot_id=snapshot_value,
                 storage_options=config.storage_options,
                 reader_override=reader_override,
             )
         return pl.scan_iceberg(
             metadata_path,
-            snapshot_id=config.snapshot_id,
+            snapshot_id=snapshot_value,
             storage_options=config.storage_options,
         )
 
 
 def resolve_iceberg_metadata_path(metadata_path: str) -> str:
-    path = Path(metadata_path)
-    if path.is_file():
-        if path.suffix == '.db':
-            raise ValueError('Iceberg metadata_path must point to metadata.json, not catalog.db')
-        if path.name.endswith('.metadata.json'):
-            raise ValueError('Iceberg metadata_path must be a table directory, not metadata.json')
-        return str(path)
+    normalized = _strip_file_scheme(metadata_path)
+    path = Path(normalized)
     if path.suffix == '.db':
         raise ValueError('Iceberg metadata_path must point to metadata.json, not catalog.db')
+    if path.is_file():
+        if path.name.endswith('.metadata.json'):
+            return str(path)
+        raise ValueError('Iceberg metadata_path must be a table directory or metadata.json')
     if not path.exists():
-        if metadata_path.endswith('.metadata.json'):
-            raise ValueError('Iceberg metadata_path must be a table directory, not metadata.json')
         raise ValueError(f'Iceberg metadata_path not found: {metadata_path}')
     if not path.is_dir():
         raise ValueError(f'Iceberg metadata_path must be a file or directory: {metadata_path}')
+    if path.name == 'metadata':
+        return _latest_metadata_file(path)
     metadata_dir = path / 'metadata'
     if metadata_dir.is_dir():
         return _latest_metadata_file(metadata_dir)
-    return _latest_metadata_file(path)
+    raise ValueError('Iceberg metadata_path must be a table directory containing metadata/')
 
 
 def _read_excel(path: str, opts: dict) -> pl.LazyFrame:
@@ -229,6 +252,21 @@ def _latest_metadata_file(metadata_dir: Path) -> str:
     if not candidates:
         raise ValueError(f'No metadata.json files found in {metadata_dir}')
     return str(max(candidates, key=_metadata_sort_key))
+
+
+def _strip_file_scheme(metadata_path: str) -> str:
+    if not metadata_path.startswith('file:'):
+        return metadata_path
+    parsed = urlparse(metadata_path)
+    if parsed.scheme != 'file':
+        return metadata_path
+    if parsed.netloc and parsed.netloc != 'localhost':
+        if parsed.path:
+            return unquote(f'/{parsed.netloc}{parsed.path}')
+        return unquote(f'/{parsed.netloc}')
+    if parsed.path:
+        return unquote(parsed.path)
+    return metadata_path
 
 
 def _metadata_sort_key(path: Path) -> tuple[int, int, float]:

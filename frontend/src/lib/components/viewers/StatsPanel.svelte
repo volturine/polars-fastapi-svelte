@@ -13,12 +13,12 @@
 </script>
 
 <div class="stats-panel overflow-hidden border bg-panel border-tertiary">
-	<div class="px-5 py-4 border-b border-tertiary bg-panel-header">
+	<div class="px-5 py-4 border-b border-tertiary bg-tertiary">
 		<h3 class="m-0">Summary Statistics</h3>
 	</div>
 
 	<div class="stats-summary grid gap-4 p-5">
-		<div class="flex items-center gap-4 p-4 border transition-all bg-tertiary border-tertiary">
+		<div class="flex items-center gap-4 p-4 border bg-tertiary border-tertiary">
 			<BarChart3 size={24} class="text-fg-primary" />
 			<div class="flex-1">
 				<div class="text-xs font-medium uppercase tracking-wider mb-1 text-fg-muted">
@@ -30,7 +30,7 @@
 			</div>
 		</div>
 
-		<div class="flex items-center gap-4 p-4 border transition-all bg-tertiary border-tertiary">
+		<div class="flex items-center gap-4 p-4 border bg-tertiary border-tertiary">
 			<ListChecks size={24} class="text-fg-primary" />
 			<div class="flex-1">
 				<div class="text-xs font-medium uppercase tracking-wider mb-1 text-fg-muted">
@@ -42,7 +42,7 @@
 			</div>
 		</div>
 
-		<div class="flex items-center gap-4 p-4 border transition-all bg-tertiary border-tertiary">
+		<div class="flex items-center gap-4 p-4 border bg-tertiary border-tertiary">
 			<Binary size={24} class="text-fg-primary" />
 			<div class="flex-1">
 				<div class="text-xs font-medium uppercase tracking-wider mb-1 text-fg-muted">

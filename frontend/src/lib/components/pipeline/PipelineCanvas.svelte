@@ -1,9 +1,10 @@
 <script lang="ts">
-	import type { PipelineStep } from '$lib/types/analysis';
+	import type { PipelineStep, AnalysisTab } from '$lib/types/analysis';
 	import type { DataSource } from '$lib/types/datasource';
 	import { drag, type DropTarget } from '$lib/stores/drag.svelte';
 	import { LayoutGrid } from 'lucide-svelte';
 	import StepNode from './StepNode.svelte';
+	import OutputNode from './OutputNode.svelte';
 	import ConnectionLine from './ConnectionLine.svelte';
 	import DatasourceNode from './DatasourceNode.svelte';
 
@@ -13,6 +14,7 @@
 		datasourceId?: string;
 		datasource?: DataSource | null;
 		tabName?: string;
+		activeTab?: AnalysisTab | null;
 		onStepClick: (id: string) => void;
 		onStepDelete: (id: string) => void;
 		onStepToggle: (id: string) => void;
@@ -28,6 +30,7 @@
 		datasourceId,
 		datasource = null,
 		tabName: _tabName,
+		activeTab = null,
 		onStepClick,
 		onStepDelete,
 		onStepToggle,
@@ -37,10 +40,7 @@
 		onRenameTab: _onRenameTab
 	}: Props = $props();
 
-	// Derived: whether we can accept drops
 	let canDrop = $derived(drag.active);
-
-	// Derived: current hovered target index
 	let hoverIndex = $derived(drag.target?.index ?? null);
 
 	function getParentId(index: number): string | null {
@@ -181,7 +181,6 @@
 		drag.setTarget(target, valid);
 	});
 
-	// Auto-scroll when dragging near edges
 	const scrollThreshold = 60;
 	const scrollSpeed = 15;
 
@@ -189,12 +188,10 @@
 		canvasEl.getBoundingClientRect();
 		const viewportHeight = window.innerHeight;
 
-		// Check if pointer is near the bottom of the viewport
 		if (pointerY > viewportHeight - scrollThreshold) {
 			canvasEl.scrollTop += scrollSpeed;
 		}
 
-		// Check if pointer is near the top of the viewport
 		if (pointerY < scrollThreshold) {
 			canvasEl.scrollTop -= scrollSpeed;
 		}
@@ -226,7 +223,7 @@
 			<h3 class="m-0 mb-2 text-base font-semibold text-fg-secondary">No pipeline steps</h3>
 			<p class="m-0 text-sm text-fg-muted">Drag operations from the library and drop here</p>
 			<div
-				class="insert-zone empty-drop flex w-full cursor-default flex-col items-center py-2 transition-all"
+				class="insert-zone empty-drop flex w-full cursor-default flex-col items-center py-2"
 				class:ready={canDrop}
 				class:active={hoverIndex === 0}
 				class:invalid={hoverIndex === 0 && !drag.valid}
@@ -249,7 +246,7 @@
 
 				{#if canDrop}
 					<div
-						class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center transition-all"
+						class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center"
 						class:active={hoverIndex === 0}
 						class:invalid={hoverIndex === 0 && !drag.valid}
 					>
@@ -274,12 +271,13 @@
 				{datasource}
 				{analysisId}
 				tabName={_tabName}
+				{activeTab}
 				onChangeDatasource={_onChangeDatasource}
 				onRenameTab={_onRenameTab}
 			/>
 			{#if shouldShowInsert(0)}
 				<div
-					class="insert-zone flex w-full cursor-default flex-col items-center py-2 transition-all"
+					class="insert-zone flex w-full cursor-default flex-col items-center py-2"
 					class:ready={canDrop}
 					class:active={hoverIndex === 0}
 					class:invalid={hoverIndex === 0 && !drag.valid}
@@ -299,7 +297,7 @@
 					/>
 					{#if canDrop}
 						<div
-							class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center transition-all"
+							class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center"
 							class:active={hoverIndex === 0}
 							class:invalid={hoverIndex === 0 && !drag.valid}
 						>
@@ -340,7 +338,7 @@
 				{#if i < steps.length - 1 || canDrop}
 					{#if shouldShowInsert(i + 1)}
 						<div
-							class="insert-zone flex w-full cursor-default flex-col items-center py-2 transition-all"
+							class="insert-zone flex w-full cursor-default flex-col items-center py-2"
 							class:ready={canDrop}
 							class:active={hoverIndex === i + 1}
 							class:invalid={hoverIndex === i + 1 && !drag.valid}
@@ -362,7 +360,7 @@
 							{/if}
 							{#if canDrop}
 								<div
-									class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center transition-all"
+									class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center"
 									class:active={hoverIndex === i + 1}
 									class:invalid={hoverIndex === i + 1 && !drag.valid}
 								>
@@ -389,6 +387,20 @@
 					{/if}
 				{/if}
 			{/each}
+			{#if steps.length > 0}
+				<div class="insert-spacer flex items-center justify-center py-2" aria-hidden="true">
+					<ConnectionLine
+						fromStepIndex={steps.length - 1}
+						toStepIndex={steps.length}
+						totalSteps={steps.length + 1}
+					/>
+				</div>
+			{:else}
+				<div class="insert-spacer flex items-center justify-center py-2" aria-hidden="true">
+					<ConnectionLine fromStepIndex={-1} toStepIndex={0} totalSteps={1} />
+				</div>
+			{/if}
+			<OutputNode {steps} {analysisId} {datasourceId} {activeTab} {datasource} />
 		</div>
 	{/if}
 </div>

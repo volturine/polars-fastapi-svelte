@@ -326,9 +326,11 @@ const stepTypes: Record<string, StepTypeConfig> = {
 			const filename = (c.filename as string) || 'export';
 			const format = (c.format as string) || 'csv';
 			const dest = (c.destination as string) || 'download';
-			return dest === 'filesystem'
-				? `${filename}.${format} (save to disk)`
-				: `${filename}.${format}`;
+			if (dest === 'datasource') {
+				const dsType = (c.datasource_type as string) || 'iceberg';
+				return `datasource (${dsType})`;
+			}
+			return `${filename}.${format}`;
 		}
 	}
 };

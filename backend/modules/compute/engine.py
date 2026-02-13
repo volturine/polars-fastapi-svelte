@@ -62,7 +62,13 @@ class PolarsComputeEngine:
             with contextlib.suppress(Exception):
                 self.process.join(timeout=0.1)
             self.process = None
-        # Create fresh queues (old ones may be corrupted)
+        # Close old queues before creating new ones (old ones may be corrupted)
+        if hasattr(self, 'command_queue'):
+            with contextlib.suppress(Exception):
+                self.command_queue.close()
+        if hasattr(self, 'result_queue'):
+            with contextlib.suppress(Exception):
+                self.result_queue.close()
         self.command_queue = mp.Queue()
         self.result_queue = mp.Queue()
 
@@ -244,9 +250,11 @@ class PolarsComputeEngine:
                 self.current_job_id = None
             return result
         except Empty:
+            self.current_job_id = None
             return None
         except Exception as e:
             logger.warning(f'Error getting result from queue: {e}')
+            self.current_job_id = None
             return None
 
     def shutdown(self) -> None:
@@ -348,14 +356,18 @@ class PolarsComputeEngine:
         job_id: str,
         additional_datasources: dict[str, dict] | None = None,
     ) -> pl.LazyFrame:
-        """Build the Polars transformation pipeline and return the final LazyFrame."""
-        lf = normalize_timezones(load_datasource(datasource_config))
+        """Build the Polars transformation pipeline and return the final LazyFrame.
+
+        Note: All data remains in UTC. Timezone conversion for display is handled
+        separately in _execute_preview.
+        """
+        lf = load_datasource(datasource_config)
 
         right_sources: dict[str, pl.LazyFrame] = {}
         if additional_datasources:
             for ds_id, ds_config in additional_datasources.items():
                 try:
-                    right_sources[ds_id] = normalize_timezones(load_datasource(ds_config))
+                    right_sources[ds_id] = load_datasource(ds_config)
                 except Exception as e:
                     logger.error(f'Failed to load additional datasource {ds_id}: {e}')
                     raise ValueError(f'Failed to load datasource {ds_id}: {e}')
@@ -450,7 +462,20 @@ class PolarsComputeEngine:
         last_frame = schema_map.get(last_id)
         if last_frame is None:
             raise ValueError(f'Missing frame for step {last_id}')
-        return normalize_timezones(last_frame)
+        return last_frame
+
+    @staticmethod
+    def _get_query_plans(lf: pl.LazyFrame) -> dict | None:
+        if not hasattr(lf, 'explain'):
+            return None
+
+        optimized = lf.explain(optimized=True)
+        unoptimized = lf.explain(optimized=False)
+
+        return {
+            'optimized': optimized,
+            'unoptimized': unoptimized,
+        }
 
     @staticmethod
     def _execute_preview(
@@ -469,6 +494,8 @@ class PolarsComputeEngine:
             additional_datasources,
         )
 
+        query_plans = PolarsComputeEngine._get_query_plans(lf)
+
         # Get schema from lazy frame (no collection needed)
         schema_obj = lf.collect_schema()
         schema = {col: str(dtype) for col, dtype in schema_obj.items()}
@@ -481,6 +508,7 @@ class PolarsComputeEngine:
             'schema': schema,
             'row_count': preview_df.height,  # Rows in this preview page
             'data': preview_df.to_dicts(),
+            'query_plans': query_plans,
         }
 
     @staticmethod
@@ -500,6 +528,8 @@ class PolarsComputeEngine:
             additional_datasources,
         )
 
+        query_plans = PolarsComputeEngine._get_query_plans(lf)
+
         logger.debug(f'Job {job_id}: Writing export file')
 
         # Collect full dataset and write to file
@@ -513,6 +543,7 @@ class PolarsComputeEngine:
             'output_path': output_path,
             'export_format': export_format,
             'row_count': row_count,
+            'query_plans': query_plans,
         }
 
     @staticmethod
@@ -533,7 +564,6 @@ class PolarsComputeEngine:
         # Get schema from lazy frame (no full collection needed)
         schema_obj = lf.collect_schema()
         schema = {col: str(dtype) for col, dtype in schema_obj.items()}
-        lf = normalize_timezones(lf, schema_obj)
 
         return {
             'schema': schema,
@@ -559,4 +589,4 @@ class PolarsComputeEngine:
         if not handler:
             raise ValueError(f'Unsupported operation: {operation}')
 
-        return normalize_timezones(handler(lf, params, right_lf=right_lf, right_sources=right_sources))
+        return handler(lf, params, right_lf=right_lf, right_sources=right_sources)

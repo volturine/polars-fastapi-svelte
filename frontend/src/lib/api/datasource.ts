@@ -304,6 +304,25 @@ export function resolveIcebergMetadata(
 	);
 }
 
+export interface IcebergSnapshotInfo {
+	snapshot_id: string;
+	timestamp_ms: number;
+	parent_snapshot_id?: string | null;
+	operation?: string | null;
+}
+
+export interface IcebergSnapshotsResponse {
+	datasource_id: string;
+	table_path: string;
+	snapshots: IcebergSnapshotInfo[];
+}
+
+export function listIcebergSnapshots(
+	datasourceId: string
+): ResultAsync<IcebergSnapshotsResponse, ApiError> {
+	return apiRequest<IcebergSnapshotsResponse>(`/v1/compute/iceberg/${datasourceId}/snapshots`);
+}
+
 export function listDatasources(): ResultAsync<DataSource[], ApiError> {
 	return apiRequest<DataSource[]>('/v1/datasource');
 }

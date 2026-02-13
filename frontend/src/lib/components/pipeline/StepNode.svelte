@@ -2,8 +2,9 @@
 	import type { PipelineStep } from '$lib/types/analysis';
 	import { drag, type DropTarget } from '$lib/stores/drag.svelte';
 	import InlineDataTable from '$lib/components/viewers/InlineDataTable.svelte';
-	import { Download, Save, GripVertical } from 'lucide-svelte';
+	import { Download, GripVertical } from 'lucide-svelte';
 	import { exportData, downloadBlob, type ExportRequest } from '$lib/api/compute';
+	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { getStepTypeConfig } from '$lib/components/pipeline/utils';
 
 	interface Props {
@@ -32,6 +33,7 @@
 
 	let isExporting = $state(false);
 	let exportError = $state<string | null>(null);
+	let exportSuccess = $state<string | null>(null);
 
 	let dragging = $state(false);
 	let clickConsumed = $state(false);
@@ -139,12 +141,11 @@
 
 		isExporting = true;
 		exportError = null;
+		exportSuccess = null;
 
 		const format = (step.config.format as string) || 'csv';
 		const filename = (step.config.filename as string) || 'export';
-		const destination = (step.config.destination as string) || 'filesystem';
-
-		const request: ExportRequest = {
+		const request = {
 			analysis_id: analysisId,
 			datasource_id: datasourceId,
 			pipeline_steps: allSteps.map((s) => ({
@@ -154,16 +155,27 @@
 				depends_on: s.depends_on
 			})),
 			target_step_id: step.id,
-			format: format as 'csv' | 'parquet' | 'json',
+			format: format as ExportRequest['format'],
 			filename,
-			destination: destination as 'download' | 'filesystem'
-		};
+			destination: 'download',
+			datasource_config: analysisStore.activeTab?.datasource_config ?? null
+		} as ExportRequest;
 
 		exportData(request).match(
 			(result) => {
-				if (destination === 'download' && result instanceof Blob) {
-					const ext = format === 'csv' ? '.csv' : format === 'parquet' ? '.parquet' : '.json';
+				if (result instanceof Blob) {
+					const ext =
+						format === 'csv'
+							? '.csv'
+							: format === 'parquet'
+								? '.parquet'
+								: format === 'ndjson'
+									? '.ndjson'
+									: format === 'duckdb'
+										? '.duckdb'
+										: '.json';
 					downloadBlob(result, `${filename}${ext}`);
+					exportSuccess = `Downloaded ${filename}${ext}`;
 				}
 				isExporting = false;
 			},
@@ -184,14 +196,11 @@
 >
 	<div class="absolute left-1/2 -top-1 z-2 h-2 w-2 -translate-x-1/2 border-2 connector-dot"></div>
 
-	<div
-		class="step-content card-base border p-4 transition-all hover:border-tertiary"
-		role="listitem"
-	>
+	<div class="step-content card-base border p-4 hover:border-tertiary" role="listitem">
 		<div class="mb-3 flex items-center gap-2">
 			<!-- Drag handle (6-dot grip) -->
 			<button
-				class="drag-handle flex shrink-0 cursor-grab items-center justify-center border-none bg-transparent p-1 opacity-40 transition-all select-none text-fg-muted hover:opacity-100 hover:bg-hover active:cursor-grabbing"
+				class="drag-handle flex shrink-0 cursor-grab items-center justify-center border-none bg-transparent p-1 opacity-40 select-none text-fg-muted hover:opacity-100 hover:bg-hover active:cursor-grabbing"
 				class:dragging
 				title="Drag to reorder"
 				type="button"
@@ -219,7 +228,7 @@
 
 		<div class="flex gap-2">
 			<button
-				class="action-btn flex-1 cursor-pointer border border-tertiary bg-transparent p-2 font-medium uppercase tracking-widest text-[0.625rem] text-fg-secondary hover:bg-hover hover:text-fg-primary transition-all"
+				class="action-btn flex-1 cursor-pointer border border-tertiary bg-transparent p-2 font-medium uppercase tracking-widest text-[0.625rem] text-fg-secondary hover:bg-hover hover:text-fg-primary"
 				class:inactive={!isApplied}
 				onclick={() => onToggleApply(step.id)}
 				type="button"
@@ -228,14 +237,14 @@
 				{isApplied ? 'disable' : 'enable'}
 			</button>
 			<button
-				class="action-btn flex-1 cursor-pointer border border-tertiary bg-transparent p-2 text-xs font-medium transition-all text-fg-secondary hover:bg-hover hover:text-fg-primary"
+				class="action-btn flex-1 cursor-pointer border border-tertiary bg-transparent p-2 text-xs font-medium text-fg-secondary hover:bg-hover hover:text-fg-primary"
 				onclick={() => onEdit(step.id)}
 				type="button"
 			>
 				edit
 			</button>
 			<button
-				class="action-btn danger flex-1 cursor-pointer border border-tertiary bg-transparent p-2 text-xs font-medium transition-all text-fg-secondary hover:bg-error hover:border-error hover:text-error"
+				class="action-btn danger flex-1 cursor-pointer border border-tertiary bg-transparent p-2 text-xs font-medium text-fg-secondary hover:bg-error hover:border-error hover:text-error"
 				onclick={() => onDelete(step.id)}
 				type="button"
 			>
@@ -250,8 +259,13 @@
 						{exportError}
 					</div>
 				{/if}
+				{#if exportSuccess}
+					<div class="mb-2 border border-success bg-success-bg p-2 text-xs text-success-fg">
+						{exportSuccess}
+					</div>
+				{/if}
 				<button
-					class="export-btn flex w-full cursor-pointer items-center justify-center gap-2 border-none px-3 py-2 text-xs font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50 bg-accent text-bg-primary hover:opacity-90 hover:enabled:opacity-90"
+					class="export-btn flex w-full cursor-pointer items-center justify-center gap-2 border-none px-3 py-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 bg-accent text-bg-primary hover:opacity-90 hover:enabled:opacity-90"
 					onclick={handleExport}
 					disabled={isExporting}
 					type="button"
@@ -259,12 +273,9 @@
 					{#if isExporting}
 						<span class="spinner spinner-sm"></span>
 						Exporting...
-					{:else if step.config.destination === 'download'}
+					{:else}
 						<Download size={14} />
 						Download
-					{:else}
-						<Save size={14} />
-						Save
 					{/if}
 				</button>
 			</div>

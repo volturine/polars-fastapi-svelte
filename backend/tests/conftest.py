@@ -15,6 +15,18 @@ from modules.analysis.models import Analysis, AnalysisDataSource
 from modules.datasource.models import DataSource
 
 
+def acquire_lock(client: TestClient, resource_id: str) -> tuple[str, str]:
+    client_id = str(uuid.uuid4())
+    payload = {
+        'client_id': client_id,
+        'client_signature': 'test-signature',
+    }
+    response = client.post(f'/api/v1/locks/{resource_id}/acquire', json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    return client_id, data['lock_token']
+
+
 @pytest.fixture(scope='function')
 def test_engine():
     engine = create_engine(

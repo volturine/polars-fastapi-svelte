@@ -11,6 +11,20 @@ import { getLockPayload } from '$lib/stores/lockManager.svelte';
 import { SvelteMap } from 'svelte/reactivity';
 import { ResultAsync, err, ok } from 'neverthrow';
 import type { ApiError } from '$lib/api/client';
+import { idbGet, idbSet } from '$lib/utils/indexeddb';
+
+async function loadPreviewRuns(map: SvelteMap<string, boolean>): Promise<void> {
+	const stored = await idbGet<Array<[string, boolean]>>('analysis_preview_runs');
+	if (!stored) return;
+	for (const [key, value] of stored) {
+		map.set(key, value);
+	}
+}
+
+function savePreviewRuns(map: SvelteMap<string, boolean>): void {
+	const entries = Array.from(map.entries());
+	void idbSet('analysis_preview_runs', entries);
+}
 
 export class AnalysisStore {
 	current = $state<Analysis | null>(null);
@@ -22,6 +36,18 @@ export class AnalysisStore {
 	engineDefaults = $state<EngineDefaults | null>(null);
 	loading = $state(false);
 	error = $state<string | null>(null);
+	loadId = $state(0);
+	lastSaved = $state<{ name: string; description: string | null } | null>(null);
+	previewRuns = $state(new SvelteMap<string, boolean>());
+
+	constructor() {
+		void loadPreviewRuns(this.previewRuns);
+	}
+
+	setPreviewRun(key: string, value: boolean): void {
+		this.previewRuns.set(key, value);
+		savePreviewRuns(this.previewRuns);
+	}
 
 	activeTab = $derived.by(() => {
 		const match = this.tabs.find((tab) => tab.id === this.activeTabId) ?? null;
@@ -57,13 +83,66 @@ export class AnalysisStore {
 		return schemaStore.getLastOutput() ?? baseSchema;
 	});
 
+	applyAnalysis(analysis: Analysis): void {
+		const previousId = this.current?.id ?? null;
+		this.current = analysis;
+		this.lastSaved = { name: analysis.name, description: analysis.description ?? null };
+		if (previousId !== analysis.id) {
+			this.activeTabId = null;
+			this.sourceSchemas.clear();
+		}
+
+		const definition = analysis.pipeline_definition as {
+			steps?: PipelineStep[];
+			tabs?: AnalysisTab[];
+			datasource_ids?: string[];
+		};
+
+		const tabs = analysis.tabs?.length ? analysis.tabs : definition?.tabs;
+		if (tabs && tabs.length && tabs[0].steps !== undefined) {
+			const normalized = this.normalizeTabSteps(tabs);
+			this.setTabs(normalized);
+			this.savedTabs = normalized;
+			this.loading = false;
+			this.error = null;
+			return;
+		}
+
+		const legacySteps = definition?.steps ?? [];
+
+		if (tabs && tabs.length) {
+			const migratedTabs = tabs.map((tab, index) => ({
+				...tab,
+				steps: index === 0 ? legacySteps : []
+			}));
+			const normalized = this.normalizeTabSteps(migratedTabs);
+			this.setTabs(normalized);
+			this.savedTabs = normalized;
+			this.loading = false;
+			this.error = null;
+			return;
+		}
+
+		const defaults = this.buildTabs(definition?.datasource_ids ?? [], legacySteps);
+		const normalized = this.normalizeTabSteps(defaults);
+		this.setTabs(normalized);
+		this.savedTabs = normalized;
+		this.loading = false;
+		this.error = null;
+	}
+
 	loadAnalysis(id: string): ResultAsync<void, ApiError> {
+		const token = this.loadId + 1;
+		this.loadId = token;
+		this.reset();
 		this.loading = true;
 		this.error = null;
 
 		return getAnalysis(id)
 			.andThen((analysis) => {
+				if (this.loadId !== token) return ok(undefined);
 				this.current = analysis;
+				this.lastSaved = { name: analysis.name, description: analysis.description ?? null };
 
 				const definition = analysis.pipeline_definition as {
 					steps?: PipelineStep[];
@@ -102,10 +181,58 @@ export class AnalysisStore {
 				return ok(undefined);
 			})
 			.mapErr((error) => {
+				if (this.loadId !== token) return error;
 				this.error = error.message;
 				this.loading = false;
 				return error;
 			});
+	}
+
+	isDirty(): boolean {
+		if (!this.current) return false;
+		const savedMeta = this.lastSaved ?? {
+			name: this.current.name,
+			description: this.current.description ?? null
+		};
+		if (this.current.name !== savedMeta.name) return true;
+		if ((this.current.description ?? null) !== savedMeta.description) return true;
+		if (this.tabs.length !== this.savedTabs.length) return true;
+		for (let i = 0; i < this.tabs.length; i += 1) {
+			const currentTab = this.tabs[i];
+			const savedTab = this.savedTabs[i];
+			if (!savedTab) return true;
+			if (currentTab.id !== savedTab.id) return true;
+			if (currentTab.name !== savedTab.name) return true;
+			if (currentTab.type !== savedTab.type) return true;
+			if ((currentTab.parent_id ?? null) !== (savedTab.parent_id ?? null)) return true;
+			if ((currentTab.datasource_id ?? null) !== (savedTab.datasource_id ?? null)) return true;
+			const currentConfig = JSON.stringify(currentTab.datasource_config ?? {});
+			const savedConfig = JSON.stringify(savedTab.datasource_config ?? {});
+			if (currentConfig !== savedConfig) return true;
+			const currentSteps = currentTab.steps ?? [];
+			const savedSteps = savedTab.steps ?? [];
+			if (currentSteps.length !== savedSteps.length) return true;
+			for (let j = 0; j < currentSteps.length; j += 1) {
+				const currentStep = currentSteps[j];
+				const savedStep = savedSteps[j];
+				if (!savedStep) return true;
+				if (currentStep.id !== savedStep.id) return true;
+				if (currentStep.type !== savedStep.type) return true;
+				const currentDepends = currentStep.depends_on ?? [];
+				const savedDepends = savedStep.depends_on ?? [];
+				if (currentDepends.length !== savedDepends.length) return true;
+				for (let k = 0; k < currentDepends.length; k += 1) {
+					if (currentDepends[k] !== savedDepends[k]) return true;
+				}
+				const currentConfig = JSON.stringify(currentStep.config ?? {});
+				const savedConfig = JSON.stringify(savedStep.config ?? {});
+				if (currentConfig !== savedConfig) return true;
+				const currentApplied = currentStep.is_applied !== false;
+				const savedApplied = savedStep.is_applied !== false;
+				if (currentApplied !== savedApplied) return true;
+			}
+		}
+		return false;
 	}
 
 	private logStep(action: string, step: PipelineStep, meta?: Record<string, unknown>): void {
@@ -339,9 +466,13 @@ export class AnalysisStore {
 		if (!this.activeTab) return;
 		const steps = [...this.activeTab.steps];
 		const [moved] = steps.splice(fromIndex, 1);
-		steps.splice(toIndex, 0, moved);
+		const movedCopy = {
+			...moved,
+			config: JSON.parse(JSON.stringify(moved.config))
+		};
+		steps.splice(toIndex, 0, movedCopy);
 		this.updateTabSteps(this.activeTab.id, steps);
-		this.logStep('reorder', moved, { from: fromIndex, to: toIndex });
+		this.logStep('reorder', movedCopy, { from: fromIndex, to: toIndex });
 	}
 
 	/**
@@ -443,6 +574,7 @@ export class AnalysisStore {
 		return updateAnalysis(this.current.id, update)
 			.andThen((updated) => {
 				this.current = updated;
+				this.lastSaved = { name: updated.name, description: updated.description ?? null };
 				const tabs = updated.tabs ?? [];
 				if (tabs.length) {
 					const normalized = this.normalizeTabSteps(tabs);
@@ -494,6 +626,7 @@ export class AnalysisStore {
 		this.sourceSchemas.clear();
 		this.resourceConfig = null;
 		this.engineDefaults = null;
+		this.lastSaved = null;
 		this.loading = false;
 		this.error = null;
 	}

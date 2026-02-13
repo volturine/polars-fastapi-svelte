@@ -90,9 +90,15 @@ class IcebergDataSourceConfig(BaseModel):
     """Iceberg-specific datasource configuration."""
 
     metadata_path: str
-    snapshot_id: int | None = None
+    snapshot_id: str | None = None
+    snapshot_timestamp_ms: int | None = None
     storage_options: dict | None = None
     reader: str | None = None
+    catalog_type: str | None = None
+    catalog_uri: str | None = None
+    warehouse: str | None = None
+    namespace: str | None = None
+    table: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

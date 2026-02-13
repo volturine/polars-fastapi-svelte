@@ -5,9 +5,10 @@
 
 	interface Props {
 		datasourceId: string;
+		datasourceConfig?: Record<string, unknown>;
 	}
 
-	let { datasourceId }: Props = $props();
+	let { datasourceId, datasourceConfig = {} }: Props = $props();
 
 	let page = $state(1);
 	let rowLimit = $state(100);
@@ -19,7 +20,7 @@
 	});
 
 	const query = createQuery(() => ({
-		queryKey: ['datasource-preview', datasourceId, page, rowLimit],
+		queryKey: ['datasource-preview', datasourceId, page, rowLimit, datasourceConfig],
 		queryFn: async (): Promise<StepPreviewResponse> => {
 			const result = await previewStepData({
 				analysis_id: '',
@@ -27,7 +28,8 @@
 				pipeline_steps: [],
 				target_step_id: 'source',
 				row_limit: rowLimit,
-				page
+				page,
+				datasource_config: datasourceConfig
 			});
 			if (result.isErr()) {
 				throw new Error(result.error.message);
@@ -58,34 +60,25 @@
 </script>
 
 <div class="h-full flex flex-col">
-	{#if error}
-		<div class="flex-1 flex items-center justify-center">
-			<div class="text-center">
-				<p class="m-0 mb-2 font-semibold text-error-fg">Failed to load preview</p>
-				<p class="m-0 text-xs text-fg-tertiary">{error.message}</p>
-			</div>
-		</div>
-	{:else}
-		<div class="flex-1 overflow-hidden">
-			<DataTable
-				columns={data?.columns ?? []}
-				data={data?.data ?? []}
-				columnTypes={data?.column_types ?? {}}
-				loading={isLoading}
-				fillContainer
-				bind:columnSearch
-				showHeader
-				showPagination
-				pagination={{
-					page,
-					canPrev,
-					canNext,
-					onPrev: goPrev,
-					onNext: goNext,
-					loading: isLoading
-				}}
-				showTypeBadges
-			/>
-		</div>
-	{/if}
+	<div class="overflow-hidden h-full">
+		<DataTable
+			columns={data?.columns ?? []}
+			data={data?.data ?? []}
+			columnTypes={data?.column_types ?? {}}
+			loading={isLoading}
+			{error}
+			fillContainer
+			bind:columnSearch
+			showHeader
+			showPagination
+			pagination={{
+				page,
+				canPrev,
+				canNext,
+				onPrev: goPrev,
+				onNext: goNext
+			}}
+			showTypeBadges
+		/>
+	</div>
 </div>

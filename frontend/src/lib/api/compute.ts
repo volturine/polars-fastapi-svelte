@@ -21,6 +21,7 @@ export interface StepPreviewRequest {
 	row_limit?: number;
 	page?: number;
 	resource_config?: EngineResourceConfig | null;
+	datasource_config?: Record<string, unknown> | null;
 }
 
 export type StepPreviewResourceConfig = StepPreviewRequest['resource_config'];
@@ -101,9 +102,18 @@ export interface ExportRequest {
 		depends_on?: string[];
 	}>;
 	target_step_id: string;
-	format: 'csv' | 'parquet' | 'json' | 'ndjson';
-	filename: string;
-	destination: 'download' | 'filesystem';
+	format?: 'csv' | 'parquet' | 'json' | 'ndjson' | 'duckdb';
+	filename?: string;
+	destination: 'download' | 'filesystem' | 'datasource';
+	datasource_type?: 'iceberg' | 'duckdb' | 'file';
+	iceberg_options?: {
+		table_name?: string;
+		namespace?: string;
+	};
+	duckdb_options?: {
+		table_name?: string;
+	};
+	datasource_config?: Record<string, unknown> | null;
 }
 
 export interface ExportResponse {
@@ -113,6 +123,8 @@ export interface ExportResponse {
 	destination: string;
 	file_path: string | null;
 	message: string | null;
+	datasource_id: string | null;
+	datasource_name?: string | null;
 }
 
 export function exportData(request: ExportRequest): ResultAsync<Blob | ExportResponse, ApiError> {
@@ -121,8 +133,13 @@ export function exportData(request: ExportRequest): ResultAsync<Blob | ExportRes
 			method: 'POST',
 			body: JSON.stringify(request)
 		}).andThen((blob) => {
-			const ext = request.format.startsWith('.') ? request.format : `.${request.format}`;
-			downloadBlob(blob, `${request.filename}${ext}`);
+			const filename = request.filename ?? 'export';
+			if (request.format) {
+				const ext = request.format.startsWith('.') ? request.format : `.${request.format}`;
+				downloadBlob(blob, `${filename}${ext}`);
+				return okAsync(blob);
+			}
+			downloadBlob(blob, filename);
 			return okAsync(blob);
 		});
 	}
@@ -153,6 +170,7 @@ export interface StepSchemaRequest {
 		depends_on?: string[];
 	}>;
 	target_step_id: string;
+	datasource_config?: Record<string, unknown> | null;
 }
 
 export interface StepSchemaResponse {

@@ -190,7 +190,7 @@
 
 {#if step === null}
 	<div
-		class="step-config box-border flex h-full min-h-0 w-full flex-col items-center justify-center overflow-y-auto bg-panel-bg text-fg-primary"
+		class="step-config box-border flex h-full min-h-0 w-full flex-col items-center justify-center overflow-y-auto bg-primary text-fg-primary"
 	>
 		<div class="flex flex-col items-center justify-center p-6 text-center text-fg-muted">
 			<div class="mb-4 opacity-50"><Settings2 size={32} /></div>
@@ -200,16 +200,16 @@
 	</div>
 {:else}
 	<div
-		class="step-config box-border flex h-full min-h-0 w-full flex-col overflow-y-auto bg-panel-bg text-fg-primary"
+		class="step-config box-border flex h-full min-h-0 w-full flex-col overflow-y-auto bg-primary text-fg-primary"
 	>
 		<div
-			class="config-header relative flex items-center justify-between border-b border-tertiary bg-panel-bg p-4"
+			class="config-header relative flex items-center justify-between border-b border-tertiary bg-primary p-4"
 		>
 			<h3 class="m-0 text-sm font-semibold uppercase tracking-widest text-fg-primary">
 				Configure Step
 			</h3>
 			<button
-				class="close-button flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-2xl leading-none text-fg-muted transition-all hover:bg-bg-hover hover:text-fg-primary"
+				class="close-button flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-2xl leading-none text-fg-muted hover:bg-bg-hover hover:text-fg-primary"
 				onclick={() => onClose?.()}
 				type="button"
 				title="Close"
@@ -218,7 +218,7 @@
 			</button>
 		</div>
 
-		<div class="config-body flex-1 overflow-y-auto bg-panel-bg p-3">
+		<div class="config-body flex-1 overflow-y-auto bg-primary p-3">
 			{#if !schema && !isLoadingSchema}
 				<div class="warning-message">
 					<p>Schema not available. Please ensure the data source is loaded.</p>
@@ -226,7 +226,7 @@
 				</div>
 			{:else if isLoadingSchema}
 				<div
-					class="flex flex-col items-center justify-center gap-3 bg-panel-bg p-6 text-center text-fg-tertiary"
+				class="flex flex-col items-center justify-center gap-3 bg-primary p-6 text-center text-fg-tertiary"
 				>
 					<div class="spinner-md"></div>
 					<p class="m-0">Loading schema...</p>
@@ -302,7 +302,7 @@
 			{:else if step.type === 'view'}
 				<ViewConfig schema={inputSchema} bind:config={draftConfig as unknown as ViewConfigData} />
 			{:else if step.type === 'datasource'}
-				<div class="bg-panel-bg p-6 text-center">
+			<div class="bg-primary p-6 text-center">
 					<p class="m-0 mb-3 text-fg-tertiary">Datasource options are set during upload.</p>
 				</div>
 			{:else if step.type === 'sample'}
@@ -335,7 +335,7 @@
 					}
 				/>
 			{:else}
-				<div class="bg-panel-bg p-6 text-center">
+			<div class="bg-primary p-6 text-center">
 					<p class="m-0 mb-3 text-fg-tertiary">
 						Configuration for {step.type} is not yet implemented
 					</p>
@@ -347,9 +347,9 @@
 				</div>
 			{/if}
 		</div>
-		<div class="flex gap-2 border-t border-tertiary bg-panel-bg p-3">
+		<div class="flex gap-2 border-t border-tertiary bg-primary p-3">
 			<button
-				class="action-button cancel flex-1 cursor-pointer border border-tertiary bg-transparent px-3 py-2 font-mono text-sm font-semibold text-fg-primary transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+				class="action-button cancel flex-1 cursor-pointer border border-tertiary bg-transparent px-3 py-2 font-mono text-sm font-semibold text-fg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 				onclick={handleCancelConfig}
 				disabled={!hasChanges}
 				type="button"
@@ -357,7 +357,7 @@
 				Cancel
 			</button>
 			<button
-				class="action-button apply flex-1 cursor-pointer border border-tertiary bg-accent-bg px-3 py-2 font-mono text-sm font-semibold text-accent-primary transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+				class="action-button apply flex-1 cursor-pointer border border-tertiary bg-accent-bg px-3 py-2 font-mono text-sm font-semibold text-accent-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 				onclick={handleApplyConfig}
 				disabled={!hasChanges}
 				type="button"

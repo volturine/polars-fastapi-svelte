@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { useQueryClient } from '@tanstack/svelte-query';
 	import {
 		uploadFile,
 		uploadBulkFiles,
@@ -21,6 +22,7 @@
 	type Tab = 'file' | 'database' | 'api';
 	type DatabaseType = 'duckdb' | 'iceberg' | 'other';
 
+	const queryClient = useQueryClient();
 	let activeTab = $state<Tab>('file');
 	let databaseType = $state<DatabaseType>('duckdb');
 	let loading = $state(false);
@@ -53,7 +55,7 @@
 	// Iceberg state
 	let icebergName = $state('');
 	let icebergMetadataPath = $state('');
-	let icebergSnapshotId = $state<number | null>(null);
+	let icebergSnapshotId = $state('');
 	let icebergReader = $state('');
 	let icebergStorageOptions = $state('');
 	let icebergResolvedPath = $state('');
@@ -134,6 +136,7 @@
 				showBulkResults = true;
 				if (response.successful === response.total) {
 					selectedFiles = [];
+					queryClient.invalidateQueries({ queryKey: ['datasources'] });
 					goto(resolve('/datasources'), { invalidateAll: true });
 				}
 			},
@@ -318,9 +321,11 @@
 					loading = false;
 					return;
 				}
+				queryClient.invalidateQueries({ queryKey: ['datasources'] });
 				goto(resolve('/datasources'), { invalidateAll: true });
 			} else {
 				await uploadFile(file, fileName);
+				queryClient.invalidateQueries({ queryKey: ['datasources'] });
 				goto(resolve('/datasources'), { invalidateAll: true });
 			}
 		} catch (err) {
@@ -374,7 +379,7 @@
 			loading = false;
 			return;
 		}
-
+		queryClient.invalidateQueries({ queryKey: ['datasources'] });
 		goto(resolve('/datasources'), { invalidateAll: true });
 	}
 
@@ -429,6 +434,7 @@
 			return;
 		}
 
+		queryClient.invalidateQueries({ queryKey: ['datasources'] });
 		goto(resolve('/datasources'), { invalidateAll: true });
 	}
 
@@ -458,7 +464,7 @@
 			'/metadata'
 		);
 
-		const snapshotId = icebergSnapshotId ?? null;
+		const snapshotId = icebergSnapshotId.trim() || null;
 
 		let storageOptions: Record<string, string> | null = null;
 		if (icebergStorageOptions.trim()) {
@@ -488,6 +494,7 @@
 			return;
 		}
 
+		queryClient.invalidateQueries({ queryKey: ['datasources'] });
 		goto(resolve('/datasources'), { invalidateAll: true });
 	}
 
@@ -517,6 +524,7 @@
 
 		try {
 			await connectDatabase(dbName, connectionString, query);
+			queryClient.invalidateQueries({ queryKey: ['datasources'] });
 			goto(resolve('/datasources'), { invalidateAll: true });
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Connection failed';
@@ -536,6 +544,7 @@
 
 		try {
 			await connectApi(apiName, apiUrl, apiMethod);
+			queryClient.invalidateQueries({ queryKey: ['datasources'] });
 			goto(resolve('/datasources'), { invalidateAll: true });
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Connection failed';
@@ -555,21 +564,21 @@
 
 	<div class="mb-8 flex gap-2 border-b-2 border-tertiary">
 		<button
-			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
+			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted hover:text-fg-secondary"
 			class:active={activeTab === 'file'}
 			onclick={() => (activeTab = 'file')}
 		>
 			File Upload
 		</button>
 		<button
-			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
+			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted hover:text-fg-secondary"
 			class:active={activeTab === 'database'}
 			onclick={() => (activeTab = 'database')}
 		>
 			Database
 		</button>
 		<button
-			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted transition-all hover:text-fg-secondary"
+			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted hover:text-fg-secondary"
 			class:active={activeTab === 'api'}
 			onclick={() => (activeTab = 'api')}
 		>
@@ -588,7 +597,7 @@
 					<span class="text-sm font-medium text-fg-secondary">Source</span>
 					<div class="flex flex-col gap-3">
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border border-tertiary p-3 transition-all hover:border-tertiary hover:bg-hover"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border border-tertiary p-3 hover:border-tertiary hover:bg-hover"
 						>
 							<input
 								type="radio"
@@ -602,7 +611,7 @@
 							<span class="text-xs text-fg-muted">Upload one or many files in one step</span>
 						</label>
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border border-tertiary p-3 transition-all hover:border-tertiary hover:bg-hover"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border border-tertiary p-3 hover:border-tertiary hover:bg-hover"
 						>
 							<input
 								type="radio"
@@ -750,7 +759,7 @@
 								href="https://docs.pola.rs/api/python/stable/reference/io.html"
 								target="_blank"
 								rel="noopener noreferrer"
-								class="inline-flex items-center no-underline transition-colors text-fg-muted"
+								class="inline-flex items-center no-underline text-fg-muted"
 							>
 								<MessageCircleQuestionMark size={16} />
 							</a>
@@ -935,7 +944,7 @@
 					<label for="db-type" class="text-sm font-medium text-fg-secondary">Database Type</label>
 					<div class="flex flex-col gap-3">
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 transition-all border-tertiary"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 border-tertiary"
 						>
 							<input
 								type="radio"
@@ -949,7 +958,7 @@
 							<span class="text-xs text-fg-muted">In-memory or file-based analytics database</span>
 						</label>
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 transition-all border-tertiary"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 border-tertiary"
 						>
 							<input
 								type="radio"
@@ -965,7 +974,7 @@
 							>
 						</label>
 						<label
-							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 transition-all border-tertiary"
+							class="radio-option grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 border p-3 border-tertiary"
 						>
 							<input
 								type="radio"
@@ -1093,7 +1102,7 @@
 						>
 						<input
 							id="iceberg-snapshot"
-							type="number"
+							type="text"
 							bind:value={icebergSnapshotId}
 							placeholder="7051579356916758811"
 							disabled={loading}

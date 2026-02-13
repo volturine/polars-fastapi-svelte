@@ -6,7 +6,6 @@
 		config?: {
 			format?: string;
 			filename?: string;
-			destination?: string;
 			options?: Record<string, unknown>;
 		};
 	}
@@ -15,27 +14,22 @@
 		config = $bindable({
 			format: 'csv',
 			filename: 'export',
-			destination: 'filesystem',
 			options: {}
 		})
 	}: Props = $props();
 
 	let showDuckDBOptions = $derived(config.format === 'duckdb');
+	let showFormatOptions = $derived(true);
 
 	// Map format string to FileType for badge display
 	let selectedFileType = $derived.by((): FileType | 'duckdb' => {
 		const format = config.format ?? 'csv';
-		// Map formats to file types - duckdb is a source type, not a file type
 		if (format === 'csv') return 'csv';
 		if (format === 'parquet') return 'parquet';
 		if (format === 'json') return 'json';
 		if (format === 'ndjson') return 'ndjson';
 		return 'duckdb' as const;
 	});
-
-	function setTableName(value: string) {
-		config.options = { ...config.options, table_name: value };
-	}
 
 	const formats = [
 		{ value: 'csv', label: 'CSV (.csv)' },
@@ -45,13 +39,24 @@
 		{ value: 'duckdb', label: 'DuckDB (.duckdb)' }
 	];
 
-	const destinations = [
-		{ value: 'filesystem', label: 'Server Filesystem' },
-		{ value: 'download', label: 'Browser Download' }
-	];
+	let formatOptions = $derived.by(() => formats);
 </script>
 
 <div class="config-panel" role="region" aria-label="Export configuration">
+	<div class="form-group mb-4">
+		<div class="flex items-center gap-2">
+			Destination
+			<span
+				class="rounded-sm border border-tertiary bg-tertiary px-2 py-1 text-[10px] uppercase text-fg-muted"
+			>
+				Browser download
+			</span>
+		</div>
+		<span class="hint mt-1 block text-xs text-fg-muted">
+			File will be downloaded to your browser
+		</span>
+	</div>
+
 	<div class="form-group mb-4">
 		<label for="export-input-filename">Filename</label>
 		<input
@@ -67,31 +72,37 @@
 		>
 	</div>
 
-	<div class="form-group mb-4">
-		<label for="export-select-format" class="flex items-center gap-2">
-			Format
-			{#if selectedFileType === 'duckdb'}
-				<FileTypeBadge sourceType="duckdb" size="sm" />
-			{:else}
-				<FileTypeBadge fileType={selectedFileType} size="sm" />
-			{/if}
-		</label>
-		<select id="export-select-format" data-testid="export-format-select" bind:value={config.format}>
-			{#each formats as fmt (fmt.value)}
-				<option value={fmt.value}>{fmt.label}</option>
-			{/each}
-		</select>
-	</div>
+	{#if showFormatOptions}
+		<div class="form-group mb-4">
+			<label for="export-select-format" class="flex items-center gap-2">
+				Format
+				{#if selectedFileType === 'duckdb'}
+					<FileTypeBadge sourceType="duckdb" size="sm" />
+				{:else}
+					<FileTypeBadge fileType={selectedFileType} size="sm" />
+				{/if}
+			</label>
+			<select
+				id="export-select-format"
+				data-testid="export-format-select"
+				bind:value={config.format}
+			>
+				{#each formatOptions as fmt (fmt.value)}
+					<option value={fmt.value}>{fmt.label}</option>
+				{/each}
+			</select>
+		</div>
+	{/if}
 
 	{#if showDuckDBOptions}
-		<div class="form-group mb-4">
+		<div class="form-group mb-0">
 			<label for="export-input-tablename">Table Name</label>
 			<input
 				id="export-input-tablename"
 				data-testid="export-tablename-input"
 				type="text"
-				value={(config.options!.table_name as string) ?? 'data'}
-				oninput={(e) => setTableName(e.currentTarget.value)}
+				value={config.options?.table_name ?? 'data'}
+				oninput={(e) => (config.options = { ...config.options, table_name: e.currentTarget.value })}
 				placeholder="e.g., my_data"
 				aria-describedby="export-tablename-hint"
 			/>
@@ -100,28 +111,4 @@
 			>
 		</div>
 	{/if}
-
-	<div class="form-group mb-0">
-		<label for="export-select-destination">Destination</label>
-		<select
-			id="export-select-destination"
-			data-testid="export-destination-select"
-			bind:value={config.destination}
-		>
-			{#each destinations as dest (dest.value)}
-				<option value={dest.value}>{dest.label}</option>
-			{/each}
-		</select>
-		<span
-			id="export-destination-hint"
-			class="hint mt-1 block text-xs text-fg-muted"
-			aria-live="polite"
-		>
-			{#if config.destination === 'download'}
-				File will be downloaded to your browser
-			{:else}
-				File will be saved on the server
-			{/if}
-		</span>
-	</div>
 </div>

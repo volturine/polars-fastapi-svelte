@@ -31,6 +31,8 @@ def preview_step(
         page=request.page,
         analysis_id=request.analysis_id,
         resource_config=resource_config,
+        datasource_config=request.datasource_config,
+        request_json=request.model_dump(mode='json'),
     )
 
 
@@ -47,7 +49,32 @@ def get_step_schema(
         pipeline_steps=request.pipeline_steps,
         target_step_id=request.target_step_id,
         analysis_id=request.analysis_id,
+        datasource_config=request.datasource_config,
     )
+
+
+@router.get('/iceberg/{datasource_id}/snapshots', response_model=schemas.IcebergSnapshotsResponse)
+@handle_errors(operation='list iceberg snapshots')
+def list_iceberg_snapshots(
+    datasource_id: str,
+    session: Session = Depends(get_db),
+):
+    """List snapshots for an Iceberg datasource (for time travel selection)."""
+    return service.list_iceberg_snapshots(session, datasource_id)
+
+
+@router.delete(
+    '/iceberg/{datasource_id}/snapshots/{snapshot_id}',
+    response_model=schemas.IcebergSnapshotDeleteResponse,
+)
+@handle_errors(operation='delete iceberg snapshot')
+def delete_iceberg_snapshot(
+    datasource_id: str,
+    snapshot_id: str,
+    session: Session = Depends(get_db),
+):
+    """Delete an Iceberg snapshot by ID."""
+    return service.delete_iceberg_snapshot(session, datasource_id, snapshot_id)
 
 
 # Engine lifecycle endpoints
@@ -141,8 +168,8 @@ def export_data(
     request: schemas.ExportRequest,
     session: Session = Depends(get_db),
 ):
-    """Export pipeline result to file (download or save to filesystem)."""
-    file_bytes, filename, content_type = service.export_data(
+    """Export pipeline result to file (download, save to filesystem, or create datasource)."""
+    file_bytes, filename, content_type, file_path, datasource_id, result_meta = service.export_data(
         session=session,
         datasource_id=request.datasource_id,
         pipeline_steps=request.pipeline_steps,
@@ -150,29 +177,43 @@ def export_data(
         export_format=request.format.value,
         filename=request.filename,
         destination=request.destination.value,
+        datasource_type=request.datasource_type.value,
+        iceberg_options=request.iceberg_options.model_dump() if request.iceberg_options else None,
+        duckdb_options=request.duckdb_options.model_dump() if request.duckdb_options else None,
+        datasource_config=request.datasource_config,
         analysis_id=request.analysis_id,
+        request_json=request.model_dump(mode='json'),
     )
 
     if request.destination == schemas.ExportDestination.DOWNLOAD:
+        if file_bytes is None or filename is None or content_type is None:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=500, detail='Export file content not available')
         return Response(
             content=file_bytes,
             media_type=content_type,
             headers={'Content-Disposition': f'attachment; filename="{filename}"'},
         )
     else:
-        # Filesystem destination - save to exports directory
-        from core.config import settings
-
-        file_path = settings.exports_dir / filename
-
-        with open(file_path, 'wb') as f:
-            f.write(file_bytes)
-
+        message = None
+        if request.destination == schemas.ExportDestination.FILESYSTEM:
+            message = f'File saved to {file_path}'
+        if request.destination == schemas.ExportDestination.DATASOURCE:
+            message = f'Created datasource {filename}'
+        response_format = request.format.value
+        if request.destination == schemas.ExportDestination.DATASOURCE:
+            if request.datasource_type == schemas.ExportDatasourceType.ICEBERG:
+                response_format = 'iceberg'
+            if request.datasource_type == schemas.ExportDatasourceType.DUCKDB:
+                response_format = 'duckdb'
         return schemas.ExportResponse(
             success=True,
-            filename=filename,
-            format=request.format.value,
+            filename=filename or request.filename,
+            format=response_format,
             destination=request.destination.value,
-            file_path=str(file_path.absolute()),
-            message=f'File saved to {file_path.absolute()}',
+            file_path=file_path,
+            message=message,
+            datasource_id=datasource_id,
+            datasource_name=result_meta.get('datasource_name') if isinstance(result_meta, dict) else None,
         )

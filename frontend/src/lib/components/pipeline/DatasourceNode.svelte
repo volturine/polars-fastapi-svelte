@@ -1,7 +1,9 @@
 <script lang="ts">
 	import type { DataSource } from '$lib/types/datasource';
+	import type { AnalysisTab } from '$lib/types/analysis';
 	import { getDatasourceSchema } from '$lib/api/datasource';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { schemaStore } from '$lib/stores/schema.svelte';
 	import { track } from '$lib/utils/audit-log';
 	import {
 		FileText,
@@ -19,16 +21,19 @@
 	} from 'lucide-svelte';
 	import { drag } from '$lib/stores/drag.svelte';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
+	import SnapshotPicker from '$lib/components/datasources/SnapshotPicker.svelte';
 
 	interface Props {
 		datasource: DataSource | null;
 		tabName?: string;
 		analysisId?: string;
+		activeTab?: AnalysisTab | null;
 		onChangeDatasource?: () => void;
 		onRenameTab?: (name: string) => void;
 	}
 
-	let { datasource, tabName, analysisId, onChangeDatasource, onRenameTab }: Props = $props();
+	let { datasource, tabName, analysisId, activeTab, onChangeDatasource, onRenameTab }: Props =
+		$props();
 
 	let isEditing = $state(false);
 	let draftName = $state('');
@@ -92,6 +97,36 @@
 		}
 	});
 
+	const isIceberg = $derived(datasource?.source_type === 'iceberg');
+	function updateTimeTravelUi(updates: { open?: boolean; month?: string; day?: string }) {
+		const active = activeTab;
+		if (!active) return;
+		const nextConfig = { ...(active.datasource_config ?? {}) };
+		const currentUi = (nextConfig.time_travel_ui as Record<string, unknown>) ?? {};
+		nextConfig.time_travel_ui = { ...currentUi, ...updates };
+		analysisStore.updateTab(active.id, { datasource_config: nextConfig });
+	}
+
+	function updateSnapshotConfig(nextConfig: Record<string, unknown>) {
+		const active = activeTab;
+		if (!active) return;
+		analysisStore.updateTab(active.id, { datasource_config: nextConfig });
+		analysisStore.setActiveTab(active.id);
+	}
+
+	function handleSnapshotSelect(snapshotId: string | null, timestampMs?: number) {
+		schemaStore.reset();
+		track({
+			event: 'analysis_time_travel',
+			action: snapshotId ? 'set_snapshot' : 'set_latest',
+			target: datasource?.id ?? '',
+			meta: {
+				snapshot_id: snapshotId,
+				snapshot_timestamp_ms: timestampMs
+			}
+		});
+	}
+
 	function startEdit() {
 		if (!onRenameTab) return;
 		isEditing = true;
@@ -145,9 +180,7 @@
 </script>
 
 <div class="datasource-node relative w-[65%]" class:drag-active={isDragActive}>
-	<div
-		class="node-content bg-primary border-tertiary border p-4 transition-all hover:border-tertiary"
-	>
+	<div class="node-content bg-primary border-tertiary border p-4 hover:border-tertiary">
 		<!-- Header with icon and badge -->
 		<div class="mb-4 flex items-center justify-between border-b border-tertiary pb-3">
 			<div class="flex items-center gap-2">
@@ -193,7 +226,7 @@
 							aria-label="Edit tab name"
 						/>
 						<button
-							class="icon-btn save inline-flex h-5 w-5 cursor-pointer items-center justify-center border border-info text-success bg-primary p-0 leading-none transition-all hover:bg-success hover:text-fg-primary"
+						class="icon-btn save inline-flex h-5 w-5 cursor-pointer items-center justify-center border border-accent-primary text-success bg-primary p-0 leading-none hover:bg-success hover:text-fg-primary"
 							onclick={commitEdit}
 							type="button"
 							aria-label="Save"
@@ -201,7 +234,7 @@
 							<Check size={12} class="shrink-0" />
 						</button>
 						<button
-							class="icon-btn cancel inline-flex h-5 w-5 cursor-pointer items-center justify-center border border-error text-error bg-primary p-0 leading-none transition-all hover:bg-error hover:text-fg-primary"
+							class="icon-btn cancel inline-flex h-5 w-5 cursor-pointer items-center justify-center border border-error text-error bg-primary p-0 leading-none hover:bg-error hover:text-fg-primary"
 							onclick={cancelEdit}
 							type="button"
 							aria-label="Cancel"
@@ -213,7 +246,7 @@
 					<span class="text-sm font-medium">{tabName ?? datasource?.name ?? 'Untitled'}</span>
 					{#if onRenameTab}
 						<button
-							class="icon-btn edit inline-flex h-5 w-5 cursor-pointer items-center justify-center border border-tertiary text-fg-muted bg-primary p-0 opacity-50 leading-none transition-all hover:border-tertiary hover:text-fg-primary hover:bg-tertiary hover:opacity-100"
+							class="icon-btn edit inline-flex h-5 w-5 cursor-pointer items-center justify-center border border-tertiary text-fg-muted bg-primary p-0 opacity-50 leading-none hover:border-tertiary hover:text-fg-primary hover:bg-tertiary hover:opacity-100"
 							onclick={startEdit}
 							type="button"
 							aria-label="Edit tab name"
@@ -262,7 +295,7 @@
 							</span>
 						{:else}
 							<button
-								class="calc-rows-btn flex cursor-pointer items-center gap-1 border border-tertiary bg-secondary text-fg-muted px-2 py-0.5 text-[10px] transition-all disabled:cursor-not-allowed disabled:opacity-70 hover:border-tertiary hover:text-fg-primary"
+								class="calc-rows-btn flex cursor-pointer items-center gap-1 border border-tertiary bg-secondary text-fg-muted px-2 py-0.5 text-[10px] disabled:cursor-not-allowed disabled:opacity-70 hover:border-tertiary hover:text-fg-primary"
 								onclick={calculateRowCount}
 								disabled={isLoadingRowCount}
 								type="button"
@@ -290,7 +323,7 @@
 		{#if analysisId}
 			<div class="mb-3 overflow-hidden border border-tertiary">
 				<button
-					class="engine-header flex w-full cursor-pointer items-center justify-between border-none bg-secondary p-2 px-3 transition-all hover:bg-tertiary"
+					class="engine-header flex w-full cursor-pointer items-center justify-between border-none bg-secondary p-2 px-3 hover:bg-tertiary"
 					onclick={() => (engineExpanded = !engineExpanded)}
 					type="button"
 				>
@@ -302,10 +335,7 @@
 						<span class="font-mono text-[10px] text-fg-secondary">
 							{effectiveThreads} threads, {effectiveMemoryGb}GB
 						</span>
-						<span
-							class="chevron flex items-center transition-transform text-fg-muted"
-							class:expanded={engineExpanded}
-						>
+						<span class="chevron flex items-center text-fg-muted" class:expanded={engineExpanded}>
 							<ChevronDown size={12} />
 						</span>
 					</div>
@@ -317,7 +347,7 @@
 							<label for="threads-input" class="min-w-15 text-xs text-fg-secondary">Threads</label>
 							<input
 								id="threads-input"
-								class="resource-input flex-1 border border-tertiary bg-secondary text-fg-primary p-1 px-2 font-mono text-xs focus:border-info focus:outline-none"
+						class="resource-input flex-1 border border-tertiary bg-secondary text-fg-primary p-1 px-2 font-mono text-xs focus:border-accent-primary focus:outline-none"
 								type="number"
 								min="1"
 								max="64"
@@ -332,7 +362,7 @@
 							<label for="memory-select" class="min-w-15 text-xs text-fg-secondary">Memory</label>
 							<select
 								id="memory-select"
-								class="resource-input flex-1 border border-tertiary bg-secondary text-fg-primary p-1 px-2 font-mono text-xs focus:border-info focus:outline-none"
+						class="resource-input flex-1 border border-tertiary bg-secondary text-fg-primary p-1 px-2 font-mono text-xs focus:border-accent-primary focus:outline-none"
 								value={effectiveMemoryGb}
 								onchange={(e) => setMemoryGb(parseInt(e.currentTarget.value) || 0)}
 							>
@@ -349,10 +379,24 @@
 			</div>
 		{/if}
 
+		{#if isIceberg && datasource}
+			<div class="mb-3">
+				<SnapshotPicker
+					datasourceId={datasource.id}
+					datasourceConfig={activeTab?.datasource_config ?? {}}
+					label="Time Travel"
+					persistOpen
+					onConfigChange={updateSnapshotConfig}
+					onUiChange={updateTimeTravelUi}
+					onSelect={handleSnapshotSelect}
+				/>
+			</div>
+		{/if}
+
 		<!-- Action Button -->
 		{#if onChangeDatasource}
 			<button
-				class="change-source-btn flex w-full cursor-pointer items-center justify-center gap-2 border border-tertiary bg-secondary text-fg-secondary p-2 px-3 text-xs font-medium transition-all hover:bg-tertiary hover:text-fg-primary hover:border-info [&:hover_svg]:opacity-100"
+		class="change-source-btn flex w-full cursor-pointer items-center justify-center gap-2 border border-tertiary bg-secondary text-fg-secondary p-2 px-3 text-xs font-medium hover:bg-tertiary hover:text-fg-primary hover:border-accent-primary [&:hover_svg]:opacity-100"
 				onclick={onChangeDatasource}
 				type="button"
 			>
@@ -363,6 +407,6 @@
 	</div>
 
 	<div
-		class="absolute -bottom-1.25 left-1/2 z-2 h-2.5 w-2.5 -translate-x-1/2 bg-primary border-2 border-info"
+		class="absolute -bottom-1.25 left-1/2 z-2 h-2.5 w-2.5 -translate-x-1/2 bg-primary border-2 border-accent-primary"
 	></div>
 </div>

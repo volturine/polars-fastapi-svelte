@@ -98,6 +98,7 @@ class StepPreviewRequest(BaseModel):
     row_limit: int = 1000
     page: int = 1
     resource_config: EngineResourceConfig | None = None
+    datasource_config: dict | None = None
 
 
 class StepPreviewResponse(BaseModel):
@@ -126,6 +127,30 @@ class ExportFormat(str, Enum):
 class ExportDestination(str, Enum):
     DOWNLOAD = 'download'
     FILESYSTEM = 'filesystem'
+    DATASOURCE = 'datasource'
+
+
+class ExportDatasourceType(str, Enum):
+    ICEBERG = 'iceberg'
+    DUCKDB = 'duckdb'
+    FILE = 'file'
+
+
+class IcebergExportOptions(BaseModel):
+    """Options for Iceberg table export when destination is 'datasource'."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    table_name: str = 'exported_data'
+    namespace: str = 'exports'
+
+
+class DuckDBExportOptions(BaseModel):
+    """Options for DuckDB export when destination is 'datasource'."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    table_name: str = 'data'
 
 
 class ExportRequest(BaseModel):
@@ -138,6 +163,10 @@ class ExportRequest(BaseModel):
     format: ExportFormat = ExportFormat.CSV
     filename: str = 'export'
     destination: ExportDestination = ExportDestination.DOWNLOAD
+    datasource_type: ExportDatasourceType = ExportDatasourceType.ICEBERG
+    iceberg_options: IcebergExportOptions | None = None
+    duckdb_options: DuckDBExportOptions | None = None
+    datasource_config: dict | None = None
 
 
 class ExportResponse(BaseModel):
@@ -149,6 +178,8 @@ class ExportResponse(BaseModel):
     destination: str
     file_path: str | None = None
     message: str | None = None
+    datasource_id: str | None = None
+    datasource_name: str | None = None
 
 
 class StepSchemaRequest(BaseModel):
@@ -158,6 +189,32 @@ class StepSchemaRequest(BaseModel):
     datasource_id: str
     pipeline_steps: list[dict]
     target_step_id: str
+    datasource_config: dict | None = None
+
+
+class IcebergSnapshotInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    snapshot_id: str
+    timestamp_ms: int
+    parent_snapshot_id: str | None = None
+    operation: str | None = None
+    is_current: bool | None = None
+
+
+class IcebergSnapshotsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    datasource_id: str
+    table_path: str
+    snapshots: list[IcebergSnapshotInfo]
+
+
+class IcebergSnapshotDeleteResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    datasource_id: str
+    snapshot_id: str
 
 
 class StepSchemaResponse(BaseModel):

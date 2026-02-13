@@ -87,8 +87,17 @@
 		];
 	}
 
-	function updateCondition(idx: number, updates: Partial<Condition>) {
-		config.conditions = conditions.map((c, i) => (i === idx ? { ...c, ...updates } : c));
+	function updateCondition(idx: number, updates: Partial<Condition>, coerce = true) {
+		const next = { ...conditions[idx], ...updates } as Condition;
+		if (coerce && next.value_type === 'number' && typeof next.value === 'string') {
+			const trimmed = next.value.trim();
+			if (trimmed === '') {
+				next.value = '';
+			} else {
+				next.value = Number(trimmed);
+			}
+		}
+		config.conditions = conditions.map((c, i) => (i === idx ? next : c));
 	}
 
 	function removeCondition(idx: number) {
@@ -172,7 +181,7 @@
 				<div class="flex" role="radiogroup" aria-label="Condition logic">
 					<button
 						type="button"
-						class="logic-btn flex cursor-pointer items-center justify-center border border-tertiary bg-transparent px-2 py-1 text-xs text-fg-muted transition-all hover:bg-hover hover:text-fg-secondary"
+						class="logic-btn flex cursor-pointer items-center justify-center border border-tertiary bg-transparent px-2 py-1 text-xs text-fg-muted hover:bg-hover hover:text-fg-secondary"
 						class:active={config.logic === 'AND'}
 						onclick={() => (config.logic = 'AND')}
 						aria-pressed={config.logic === 'AND'}
@@ -181,7 +190,7 @@
 					</button>
 					<button
 						type="button"
-						class="logic-btn flex cursor-pointer items-center justify-center border border-tertiary bg-transparent px-2 py-1 text-xs text-fg-muted transition-all hover:bg-hover hover:text-fg-secondary"
+						class="logic-btn flex cursor-pointer items-center justify-center border border-tertiary bg-transparent px-2 py-1 text-xs text-fg-muted hover:bg-hover hover:text-fg-secondary"
 						class:active={config.logic === 'OR'}
 						onclick={() => (config.logic = 'OR')}
 						aria-pressed={config.logic === 'OR'}
@@ -228,7 +237,7 @@
 							{/if}
 							<button
 								type="button"
-								class="btn-remove ml-auto flex h-6 w-6 cursor-pointer items-center justify-center border border-transparent bg-transparent p-0 text-fg-muted transition-all hover:border-error hover:bg-error hover:text-error disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-transparent disabled:hover:bg-transparent disabled:hover:text-fg-muted"
+								class="btn-remove ml-auto flex h-6 w-6 cursor-pointer items-center justify-center border border-transparent bg-transparent p-0 text-fg-muted hover:border-error hover:bg-error hover:text-error disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-transparent disabled:hover:bg-transparent disabled:hover:text-fg-muted"
 								onclick={() => removeCondition(i)}
 								disabled={conditions.length === 1}
 								aria-label={`Remove condition ${i + 1}`}
@@ -238,7 +247,7 @@
 						</div>
 
 						<div class="relative flex flex-wrap items-start gap-3">
-							<div class="flex min-w-30 flex-1 flex-col gap-1">
+							<div class="flex min-w-55 flex-2 flex-col gap-1">
 								<label class="mb-0 text-xs font-normal text-fg-muted" for="{uid}-column-{i}"
 									>Column</label
 								>
@@ -250,7 +259,7 @@
 								/>
 							</div>
 
-							<div class="flex flex-col gap-1 min-w-25 flex-1">
+							<div class="flex min-w-37.5 flex-1 flex-col gap-1">
 								<label class="text-xs font-normal mb-0 text-fg-muted" for="{uid}-operator-{i}"
 									>Operator</label
 								>
@@ -267,13 +276,13 @@
 							</div>
 
 							{#if !isNull}
-								<div class="flex flex-col gap-1 min-w-35 flex-2">
+								<div class="flex min-w-60 flex-2 flex-col gap-1">
 									<div class="flex items-center justify-between gap-2">
 										<span class="text-xs font-normal text-fg-muted">Compare to</span>
 										<div class="flex" role="radiogroup" aria-label="Value mode">
 											<button
 												type="button"
-												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer transition-all border border-tertiary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
+												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer border border-tertiary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
 												class:active={!isColumn}
 												onclick={() => handleModeChange(i, 'value')}
 												aria-pressed={!isColumn}
@@ -282,7 +291,7 @@
 											</button>
 											<button
 												type="button"
-												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer transition-all border border-tertiary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
+												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer border border-tertiary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
 												class:active={isColumn}
 												onclick={() => handleModeChange(i, 'column')}
 												aria-pressed={isColumn}
@@ -305,11 +314,11 @@
 											data-testid={`filter-value-input-${i}`}
 											type="number"
 											step="any"
-											value={cond.value ?? ''}
-											oninput={(e) => {
-												const raw = e.currentTarget.value;
-												updateCondition(i, { value: raw === '' ? '' : Number(raw) });
-											}}
+											value={typeof cond.value === 'number'
+												? String(cond.value)
+												: (cond.value ?? '')}
+											oninput={(e) => updateCondition(i, { value: e.currentTarget.value }, false)}
+											onblur={(e) => updateCondition(i, { value: e.currentTarget.value })}
 											placeholder="0"
 										/>
 									{:else if colType === 'datetime'}
@@ -349,7 +358,7 @@
 									{/if}
 								</div>
 							{:else}
-								<div class="flex flex-col gap-1 min-w-35 flex-2">
+								<div class="flex min-w-60 flex-2 flex-col gap-1">
 									<span class="text-xs font-normal text-fg-muted">Value</span>
 									<div class="flex items-center h-9 px-3 text-sm italic bg-tertiary text-fg-muted">
 										<span>No value needed</span>

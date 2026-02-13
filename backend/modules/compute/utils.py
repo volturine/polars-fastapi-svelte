@@ -7,6 +7,8 @@ from core.exceptions import EngineTimeoutError, StepNotFoundError
 
 
 def find_step_index(pipeline_steps: list[dict], target_step_id: str) -> int:
+    if target_step_id == 'source':
+        return -1
     for idx, step in enumerate(pipeline_steps):
         if step.get('id') == target_step_id:
             return idx
@@ -26,11 +28,14 @@ def await_engine_result(engine, timeout: int) -> dict:
         time.sleep(0.1)
 
 
-def build_datasource_config(datasource) -> dict:
-    return {
+def build_datasource_config(datasource, overrides: dict | None = None) -> dict:
+    base = {
         'source_type': datasource.source_type,
         **datasource.config,
     }
+    if not overrides:
+        return base
+    return {**base, **overrides}
 
 
 def normalize_timezones(lf: pl.LazyFrame, schema: pl.Schema | None = None) -> pl.LazyFrame:

@@ -16,27 +16,18 @@
 
 	const theme = EditorView.theme(
 		{
-			'&': { backgroundColor: '#1f232b', color: '#e6edf3' },
-			'.cm-content': { caretColor: '#e6edf3' },
 			'.cm-cursor': { borderLeftColor: '#2f333b' },
 			'.cm-scroller': {
 				fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
 			},
-			'.cm-gutters': {
-				backgroundColor: '#1f232b',
-				color: '#9aa4b2',
-				borderRight: '1px solid #2f333b'
-			},
-			'.cm-activeLineGutter': { backgroundColor: '#2a2f3a' },
-			'.cm-activeLine': { backgroundColor: '#2a2f3a' },
 			'.cm-selectionMatch': {
-				backgroundColor: '#394052'
+				backgroundColor: '#2f3b52'
 			},
 			'&.cm-focused .cm-selectionBackground': {
 				backgroundColor: '#2f3b52'
 			},
 			'.cm-selectionBackground': {
-				backgroundColor: '#2a3346'
+				backgroundColor: '#2f3b52'
 			}
 		},
 		{ dark: true }

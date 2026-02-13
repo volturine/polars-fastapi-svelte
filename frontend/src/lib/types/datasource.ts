@@ -54,7 +54,8 @@ export interface DuckDBDataSourceConfig {
 
 export interface IcebergDataSourceConfig {
 	metadata_path: string;
-	snapshot_id?: number | null;
+	snapshot_id?: string | null;
+	snapshot_timestamp_ms?: number | null;
 	storage_options?: Record<string, string> | null;
 	reader?: string | null;
 }

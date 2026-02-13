@@ -8,6 +8,7 @@ from pathlib import Path
 import polars as pl
 from openpyxl import load_workbook
 from openpyxl.utils.cell import range_boundaries
+from pyiceberg.catalog import load_catalog
 from sqlalchemy import select
 from sqlmodel import Session
 
@@ -24,6 +25,7 @@ from modules.datasource.schemas import (
     FileListResponse,
     SchemaInfo,
 )
+from modules.engine_runs import service as engine_run_service
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +86,8 @@ def create_file_datasource(
     session.add(datasource)
     session.commit()
     session.refresh(datasource)
+
+    _log_datasource_create(session, datasource_id, name, 'file', config)
 
     # Extract and cache schema immediately
     try:
@@ -286,6 +290,7 @@ def create_database_datasource(
     session.commit()
     session.refresh(datasource)
 
+    _log_datasource_create(session, datasource_id, name, 'database', config)
     return DataSourceResponse.model_validate(datasource)
 
 
@@ -318,6 +323,7 @@ def create_api_datasource(
     session.commit()
     session.refresh(datasource)
 
+    _log_datasource_create(session, datasource_id, name, 'api', config)
     return DataSourceResponse.model_validate(datasource)
 
 
@@ -350,6 +356,7 @@ def create_duckdb_datasource(
     session.refresh(datasource)
 
     logger.info(f'Created DuckDB datasource {datasource_id} ({name})')
+    _log_datasource_create(session, datasource_id, name, 'duckdb', config)
     return DataSourceResponse.model_validate(datasource)
 
 
@@ -357,25 +364,71 @@ def create_iceberg_datasource(
     session: Session,
     name: str,
     metadata_path: str,
-    snapshot_id: int | None = None,
+    snapshot_id: str | None = None,
+    snapshot_timestamp_ms: int | None = None,
     storage_options: dict | None = None,
     reader: str | None = None,
+    catalog_type: str | None = None,
+    catalog_uri: str | None = None,
+    warehouse: str | None = None,
+    namespace: str | None = None,
+    table: str | None = None,
 ) -> DataSourceResponse:
     """Create an Iceberg datasource."""
     datasource_id = str(uuid.uuid4())
 
     normalized_path = _normalize_iceberg_path(metadata_path)
     try:
-        resolve_iceberg_metadata_path(normalized_path)
+        resolved_metadata = resolve_iceberg_metadata_path(normalized_path)
     except ValueError as exc:
         raise DataSourceValidationError(str(exc), details={'metadata_path': metadata_path}) from exc
 
+    snapshot_value = snapshot_id
+    if snapshot_id:
+        try:
+            int(snapshot_id)
+        except (TypeError, ValueError) as exc:
+            raise DataSourceValidationError('Snapshot ID must be an integer', details={'snapshot_id': snapshot_id}) from exc
+
     config = {
         'metadata_path': normalized_path,
-        'snapshot_id': snapshot_id,
+        'snapshot_id': snapshot_value,
+        'snapshot_timestamp_ms': snapshot_timestamp_ms,
         'storage_options': storage_options,
         'reader': reader,
     }
+    catalog_config = {
+        'type': catalog_type or 'sql',
+        'uri': catalog_uri or f'sqlite:///{settings.data_dir / "iceberg" / "catalog.db"}',
+        'warehouse': warehouse or f'file://{settings.data_dir / "iceberg" / "warehouse"}',
+    }
+    namespace_value = namespace or 'external'
+    table_value = table
+    if not table_value:
+        table_value = Path(resolved_metadata).parent.parent.name
+    try:
+        catalog = load_catalog('local', **catalog_config)
+        catalog.create_namespace_if_not_exists(namespace_value)
+        identifier = f'{namespace_value}.{table_value}'
+        if catalog.table_exists(identifier):
+            existing = catalog.load_table(identifier)
+            if existing.metadata_location != resolved_metadata:
+                raise DataSourceValidationError(
+                    'Iceberg catalog table already exists with different metadata',
+                    details={'metadata_path': normalized_path, 'namespace': namespace_value, 'table': table_value},
+                )
+        else:
+            catalog.register_table(identifier, resolved_metadata)
+    except Exception as exc:
+        raise DataSourceValidationError(
+            f'Failed to register Iceberg table in catalog: {exc}',
+            details={'metadata_path': normalized_path, 'namespace': namespace_value, 'table': table_value},
+        ) from exc
+    config['catalog_type'] = catalog_config['type']
+    config['catalog_uri'] = catalog_config['uri']
+    config['warehouse'] = catalog_config['warehouse']
+    config['namespace'] = namespace_value
+    config['table'] = table_value
 
     datasource = DataSource(
         id=datasource_id,
@@ -388,6 +441,8 @@ def create_iceberg_datasource(
     session.add(datasource)
     session.commit()
     session.refresh(datasource)
+
+    _log_datasource_create(session, datasource_id, name, 'iceberg', config)
 
     try:
         schema_info = _extract_schema(datasource)
@@ -402,6 +457,28 @@ def create_iceberg_datasource(
     return DataSourceResponse.model_validate(datasource)
 
 
+def _log_datasource_create(
+    session: Session,
+    datasource_id: str,
+    name: str,
+    source_type: str,
+    config: dict,
+) -> None:
+    payload = engine_run_service.create_engine_run_payload(
+        analysis_id=None,
+        datasource_id=datasource_id,
+        kind='datasource_create',
+        status='success',
+        request_json={
+            'name': name,
+            'source_type': source_type,
+            'config': config,
+        },
+        result_json={'datasource_id': datasource_id, 'datasource_name': name},
+    )
+    engine_run_service.create_engine_run(session, payload)
+
+
 def get_datasource_schema(
     session: Session,
     datasource_id: str,
@@ -409,8 +486,7 @@ def get_datasource_schema(
     refresh: bool = False,
 ) -> SchemaInfo:
     """Get or extract schema for a datasource."""
-    result = session.execute(select(DataSource).where(DataSource.id == datasource_id))  # type: ignore[arg-type]
-    datasource = result.scalar_one_or_none()
+    datasource = session.get(DataSource, datasource_id)
 
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
@@ -606,13 +682,12 @@ def _normalize_iceberg_path(metadata_path: str) -> str:
     if path.suffix == '.db':
         raise DataSourceValidationError('Iceberg metadata_path must be a table directory, not catalog.db')
     if path.name.endswith('.metadata.json'):
-        raise DataSourceValidationError('Iceberg metadata_path must be a table directory, not metadata.json')
+        return str(path)
     return str(path)
 
 
 def get_datasource(session: Session, datasource_id: str) -> DataSourceResponse:
-    result = session.execute(select(DataSource).where(DataSource.id == datasource_id))  # type: ignore[arg-type]
-    datasource = result.scalar_one_or_none()
+    datasource = session.get(DataSource, datasource_id)
 
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
@@ -644,8 +719,7 @@ def update_datasource(
     update: DataSourceUpdate,
 ) -> DataSourceResponse:
     """Update a datasource configuration."""
-    result = session.execute(select(DataSource).where(DataSource.id == datasource_id))  # type: ignore[arg-type]
-    datasource = result.scalar_one_or_none()
+    datasource = session.get(DataSource, datasource_id)
 
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
@@ -702,14 +776,23 @@ def update_datasource(
     session.commit()
     session.refresh(datasource)
 
+    run_payload = engine_run_service.create_engine_run_payload(
+        analysis_id=None,
+        datasource_id=datasource_id,
+        kind='datasource_update',
+        status='success',
+        request_json=update.model_dump(exclude_none=True),
+        result_json={'datasource_id': datasource_id, 'datasource_name': datasource.name},
+    )
+    engine_run_service.create_engine_run(session, run_payload)
+
     logger.info(f'Updated datasource {datasource_id}')
     return DataSourceResponse.model_validate(datasource)
 
 
 def delete_datasource(session: Session, datasource_id: str) -> None:
     """Delete a datasource and its associated file if it exists."""
-    result = session.execute(select(DataSource).where(DataSource.id == datasource_id))  # type: ignore[arg-type]
-    datasource = result.scalar_one_or_none()
+    datasource = session.get(DataSource, datasource_id)
 
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)

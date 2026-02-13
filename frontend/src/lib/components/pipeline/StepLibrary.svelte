@@ -197,7 +197,7 @@
 			icon: LayoutGrid,
 			description: 'Union rows from multiple datasources'
 		},
-		{ type: 'export', label: 'Export', icon: Upload, description: 'Export data to file' }
+		{ type: 'export', label: 'Export', icon: Upload, description: 'Download data' }
 	];
 
 	// Quick insert selected type
@@ -205,7 +205,7 @@
 </script>
 
 <div
-	class="step-library flex h-full min-h-0 w-full flex-col gap-3 overflow-hidden bg-panel-bg px-3 py-4"
+	class="step-library flex h-full min-h-0 w-full flex-col gap-3 overflow-hidden bg-primary px-3 py-4"
 >
 	<img
 		class="drag-preview pointer-events-none fixed -left-2500 -top-2500 h-px w-px opacity-0"
@@ -219,7 +219,7 @@
 	>
 		{#each stepTypes as stepType (stepType.type)}
 			<button
-				class="step-button relative flex cursor-grab items-center justify-start gap-3 border border-transparent bg-transparent p-3 text-left transition-colors hover:border-tertiary hover:bg-bg-hover"
+				class="step-button relative flex cursor-grab items-center justify-start gap-3 border border-transparent bg-transparent p-3 text-left hover:border-tertiary hover:bg-bg-hover"
 				class:dragging
 				onclick={() => handleClick(stepType.type)}
 				onpointerdown={(event) => startDrag(event, stepType.type)}
@@ -254,7 +254,7 @@
 			</select>
 			<div class="grid grid-cols-2 gap-2">
 				<button
-					class="fallback-btn cursor-pointer border border-tertiary bg-transparent p-2 text-fg-primary transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+					class="fallback-btn cursor-pointer border border-tertiary bg-transparent p-2 text-fg-primary hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
 					type="button"
 					disabled={!selectedType}
 					onclick={() => {
@@ -267,7 +267,7 @@
 					Add to end
 				</button>
 				<button
-					class="fallback-btn cursor-pointer border border-tertiary bg-transparent p-2 text-fg-primary transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+					class="fallback-btn cursor-pointer border border-tertiary bg-transparent p-2 text-fg-primary hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
 					type="button"
 					disabled={!selectedType}
 					onclick={() => {

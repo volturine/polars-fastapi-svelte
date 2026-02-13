@@ -5,6 +5,7 @@
 	import { Plus, Trash2, Search, LoaderCircle } from 'lucide-svelte';
 	import DatasourcePreview from '$lib/components/datasources/DatasourcePreview.svelte';
 	import DatasourceConfigPanel from '$lib/components/datasources/DatasourceConfigPanel.svelte';
+	import SnapshotPicker from '$lib/components/datasources/SnapshotPicker.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 
@@ -44,10 +45,12 @@
 			: datasources
 	);
 	const selectedDatasource = $derived(datasources.find((d) => d.id === selectedId) ?? null);
+	let snapshotConfig = $state<Record<string, unknown> | null>(null);
 
 	function selectDatasource(id: string | null) {
 		selectedId = id;
 		showConfig = id;
+		snapshotConfig = null;
 		const url = id ? `/datasources?id=${id}` : '/datasources';
 		goto(resolve(url as '/'), { replaceState: true });
 	}
@@ -60,6 +63,10 @@
 	function handleConfigSaved() {
 		queryClient.invalidateQueries({ queryKey: ['datasources'] });
 	}
+
+	function handleSnapshotConfigChange(config: Record<string, unknown>) {
+		snapshotConfig = config;
+	}
 </script>
 
 <div class="flex h-full">
@@ -68,12 +75,12 @@
 		class="w-(--datasource-panel-width) border-r border-tertiary flex flex-col bg-bg-primary shrink-0"
 	>
 		<!-- Header -->
-		<header class="flex flex-col gap-2 px-4 py-3 border-b border-tertiary h-[100px] box-border">
+		<header class="flex flex-col gap-2 px-4 py-3 border-b border-tertiary h-25 box-border">
 			<div class="flex items-center justify-between">
 				<h1 class="text-sm font-semibold">Data Sources</h1>
 				<a
 					href={resolve('/datasources/new')}
-					class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 no-underline bg-accent text-bg-primary border border-info"
+						class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 no-underline bg-accent text-bg-primary border border-accent-primary"
 					data-sveltekit-reload
 				>
 					<Plus size={14} />
@@ -94,7 +101,9 @@
 		<!-- Datasource List -->
 		<div class="flex-1 overflow-y-auto">
 			{#if query.isLoading}
-				<div class="p-8 text-center text-sm text-fg-muted">Loading...</div>
+				<div class="flex h-full items-center justify-center">
+					<div class="spinner"></div>
+				</div>
 			{:else if query.isError}
 				<div class="error-box m-4 text-sm">
 					Error: {query.error instanceof Error ? query.error.message : 'Unknown error'}
@@ -104,7 +113,7 @@
 					<p class="text-sm text-fg-muted mb-4">No data sources yet.</p>
 					<a
 						href={resolve('/datasources/new')}
-						class="inline-flex items-center gap-1 text-sm font-medium px-3 py-2 no-underline bg-accent text-bg-primary border border-info"
+					class="inline-flex items-center gap-1 text-sm font-medium px-3 py-2 no-underline bg-accent text-bg-primary border border-accent-primary"
 						data-sveltekit-reload
 					>
 						Create your first data source
@@ -121,7 +130,7 @@
 						class:selected={selectedId === datasource.id}
 					>
 						<!-- Row -->
-						<div class="flex items-center justify-between px-3 py-2.5 transition-colors">
+						<div class="flex items-center justify-between px-3 py-2.5">
 							<button
 								class="flex items-center min-w-0 flex-1 text-left bg-transparent p-0 border-transparent"
 								onclick={() => selectDatasource(datasource.id)}
@@ -162,7 +171,29 @@
 	<!-- Right Pane -->
 	<main class="flex-1 overflow-hidden">
 		{#if selectedDatasource}
-			<DatasourcePreview datasourceId={selectedDatasource.id} />
+			<div class="h-full flex flex-col">
+				<div class="border-b border-tertiary bg-bg-secondary p-3">
+					{#if selectedDatasource.source_type === 'iceberg'}
+						<SnapshotPicker
+							datasourceId={selectedDatasource.id}
+							datasourceConfig={snapshotConfig ?? selectedDatasource.config}
+							label="Time Travel"
+							showDelete
+							onConfigChange={handleSnapshotConfigChange}
+						/>
+					{:else}
+						<div class="text-xs text-fg-tertiary">
+							Time travel is available for Iceberg datasources.
+						</div>
+					{/if}
+				</div>
+				<div class="flex-1 min-h-0 overflow-hidden">
+					<DatasourcePreview
+						datasourceId={selectedDatasource.id}
+						datasourceConfig={snapshotConfig ?? selectedDatasource.config}
+					/>
+				</div>
+			</div>
 		{:else}
 			<div class="h-full flex items-center justify-center text-fg-muted bg-secondary">
 				<div class="text-center">

@@ -11,7 +11,16 @@
 		type HeaderGroup,
 		type Row
 	} from '@tanstack/table-core';
-	import { Check, Copy, GripVertical, Pin, Settings2 } from 'lucide-svelte';
+	import {
+		Check,
+		Copy,
+		GripVertical,
+		Pin,
+		Settings2,
+		LoaderCircle,
+		Bug,
+		Play
+	} from 'lucide-svelte';
 	import { onClickOutside } from 'runed';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import type { TableCellValue } from '$lib/types/api-responses';
@@ -23,6 +32,8 @@
 		data: Record<string, unknown>[];
 		columnTypes?: Record<string, string>;
 		loading?: boolean;
+		error?: Error | null;
+		analysis?: boolean;
 		fillContainer?: boolean;
 		onSort?: (column: string, direction: 'asc' | 'desc') => void;
 		showTypeBadges?: boolean;
@@ -37,10 +48,10 @@
 			onNext: () => void;
 			loading?: boolean;
 		};
+		onPreview?: () => void;
 		density?: 'default' | 'compact';
 		enableResize?: boolean;
 		enableCopy?: boolean;
-		maxHeight?: '100' | '150';
 		columnSearch?: string;
 	}
 
@@ -51,6 +62,8 @@
 		data,
 		columnTypes = {},
 		loading = false,
+		error = null,
+		analysis = false,
 		fillContainer = false,
 		onSort,
 		showTypeBadges = false,
@@ -58,10 +71,10 @@
 		showHeader = false,
 		showPagination = false,
 		pagination,
+		onPreview,
 		density = 'default',
 		enableResize = true,
 		enableCopy = true,
-		maxHeight = '150',
 		columnSearch = $bindable('')
 	}: Props = $props();
 
@@ -75,6 +88,9 @@
 		startOffset: null,
 		startSize: null
 	});
+
+	// Non-reactive resize tracking to avoid table re-renders during resize
+	let resizeOffset = { delta: 0, start: 0 };
 	let columnVisibility = $state<Record<string, boolean>>({});
 	let columnOrder = $state<string[]>([]);
 	let columnPinning = $state<ColumnPinningState>({ left: [], right: [] });
@@ -83,12 +99,57 @@
 	let sizingReady = $state(false);
 	let dragColumn = $state<string | null>(null);
 	let dragOver = $state<string | null>(null);
-	let copied = $state<Record<string, boolean>>({});
-	let tip = $state<{ text: string; x: number; y: number } | null>(null);
-	let hover = $state<string | null>(null);
-	let timer = $state<number | null>(null);
+	let dragPointerX = $state<number | null>(null);
+	let dragPointerY = $state<number | null>(null);
+	let dragLabel = $state<string | null>(null);
 	let tipRef = $state<HTMLDivElement>();
 	let scrollRef = $state<HTMLDivElement>();
+
+	// Non-reactive copy state to avoid table re-renders
+	let copiedCells = new Set<string>();
+	let copyTimers = new Map<string, number>();
+
+	// Non-reactive tooltip state to avoid table re-renders
+	let tipState = {
+		text: '',
+		x: 0,
+		y: 0,
+		visible: false,
+		timer: null as number | null,
+		hoverId: ''
+	};
+
+	let lastTooltipUpdate = { text: '', x: 0, y: 0, visible: false };
+
+	function updateTooltip() {
+		if (!tipRef) return;
+		if (
+			tipState.text === lastTooltipUpdate.text &&
+			tipState.x === lastTooltipUpdate.x &&
+			tipState.y === lastTooltipUpdate.y &&
+			tipState.visible === lastTooltipUpdate.visible
+		) {
+			return;
+		}
+		lastTooltipUpdate = {
+			text: tipState.text,
+			x: tipState.x,
+			y: tipState.y,
+			visible: tipState.visible
+		};
+		if (tipState.visible) {
+			if (tipRef.textContent !== tipState.text) {
+				tipRef.textContent = tipState.text;
+			}
+			tipRef.style.setProperty('--tip-left', `${tipState.x}px`);
+			tipRef.style.setProperty('--tip-top', `${tipState.y}px`);
+			tipRef.style.opacity = '1';
+			tipRef.style.visibility = 'visible';
+		} else {
+			tipRef.style.opacity = '0';
+			tipRef.style.visibility = 'hidden';
+		}
+	}
 
 	function setWidth(node: HTMLElement, size: number) {
 		node.style.width = `${size}px`;
@@ -99,18 +160,9 @@
 		};
 	}
 
-	function setResizeOffset(node: HTMLElement, offset: number) {
-		node.style.setProperty('--resize-offset', `${offset}px`);
-		return {
-			update(next: number) {
-				node.style.setProperty('--resize-offset', `${next}px`);
-			}
-		};
-	}
-
 	const minColumnWidthPx = 220;
 	const defaultColumnWidthPx = 150;
-	const columnHoverDelayMs = 400;
+	const columnHoverDelayMs = 1000;
 	let panelWidth = $state(0);
 	const softMin = $derived(
 		columns.length
@@ -119,39 +171,6 @@
 	);
 
 	let initialSize = $state(defaultColumnWidthPx);
-
-	$effect(() => {
-		initialSize = softMin;
-		sizingReady = false;
-	});
-
-	$effect(() => {
-		if (!columnsKey) return;
-		columnOrder = [...columns];
-		columnVisibility = {};
-		columnPinning = { left: [], right: [] };
-		columnSizing = {};
-		columnSizingInfo = {
-			columnSizingStart: [],
-			deltaOffset: null,
-			deltaPercentage: null,
-			isResizingColumn: false,
-			startOffset: null,
-			startSize: null
-		};
-		sizingReady = false;
-	});
-
-	$effect(() => {
-		const node = scrollRef;
-		if (!node) return;
-		const observer = new ResizeObserver(() => {
-			panelWidth = node.clientWidth;
-			ensureSizingReady();
-		});
-		observer.observe(node);
-		return () => observer.disconnect();
-	});
 
 	const table = $derived.by(() => {
 		if (data.length === 0 || columns.length === 0) return null;
@@ -193,7 +212,29 @@
 				columnSizing = normalizeSizing(next);
 			},
 			onColumnSizingInfoChange: (updater) => {
-				columnSizingInfo = typeof updater === 'function' ? updater(columnSizingInfo) : updater;
+				const next = typeof updater === 'function' ? updater(columnSizingInfo) : updater;
+				// Only update reactive state when resize starts/ends, not during
+				const wasResizing = columnSizingInfo.isResizingColumn !== false;
+				const isResizing = next.isResizingColumn !== false;
+
+				if (wasResizing && isResizing) {
+					// During resize - update non-reactive offset only
+					resizeOffset.delta = next.deltaOffset ?? 0;
+					resizeOffset.start = next.startOffset ?? 0;
+					// Update all resizer indicators via DOM
+					document.documentElement.style.setProperty('--resize-delta', `${resizeOffset.delta}px`);
+				} else {
+					// Resize start/end - update reactive state
+					columnSizingInfo = next;
+					resizeOffset.delta = next.deltaOffset ?? 0;
+					resizeOffset.start = next.startOffset ?? 0;
+					if (isResizing) {
+						document.body.classList.add('touch-dragging');
+					} else {
+						document.body.classList.remove('touch-dragging');
+						document.documentElement.style.removeProperty('--resize-delta');
+					}
+				}
 			},
 			getCoreRowModel: getCoreRowModel(),
 			getSortedRowModel: getSortedRowModel(),
@@ -262,59 +303,57 @@
 		activeColumn = activeColumn === columnId ? null : columnId;
 	}
 
-	function handleDragStart(event: DragEvent, columnId: string) {
+	function handleColumnPointerDown(event: PointerEvent, columnId: string, label: string) {
+		if (event.button !== 0) return;
+		event.preventDefault();
 		dragColumn = columnId;
-		if (event.dataTransfer) {
-			event.dataTransfer.effectAllowed = 'move';
-			event.dataTransfer.setData('text/plain', columnId);
-		}
+		dragLabel = label;
+		dragPointerX = event.clientX;
+		dragPointerY = event.clientY;
+
 		const target = event.currentTarget as HTMLElement;
-		const header = target.closest('th') as HTMLElement | null;
-		if (header && event.dataTransfer) {
-			event.dataTransfer.setDragImage(header, 12, 12);
+		target.setPointerCapture(event.pointerId);
+		document.body.classList.add('touch-dragging');
+	}
+
+	function handleColumnPointerMove(event: PointerEvent) {
+		if (!dragColumn) return;
+		event.preventDefault();
+		dragPointerX = event.clientX;
+		dragPointerY = event.clientY;
+
+		// Hit-test which <th> the pointer is over
+		const els = document.elementsFromPoint(event.clientX, event.clientY);
+		const th = els.find((el) => el.closest('.dataset-table__th')) as HTMLElement | undefined;
+		const header = th?.closest('.dataset-table__th') as HTMLElement | null;
+		if (header) {
+			const id = header.dataset.columnId ?? null;
+			dragOver = id && id !== dragColumn ? id : null;
+		} else {
+			dragOver = null;
 		}
 	}
 
-	function handleDragEnd() {
+	function handleColumnPointerUp() {
+		if (!dragColumn) return;
+		if (dragOver) {
+			const source = dragColumn;
+			const order = columnOrder.length ? [...columnOrder] : [...columns];
+			const sourceIndex = order.indexOf(source);
+			const targetIndex = order.indexOf(dragOver);
+			if (sourceIndex !== -1 && targetIndex !== -1) {
+				const updated = [...order];
+				const [item] = updated.splice(sourceIndex, 1);
+				updated.splice(targetIndex, 0, item);
+				columnOrder = updated;
+			}
+		}
 		dragColumn = null;
 		dragOver = null;
-	}
-
-	function handleDragOver(event: DragEvent, columnId: string) {
-		event.preventDefault();
-		if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-		dragOver = columnId;
-	}
-
-	function handleDragLeave(columnId: string) {
-		if (dragOver !== columnId) return;
-		dragOver = null;
-	}
-
-	function handleDrop(event: DragEvent, columnId: string) {
-		event.preventDefault();
-		event.stopPropagation();
-		const source = dragColumn;
-		if (!source || source === columnId) {
-			dragColumn = null;
-			dragOver = null;
-			return;
-		}
-		const order = columnOrder.length ? [...columnOrder] : [...columns];
-		const sourceIndex = order.indexOf(source);
-		const targetIndex = order.indexOf(columnId);
-		if (sourceIndex === -1 || targetIndex === -1) {
-			dragColumn = null;
-			dragOver = null;
-			return;
-		}
-		const updated = [...order];
-		const [item] = updated.splice(sourceIndex, 1);
-		const adjustedTarget = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
-		updated.splice(adjustedTarget, 0, item);
-		columnOrder = updated;
-		dragColumn = null;
-		dragOver = null;
+		dragPointerX = null;
+		dragPointerY = null;
+		dragLabel = null;
+		document.body.classList.remove('touch-dragging');
 	}
 
 	function setSort(columnId: string, direction: 'asc' | 'desc' | 'none') {
@@ -343,6 +382,18 @@
 		}, {} as ColumnSizingState);
 		columnSizing = seeded;
 		sizingReady = true;
+	}
+
+	function handlePreview() {
+		if (!onPreview) return;
+		onPreview();
+	}
+
+	function handlePreviewKey(event: KeyboardEvent) {
+		if (!onPreview) return;
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		event.preventDefault();
+		onPreview();
 	}
 
 	onClickOutside(
@@ -397,79 +448,75 @@
 	async function copyValue(event: MouseEvent, id: string, value: string) {
 		event.preventDefault();
 		event.stopPropagation();
-		if (!navigator?.clipboard) return;
-		const result = await navigator.clipboard.writeText(value).then(
-			() => true,
-			() => false
-		);
-		if (!result) return;
-		copied = { ...copied, [id]: true };
-		window.setTimeout(() => {
-			copied = { ...copied, [id]: false };
+
+		// Direct DOM manipulation - show visual feedback immediately
+		const button = event.currentTarget as HTMLButtonElement;
+		if (!button) return;
+
+		// Clear existing timer if any
+		const existingTimer = copyTimers.get(id);
+		if (existingTimer) {
+			window.clearTimeout(existingTimer);
+		}
+
+		copiedCells.add(id);
+		button.classList.add('dataset-table__copy--copied');
+
+		const timer = window.setTimeout(() => {
+			copiedCells.delete(id);
+			copyTimers.delete(id);
+			button.classList.remove('dataset-table__copy--copied');
 		}, 1400);
+
+		copyTimers.set(id, timer);
+
+		// Try to copy to clipboard
+		if (!navigator?.clipboard) return;
+		const textToCopy = String(value);
+		await navigator.clipboard.writeText(textToCopy).catch(() => {
+			// Silently fail - visual feedback already shown
+		});
 	}
 
 	function tipHide(id: string) {
-		if (hover !== id) return;
-		hover = null;
-		if (timer) {
-			window.clearTimeout(timer);
-			timer = null;
+		if (tipState.hoverId !== id) return;
+		tipState.hoverId = '';
+		if (tipState.timer) {
+			window.clearTimeout(tipState.timer);
+			tipState.timer = null;
 		}
-		tip = null;
+		tipState.visible = false;
+		updateTooltip();
 	}
 
 	function tipShow(event: MouseEvent, id: string, value: string) {
-		const target = event.currentTarget as HTMLElement;
-		const valueEl = target.querySelector('[data-cell-value="true"]') as HTMLElement | null;
+		const target = event.target as HTMLElement;
+		if (target?.closest('button')) return;
+		const currentTarget = event.currentTarget as HTMLElement;
+		const valueEl = currentTarget.querySelector('[data-cell-value="true"]') as HTMLElement | null;
 		if (!valueEl) return;
 		const overflow = valueEl.scrollWidth > valueEl.clientWidth;
-		hover = id;
-		if (timer) {
-			window.clearTimeout(timer);
-			timer = null;
+		tipState.hoverId = id;
+		if (tipState.timer) {
+			window.clearTimeout(tipState.timer);
+			tipState.timer = null;
 		}
 		if (!overflow) {
-			tip = null;
+			tipState.visible = false;
+			updateTooltip();
 			return;
 		}
 		const rect = valueEl.getBoundingClientRect();
-		const pending = {
-			text: value,
-			x: rect.left + rect.width / 2,
-			y: rect.bottom + 8
-		};
-		const currentHover = hover;
-		timer = window.setTimeout(() => {
-			if (hover !== id || currentHover !== id) return;
-			tip = pending;
+		tipState.text = value;
+		tipState.x = rect.left + rect.width / 2;
+		tipState.y = rect.bottom + 8;
+		const hoverId = id;
+		tipState.timer = window.setTimeout(() => {
+			if (tipState.hoverId !== hoverId) return;
+			tipState.visible = true;
+			updateTooltip();
 		}, columnHoverDelayMs);
 	}
-
-	function tipMove(event: MouseEvent, id: string) {
-		if (hover !== id || !tip || !tipRef) return;
-		const target = event.currentTarget as HTMLElement;
-		const valueEl = target.querySelector('[data-cell-value="true"]') as HTMLElement | null;
-		if (!valueEl) return;
-		const rect = valueEl.getBoundingClientRect();
-		tip = { ...tip, x: rect.left + rect.width / 2, y: rect.bottom + 8 };
-	}
-
-	$effect(() => {
-		const current = tip;
-		const ref = tipRef;
-		if (!current || !ref) return;
-		window.requestAnimationFrame(() => {
-			const width = ref.offsetWidth;
-			const height = ref.offsetHeight;
-			const maxX = window.innerWidth - width - 12;
-			const left = Math.min(Math.max(12, current.x - width / 2), maxX);
-			const below = current.y + height + 12 <= window.innerHeight;
-			const top = below ? current.y : current.y - height - 12;
-			ref.style.setProperty('--tip-left', `${left}px`);
-			ref.style.setProperty('--tip-top', `${top}px`);
-		});
-	});
 </script>
 
 <div
@@ -509,23 +556,41 @@
 	{/if}
 
 	{#if loading}
-		<div
-			class="flex flex-col items-center justify-center gap-4 p-12 pointer-events-none text-fg-tertiary"
-		>
-			<div class="spinner"></div>
-			<p class="text-sm m-0 text-fg-tertiary">Loading data...</p>
+		<div class="flex h-full flex-col items-center justify-center gap-3 text-fg-tertiary">
+			<LoaderCircle size={18} class="animate-spin" />
+			<p class="m-0 text-fg-tertiary">Loading</p>
+		</div>
+	{/if}
+
+	{#if error}
+		<div class="flex h-full flex-col items-center justify-center gap-3 text-fg-tertiary">
+			<Bug size={18} />
+			<p class="m-0 text-fg-tertiary">Failed</p>
+			<p class="m-0 text-fg-tertiary">{error.message}</p>
 		</div>
 	{/if}
 
 	{#if !loading && data.length === 0}
-		<div class="p-12 text-center m-0 text-fg-muted">
-			<p class="m-0">No data available</p>
-		</div>
+		{#if analysis}
+			<div
+				class="flex h-full flex-col items-center justify-center gap-3 text-fg-tertiary"
+				role="button"
+				tabindex={onPreview ? 0 : -1}
+				aria-disabled={!onPreview}
+				onclick={handlePreview}
+				onkeydown={handlePreviewKey}
+			>
+				<Play size={18} />
+				<p class="m-0 text-fg-tertiary">Preview</p>
+			</div>
+		{:else}
+			<div class="p-12 text-center m-0 text-fg-muted">
+				<p class="m-0">No data available</p>
+			</div>
+		{/if}
 	{:else if headerGroups.length > 0}
 		<div
 			class="dataset-table__scroll overflow-x-auto overflow-y-auto bg-panel"
-			class:max-h-150={!fillContainer && maxHeight === '150'}
-			class:max-h-100={!fillContainer && maxHeight === '100'}
 			class:flex-1={fillContainer}
 			bind:this={scrollRef}
 		>
@@ -533,18 +598,17 @@
 				class="dataset-table__table w-full border-collapse text-sm"
 				use:setWidth={table?.getTotalSize() ?? 0}
 			>
-				<thead class="dataset-table__thead sticky top-0 z-50 bg-table-header">
+				<thead class="dataset-table__thead sticky top-0 z-20 bg-tertiary">
 					{#each headerGroups as headerGroup (headerGroup.id)}
 						<tr>
 							{#each headerGroup.headers as header (header.id)}
+								{@const headerLabel = typeof header.column.columnDef.header === 'string' ? header.column.columnDef.header : header.id}
 								<th
 									class="dataset-table__th p-0 text-left font-semibold border-b border-tertiary"
 									class:dataset-table__th--drag={dragOver === header.id}
 									class:dataset-table__th--dragging={dragColumn === header.id}
+									data-column-id={header.id}
 									use:setWidth={header.getSize()}
-									ondragover={(event) => handleDragOver(event, header.id)}
-									ondragleave={() => handleDragLeave(header.id)}
-									ondrop={(event) => handleDrop(event, header.id)}
 								>
 									<div
 										class="dataset-table__header flex items-start justify-between w-full px-4 py-2"
@@ -557,9 +621,10 @@
 													{:else}
 														<button
 															class="dataset-table__drag"
-															draggable={true}
-															ondragstart={(event) => handleDragStart(event, header.id)}
-															ondragend={handleDragEnd}
+															onpointerdown={(event) => handleColumnPointerDown(event, header.id, headerLabel)}
+															onpointermove={handleColumnPointerMove}
+															onpointerup={handleColumnPointerUp}
+															onpointercancel={handleColumnPointerUp}
 															aria-label="Drag to reorder"
 														>
 															<GripVertical size={12} />
@@ -601,7 +666,6 @@
 									{#if enableResize}
 										<button
 											class="dataset-table__resizer"
-											use:setResizeOffset={columnSizingInfo.deltaOffset ?? 0}
 											onmousedown={header.getResizeHandler()}
 											ontouchstart={header.getResizeHandler()}
 											aria-label="Resize column"
@@ -649,16 +713,15 @@
 				</thead>
 				<tbody>
 					{#each rows as row (row.id)}
-						<tr class="dataset-table__row transition-colors even:bg-secondary hover:bg-hover!">
+						<tr class="dataset-table__row">
 							{#each row.getVisibleCells() as cell (cell.id)}
 								{@const display = formatValue(cell.getValue() as TableCellValue, cell.column.id)}
-								<td class="dataset-table__td" use:setWidth={cell.column.getSize()}>
+								<td class="dataset-table__td">
 									<div
 										class="dataset-table__cell px-4 text-sm text-fg-secondary"
 										class:text-xs={isListType(getColumnType(cell.column.id))}
 										role="presentation"
 										onmouseenter={(event) => tipShow(event, cell.id, display)}
-										onmousemove={(event) => tipMove(event, cell.id)}
 										onmouseleave={() => tipHide(cell.id)}
 									>
 										<span class="dataset-table__value" data-cell-value="true">{display}</span>
@@ -668,11 +731,12 @@
 												aria-label="Copy cell value"
 												onclick={(event) => copyValue(event, cell.id, display)}
 											>
-												{#if copied[cell.id]}
-													<Check size={14} />
-												{:else}
-													<Copy size={14} />
-												{/if}
+												<span class="dataset-table__copy-icon dataset-table__copy-icon--copy"
+													><Copy size={14} /></span
+												>
+												<span class="dataset-table__copy-icon dataset-table__copy-icon--check"
+													><Check size={14} /></span
+												>
 											</button>
 										{/if}
 									</div>
@@ -686,16 +750,22 @@
 	{/if}
 
 	{#if showFooter && !loading && data.length > 0}
-		<div class="px-4 py-3 border-t border-tertiary bg-panel-header">
+		<div class="px-4 py-3 border-t border-tertiary bg-tertiary">
 			<span class="text-xs text-fg-tertiary">
 				Showing {data.length.toLocaleString()} row{data.length !== 1 ? 's' : ''}
 			</span>
 		</div>
 	{/if}
 
-	{#if tip}
-		<div class="dataset-table__tooltip" bind:this={tipRef}>
-			{tip.text}
-		</div>
-	{/if}
+	<div class="dataset-table__tooltip" bind:this={tipRef}></div>
 </div>
+
+{#if dragColumn && dragPointerX !== null && dragPointerY !== null}
+	<div
+		class="dataset-table__drag-preview pointer-events-none fixed z-9999 flex items-center gap-2 whitespace-nowrap border px-3 py-1.5 text-sm font-semibold border-tertiary bg-panel text-fg-primary"
+		style="left: {dragPointerX + 12}px; top: {dragPointerY + 12}px;"
+	>
+		<GripVertical size={12} class="text-fg-muted" />
+		<span class="font-mono">{dragLabel}</span>
+	</div>
+{/if}

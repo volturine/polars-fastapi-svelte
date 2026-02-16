@@ -4,7 +4,7 @@ import type {
 	AnalysisGalleryItem,
 	AnalysisUpdate
 } from '$lib/types/analysis';
-import { apiRequest } from './client';
+import { apiRequest, apiRequestWithHeaders } from './client';
 import type { ResultAsync } from 'neverthrow';
 import type { ApiError } from './client';
 
@@ -21,6 +21,16 @@ export function listAnalyses(): ResultAsync<AnalysisGalleryItem[], ApiError> {
 
 export function getAnalysis(id: string): ResultAsync<Analysis, ApiError> {
 	return apiRequest<Analysis>(`/v1/analysis/${id}`);
+}
+
+export function getAnalysisWithHeaders(
+	id: string
+): ResultAsync<{ analysis: Analysis; etag: string | null; version: string | null }, ApiError> {
+	return apiRequestWithHeaders<Analysis>(`/v1/analysis/${id}`).map(({ data, headers }) => ({
+		analysis: data,
+		etag: headers.get('ETag'),
+		version: headers.get('X-Analysis-Version')
+	}));
 }
 
 export function updateAnalysis(id: string, data: AnalysisUpdate): ResultAsync<Analysis, ApiError> {

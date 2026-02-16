@@ -1,7 +1,9 @@
 """Tests for the settings module — GET/PUT settings, test SMTP/Telegram."""
 
+import os
 from unittest.mock import MagicMock, patch
 
+import httpx
 from fastapi.testclient import TestClient
 
 from main import app
@@ -22,6 +24,7 @@ class TestGetSettings:
         assert 'public_idb_debug' in data
 
     def test_returns_saved_values(self) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         # First save some values
         client.put(
             '/api/v1/settings',
@@ -31,6 +34,7 @@ class TestGetSettings:
                 'smtp_user': 'user@example.com',
                 'smtp_password': 'secret',
                 'telegram_bot_token': 'bot123:abc',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': True,
             },
         )
@@ -49,6 +53,7 @@ class TestUpdateSettings:
     """PUT /v1/settings — upserts the singleton row."""
 
     def test_update_smtp(self) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         resp = client.put(
             '/api/v1/settings',
             json={
@@ -57,6 +62,7 @@ class TestUpdateSettings:
                 'smtp_user': 'test@test.com',
                 'smtp_password': 'pw',
                 'telegram_bot_token': '',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
@@ -64,8 +70,10 @@ class TestUpdateSettings:
         data = resp.json()
         assert data['smtp_host'] == 'smtp.test.com'
         assert data['smtp_user'] == 'test@test.com'
+        assert data['smtp_password'] == 'pw'
 
     def test_update_telegram(self) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         resp = client.put(
             '/api/v1/settings',
             json={
@@ -74,6 +82,7 @@ class TestUpdateSettings:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot999:xyz',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
@@ -81,6 +90,7 @@ class TestUpdateSettings:
         assert resp.json()['telegram_bot_token'] == 'bot999:xyz'
 
     def test_update_idb_debug(self) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         resp = client.put(
             '/api/v1/settings',
             json={
@@ -89,6 +99,7 @@ class TestUpdateSettings:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': '',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': True,
             },
         )
@@ -100,6 +111,7 @@ class TestTestSmtp:
     """POST /v1/settings/test-smtp — test email sending."""
 
     def test_not_configured(self) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         # Ensure SMTP is cleared
         client.put(
             '/api/v1/settings',
@@ -109,6 +121,7 @@ class TestTestSmtp:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': '',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
@@ -120,6 +133,7 @@ class TestTestSmtp:
 
     @patch('modules.settings.routes.smtplib.SMTP')
     def test_success(self, mock_smtp_cls: MagicMock) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         mock_server = MagicMock()
         mock_smtp_cls.return_value.__enter__ = MagicMock(return_value=mock_server)
         mock_smtp_cls.return_value.__exit__ = MagicMock(return_value=False)
@@ -133,6 +147,7 @@ class TestTestSmtp:
                 'smtp_user': 'user@test.com',
                 'smtp_password': 'pw',
                 'telegram_bot_token': '',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
@@ -144,6 +159,7 @@ class TestTestSmtp:
 
     @patch('modules.settings.routes.smtplib.SMTP')
     def test_failure(self, mock_smtp_cls: MagicMock) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         mock_smtp_cls.side_effect = ConnectionRefusedError('Connection refused')
 
         client.put(
@@ -154,21 +170,22 @@ class TestTestSmtp:
                 'smtp_user': 'user@test.com',
                 'smtp_password': '',
                 'telegram_bot_token': '',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
 
         resp = client.post('/api/v1/settings/test-smtp', json={'to': 'test@test.com'})
-        assert resp.status_code == 200
+        assert resp.status_code == 502
         data = resp.json()
-        assert data['success'] is False
-        assert 'refused' in data['message'].lower()
+        assert 'refused' in data['detail'].lower()
 
 
 class TestTestTelegram:
     """POST /v1/settings/test-telegram — test Telegram sending."""
 
     def test_not_configured(self) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         client.put(
             '/api/v1/settings',
             json={
@@ -177,6 +194,7 @@ class TestTestTelegram:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': '',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
@@ -188,6 +206,7 @@ class TestTestTelegram:
 
     @patch('modules.settings.routes.httpx.post')
     def test_success(self, mock_post: MagicMock) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_post.return_value = mock_resp
@@ -200,6 +219,7 @@ class TestTestTelegram:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot123:abc',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
@@ -211,6 +231,7 @@ class TestTestTelegram:
 
     @patch('modules.settings.routes.httpx.post')
     def test_api_error(self, mock_post: MagicMock) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         mock_resp = MagicMock()
         mock_resp.status_code = 400
         mock_resp.json.return_value = {'description': 'Bad Request: chat not found'}
@@ -224,6 +245,7 @@ class TestTestTelegram:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot123:abc',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
@@ -234,11 +256,35 @@ class TestTestTelegram:
         assert data['success'] is False
         assert 'chat not found' in data['message'].lower()
 
+    @patch('modules.settings.routes.httpx.post')
+    def test_transport_failure(self, mock_post: MagicMock) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
+        mock_post.side_effect = httpx.ConnectError('Connection refused')
+
+        client.put(
+            '/api/v1/settings',
+            json={
+                'smtp_host': '',
+                'smtp_port': 587,
+                'smtp_user': '',
+                'smtp_password': '',
+                'telegram_bot_token': 'bot123:abc',
+                'telegram_bot_enabled': False,
+                'public_idb_debug': False,
+            },
+        )
+
+        resp = client.post('/api/v1/settings/test-telegram', json={'chat_id': '123'})
+        assert resp.status_code == 502
+        data = resp.json()
+        assert 'refused' in data['detail'].lower()
+
 
 class TestConfigEndpointWithDbSettings:
     """GET /v1/config — should reflect DB settings for smtp/telegram enabled."""
 
     def test_config_reflects_db_settings(self) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         # Save SMTP settings
         client.put(
             '/api/v1/settings',
@@ -248,6 +294,7 @@ class TestConfigEndpointWithDbSettings:
                 'smtp_user': 'user@example.com',
                 'smtp_password': 'pw',
                 'telegram_bot_token': 'botXYZ',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': True,
             },
         )
@@ -260,6 +307,7 @@ class TestConfigEndpointWithDbSettings:
         assert data['public_idb_debug'] is True
 
     def test_config_reflects_empty_settings(self) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         client.put(
             '/api/v1/settings',
             json={
@@ -268,6 +316,7 @@ class TestConfigEndpointWithDbSettings:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': '',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
@@ -284,6 +333,7 @@ class TestDetectTelegramChat:
     """POST /v1/settings/detect-telegram-chat — detect chat IDs via getUpdates."""
 
     def test_not_configured(self) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         client.put(
             '/api/v1/settings',
             json={
@@ -292,6 +342,7 @@ class TestDetectTelegramChat:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': '',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
@@ -304,6 +355,7 @@ class TestDetectTelegramChat:
 
     @patch('modules.settings.routes.httpx.get')
     def test_success_with_chats(self, mock_get: MagicMock) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -335,6 +387,7 @@ class TestDetectTelegramChat:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot123:abc',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
@@ -348,6 +401,7 @@ class TestDetectTelegramChat:
 
     @patch('modules.settings.routes.httpx.get')
     def test_no_updates(self, mock_get: MagicMock) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {'ok': True, 'result': []}
@@ -361,6 +415,7 @@ class TestDetectTelegramChat:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot123:abc',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
@@ -372,6 +427,7 @@ class TestDetectTelegramChat:
 
     @patch('modules.settings.routes.httpx.get')
     def test_deduplicates_chats(self, mock_get: MagicMock) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -403,6 +459,7 @@ class TestDetectTelegramChat:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot123:abc',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
@@ -415,6 +472,7 @@ class TestDetectTelegramChat:
 
     @patch('modules.settings.routes.httpx.get')
     def test_channel_post(self, mock_get: MagicMock) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -451,6 +509,7 @@ class TestDetectTelegramChat:
 
     @patch('modules.settings.routes.httpx.get')
     def test_api_error(self, mock_get: MagicMock) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
         mock_resp = MagicMock()
         mock_resp.status_code = 401
         mock_resp.text = 'Unauthorized'
@@ -464,6 +523,7 @@ class TestDetectTelegramChat:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bad-token',
+                'telegram_bot_enabled': False,
                 'public_idb_debug': False,
             },
         )
@@ -473,3 +533,26 @@ class TestDetectTelegramChat:
         assert data['success'] is False
         assert 'error' in data['message'].lower()
         assert data['chats'] == []
+
+    @patch('modules.settings.routes.httpx.get')
+    def test_transport_failure(self, mock_get: MagicMock) -> None:
+        os.environ['SETTINGS_ENCRYPTION_KEY'] = 'test-key'
+        mock_get.side_effect = httpx.ConnectError('Connection refused')
+
+        client.put(
+            '/api/v1/settings',
+            json={
+                'smtp_host': '',
+                'smtp_port': 587,
+                'smtp_user': '',
+                'smtp_password': '',
+                'telegram_bot_token': 'bot123:abc',
+                'telegram_bot_enabled': False,
+                'public_idb_debug': False,
+            },
+        )
+
+        resp = client.post('/api/v1/settings/detect-telegram-chat')
+        assert resp.status_code == 502
+        data = resp.json()
+        assert 'refused' in data['detail'].lower()

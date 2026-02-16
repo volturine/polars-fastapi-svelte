@@ -173,10 +173,14 @@ export interface PlotConfigData {
 export interface NotificationConfigData {
 	method: 'email' | 'telegram';
 	recipient: string;
+	subscriber_ids: string[];
+	bot_token: string;
+	input_columns: string[];
+	output_column: string;
+	message_template: string;
 	subject_template: string;
-	body_template: string;
-	attach_result: boolean;
-	attach_error: boolean;
+	batch_size: number;
+	timeout_seconds: number;
 }
 
 export interface AIConfigData {

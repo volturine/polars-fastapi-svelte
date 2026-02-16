@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
 from core.database import get_db
+from core.validation import DataSourceId, parse_datasource_id
 from modules.telegram import service
 from modules.telegram.bot import telegram_bot
 from modules.telegram.schemas import (
@@ -36,19 +37,19 @@ def get_subscribers(session: Session = Depends(get_db)) -> list[SubscriberRespon
     return service.list_subscribers(session)
 
 
-@router.delete('/subscribers/{subscriber_id}')
-def delete_subscriber(subscriber_id: int, session: Session = Depends(get_db)) -> dict[str, str]:
+@router.delete('/subscribers/{subscriber_id}', status_code=204)
+def delete_subscriber(subscriber_id: int, session: Session = Depends(get_db)) -> None:
     service.delete_subscriber(session, subscriber_id)
-    return {'message': 'Subscriber deleted'}
+    return None
 
 
 @router.get('/listeners', response_model=list[ListenerResponse])
 def get_listeners(
     subscriber_id: int | None = None,
-    datasource_id: str | None = None,
+    datasource_id: DataSourceId | None = None,
     session: Session = Depends(get_db),
 ) -> list[ListenerResponse]:
-    return service.list_listeners(session, subscriber_id, datasource_id)
+    return service.list_listeners(session, subscriber_id, parse_datasource_id(datasource_id) if datasource_id else None)
 
 
 @router.post('/listeners', response_model=ListenerResponse)
@@ -56,7 +57,7 @@ def create_listener(payload: ListenerCreate, session: Session = Depends(get_db))
     return service.add_listener(session, payload)
 
 
-@router.delete('/listeners/{listener_id}')
-def delete_listener(listener_id: int, session: Session = Depends(get_db)) -> dict[str, str]:
+@router.delete('/listeners/{listener_id}', status_code=204)
+def delete_listener(listener_id: int, session: Session = Depends(get_db)) -> None:
     service.remove_listener(session, listener_id)
-    return {'message': 'Listener deleted'}
+    return None

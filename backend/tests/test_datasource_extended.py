@@ -148,17 +148,16 @@ class TestDataSourceValidation:
 
         try:
             df.write_excel(excel_path)
-
-            with open(excel_path, 'rb') as f:
-                files = {'file': ('test.xlsx', f.read(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
-                data = {'name': 'Excel Test'}
-
-            response = client.post('/api/v1/datasource/upload', files=files, data=data)
-
-            assert response.status_code == 200
-        except Exception:
-            # Excel support may not be available
+        except (ImportError, ValueError, OSError):
             pytest.skip('Excel support not available')
+
+        with open(excel_path, 'rb') as f:
+            files = {'file': ('test.xlsx', f.read(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+            data = {'name': 'Excel Test'}
+
+        response = client.post('/api/v1/datasource/upload', files=files, data=data)
+
+        assert response.status_code == 200
 
     def test_preflight_requires_xlsx(self, client):
         """Test preflight endpoint rejects non-xlsx files."""
@@ -273,7 +272,7 @@ class TestComputeHistogram:
         assert len(result) == 2
         assert result[0]['start'] == 0.0
         assert result[1]['end'] == 10.0
-        total = sum(b['count'] for b in result)
+        total = sum(b['count'] for b in result)  # type: ignore[call-overload]
         assert total == 2
 
     def test_default_20_bins(self):
@@ -292,7 +291,7 @@ class TestComputeHistogram:
         """Sum of bin counts equals series length."""
         s = pl.Series('x', [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
         result = _compute_histogram(s, bins=5)
-        total = sum(b['count'] for b in result)
+        total = sum(b['count'] for b in result)  # type: ignore[call-overload]
         assert total == 10
 
     def test_bins_are_contiguous(self):
@@ -309,7 +308,7 @@ class TestComputeHistogram:
         assert len(result) == 4
         assert result[0]['start'] == -10.0
         assert result[-1]['end'] == 10.0
-        total = sum(b['count'] for b in result)
+        total = sum(b['count'] for b in result)  # type: ignore[call-overload]
         assert total == 5
 
     def test_integer_series(self):
@@ -317,7 +316,7 @@ class TestComputeHistogram:
         s = pl.Series('x', [1, 2, 3, 4, 5])
         result = _compute_histogram(s, bins=3)
         assert len(result) == 3
-        total = sum(b['count'] for b in result)
+        total = sum(b['count'] for b in result)  # type: ignore[call-overload]
         assert total == 5
 
     def test_values_rounded(self):
@@ -340,7 +339,7 @@ class TestComputeHistogram:
         """Histogram is computed on non-null values (caller should filter)."""
         s = pl.Series('x', [1.0, 2.0, 3.0])  # caller filters nulls before calling
         result = _compute_histogram(s, bins=3)
-        total = sum(b['count'] for b in result)
+        total = sum(b['count'] for b in result)  # type: ignore[call-overload]
         assert total == 3
 
 
@@ -355,7 +354,7 @@ class TestDataSourceDeletion:
         response = client.delete(f'/api/v1/datasource/{datasource_id}')
 
         # Should succeed or return appropriate error
-        assert response.status_code in [200, 204, 400, 409]
+        assert response.status_code in [204, 400, 409]
 
     def test_delete_datasource_removes_file(self, client, temp_upload_dir: Path):
         """Test that deleting a datasource removes the file."""
@@ -375,7 +374,7 @@ class TestDataSourceDeletion:
         response = client.delete(f'/api/v1/datasource/{datasource_id}')
 
         # File should be removed (implementation dependent)
-        assert response.status_code in [200, 204]
+        assert response.status_code == 204
 
 
 class TestIsHidden:

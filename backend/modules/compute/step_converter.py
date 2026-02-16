@@ -384,10 +384,17 @@ def convert_notification_config(config: dict) -> dict:
     """Convert notification config — per-row UDF with column inputs."""
     input_columns: list[str] = config.get('input_columns') or config.get('inputColumns') or []
 
+    recipients = config.get('recipient', '')
+    if not recipients:
+        selected = config.get('subscriber_ids')
+        if isinstance(selected, list):
+            recipients = ','.join(str(cid) for cid in selected)
+
     return {
         'method': config.get('method', 'email'),
-        'recipient': config.get('recipient', ''),
+        'recipient': recipients,
         'bot_token': config.get('bot_token', ''),
+        'subscriber_ids': config.get('subscriber_ids') or [],
         'input_columns': input_columns,
         'output_column': config.get('output_column') or config.get('outputColumn') or 'notification_status',
         'message_template': config.get('message_template') or config.get('messageTemplate') or '{{message}}',
@@ -437,5 +444,5 @@ def convert_config_to_params(operation: str, config: dict) -> dict:
     try:
         return converter(config)
     except Exception as e:
-        logger.error(f'Error converting {operation} config: {e}')
+        logger.error(f'Error converting {operation} config: {e}', exc_info=True)
         raise

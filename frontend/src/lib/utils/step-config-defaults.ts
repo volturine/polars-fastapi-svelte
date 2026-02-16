@@ -95,6 +95,7 @@ export type ChartConfigData = PlotConfigData;
 export interface NotificationConfigData {
 	method: 'email' | 'telegram';
 	recipient: string;
+	subscriber_ids: string[];
 	bot_token: string;
 	input_columns: string[];
 	output_column: string;
@@ -227,6 +228,7 @@ const defaultConfigs: Record<string, StepConfig> = {
 	notification: {
 		method: 'email',
 		recipient: '',
+		subscriber_ids: [],
 		bot_token: '',
 		input_columns: [],
 		output_column: 'notification_status',
@@ -330,6 +332,9 @@ export function normalizeConfig(stepType: string, config: Record<string, unknown
 		}
 		notif.bot_token = notif.bot_token ?? '';
 		notif.recipient = notif.recipient ?? '';
+		if (!Array.isArray(notif.subscriber_ids)) {
+			notif.subscriber_ids = [];
+		}
 	}
 
 	return merged;

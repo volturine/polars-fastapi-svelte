@@ -52,6 +52,7 @@ export interface Analysis {
 	result_path: string | null;
 	thumbnail: string | null;
 	tabs: AnalysisTab[];
+	version?: string | null;
 }
 
 export interface AnalysisGalleryItem {

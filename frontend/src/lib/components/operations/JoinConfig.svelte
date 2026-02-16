@@ -48,7 +48,18 @@
 			rightSchema = null;
 			return;
 		}
-		const schemaInfo = await datasourceStore.getSchema(datasourceId);
+		let schemaInfo: Awaited<ReturnType<typeof datasourceStore.getSchema>> | null = null;
+		try {
+			schemaInfo = await datasourceStore.getSchema(datasourceId);
+		} catch (err) {
+			void err;
+			schemaInfo = null;
+		}
+		if (!schemaInfo) {
+			rightSchema = null;
+			schemaStore.removeJoinDatasource(datasourceId);
+			return;
+		}
 		const joinSchema: Schema = {
 			columns: schemaInfo.columns.map((c) => ({
 				name: c.name,

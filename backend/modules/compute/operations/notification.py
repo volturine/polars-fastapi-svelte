@@ -34,6 +34,7 @@ class NotificationParams(OperationParams):
 
     method: Literal['email', 'telegram'] = 'email'
     recipient: str = ''
+    subscriber_ids: list[str] = []
     bot_token: str = ''
     input_columns: list[str] = []
     output_column: str = 'notification_status'
@@ -44,7 +45,7 @@ class NotificationParams(OperationParams):
 
     @model_validator(mode='after')
     def _validate(self) -> 'NotificationParams':
-        if not self.recipient:
+        if not self.recipient and not self.subscriber_ids:
             raise ValueError('recipient is required')
         if not self.input_columns:
             raise ValueError('At least one input column is required (input_columns)')
@@ -134,7 +135,7 @@ class NotificationHandler(OperationHandler):
                             )
                     results.append('sent')
                 except Exception as exc:
-                    logger.warning('Notification failed at row %d: %s', offset, exc)
+                    logger.warning('Notification failed at row %d: %s', offset, exc, exc_info=True)
                     results.append(f'[error: {exc}]')
 
         if len(results) != row_count:

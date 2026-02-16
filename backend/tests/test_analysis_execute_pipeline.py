@@ -1,3 +1,4 @@
+import uuid
 from unittest.mock import MagicMock, patch
 
 from modules.datasource.models import DataSource
@@ -38,9 +39,10 @@ def test_execute_analysis_uses_pipeline_payload(client, sample_datasource: DataS
 
     with patch('modules.analysis.routes.compute_service.preview_step') as mock_preview:
         mock_preview.side_effect = fake_preview_step
+        analysis_id = str(uuid.uuid4())
         response = client.post(
-            '/api/v1/analysis/test-analysis-id/execute',
-            json={'pipeline': pipeline},
+            f'/api/v1/analysis/{analysis_id}/execute',
+            json={'pipeline': {**pipeline, 'analysis_id': analysis_id}},
         )
 
         assert response.status_code == 200

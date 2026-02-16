@@ -187,8 +187,9 @@ class TestCompareEngineRuns:
 
     def test_compare_run_not_found(self, test_db_session: Session) -> None:
         run_a = _create_run(test_db_session, result_json={})
+        missing_id = str(uuid.uuid4())
         with pytest.raises(Exception, match='not found'):
-            compare_engine_runs(test_db_session, run_a.id, 'nonexistent-id')
+            compare_engine_runs(test_db_session, run_a.id, missing_id)
 
     def test_compare_identical_runs(self, test_db_session: Session) -> None:
         run_a = _create_run(
@@ -267,4 +268,4 @@ class TestCompareEndpoint:
             '/api/v1/engine-runs/compare',
             params={'run_a': 'fake-a', 'run_b': 'fake-b'},
         )
-        assert resp.status_code == 404
+        assert resp.status_code == 400

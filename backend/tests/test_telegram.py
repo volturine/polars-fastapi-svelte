@@ -1,5 +1,6 @@
 """Tests for the Telegram subscriber/listener module."""
 
+import uuid
 from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
@@ -171,12 +172,12 @@ class TestSubscriberEndpoints:
 
     def test_delete_nonexistent(self, client: TestClient) -> None:
         resp = client.delete('/api/v1/telegram/subscribers/99999')
-        assert resp.status_code == 200
+        assert resp.status_code == 204
 
     def test_delete_existing(self, client: TestClient, test_db_session: Session) -> None:
         sub = add_subscriber(test_db_session, '100', 'Test', 'tok')
         resp = client.delete(f'/api/v1/telegram/subscribers/{sub.id}')
-        assert resp.status_code == 200
+        assert resp.status_code == 204
         assert test_db_session.get(TelegramSubscriber, sub.id) is None
 
 
@@ -204,13 +205,15 @@ class TestListenerEndpoints:
         sub = add_subscriber(test_db_session, '201', 'M', 'tok')
         listener = add_listener(test_db_session, ListenerCreate(subscriber_id=sub.id, datasource_id='ds-del'))
         resp = client.delete(f'/api/v1/telegram/listeners/{listener.id}')
-        assert resp.status_code == 200
+        assert resp.status_code == 204
 
     def test_filter_by_datasource(self, client: TestClient, test_db_session: Session) -> None:
         sub = add_subscriber(test_db_session, '202', 'N', 'tok')
-        add_listener(test_db_session, ListenerCreate(subscriber_id=sub.id, datasource_id='ds-f1'))
-        add_listener(test_db_session, ListenerCreate(subscriber_id=sub.id, datasource_id='ds-f2'))
-        resp = client.get('/api/v1/telegram/listeners', params={'datasource_id': 'ds-f1'})
+        datasource_id = str(uuid.uuid4())
+        other_id = str(uuid.uuid4())
+        add_listener(test_db_session, ListenerCreate(subscriber_id=sub.id, datasource_id=datasource_id))
+        add_listener(test_db_session, ListenerCreate(subscriber_id=sub.id, datasource_id=other_id))
+        resp = client.get('/api/v1/telegram/listeners', params={'datasource_id': datasource_id})
         assert resp.status_code == 200
         assert len(resp.json()) == 1
 

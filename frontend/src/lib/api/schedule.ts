@@ -55,7 +55,7 @@ export function updateSchedule(scheduleId: string, payload: ScheduleUpdate) {
 }
 
 export function deleteSchedule(scheduleId: string) {
-	return apiRequest<{ message: string }>(`/v1/schedules/${scheduleId}`, {
+	return apiRequest<void>(`/v1/schedules/${scheduleId}`, {
 		method: 'DELETE'
 	});
 }

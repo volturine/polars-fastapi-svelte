@@ -1,11 +1,13 @@
 """Tests for notification module: per-row handler, step converter, output notification."""
 
+from dataclasses import dataclass
 from unittest.mock import patch
 
 import polars as pl
 import pytest
 from pydantic import ValidationError
 
+from core.exceptions import PipelineExecutionError
 from modules.compute.operations.notification import (
     NotificationHandler,
     NotificationParams,
@@ -14,6 +16,14 @@ from modules.compute.operations.notification import (
 from modules.compute.service import _send_pipeline_notifications
 from modules.compute.step_converter import convert_notification_config
 from modules.notification.service import render_template
+
+
+@dataclass(frozen=True)
+class MockSubscriber:
+    chat_id: str
+    bot_token: str
+    is_active: bool = True
+
 
 # ---------------------------------------------------------------------------
 # NotificationParams validation
@@ -463,11 +473,17 @@ class TestConvertNotificationConfig:
         result = convert_notification_config({})
         assert result['method'] == 'email'
         assert result['recipient'] == ''
+        assert result['subscriber_ids'] == []
         assert result['input_columns'] == []
         assert result['output_column'] == 'notification_status'
         assert result['message_template'] == '{{message}}'
         assert result['subject_template'] == 'Notification'
         assert result['batch_size'] == 10
+
+    def test_subscriber_ids_fallback(self):
+        result = convert_notification_config({'subscriber_ids': ['111', '222']})
+        assert result['recipient'] == '111,222'
+        assert result['subscriber_ids'] == ['111', '222']
 
     def test_camelCase_support(self):
         result = convert_notification_config(
@@ -510,7 +526,7 @@ class TestSendPipelineNotifications:
         with patch('modules.compute.service.notification_service') as mock_svc:
             _send_pipeline_notifications(
                 pipeline_steps=[],
-                context={'analysis_name': 'Test', 'status': 'success'},
+                context={'analysis_name': 'Test', 'status': 'success', 'datasource_id': 'ds-1'},
                 output_notification={
                     'method': 'email',
                     'recipient': 'admin@test.com',
@@ -564,19 +580,74 @@ class TestSendPipelineNotifications:
         mock_svc.send_email.assert_not_called()
         mock_svc.send_telegram.assert_not_called()
 
-    def test_output_notification_error_swallowed(self):
-        """Notification failure doesn't crash the pipeline."""
+    def test_output_notification_excluded_recipients(self):
         with patch('modules.compute.service.notification_service') as mock_svc:
-            mock_svc.send_email.side_effect = RuntimeError('SMTP error')
-            # Should not raise
             _send_pipeline_notifications(
                 pipeline_steps=[],
-                context={},
+                context={'analysis_name': 'Test', 'status': 'success', 'datasource_id': 'ds-1'},
                 output_notification={
                     'method': 'email',
-                    'recipient': 'x@x.com',
+                    'recipient': 'admin@test.com, skip@test.com',
+                    'excluded_recipients': ['skip@test.com'],
+                    'subject_template': 'Build: {{analysis_name}}',
+                    'body_template': 'Status: {{status}}',
                 },
             )
+        mock_svc.send_email.assert_called_once_with(
+            to='admin@test.com',
+            subject='Build: Test',
+            body='Status: success',
+        )
+
+    def test_output_notification_telegram_uses_subscribers(self):
+        with (
+            patch('modules.compute.service.notification_service') as mock_svc,
+            patch('core.database.run_db') as mock_run_db,
+        ):
+            mock_run_db.side_effect = [[], [MockSubscriber('111', 'token-a')]]
+            _send_pipeline_notifications(
+                pipeline_steps=[],
+                context={'analysis_name': 'Test', 'status': 'success', 'datasource_id': 'ds-1'},
+                output_notification={
+                    'method': 'telegram',
+                    'recipient': '',
+                    'subject_template': 'Build: {{analysis_name}}',
+                    'body_template': 'Status: {{status}}',
+                },
+            )
+        mock_svc.send_telegram.assert_called_once()
+
+    def test_output_notification_telegram_excludes_subscribers(self):
+        with (
+            patch('modules.compute.service.notification_service') as mock_svc,
+            patch('core.database.run_db') as mock_run_db,
+        ):
+            mock_run_db.side_effect = [[], [MockSubscriber('111', 'token-a')]]
+            _send_pipeline_notifications(
+                pipeline_steps=[],
+                context={'analysis_name': 'Test', 'status': 'success', 'datasource_id': 'ds-1'},
+                output_notification={
+                    'method': 'telegram',
+                    'recipient': '',
+                    'excluded_recipients': ['111'],
+                    'subject_template': 'Build: {{analysis_name}}',
+                    'body_template': 'Status: {{status}}',
+                },
+            )
+        mock_svc.send_telegram.assert_not_called()
+
+    def test_output_notification_error_raises(self):
+        with patch('modules.compute.service.notification_service') as mock_svc:
+            mock_svc.send_email.side_effect = RuntimeError('SMTP error')
+            with pytest.raises(PipelineExecutionError):
+                _send_pipeline_notifications(
+                    pipeline_steps=[],
+                    context={},
+                    output_notification={
+                        'method': 'email',
+                        'recipient': 'x@x.com',
+                    },
+                )
 
     def test_skips_per_row_notification_steps(self):
         """Per-row notification steps (with input_columns) are skipped by _send_pipeline_notifications."""

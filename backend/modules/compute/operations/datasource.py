@@ -1,3 +1,4 @@
+import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
@@ -7,6 +8,7 @@ import polars as pl
 from openpyxl import load_workbook
 from pydantic import ConfigDict
 
+from core.config import settings
 from modules.compute.core.base import OperationHandler, OperationParams
 
 
@@ -229,6 +231,9 @@ def _build_analysis_from_pipeline(pipeline: dict, analysis_tab_id: str | None) -
     if analysis_id and merged.get('source_type') == 'analysis' and str(merged.get('analysis_id')) == analysis_id:
         merged = {**merged, 'analysis_pipeline': pipeline}
 
+    from modules.compute.utils import apply_pipeline_steps
+
+    steps = apply_pipeline_steps(steps)
     additional = _collect_analysis_sources(steps, sources, pipeline)
     from modules.compute.engine import PolarsComputeEngine
 
@@ -273,6 +278,13 @@ def _collect_analysis_sources(steps: list[dict], sources: dict, pipeline: dict) 
 def resolve_iceberg_metadata_path(metadata_path: str) -> str:
     normalized = _strip_file_scheme(metadata_path)
     path = Path(normalized)
+    parts = [path, *path.parents]
+    if any(part.is_symlink() for part in parts):
+        raise ValueError('Iceberg metadata_path cannot be a symlink')
+    resolved = path.resolve()
+    data_root = Path(os.path.realpath(settings.data_dir.resolve()))
+    if data_root not in resolved.parents and data_root != resolved:
+        raise ValueError('Iceberg metadata_path must be inside data directory')
     if path.suffix == '.db':
         raise ValueError('Iceberg metadata_path must point to metadata.json, not catalog.db')
     if path.is_file():

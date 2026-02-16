@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from sqlalchemy import delete, select
 from sqlmodel import Session
 
+from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError
 from modules.analysis.models import Analysis, AnalysisDataSource
 from modules.analysis.schemas import (
     AnalysisCreateSchema,
@@ -27,7 +28,7 @@ def create_analysis(
         result = session.execute(select(DataSource).where(DataSource.id == datasource_id))  # type: ignore[arg-type]
         datasource = result.scalar_one_or_none()
         if not datasource:
-            raise ValueError(f'DataSource {datasource_id} not found')
+            raise DataSourceNotFoundError(datasource_id)
         if datasource.source_type == 'analysis':
             source_id = _get_analysis_source_id(datasource)
             _ensure_no_cycle(session, analysis_id, source_id)
@@ -38,7 +39,7 @@ def create_analysis(
         'tabs': [tab.model_dump() for tab in data.tabs],
     }
 
-    now = datetime.now(UTC)
+    now = datetime.now(UTC).replace(tzinfo=None)
     analysis = Analysis(
         id=analysis_id,
         name=data.name,
@@ -49,19 +50,20 @@ def create_analysis(
         updated_at=now,
     )
 
-    session.add(analysis)
+    transaction = session.begin_nested() if session.in_transaction() else session.begin()
+    with transaction:
+        session.add(analysis)
 
-    for datasource_id in data.datasource_ids:
-        link = AnalysisDataSource(
-            analysis_id=analysis_id,
-            datasource_id=datasource_id,
-        )
-        session.add(link)
+        for datasource_id in data.datasource_ids:
+            link = AnalysisDataSource(
+                analysis_id=analysis_id,
+                datasource_id=datasource_id,
+            )
+            session.add(link)
 
-    session.commit()
+        version_service.create_version(session, analysis, commit=False)
+
     session.refresh(analysis)
-
-    version_service.create_version(session, analysis)
 
     response = AnalysisResponseSchema.model_validate(analysis)
     response.tabs = [TabSchema.model_validate(tab) for tab in analysis.pipeline_definition.get('tabs', [])]
@@ -72,11 +74,10 @@ def get_analysis(
     session: Session,  # type: ignore[type-arg]
     analysis_id: str,
 ) -> AnalysisResponseSchema:
-    result = session.execute(select(Analysis).where(Analysis.id == analysis_id))  # type: ignore[arg-type]
-    analysis = result.scalar_one_or_none()
+    analysis = session.get(Analysis, analysis_id)
 
     if not analysis:
-        raise ValueError(f'Analysis {analysis_id} not found')
+        raise AnalysisNotFoundError(analysis_id)
 
     response = AnalysisResponseSchema.model_validate(analysis)
     response.tabs = [TabSchema.model_validate(tab) for tab in analysis.pipeline_definition.get('tabs', [])]
@@ -97,13 +98,12 @@ def update_analysis(
     analysis_id: str,
     data: AnalysisUpdateSchema,
 ) -> AnalysisResponseSchema:
-    result = session.execute(select(Analysis).where(Analysis.id == analysis_id))  # type: ignore[arg-type]
-    analysis = result.scalar_one_or_none()
+    analysis = session.get(Analysis, analysis_id)
 
     if not analysis:
-        raise ValueError(f'Analysis {analysis_id} not found')
+        raise AnalysisNotFoundError(analysis_id)
 
-    version_service.create_version(session, analysis)
+    version_service.create_version(session, analysis, commit=False)
 
     if data.name is not None:
         analysis.name = data.name
@@ -195,11 +195,11 @@ def update_analysis(
         datasource_ids = analysis.pipeline_definition.get('datasource_ids', [])
         session.execute(
             delete(AnalysisDataSource).where(AnalysisDataSource.analysis_id == analysis_id)  # type: ignore[arg-type]
-        )  # type: ignore[arg-type]
+        )
         for datasource_id in datasource_ids:
             datasource = session.get(DataSource, datasource_id)
             if not datasource:
-                raise ValueError(f'DataSource {datasource_id} not found')
+                raise DataSourceNotFoundError(datasource_id)
             if datasource.source_type == 'analysis':
                 source_id = _get_analysis_source_id(datasource)
                 if source_id == analysis_id and datasource.config.get('analysis_tab_id'):
@@ -215,7 +215,7 @@ def update_analysis(
     if data.status is not None:
         analysis.status = data.status
 
-    analysis.updated_at = datetime.now(UTC)
+    analysis.updated_at = datetime.now(UTC).replace(tzinfo=None)
 
     session.commit()
     session.refresh(analysis)
@@ -229,15 +229,14 @@ def delete_analysis(
     session: Session,  # type: ignore[type-arg]
     analysis_id: str,
 ) -> None:
-    result = session.execute(select(Analysis).where(Analysis.id == analysis_id))  # type: ignore[arg-type]
-    analysis = result.scalar_one_or_none()
+    analysis = session.get(Analysis, analysis_id)
 
     if not analysis:
-        raise ValueError(f'Analysis {analysis_id} not found')
+        raise AnalysisNotFoundError(analysis_id)
 
     session.execute(
         delete(AnalysisDataSource).where(AnalysisDataSource.analysis_id == analysis_id)  # type: ignore[arg-type]
-    )  # type: ignore[arg-type]
+    )
 
     session.delete(analysis)
     session.commit()
@@ -250,22 +249,21 @@ def link_datasource(
     analysis_id: str,
     datasource_id: str,
 ) -> None:
-    result = session.execute(select(Analysis).where(Analysis.id == analysis_id))  # type: ignore[arg-type]
-    analysis = result.scalar_one_or_none()
+    analysis = session.get(Analysis, analysis_id)
     if not analysis:
-        raise ValueError(f'Analysis {analysis_id} not found')
+        raise AnalysisNotFoundError(analysis_id)
 
     result = session.execute(select(DataSource).where(DataSource.id == datasource_id))  # type: ignore[arg-type]
     datasource = result.scalar_one_or_none()
     if not datasource:
-        raise ValueError(f'DataSource {datasource_id} not found')
+        raise DataSourceNotFoundError(datasource_id)
 
     result = session.execute(
         select(AnalysisDataSource).where(
             AnalysisDataSource.analysis_id == analysis_id,  # type: ignore[arg-type]
             AnalysisDataSource.datasource_id == datasource_id,  # type: ignore[arg-type]
         )  # type: ignore[arg-type]
-    )  # type: ignore[arg-type]
+    )
     existing = result.scalar_one_or_none()
     if existing:
         return
@@ -282,7 +280,7 @@ def link_datasource(
 
     if datasource_id not in analysis.pipeline_definition.get('datasource_ids', []):
         analysis.pipeline_definition['datasource_ids'] = analysis.pipeline_definition.get('datasource_ids', []) + [datasource_id]
-        analysis.updated_at = datetime.now(UTC)
+        analysis.updated_at = datetime.now(UTC).replace(tzinfo=None)
 
     tabs = analysis.pipeline_definition.get('tabs', [])
     if not any(tab.get('datasource_id') == datasource_id for tab in tabs):
@@ -297,7 +295,7 @@ def link_datasource(
             }
         )
         analysis.pipeline_definition['tabs'] = tabs
-        analysis.updated_at = datetime.now(UTC)
+        analysis.updated_at = datetime.now(UTC).replace(tzinfo=None)
 
     session.commit()
 
@@ -356,19 +354,19 @@ def unlink_datasource(
     result = session.execute(select(Analysis).where(Analysis.id == analysis_id))  # type: ignore[arg-type]
     analysis = result.scalar_one_or_none()
     if not analysis:
-        raise ValueError(f'Analysis {analysis_id} not found')
+        raise AnalysisNotFoundError(analysis_id)
 
     result = session.execute(select(DataSource).where(DataSource.id == datasource_id))  # type: ignore[arg-type]
     datasource = result.scalar_one_or_none()
     if not datasource:
-        raise ValueError(f'DataSource {datasource_id} not found')
+        raise DataSourceNotFoundError(datasource_id)
 
     session.execute(
         delete(AnalysisDataSource).where(
             AnalysisDataSource.analysis_id == analysis_id,  # type: ignore[arg-type]
             AnalysisDataSource.datasource_id == datasource_id,  # type: ignore[arg-type]
         )  # type: ignore[arg-type]
-    )  # type: ignore[arg-type]
+    )
 
     datasource_ids = analysis.pipeline_definition.get('datasource_ids', [])
     if datasource_id in datasource_ids:

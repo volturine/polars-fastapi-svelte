@@ -1,3 +1,4 @@
+import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -95,7 +96,7 @@ class TestComputePreview:
 
     def test_preview_step_datasource_not_found(self, client):
         payload = {
-            'datasource_id': 'non-existent-id',
+            'datasource_id': str(uuid.uuid4()),
             'pipeline_steps': [],
             'target_step_id': 'step1',
         }
@@ -103,12 +104,6 @@ class TestComputePreview:
         response = client.post('/api/v1/compute/preview', json=payload)
 
         assert response.status_code == 404
-        result = response.json()
-        detail = result.get('detail', result)
-        if isinstance(detail, dict):
-            assert 'not found' in detail.get('message', '')
-        else:
-            assert 'not found' in str(detail)
 
     def test_preview_step_specific_target(self, client, sample_datasource: DataSource):
         payload = {
@@ -346,7 +341,7 @@ def test_pipeline_topological_order(mock_apply_step: MagicMock, mock_load: Magic
 
 class TestEngineLifecycle:
     def test_spawn_engine(self, client):
-        analysis_id = 'test-analysis-123'
+        analysis_id = str(uuid.uuid4())
 
         with patch('modules.compute.routes.get_manager') as mock_get_manager:
             mock_manager = MagicMock()
@@ -368,7 +363,7 @@ class TestEngineLifecycle:
             assert result['status'] == 'healthy'
 
     def test_keepalive_engine(self, client):
-        analysis_id = 'test-analysis-123'
+        analysis_id = str(uuid.uuid4())
 
         with patch('modules.compute.routes.get_manager') as mock_get_manager:
             mock_manager = MagicMock()
@@ -389,7 +384,7 @@ class TestEngineLifecycle:
             assert result['analysis_id'] == analysis_id
 
     def test_get_engine_status(self, client):
-        analysis_id = 'test-analysis-123'
+        analysis_id = str(uuid.uuid4())
 
         with patch('modules.compute.routes.get_manager') as mock_get_manager:
             mock_manager = MagicMock()
@@ -410,7 +405,7 @@ class TestEngineLifecycle:
             assert result['status'] == 'healthy'
 
     def test_shutdown_engine(self, client):
-        analysis_id = 'test-analysis-123'
+        analysis_id = str(uuid.uuid4())
 
         with patch('modules.compute.routes.get_manager') as mock_get_manager:
             mock_manager = MagicMock()
@@ -420,12 +415,11 @@ class TestEngineLifecycle:
 
             response = client.delete(f'/api/v1/compute/engine/{analysis_id}')
 
-            assert response.status_code == 200
-            assert 'shutdown successfully' in response.json()['message']
+            assert response.status_code == 204
             mock_manager.shutdown_engine.assert_called_once_with(analysis_id)
 
     def test_shutdown_engine_not_found(self, client):
-        analysis_id = 'non-existent-analysis'
+        analysis_id = str(uuid.uuid4())
 
         with patch('modules.compute.routes.get_manager') as mock_get_manager:
             mock_manager = MagicMock()
@@ -434,21 +428,21 @@ class TestEngineLifecycle:
 
             response = client.delete(f'/api/v1/compute/engine/{analysis_id}')
 
-            assert response.status_code == 404
+        assert response.status_code == 404
 
     def test_list_engines(self, client):
         with patch('modules.compute.routes.get_manager') as mock_get_manager:
             mock_manager = MagicMock()
             mock_manager.list_all_engine_statuses.return_value = [
                 {
-                    'analysis_id': 'analysis-1',
+                    'analysis_id': str(uuid.uuid4()),
                     'status': 'healthy',
                     'process_id': 12345,
                     'last_activity': '2024-01-01T00:00:00',
                     'current_job_id': None,
                 },
                 {
-                    'analysis_id': 'analysis-2',
+                    'analysis_id': str(uuid.uuid4()),
                     'status': 'healthy',
                     'process_id': 12346,
                     'last_activity': '2024-01-01T00:00:00',

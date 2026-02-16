@@ -28,7 +28,7 @@ Nothing is complete until `just verify` passes with **zero errors and zero warni
 ## Workflow
 
 1. **Explore** — Read relevant files, understand context
-2. **Plan** — Use `/plan`. Update `docs/taskfile.md`
+2. **Plan** — Update `docs/taskfile.md`
 3. **Code** — Implement. Use parallel agents when possible
 4. **Verify** — Run `just verify`. Fix everything. No exceptions
 5. **Review** — Use Second Opinion agent before completing
@@ -84,8 +84,8 @@ Nothing is complete until `just verify` passes with **zero errors and zero warni
 ```typescript
 // Arrow function wrapper — access directly (NO $store syntax)
 const query = createQuery(() => ({
-  queryKey: ['items'],
-  queryFn: fetchItems
+  queryKey: ["items"],
+  queryFn: fetchItems,
 }));
 // query.data, query.isFetching (NOT $query.data)
 ```
@@ -94,13 +94,15 @@ const query = createQuery(() => ({
 
 ```typescript
 // apiRequest<T>() returns ResultAsync<T, ApiError> from neverthrow
-import { apiRequest } from '$lib/api/client';
+import { apiRequest } from "$lib/api/client";
 
 async function fetchItems(): Promise<Item[]> {
-  const result = await apiRequest<Item[]>('/items');
+  const result = await apiRequest<Item[]>("/items");
   return result.match(
     (data) => data,
-    (error) => { throw error; }
+    (error) => {
+      throw error;
+    },
   );
 }
 ```
@@ -115,6 +117,7 @@ async function fetchItems(): Promise<Item[]> {
 ### Transitions
 
 **Never use `transition-all`.** Always use specific properties:
+
 - `transition-colors` for hover effects
 - `transition-opacity` for fades
 - `transition-[color,background-color,border-color,opacity]` for combined
@@ -195,43 +198,47 @@ When you fix something you got wrong on first implementation, add the lesson to 
 
 Read these before working on related areas:
 
-| Document | Purpose |
-|----------|---------|
-| [`docs/key-learnings.md`](docs/key-learnings.md) | Project-specific gotchas and lessons |
-| [`docs/PRD.md`](docs/PRD.md) | Product requirements and data contracts |
-| [`docs/ENV_VARIABLES.md`](docs/ENV_VARIABLES.md) | Environment variable reference |
-| [`docs/bugs.md`](docs/bugs.md) | Current bugs and feature requests |
-| [`docs/taskfile.md`](docs/taskfile.md) | Task tracking |
-| [`STYLE_GUIDE.md`](STYLE_GUIDE.md) | Code style standards |
+| Document                                         | Purpose                                 |
+| ------------------------------------------------ | --------------------------------------- |
+| [`docs/key-learnings.md`](docs/key-learnings.md) | Project-specific gotchas and lessons    |
+| [`docs/PRD.md`](docs/PRD.md)                     | Product requirements and data contracts |
+| [`docs/ENV_VARIABLES.md`](docs/ENV_VARIABLES.md) | Environment variable reference          |
+| [`docs/bugs.md`](docs/bugs.md)                   | Current bugs and feature requests       |
+| [`docs/taskfile.md`](docs/taskfile.md)           | Task tracking                           |
+| [`STYLE_GUIDE.md`](STYLE_GUIDE.md)               | Code style standards                    |
 
 ## Runed Utilities
 
 ```typescript
-import { PersistedState, Debounced, FiniteStateMachine, onClickOutside } from "runed";
+import {
+  PersistedState,
+  Debounced,
+  FiniteStateMachine,
+  onClickOutside,
+} from "runed";
 ```
 
 ## Agents
 
-| Agent | When to Use |
-|-------|-------------|
-| **Second Opinion** | Before completing ANY task |
-| **E2E Testing** | Automated UI testing |
-| **Docks** | Writing documentation |
-| **Learn** | After sessions to record discoveries |
+| Agent              | When to Use                          |
+| ------------------ | ------------------------------------ |
+| **Second Opinion** | Before completing ANY task           |
+| **E2E Testing**    | Automated UI testing                 |
+| **Docks**          | Writing documentation                |
+| **Learn**          | After sessions to record discoveries |
 
 ## MCP Servers
 
-| Server | Purpose |
-|--------|---------|
-| **Svelte** | Documentation and autofixer |
-| **Perplexity** | Research |
-| **Playwright** | Browser automation |
-| **Vibe Check** | Prevent tunnel vision |
-| **Sequential Thinking** | Complex problem solving |
+| Server                  | Purpose                     |
+| ----------------------- | --------------------------- |
+| **Svelte**              | Documentation and autofixer |
+| **Perplexity**          | Research                    |
+| **Playwright**          | Browser automation          |
+| **Vibe Check**          | Prevent tunnel vision       |
+| **Sequential Thinking** | Complex problem solving     |
 
 ## Slash Commands
 
-- `/plan` — Create implementation plan
 - `/review` — Code review
 - `/clarify` — Ask clarifying questions
 - `/rmslop` — Clean up AI slop

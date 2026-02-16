@@ -57,8 +57,8 @@ export class DatasourceStore {
 		}
 
 		const result = sheetName
-			? await getDatasourceSchema(id, { sheetName })
-			: await getDatasourceSchema(id);
+			? await getDatasourceSchema(id, { sheetName, refresh: true })
+			: await getDatasourceSchema(id, { refresh: true });
 		return result.match(
 			(schema) => {
 				if (!sheetName) {

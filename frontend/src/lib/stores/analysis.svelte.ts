@@ -2,7 +2,7 @@ import type { Analysis, AnalysisTab, AnalysisUpdate, PipelineStep } from '$lib/t
 import type { SchemaInfo } from '$lib/types/datasource';
 import type { EngineResourceConfig, EngineDefaults } from '$lib/types/compute';
 import type { Schema } from '$lib/types/schema';
-import { getAnalysis, updateAnalysis } from '$lib/api/analysis';
+import { getAnalysisWithHeaders, updateAnalysis } from '$lib/api/analysis';
 import { normalizeDtype } from '$lib/utils/transform';
 import { normalizeConfig } from '$lib/utils/step-config-defaults';
 import { track } from '$lib/utils/audit-log';
@@ -138,10 +138,10 @@ export class AnalysisStore {
 		this.loading = true;
 		this.error = null;
 
-		return getAnalysis(id)
-			.andThen((analysis) => {
+		return getAnalysisWithHeaders(id)
+			.andThen(({ analysis, version }) => {
 				if (this.loadId !== token) return ok(undefined);
-				this.current = analysis;
+				this.current = { ...analysis, version };
 				this.lastSaved = { name: analysis.name, description: analysis.description ?? null };
 
 				const definition = analysis.pipeline_definition as {
@@ -640,7 +640,8 @@ export class AnalysisStore {
 
 		return updateAnalysis(this.current.id, update)
 			.andThen((updated) => {
-				this.current = updated;
+				const version = this.current?.version ?? null;
+				this.current = { ...updated, version };
 				this.lastSaved = { name: updated.name, description: updated.description ?? null };
 				const tabs = updated.tabs ?? [];
 				if (tabs.length) {

@@ -4,10 +4,11 @@ import smtplib
 from email.message import EmailMessage
 
 import httpx
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from core.database import get_db
+from core.error_handlers import handle_errors
 from modules.settings.schemas import (
     DetectCustomBotRequest,
     DetectTelegramResponse,
@@ -29,14 +30,14 @@ router = APIRouter(prefix='/settings', tags=['settings'])
 
 
 @router.get('', response_model=SettingsResponse)
+@handle_errors(operation='get settings')
 def read_settings(session: Session = Depends(get_db)) -> SettingsResponse:
-    """Return the current runtime settings."""
     return get_settings(session)
 
 
 @router.put('', response_model=SettingsResponse)
+@handle_errors(operation='update settings')
 def write_settings(data: SettingsUpdate, session: Session = Depends(get_db)) -> SettingsResponse:
-    """Update runtime settings and restart Telegram bot if token/enabled changed."""
     from modules.telegram.bot import telegram_bot
 
     result = update_settings(session, data)
@@ -51,8 +52,8 @@ def write_settings(data: SettingsUpdate, session: Session = Depends(get_db)) -> 
 
 
 @router.post('/test-smtp', response_model=TestResult)
+@handle_errors(operation='test smtp')
 def test_smtp(body: TestSmtpRequest) -> TestResult:
-    """Send a test email using current SMTP settings."""
     smtp = get_resolved_smtp()
     host = str(smtp.get('host', ''))
     port = int(str(smtp.get('port', 587)))
@@ -76,12 +77,12 @@ def test_smtp(body: TestSmtpRequest) -> TestResult:
             server.send_message(msg)
         return TestResult(success=True, message=f'Test email sent to {body.to}')
     except Exception as exc:
-        return TestResult(success=False, message=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post('/test-telegram', response_model=TestResult)
+@handle_errors(operation='test telegram')
 def test_telegram(body: TestTelegramRequest) -> TestResult:
-    """Send a test Telegram message using current settings."""
     token = get_resolved_telegram_token()
     if not token:
         return TestResult(success=False, message='Telegram bot token not configured')
@@ -101,12 +102,12 @@ def test_telegram(body: TestTelegramRequest) -> TestResult:
         desc = data.get('description', resp.text)
         return TestResult(success=False, message=f'Telegram API error: {desc}')
     except Exception as exc:
-        return TestResult(success=False, message=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post('/detect-telegram-chat', response_model=DetectTelegramResponse)
+@handle_errors(operation='detect telegram chat')
 def detect_telegram_chat() -> DetectTelegramResponse:
-    """Call Telegram getUpdates to detect chat IDs from recent messages."""
     from modules.telegram.bot import telegram_bot
 
     token = get_resolved_telegram_token()
@@ -146,15 +147,15 @@ def detect_telegram_chat() -> DetectTelegramResponse:
         chats = [TelegramChat(chat_id=cid, title=title) for cid, title in seen.items()]
         return DetectTelegramResponse(success=True, message=f'Found {len(chats)} chat(s)', chats=chats)
     except Exception as exc:
-        return DetectTelegramResponse(success=False, message=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     finally:
         if was_running:
             telegram_bot.resume()
 
 
 @router.post('/detect-chat-custom', response_model=DetectTelegramResponse)
+@handle_errors(operation='detect custom telegram chat')
 def detect_custom_bot_chat(body: DetectCustomBotRequest) -> DetectTelegramResponse:
-    """Detect chat_id from a custom bot token (for notification node config)."""
     from modules.telegram.bot import telegram_bot
 
     if not body.bot_token:
@@ -197,7 +198,7 @@ def detect_custom_bot_chat(body: DetectCustomBotRequest) -> DetectTelegramRespon
         chats = [TelegramChat(chat_id=cid, title=title) for cid, title in seen.items()]
         return DetectTelegramResponse(success=True, message=f'Found {len(chats)} chat(s)', chats=chats)
     except Exception as exc:
-        return DetectTelegramResponse(success=False, message=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     finally:
         if was_running:
             telegram_bot.resume()

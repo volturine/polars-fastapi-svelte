@@ -482,7 +482,7 @@ class TestStepTimingLabels:
             steps = [
                 {'id': 'id-abc123', 'type': 'select', 'config': {'columns': ['a']}, 'depends_on': []},
             ]
-            _, timings = PolarsComputeEngine._build_pipeline(config, steps, 'job-1')
+            _, timings, _plan_frames, _eager_steps = PolarsComputeEngine._build_pipeline(config, steps, 'job-1')
             assert 'select' in timings
             assert 'id-abc123' not in timings
         finally:
@@ -496,7 +496,7 @@ class TestStepTimingLabels:
                 {'id': 'id-1', 'type': 'select', 'config': {'columns': ['a', 'b']}, 'depends_on': []},
                 {'id': 'id-2', 'type': 'select', 'config': {'columns': ['a']}, 'depends_on': ['id-1']},
             ]
-            _, timings = PolarsComputeEngine._build_pipeline(config, steps, 'job-2')
+            _, timings, _plan_frames, _eager_steps = PolarsComputeEngine._build_pipeline(config, steps, 'job-2')
             assert 'select' in timings
             assert 'select_2' in timings
         finally:

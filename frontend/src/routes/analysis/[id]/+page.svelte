@@ -14,7 +14,7 @@
 		hasLock
 	} from '$lib/stores/lockManager.svelte';
 	import {
-		getAnalysis,
+		getAnalysisWithHeaders,
 		listAnalysisVersions,
 		restoreAnalysisVersion,
 		renameAnalysisVersion
@@ -47,11 +47,14 @@
 	let draftLoaded = $state(false);
 	let isDirty = $state(false);
 	let draftTimer: number | null = null;
+	let lastLoadedVersion = $state<string | null>(null);
+	let schemaRefreshTimer: number | null = null;
 
 	const storageKey = $derived(analysisId ? `analysis-draft:${analysisId}` : null);
 
 	$effect(() => {
 		if (!analysisId) return;
+		if (schemaRefreshTimer) window.clearTimeout(schemaRefreshTimer);
 		if (lastAnalysisId !== analysisId) {
 			if (lastAnalysisId && hasLock(lastAnalysisId)) {
 				void releaseLock(lastAnalysisId);
@@ -64,11 +67,19 @@
 			lastAnalysisId = analysisId;
 		}
 		draftLoaded = false;
+		schemaRefreshTimer = window.setTimeout(() => {
+			void datasourceStore.loadDatasources();
+		}, 1500);
 	});
 
 	$effect(() => {
 		if (!storageKey || draftLoaded) return;
 		if (!analysisStore.tabs.length) return;
+		const serverVersion = lastLoadedVersion ?? analysisStore.current?.version ?? null;
+		if (!serverVersion) {
+			draftLoaded = true;
+			return;
+		}
 
 		// Only restore draft if we have an active lock (user was in editing mode)
 		// If no lock, discard draft and load saved state
@@ -86,6 +97,7 @@
 			}
 			const parsed = JSON.parse(raw) as {
 				analysisId: string;
+				version?: string | null;
 				tabs: AnalysisTab[];
 				activeTabId: string | null;
 				resourceConfig: EngineResourceConfig | null;
@@ -95,6 +107,11 @@
 				rightPaneCollapsed: boolean;
 			};
 			if (parsed.analysisId !== analysisId) {
+				draftLoaded = true;
+				return;
+			}
+			if ((parsed.version ?? null) !== serverVersion) {
+				void idbDelete(storageKey);
 				draftLoaded = true;
 				return;
 			}
@@ -116,6 +133,7 @@
 		if (!isEditingMode) return;
 		const payload = {
 			analysisId,
+			version: analysisStore.current?.version ?? null,
 			tabs: analysisStore.tabs,
 			activeTabId: analysisStore.activeTabId,
 			resourceConfig: analysisStore.resourceConfig,
@@ -172,13 +190,17 @@
 		queryKey: ['analysis', analysisId],
 		queryFn: async () => {
 			if (!analysisId) throw new Error('Analysis ID is required');
-			const result = await getAnalysis(analysisId);
+			const result = await getAnalysisWithHeaders(analysisId);
 			if (result.isErr()) {
 				throw new Error(result.error.message);
 			}
-			analysisStore.applyAnalysis(result.value);
+			analysisStore.applyAnalysis({
+				...result.value.analysis,
+				version: result.value.version
+			});
+			lastLoadedVersion = result.value.version;
 			isDirty = false;
-			return result.value;
+			return result.value.analysis;
 		},
 		staleTime: 0,
 		refetchOnMount: 'always',
@@ -407,6 +429,7 @@
 				isDirty = false;
 				selectedStepId = null;
 				isSaving = false;
+				void analysisStore.loadAnalysis(analysisId ?? '');
 
 				if (storageKey) {
 					void idbDelete(storageKey);

@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 from sqlmodel import Session
 
-from core.exceptions import DataSourceNotFoundError, ScheduleValidationError
+from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, ScheduleNotFoundError, ScheduleValidationError
 from modules.analysis.models import Analysis, AnalysisDataSource
 from modules.datasource.models import DataSource
 from modules.scheduler.models import Schedule
@@ -214,7 +214,7 @@ class TestScheduleCrud:
         assert updated.enabled is False
 
     def test_update_nonexistent_raises(self, test_db_session: Session):
-        with pytest.raises(ValueError, match='Schedule not found'):
+        with pytest.raises(ScheduleNotFoundError):
             update_schedule(test_db_session, 'nonexistent', ScheduleUpdate(enabled=False))
 
     def test_delete_schedule(self, test_db_session: Session, output_datasource: DataSource):
@@ -224,7 +224,7 @@ class TestScheduleCrud:
         assert len(result) == 0
 
     def test_delete_nonexistent_raises(self, test_db_session: Session):
-        with pytest.raises(ValueError, match='Schedule not found'):
+        with pytest.raises(ScheduleNotFoundError):
             delete_schedule(test_db_session, 'nonexistent')
 
     def test_create_schedule_without_datasource_id(self, test_db_session: Session):
@@ -418,7 +418,7 @@ class TestGetBuildOrder:
 
 class TestRunAnalysisBuild:
     def test_nonexistent_analysis_raises(self, test_db_session: Session):
-        with pytest.raises(ValueError, match='not found'):
+        with pytest.raises(AnalysisNotFoundError):
             run_analysis_build(test_db_session, 'nonexistent')
 
     def test_analysis_no_tabs(self, test_db_session: Session):
@@ -654,7 +654,8 @@ class TestScheduleRoutes:
         assert response.json()['enabled'] is False
 
     def test_update_nonexistent_404(self, client):
-        response = client.put('/api/v1/schedules/nonexistent', json={'enabled': False})
+        missing_id = str(uuid.uuid4())
+        response = client.put(f'/api/v1/schedules/{missing_id}', json={'enabled': False})
         assert response.status_code == 404
 
     def test_delete(self, client, output_datasource: DataSource):
@@ -662,14 +663,15 @@ class TestScheduleRoutes:
         schedule_id = create_resp.json()['id']
 
         response = client.delete(f'/api/v1/schedules/{schedule_id}')
-        assert response.status_code == 200
+        assert response.status_code == 204
 
         # Verify deleted
         response = client.get('/api/v1/schedules')
         assert len(response.json()) == 0
 
     def test_delete_nonexistent_404(self, client):
-        response = client.delete('/api/v1/schedules/nonexistent')
+        missing_id = str(uuid.uuid4())
+        response = client.delete(f'/api/v1/schedules/{missing_id}')
         assert response.status_code == 404
 
     def test_create_rejected_for_non_analysis_datasource(self, client, sample_datasource: DataSource):

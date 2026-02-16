@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 import logging
 import os
-from collections.abc import Mapping
+from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -24,10 +24,13 @@ logger = logging.getLogger(__name__)
 frontend_build_dir = Path(__file__).parent.parent / 'frontend' / 'build'
 
 
-async def engine_cleanup_loop():
+async def engine_cleanup_loop(stop_event: asyncio.Event) -> None:
     """Periodically check and clean up idle engines."""
-    while True:
-        await asyncio.sleep(settings.engine_pooling_interval)
+    while not stop_event.is_set():
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(stop_event.wait(), timeout=settings.engine_pooling_interval)
+        if stop_event.is_set():
+            break
         try:
             manager = get_manager()
             cleaned = manager.cleanup_idle_engines()
@@ -40,10 +43,13 @@ async def engine_cleanup_loop():
             logger.error(f'Error in engine cleanup: {e}', exc_info=True)
 
 
-async def scheduler_loop():
+async def scheduler_loop(stop_event: asyncio.Event) -> None:
     """Periodically check schedules and trigger builds for due analyses."""
-    while True:
-        await asyncio.sleep(settings.scheduler_check_interval)
+    while not stop_event.is_set():
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(stop_event.wait(), timeout=settings.scheduler_check_interval)
+        if stop_event.is_set():
+            break
         try:
             for session in get_db():
                 due = scheduler_service.get_due_schedules(session)
@@ -52,7 +58,7 @@ async def scheduler_loop():
                     break
 
                 # Build a topological order to respect analysis dependencies
-                all_analysis_ids = {s.analysis_id for s in due}
+                all_analysis_ids = {str(s.analysis_id) for s in due if s.analysis_id}
                 ordered_ids: list[str] = []
                 for aid in all_analysis_ids:
                     build_order = scheduler_service.get_build_order(session, aid)
@@ -68,7 +74,9 @@ async def scheduler_loop():
                 # Map schedule by analysis_id for marking
                 schedule_map: dict[str, list] = {}
                 for s in due:
-                    schedule_map.setdefault(s.analysis_id, []).append(s)
+                    if not s.analysis_id:
+                        continue
+                    schedule_map.setdefault(str(s.analysis_id), []).append(s)
 
                 # Build schedule-level dependency order within each analysis group.
                 # If schedule B depends_on schedule A, run A before B.
@@ -142,7 +150,7 @@ def _topo_sort_schedules(
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     logger.info('Starting application...')
     init_db()
@@ -151,8 +159,9 @@ async def lifespan(app: FastAPI):
         break
 
     # Start background cleanup task
-    cleanup_task = asyncio.create_task(engine_cleanup_loop())
-    scheduler_task = asyncio.create_task(scheduler_loop())
+    stop_event = asyncio.Event()
+    cleanup_task = asyncio.create_task(engine_cleanup_loop(stop_event))
+    scheduler_task = asyncio.create_task(scheduler_loop(stop_event))
 
     # Start Telegram bot only if explicitly enabled in settings
     from modules.telegram.bot import telegram_bot
@@ -176,13 +185,11 @@ async def lifespan(app: FastAPI):
     # Stop Telegram bot
     telegram_bot.stop()
 
-    # Cancel background tasks
-    cleanup_task.cancel()
-    scheduler_task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await cleanup_task
-    with contextlib.suppress(asyncio.CancelledError):
-        await scheduler_task
+    stop_event.set()
+    with contextlib.suppress(asyncio.TimeoutError):
+        await asyncio.wait_for(cleanup_task, timeout=5)
+    with contextlib.suppress(asyncio.TimeoutError):
+        await asyncio.wait_for(scheduler_task, timeout=5)
 
     # Cleanup compute processes on shutdown
     logger.info('Shutting down compute processes...')

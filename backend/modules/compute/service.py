@@ -13,13 +13,19 @@ from sqlalchemy import select
 from sqlmodel import Session
 
 from core.config import settings
-from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError, PipelineExecutionError
+from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, DataSourceSnapshotError, PipelineExecutionError
 from modules.analysis.models import Analysis
 from modules.compute.core.exports import get_export_format
 from modules.compute.engine import PolarsComputeEngine
 from modules.compute.manager import get_manager
 from modules.compute.operations.datasource import resolve_iceberg_metadata_path
-from modules.compute.utils import await_engine_result, build_datasource_config, find_step_index
+from modules.compute.utils import (
+    apply_pipeline_steps,
+    await_engine_result,
+    build_datasource_config,
+    find_step_index,
+    resolve_applied_target,
+)
 from modules.datasource.models import DataSource
 from modules.engine_runs import service as engine_run_service
 from modules.healthcheck import service as healthcheck_service
@@ -41,12 +47,27 @@ def _send_pipeline_notifications(
     and also handles legacy notification steps for backward compat.
     """
     # Output node notification (build-status alert baked into output)
+    failed: list[str] = []
+
+    excluded_set: set[str] = set()
+    method = 'email'
+    recipient = ''
+    subject_template = 'Build Complete'
+    body_template = ''
+
     if output_notification:
+        excluded = output_notification.get('excluded_recipients')
+        if isinstance(excluded, list):
+            excluded_set = {str(item) for item in excluded}
         method = output_notification.get('method', 'email')
         recipient = output_notification.get('recipient', '')
+        subject_template = output_notification.get('subject_template', 'Build Complete')
+        body_template = output_notification.get('body_template', '')
+        if excluded_set:
+            recipients = [r.strip() for r in str(recipient).split(',') if r.strip()]
+            remaining = [r for r in recipients if r not in excluded_set]
+            recipient = ','.join(remaining)
         if recipient:
-            subject_template = output_notification.get('subject_template', 'Build Complete')
-            body_template = output_notification.get('body_template', '')
             subject = render_template(subject_template, context)
             body = render_template(body_template, context)
             try:
@@ -57,7 +78,8 @@ def _send_pipeline_notifications(
                     notification_service.send_telegram(chat_id=recipient, message=f'{subject}\n\n{body}')
                     logger.info(f'Output notification telegram sent to {recipient}')
             except Exception as e:
-                logger.warning(f'Failed to send output {method} notification to {recipient}: {e}')
+                logger.warning(f'Failed to send output {method} notification to {recipient}: {e}', exc_info=True)
+                failed.append(f'output:{method}')
 
     # Legacy: notification steps with old build-status format (backward compat)
     for step in pipeline_steps:
@@ -85,16 +107,22 @@ def _send_pipeline_notifications(
                 notification_service.send_telegram(chat_id=recipient, message=f'{subject}\n\n{body}')
                 logger.info(f'Notification telegram sent to {recipient}')
         except Exception as e:
-            logger.warning(f'Failed to send {method} notification to {recipient}: {e}')
+            logger.warning(f'Failed to send {method} notification to {recipient}: {e}', exc_info=True)
+            failed.append(f'step:{method}')
 
     # Subscriber-based notifications (from Telegram bot /subscribe)
     datasource_id = str(context.get('datasource_id', ''))
     if datasource_id:
         try:
             from core.database import run_db
-            from modules.telegram.service import get_notification_chat_ids
+            from modules.telegram.service import get_notification_chat_ids, list_subscribers
 
             pairs: list[tuple[str, str]] = run_db(get_notification_chat_ids, datasource_id)
+            if output_notification and output_notification.get('method') == 'telegram':
+                subs = run_db(list_subscribers)
+                pairs = [(s.chat_id, s.bot_token) for s in subs if s.is_active]
+            if excluded_set and pairs:
+                pairs = [(cid, token) for cid, token in pairs if cid not in excluded_set]
             if pairs:
                 status = str(context.get('status', 'unknown'))
                 analysis_name = str(context.get('analysis_name', ''))
@@ -102,14 +130,24 @@ def _send_pipeline_notifications(
                 duration = str(context.get('duration_ms', ''))
                 msg = f'Build complete: {analysis_name}\nStatus: {status}\nRows: {row_count}\nDuration: {duration}ms'
                 for cid, token in pairs:
+                    if excluded_set and cid in excluded_set:
+                        continue
                     if not token:
                         continue
                     try:
                         notification_service.send_telegram(chat_id=cid, message=msg, bot_token=token)
                     except Exception as e:
-                        logger.warning(f'Failed to notify subscriber {cid}: {e}')
+                        logger.warning(f'Failed to notify subscriber {cid}: {e}', exc_info=True)
+                        failed.append('subscriber:telegram')
         except Exception as e:
-            logger.warning(f'Failed to send subscriber notifications: {e}')
+            logger.warning(f'Failed to send subscriber notifications: {e}', exc_info=True)
+            failed.append('subscriber:lookup')
+
+    if failed:
+        raise PipelineExecutionError(
+            'Notification delivery failed',
+            details={'failures': failed},
+        )
 
 
 def _upsert_output_datasource(
@@ -209,6 +247,7 @@ def _get_additional_datasources(
     analysis_pipeline: dict | None = None,
 ) -> dict[str, dict]:
     """Extract and fetch additional datasources referenced in pipeline steps (e.g., for joins)."""
+    pipeline_steps = apply_pipeline_steps(pipeline_steps)
     additional: dict[str, dict] = {}
     pipeline_sources: dict[str, dict] | None = None
     analysis_id: str | None = None
@@ -330,9 +369,12 @@ def preview_step(
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
 
+    target_step_id = resolve_applied_target(pipeline_steps, target_step_id)
+    pipeline_steps = apply_pipeline_steps(pipeline_steps)
+
     # Find the step index by step_id
     # Special case: previewing raw datasource (no pipeline steps, target is "source")
-    if target_step_id == 'source' and len(pipeline_steps) == 0:
+    if target_step_id == 'source':
         preview_steps = []
     else:
         step_index = find_step_index(pipeline_steps, target_step_id)
@@ -355,7 +397,7 @@ def preview_step(
     offset = (page - 1) * row_limit
 
     # Use the new preview method that efficiently fetches only needed rows
-    engine.preview(
+    job_id = engine.preview(
         datasource_config=datasource_config,
         pipeline_steps=preview_steps,
         row_limit=row_limit,
@@ -367,7 +409,7 @@ def preview_step(
     current_step_id: str | None = None
     query_plan: str | None = None
     try:
-        result_data = await_engine_result(engine, timeout)
+        result_data = await_engine_result(engine, timeout, job_id=job_id)
         step_timings = result_data.get('step_timings', {}) if isinstance(result_data, dict) else {}
         query_plan = result_data.get('query_plan') if isinstance(result_data, dict) else None
         error = result_data.get('error')
@@ -457,10 +499,16 @@ def get_step_schema(
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
 
+    target_step_id = resolve_applied_target(pipeline_steps, target_step_id)
+    pipeline_steps = apply_pipeline_steps(pipeline_steps)
+
     # Find the step index by step_id
-    step_index = find_step_index(pipeline_steps, target_step_id)
-    schema_steps = pipeline_steps[: step_index + 1]
-    schema_steps = _hydrate_udfs(session, schema_steps)
+    if target_step_id == 'source':
+        schema_steps = []
+    else:
+        step_index = find_step_index(pipeline_steps, target_step_id)
+        schema_steps = pipeline_steps[: step_index + 1]
+        schema_steps = _hydrate_udfs(session, schema_steps)
 
     manager = get_manager()
     engine = manager.get_engine(analysis_id)
@@ -476,13 +524,13 @@ def get_step_schema(
     additional_datasources = _get_additional_datasources(session, schema_steps, analysis_pipeline)
 
     # Use the new schema command that doesn't collect full data
-    engine.get_schema(
+    job_id = engine.get_schema(
         datasource_config=datasource_config,
         pipeline_steps=schema_steps,
         additional_datasources=additional_datasources,
     )
 
-    result_data = await_engine_result(engine, timeout)
+    result_data = await_engine_result(engine, timeout, job_id=job_id)
     error = result_data.get('error')
     if error:
         raise PipelineExecutionError(
@@ -552,9 +600,15 @@ def export_data(
     if destination == 'datasource' and output_datasource_id is None:
         raise ValueError('Output exports require output_datasource_id')
 
+    target_step_id = resolve_applied_target(pipeline_steps, target_step_id)
+    pipeline_steps = apply_pipeline_steps(pipeline_steps)
+
     # Find steps up to target
-    step_index = find_step_index(pipeline_steps, target_step_id)
-    export_steps = pipeline_steps[: step_index + 1]
+    if target_step_id == 'source':
+        export_steps = []
+    else:
+        step_index = find_step_index(pipeline_steps, target_step_id)
+        export_steps = pipeline_steps[: step_index + 1]
     export_steps = _hydrate_udfs(session, export_steps)
 
     manager = get_manager()
@@ -602,12 +656,13 @@ def export_data(
 
     # Create temp file for engine to write to
     tmp_output = tempfile.mktemp(suffix=ext)
+    tmp_db_path: str | None = None
     step_timings: dict = {}
     query_plan: str | None = None
 
     try:
         try:
-            engine.export(
+            job_id = engine.export(
                 datasource_config=datasource_config,
                 pipeline_steps=export_steps,
                 output_path=tmp_output,
@@ -615,7 +670,7 @@ def export_data(
                 additional_datasources=additional_datasources,
             )
 
-            result_data = await_engine_result(engine, timeout)
+            result_data = await_engine_result(engine, timeout, job_id=job_id)
             step_timings = result_data.get('step_timings', {}) if isinstance(result_data, dict) else {}
             query_plan = result_data.get('query_plan') if isinstance(result_data, dict) else None
             error = result_data.get('error')
@@ -643,21 +698,16 @@ def export_data(
             result_format = export_format
             if export_format == 'duckdb':
                 tmp_db_path = tempfile.mktemp(suffix='.duckdb')
+                conn = duckdb.connect(tmp_db_path)
                 try:
-                    conn = duckdb.connect(tmp_db_path)
                     table_name = 'data'
                     if duckdb_options:
                         table_name = duckdb_options.get('table_name', 'data')
                     conn.execute(f'CREATE TABLE {table_name} AS SELECT * FROM read_parquet(?)', [tmp_output])
+                finally:
                     conn.close()
-                    output_path = tmp_db_path
-                    result_format = 'duckdb'
-                except Exception:
-                    if os.path.exists(tmp_db_path):
-                        os.unlink(tmp_db_path)
-                    if os.path.exists(tmp_output):
-                        os.unlink(tmp_output)
-                    raise
+                output_path = tmp_db_path
+                result_format = 'duckdb'
 
             result_meta = _build_export_result_metadata(
                 data=data,
@@ -690,9 +740,12 @@ def export_data(
                 output_cfg = datasource_config.get('output')
                 if isinstance(output_cfg, dict):
                     output_notification = output_cfg.get('notification')
+                    excluded = output_cfg.get('excluded_recipients')
+                    if output_notification and excluded is not None:
+                        output_notification = {**output_notification, 'excluded_recipients': excluded}
 
             _send_pipeline_notifications(
-                pipeline_steps=export_steps,
+                pipeline_steps=apply_pipeline_steps(export_steps),
                 context={
                     'analysis_name': analysis_name,
                     'status': 'success',
@@ -880,6 +933,8 @@ def export_data(
             engine_run_service.create_engine_run(session, payload)
             raise
     finally:
+        if tmp_db_path and os.path.exists(tmp_db_path):
+            os.unlink(tmp_db_path)
         if os.path.exists(tmp_output):
             os.unlink(tmp_output)
 
@@ -891,7 +946,7 @@ def build_analysis_lazyframe(
 ) -> pl.LazyFrame:
     analysis_obj = session.get(Analysis, analysis_id)
     if not analysis_obj:
-        raise ValueError(f'Analysis {analysis_id} not found')
+        raise AnalysisNotFoundError(analysis_id)
 
     datasource_id, pipeline_steps = _resolve_analysis_pipeline(analysis_obj, analysis_tab_id)
 

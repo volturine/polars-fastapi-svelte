@@ -4,6 +4,7 @@ from zoneinfo import available_timezones
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine.url import make_url
 
 # Root data directory (relative to project root, not backend/)
 DATA_DIR = Path(__file__).parent.parent.parent / 'data'
@@ -37,9 +38,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # CORS origins - comma-separated list of allowed origins
-    cors_origins: str = (
-        'http://localhost:3000,http://127.0.0.1:3000,http://0.0.0.0:3000,http://192.168.1.140:3000,http://100.68.183.19:3000'
-    )
+    cors_origins: str = 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173'
 
     database_url: str = 'sqlite+libsql:///./database/app.db'
 
@@ -54,6 +53,7 @@ class Settings(BaseSettings):
     exports_dir: Path = Field(default=DATA_DIR / 'exports', alias='EXPORTS_DIR')
 
     upload_chunk_size: int = Field(default=5 * 1024 * 1024, alias='UPLOAD_CHUNK_SIZE')
+    upload_max_file_size_bytes: int = Field(default=2 * 1024 * 1024 * 1024, alias='UPLOAD_MAX_FILE_SIZE_BYTES')
 
     # Engine idle timeout in seconds (default 5 minutes)
     # Engines will be terminated after this duration of inactivity (reset on save)
@@ -130,13 +130,14 @@ class Settings(BaseSettings):
     log_max_body_size: int = Field(default=1 * 1024 * 1024, alias='LOG_MAX_BODY_SIZE')
 
     # Frontend debug panels
-    public_idb_debug: bool = Field(default=True, alias='PUBLIC_IDB_DEBUG')
+    public_idb_debug: bool = Field(default=False, alias='PUBLIC_IDB_DEBUG')
 
     # SMTP configuration
     smtp_host: str = Field(default='', alias='SMTP_HOST')
     smtp_port: int = Field(default=587, alias='SMTP_PORT')
     smtp_user: str = Field(default='', alias='SMTP_USER')
     smtp_password: str = Field(default='', alias='SMTP_PASSWORD')
+    settings_encryption_key: str = Field(default='', alias='SETTINGS_ENCRYPTION_KEY')
 
     # Telegram configuration
     telegram_bot_token: str = Field(default='', alias='TELEGRAM_BOT_TOKEN')
@@ -190,6 +191,13 @@ class Settings(BaseSettings):
             raise ValueError(f'upload_chunk_size must be at most 100MB, got {value}')
         return value
 
+    @field_validator('upload_max_file_size_bytes')
+    @classmethod
+    def _validate_upload_max_file_size_bytes(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError(f'upload_max_file_size_bytes must be non-negative, got {value}')
+        return value
+
     @field_validator('polars_max_threads', 'polars_max_memory_mb', 'polars_streaming_chunk_size')
     @classmethod
     def _validate_non_negative(cls, value: int, info) -> int:
@@ -226,6 +234,15 @@ class Settings(BaseSettings):
         if value.lower() not in valid_levels:
             raise ValueError(f'log_level must be one of {valid_levels}, got {value}')
         return value.lower()
+
+    @field_validator('database_url')
+    @classmethod
+    def _validate_database_url(cls, value: str) -> str:
+        try:
+            make_url(value)
+        except Exception as exc:
+            raise ValueError(f'database_url must be a valid SQLAlchemy URL, got {value}') from exc
+        return value
 
     @field_validator('timezone')
     @classmethod

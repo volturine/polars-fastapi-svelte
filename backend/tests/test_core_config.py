@@ -91,9 +91,8 @@ class TestSettings:
     def test_invalid_database_url(self, monkeypatch):
         """Test validation of invalid database URL."""
         monkeypatch.setenv('DATABASE_URL', 'invalid-url')
-
-        settings = Settings()
-        assert settings.database_url == 'invalid-url'
+        with pytest.raises(ValidationError, match='database_url must be a valid SQLAlchemy URL'):
+            Settings()
 
     def test_negative_timeout_values(self, monkeypatch):
         """Test that negative timeout values are rejected."""

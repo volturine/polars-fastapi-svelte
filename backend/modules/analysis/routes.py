@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlmodel import Session
 
 from core.database import get_db
+from core.error_handlers import handle_errors
+from core.validation import AnalysisId, DataSourceId, parse_analysis_id, parse_datasource_id
 from modules.analysis import schemas, service
 from modules.compute import service as compute_service
 from modules.locks import service as lock_service
@@ -10,117 +12,99 @@ router = APIRouter(prefix='/analysis', tags=['analysis'])
 
 
 @router.post('', response_model=schemas.AnalysisResponseSchema)
+@handle_errors(operation='create analysis', value_error_status=400)
 def create_analysis(
     data: schemas.AnalysisCreateSchema,
     session: Session = Depends(get_db),
 ):
-    """Create a new analysis with pipeline definition."""
-    try:
-        return service.create_analysis(session, data)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Failed to create analysis: {str(e)}')
+    return service.create_analysis(session, data)
 
 
 @router.get('', response_model=list[schemas.AnalysisGalleryItemSchema])
+@handle_errors(operation='list analyses')
 def list_analyses(session: Session = Depends(get_db)):
-    """List all analyses as gallery items."""
-    try:
-        return service.list_analyses(session)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Failed to list analyses: {str(e)}')
+    return service.list_analyses(session)
 
 
 @router.get('/{analysis_id}', response_model=schemas.AnalysisResponseSchema)
+@handle_errors(operation='get analysis', value_error_status=404)
 def get_analysis(
-    analysis_id: str,
+    analysis_id: AnalysisId,
+    response: Response,
     session: Session = Depends(get_db),
 ):
-    """Get a specific analysis by ID."""
-    try:
-        return service.get_analysis(session, analysis_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Failed to get analysis: {str(e)}')
+    analysis = service.get_analysis(session, parse_analysis_id(analysis_id))
+    response.headers['ETag'] = f'"analysis-{analysis.id}-{analysis.updated_at.isoformat()}"'
+    response.headers['X-Analysis-Version'] = analysis.updated_at.isoformat()
+    return analysis
 
 
 @router.put('/{analysis_id}', response_model=schemas.AnalysisResponseSchema)
+@handle_errors(operation='update analysis', value_error_status=409)
 def update_analysis(
-    analysis_id: str,
+    analysis_id: AnalysisId,
     data: schemas.AnalysisUpdateSchema,
     session: Session = Depends(get_db),
 ):
-    """Update an existing analysis."""
+    analysis_id_value = parse_analysis_id(analysis_id)
     try:
-        service.get_analysis(session, analysis_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        service.get_analysis(session, analysis_id_value)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     if not data.client_id or not data.lock_token:
         raise HTTPException(status_code=409, detail='Editing lock required')
 
-    try:
-        lock_service.validate_lock(session, analysis_id, data.client_id, data.lock_token)
-    except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+    lock_service.validate_lock(session, analysis_id_value, data.client_id, data.lock_token)
 
-    try:
-        return service.update_analysis(session, analysis_id, data)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Failed to update analysis: {str(e)}')
+    return service.update_analysis(session, analysis_id_value, data)
 
 
-@router.delete('/{analysis_id}')
+@router.delete('/{analysis_id}', status_code=204)
+@handle_errors(operation='delete analysis', value_error_status=404)
 def delete_analysis(
-    analysis_id: str,
+    analysis_id: AnalysisId,
     session: Session = Depends(get_db),
 ):
-    """Delete an analysis and its associations."""
+    analysis_id_value = parse_analysis_id(analysis_id)
     try:
-        service.delete_analysis(session, analysis_id)
-        return {'message': f'Analysis {analysis_id} deleted successfully'}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Failed to delete analysis: {str(e)}')
+        service.delete_analysis(session, analysis_id_value)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return None
 
 
 @router.post('/{analysis_id}/datasource/{datasource_id}')
+@handle_errors(operation='link datasource', value_error_status=400)
 def link_datasource(
-    analysis_id: str,
-    datasource_id: str,
+    analysis_id: AnalysisId,
+    datasource_id: DataSourceId,
     session: Session = Depends(get_db),
 ):
-    """Link a datasource to an analysis."""
-    try:
-        service.link_datasource(session, analysis_id, datasource_id)
-        return {'message': f'DataSource {datasource_id} linked to Analysis {analysis_id}'}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Failed to link datasource: {str(e)}')
+    analysis_id_value = parse_analysis_id(analysis_id)
+    datasource_id_value = parse_datasource_id(datasource_id)
+    service.link_datasource(session, analysis_id_value, datasource_id_value)
+    return {'message': f'DataSource {datasource_id_value} linked to Analysis {analysis_id_value}'}
 
 
 @router.post('/{analysis_id}/execute')
+@handle_errors(operation='execute analysis', value_error_status=400)
 async def execute_analysis(
-    analysis_id: str,
+    analysis_id: AnalysisId,
     request: Request,
     analysis_tab_id: str | None = None,
     session: Session = Depends(get_db),
 ):
-    """Execute an analysis and return schema + sample rows."""
     analysis_payload = None
     body = None
     try:
         body = await request.json()
-    except Exception:
+    except ValueError:
         body = None
     if isinstance(body, dict):
         analysis_payload = body.get('pipeline')
+
+    analysis_id_value = parse_analysis_id(analysis_id)
 
     if analysis_payload:
         if not isinstance(analysis_payload, dict):
@@ -148,13 +132,13 @@ async def execute_analysis(
         next_config = {**config}
         payload_id = analysis_payload.get('analysis_id')
         payload_id = str(payload_id) if payload_id is not None else None
-        if payload_id and payload_id == str(analysis_id):
+        if payload_id and payload_id == analysis_id_value:
             next_config['analysis_pipeline'] = analysis_payload
     else:
         try:
-            analysis = service.get_analysis(session, analysis_id)
-        except ValueError as e:
-            raise HTTPException(status_code=404, detail=str(e))
+            analysis = service.get_analysis(session, analysis_id_value)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
         pipeline = analysis.pipeline_definition
         tabs = pipeline.get('tabs', []) if isinstance(pipeline, dict) else []
@@ -184,7 +168,7 @@ async def execute_analysis(
         target_step_id=pipeline_steps[-1]['id'] if pipeline_steps else 'source',
         row_limit=50,
         page=1,
-        analysis_id=analysis_id,
+        analysis_id=analysis_id_value,
         datasource_config=next_config,
     )
 
@@ -196,15 +180,11 @@ async def execute_analysis(
 
 
 @router.delete('/{analysis_id}/datasources/{datasource_id}', status_code=204)
+@handle_errors(operation='unlink datasource', value_error_status=400)
 def unlink_datasource(
-    analysis_id: str,
-    datasource_id: str,
+    analysis_id: AnalysisId,
+    datasource_id: DataSourceId,
     session: Session = Depends(get_db),
 ):
-    """Unlink a datasource from an analysis."""
-    try:
-        service.unlink_datasource(session, analysis_id, datasource_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Failed to unlink datasource: {str(e)}')
+    service.unlink_datasource(session, parse_analysis_id(analysis_id), parse_datasource_id(datasource_id))
+    return None

@@ -112,3 +112,6 @@ def _run_migrations(db_engine) -> None:
             if 'telegram_bot_enabled' not in settings_columns:
                 conn.execute(sa_text('ALTER TABLE app_settings ADD COLUMN telegram_bot_enabled BOOLEAN NOT NULL DEFAULT 0'))
                 conn.commit()
+            if 'smtp_password_encrypted' not in settings_columns:
+                conn.execute(sa_text("ALTER TABLE app_settings ADD COLUMN smtp_password_encrypted TEXT NOT NULL DEFAULT ''"))
+                conn.commit()

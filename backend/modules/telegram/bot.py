@@ -85,8 +85,6 @@ class TelegramBot:
         max_consecutive_errors = 10
         offset = self._get_offset(self._token)
         while not self._stop_event.is_set():
-            # Use a short poll timeout so the loop can exit quickly
-            # when _stop_event is set.
             poll_timeout = 5 if self._stop_event.is_set() else 30
             try:
                 resp = self._do_get_updates(
@@ -132,9 +130,9 @@ class TelegramBot:
                     self._handle_update(update)
             except httpx.TimeoutException:
                 continue
-            except Exception:
+            except Exception as exc:
                 consecutive_errors += 1
-                logger.exception('Telegram bot error (%d/%d)', consecutive_errors, max_consecutive_errors)
+                logger.exception('Telegram bot error (%d/%d): %s', consecutive_errors, max_consecutive_errors, exc)
                 if consecutive_errors >= max_consecutive_errors:
                     logger.error('Telegram bot hit %d consecutive errors — stopping', max_consecutive_errors)
                     break
@@ -183,8 +181,8 @@ class TelegramBot:
                 json={'drop_pending_updates': False},
                 timeout=10,
             )
-        except Exception:
-            logger.warning('Failed to clear Telegram webhook for token')
+        except Exception as exc:
+            logger.warning('Failed to clear Telegram webhook for token: %s', exc)
 
     def _get_offset(self, token: str) -> int:
         with self._offset_lock:
@@ -222,8 +220,8 @@ class TelegramBot:
             run_db(_add)
             self._send_message(chat_id, 'Subscribed! You will receive build notifications.')
             logger.info('Telegram subscriber added: %s (%s)', chat_id, title)
-        except Exception:
-            logger.exception('Failed to add subscriber %s', chat_id)
+        except Exception as exc:
+            logger.exception('Failed to add subscriber %s: %s', chat_id, exc)
             self._send_message(chat_id, 'Failed to subscribe. Please try again.')
 
     def _handle_unsubscribe(self, chat_id: str) -> None:
@@ -241,8 +239,8 @@ class TelegramBot:
             run_db(_remove)
             self._send_message(chat_id, 'Unsubscribed. You will no longer receive notifications.')
             logger.info('Telegram subscriber deactivated: %s', chat_id)
-        except Exception:
-            logger.exception('Failed to unsubscribe %s', chat_id)
+        except Exception as exc:
+            logger.exception('Failed to unsubscribe %s: %s', chat_id, exc)
 
     def _send_message(self, chat_id: str, text: str) -> None:
         try:
@@ -251,8 +249,8 @@ class TelegramBot:
                 json={'chat_id': chat_id, 'text': text},
                 timeout=10,
             )
-        except Exception:
-            logger.warning('Failed to send message to %s', chat_id)
+        except Exception as exc:
+            logger.warning('Failed to send message to %s: %s', chat_id, exc)
 
 
 # Global singleton

@@ -40,6 +40,7 @@ This document lists ALL environment variables supported by the application.
 | `LOG_QUEUE_MAX_SIZE`          | integer | 2000                                    | Max queued log batches                               |
 | `LOG_QUEUE_OVERFLOW`          | string  | block                                   | Queue overflow behavior (block/drop)                 |
 | `LOG_MAX_BODY_SIZE`           | integer | 1048576                                 | Max body size to log in bytes (0=unlimited)          |
+| `SETTINGS_ENCRYPTION_KEY`     | string  |                                         | Encrypt SMTP passwords at rest                       |
 
 ## Validation Rules
 
@@ -178,6 +179,14 @@ CORS_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
 
 ```bash
 CORS_ORIGINS="*"
+
+## Settings Encryption
+
+Set a secret key to encrypt SMTP passwords stored in the database:
+
+```bash
+SETTINGS_ENCRYPTION_KEY="your-strong-random-key"
+```
 ```
 
 ## Resource Planning Formulas

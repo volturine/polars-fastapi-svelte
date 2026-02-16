@@ -6,7 +6,7 @@ import croniter  # type: ignore[import-untyped]
 from sqlalchemy import select
 from sqlmodel import Session
 
-from core.exceptions import DataSourceNotFoundError, ScheduleValidationError
+from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, ScheduleNotFoundError, ScheduleValidationError
 from modules.analysis.models import Analysis
 from modules.datasource.models import DataSource
 from modules.engine_runs.models import EngineRun
@@ -148,7 +148,7 @@ def create_schedule(session: Session, payload: ScheduleCreate) -> ScheduleRespon
 def update_schedule(session: Session, schedule_id: str, payload: ScheduleUpdate) -> ScheduleResponse:
     schedule = session.get(Schedule, schedule_id)
     if not schedule:
-        raise ValueError('Schedule not found')
+        raise ScheduleNotFoundError(schedule_id)
 
     # Validate new datasource if provided
     if payload.datasource_id:
@@ -191,7 +191,7 @@ def update_schedule(session: Session, schedule_id: str, payload: ScheduleUpdate)
 def delete_schedule(session: Session, schedule_id: str) -> None:
     schedule = session.get(Schedule, schedule_id)
     if not schedule:
-        raise ValueError('Schedule not found')
+        raise ScheduleNotFoundError(schedule_id)
     session.delete(schedule)
     session.commit()
 
@@ -426,7 +426,7 @@ def run_analysis_build(
 
     analysis = session.get(Analysis, analysis_id)
     if not analysis:
-        raise ValueError(f'Analysis {analysis_id} not found')
+        raise AnalysisNotFoundError(analysis_id)
 
     pipeline = analysis.pipeline_definition
     tabs = pipeline.get('tabs', []) if isinstance(pipeline, dict) else []
@@ -501,7 +501,7 @@ def run_analysis_build(
                     output_datasource_id=tab.get('output_datasource_id'),
                 )
             else:
-                raise ValueError(f'Tab {current_tab_id} missing output configuration')
+                raise ScheduleValidationError(f'Tab {current_tab_id} missing output configuration')
 
             tabs_built += 1
             results.append({'tab_id': current_tab_id, 'tab_name': tab_name, 'status': 'success'})

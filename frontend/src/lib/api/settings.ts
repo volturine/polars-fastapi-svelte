@@ -78,6 +78,6 @@ export function getSubscribers(): ResultAsync<Subscriber[], ApiError> {
 	return apiRequest<Subscriber[]>('/v1/telegram/subscribers');
 }
 
-export function deleteSubscriber(id: number): ResultAsync<{ message: string }, ApiError> {
-	return apiRequest<{ message: string }>(`/v1/telegram/subscribers/${id}`, { method: 'DELETE' });
+export function deleteSubscriber(id: number): ResultAsync<void, ApiError> {
+	return apiRequest<void>(`/v1/telegram/subscribers/${id}`, { method: 'DELETE' });
 }

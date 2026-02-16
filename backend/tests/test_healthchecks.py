@@ -5,9 +5,10 @@ from modules.datasource.models import DataSource
 from modules.healthcheck.models import HealthCheck, HealthCheckResult
 
 
-def _create_datasource(session, ds_id: str = 'ds-health-1') -> DataSource:
+def _create_datasource(session, ds_id: str | None = None) -> DataSource:
+    datasource_id = ds_id or str(uuid.uuid4())
     datasource = DataSource(
-        id=ds_id,
+        id=datasource_id,
         name='Health Source',
         source_type='file',
         config={'file_path': '/tmp/file.csv', 'file_type': 'csv', 'options': {}},
@@ -50,7 +51,7 @@ def _create_result(session, healthcheck_id: str, passed: bool, message: str, min
 
 
 def test_healthcheck_crud(test_db_session, client):
-    datasource_id = 'ds-health-1'
+    datasource_id = str(uuid.uuid4())
     _create_datasource(test_db_session, datasource_id)
 
     create_payload = {
@@ -80,12 +81,12 @@ def test_healthcheck_crud(test_db_session, client):
     assert updated['enabled'] is False
 
     delete_response = client.delete(f'/api/v1/healthchecks/{created["id"]}')
-    assert delete_response.status_code == 200
+    assert delete_response.status_code == 204
 
 
 def test_list_results_empty(test_db_session, client):
     """No results returns empty list."""
-    datasource_id = 'ds-results-empty'
+    datasource_id = str(uuid.uuid4())
     _create_datasource(test_db_session, datasource_id)
     _create_check(test_db_session, datasource_id)
 
@@ -96,7 +97,7 @@ def test_list_results_empty(test_db_session, client):
 
 def test_list_results_after_run(test_db_session, client):
     """Results are returned after inserting a HealthCheckResult."""
-    datasource_id = 'ds-results-run'
+    datasource_id = str(uuid.uuid4())
     _create_datasource(test_db_session, datasource_id)
     check = _create_check(test_db_session, datasource_id)
     _create_result(test_db_session, check.id, True, 'Row count: 42')
@@ -112,7 +113,7 @@ def test_list_results_after_run(test_db_session, client):
 
 def test_list_results_limit(test_db_session, client):
     """Limit parameter restricts number of returned results."""
-    datasource_id = 'ds-results-limit'
+    datasource_id = str(uuid.uuid4())
     _create_datasource(test_db_session, datasource_id)
     check = _create_check(test_db_session, datasource_id)
 
@@ -127,7 +128,7 @@ def test_list_results_limit(test_db_session, client):
 
 def test_list_results_ordering(test_db_session, client):
     """Results are ordered by checked_at DESC (most recent first)."""
-    datasource_id = 'ds-results-order'
+    datasource_id = str(uuid.uuid4())
     _create_datasource(test_db_session, datasource_id)
     check = _create_check(test_db_session, datasource_id)
 
@@ -144,6 +145,12 @@ def test_list_results_ordering(test_db_session, client):
 
 def test_list_results_no_datasource(client):
     """Results for non-existent datasource returns empty list."""
-    response = client.get('/api/v1/healthchecks/results?datasource_id=nonexistent')
+    missing_id = str(uuid.uuid4())
+    response = client.get(f'/api/v1/healthchecks/results?datasource_id={missing_id}')
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_list_results_invalid_uuid(client):
+    response = client.get('/api/v1/healthchecks/results?datasource_id=nonexistent')
+    assert response.status_code == 400

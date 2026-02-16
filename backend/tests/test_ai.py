@@ -707,10 +707,9 @@ class TestAIRoutes:
     def test_list_models_invalid_provider(self, client):
         with patch('modules.ai.routes.get_ai_client', side_effect=ValueError('Unknown provider')):
             response = client.get('/api/v1/ai/models?provider=bad')
-            assert response.status_code == 200
+            assert response.status_code == 400
             data = response.json()
-            assert data[0]['name'] == ''
-            assert 'Unknown provider' in data[0]['detail']
+            assert 'Unknown provider' in data['detail']
 
     def test_test_connection_success(self, client):
         with patch('modules.ai.routes.get_ai_client') as mock_get:
@@ -736,7 +735,6 @@ class TestAIRoutes:
     def test_test_connection_no_key(self, client):
         with patch('modules.ai.routes.get_ai_client', side_effect=ValueError('OPENAI_API_KEY not configured')):
             response = client.get('/api/v1/ai/test?provider=openai')
-            assert response.status_code == 200
+            assert response.status_code == 400
             data = response.json()
-            assert data['ok'] is False
             assert 'OPENAI_API_KEY' in data['detail']

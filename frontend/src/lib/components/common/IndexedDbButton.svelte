@@ -16,7 +16,8 @@
 		if (typeof value === 'string') return value;
 		try {
 			return JSON.stringify(value);
-		} catch {
+		} catch (err) {
+			void err;
 			return String(value);
 		}
 	}

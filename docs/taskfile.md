@@ -29,9 +29,9 @@
 - [x] 28. Draft restore validation vs server
 - [x] 29. Join schema empty fallback handling
 - [x] 30. Schema refresh delay
-- [ ] 31. Locks module tests
-- [ ] 32. Engine runs module tests
-- [ ] 33. Analysis versions tests
+- [x] 31. Locks module tests
+- [X] 32. Engine runs module tests
+- [X] 33. Analysis versions tests
 - [x] 34. Frontend unit tests coverage
 - [x] 35. Performance tests baseline
 - [x] 36. Disabled steps passthrough + output notifications
@@ -39,7 +39,7 @@
 - [x] 59. Build query plan includes pre-eager steps annotation
 - [x] 60. AI/notification steps remain lazy (no internal collect)
 - [x] 61. Test DB isolation (prevent tests from touching production DB)
-- [ ] 62. Unified compute requests with full analysis payload
+- [x] 62. Unified compute requests with full analysis payload
 - [x] 63. Backend compute preview/schema/export accept analysis_pipeline + tab_id
 - [x] 64. Build payload endpoint added and wired for OutputNode
 - [x] 65. Remove legacy compute endpoints and payload fallbacks

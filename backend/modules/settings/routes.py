@@ -21,7 +21,7 @@ from modules.settings.schemas import (
 )
 from modules.settings.service import (
     get_resolved_smtp,
-    get_resolved_telegram_token,
+    get_resolved_telegram_settings,
     get_settings,
     update_settings,
 )
@@ -83,8 +83,9 @@ def test_smtp(body: TestSmtpRequest) -> TestResult:
 @router.post('/test-telegram', response_model=TestResult)
 @handle_errors(operation='test telegram')
 def test_telegram(body: TestTelegramRequest) -> TestResult:
-    token = get_resolved_telegram_token()
-    if not token:
+    resolved = get_resolved_telegram_settings()
+    token = str(resolved.get('token', ''))
+    if not resolved.get('enabled'):
         return TestResult(success=False, message='Telegram bot token not configured')
 
     try:
@@ -110,8 +111,9 @@ def test_telegram(body: TestTelegramRequest) -> TestResult:
 def detect_telegram_chat() -> DetectTelegramResponse:
     from modules.telegram.bot import telegram_bot
 
-    token = get_resolved_telegram_token()
-    if not token:
+    resolved = get_resolved_telegram_settings()
+    token = str(resolved.get('token', ''))
+    if not resolved.get('enabled'):
         return DetectTelegramResponse(success=False, message='Telegram bot token not configured')
 
     was_running = telegram_bot.running

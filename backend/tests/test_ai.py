@@ -416,6 +416,29 @@ class TestAIHandler:
             assert 'result' in collected.columns
             assert collected['result'].to_list() == ['classified: Hello', 'classified: World']
 
+    def test_lazy_execution_defers_side_effects(self):
+        handler = AIHandler()
+        df = pl.DataFrame({'text': ['Hello', 'World']})
+
+        mock_client = MagicMock()
+        mock_client.generate_batch.return_value = ['ok1', 'ok2']
+
+        with patch('modules.compute.operations.ai.get_ai_client', return_value=mock_client):
+            result = handler(
+                df.lazy(),
+                {
+                    'provider': 'ollama',
+                    'model': 'llama2',
+                    'input_column': 'text',
+                    'output_column': 'result',
+                    'prompt_template': '{{text}}',
+                    'batch_size': 10,
+                },
+            )
+            mock_client.generate_batch.assert_not_called()
+            result.collect()
+            mock_client.generate_batch.assert_called_once()
+
     def test_empty_dataframe(self):
         handler = AIHandler()
         df = pl.DataFrame({'text': []}).cast({'text': pl.Utf8})
@@ -523,7 +546,7 @@ class TestAIHandler:
         mock_client.generate_batch.return_value = ['result']
 
         with patch('modules.compute.operations.ai.get_ai_client', return_value=mock_client):
-            handler(
+            result = handler(
                 df.lazy(),
                 {
                     'input_column': 'text',
@@ -532,6 +555,7 @@ class TestAIHandler:
                     'batch_size': 10,
                 },
             )
+            result.collect()
             prompts = mock_client.generate_batch.call_args[0][0]
             assert prompts == ['Analyze: hello now']
 
@@ -543,7 +567,7 @@ class TestAIHandler:
         mock_client.generate_batch.return_value = ['result']
 
         with patch('modules.compute.operations.ai.get_ai_client', return_value=mock_client):
-            handler(
+            result = handler(
                 df.lazy(),
                 {
                     'input_column': 'text',
@@ -553,6 +577,7 @@ class TestAIHandler:
                     'request_options': '{"temperature": 0.1}',
                 },
             )
+            result.collect()
             call_kwargs = mock_client.generate_batch.call_args[1]
             assert call_kwargs['options'] == {'temperature': 0.1}
 
@@ -564,7 +589,7 @@ class TestAIHandler:
         mock_client.generate_batch.return_value = ['result']
 
         with patch('modules.compute.operations.ai.get_ai_client', return_value=mock_client):
-            handler(
+            result = handler(
                 df.lazy(),
                 {
                     'input_columns': ['title', 'body'],
@@ -573,6 +598,7 @@ class TestAIHandler:
                     'batch_size': 10,
                 },
             )
+            result.collect()
             prompts = mock_client.generate_batch.call_args[0][0]
             assert prompts == ['Title: Hello Body: World']
 

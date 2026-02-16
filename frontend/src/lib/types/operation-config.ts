@@ -175,6 +175,8 @@ export interface NotificationConfigData {
 	recipient: string;
 	subscriber_ids: string[];
 	bot_token: string;
+	recipient_source: 'manual' | 'column';
+	recipient_column: string;
 	input_columns: string[];
 	output_column: string;
 	message_template: string;

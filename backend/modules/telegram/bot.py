@@ -1,5 +1,3 @@
-"""Telegram bot — long-polling thread for /subscribe and /unsubscribe."""
-
 import logging
 import threading
 import time
@@ -12,8 +10,6 @@ _TELEGRAM_BASE = 'https://api.telegram.org'
 
 
 class TelegramBot:
-    """Runs an indefinite polling loop in a background thread."""
-
     def __init__(self) -> None:
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
@@ -56,12 +52,6 @@ class TelegramBot:
         logger.info('Telegram bot polling stopped')
 
     def pause(self) -> None:
-        """Temporarily stop polling without clearing token.
-
-        Sets the stop event to signal the poll loop to exit, then waits
-        briefly. Does NOT block waiting for _poll_lock — the loop will
-        notice _stop_event and exit on its own.
-        """
         if not self.running:
             return
         self._stop_event.set()
@@ -71,7 +61,6 @@ class TelegramBot:
             self._thread = None
 
     def resume(self) -> None:
-        """Resume polling using the current token if configured."""
         if not self._token:
             return
         if self.running:
@@ -144,12 +133,6 @@ class TelegramBot:
         params: dict[str, int],
         timeout: float,
     ) -> httpx.Response | None:
-        """Try to acquire _poll_lock and call getUpdates.
-
-        Returns None if the lock could not be acquired within 2 seconds
-        (e.g. detect endpoint is using it), allowing the poll loop to
-        check _stop_event and retry.
-        """
         acquired = self._poll_lock.acquire(timeout=2)
         if not acquired:
             return None
@@ -163,7 +146,6 @@ class TelegramBot:
             self._poll_lock.release()
 
     def get_updates(self, token: str, params: dict[str, int], timeout: float) -> httpx.Response:
-        """Public API for detect endpoints — acquires poll lock."""
         with self._poll_lock:
             return httpx.get(
                 f'{_TELEGRAM_BASE}/bot{token}/getUpdates',

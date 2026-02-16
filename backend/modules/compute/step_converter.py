@@ -395,6 +395,7 @@ def convert_notification_config(config: dict) -> dict:
         'recipient': recipients,
         'bot_token': config.get('bot_token', ''),
         'subscriber_ids': config.get('subscriber_ids') or [],
+        'recipient_column': config.get('recipient_column') or config.get('recipientColumn') or '',
         'input_columns': input_columns,
         'output_column': config.get('output_column') or config.get('outputColumn') or 'notification_status',
         'message_template': config.get('message_template') or config.get('messageTemplate') or '{{message}}',

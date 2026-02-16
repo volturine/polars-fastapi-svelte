@@ -1,16 +1,13 @@
-"""Settings service — singleton row CRUD with env-var fallback."""
-
 import os
 
 from sqlmodel import Session, select
 
-from core.config import settings as env_settings
 from modules.settings.models import AppSettings
 from modules.settings.schemas import SettingsResponse, SettingsUpdate
 
 
 def _ensure_encryption_key() -> str:
-    key = os.getenv('SETTINGS_ENCRYPTION_KEY') or env_settings.settings_encryption_key
+    key = os.getenv('SETTINGS_ENCRYPTION_KEY')
     if not key:
         raise ValueError('SETTINGS_ENCRYPTION_KEY must be set to encrypt SMTP passwords')
     return key
@@ -39,17 +36,11 @@ def _decrypt_password(value: str) -> str:
 
 
 def get_settings(session: Session) -> SettingsResponse:
-    """Return the singleton settings row, creating it from env-var defaults if absent."""
     row = session.get(AppSettings, 1)
     if not row:
         row = AppSettings(
             id=1,
-            smtp_host=env_settings.smtp_host,
-            smtp_port=env_settings.smtp_port,
-            smtp_user=env_settings.smtp_user,
-            smtp_password_encrypted=_encrypt_password(env_settings.smtp_password),
-            telegram_bot_token=env_settings.telegram_bot_token,
-            public_idb_debug=env_settings.public_idb_debug,
+            public_idb_debug=False,
         )
         session.add(row)
         session.commit()
@@ -73,7 +64,6 @@ def get_settings(session: Session) -> SettingsResponse:
 
 
 def update_settings(session: Session, data: SettingsUpdate) -> SettingsResponse:
-    """Upsert the singleton settings row."""
     row = session.get(AppSettings, 1)
     if not row:
         row = AppSettings(id=1)
@@ -102,10 +92,6 @@ def update_settings(session: Session, data: SettingsUpdate) -> SettingsResponse:
 
 
 def get_resolved_smtp() -> dict[str, object]:
-    """Return the effective SMTP settings by reading from DB, falling back to env vars.
-
-    Used by the notification service (runs in subprocesses, so opens its own session).
-    """
     from core.database import run_db
 
     def _read(session: Session) -> dict[str, object]:
@@ -123,23 +109,29 @@ def get_resolved_smtp() -> dict[str, object]:
                 'password': password,
             }
         return {
-            'host': env_settings.smtp_host,
-            'port': env_settings.smtp_port,
-            'user': env_settings.smtp_user,
-            'password': env_settings.smtp_password,
+            'host': '',
+            'port': 587,
+            'user': '',
+            'password': '',
         }
 
     return run_db(_read)
 
 
 def get_resolved_telegram_token() -> str:
-    """Return the effective Telegram bot token by reading from DB, falling back to env var."""
+    resolved = get_resolved_telegram_settings()
+    return str(resolved['token'])
+
+
+def get_resolved_telegram_settings() -> dict[str, object]:
     from core.database import run_db
 
-    def _read(session: Session) -> str:
+    def _read(session: Session) -> dict[str, object]:
         row = session.exec(select(AppSettings).where(AppSettings.id == 1)).first()
-        if row and row.telegram_bot_token:
-            return row.telegram_bot_token
-        return env_settings.telegram_bot_token
+        if row:
+            token = row.telegram_bot_token
+            enabled = bool(row.telegram_bot_enabled and token)
+            return {'enabled': enabled, 'token': token}
+        return {'enabled': False, 'token': ''}
 
     return run_db(_read)

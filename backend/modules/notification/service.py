@@ -1,16 +1,14 @@
-"""Notification service — sends email and Telegram messages.
-
-Reads settings from DB (via settings service) with env-var fallback.
-Runs in engine subprocesses — sync HTTP calls are fine.
-"""
-
 from dataclasses import dataclass
 from email.message import EmailMessage
 from typing import Final
 
 import httpx
 
-from modules.settings.service import get_resolved_smtp, get_resolved_telegram_token
+from modules.settings.service import (
+    get_resolved_smtp,
+    get_resolved_telegram_settings,
+    get_resolved_telegram_token,
+)
 
 
 @dataclass(frozen=True)
@@ -39,6 +37,8 @@ class NotificationService:
         body: str,
         attachments: list[NotificationAttachment] | None = None,
     ) -> None:
+        if not to:
+            return
         smtp = get_resolved_smtp()
         host = str(smtp.get('host', ''))
         port = int(str(smtp.get('port', 587)))
@@ -85,7 +85,10 @@ class NotificationService:
         bot_token: str | None = None,
         attachments: list[NotificationAttachment] | None = None,
     ) -> None:
-        token = bot_token or get_resolved_telegram_token()
+        resolved = get_resolved_telegram_settings()
+        if not resolved['enabled']:
+            return
+        token = bot_token or str(resolved['token']) or get_resolved_telegram_token()
         if not token:
             raise ValueError('Telegram bot token not configured')
         base = f'{_TELEGRAM_BASE_URL}/bot{token}'

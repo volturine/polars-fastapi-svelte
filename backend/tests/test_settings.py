@@ -34,7 +34,7 @@ class TestGetSettings:
                 'smtp_user': 'user@example.com',
                 'smtp_password': 'secret',
                 'telegram_bot_token': 'bot123:abc',
-                'telegram_bot_enabled': False,
+                'telegram_bot_enabled': True,
                 'public_idb_debug': True,
             },
         )
@@ -62,7 +62,7 @@ class TestUpdateSettings:
                 'smtp_user': 'test@test.com',
                 'smtp_password': 'pw',
                 'telegram_bot_token': '',
-                'telegram_bot_enabled': False,
+                'telegram_bot_enabled': True,
                 'public_idb_debug': False,
             },
         )
@@ -219,7 +219,7 @@ class TestTestTelegram:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot123:abc',
-                'telegram_bot_enabled': False,
+                'telegram_bot_enabled': True,
                 'public_idb_debug': False,
             },
         )
@@ -245,7 +245,7 @@ class TestTestTelegram:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot123:abc',
-                'telegram_bot_enabled': False,
+                'telegram_bot_enabled': True,
                 'public_idb_debug': False,
             },
         )
@@ -269,7 +269,7 @@ class TestTestTelegram:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot123:abc',
-                'telegram_bot_enabled': False,
+                'telegram_bot_enabled': True,
                 'public_idb_debug': False,
             },
         )
@@ -303,7 +303,7 @@ class TestConfigEndpointWithDbSettings:
         assert resp.status_code == 200
         data = resp.json()
         assert data['smtp_enabled'] is True
-        assert data['telegram_enabled'] is True
+        assert data['telegram_enabled'] is False
         assert data['public_idb_debug'] is True
 
     def test_config_reflects_empty_settings(self) -> None:
@@ -387,7 +387,7 @@ class TestDetectTelegramChat:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot123:abc',
-                'telegram_bot_enabled': False,
+                'telegram_bot_enabled': True,
                 'public_idb_debug': False,
             },
         )
@@ -415,7 +415,7 @@ class TestDetectTelegramChat:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot123:abc',
-                'telegram_bot_enabled': False,
+                'telegram_bot_enabled': True,
                 'public_idb_debug': False,
             },
         )
@@ -459,7 +459,7 @@ class TestDetectTelegramChat:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot123:abc',
-                'telegram_bot_enabled': False,
+                'telegram_bot_enabled': True,
                 'public_idb_debug': False,
             },
         )
@@ -497,6 +497,7 @@ class TestDetectTelegramChat:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot123:abc',
+                'telegram_bot_enabled': True,
                 'public_idb_debug': False,
             },
         )
@@ -523,7 +524,7 @@ class TestDetectTelegramChat:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bad-token',
-                'telegram_bot_enabled': False,
+                'telegram_bot_enabled': True,
                 'public_idb_debug': False,
             },
         )
@@ -547,7 +548,7 @@ class TestDetectTelegramChat:
                 'smtp_user': '',
                 'smtp_password': '',
                 'telegram_bot_token': 'bot123:abc',
-                'telegram_bot_enabled': False,
+                'telegram_bot_enabled': True,
                 'public_idb_debug': False,
             },
         )

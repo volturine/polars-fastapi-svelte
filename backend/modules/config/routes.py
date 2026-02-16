@@ -46,5 +46,5 @@ def get_config(session: Session = Depends(get_db)) -> FrontendConfig:
         log_queue_max_size=settings.log_queue_max_size,
         public_idb_debug=db_settings.public_idb_debug,
         smtp_enabled=bool(db_settings.smtp_host and db_settings.smtp_user),
-        telegram_enabled=bool(db_settings.telegram_bot_token),
+        telegram_enabled=bool(db_settings.telegram_bot_enabled and db_settings.telegram_bot_token),
     )

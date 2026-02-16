@@ -430,7 +430,7 @@ class PolarsComputeEngine:
         job_id: str,
         additional_datasources: dict[str, dict] | None = None,
     ) -> pl.LazyFrame:
-        lf, _step_timings, _plan_frames, _eager_steps = PolarsComputeEngine._build_pipeline(
+        lf, _step_timings, _plan_frames = PolarsComputeEngine._build_pipeline(
             datasource_config,
             pipeline_steps,
             job_id,
@@ -444,7 +444,7 @@ class PolarsComputeEngine:
         pipeline_steps: list[dict],
         job_id: str,
         additional_datasources: dict[str, dict] | None = None,
-    ) -> tuple[pl.LazyFrame, dict[str, float], list[pl.LazyFrame], list[str]]:
+    ) -> tuple[pl.LazyFrame, dict[str, float], list[pl.LazyFrame]]:
         lf = load_datasource(datasource_config)
 
         right_sources: dict[str, pl.LazyFrame] = {}
@@ -471,7 +471,7 @@ class PolarsComputeEngine:
         pipeline_steps = apply_pipeline_steps(pipeline_steps)
 
         if not pipeline_steps:
-            return lf, {}, [lf], []
+            return lf, {}, [lf]
 
         step_map: dict[str, dict] = {}
         for step in pipeline_steps:
@@ -524,9 +524,7 @@ class PolarsComputeEngine:
         schema_map: dict[str, pl.LazyFrame] = {}
         total_steps = len(ordered_steps)
         step_timings: dict[str, float] = {}
-        eager_steps: list[str] = []
         plan_frames: list[pl.LazyFrame] = []
-        eager_types = {'notification', 'ai'}
 
         for idx, step in enumerate(ordered_steps):
             # Convert frontend format to backend format
@@ -559,10 +557,6 @@ class PolarsComputeEngine:
 
             right_source_id = backend_step.get('params', {}).get('right_source')
             right_lf = right_sources.get(right_source_id) if right_source_id else None
-
-            if step_type in eager_types:
-                eager_steps.append(step_type)
-                plan_frames.append(parent_frame)
 
             step_start = time.perf_counter()
             schema_map[step_id] = PolarsComputeEngine._apply_step(
@@ -605,27 +599,15 @@ class PolarsComputeEngine:
 
         plan_frames.append(last_frame)
 
-        return last_frame, step_timings, plan_frames, eager_steps
+        return last_frame, step_timings, plan_frames
 
     @staticmethod
-    def _annotate_plans(plans: dict | None, eager_steps: list[str]) -> dict | None:
-        if not plans or not eager_steps:
-            return plans
-        summary = f'\n\n-- Query plan includes lazy segments only. Eager steps executed between segments: {", ".join(eager_steps)}'
-        updated: dict[str, str] = {}
-        for key, value in plans.items():
-            if not isinstance(value, str):
-                continue
-            updated[key] = f'{value}{summary}'
-        return updated or plans
-
-    @staticmethod
-    def _merge_query_plans(plans: list[dict | None], eager_steps: list[str]) -> dict | None:
+    def _merge_query_plans(plans: list[dict | None]) -> dict | None:
         if not plans:
             return None
         optimized_parts: list[str] = []
         unoptimized_parts: list[str] = []
-        for idx, plan in enumerate(plans):
+        for plan in plans:
             if not plan:
                 continue
             optimized = plan.get('optimized')
@@ -634,10 +616,6 @@ class PolarsComputeEngine:
                 optimized_parts.append(optimized)
             if isinstance(unoptimized, str):
                 unoptimized_parts.append(unoptimized)
-            if idx < len(eager_steps):
-                barrier = f'\n\n-- EAGER STEP ({eager_steps[idx]}) / MATERIALIZE --\n\n'
-                optimized_parts.append(barrier)
-                unoptimized_parts.append(barrier)
 
         if not optimized_parts and not unoptimized_parts:
             return None
@@ -669,15 +647,14 @@ class PolarsComputeEngine:
         additional_datasources: dict[str, dict] | None = None,
     ) -> dict:
         """Execute pipeline and return limited rows for preview."""
-        lf, step_timings, plan_frames, eager_steps = PolarsComputeEngine._build_pipeline(
+        lf, step_timings, plan_frames = PolarsComputeEngine._build_pipeline(
             datasource_config,
             pipeline_steps,
             job_id,
             additional_datasources,
         )
         plan_segments = [PolarsComputeEngine._get_query_plans(frame) for frame in list(plan_frames)]
-        query_plans = PolarsComputeEngine._merge_query_plans(plan_segments, eager_steps)
-        query_plans = PolarsComputeEngine._annotate_plans(query_plans, eager_steps)
+        query_plans = PolarsComputeEngine._merge_query_plans(plan_segments)
         query_plan = query_plans.get('optimized') if query_plans else None
 
         # Get schema from lazy frame (no collection needed)
@@ -707,15 +684,14 @@ class PolarsComputeEngine:
         additional_datasources: dict[str, dict] | None = None,
     ) -> dict:
         """Execute pipeline and write full results to file."""
-        lf, step_timings, plan_frames, eager_steps = PolarsComputeEngine._build_pipeline(
+        lf, step_timings, plan_frames = PolarsComputeEngine._build_pipeline(
             datasource_config,
             pipeline_steps,
             job_id,
             additional_datasources,
         )
         plan_segments = [PolarsComputeEngine._get_query_plans(frame) for frame in list(plan_frames)]
-        query_plans = PolarsComputeEngine._merge_query_plans(plan_segments, eager_steps)
-        query_plans = PolarsComputeEngine._annotate_plans(query_plans, eager_steps)
+        query_plans = PolarsComputeEngine._merge_query_plans(plan_segments)
         query_plan = query_plans.get('optimized') if query_plans else None
 
         logger.debug(f'Job {job_id}: Writing export file')
@@ -744,7 +720,7 @@ class PolarsComputeEngine:
         additional_datasources: dict[str, dict] | None = None,
     ) -> dict:
         """Execute pipeline and return schema without collecting full data."""
-        lf, step_timings, plan_frames, eager_steps = PolarsComputeEngine._build_pipeline(
+        lf, step_timings, plan_frames = PolarsComputeEngine._build_pipeline(
             datasource_config,
             pipeline_steps,
             job_id,
@@ -756,8 +732,7 @@ class PolarsComputeEngine:
         schema = {col: str(dtype) for col, dtype in schema_obj.items()}
 
         plan_segments = [PolarsComputeEngine._get_query_plans(frame) for frame in list(plan_frames)]
-        query_plans = PolarsComputeEngine._merge_query_plans(plan_segments, eager_steps)
-        query_plans = PolarsComputeEngine._annotate_plans(query_plans, eager_steps)
+        query_plans = PolarsComputeEngine._merge_query_plans(plan_segments)
         query_plan = query_plans.get('optimized') if query_plans else None
 
         return {

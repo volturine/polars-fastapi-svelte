@@ -34,6 +34,7 @@
 - [x] 35. Performance tests baseline
 - [x] 36. Disabled steps passthrough + output notifications
 - [x] 59. Build query plan includes pre-eager steps annotation
+- [x] 60. AI/notification steps remain lazy (no internal collect)
 
 ### Medium Priority
 - [x] 41. Remove hardcoded CORS IPs
@@ -41,6 +42,8 @@
 - [x] 43. Encrypt SMTP passwords at rest
 - [x] 44. Validate database URL
 - [x] 45. Normalize DELETE status codes
+- [x] 46. Telegram settings unified + notifications gating
+- [x] 47. Notification UDF recipient source selection
 - [x] 51. Remove bare except clauses
 - [x] 52. Preserve error context in exceptions
 - [x] 53. Standardize error handling patterns

@@ -1,5 +1,3 @@
-"""Tests for notification module: per-row handler, step converter, output notification."""
-
 from dataclasses import dataclass
 from unittest.mock import patch
 
@@ -23,11 +21,6 @@ class MockSubscriber:
     chat_id: str
     bot_token: str
     is_active: bool = True
-
-
-# ---------------------------------------------------------------------------
-# NotificationParams validation
-# ---------------------------------------------------------------------------
 
 
 class TestNotificationParams:
@@ -86,6 +79,16 @@ class TestNotificationParams:
                     'input_columns': ['col'],
                 }
             )
+
+    def test_recipient_column_allows_missing_recipient(self):
+        params = NotificationParams.model_validate(
+            {
+                'method': 'telegram',
+                'recipient_column': 'chat_id',
+                'input_columns': ['body'],
+            }
+        )
+        assert params.recipient_column == 'chat_id'
 
     def test_empty_input_columns_rejected(self):
         with pytest.raises(ValidationError, match='input_columns'):
@@ -160,11 +163,6 @@ class TestNotificationParams:
         assert params.bot_token == '123456:ABC-DEF'
 
 
-# ---------------------------------------------------------------------------
-# _build_message
-# ---------------------------------------------------------------------------
-
-
 class TestBuildMessage:
     def test_single_placeholder(self):
         assert _build_message('Hello {{name}}!', {'name': 'Alice'}) == 'Hello Alice!'
@@ -186,11 +184,6 @@ class TestBuildMessage:
         assert result == 'Plain text'
 
 
-# ---------------------------------------------------------------------------
-# NotificationHandler — per-row UDF execution
-# ---------------------------------------------------------------------------
-
-
 class TestNotificationHandler:
     def test_email_per_row(self):
         """Each row triggers one email send; status column added."""
@@ -209,23 +202,45 @@ class TestNotificationHandler:
                     'subject_template': 'Subj: {{body}}',
                 },
             )
-
-        collected = result.collect()
+            collected = result.collect()
         assert 'send_status' in collected.columns
         assert collected['send_status'].to_list() == ['sent', 'sent', 'sent']
         assert mock_svc.send_email.call_count == 3
 
-        # Verify email arguments for first call
         first_call = mock_svc.send_email.call_args_list[0]
         assert first_call.kwargs['to'] == 'dest@test.com'
         assert first_call.kwargs['subject'] == 'Subj: hello'
         assert first_call.kwargs['body'] == 'Msg: hello'
 
+    def test_lazy_execution_defers_side_effects(self):
+        handler = NotificationHandler()
+        lf = pl.DataFrame({'body': ['hello']}).lazy()
+
+        with patch('modules.compute.operations.notification.notification_service') as mock_svc:
+            result = handler(
+                lf,
+                {
+                    'method': 'email',
+                    'recipient': 'dest@test.com',
+                    'input_columns': ['body'],
+                    'output_column': 'send_status',
+                    'message_template': 'Msg: {{body}}',
+                    'subject_template': 'Subj: {{body}}',
+                },
+            )
+            mock_svc.send_email.assert_not_called()
+            result.collect()
+            mock_svc.send_email.assert_called_once()
+
     def test_telegram_per_row(self):
         handler = NotificationHandler()
         lf = pl.DataFrame({'msg': ['hi']}).lazy()
 
-        with patch('modules.compute.operations.notification.notification_service') as mock_svc:
+        with (
+            patch('modules.compute.operations.notification.notification_service') as mock_svc,
+            patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
+        ):
+            mock_settings.return_value = {'enabled': True, 'token': 'tok'}
             result = handler(
                 lf,
                 {
@@ -235,8 +250,7 @@ class TestNotificationHandler:
                     'message_template': '{{msg}}',
                 },
             )
-
-        collected = result.collect()
+            collected = result.collect()
         assert collected['notification_status'].to_list() == ['sent']
         mock_svc.send_telegram.assert_called_once_with(chat_id='99999', message='hi')
 
@@ -260,16 +274,13 @@ class TestNotificationHandler:
                     'subject_template': 'Invoice for {{name}}',
                 },
             )
-
-        collected = result.collect()
+            collected = result.collect()
         assert collected.height == 2
-        # Verify template interpolation
         second_call = mock_svc.send_email.call_args_list[1]
         assert second_call.kwargs['body'] == 'Bob owes 200'
         assert second_call.kwargs['subject'] == 'Invoice for Bob'
 
     def test_error_handling_per_row(self):
-        """Failed sends write error status, not crash."""
         handler = NotificationHandler()
         lf = pl.DataFrame({'col': ['ok', 'bad', 'ok2']}).lazy()
 
@@ -284,8 +295,7 @@ class TestNotificationHandler:
                     'message_template': '{{col}}',
                 },
             )
-
-        collected = result.collect()
+            collected = result.collect()
         statuses = collected['notification_status'].to_list()
         assert statuses[0] == 'sent'
         assert statuses[1].startswith('[error:')
@@ -306,8 +316,7 @@ class TestNotificationHandler:
                     'message_template': '{{col}}',
                 },
             )
-
-        collected = result.collect()
+            collected = result.collect()
         assert collected.height == 0
         assert 'notification_status' in collected.columns
         mock_svc.send_email.assert_not_called()
@@ -343,8 +352,7 @@ class TestNotificationHandler:
                     'batch_size': 7,
                 },
             )
-
-        collected = result.collect()
+            collected = result.collect()
         assert collected.height == 25
         assert mock_svc.send_email.call_count == 25
         assert all(s == 'sent' for s in collected['notification_status'].to_list())
@@ -364,18 +372,20 @@ class TestNotificationHandler:
                     'output_column': 'status',
                 },
             )
-
-        collected = result.collect()
+            collected = result.collect()
         assert collected.columns == ['a', 'b', 'status']
         assert collected['a'].to_list() == [1, 2]
         assert collected['b'].to_list() == ['x', 'y']
 
     def test_telegram_comma_separated_recipients(self):
-        """Comma-separated chat IDs send to each recipient."""
         handler = NotificationHandler()
         lf = pl.DataFrame({'msg': ['hello']}).lazy()
 
-        with patch('modules.compute.operations.notification.notification_service') as mock_svc:
+        with (
+            patch('modules.compute.operations.notification.notification_service') as mock_svc,
+            patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
+        ):
+            mock_settings.return_value = {'enabled': True, 'token': 'tok'}
             result = handler(
                 lf,
                 {
@@ -385,22 +395,71 @@ class TestNotificationHandler:
                     'message_template': '{{msg}}',
                 },
             )
-
-        collected = result.collect()
+            collected = result.collect()
         assert collected['notification_status'].to_list() == ['sent']
         assert mock_svc.send_telegram.call_count == 3
         called_ids = [c.kwargs['chat_id'] for c in mock_svc.send_telegram.call_args_list]
         assert called_ids == ['111', '222', '333']
 
+    def test_recipient_column_override(self):
+        handler = NotificationHandler()
+        lf = pl.DataFrame({'msg': ['hi'], 'chat_id': ['888']}).lazy()
+
+        with (
+            patch('modules.compute.operations.notification.notification_service') as mock_svc,
+            patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
+        ):
+            mock_settings.return_value = {'enabled': True, 'token': 'tok'}
+            result = handler(
+                lf,
+                {
+                    'method': 'telegram',
+                    'recipient': '999',
+                    'recipient_column': 'chat_id',
+                    'input_columns': ['msg'],
+                    'message_template': '{{msg}}',
+                },
+            )
+            collected = result.collect()
+
+        assert collected['notification_status'].to_list() == ['sent']
+        mock_svc.send_telegram.assert_called_once_with(chat_id='888', message='hi')
+
+    def test_recipient_column_array(self):
+        handler = NotificationHandler()
+        lf = pl.DataFrame({'msg': ['hi'], 'chat_ids': [['111', '222']]}).lazy()
+
+        with (
+            patch('modules.compute.operations.notification.notification_service') as mock_svc,
+            patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
+        ):
+            mock_settings.return_value = {'enabled': True, 'token': 'tok'}
+            result = handler(
+                lf,
+                {
+                    'method': 'telegram',
+                    'recipient_column': 'chat_ids',
+                    'input_columns': ['msg'],
+                    'message_template': '{{msg}}',
+                },
+            )
+            collected = result.collect()
+
+        assert collected['notification_status'].to_list() == ['sent']
+        assert mock_svc.send_telegram.call_count == 2
+        called_ids = [c.kwargs['chat_id'] for c in mock_svc.send_telegram.call_args_list]
+        assert called_ids == ['111', '222']
+
     def test_telegram_custom_bot_token(self):
-        """Custom bot_token bypasses notification_service and uses httpx directly."""
         handler = NotificationHandler()
         lf = pl.DataFrame({'msg': ['hi']}).lazy()
 
         with (
             patch('modules.compute.operations.notification.httpx') as mock_httpx,
             patch('modules.compute.operations.notification.notification_service') as mock_svc,
+            patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
         ):
+            mock_settings.return_value = {'enabled': True, 'token': 'tok'}
             result = handler(
                 lf,
                 {
@@ -411,8 +470,7 @@ class TestNotificationHandler:
                     'bot_token': 'custom-token-123',
                 },
             )
-
-        collected = result.collect()
+            collected = result.collect()
         assert collected['notification_status'].to_list() == ['sent']
         mock_svc.send_telegram.assert_not_called()
         mock_httpx.post.assert_called_once()
@@ -421,14 +479,15 @@ class TestNotificationHandler:
         assert call_args.kwargs['json']['chat_id'] == '12345'
 
     def test_telegram_custom_bot_multi_recipients(self):
-        """Custom bot token with comma-separated recipients sends to each."""
         handler = NotificationHandler()
         lf = pl.DataFrame({'msg': ['test']}).lazy()
 
         with (
             patch('modules.compute.operations.notification.httpx') as mock_httpx,
             patch('modules.compute.operations.notification.notification_service') as mock_svc,
+            patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
         ):
+            mock_settings.return_value = {'enabled': True, 'token': 'tok'}
             result = handler(
                 lf,
                 {
@@ -439,18 +498,12 @@ class TestNotificationHandler:
                     'bot_token': 'tok123',
                 },
             )
-
-        collected = result.collect()
+            collected = result.collect()
         assert collected['notification_status'].to_list() == ['sent']
         mock_svc.send_telegram.assert_not_called()
         assert mock_httpx.post.call_count == 2
         sent_ids = [c.kwargs['json']['chat_id'] for c in mock_httpx.post.call_args_list]
         assert sent_ids == ['aaa', 'bbb']
-
-
-# ---------------------------------------------------------------------------
-# convert_notification_config (step converter)
-# ---------------------------------------------------------------------------
 
 
 class TestConvertNotificationConfig:
@@ -499,6 +552,10 @@ class TestConvertNotificationConfig:
         assert result['message_template'] == 'tpl'
         assert result['subject_template'] == 'sub'
 
+    def test_recipient_column_passthrough(self):
+        result = convert_notification_config({'recipient_column': 'chat'})
+        assert result['recipient_column'] == 'chat'
+
     def test_bot_token_passthrough(self):
         result = convert_notification_config(
             {
@@ -514,11 +571,6 @@ class TestConvertNotificationConfig:
     def test_bot_token_default_empty(self):
         result = convert_notification_config({'method': 'telegram'})
         assert result['bot_token'] == ''
-
-
-# ---------------------------------------------------------------------------
-# _send_pipeline_notifications — output notification + legacy compat
-# ---------------------------------------------------------------------------
 
 
 class TestSendPipelineNotifications:
@@ -541,13 +593,17 @@ class TestSendPipelineNotifications:
         )
 
     def test_output_notification_telegram(self):
-        with patch('modules.compute.service.notification_service') as mock_svc:
+        with (
+            patch('modules.compute.service.notification_service') as mock_svc,
+            patch('core.database.run_db') as mock_run_db,
+        ):
+            mock_run_db.side_effect = [[], [MockSubscriber('99999', 'tok')]]
             _send_pipeline_notifications(
                 pipeline_steps=[],
-                context={'analysis_name': 'A', 'status': 'done'},
+                context={'analysis_name': 'A', 'status': 'done', 'datasource_id': 'ds-1'},
                 output_notification={
                     'method': 'telegram',
-                    'recipient': '99999',
+                    'recipient': '',
                     'subject_template': '{{analysis_name}}',
                     'body_template': '{{status}}',
                 },
@@ -588,13 +644,12 @@ class TestSendPipelineNotifications:
                 output_notification={
                     'method': 'email',
                     'recipient': 'admin@test.com, skip@test.com',
-                    'excluded_recipients': ['skip@test.com'],
                     'subject_template': 'Build: {{analysis_name}}',
                     'body_template': 'Status: {{status}}',
                 },
             )
         mock_svc.send_email.assert_called_once_with(
-            to='admin@test.com',
+            to='admin@test.com, skip@test.com',
             subject='Build: Test',
             body='Status: success',
         )
@@ -629,9 +684,9 @@ class TestSendPipelineNotifications:
                 output_notification={
                     'method': 'telegram',
                     'recipient': '',
-                    'excluded_recipients': ['111'],
                     'subject_template': 'Build: {{analysis_name}}',
                     'body_template': 'Status: {{status}}',
+                    'excluded_recipients': ['111'],
                 },
             )
         mock_svc.send_telegram.assert_not_called()
@@ -650,7 +705,6 @@ class TestSendPipelineNotifications:
                 )
 
     def test_skips_per_row_notification_steps(self):
-        """Per-row notification steps (with input_columns) are skipped by _send_pipeline_notifications."""
         with patch('modules.compute.service.notification_service') as mock_svc:
             _send_pipeline_notifications(
                 pipeline_steps=[
@@ -668,7 +722,6 @@ class TestSendPipelineNotifications:
         mock_svc.send_email.assert_not_called()
 
     def test_legacy_build_notification_still_works(self):
-        """Old-format notification steps without input_columns still send."""
         with patch('modules.compute.service.notification_service') as mock_svc:
             _send_pipeline_notifications(
                 pipeline_steps=[
@@ -699,7 +752,6 @@ class TestSendPipelineNotifications:
         mock_svc.send_telegram.assert_not_called()
 
     def test_both_output_and_legacy(self):
-        """Output notification and legacy steps both fire."""
         with patch('modules.compute.service.notification_service') as mock_svc:
             _send_pipeline_notifications(
                 pipeline_steps=[
@@ -718,11 +770,6 @@ class TestSendPipelineNotifications:
                 },
             )
         assert mock_svc.send_email.call_count == 2
-
-
-# ---------------------------------------------------------------------------
-# render_template (notification service utility)
-# ---------------------------------------------------------------------------
 
 
 class TestRenderTemplate:

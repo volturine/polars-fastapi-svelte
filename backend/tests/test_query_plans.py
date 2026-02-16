@@ -43,6 +43,6 @@ def test_query_plan_merges_eager_segments(test_db_session, tmp_path):
 
     plans = result['query_plans']
     assert plans is not None
-    assert '-- EAGER STEP (notification) / MATERIALIZE --' in plans['optimized']
-    assert 'query plan includes lazy segments only' in plans['optimized'].lower()
+    assert '-- EAGER STEP (notification) / MATERIALIZE --' not in plans['optimized']
+    assert 'query plan includes lazy segments only' not in plans['optimized'].lower()
     assert result['query_plan']

@@ -8,16 +8,7 @@
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { configStore } from '$lib/stores/config.svelte';
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
-	import {
-		Database,
-		Bell,
-		ChevronDown,
-		ChevronRight,
-		EyeOff,
-		Loader,
-		Search,
-		Play
-	} from 'lucide-svelte';
+	import { Database, Bell, ChevronDown, ChevronRight, EyeOff, Loader, Play } from 'lucide-svelte';
 
 	interface Props {
 		analysisId?: string;
@@ -32,7 +23,6 @@
 	let building = $state(false);
 	let error = $state<string | null>(null);
 	let notifyOpen = $state(false);
-	let search = $state('');
 	let scheduleOpen = $state(false);
 	const idPrefix = $derived(`output-${analysisId ?? datasourceId ?? 'node'}`);
 
@@ -58,7 +48,8 @@
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		},
-		staleTime: 30_000
+		staleTime: 30_000,
+		enabled: canTelegram
 	}));
 
 	const outputConfig = $derived.by(() => {
@@ -88,14 +79,12 @@
 		if (!n) {
 			return {
 				enabled: false,
-				excluded_recipients: [] as string[],
 				body_template:
 					'Analysis: {{analysis_name}}\nStatus: {{status}}\nDuration: {{duration_ms}}ms\nRows: {{row_count}}'
 			};
 		}
 		return {
 			enabled: true,
-			excluded_recipients: (n.excluded_recipients as string[] | undefined) ?? [],
 			body_template:
 				(n.body_template as string) ||
 				'Analysis: {{analysis_name}}\nStatus: {{status}}\nDuration: {{duration_ms}}ms\nRows: {{row_count}}'
@@ -106,22 +95,12 @@
 		(subscribersQuery.data ?? []).filter((s: Subscriber) => s.is_active)
 	);
 
-	const filtered = $derived.by(() => {
-		const q = search.toLowerCase().trim();
-		if (!q) return activeSubscribers;
-		return activeSubscribers.filter(
-			(s: Subscriber) => s.title.toLowerCase().includes(q) || s.chat_id.toLowerCase().includes(q)
-		);
-	});
-
-	const selectedCount = $derived(
-		activeSubscribers.length - notifyConfig.excluded_recipients.length
-	);
+	const selectedCount = $derived(activeSubscribers.length);
 
 	function updateOutputConfig(patch: Record<string, unknown>) {
 		const tab = activeTab;
 		if (!tab) return;
-		const next = { ...(tab.datasource_config ?? {}) } as Record<string, unknown>;
+		const next = { ...tab.datasource_config } as Record<string, unknown>;
 		const currentOutput = (next.output as Record<string, unknown> | undefined) ?? {};
 		next.output = { ...currentOutput, ...patch };
 		analysisStore.updateTab(tab.id, { datasource_config: next });
@@ -152,7 +131,6 @@
 		updateOutputConfig({
 			notification: {
 				method: 'telegram',
-				excluded_recipients: [],
 				body_template:
 					'Analysis: {{analysis_name}}\nStatus: {{status}}\nDuration: {{duration_ms}}ms\nRows: {{row_count}}'
 			}
@@ -163,21 +141,6 @@
 		ensureOutputConfig();
 		const current = outputConfig.notification ?? {};
 		updateOutputConfig({ notification: { ...current, ...patch } });
-	}
-
-	function toggleSubscriber(chatId: string) {
-		const excluded = [...notifyConfig.excluded_recipients];
-		const idx = excluded.indexOf(chatId);
-		if (idx >= 0) {
-			excluded.splice(idx, 1);
-		} else {
-			excluded.push(chatId);
-		}
-		updateNotification({ excluded_recipients: excluded });
-	}
-
-	function isIncluded(chatId: string): boolean {
-		return !notifyConfig.excluded_recipients.includes(chatId);
 	}
 
 	async function toggleHidden() {
@@ -331,24 +294,11 @@
 							<div class="flex flex-col gap-2">
 								{#if !canTelegram}
 									<div class="border border-warning bg-warning-bg p-2 text-[10px] text-warning-fg">
-										Telegram not configured. Set bot token in global settings.
+										Telegram not enabled. Enable bot in global settings.
 									</div>
 								{:else}
-									<!-- Subscriber Picker -->
 									<div class="flex flex-col gap-1">
 										<span class="text-[10px] uppercase text-fg-muted">Recipients</span>
-										<div class="relative">
-											<Search
-												size={12}
-												class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-fg-muted"
-											/>
-											<input
-												class="resource-input w-full border border-tertiary bg-secondary py-1 pl-7 pr-2 text-xs text-fg-primary"
-												placeholder="Search subscribers..."
-												value={search}
-												oninput={(e) => (search = e.currentTarget.value)}
-											/>
-										</div>
 										<div class="max-h-32 overflow-y-auto border border-tertiary bg-secondary">
 											{#if subscribersQuery.isPending}
 												<div class="p-2 text-center text-[10px] text-fg-muted">Loading...</div>
@@ -360,28 +310,22 @@
 												<div class="p-2 text-center text-[10px] text-fg-muted">
 													No subscribers. Users can subscribe via /subscribe in Telegram.
 												</div>
-											{:else if filtered.length === 0}
-												<div class="p-2 text-center text-[10px] text-fg-muted">No matches</div>
 											{:else}
-												{#each filtered as sub (sub.id)}
-													<label
-														class="flex cursor-pointer items-center gap-2 border-b border-tertiary px-2 py-1.5 last:border-b-0 hover:bg-tertiary"
+												{#each activeSubscribers as sub (sub.id)}
+													<div
+														class="flex items-center gap-2 border-b border-tertiary px-2 py-1.5 last:border-b-0"
 													>
-														<input
-															type="checkbox"
-															checked={isIncluded(sub.chat_id)}
-															onchange={() => toggleSubscriber(sub.chat_id)}
-														/>
-														<span class="truncate text-xs text-fg-primary">
-															{sub.title}
-														</span>
+														<span class="truncate text-xs text-fg-primary">{sub.title}</span>
 														<span class="ml-auto shrink-0 text-[10px] text-fg-muted">
 															{sub.chat_id}
 														</span>
-													</label>
+													</div>
 												{/each}
 											{/if}
 										</div>
+										<span class="text-[10px] text-fg-muted">
+											All active subscribers receive build notifications.
+										</span>
 									</div>
 								{/if}
 

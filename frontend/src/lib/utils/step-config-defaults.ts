@@ -97,6 +97,8 @@ export interface NotificationConfigData {
 	recipient: string;
 	subscriber_ids: string[];
 	bot_token: string;
+	recipient_source: 'manual' | 'column';
+	recipient_column: string;
 	input_columns: string[];
 	output_column: string;
 	message_template: string;
@@ -230,6 +232,8 @@ const defaultConfigs: Record<string, StepConfig> = {
 		recipient: '',
 		subscriber_ids: [],
 		bot_token: '',
+		recipient_source: 'manual',
+		recipient_column: '',
 		input_columns: [],
 		output_column: 'notification_status',
 		message_template: '{{message}}',
@@ -332,6 +336,8 @@ export function normalizeConfig(stepType: string, config: Record<string, unknown
 		}
 		notif.bot_token = notif.bot_token ?? '';
 		notif.recipient = notif.recipient ?? '';
+		notif.recipient_source = notif.recipient_source ?? 'manual';
+		notif.recipient_column = notif.recipient_column ?? '';
 		if (!Array.isArray(notif.subscriber_ids)) {
 			notif.subscriber_ids = [];
 		}

@@ -41,52 +41,31 @@ def _send_pipeline_notifications(
     context: dict[str, object],
     output_notification: dict | None = None,
 ) -> None:
-    """Send build-status notifications after export.
-
-    Checks for notification config on the output node (item 21)
-    and also handles legacy notification steps for backward compat.
-    """
-    # Output node notification (build-status alert baked into output)
     failed: list[str] = []
-
-    excluded_set: set[str] = set()
     method = 'email'
     recipient = ''
     subject_template = 'Build Complete'
     body_template = ''
 
     if output_notification:
-        excluded = output_notification.get('excluded_recipients')
-        if isinstance(excluded, list):
-            excluded_set = {str(item) for item in excluded}
         method = output_notification.get('method', 'email')
         recipient = output_notification.get('recipient', '')
         subject_template = output_notification.get('subject_template', 'Build Complete')
         body_template = output_notification.get('body_template', '')
-        if excluded_set:
-            recipients = [r.strip() for r in str(recipient).split(',') if r.strip()]
-            remaining = [r for r in recipients if r not in excluded_set]
-            recipient = ','.join(remaining)
-        if recipient:
+        if recipient and method == 'email':
             subject = render_template(subject_template, context)
             body = render_template(body_template, context)
             try:
-                if method == 'email':
-                    notification_service.send_email(to=recipient, subject=subject, body=body)
-                    logger.info(f'Output notification email sent to {recipient}')
-                elif method == 'telegram':
-                    notification_service.send_telegram(chat_id=recipient, message=f'{subject}\n\n{body}')
-                    logger.info(f'Output notification telegram sent to {recipient}')
+                notification_service.send_email(to=recipient, subject=subject, body=body)
+                logger.info(f'Output notification email sent to {recipient}')
             except Exception as e:
                 logger.warning(f'Failed to send output {method} notification to {recipient}: {e}', exc_info=True)
                 failed.append(f'output:{method}')
 
-    # Legacy: notification steps with old build-status format (backward compat)
     for step in pipeline_steps:
         if step.get('type') != 'notification':
             continue
         config = step.get('config', {})
-        # Skip per-row notification steps (they have input_columns)
         if config.get('input_columns'):
             continue
         method = config.get('method', 'email')
@@ -118,20 +97,27 @@ def _send_pipeline_notifications(
             from modules.telegram.service import get_notification_chat_ids, list_subscribers
 
             pairs: list[tuple[str, str]] = run_db(get_notification_chat_ids, datasource_id)
+            excluded: set[str] = set()
             if output_notification and output_notification.get('method') == 'telegram':
                 subs = run_db(list_subscribers)
                 pairs = [(s.chat_id, s.bot_token) for s in subs if s.is_active]
-            if excluded_set and pairs:
-                pairs = [(cid, token) for cid, token in pairs if cid not in excluded_set]
+                excluded_raw = output_notification.get('excluded_recipients')
+                if isinstance(excluded_raw, list):
+                    excluded = {str(item) for item in excluded_raw}
+            if excluded:
+                pairs = [(cid, token) for cid, token in pairs if cid not in excluded]
             if pairs:
-                status = str(context.get('status', 'unknown'))
-                analysis_name = str(context.get('analysis_name', ''))
-                row_count = str(context.get('row_count', ''))
-                duration = str(context.get('duration_ms', ''))
-                msg = f'Build complete: {analysis_name}\nStatus: {status}\nRows: {row_count}\nDuration: {duration}ms'
+                if output_notification and output_notification.get('method') == 'telegram':
+                    subject = render_template(subject_template, context)
+                    body = render_template(body_template, context)
+                    msg = f'{subject}\n\n{body}' if body else subject
+                else:
+                    status = str(context.get('status', 'unknown'))
+                    analysis_name = str(context.get('analysis_name', ''))
+                    row_count = str(context.get('row_count', ''))
+                    duration = str(context.get('duration_ms', ''))
+                    msg = f'Build complete: {analysis_name}\nStatus: {status}\nRows: {row_count}\nDuration: {duration}ms'
                 for cid, token in pairs:
-                    if excluded_set and cid in excluded_set:
-                        continue
                     if not token:
                         continue
                     try:

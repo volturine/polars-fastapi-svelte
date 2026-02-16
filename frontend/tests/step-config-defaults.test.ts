@@ -32,8 +32,15 @@ describe('step-config-defaults', () => {
 
 	it('normalizes notification fields', () => {
 		const normalized = normalizeConfig('notification', { input_columns: null } as never);
-		const config = normalized as { input_columns: unknown; recipient?: string };
+		const config = normalized as {
+			input_columns: unknown;
+			recipient?: string;
+			recipient_source?: string;
+			recipient_column?: string;
+		};
 		expect(Array.isArray(config.input_columns)).toBe(true);
 		expect(config.recipient).toBe('');
+		expect(config.recipient_source).toBe('manual');
+		expect(config.recipient_column).toBe('');
 	});
 });

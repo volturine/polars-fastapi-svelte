@@ -90,55 +90,70 @@ class AIHandler(OperationHandler):
         validated = AIParams.model_validate(params)
         if validated.batch_size < 1:
             raise ValueError('batch_size must be at least 1')
-        df = lf.collect()
+        schema = lf.collect_schema()
 
         # Validate all input columns exist
-        missing = [c for c in validated.input_columns if c not in df.columns]
+        missing = [c for c in validated.input_columns if c not in schema]
         if missing:
             raise ValueError(f'Input column(s) not found: {", ".join(missing)}')
 
-        row_count = df.height
-        if row_count == 0:
-            return df.with_columns(
-                pl.Series(name=validated.output_column, values=[], dtype=pl.Utf8),
-            ).lazy()
-
-        # Build row dicts for template interpolation
-        select_cols = validated.input_columns
-        rows = df.select(select_cols).to_dicts()
-
-        # Legacy compat: if template uses {{text}} and there's one input column,
-        # inject the single column value as 'text' key
+        select_cols = list(validated.input_columns)
         uses_text = '{{text}}' in validated.prompt_template
         single_col = len(select_cols) == 1
 
-        client = get_ai_client(
-            validated.provider,
-            endpoint_url=validated.endpoint_url,
-            api_key=validated.api_key,
-        )
-        results: list[str] = []
-        for offset in range(0, row_count, validated.batch_size):
-            batch_rows = rows[offset : offset + validated.batch_size]
-            prompts: list[str] = []
-            for row in batch_rows:
-                if uses_text and single_col:
-                    row['text'] = row[select_cols[0]]
-                prompts.append(_build_prompt(validated.prompt_template, row))
-            try:
-                outputs = client.generate_batch(
-                    prompts,
-                    model=validated.model,
-                    options=validated.request_options,
-                )
-                results.extend(outputs)
-            except AIError as exc:
-                logger.error('AI batch failed at row %d-%d: %s', offset, offset + len(batch_rows), exc)
-                results.extend([f'[error: {exc}]'] * len(batch_rows))
-            except Exception as exc:
-                logger.error('Unexpected AI error at row %d-%d: %s', offset, offset + len(batch_rows), exc)
-                results.extend([f'[error: {exc}]'] * len(batch_rows))
+        output_schema = dict(schema)
+        output_schema[validated.output_column] = pl.Utf8()
 
-        if len(results) != row_count:
-            raise ValueError(f'AI output length mismatch: got {len(results)}, expected {row_count}')
-        return df.with_columns(pl.Series(name=validated.output_column, values=results)).lazy()
+        def apply_batch(df: pl.DataFrame) -> pl.DataFrame:
+            if df.is_empty():
+                return df.with_columns(
+                    pl.Series(name=validated.output_column, values=[], dtype=pl.Utf8),
+                )
+
+            rows = df.select(select_cols).to_dicts()
+            row_count = len(rows)
+
+            client = get_ai_client(
+                validated.provider,
+                endpoint_url=validated.endpoint_url,
+                api_key=validated.api_key,
+            )
+            results: list[str] = []
+            for offset in range(0, row_count, validated.batch_size):
+                batch_rows = rows[offset : offset + validated.batch_size]
+                prompts: list[str] = []
+                for row in batch_rows:
+                    if uses_text and single_col:
+                        row['text'] = row[select_cols[0]]
+                    prompts.append(_build_prompt(validated.prompt_template, row))
+                try:
+                    outputs = client.generate_batch(
+                        prompts,
+                        model=validated.model,
+                        options=validated.request_options,
+                    )
+                    results.extend(outputs)
+                except AIError as exc:
+                    logger.error('AI batch failed at row %d-%d: %s', offset, offset + len(batch_rows), exc)
+                    results.extend([f'[error: {exc}]'] * len(batch_rows))
+                except Exception as exc:
+                    logger.error('Unexpected AI error at row %d-%d: %s', offset, offset + len(batch_rows), exc)
+                    results.extend([f'[error: {exc}]'] * len(batch_rows))
+
+            if len(results) != row_count:
+                raise ValueError(f'AI output length mismatch: got {len(results)}, expected {row_count}')
+
+            return df.with_columns(
+                pl.Series(name=validated.output_column, values=results, dtype=pl.Utf8),
+            )
+
+        return lf.map_batches(
+            apply_batch,
+            schema=output_schema,
+            predicate_pushdown=False,
+            projection_pushdown=False,
+            slice_pushdown=False,
+            no_optimizations=True,
+            validate_output_schema=True,
+            streamable=False,
+        )

@@ -1,5 +1,3 @@
-"""Telegram subscriber/listener CRUD."""
-
 import logging
 from datetime import UTC, datetime
 
@@ -131,7 +129,6 @@ def remove_listener(session: Session, listener_id: int) -> None:
 
 
 def auto_populate_listeners(session: Session, datasource_id: str) -> list[ListenerResponse]:
-    """Create listeners for all active subscribers for a datasource."""
     subs = (
         session.execute(
             select(TelegramSubscriber).where(TelegramSubscriber.is_active == True)  # type: ignore[arg-type]  # noqa: E712
@@ -147,7 +144,6 @@ def auto_populate_listeners(session: Session, datasource_id: str) -> list[Listen
 
 
 def get_notification_chat_ids(session: Session, datasource_id: str) -> list[tuple[str, str]]:
-    """Get all (chat_id, bot_token) pairs that should be notified for a datasource build."""
     listeners = (
         session.execute(
             select(TelegramListener).where(TelegramListener.datasource_id == datasource_id)  # type: ignore[arg-type]

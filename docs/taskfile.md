@@ -64,6 +64,9 @@
 
 ### Medium Priority
 
+- [x] Monitoring page tabs + compact health checks reuse
+- [x] Monitoring page global search across builds/schedules/health checks
+
 - [x] 41. Remove hardcoded CORS IPs
 - [x] 42. Disable public IDB debug by default
 - [x] 43. Encrypt SMTP passwords at rest

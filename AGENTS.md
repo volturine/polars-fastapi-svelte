@@ -18,7 +18,8 @@ just dev             # start both servers
 
 Nothing is complete until `just verify` passes with **zero errors and zero warnings**.
 
-- Run `just verify` before declaring any task done
+- Run `just verify` before declaring any task done or asking for review
+- If `just verify` fails, fix the underlying issues immediately — do not ignore or suppress warnings, even if they seem unrelated. They indicate tech debt that must be addressed.
 - Write backend Python tests for new/changed functionality
 - Frontend API calls must match backend schema types exactly
 - Keep `docs/taskfile.md` updated as work progresses

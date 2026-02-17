@@ -1007,7 +1007,12 @@
 
 {#if showVersionModal}
 	<div class="modal-backdrop" aria-hidden="true"></div>
-	<div class="modal" role="dialog" aria-modal="true" aria-labelledby="analysis-version-title">
+	<div
+		class="modal max-h-[80vh]"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="analysis-version-title"
+	>
 		<div class="modal-header">
 			<h2 id="analysis-version-title">Version history</h2>
 			<button class="modal-close" onclick={closeVersionModal} aria-label="Close">

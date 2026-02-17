@@ -101,8 +101,7 @@
 	const navItems = [
 		{ href: '/', label: 'Analyses' },
 		{ href: '/datasources', label: 'Data Sources' },
-		{ href: '/builds', label: 'Builds' },
-		{ href: '/schedules', label: 'Schedules' },
+		{ href: '/monitoring', label: 'Monitoring' },
 		{ href: '/lineage', label: 'Lineage' },
 		{ href: '/udfs', label: 'UDF Library' }
 	];
@@ -137,8 +136,7 @@
 							class:active={currentPath === item.href ||
 								(currentPath.startsWith('/analysis') && item.href === '/') ||
 								(currentPath.startsWith('/udfs') && item.href === '/udfs') ||
-								(currentPath.startsWith('/builds') && item.href === '/builds') ||
-								(currentPath.startsWith('/schedules') && item.href === '/schedules') ||
+								(currentPath.startsWith('/monitoring') && item.href === '/monitoring') ||
 								(currentPath.startsWith('/lineage') && item.href === '/lineage')}
 						>
 							{item.label}

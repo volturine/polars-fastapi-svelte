@@ -8,7 +8,15 @@
 	import DataTable from '$lib/components/viewers/DataTable.svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import type { Schema } from '$lib/types/schema';
-	import { GitCompareArrows, RefreshCw, X, Plus, Minus, ArrowRightLeft } from 'lucide-svelte';
+	import {
+		GitCompareArrows,
+		RefreshCw,
+		X,
+		Plus,
+		Minus,
+		ArrowRightLeft,
+		Search
+	} from 'lucide-svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 
 	interface Props {
@@ -22,6 +30,7 @@
 	let comparing = $state(false);
 	let compareError = $state<string | null>(null);
 	let mapping = $state<Record<string, string>>({});
+	let runSearch = $state('');
 
 	let pageA = $state(1);
 	let pageB = $state(1);
@@ -37,6 +46,21 @@
 	}));
 
 	const runs = $derived((runsQuery.data ?? []).filter((run) => run.kind !== 'datasource_create'));
+	const visibleRuns = $derived.by(() => {
+		const q = runSearch.trim().toLowerCase();
+		if (!q) return runs;
+		return runs.filter((run) => {
+			const status = run.status.toLowerCase();
+			const kind = run.kind.toLowerCase();
+			const created = formatDate(run.created_at).toLowerCase();
+			return (
+				run.id.toLowerCase().includes(q) ||
+				status.includes(q) ||
+				kind.includes(q) ||
+				created.includes(q)
+			);
+		});
+	});
 	const selectedRuns = $derived.by(() => {
 		const list = Array.from(selected).map((id) => runs.find((run) => run.id === id) ?? null);
 		return list.filter((run): run is EngineRun => run !== null);
@@ -340,51 +364,92 @@
 				{:else if runs.length === 0}
 					<p class="text-sm text-fg-tertiary">No builds recorded for this datasource.</p>
 				{:else}
-					<div class="space-y-2">
-						{#each runs as run (run.id)}
-							<button
-								class="flex w-full items-center justify-between border border-tertiary bg-transparent px-3 py-2 text-left text-sm hover:bg-hover"
-								class:bg-accent-bg={selected.has(run.id)}
-								class:text-accent-primary={selected.has(run.id)}
-								onclick={() => toggleSelect(run.id)}
-							>
-								<div>
-									<div class="flex items-center gap-2">
-										<span class="font-mono text-xs">{run.id.slice(0, 8)}...</span>
-										<span class="text-xs text-fg-tertiary">{run.kind}</span>
-									</div>
-									<div class="text-xs text-fg-muted">{formatDate(run.created_at)}</div>
-								</div>
-								<div class="text-xs text-fg-tertiary">
-									{run.status}
-								</div>
-							</button>
-						{/each}
+					<div class="flex flex-col gap-3">
+						<div class="relative">
+							<Search size={12} class="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted" />
+							<input
+								type="text"
+								placeholder="Search builds by ID, status, or type..."
+								class="w-full border border-tertiary bg-transparent px-3 py-1.5 pl-8 text-xs"
+								bind:value={runSearch}
+							/>
+						</div>
+						{#if visibleRuns.length === 0}
+							<p class="text-xs text-fg-tertiary">No builds match your search.</p>
+						{:else}
+							<div class="max-h-72 space-y-2 overflow-y-auto datasource-comparison-scroll">
+								{#each visibleRuns as run (run.id)}
+									<button
+										class="flex w-full items-start justify-between border border-tertiary bg-transparent px-3 py-2 text-left text-sm hover:bg-hover"
+										class:bg-accent-bg={selected.has(run.id)}
+										class:text-accent-primary={selected.has(run.id)}
+										onclick={() => toggleSelect(run.id)}
+									>
+										<div class="min-w-0">
+											<div class="flex items-center gap-2">
+												<span class="font-mono text-xs">{run.id.slice(0, 8)}...</span>
+												<span class="text-xs text-fg-tertiary">{run.kind}</span>
+											</div>
+											<div class="text-xs text-fg-muted">{formatDate(run.created_at)}</div>
+										</div>
+										<div class="text-xs text-fg-tertiary">
+											{run.status}
+										</div>
+									</button>
+								{/each}
+							</div>
+						{/if}
 					</div>
 				{/if}
 			</div>
 			<div class="border border-tertiary p-3">
-				<div class="mb-2 text-xs font-medium text-fg-muted">Comparison</div>
+				<div class="mb-2 text-xs font-medium text-fg-muted">Selected builds</div>
 				<div class="space-y-2 text-sm">
 					<div class="flex items-center gap-2">
 						<GitCompareArrows size={14} class="text-fg-muted" />
 						<span>{selected.size}/2 builds selected</span>
 					</div>
-					<button
-						class="btn-primary btn-sm"
-						disabled={!canCompare || comparing}
-						onclick={runComparison}
-					>
-						{#if comparing}
-							<RefreshCw size={13} class="animate-spin" />
+					{#if selectedRuns.length === 0}
+						<p class="text-xs text-fg-tertiary">Select two builds to compare.</p>
+					{:else}
+						<div class="space-y-2">
+							{#each selectedRuns as run (run.id)}
+								<div
+									class="flex items-center justify-between border border-tertiary bg-bg-secondary px-3 py-2 text-xs"
+								>
+									<div class="flex items-center gap-2">
+										<span class="font-mono">{run.id.slice(0, 8)}...</span>
+										<span class="text-fg-tertiary">{run.kind}</span>
+									</div>
+									<button
+										class="border-none bg-transparent text-fg-tertiary hover:text-fg-primary"
+										onclick={() => toggleSelect(run.id)}
+										title="Remove selection"
+									>
+										<X size={12} />
+									</button>
+								</div>
+							{/each}
+							{#if selectedRuns.length < 2}
+								<p class="text-[10px] text-fg-tertiary">Select one more build.</p>
+							{/if}
+						</div>
+						<button
+							class="btn-primary btn-sm"
+							disabled={!canCompare || comparing}
+							onclick={runComparison}
+						>
+							{#if comparing}
+								<RefreshCw size={13} class="animate-spin" />
+							{/if}
+							Compare metadata
+						</button>
+						{#if compareError}
+							<div class="text-xs text-error-fg">{compareError}</div>
 						{/if}
-						Compare metadata
-					</button>
-					{#if compareError}
-						<div class="text-xs text-error-fg">{compareError}</div>
-					{/if}
-					{#if comparison}
-						<div class="text-xs text-fg-tertiary">Selected build comparison ready.</div>
+						{#if comparison}
+							<div class="text-xs text-fg-tertiary">Selected build comparison ready.</div>
+						{/if}
 					{/if}
 				</div>
 			</div>

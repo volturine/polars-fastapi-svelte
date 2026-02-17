@@ -11,7 +11,21 @@
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
 	import { buildAnalysisPipelinePayload } from '$lib/utils/analysis-pipeline';
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
-	import { Database, Bell, ChevronDown, ChevronRight, EyeOff, Loader, Play } from 'lucide-svelte';
+	import HealthChecksManager from '$lib/components/datasources/HealthChecksManager.svelte';
+	import {
+		Bell,
+		CalendarClock,
+		ChevronDown,
+		ChevronRight,
+		Database,
+		EyeOff,
+		HeartPulse,
+		Loader,
+		Play
+	} from 'lucide-svelte';
+	import { listHealthChecks, listHealthCheckResults } from '$lib/api/healthcheck';
+	import { listSchedules } from '$lib/api/schedule';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	interface Props {
 		analysisId?: string;
@@ -27,9 +41,63 @@
 	let error = $state<string | null>(null);
 	let notifyOpen = $state(false);
 	let scheduleOpen = $state(false);
+	let healthOpen = $state(false);
 	const idPrefix = $derived(`output-${analysisId ?? datasourceId ?? 'node'}`);
 
 	const outputDatasourceId = $derived(activeTab?.output_datasource_id ?? null);
+
+	const healthChecksQuery = createQuery(() => ({
+		queryKey: ['healthchecks', outputDatasourceId],
+		queryFn: async () => {
+			if (!outputDatasourceId) return [];
+			const result = await listHealthChecks(outputDatasourceId);
+			if (result.isErr()) return [];
+			return result.value;
+		},
+		enabled: !!outputDatasourceId
+	}));
+
+	const healthResultsQuery = createQuery(() => ({
+		queryKey: ['healthcheck-results', outputDatasourceId],
+		queryFn: async () => {
+			if (!outputDatasourceId) return [];
+			const result = await listHealthCheckResults(outputDatasourceId, 50);
+			if (result.isErr()) return [];
+			return result.value;
+		},
+		enabled: !!outputDatasourceId
+	}));
+
+	const healthCount = $derived(healthChecksQuery.data?.length ?? 0);
+	const healthPassed = $derived.by(() => {
+		const checks = healthChecksQuery.data ?? [];
+		const results = healthResultsQuery.data ?? [];
+		if (checks.length === 0) return null;
+		const latest = new SvelteMap<string, boolean>();
+		for (const r of results) {
+			if (!latest.has(r.healthcheck_id)) {
+				latest.set(r.healthcheck_id, r.passed);
+			}
+		}
+		if (latest.size === 0) return null;
+		const failed = [...latest.values()].filter((v) => !v).length;
+		return failed === 0;
+	});
+
+	const schedulesQuery = createQuery(() => ({
+		queryKey: ['schedules', outputDatasourceId],
+		queryFn: async () => {
+			if (!outputDatasourceId) return [];
+			const result = await listSchedules(outputDatasourceId);
+			if (result.isErr()) return [];
+			return result.value;
+		},
+		enabled: !!outputDatasourceId
+	}));
+
+	const scheduleCount = $derived(schedulesQuery.data?.length ?? 0);
+	const enabledSchedules = $derived((schedulesQuery.data ?? []).filter((s) => s.enabled).length);
+
 	const outputDatasourceQuery = createQuery(() => ({
 		queryKey: ['datasource', outputDatasourceId],
 		queryFn: async () => {
@@ -277,123 +345,180 @@
 		</div>
 
 		<div class="mt-3 flex flex-col gap-3">
-			<!-- Build Notification Section -->
-			<div class="border-t border-tertiary pt-3">
-				<button
-					type="button"
-					class="flex w-full cursor-pointer items-center gap-2 border-none bg-transparent p-0 text-xs text-fg-tertiary hover:text-fg-primary"
-					onclick={() => (notifyOpen = !notifyOpen)}
-				>
-					{#if notifyOpen}
-						<ChevronDown size={12} />
-					{:else}
-						<ChevronRight size={12} />
-					{/if}
-					<Bell size={12} />
-					<span>Build Notification</span>
-					{#if notifyConfig.enabled}
-						<span
-							class="ml-auto rounded-sm bg-accent-bg px-1.5 py-0.5 text-[10px] text-accent-primary"
-						>
-							{selectedCount}/{activeSubscribers.length}
-						</span>
-					{/if}
-				</button>
-
-				{#if notifyOpen}
-					<div class="mt-2 flex flex-col gap-2 pl-5">
-						<label class="flex cursor-pointer items-center gap-2 text-xs">
-							<input type="checkbox" checked={notifyConfig.enabled} onchange={toggleNotification} />
-							<span>Notify subscribers on build</span>
-						</label>
-
+			<div class="flex flex-col gap-3 border-t border-tertiary pt-3">
+				<!-- Build Notification Section -->
+				<div>
+					<button
+						type="button"
+						class="flex w-full cursor-pointer items-center gap-2 border-none bg-transparent p-0 text-xs text-fg-tertiary hover:text-fg-primary"
+						onclick={() => (notifyOpen = !notifyOpen)}
+					>
+						{#if notifyOpen}
+							<ChevronDown size={12} />
+						{:else}
+							<ChevronRight size={12} />
+						{/if}
+						<Bell size={12} />
+						<span>Build Notification</span>
 						{#if notifyConfig.enabled}
-							<div class="flex flex-col gap-2">
-								{#if !canTelegram}
-									<div class="border border-warning bg-warning-bg p-2 text-[10px] text-warning-fg">
-										Telegram not enabled. Enable bot in global settings.
-									</div>
-								{:else}
-									<div class="flex flex-col gap-1">
-										<span class="text-[10px] uppercase text-fg-muted">Recipients</span>
-										<div class="max-h-32 overflow-y-auto border border-tertiary bg-secondary">
-											{#if subscribersQuery.isPending}
-												<div class="p-2 text-center text-[10px] text-fg-muted">Loading...</div>
-											{:else if subscribersQuery.isError}
-												<div class="p-2 text-center text-[10px] text-error">
-													Failed to load subscribers
-												</div>
-											{:else if activeSubscribers.length === 0}
-												<div class="p-2 text-center text-[10px] text-fg-muted">
-													No subscribers. Users can subscribe via /subscribe in Telegram.
-												</div>
-											{:else}
-												{#each activeSubscribers as sub (sub.id)}
-													<div
-														class="flex items-center gap-2 border-b border-tertiary px-2 py-1.5 last:border-b-0"
-													>
-														<span class="truncate text-xs text-fg-primary">{sub.title}</span>
-														<span class="ml-auto shrink-0 text-[10px] text-fg-muted">
-															{sub.chat_id}
-														</span>
-													</div>
-												{/each}
-											{/if}
+							<span
+								class="ml-auto rounded-sm bg-accent-bg px-1.5 py-0.5 text-[10px] text-accent-primary"
+							>
+								{selectedCount}/{activeSubscribers.length}
+							</span>
+						{/if}
+					</button>
+
+					{#if notifyOpen}
+						<div class="mt-2 flex flex-col gap-2 pl-5">
+							<label class="flex cursor-pointer items-center gap-2 text-xs">
+								<input
+									type="checkbox"
+									checked={notifyConfig.enabled}
+									onchange={toggleNotification}
+								/>
+								<span>Notify subscribers on build</span>
+							</label>
+
+							{#if notifyConfig.enabled}
+								<div class="flex flex-col gap-2">
+									{#if !canTelegram}
+										<div
+											class="border border-warning bg-warning-bg p-2 text-[10px] text-warning-fg"
+										>
+											Telegram not enabled. Enable bot in global settings.
 										</div>
+									{:else}
+										<div class="flex flex-col gap-1">
+											<span class="text-[10px] uppercase text-fg-muted">Recipients</span>
+											<div class="max-h-32 overflow-y-auto border border-tertiary bg-secondary">
+												{#if subscribersQuery.isPending}
+													<div class="p-2 text-center text-[10px] text-fg-muted">Loading...</div>
+												{:else if subscribersQuery.isError}
+													<div class="p-2 text-center text-[10px] text-error">
+														Failed to load subscribers
+													</div>
+												{:else if activeSubscribers.length === 0}
+													<div class="p-2 text-center text-[10px] text-fg-muted">
+														No subscribers. Users can subscribe via /subscribe in Telegram.
+													</div>
+												{:else}
+													{#each activeSubscribers as sub (sub.id)}
+														<div
+															class="flex items-center gap-2 border-b border-tertiary px-2 py-1.5 last:border-b-0"
+														>
+															<span class="truncate text-xs text-fg-primary">{sub.title}</span>
+															<span class="ml-auto shrink-0 text-[10px] text-fg-muted">
+																{sub.chat_id}
+															</span>
+														</div>
+													{/each}
+												{/if}
+											</div>
+											<span class="text-[10px] text-fg-muted">
+												All active subscribers receive build notifications.
+											</span>
+										</div>
+									{/if}
+
+									<div class="flex flex-col gap-1">
+										<label
+											class="text-[10px] uppercase text-fg-muted"
+											for={`${idPrefix}-notify-body`}
+										>
+											Message Template
+										</label>
+										<textarea
+											class="resource-input border border-tertiary bg-secondary p-1 px-2 text-xs text-fg-primary"
+											id={`${idPrefix}-notify-body`}
+											rows="3"
+											value={notifyConfig.body_template}
+											oninput={(e) =>
+												updateNotification({
+													body_template: e.currentTarget.value
+												})}
+										></textarea>
 										<span class="text-[10px] text-fg-muted">
-											All active subscribers receive build notifications.
+											{'{{analysis_name}}'}, {'{{status}}'}, {'{{duration_ms}}'}, {'{{row_count}}'}
 										</span>
 									</div>
-								{/if}
-
-								<div class="flex flex-col gap-1">
-									<label
-										class="text-[10px] uppercase text-fg-muted"
-										for={`${idPrefix}-notify-body`}
-									>
-										Message Template
-									</label>
-									<textarea
-										class="resource-input border border-tertiary bg-secondary p-1 px-2 text-xs text-fg-primary"
-										id={`${idPrefix}-notify-body`}
-										rows="3"
-										value={notifyConfig.body_template}
-										oninput={(e) =>
-											updateNotification({
-												body_template: e.currentTarget.value
-											})}
-									></textarea>
-									<span class="text-[10px] text-fg-muted">
-										{'{{analysis_name}}'}, {'{{status}}'}, {'{{duration_ms}}'}, {'{{row_count}}'}
-									</span>
 								</div>
+							{/if}
+						</div>
+					{/if}
+				</div>
+
+				<!-- Health Checks Section -->
+				<div>
+					<button
+						type="button"
+						class="flex w-full cursor-pointer items-center gap-2 border-none bg-transparent p-0 text-xs text-fg-tertiary hover:text-fg-primary"
+						onclick={() => (healthOpen = !healthOpen)}
+					>
+						{#if healthOpen}
+							<ChevronDown size={12} />
+						{:else}
+							<ChevronRight size={12} />
+						{/if}
+						<HeartPulse size={12} />
+						<span>Health Checks</span>
+						{#if healthCount > 0}
+							<span
+								class="ml-auto rounded-sm px-1.5 py-0.5 text-[10px] {healthPassed === true
+									? 'bg-success-bg text-success-fg'
+									: healthPassed === false
+										? 'bg-error-bg text-error-fg'
+										: 'bg-accent-bg text-accent-primary'}"
+							>
+								{healthCount}
+							</span>
+						{/if}
+					</button>
+
+					{#if healthOpen}
+						{#if outputDatasourceId}
+							<div class="mt-2 border border-tertiary bg-primary p-2">
+								<HealthChecksManager datasourceId={outputDatasourceId} compact />
+							</div>
+						{:else}
+							<div
+								class="mt-2 rounded-sm border border-dashed border-tertiary p-3 text-center text-xs text-fg-tertiary"
+							>
+								Save this analysis to create an output datasource before adding health checks.
 							</div>
 						{/if}
-					</div>
-				{/if}
-			</div>
-
-			<!-- Schedule Section -->
-			<div class="border-t border-tertiary pt-3">
-				<button
-					type="button"
-					class="flex w-full cursor-pointer items-center gap-2 border-none bg-transparent p-0 text-xs text-fg-tertiary hover:text-fg-primary"
-					onclick={() => (scheduleOpen = !scheduleOpen)}
-				>
-					{#if scheduleOpen}
-						<ChevronDown size={12} />
-					{:else}
-						<ChevronRight size={12} />
 					{/if}
-					<Database size={12} />
-					<span>Schedules</span>
-				</button>
+				</div>
 
-				{#if scheduleOpen && outputDatasourceId}
-					<div class="mt-2 border border-tertiary bg-primary p-2">
-						<ScheduleManager datasourceId={outputDatasourceId} compact />
-					</div>
-				{/if}
+				<!-- Schedule Section -->
+				<div>
+					<button
+						type="button"
+						class="flex w-full cursor-pointer items-center gap-2 border-none bg-transparent p-0 text-xs text-fg-tertiary hover:text-fg-primary"
+						onclick={() => (scheduleOpen = !scheduleOpen)}
+					>
+						{#if scheduleOpen}
+							<ChevronDown size={12} />
+						{:else}
+							<ChevronRight size={12} />
+						{/if}
+						<CalendarClock size={12} />
+						<span>Schedules</span>
+						{#if scheduleCount > 0}
+							<span
+								class="ml-auto rounded-sm bg-accent-bg px-1.5 py-0.5 text-[10px] text-accent-primary"
+							>
+								{enabledSchedules}/{scheduleCount}
+							</span>
+						{/if}
+					</button>
+
+					{#if scheduleOpen && outputDatasourceId}
+						<div class="mt-2 border border-tertiary bg-primary p-2">
+							<ScheduleManager datasourceId={outputDatasourceId} compact />
+						</div>
+					{/if}
+				</div>
 			</div>
 
 			{#if error}

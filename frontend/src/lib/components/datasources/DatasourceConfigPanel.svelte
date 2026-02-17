@@ -26,7 +26,7 @@
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import ColumnStatsPanel from '$lib/components/datasources/ColumnStatsPanel.svelte';
-	import HealthChecksTab from '$lib/components/datasources/HealthChecksTab.svelte';
+	import HealthChecksManager from '$lib/components/datasources/HealthChecksManager.svelte';
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
 	import { formatDateDisplay } from '$lib/utils/datetime';
 	import { resolveColumnType } from '$lib/utils/columnTypes';
@@ -1166,7 +1166,7 @@
 				{/if}
 			</div>
 		{:else if activeTab === 'health'}
-			<HealthChecksTab datasourceId={datasource.id} />
+			<HealthChecksManager datasourceId={datasource.id} compact />
 		{:else if activeTab === 'schedules'}
 			<ScheduleManager datasourceId={datasource.id} compact />
 		{/if}

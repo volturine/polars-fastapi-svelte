@@ -20,13 +20,17 @@ from modules.compute.operations.datasource import load_datasource, resolve_icebe
 from modules.datasource.models import DataSource
 from modules.datasource.schemas import (
     ColumnSchema,
+    ColumnStats,
     ColumnStatsResponse,
     CSVOptions,
     DataSourceResponse,
     DataSourceUpdate,
     FileListItem,
     FileListResponse,
+    SchemaDiff,
     SchemaInfo,
+    SnapshotCompareResponse,
+    SnapshotPreview,
 )
 from modules.datasource.source_types import FILE_BASED_CATEGORIES, SOURCE_TYPE_CATEGORY, DataSourceType
 from modules.engine_runs import service as engine_run_service
@@ -793,6 +797,199 @@ def list_data_files(path: str | None) -> FileListResponse:
         for item in sorted(resolved.iterdir(), key=lambda entry: (not entry.is_dir(), entry.name.lower()))
     ]
     return FileListResponse(base_path=str(resolved), entries=entries)
+
+
+def compare_iceberg_snapshots(
+    session: Session,
+    datasource_id: str,
+    snapshot_a: str,
+    snapshot_b: str,
+    row_limit: int,
+) -> SnapshotCompareResponse:
+    datasource = session.get(DataSource, datasource_id)
+
+    if not datasource:
+        raise DataSourceNotFoundError(datasource_id)
+    if datasource.source_type != DataSourceType.ICEBERG:
+        raise DataSourceValidationError(
+            'Snapshot comparison is only available for Iceberg datasources',
+            details={'datasource_id': datasource_id},
+        )
+
+    config_base = {
+        'source_type': datasource.source_type,
+        **datasource.config,
+    }
+    config_a = {**config_base, 'snapshot_id': snapshot_a}
+    config_b = {**config_base, 'snapshot_id': snapshot_b}
+
+    lf_a = load_datasource(config_a)
+    lf_b = load_datasource(config_b)
+
+    schema_a = lf_a.collect_schema()
+    schema_b = lf_b.collect_schema()
+
+    row_count_a = lf_a.select(pl.len()).collect().item()
+    row_count_b = lf_b.select(pl.len()).collect().item()
+
+    stats_a = _build_snapshot_stats(lf_a, schema_a)
+    stats_b = _build_snapshot_stats(lf_b, schema_b)
+
+    preview_a = _build_snapshot_preview(lf_a, schema_a, row_limit)
+    preview_b = _build_snapshot_preview(lf_b, schema_b, row_limit)
+
+    diff = _build_schema_diff(schema_a, schema_b)
+
+    return SnapshotCompareResponse(
+        datasource_id=datasource_id,
+        snapshot_a=snapshot_a,
+        snapshot_b=snapshot_b,
+        row_count_a=row_count_a,
+        row_count_b=row_count_b,
+        row_count_delta=row_count_b - row_count_a,
+        schema_diff=diff,
+        stats_a=stats_a,
+        stats_b=stats_b,
+        preview_a=preview_a,
+        preview_b=preview_b,
+    )
+
+
+def _build_snapshot_preview(
+    lazy: pl.LazyFrame,
+    schema: pl.Schema,
+    row_limit: int,
+) -> SnapshotPreview:
+    data = lazy.limit(row_limit).collect().to_dicts()
+    return SnapshotPreview(
+        columns=list(schema.keys()),
+        column_types={name: str(dtype) for name, dtype in schema.items()},
+        data=data,
+        row_count=len(data),
+    )
+
+
+def _supports_min_max(dtype: pl.DataType) -> bool:
+    return isinstance(
+        dtype,
+        (
+            pl.Int8,
+            pl.Int16,
+            pl.Int32,
+            pl.Int64,
+            pl.UInt8,
+            pl.UInt16,
+            pl.UInt32,
+            pl.UInt64,
+            pl.Float32,
+            pl.Float64,
+            pl.Utf8,
+            pl.Date,
+            pl.Datetime,
+            pl.Time,
+        ),
+    )
+
+
+def _supports_unique(dtype: pl.DataType) -> bool:
+    return isinstance(
+        dtype,
+        (
+            pl.Int8,
+            pl.Int16,
+            pl.Int32,
+            pl.Int64,
+            pl.UInt8,
+            pl.UInt16,
+            pl.UInt32,
+            pl.UInt64,
+            pl.Float32,
+            pl.Float64,
+            pl.Utf8,
+            pl.Boolean,
+            pl.Date,
+            pl.Datetime,
+            pl.Time,
+        ),
+    )
+
+
+def _build_snapshot_stats(lazy: pl.LazyFrame, schema: pl.Schema) -> list[ColumnStats]:
+    exprs: list[pl.Expr] = []
+    for name, dtype in schema.items():
+        exprs.append(pl.col(name).null_count().alias(f'{name}__null_count'))
+        if _supports_unique(dtype):
+            exprs.append(pl.col(name).drop_nulls().n_unique().alias(f'{name}__unique_count'))
+        if _supports_min_max(dtype):
+            exprs.append(pl.col(name).min().alias(f'{name}__min'))
+            exprs.append(pl.col(name).max().alias(f'{name}__max'))
+
+    stats_frame = lazy.select(exprs).collect()
+    results: list[ColumnStats] = []
+    for name, dtype in schema.items():
+        null_count = int(stats_frame[f'{name}__null_count'][0])
+        unique_count = None
+        if f'{name}__unique_count' in stats_frame.columns:
+            unique_count = int(stats_frame[f'{name}__unique_count'][0])
+        min_val = None
+        max_val = None
+        if f'{name}__min' in stats_frame.columns:
+            min_val = stats_frame[f'{name}__min'][0]
+        if f'{name}__max' in stats_frame.columns:
+            max_val = stats_frame[f'{name}__max'][0]
+        results.append(
+            ColumnStats(
+                column=name,
+                dtype=str(dtype),
+                null_count=null_count,
+                unique_count=unique_count,
+                min=min_val,
+                max=max_val,
+            )
+        )
+    return results
+
+
+def _build_schema_diff(schema_a: pl.Schema, schema_b: pl.Schema) -> list[SchemaDiff]:
+    diffs: list[SchemaDiff] = []
+    cols_a = set(schema_a.keys())
+    cols_b = set(schema_b.keys())
+
+    for name in sorted(cols_a - cols_b):
+        diffs.append(
+            SchemaDiff(
+                column=name,
+                status='removed',
+                type_a=str(schema_a[name]),
+                type_b=None,
+            )
+        )
+
+    for name in sorted(cols_b - cols_a):
+        diffs.append(
+            SchemaDiff(
+                column=name,
+                status='added',
+                type_a=None,
+                type_b=str(schema_b[name]),
+            )
+        )
+
+    for name in sorted(cols_a & cols_b):
+        dtype_a = str(schema_a[name])
+        dtype_b = str(schema_b[name])
+        if dtype_a == dtype_b:
+            continue
+        diffs.append(
+            SchemaDiff(
+                column=name,
+                status='type_changed',
+                type_a=dtype_a,
+                type_b=dtype_b,
+            )
+        )
+
+    return diffs
 
 
 def _normalize_iceberg_path(metadata_path: str) -> str:

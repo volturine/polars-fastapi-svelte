@@ -1017,6 +1017,13 @@ def export_data(
                     iceberg_table = catalog.create_table(identifier, schema=arrow_table.schema)
                     iceberg_table.append(arrow_table)
 
+                snapshot_id = None
+                snapshot_timestamp_ms = None
+                current_snapshot = iceberg_table.current_snapshot()
+                if current_snapshot:
+                    snapshot_id = str(current_snapshot.snapshot_id)
+                    snapshot_timestamp_ms = int(current_snapshot.timestamp_ms)
+
                 metadata_path = str(iceberg_table.metadata_location)
                 resolved_metadata = resolve_iceberg_metadata_path(metadata_path)
                 table_dir = str(Path(resolved_metadata).parents[1])
@@ -1048,6 +1055,10 @@ def export_data(
 
                 result_meta['datasource_id'] = ds_id
                 result_meta['datasource_name'] = iceberg_opts.get('table_name', 'exported_data')
+                if snapshot_id:
+                    result_meta['snapshot_id'] = snapshot_id
+                if snapshot_timestamp_ms is not None:
+                    result_meta['snapshot_timestamp_ms'] = snapshot_timestamp_ms
                 payload = engine_run_service.create_engine_run_payload(
                     analysis_id=run_analysis_id,
                     datasource_id=ds_id,

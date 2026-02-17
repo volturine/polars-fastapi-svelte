@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { apiRequest } from '$lib/api/client';
+	import { listEngineRuns, type EngineRun } from '$lib/api/engine-runs';
+	import { buildSnapshotMap } from '$lib/utils/build-snapshot-map';
 	import { Trash2, ChevronDown, Clock } from 'lucide-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 
@@ -12,6 +14,7 @@
 		onUiChange?: (updates: { open?: boolean; month?: string; day?: string }) => void;
 		onSelect?: (snapshotId: string | null, timestampMs?: number) => void;
 		showDelete?: boolean;
+		showBuildPreviews?: boolean;
 	}
 
 	let {
@@ -22,7 +25,8 @@
 		onConfigChange,
 		onUiChange,
 		onSelect,
-		showDelete = false
+		showDelete = false,
+		showBuildPreviews = false
 	}: Props = $props();
 
 	let snapshotsOpen = $state(false);
@@ -45,9 +49,22 @@
 	let deleteConfirmId = $state<string | null>(null);
 	let deleteLoading = $state(false);
 	let deleteError = $state<string | null>(null);
+	let buildRuns = $state<EngineRun[]>([]);
+	const runSnapshotMap = $derived.by(() =>
+		buildSnapshotMap(buildRuns, toSnapshotRefs(snapshotList))
+	);
+	const filteredSnapshotList = $derived.by(() => {
+		if (!showBuildPreviews) return snapshotList;
+		const mapped = new SvelteMap<string, boolean>();
+		for (const snap of runSnapshotMap.values()) {
+			if (!snap) continue;
+			mapped.set(snap, true);
+		}
+		return snapshotList.filter((snap) => mapped.has(snap.id));
+	});
 	let filteredSnapshots = $derived(
 		selectedDay
-			? snapshotList.filter((snap) => formatSnapshotKey(snap.timestamp) === selectedDay)
+			? filteredSnapshotList.filter((snap) => formatSnapshotKey(snap.timestamp) === selectedDay)
 			: []
 	);
 
@@ -96,6 +113,7 @@
 		deleteConfirmId = null;
 		deleteLoading = false;
 		deleteError = null;
+		buildRuns = [];
 	});
 
 	function formatSnapshotKey(timestampMs: number) {
@@ -120,6 +138,13 @@
 		return operation.replace(/^Operation\./, '');
 	}
 
+	function findBuildForSnapshot(snapshotId: string): EngineRun | null {
+		for (const run of buildRuns) {
+			if (runSnapshotMap.get(run.id) === snapshotId) return run;
+		}
+		return null;
+	}
+
 	function buildSnapshotIndex(
 		items: Array<{
 			snapshot_id: string;
@@ -137,8 +162,9 @@
 			}))
 			.sort((a, b) => b.timestamp - a.timestamp);
 		snapshotList = list;
+		const monthSource = showBuildPreviews ? filteredSnapshotList : list;
 		const monthOptions = Array.from(
-			new Set(list.map((snap) => formatSnapshotKey(snap.timestamp).slice(0, 7)))
+			new Set(monthSource.map((snap) => formatSnapshotKey(snap.timestamp).slice(0, 7)))
 		).sort((a, b) => (a > b ? -1 : 1));
 		const persistedMonth = (datasourceConfig.time_travel_ui as Record<string, unknown>)?.month as
 			| string
@@ -170,7 +196,7 @@
 		}
 
 		const counts = new SvelteMap<string, number>();
-		for (const snap of snapshotList) {
+		for (const snap of filteredSnapshotList) {
 			const key = formatSnapshotKey(snap.timestamp);
 			counts.set(key, (counts.get(key) ?? 0) + 1);
 		}
@@ -201,12 +227,35 @@
 
 	$effect(() => {
 		if (!snapshotsOpen) return;
-		if (!snapshotList.length) return;
+		if (!filteredSnapshotList.length) return;
 		if (!selectedDay) return;
-		const hasMatch = snapshotList.some((snap) => formatSnapshotKey(snap.timestamp) === selectedDay);
+		const hasMatch = filteredSnapshotList.some(
+			(snap) => formatSnapshotKey(snap.timestamp) === selectedDay
+		);
 		if (hasMatch) return;
 		selectedDay = '';
 		updateUi({ day: '' });
+	});
+
+	$effect(() => {
+		if (!snapshotsOpen) return;
+		if (!snapshotMonth) return;
+		buildCalendar(snapshotMonth);
+	});
+
+	$effect(() => {
+		if (!snapshotsOpen) return;
+		const source = showBuildPreviews ? filteredSnapshotList : snapshotList;
+		if (!source.length) {
+			calendarDays = [];
+			return;
+		}
+		const monthOptions = Array.from(
+			new Set(source.map((snap) => formatSnapshotKey(snap.timestamp).slice(0, 7)))
+		).sort((a, b) => (a > b ? -1 : 1));
+		if (!monthOptions.length) return;
+		if (snapshotMonth && monthOptions.includes(snapshotMonth)) return;
+		selectMonth(monthOptions[0]);
 	});
 
 	function loadSnapshots() {
@@ -223,6 +272,25 @@
 				snapshotsError = error.message || 'Failed to load snapshots';
 				snapshotsLoading = false;
 				snapshotList = [];
+			}
+		);
+		if (showBuildPreviews) {
+			loadBuildRuns();
+		}
+	}
+
+	function loadBuildRuns() {
+		if (!datasourceId) return;
+		listEngineRuns({ datasource_id: datasourceId, limit: 50 }).match(
+			(result) => {
+				buildRuns = result.filter(
+					(run) =>
+						(run.kind === 'datasource_update' || run.kind === 'datasource_create') &&
+						run.status === 'success'
+				);
+			},
+			() => {
+				buildRuns = [];
 			}
 		);
 	}
@@ -254,6 +322,10 @@
 		}
 		onConfigChange?.(nextConfig);
 		onSelect?.(snapshotId, timestampMs);
+	}
+
+	function toSnapshotRefs(list: Array<{ id: string; timestamp: number }>) {
+		return list.map((snap) => ({ snapshot_id: snap.id, timestamp_ms: snap.timestamp }));
 	}
 
 	function updatePopoverPosition() {
@@ -303,6 +375,9 @@
 		}
 		if (snapshotMonth) {
 			buildCalendar(snapshotMonth);
+		}
+		if (showBuildPreviews && !buildRuns.length) {
+			loadBuildRuns();
 		}
 	}
 
@@ -479,8 +554,8 @@
 											<span
 												class="absolute right-1 top-1 rounded-sm bg-accent-bg px-1 text-[9px] text-accent-primary"
 											>
-												{day.count}</span
-											>
+												{day.count}
+											</span>
 										{/if}
 									</button>
 								{:else}
@@ -506,6 +581,14 @@
 											<span class="text-[10px] uppercase text-fg-tertiary">
 												{formatOperation(snap.operation)}
 											</span>
+										{/if}
+										{#if showBuildPreviews}
+											{@const run = findBuildForSnapshot(snap.id)}
+											{#if run}
+												<span class="text-[10px] uppercase text-accent-primary">
+													Build {run.id.slice(0, 6)}
+												</span>
+											{/if}
 										{/if}
 										<span
 											class="font-mono"
@@ -548,6 +631,21 @@
 							{/each}
 						{:else}
 							<div class="p-2 text-xs text-fg-tertiary">Select a day to view builds.</div>
+						{/if}
+						{#if showBuildPreviews}
+							<div class="border-t border-tertiary px-2 py-1 text-[10px] text-fg-tertiary">
+								{#if buildRuns.length === 0}
+									No build snapshots mapped.
+								{:else if selectedSnapshotId}
+									{#each buildRuns as run (run.id)}
+										{#if runSnapshotMap.get(run.id) === selectedSnapshotId}
+											<div class="text-accent-primary">
+												Mapped to build {run.id.slice(0, 8)}...
+											</div>
+										{/if}
+									{/each}
+								{/if}
+							</div>
 						{/if}
 					</div>
 				</div>

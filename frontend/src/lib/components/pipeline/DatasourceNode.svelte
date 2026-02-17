@@ -457,6 +457,7 @@
 					datasourceConfig={activeTab?.datasource_config ?? {}}
 					label="Time Travel"
 					persistOpen
+					showBuildPreviews
 					onConfigChange={updateSnapshotConfig}
 					onUiChange={updateTimeTravelUi}
 					onSelect={handleSnapshotSelect}

@@ -10,6 +10,7 @@
 		CircleAlert,
 		RefreshCw,
 		Eye,
+		EyeOff,
 		Download,
 		CircleCheck,
 		CircleX,
@@ -26,7 +27,7 @@
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import ColumnStatsPanel from '$lib/components/datasources/ColumnStatsPanel.svelte';
-	import HealthChecksManager from '$lib/components/datasources/HealthChecksManager.svelte';
+	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
 	import { formatDateDisplay } from '$lib/utils/datetime';
 	import { resolveColumnType } from '$lib/utils/columnTypes';
@@ -117,6 +118,7 @@
 	);
 	let statsOpen = $state(false);
 	let statsColumn = $state<string | null>(null);
+	let showPreviews = $state(false);
 
 	// Reset state when datasource changes — DOM-dependent state reset, $derived insufficient
 	$effect(() => {
@@ -421,6 +423,10 @@
 	const csv = $derived(isCsv(ds));
 	const excel = $derived(isExcel(ds));
 	const runs = $derived(runsQuery.data ?? []);
+	const filteredRuns = $derived.by(() => {
+		if (showPreviews) return runs;
+		return runs.filter((run) => run.kind !== 'preview');
+	});
 	const isOutputDatasource = $derived(ds.created_by === 'analysis');
 	const scheduleAnalysisId = $derived(
 		isOutputDatasource
@@ -503,8 +509,8 @@
 			onclick={() => (activeTab = 'runs')}
 		>
 			Runs
-			{#if runs.length > 0}
-				<span class="ml-1 text-fg-tertiary">({runs.length})</span>
+			{#if filteredRuns.length > 0}
+				<span class="ml-1 text-fg-tertiary">({filteredRuns.length})</span>
 			{/if}
 		</button>
 		<button
@@ -1065,6 +1071,19 @@
 			</div>
 		{:else if activeTab === 'runs'}
 			<div class="flex flex-col gap-3">
+				<button
+					class="btn-ghost btn-sm border border-tertiary text-xs w-fit"
+					onclick={() => (showPreviews = !showPreviews)}
+					aria-pressed={showPreviews}
+				>
+					{#if showPreviews}
+						<EyeOff size={12} />
+						Hide previews
+					{:else}
+						<Eye size={12} />
+						Show previews
+					{/if}
+				</button>
 				{#if runsQuery.isLoading}
 					<div class="flex flex-col items-center justify-center gap-3 py-8 text-fg-muted">
 						<Loader size={24} class="spin" />
@@ -1080,7 +1099,7 @@
 							</p>
 						</div>
 					</div>
-				{:else if runs.length === 0}
+				{:else if filteredRuns.length === 0}
 					<div class="py-6 text-center text-fg-muted text-sm">
 						<p class="m-0">No engine runs associated with this datasource.</p>
 						<p class="m-0 mt-1 text-fg-tertiary">
@@ -1097,7 +1116,7 @@
 							<span>Duration</span>
 							<span>Created</span>
 						</div>
-						{#each runs as run, index (run.id)}
+						{#each filteredRuns as run, index (run.id)}
 							{@const dsTag = getDatasourceTag(run)}
 							<div
 								class="grid grid-cols-[1fr_80px_80px_100px] items-center gap-x-2 px-3 py-2"
@@ -1152,7 +1171,7 @@
 							</div>
 						{/each}
 					</div>
-					{#if runs.length >= 50}
+					{#if filteredRuns.length >= 50}
 						<p class="text-xs text-fg-tertiary text-center">
 							Showing last 50 runs.
 							<a

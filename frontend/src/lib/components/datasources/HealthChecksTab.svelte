@@ -1,5 +1,5 @@
 <script lang="ts">
-	import HealthChecksManager from '$lib/components/datasources/HealthChecksManager.svelte';
+	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 
 	interface Props {
 		datasourceId: string;

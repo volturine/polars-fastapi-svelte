@@ -9,6 +9,7 @@
 		CircleCheck,
 		CircleX,
 		Eye,
+		EyeOff,
 		Download,
 		ChevronLeft,
 		ChevronRight,
@@ -23,9 +24,10 @@
 	interface Props {
 		compact?: boolean;
 		searchQuery?: string;
+		showPreviews?: boolean;
 	}
 
-	let { compact = false, searchQuery }: Props = $props();
+	let { compact = false, searchQuery, showPreviews = false }: Props = $props();
 
 	let search = $state('');
 	const effectiveSearch = $derived(searchQuery ?? search);
@@ -39,6 +41,7 @@
 	let sortColumn = $state<string>('created_at');
 	let sortDir = $state<'asc' | 'desc'>('desc');
 	const limit = 50;
+	const previewsVisible = $derived(showPreviews);
 
 	const params = $derived({
 		analysis_id: (pageState.url.searchParams.get('analysis_id') ?? undefined) || undefined,
@@ -98,6 +101,10 @@
 
 	const filteredRuns = $derived.by(() => {
 		let result = runs;
+
+		if (!previewsVisible) {
+			result = result.filter((run) => run.kind !== 'preview');
+		}
 
 		if (effectiveSearch) {
 			const q = effectiveSearch.toLowerCase();
@@ -184,7 +191,7 @@
 	}
 
 	function nextPage() {
-		if (runs.length === limit) page++;
+		if (filteredRuns.length >= limit) page++;
 	}
 
 	function toggleExpand(id: string) {
@@ -245,13 +252,7 @@
 	}
 </script>
 
-<div
-	class="builds-page"
-	class:mx-auto={!compact}
-	class:max-w-300={!compact}
-	class:px-6={!compact}
-	class:py-7={!compact}
->
+<div class="builds-page flex flex-col h-full w-full">
 	{#if !compact}
 		<header class="mb-6 border-b border-tertiary pb-5">
 			<h1 class="m-0 mb-2 text-2xl">Builds</h1>
@@ -272,6 +273,19 @@
 					/>
 				</div>
 			</div>
+			<button
+				class="btn-ghost btn-sm border border-tertiary text-xs w-fit"
+				onclick={() => (showPreviews = !showPreviews)}
+				aria-pressed={showPreviews}
+			>
+				{#if showPreviews}
+					<Eye size={12} />
+					Hide previews
+				{:else}
+					<EyeOff size={12} />
+					Show previews
+				{/if}
+			</button>
 		{/if}
 	{:else}
 		<div class="mb-4 flex flex-wrap items-center gap-3">
@@ -682,7 +696,7 @@
 					<ChevronLeft size={14} />
 					Previous
 				</button>
-				<button class="btn-ghost btn-sm" onclick={nextPage} disabled={runs.length < limit}>
+				<button class="btn-ghost btn-sm" onclick={nextPage} disabled={filteredRuns.length < limit}>
 					Next
 					<ChevronRight size={14} />
 				</button>

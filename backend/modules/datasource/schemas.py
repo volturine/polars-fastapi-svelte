@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -20,6 +21,49 @@ class SchemaInfo(BaseModel):
     columns: list[ColumnSchema]
     row_count: int | None = None
     sheet_names: list[str] | None = None
+
+
+class SnapshotCompareRequest(BaseModel):
+    snapshot_a: str
+    snapshot_b: str
+    row_limit: int = 100
+
+
+class SnapshotPreview(BaseModel):
+    columns: list[str]
+    column_types: dict[str, str]
+    data: list[dict[str, object]]
+    row_count: int
+
+
+class ColumnStats(BaseModel):
+    column: str
+    dtype: str
+    null_count: int
+    unique_count: int | None = None
+    min: object | None = None
+    max: object | None = None
+
+
+class SchemaDiff(BaseModel):
+    column: str
+    status: Literal['added', 'removed', 'type_changed']
+    type_a: str | None = None
+    type_b: str | None = None
+
+
+class SnapshotCompareResponse(BaseModel):
+    datasource_id: str
+    snapshot_a: str
+    snapshot_b: str
+    row_count_a: int
+    row_count_b: int
+    row_count_delta: int
+    schema_diff: list[SchemaDiff]
+    stats_a: list[ColumnStats]
+    stats_b: list[ColumnStats]
+    preview_a: SnapshotPreview
+    preview_b: SnapshotPreview
 
 
 class HistogramBin(BaseModel):

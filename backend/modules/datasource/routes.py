@@ -561,6 +561,27 @@ def get_datasource_schema(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post('/{datasource_id}/compare-snapshots', response_model=schemas.SnapshotCompareResponse)
+@handle_errors(operation='compare datasource snapshots')
+def compare_snapshots(
+    datasource_id: DataSourceId,
+    payload: schemas.SnapshotCompareRequest,
+    session: Session = Depends(get_db),
+):
+    try:
+        return service.compare_iceberg_snapshots(
+            session,
+            parse_datasource_id(datasource_id),
+            payload.snapshot_a,
+            payload.snapshot_b,
+            payload.row_limit,
+        )
+    except DataSourceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except DataSourceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 def _handle_column_stats(
     datasource_id: DataSourceId,
     column_name: str,

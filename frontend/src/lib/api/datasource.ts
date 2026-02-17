@@ -351,6 +351,59 @@ export function listIcebergSnapshots(
 	return apiRequest<IcebergSnapshotsResponse>(`/v1/compute/iceberg/${datasourceId}/snapshots`);
 }
 
+export interface SnapshotPreview {
+	columns: string[];
+	column_types: Record<string, string>;
+	data: Array<Record<string, unknown>>;
+	row_count: number;
+}
+
+export interface ColumnStats {
+	column: string;
+	dtype: string;
+	null_count: number;
+	unique_count?: number | null;
+	min?: unknown | null;
+	max?: unknown | null;
+}
+
+export interface SchemaDiff {
+	column: string;
+	status: 'added' | 'removed' | 'type_changed';
+	type_a?: string | null;
+	type_b?: string | null;
+}
+
+export interface SnapshotCompareResponse {
+	datasource_id: string;
+	snapshot_a: string;
+	snapshot_b: string;
+	row_count_a: number;
+	row_count_b: number;
+	row_count_delta: number;
+	schema_diff: SchemaDiff[];
+	stats_a: ColumnStats[];
+	stats_b: ColumnStats[];
+	preview_a: SnapshotPreview;
+	preview_b: SnapshotPreview;
+}
+
+export function compareDatasourceSnapshots(
+	datasourceId: string,
+	snapshotA: string,
+	snapshotB: string,
+	rowLimit: number = 100
+): ResultAsync<SnapshotCompareResponse, ApiError> {
+	return apiRequest<SnapshotCompareResponse>(`/v1/datasource/${datasourceId}/compare-snapshots`, {
+		method: 'POST',
+		body: JSON.stringify({
+			snapshot_a: snapshotA,
+			snapshot_b: snapshotB,
+			row_limit: rowLimit
+		})
+	});
+}
+
 export function listDatasources(includeHidden?: boolean): ResultAsync<DataSource[], ApiError> {
 	const params = new URLSearchParams();
 	if (includeHidden) {

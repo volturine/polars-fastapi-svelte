@@ -396,12 +396,7 @@
 	});
 </script>
 
-<div
-	class:mx-auto={!compact}
-	class:max-w-300={!compact}
-	class:px-6={!compact}
-	class:py-7={!compact}
->
+<div class="flex flex-col h-full w-full">
 	{#if !compact}
 		<header class="mb-6 border-b border-tertiary pb-5">
 			<div class="flex items-center justify-between">

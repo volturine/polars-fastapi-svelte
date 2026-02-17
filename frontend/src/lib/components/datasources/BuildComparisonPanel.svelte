@@ -1,23 +1,13 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
-	import { listEngineRuns, compareEngineRuns } from '$lib/api/engine-runs';
-	import type { BuildComparison, EngineRun } from '$lib/api/engine-runs';
+	import { listEngineRuns, type EngineRun } from '$lib/api/engine-runs';
+	import { compareDatasourceSnapshots, listIcebergSnapshots } from '$lib/api/datasource';
+	import type { SnapshotCompareResponse } from '$lib/api/datasource';
 	import type { DataSource } from '$lib/types/datasource';
-	import { previewStepData, type StepPreviewResponse } from '$lib/api/compute';
-	import { buildDatasourcePipelinePayload } from '$lib/utils/analysis-pipeline';
 	import DataTable from '$lib/components/viewers/DataTable.svelte';
-	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
-	import type { Schema } from '$lib/types/schema';
-	import {
-		GitCompareArrows,
-		RefreshCw,
-		X,
-		Plus,
-		Minus,
-		ArrowRightLeft,
-		Search
-	} from 'lucide-svelte';
+	import { GitCompareArrows, RefreshCw, X, Plus, Minus, Search } from 'lucide-svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { buildSnapshotMap } from '$lib/utils/build-snapshot-map';
 
 	interface Props {
 		datasource: DataSource;
@@ -26,15 +16,11 @@
 	let { datasource }: Props = $props();
 
 	const selected = new SvelteSet<string>();
-	let comparison = $state<BuildComparison | null>(null);
+	let comparison = $state<SnapshotCompareResponse | null>(null);
 	let comparing = $state(false);
 	let compareError = $state<string | null>(null);
-	let mapping = $state<Record<string, string>>({});
 	let runSearch = $state('');
-
-	let pageA = $state(1);
-	let pageB = $state(1);
-	let rowLimit = $state(50);
+	let rowLimit = $state(100);
 
 	const runsQuery = createQuery(() => ({
 		queryKey: ['engine-runs', datasource.id],
@@ -45,159 +31,51 @@
 		}
 	}));
 
-	const runs = $derived((runsQuery.data ?? []).filter((run) => run.kind !== 'datasource_create'));
+	const snapshotsQuery = createQuery(() => ({
+		queryKey: ['iceberg-snapshots', datasource.id],
+		queryFn: async () => {
+			const result = await listIcebergSnapshots(datasource.id);
+			if (result.isErr()) throw new Error(result.error.message);
+			return result.value.snapshots;
+		},
+		enabled: datasource.source_type === 'iceberg'
+	}));
+
+	const runs = $derived.by(() =>
+		(runsQuery.data ?? []).filter(
+			(run) =>
+				(run.kind === 'datasource_update' || run.kind === 'datasource_create') &&
+				run.status === 'success'
+		)
+	);
+
 	const visibleRuns = $derived.by(() => {
 		const q = runSearch.trim().toLowerCase();
 		if (!q) return runs;
 		return runs.filter((run) => {
-			const status = run.status.toLowerCase();
-			const kind = run.kind.toLowerCase();
 			const created = formatDate(run.created_at).toLowerCase();
 			return (
 				run.id.toLowerCase().includes(q) ||
-				status.includes(q) ||
-				kind.includes(q) ||
+				run.kind.toLowerCase().includes(q) ||
 				created.includes(q)
 			);
 		});
 	});
+
 	const selectedRuns = $derived.by(() => {
 		const list = Array.from(selected).map((id) => runs.find((run) => run.id === id) ?? null);
 		return list.filter((run): run is EngineRun => run !== null);
 	});
+
 	const runA = $derived(selectedRuns[0] ?? null);
 	const runB = $derived(selectedRuns[1] ?? null);
 	const canCompare = $derived(selected.size === 2);
 
-	const schemaA = $derived(buildSchema(runA));
-	const schemaB = $derived(buildSchema(runB));
+	const snapshots = $derived(snapshotsQuery.data ?? []);
 
-	const defaultMapping = $derived.by(() => {
-		if (!schemaA || !schemaB) return {};
-		const next: Record<string, string> = {};
-		for (const col of schemaA.columns) {
-			if (schemaB.columns.some((right) => right.name === col.name)) {
-				next[col.name] = col.name;
-			}
-		}
-		return next;
-	});
-
-	const effectiveMapping = $derived.by(() => {
-		const next = { ...defaultMapping };
-		for (const [left, right] of Object.entries(mapping)) {
-			if (!right) {
-				delete next[left];
-				continue;
-			}
-			next[left] = right;
-		}
-		return next;
-	});
-
-	const mappingEntries = $derived.by(() => {
-		if (!schemaA || !schemaB) return [];
-		const entries: Array<{ left: string; right: string | null }> = [];
-		for (const col of schemaA.columns) {
-			entries.push({ left: col.name, right: effectiveMapping[col.name] ?? null });
-		}
-		return entries;
-	});
-
-	const diffColumns = $derived.by(() => mappingEntries.filter((entry) => entry.right));
-
-	const previewKeyA = $derived.by(() => buildPreviewKey(runA));
-	const previewKeyB = $derived.by(() => buildPreviewKey(runB));
-
-	const previewQueryA = createQuery(() => ({
-		queryKey: ['datasource-run-preview', previewKeyA, pageA, rowLimit],
-		queryFn: () => fetchPreview(runA, pageA, rowLimit),
-		enabled: !!previewKeyA
-	}));
-	const previewQueryB = createQuery(() => ({
-		queryKey: ['datasource-run-preview', previewKeyB, pageB, rowLimit],
-		queryFn: () => fetchPreview(runB, pageB, rowLimit),
-		enabled: !!previewKeyB
-	}));
-
-	const dataA = $derived(previewQueryA.data ?? null);
-	const dataB = $derived(previewQueryB.data ?? null);
-
-	const diffColumnTypes = $derived.by(() => buildDiffColumnTypes(schemaA, schemaB, diffColumns));
-	const diffColumnNames = $derived.by(() => diffColumnTypes.map((col) => col.name));
-	const diffRows = $derived.by(() =>
-		buildDiffRows(dataA?.data ?? [], dataB?.data ?? [], diffColumns)
-	);
-
-	function buildSchema(run: EngineRun | null): Schema | null {
-		if (!run?.result_json) return null;
-		const schemaData = run.result_json.schema;
-		if (!schemaData || typeof schemaData !== 'object' || Array.isArray(schemaData)) return null;
-		const columns = Object.entries(schemaData as Record<string, string>).map(([name, dtype]) => ({
-			name,
-			dtype,
-			nullable: true
-		}));
-		return { columns, row_count: null };
-	}
-
-	function buildRunConfig(run: EngineRun): Record<string, unknown> | null {
-		const base = datasource.config ?? {};
-		const runConfig = run.request_json?.datasource_config;
-		const runOverrides =
-			runConfig && typeof runConfig === 'object' ? (runConfig as Record<string, unknown>) : null;
-		const merged = { ...base, ...(runOverrides ?? {}) } as Record<string, unknown>;
-		if (datasource.source_type !== 'iceberg') return merged;
-		if (merged.snapshot_id) return merged;
-		if (merged.snapshot_timestamp_ms) return merged;
-		const runTime = Date.parse(run.created_at);
-		if (Number.isNaN(runTime)) return merged;
-		return { ...merged, snapshot_timestamp_ms: runTime };
-	}
-
-	function buildPreviewKey(run: EngineRun | null): string | null {
-		if (!run) return null;
-		const config = buildRunConfig(run);
-		const snapshotId = config?.snapshot_id ?? null;
-		const snapshotTs = config?.snapshot_timestamp_ms ?? null;
-		return JSON.stringify({ run: run.id, snapshotId, snapshotTs });
-	}
-
-	function buildPreviewRequest(run: EngineRun, page: number, limit: number) {
-		const configData = buildRunConfig(run);
-		if (!configData) return null;
-		const pipeline = buildDatasourcePipelinePayload({
-			datasource,
-			datasourceConfig: configData
-		});
-		return {
-			analysis_id: datasource.id,
-			target_step_id: 'source',
-			analysis_pipeline: pipeline,
-			row_limit: limit,
-			page,
-			datasource_config: configData
-		};
-	}
-
-	async function fetchPreview(
-		run: EngineRun | null,
-		page: number,
-		limit: number
-	): Promise<StepPreviewResponse> {
-		if (!run) {
-			return { step_id: 'source', columns: [], data: [], total_rows: 0, page, page_size: 0 };
-		}
-		const request = buildPreviewRequest(run, page, limit);
-		if (!request) {
-			return { step_id: 'source', columns: [], data: [], total_rows: 0, page, page_size: 0 };
-		}
-		const result = await previewStepData(request);
-		if (result.isErr()) {
-			throw new Error(result.error.message);
-		}
-		return result.value;
-	}
+	const runSnapshotMap = $derived.by(() => buildSnapshotMap(runs, snapshots));
+	const snapshotA = $derived(runA ? (runSnapshotMap.get(runA.id) ?? null) : null);
+	const snapshotB = $derived(runB ? (runSnapshotMap.get(runB.id) ?? null) : null);
 
 	function toggleSelect(id: string) {
 		if (selected.has(id)) {
@@ -211,11 +89,12 @@
 	}
 
 	async function runComparison() {
-		const ids = [...selected];
-		if (ids.length !== 2) return;
+		const snapA = snapshotA;
+		const snapB = snapshotB;
+		if (!snapA || !snapB) return;
 		comparing = true;
 		compareError = null;
-		const result = await compareEngineRuns(ids[0], ids[1]);
+		const result = await compareDatasourceSnapshots(datasource.id, snapA, snapB, rowLimit);
 		if (result.isOk()) {
 			comparison = result.value;
 			comparing = false;
@@ -233,15 +112,6 @@
 	function resetComparison() {
 		comparison = null;
 		compareError = null;
-		mapping = {};
-		pageA = 1;
-		pageB = 1;
-	}
-
-	function formatDuration(ms: number | null): string {
-		if (ms === null) return '-';
-		if (ms < 1000) return `${ms}ms`;
-		return `${(ms / 1000).toFixed(2)}s`;
 	}
 
 	function formatDate(isoDate: string): string {
@@ -249,93 +119,86 @@
 		return date.toLocaleString();
 	}
 
-	function formatDelta(val: number | null): string {
-		if (val === null) return '-';
+	function formatDelta(val: number): string {
+		if (val === 0) return '0';
 		const sign = val > 0 ? '+' : '';
 		return `${sign}${val}`;
 	}
 
-	function formatDeltaPct(val: number | null): string {
-		if (val === null) return '';
-		const sign = val > 0 ? '+' : '';
-		return `(${sign}${val}%)`;
-	}
-
-	function deltaClass(val: number | null): string {
-		if (val === null || val === 0) return 'text-fg-muted';
-		return val > 0 ? 'text-error-fg' : 'text-success-fg';
-	}
-
-	function rowDeltaClass(val: number | null): string {
-		if (val === null || val === 0) return 'text-fg-muted';
+	function rowDeltaClass(val: number): string {
+		if (val === 0) return 'text-fg-muted';
 		return val > 0 ? 'text-success-fg' : 'text-error-fg';
 	}
 
-	function updateMapping(left: string, right: string) {
-		if (!right) {
-			const { [left]: _, ...rest } = mapping;
-			mapping = rest;
-			return;
-		}
-		mapping = { ...mapping, [left]: right };
+	function nullDeltaClass(val: number): string {
+		if (val === 0) return 'text-fg-muted';
+		// More nulls (positive) -> bad (red/error)
+		// Fewer nulls (negative) -> good (green/success)
+		return val > 0 ? 'text-error-fg' : 'text-success-fg';
 	}
 
-	function buildDiffColumnTypes(
-		left: Schema | null,
-		right: Schema | null,
-		pairs: Array<{ left: string; right: string | null }>
-	) {
-		const columns = [] as Array<{ name: string; type: string }>;
-		if (!left || !right) return columns;
-		for (const pair of pairs) {
-			if (!pair.right) continue;
-			const leftCol = left.columns.find((col) => col.name === pair.left) ?? null;
-			const rightCol = right.columns.find((col) => col.name === pair.right) ?? null;
-			columns.push({
-				name: `${pair.left} → ${pair.right}`,
-				type: 'string'
+	// Unique count logic: more unique is usually good (green), less is bad (red) or neutral
+	// Matches rowDeltaClass logic
+	function uniqueDeltaClass(val: number): string {
+		if (val === 0) return 'text-fg-muted';
+		return val > 0 ? 'text-success-fg' : 'text-error-fg';
+	}
+
+	function previewColumns(preview: SnapshotCompareResponse['preview_a'] | null) {
+		return preview?.columns ?? [];
+	}
+
+	function previewData(preview: SnapshotCompareResponse['preview_a'] | null) {
+		return preview?.data ?? [];
+	}
+
+	function previewTypes(preview: SnapshotCompareResponse['preview_a'] | null) {
+		return preview?.column_types ?? {};
+	}
+
+	const combinedStats = $derived.by(() => {
+		if (!comparison) return [];
+		const statsA = new Map(comparison.stats_a.map((s) => [s.column, s]));
+		const statsB = new Map(comparison.stats_b.map((s) => [s.column, s]));
+		const allCols = new Set([...statsA.keys(), ...statsB.keys()]);
+		return Array.from(allCols)
+			.sort()
+			.map((col) => {
+				const a = statsA.get(col);
+				const b = statsB.get(col);
+				const nullA = a?.null_count;
+				const nullB = b?.null_count;
+				const uniqueA = a?.unique_count;
+				const uniqueB = b?.unique_count;
+
+				let nullDelta: number | null = null;
+				if (typeof nullA === 'number' && typeof nullB === 'number') {
+					nullDelta = nullB - nullA;
+				}
+
+				let uniqueDelta: number | null = null;
+				if (typeof uniqueA === 'number' && typeof uniqueB === 'number') {
+					uniqueDelta = uniqueB - uniqueA;
+				}
+
+				return {
+					column: col,
+					// Show A -> B if types differ, otherwise just Type
+					type:
+						a?.dtype === b?.dtype ? (a?.dtype ?? '-') : `${a?.dtype ?? '-'} → ${b?.dtype ?? '-'}`,
+					null_a: nullA ?? '-',
+					null_b: nullB ?? '-',
+					null_delta: nullDelta,
+					unique_a: uniqueA ?? '-',
+					unique_b: uniqueB ?? '-',
+					unique_delta: uniqueDelta,
+					min_a: a?.min ?? '-',
+					min_b: b?.min ?? '-',
+					max_a: a?.max ?? '-',
+					max_b: b?.max ?? '-'
+				};
 			});
-			columns.push({
-				name: `${pair.left} Δ`,
-				type: leftCol?.dtype ?? rightCol?.dtype ?? '-'
-			});
-		}
-		return columns;
-	}
-
-	function buildDiffRows(
-		leftRows: Array<Record<string, unknown>>,
-		rightRows: Array<Record<string, unknown>>,
-		pairs: Array<{ left: string; right: string | null }>
-	) {
-		const rows = [] as Array<Record<string, unknown>>;
-		const maxRows = Math.max(leftRows.length, rightRows.length);
-		for (let idx = 0; idx < maxRows; idx += 1) {
-			const left = leftRows[idx] ?? {};
-			const right = rightRows[idx] ?? {};
-			const row: Record<string, unknown> = { _row: idx + 1 };
-			for (const pair of pairs) {
-				if (!pair.right) continue;
-				const leftValue = left[pair.left] ?? null;
-				const rightValue = right[pair.right] ?? null;
-				const leftText = leftValue === null || leftValue === undefined ? '-' : String(leftValue);
-				const rightText =
-					rightValue === null || rightValue === undefined ? '-' : String(rightValue);
-				row[`${pair.left} → ${pair.right}`] = `${leftText} | ${rightText}`;
-				row[`${pair.left} Δ`] = leftValue === rightValue ? 'match' : 'diff';
-			}
-			rows.push(row);
-		}
-		return rows;
-	}
-
-	function canPrev(page: number) {
-		return page > 1;
-	}
-
-	function canNext(pageSize: number) {
-		return pageSize === rowLimit;
-	}
+	});
 </script>
 
 <div class="border border-tertiary bg-bg-primary">
@@ -351,447 +214,337 @@
 		{/if}
 	</div>
 
-	<div class="p-4 space-y-4">
-		<div class="grid gap-3 md:grid-cols-2">
-			<div class="border border-tertiary p-3">
-				<div class="mb-2 text-xs font-medium text-fg-muted">Select builds</div>
-				{#if runsQuery.isLoading}
-					<div class="text-sm text-fg-tertiary">Loading runs...</div>
-				{:else if runsQuery.isError}
-					<div class="text-sm text-error-fg">
-						{runsQuery.error instanceof Error ? runsQuery.error.message : 'Failed to load runs'}
-					</div>
-				{:else if runs.length === 0}
-					<p class="text-sm text-fg-tertiary">No builds recorded for this datasource.</p>
-				{:else}
-					<div class="flex flex-col gap-3">
-						<div class="relative">
-							<Search size={12} class="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted" />
-							<input
-								type="text"
-								placeholder="Search builds by ID, status, or type..."
-								class="w-full border border-tertiary bg-transparent px-3 py-1.5 pl-8 text-xs"
-								bind:value={runSearch}
-							/>
+	{#if datasource.source_type !== 'iceberg'}
+		<div class="p-4 text-sm text-fg-tertiary">
+			Snapshot comparison is only available for Iceberg datasources.
+		</div>
+	{:else}
+		<div class="p-4 space-y-4">
+			<div class="grid gap-3 md:grid-cols-2">
+				<div class="border border-tertiary p-3">
+					<div class="mb-2 text-xs font-medium text-fg-muted">Select builds</div>
+					{#if runsQuery.isLoading}
+						<div class="text-sm text-fg-tertiary">Loading runs...</div>
+					{:else if runsQuery.isError}
+						<div class="text-sm text-error-fg">
+							{runsQuery.error instanceof Error ? runsQuery.error.message : 'Failed to load runs'}
 						</div>
-						{#if visibleRuns.length === 0}
-							<p class="text-xs text-fg-tertiary">No builds match your search.</p>
-						{:else}
-							<div class="max-h-72 space-y-2 overflow-y-auto datasource-comparison-scroll">
-								{#each visibleRuns as run (run.id)}
-									<button
-										class="flex w-full items-start justify-between border border-tertiary bg-transparent px-3 py-2 text-left text-sm hover:bg-hover"
-										class:bg-accent-bg={selected.has(run.id)}
-										class:text-accent-primary={selected.has(run.id)}
-										onclick={() => toggleSelect(run.id)}
-									>
-										<div class="min-w-0">
-											<div class="flex items-center gap-2">
-												<span class="font-mono text-xs">{run.id.slice(0, 8)}...</span>
-												<span class="text-xs text-fg-tertiary">{run.kind}</span>
-											</div>
-											<div class="text-xs text-fg-muted">{formatDate(run.created_at)}</div>
-										</div>
-										<div class="text-xs text-fg-tertiary">
-											{run.status}
-										</div>
-									</button>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				{/if}
-			</div>
-			<div class="border border-tertiary p-3">
-				<div class="mb-2 text-xs font-medium text-fg-muted">Selected builds</div>
-				<div class="space-y-2 text-sm">
-					<div class="flex items-center gap-2">
-						<GitCompareArrows size={14} class="text-fg-muted" />
-						<span>{selected.size}/2 builds selected</span>
-					</div>
-					{#if selectedRuns.length === 0}
-						<p class="text-xs text-fg-tertiary">Select two builds to compare.</p>
+					{:else if runs.length === 0}
+						<p class="text-sm text-fg-tertiary">No successful datasource builds recorded.</p>
 					{:else}
-						<div class="space-y-2">
-							{#each selectedRuns as run (run.id)}
-								<div
-									class="flex items-center justify-between border border-tertiary bg-bg-secondary px-3 py-2 text-xs"
-								>
-									<div class="flex items-center gap-2">
-										<span class="font-mono">{run.id.slice(0, 8)}...</span>
-										<span class="text-fg-tertiary">{run.kind}</span>
-									</div>
-									<button
-										class="border-none bg-transparent text-fg-tertiary hover:text-fg-primary"
-										onclick={() => toggleSelect(run.id)}
-										title="Remove selection"
-									>
-										<X size={12} />
-									</button>
+						<div class="flex flex-col gap-3">
+							<div class="relative">
+								<Search
+									size={12}
+									class="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted"
+								/>
+								<input
+									type="text"
+									placeholder="Search builds by ID or date..."
+									class="w-full border border-tertiary bg-transparent px-3 py-1.5 pl-8 text-xs"
+									bind:value={runSearch}
+								/>
+							</div>
+							{#if visibleRuns.length === 0}
+								<p class="text-xs text-fg-tertiary">No builds match your search.</p>
+							{:else}
+								<div class="max-h-72 space-y-2 overflow-y-auto datasource-comparison-scroll">
+									{#each visibleRuns as run (run.id)}
+										<button
+											class="flex w-full items-start justify-between border border-tertiary bg-transparent px-3 py-2 text-left text-sm hover:bg-hover"
+											class:bg-accent-bg={selected.has(run.id)}
+											class:text-accent-primary={selected.has(run.id)}
+											onclick={() => toggleSelect(run.id)}
+										>
+											<div class="min-w-0">
+												<div class="flex items-center gap-2">
+													<span class="font-mono text-xs">{run.id.slice(0, 8)}...</span>
+													<span class="text-xs text-fg-tertiary">{run.kind}</span>
+												</div>
+												<div class="text-xs text-fg-muted">{formatDate(run.created_at)}</div>
+											</div>
+											<div class="text-xs text-fg-tertiary">
+												{runSnapshotMap.get(run.id) ? 'snapshot mapped' : 'missing snapshot'}
+											</div>
+										</button>
+									{/each}
 								</div>
-							{/each}
-							{#if selectedRuns.length < 2}
-								<p class="text-[10px] text-fg-tertiary">Select one more build.</p>
 							{/if}
 						</div>
-						<button
-							class="btn-primary btn-sm"
-							disabled={!canCompare || comparing}
-							onclick={runComparison}
-						>
-							{#if comparing}
-								<RefreshCw size={13} class="animate-spin" />
-							{/if}
-							Compare metadata
-						</button>
-						{#if compareError}
-							<div class="text-xs text-error-fg">{compareError}</div>
-						{/if}
-						{#if comparison}
-							<div class="text-xs text-fg-tertiary">Selected build comparison ready.</div>
-						{/if}
 					{/if}
 				</div>
-			</div>
-		</div>
-
-		{#if comparison}
-			<div class="border border-tertiary">
-				<div class="grid gap-4 p-4 md:grid-cols-2">
-					<div class="border border-tertiary p-3">
-						<div class="mb-2 text-xs font-medium text-fg-muted">Run A</div>
-						<div class="space-y-1 text-sm">
-							<div>
-								<span class="text-fg-muted">ID:</span>
-								<span class="font-mono text-xs">{comparison.run_a.id.slice(0, 8)}...</span>
-							</div>
-							<div><span class="text-fg-muted">Type:</span> {comparison.run_a.kind}</div>
-							<div><span class="text-fg-muted">Status:</span> {comparison.run_a.status}</div>
-							<div>
-								<span class="text-fg-muted">Duration:</span>
-								{formatDuration(comparison.run_a.duration_ms)}
-							</div>
-							<div><span class="text-fg-muted">Rows:</span> {comparison.row_count_a ?? '-'}</div>
-							<div>
-								<span class="text-fg-muted">Created:</span>
-								{formatDate(comparison.run_a.created_at)}
-							</div>
+				<div class="border border-tertiary p-3">
+					<div class="mb-2 text-xs font-medium text-fg-muted">Selected builds</div>
+					<div class="space-y-2 text-sm">
+						<div class="flex items-center gap-2">
+							<GitCompareArrows size={14} class="text-fg-muted" />
+							<span>{selected.size}/2 builds selected</span>
 						</div>
-					</div>
-					<div class="border border-tertiary p-3">
-						<div class="mb-2 text-xs font-medium text-fg-muted">Run B</div>
-						<div class="space-y-1 text-sm">
-							<div>
-								<span class="text-fg-muted">ID:</span>
-								<span class="font-mono text-xs">{comparison.run_b.id.slice(0, 8)}...</span>
+						{#if selectedRuns.length === 0}
+							<p class="text-xs text-fg-tertiary">Select two builds to compare.</p>
+						{:else}
+							<div class="space-y-2">
+								{#each selectedRuns as run (run.id)}
+									<div
+										class="flex items-center justify-between border border-tertiary bg-bg-secondary px-3 py-2 text-xs"
+									>
+										<div class="flex items-center gap-2">
+											<span class="font-mono">{run.id.slice(0, 8)}...</span>
+											<span class="text-fg-tertiary">{run.kind}</span>
+										</div>
+										<button
+											class="border-none bg-transparent text-fg-tertiary hover:text-fg-primary"
+											onclick={() => toggleSelect(run.id)}
+											title="Remove selection"
+										>
+											<X size={12} />
+										</button>
+									</div>
+								{/each}
+								{#if selectedRuns.length < 2}
+									<p class="text-[10px] text-fg-tertiary">Select one more build.</p>
+								{/if}
 							</div>
-							<div><span class="text-fg-muted">Type:</span> {comparison.run_b.kind}</div>
-							<div><span class="text-fg-muted">Status:</span> {comparison.run_b.status}</div>
-							<div>
-								<span class="text-fg-muted">Duration:</span>
-								{formatDuration(comparison.run_b.duration_ms)}
-							</div>
-							<div><span class="text-fg-muted">Rows:</span> {comparison.row_count_b ?? '-'}</div>
-							<div>
-								<span class="text-fg-muted">Created:</span>
-								{formatDate(comparison.run_b.created_at)}
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="grid gap-4 border-t border-tertiary p-4 md:grid-cols-3">
-					<div class="border border-tertiary p-3 text-center">
-						<div class="text-xs text-fg-muted">Row Count Delta</div>
-						<div class={`mt-1 font-mono text-lg ${rowDeltaClass(comparison.row_count_delta)}`}>
-							{formatDelta(comparison.row_count_delta)}
-						</div>
-					</div>
-					<div class="border border-tertiary p-3 text-center">
-						<div class="text-xs text-fg-muted">Duration Delta</div>
-						<div class={`mt-1 font-mono text-lg ${deltaClass(comparison.total_duration_delta_ms)}`}>
-							{comparison.total_duration_delta_ms !== null
-								? formatDuration(Math.abs(comparison.total_duration_delta_ms))
-								: '-'}
-							{#if comparison.total_duration_delta_ms !== null}
-								<span class="text-xs"
-									>{comparison.total_duration_delta_ms > 0 ? 'slower' : 'faster'}</span
-								>
+							<button
+								class="btn-primary btn-sm"
+								disabled={!canCompare || comparing || !snapshotA || !snapshotB}
+								onclick={runComparison}
+							>
+								{#if comparing}
+									<RefreshCw size={13} class="animate-spin" />
+								{/if}
+								Compare snapshots
+							</button>
+							{#if compareError}
+								<div class="text-xs text-error-fg">{compareError}</div>
 							{/if}
-						</div>
-					</div>
-					<div class="border border-tertiary p-3 text-center">
-						<div class="text-xs text-fg-muted">Schema Changes</div>
-						<div
-							class={`mt-1 font-mono text-lg ${
-								comparison.schema_diff.length > 0 ? 'text-warning-fg' : 'text-fg-muted'
-							}`}
-						>
-							{comparison.schema_diff.length}
-						</div>
+							{#if !snapshotA || !snapshotB}
+								<div class="text-xs text-warning-fg">
+									Snapshot mapping missing for one or both builds.
+								</div>
+							{/if}
+						{/if}
 					</div>
 				</div>
-				{#if comparison.schema_diff.length > 0}
+			</div>
+
+			{#if comparison}
+				<div class="border border-tertiary">
+					<div class="grid gap-4 border-b border-tertiary p-4 md:grid-cols-3">
+						<div class="border border-tertiary p-3 text-center">
+							<div class="text-xs text-fg-muted">Row Count A</div>
+							<div class="mt-1 font-mono text-lg">{comparison.row_count_a}</div>
+						</div>
+						<div class="border border-tertiary p-3 text-center">
+							<div class="text-xs text-fg-muted">Row Count B</div>
+							<div class="mt-1 font-mono text-lg">{comparison.row_count_b}</div>
+						</div>
+						<div class="border border-tertiary p-3 text-center">
+							<div class="text-xs text-fg-muted">Row Count Delta</div>
+							<div class={`mt-1 font-mono text-lg ${rowDeltaClass(comparison.row_count_delta)}`}>
+								{formatDelta(comparison.row_count_delta)}
+							</div>
+						</div>
+					</div>
 					<div class="p-4">
 						<h4 class="mb-2 text-sm font-medium text-fg-secondary">Schema Changes</h4>
-						<div class="border border-tertiary">
-							<table class="w-full border-collapse text-sm">
-								<thead>
-									<tr class="bg-bg-tertiary">
-										<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
-											>Column</th
-										>
-										<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
-											>Change</th
-										>
-										<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
-											>Type A</th
-										>
-										<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
-											>Type B</th
-										>
-									</tr>
-								</thead>
-								<tbody>
-									{#each comparison.schema_diff as diff (diff.column)}
-										<tr>
-											<td class="border-b border-tertiary px-3 py-1.5 font-mono text-xs"
-												>{diff.column}</td
+						{#if comparison.schema_diff.length > 0}
+							<div class="border border-tertiary">
+								<table class="w-full border-collapse text-sm">
+									<thead>
+										<tr class="bg-bg-tertiary">
+											<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
+												>Column</th
 											>
-											<td class="border-b border-tertiary px-3 py-1.5">
-												{#if diff.status === 'added'}
-													<span class="inline-flex items-center gap-1 text-xs text-success-fg">
-														<Plus size={12} /> Added
-													</span>
-												{:else if diff.status === 'removed'}
-													<span class="inline-flex items-center gap-1 text-xs text-error-fg">
-														<Minus size={12} /> Removed
-													</span>
-												{:else}
-													<span class="inline-flex items-center gap-1 text-xs text-warning-fg">
-														<RefreshCw size={12} /> Changed
-													</span>
-												{/if}
-											</td>
-											<td
-												class="border-b border-tertiary px-3 py-1.5 font-mono text-xs text-fg-muted"
+											<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
+												>Change</th
 											>
-												{diff.type_a ?? '-'}
-											</td>
-											<td
-												class="border-b border-tertiary px-3 py-1.5 font-mono text-xs text-fg-muted"
+											<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
+												>Type A</th
 											>
-												{diff.type_b ?? '-'}
-											</td>
+											<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
+												>Type B</th
+											>
 										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
-					</div>
-				{/if}
-				{#if comparison.timing_diff.length > 0}
-					<div class="p-4">
-						<h4 class="mb-2 text-sm font-medium text-fg-secondary">Step Timing Comparison</h4>
-						<div class="border border-tertiary">
-							<table class="w-full border-collapse text-sm">
-								<thead>
-									<tr class="bg-bg-tertiary">
-										<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium">Step</th>
-										<th class="border-b border-tertiary px-3 py-1.5 text-right font-medium"
-											>Run A</th
-										>
-										<th class="border-b border-tertiary px-3 py-1.5 text-right font-medium"
-											>Run B</th
-										>
-										<th class="border-b border-tertiary px-3 py-1.5 text-right font-medium"
-											>Delta</th
-										>
-									</tr>
-								</thead>
-								<tbody>
-									{#each comparison.timing_diff as diff (diff.step)}
-										<tr>
-											<td
-												class="border-b border-tertiary px-3 py-1.5 font-mono text-xs"
-												title={diff.step}
-											>
-												{diff.step.length > 30 ? diff.step.slice(0, 30) + '...' : diff.step}
-											</td>
-											<td
-												class="border-b border-tertiary px-3 py-1.5 text-right font-mono text-xs text-fg-muted"
-											>
-												{diff.ms_a !== null ? formatDuration(diff.ms_a) : '-'}
-											</td>
-											<td
-												class="border-b border-tertiary px-3 py-1.5 text-right font-mono text-xs text-fg-muted"
-											>
-												{diff.ms_b !== null ? formatDuration(diff.ms_b) : '-'}
-											</td>
-											<td
-												class={`border-b border-tertiary px-3 py-1.5 text-right font-mono text-xs ${deltaClass(
-													diff.delta_ms
-												)}`}
-											>
-												{diff.delta_ms !== null ? formatDuration(Math.abs(diff.delta_ms)) : '-'}
-												{#if diff.delta_ms !== null}
-													<span class="text-fg-muted"
-														>{diff.delta_ms > 0 ? 'slower' : 'faster'}</span
-													>
-												{/if}
-												{#if diff.delta_pct !== null}
-													<span class="ml-1 text-fg-muted">{formatDeltaPct(diff.delta_pct)}</span>
-												{/if}
-											</td>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
-					</div>
-				{/if}
-			</div>
-		{/if}
-
-		{#if runA && runB}
-			<div class="border border-tertiary">
-				<div
-					class="flex items-center justify-between border-b border-tertiary bg-bg-tertiary px-4 py-2"
-				>
-					<div class="flex items-center gap-2 text-xs uppercase tracking-wide text-fg-muted">
-						<ArrowRightLeft size={12} /> Column mapping + dataset diff
-					</div>
-					<div class="text-xs text-fg-tertiary">
-						{runA.id.slice(0, 8)} ↔ {runB.id.slice(0, 8)}
-					</div>
-				</div>
-				<div class="grid gap-4 p-4 md:grid-cols-2">
-					<div class="border border-tertiary p-3">
-						<div class="mb-2 text-xs font-medium text-fg-muted">Run A schema</div>
-						{#if schemaA}
-							<div class="space-y-2 datasource-comparison-scroll max-h-80 overflow-y-auto">
-								{#each schemaA.columns as col (col.name)}
-									<div class="grid grid-cols-[1fr,1fr] gap-2 items-center">
-										<div class="text-xs font-mono text-fg-secondary">{col.name}</div>
-										{#if schemaB}
-											<ColumnDropdown
-												schema={schemaB}
-												value={mapping[col.name] ?? ''}
-												onChange={(val) => updateMapping(col.name, val)}
-												placeholder="Map to column..."
-											/>
-										{:else}
-											<div class="text-xs text-fg-tertiary">No target schema</div>
-										{/if}
-									</div>
-								{/each}
+									</thead>
+									<tbody>
+										{#each comparison.schema_diff as diff (diff.column)}
+											<tr>
+												<td class="border-b border-tertiary px-3 py-1.5 font-mono text-xs"
+													>{diff.column}</td
+												>
+												<td class="border-b border-tertiary px-3 py-1.5">
+													{#if diff.status === 'added'}
+														<span class="inline-flex items-center gap-1 text-xs text-success-fg">
+															<Plus size={12} /> Added
+														</span>
+													{:else if diff.status === 'removed'}
+														<span class="inline-flex items-center gap-1 text-xs text-error-fg">
+															<Minus size={12} /> Removed
+														</span>
+													{:else}
+														<span class="inline-flex items-center gap-1 text-xs text-warning-fg">
+															<RefreshCw size={12} /> Changed
+														</span>
+													{/if}
+												</td>
+												<td
+													class="border-b border-tertiary px-3 py-1.5 font-mono text-xs text-fg-muted"
+												>
+													{diff.type_a ?? '-'}
+												</td>
+												<td
+													class="border-b border-tertiary px-3 py-1.5 font-mono text-xs text-fg-muted"
+												>
+													{diff.type_b ?? '-'}
+												</td>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
 							</div>
 						{:else}
-							<p class="text-sm text-fg-tertiary">No schema captured for run A.</p>
-						{/if}
-					</div>
-					<div class="border border-tertiary p-3">
-						<div class="mb-2 text-xs font-medium text-fg-muted">Run B schema</div>
-						{#if schemaB}
 							<div
-								class="space-y-1 text-xs text-fg-secondary datasource-comparison-scroll max-h-80 overflow-y-auto"
+								class="border border-tertiary bg-bg-tertiary p-4 text-center text-sm text-fg-tertiary"
 							>
-								{#each schemaB.columns as col (col.name)}
-									<div class="flex items-center justify-between border-b border-tertiary py-1">
-										<span class="font-mono">{col.name}</span>
-										<span class="text-fg-muted">{col.dtype}</span>
-									</div>
-								{/each}
+								No schema changes detected
 							</div>
-						{:else}
-							<p class="text-sm text-fg-tertiary">No schema captured for run B.</p>
 						{/if}
 					</div>
-				</div>
-				<div class="grid gap-4 p-4 md:grid-cols-2">
-					<div class="border border-tertiary">
-						<div
-							class="border-b border-tertiary bg-bg-tertiary px-3 py-2 text-xs font-medium text-fg-muted"
-						>
-							Run A data
-						</div>
-						<div class="h-80 datasource-comparison-scroll">
-							<DataTable
-								columns={dataA?.columns ?? []}
-								data={dataA?.data ?? []}
-								columnTypes={dataA?.column_types ?? {}}
-								loading={previewQueryA.isLoading}
-								error={previewQueryA.error as Error | null}
-								fillContainer
-								showHeader
-								showPagination
-								pagination={{
-									page: pageA,
-									canPrev: canPrev(pageA),
-									canNext: canNext(dataA?.data?.length ?? 0),
-									onPrev: () => (pageA -= 1),
-									onNext: () => (pageA += 1)
-								}}
-							/>
+
+					<div class="p-4">
+						<h4 class="mb-2 text-sm font-medium text-fg-secondary">Column Statistics</h4>
+						<div class="border border-tertiary">
+							<div class="max-h-[500px] overflow-auto datasource-comparison-scroll">
+								<table class="w-full border-collapse text-sm">
+									<thead class="sticky top-0 z-10 bg-bg-tertiary shadow-sm">
+										<tr>
+											<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
+												>Column</th
+											>
+											<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
+												>Type</th
+											>
+											<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
+												>Null Count (A → B)</th
+											>
+											<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
+												>Unique Count (A → B)</th
+											>
+											<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
+												>Min (A → B)</th
+											>
+											<th class="border-b border-tertiary px-3 py-1.5 text-left font-medium"
+												>Max (A → B)</th
+											>
+										</tr>
+									</thead>
+									<tbody>
+										{#each combinedStats as stat (stat.column)}
+											<tr>
+												<td
+													class="border-b border-tertiary px-3 py-1.5 font-mono text-xs font-medium"
+												>
+													{stat.column}
+												</td>
+												<td
+													class="border-b border-tertiary px-3 py-1.5 font-mono text-xs text-fg-muted"
+												>
+													{stat.type}
+												</td>
+												<td class="border-b border-tertiary px-3 py-1.5 font-mono text-xs">
+													<div class="flex items-baseline gap-2">
+														<span class="text-fg-muted">{stat.null_a}</span>
+														<span class="text-fg-tertiary">→</span>
+														<span>{stat.null_b}</span>
+														{#if stat.null_delta !== null}
+															<span class="ml-1 text-[10px] {nullDeltaClass(stat.null_delta)}">
+																({formatDelta(stat.null_delta)})
+															</span>
+														{/if}
+													</div>
+												</td>
+												<td class="border-b border-tertiary px-3 py-1.5 font-mono text-xs">
+													<div class="flex items-baseline gap-2">
+														<span class="text-fg-muted">{stat.unique_a}</span>
+														<span class="text-fg-tertiary">→</span>
+														<span>{stat.unique_b}</span>
+														{#if stat.unique_delta !== null}
+															<span class="ml-1 text-[10px] {uniqueDeltaClass(stat.unique_delta)}">
+																({formatDelta(stat.unique_delta)})
+															</span>
+														{/if}
+													</div>
+												</td>
+												<td
+													class="border-b border-tertiary px-3 py-1.5 font-mono text-xs text-fg-muted"
+												>
+													{#if stat.min_a === stat.min_b}
+														{stat.min_b}
+													{:else}
+														<span class="text-fg-tertiary">{stat.min_a}</span>
+														<span class="mx-1">→</span>
+														<span>{stat.min_b}</span>
+													{/if}
+												</td>
+												<td
+													class="border-b border-tertiary px-3 py-1.5 font-mono text-xs text-fg-muted"
+												>
+													{#if stat.max_a === stat.max_b}
+														{stat.max_b}
+													{:else}
+														<span class="text-fg-tertiary">{stat.max_a}</span>
+														<span class="mx-1">→</span>
+														<span>{stat.max_b}</span>
+													{/if}
+												</td>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
 						</div>
 					</div>
-					<div class="border border-tertiary">
-						<div
-							class="border-b border-tertiary bg-bg-tertiary px-3 py-2 text-xs font-medium text-fg-muted"
-						>
-							Run B data
+					<div class="grid gap-4 p-4 md:grid-cols-2">
+						<div class="border border-tertiary">
+							<div
+								class="border-b border-tertiary bg-bg-tertiary px-3 py-2 text-xs font-medium text-fg-muted"
+							>
+								Snapshot A preview
+							</div>
+							<div class="h-80 datasource-comparison-scroll">
+								<DataTable
+									columns={previewColumns(comparison.preview_a)}
+									data={previewData(comparison.preview_a)}
+									columnTypes={previewTypes(comparison.preview_a)}
+									fillContainer
+									showHeader
+								/>
+							</div>
 						</div>
-						<div class="h-80 datasource-comparison-scroll">
-							<DataTable
-								columns={dataB?.columns ?? []}
-								data={dataB?.data ?? []}
-								columnTypes={dataB?.column_types ?? {}}
-								loading={previewQueryB.isLoading}
-								error={previewQueryB.error as Error | null}
-								fillContainer
-								showHeader
-								showPagination
-								pagination={{
-									page: pageB,
-									canPrev: canPrev(pageB),
-									canNext: canNext(dataB?.data?.length ?? 0),
-									onPrev: () => (pageB -= 1),
-									onNext: () => (pageB += 1)
-								}}
-							/>
-						</div>
-					</div>
-				</div>
-				<div class="p-4">
-					<div class="border border-tertiary">
-						<div
-							class="border-b border-tertiary bg-bg-tertiary px-3 py-2 text-xs font-medium text-fg-muted"
-						>
-							Row-level diff (mapped columns)
-						</div>
-						<div class="h-80 datasource-comparison-scroll">
-							<DataTable
-								columns={['_row', ...diffColumnNames]}
-								data={diffRows}
-								columnTypes={Object.fromEntries(diffColumnTypes.map((col) => [col.name, col.type]))}
-								fillContainer
-								showHeader
-								showPagination
-								pagination={{
-									page: 1,
-									canPrev: false,
-									canNext: false,
-									onPrev: () => {},
-									onNext: () => {}
-								}}
-							/>
+						<div class="border border-tertiary">
+							<div
+								class="border-b border-tertiary bg-bg-tertiary px-3 py-2 text-xs font-medium text-fg-muted"
+							>
+								Snapshot B preview
+							</div>
+							<div class="h-80 datasource-comparison-scroll">
+								<DataTable
+									columns={previewColumns(comparison.preview_b)}
+									data={previewData(comparison.preview_b)}
+									columnTypes={previewTypes(comparison.preview_b)}
+									fillContainer
+									showHeader
+								/>
+							</div>
 						</div>
 					</div>
 				</div>
-			</div>
-		{:else if selected.size > 0}
-			<div class="border border-tertiary p-4 text-sm text-fg-tertiary">
-				Select two builds to enable dataset comparison.
-			</div>
-		{/if}
-	</div>
+			{:else if selected.size > 0}
+				<div class="border border-tertiary p-4 text-sm text-fg-tertiary">
+					Select two builds to enable snapshot comparison.
+				</div>
+			{/if}
+		</div>
+	{/if}
 </div>

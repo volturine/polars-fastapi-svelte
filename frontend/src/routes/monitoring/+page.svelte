@@ -1,7 +1,7 @@
 <script lang="ts">
 	import BuildsManager from '$lib/components/common/BuildsManager.svelte';
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
-	import HealthChecksManager from '$lib/components/datasources/HealthChecksManager.svelte';
+	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 	import { Search } from 'lucide-svelte';
 
 	const tabs = [
@@ -14,6 +14,7 @@
 
 	let activeTab = $state<TabKey>('builds');
 	let search = $state('');
+	let showPreviews = $state(true);
 </script>
 
 <div class="mx-auto max-w-300 px-6 py-7">
@@ -46,7 +47,9 @@
 	</div>
 
 	{#if activeTab === 'builds'}
-		<BuildsManager compact searchQuery={search} />
+		<div class="mt-4">
+			<BuildsManager searchQuery={search} {showPreviews} />
+		</div>
 	{:else if activeTab === 'schedules'}
 		<div class="mt-4">
 			<ScheduleManager searchQuery={search} />

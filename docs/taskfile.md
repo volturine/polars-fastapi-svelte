@@ -4,6 +4,10 @@
 
 - [x] Document OpenCode subagents and skills lists in AGENTS.md
 - [x] Follow-up: tweak OpenCode subagents note, fix Docs agent label, trim slash commands
+- [x] Fix snapshot compare unique_count to ignore nulls
+- [x] Update monitoring/builds/datasources preview toggles + snapshot mapping reuse
+- [x] Datasources runs preview toggle + comparison toggle + bugs.md restore
+- [x] Update datasources compare layout + snapshot filtering + monitoring toggle placement
 
 ### Critical
 
@@ -66,6 +70,11 @@
 
 - [x] Monitoring page tabs + compact health checks reuse
 - [x] Monitoring page global search across builds/schedules/health checks
+
+### Redesign
+
+- [x] Iceberg snapshot comparison endpoint + build snapshot metadata + UI refresh
+- [x] Rework snapshot comparison stats into unified table with deltas
 
 - [x] 41. Remove hardcoded CORS IPs
 - [x] 42. Disable public IDB debug by default

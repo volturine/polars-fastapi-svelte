@@ -11,7 +11,7 @@
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
 	import { buildAnalysisPipelinePayload } from '$lib/utils/analysis-pipeline';
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
-	import HealthChecksManager from '$lib/components/datasources/HealthChecksManager.svelte';
+	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 	import {
 		Bell,
 		CalendarClock,
@@ -350,20 +350,20 @@
 				<div>
 					<button
 						type="button"
-						class="flex w-full cursor-pointer items-center gap-2 border-none bg-transparent p-0 text-xs text-fg-tertiary hover:text-fg-primary"
+						class="flex h-6 w-full cursor-pointer items-center justify-between border-none bg-transparent p-0 text-xs text-fg-tertiary hover:text-fg-primary"
 						onclick={() => (notifyOpen = !notifyOpen)}
 					>
-						{#if notifyOpen}
-							<ChevronDown size={12} />
-						{:else}
-							<ChevronRight size={12} />
-						{/if}
-						<Bell size={12} />
-						<span>Build Notification</span>
+						<span class="flex items-center gap-2">
+							{#if notifyOpen}
+								<ChevronDown size={12} />
+							{:else}
+								<ChevronRight size={12} />
+							{/if}
+							<Bell size={12} />
+							<span>Build Notification</span>
+						</span>
 						{#if notifyConfig.enabled}
-							<span
-								class="ml-auto rounded-sm bg-accent-bg px-1.5 py-0.5 text-[10px] text-accent-primary"
-							>
+							<span class="rounded-sm bg-accent-bg px-1.5 py-0.5 text-[10px] text-accent-primary">
 								{selectedCount}/{activeSubscribers.length}
 							</span>
 						{/if}
@@ -452,19 +452,21 @@
 				<div>
 					<button
 						type="button"
-						class="flex w-full cursor-pointer items-center gap-2 border-none bg-transparent p-0 text-xs text-fg-tertiary hover:text-fg-primary"
+						class="flex h-6 w-full cursor-pointer items-center justify-between border-none bg-transparent p-0 text-xs text-fg-tertiary hover:text-fg-primary"
 						onclick={() => (healthOpen = !healthOpen)}
 					>
-						{#if healthOpen}
-							<ChevronDown size={12} />
-						{:else}
-							<ChevronRight size={12} />
-						{/if}
-						<HeartPulse size={12} />
-						<span>Health Checks</span>
+						<span class="flex items-center gap-2">
+							{#if healthOpen}
+								<ChevronDown size={12} />
+							{:else}
+								<ChevronRight size={12} />
+							{/if}
+							<HeartPulse size={12} />
+							<span>Health Checks</span>
+						</span>
 						{#if healthCount > 0}
 							<span
-								class="ml-auto rounded-sm px-1.5 py-0.5 text-[10px] {healthPassed === true
+								class="rounded-sm px-1.5 py-0.5 text-[10px] {healthPassed === true
 									? 'bg-success-bg text-success-fg'
 									: healthPassed === false
 										? 'bg-error-bg text-error-fg'
@@ -494,20 +496,20 @@
 				<div>
 					<button
 						type="button"
-						class="flex w-full cursor-pointer items-center gap-2 border-none bg-transparent p-0 text-xs text-fg-tertiary hover:text-fg-primary"
+						class="flex h-6 w-full cursor-pointer items-center justify-between border-none bg-transparent p-0 text-xs text-fg-tertiary hover:text-fg-primary"
 						onclick={() => (scheduleOpen = !scheduleOpen)}
 					>
-						{#if scheduleOpen}
-							<ChevronDown size={12} />
-						{:else}
-							<ChevronRight size={12} />
-						{/if}
-						<CalendarClock size={12} />
-						<span>Schedules</span>
+						<span class="flex items-center gap-2">
+							{#if scheduleOpen}
+								<ChevronDown size={12} />
+							{:else}
+								<ChevronRight size={12} />
+							{/if}
+							<CalendarClock size={12} />
+							<span>Schedules</span>
+						</span>
 						{#if scheduleCount > 0}
-							<span
-								class="ml-auto rounded-sm bg-accent-bg px-1.5 py-0.5 text-[10px] text-accent-primary"
-							>
+							<span class="rounded-sm bg-accent-bg px-1.5 py-0.5 text-[10px] text-accent-primary">
 								{enabledSchedules}/{scheduleCount}
 							</span>
 						{/if}

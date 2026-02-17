@@ -49,6 +49,7 @@
 	let showConfig = $state<string | null>(page.url.searchParams.get('id'));
 	let deletingId = $state<string | null>(null);
 	let searchQuery = $state('');
+	let showComparison = $state(false);
 
 	const datasources = $derived(query.data ?? []);
 	const filteredDatasources = $derived(
@@ -58,13 +59,12 @@
 	);
 	const selectedDatasource = $derived(datasources.find((d) => d.id === selectedId) ?? null);
 	let snapshotConfig = $state<Record<string, unknown> | null>(null);
-	let detailTab = $state<'preview' | 'compare'>('preview');
 
 	function selectDatasource(id: string | null) {
 		selectedId = id;
 		showConfig = id;
 		snapshotConfig = null;
-		detailTab = 'preview';
+		showComparison = false;
 		const url = id ? `/datasources?id=${id}` : '/datasources';
 		goto(resolve(url as '/'), { replaceState: true });
 	}
@@ -224,47 +224,45 @@
 				>
 					<div class="flex-1 min-w-0">
 						{#if selectedDatasource.source_type === 'iceberg'}
-							<SnapshotPicker
-								datasourceId={selectedDatasource.id}
-								datasourceConfig={snapshotConfig ?? selectedDatasource.config}
-								label="Time Travel"
-								showDelete
-								onConfigChange={handleSnapshotConfigChange}
-							/>
+							<div class="flex items-center gap-2">
+								<div class="flex-1 min-w-0">
+									<SnapshotPicker
+										datasourceId={selectedDatasource.id}
+										datasourceConfig={snapshotConfig ?? selectedDatasource.config}
+										label="Time Travel"
+										showDelete
+										showBuildPreviews
+										onConfigChange={handleSnapshotConfigChange}
+									/>
+								</div>
+								<button
+									class="btn-ghost btn-sm border border-tertiary text-xs"
+									onclick={() => (showComparison = !showComparison)}
+									aria-pressed={showComparison}
+								>
+									{#if showComparison}
+										Hide comparison
+									{:else}
+										Compare builds
+									{/if}
+								</button>
+							</div>
 						{:else}
 							<div class="text-xs text-fg-tertiary">
 								Time travel is available for Iceberg datasources.
 							</div>
 						{/if}
 					</div>
-					<div class="flex items-center gap-1 shrink-0">
-						<button
-							class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 bg-transparent border border-tertiary hover:bg-tertiary"
-							class:text-accent-primary={detailTab === 'preview'}
-							onclick={() => (detailTab = 'preview')}
-						>
-							Preview
-						</button>
-						<button
-							class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 bg-transparent border border-tertiary hover:bg-tertiary"
-							class:text-accent-primary={detailTab === 'compare'}
-							onclick={() => (detailTab = 'compare')}
-						>
-							Compare builds
-						</button>
-					</div>
 				</div>
 				<div class="flex-1 min-h-0 overflow-hidden">
-					{#if detailTab === 'preview'}
+					{#if showComparison}
+						<BuildComparisonPanel datasource={selectedDatasource} />
+					{:else}
 						<DatasourcePreview
 							datasourceId={selectedDatasource.id}
 							datasource={selectedDatasource}
 							datasourceConfig={snapshotConfig ?? selectedDatasource.config}
 						/>
-					{:else}
-						<div class="h-full overflow-auto datasource-comparison-panel">
-							<BuildComparisonPanel datasource={selectedDatasource} />
-						</div>
 					{/if}
 				</div>
 			</div>

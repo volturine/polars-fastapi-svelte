@@ -84,110 +84,183 @@ def list_results_for_check(session: Session, healthcheck_id: str, limit: int = 1
     return [HealthCheckResultResponse.model_validate(r) for r in results.scalars().all()]
 
 
-def _check_column_null_percentage(lf: pl.LazyFrame, column: str, threshold: float) -> tuple[bool, str]:
-    df = lf.select(pl.col(column)).collect()
-    total = df.height
-    if total == 0:
-        return True, 'No rows to evaluate'
-    nulls = df[column].null_count()
-    percentage = (nulls / total) * 100
-    passed = percentage <= threshold
-    return passed, f'Nulls: {percentage:.1f}% (threshold: {threshold}%)'
+def _build_expressions(checks: list[HealthCheck], schema_names: set[str]) -> tuple[list[pl.Expr], list[HealthCheck]]:
+    """Build Polars aggregation expressions for all valid checks.
+
+    Returns (expressions, valid_checks).  Checks whose referenced column is
+    missing from the schema are excluded so the caller can create immediate-
+    failure results for them.
+    """
+    exprs: list[pl.Expr] = []
+    valid: list[HealthCheck] = []
+
+    for check in checks:
+        config = check.config
+        prefix = check.id
+
+        if check.check_type == 'row_count':
+            exprs.append(pl.len().alias(f'{prefix}__count'))
+            valid.append(check)
+
+        elif check.check_type == 'column_null':
+            col = str(config.get('column', ''))
+            if col not in schema_names:
+                continue
+            pct = pl.col(col).null_count().cast(pl.Float64) / pl.len().cast(pl.Float64) * 100.0
+            exprs.append(pct.alias(f'{prefix}__null_pct'))
+            valid.append(check)
+
+        elif check.check_type == 'column_unique':
+            col = str(config.get('column', ''))
+            if col not in schema_names:
+                continue
+            exprs.append(pl.col(col).n_unique().alias(f'{prefix}__unique'))
+            valid.append(check)
+
+        elif check.check_type == 'column_range':
+            col = str(config.get('column', ''))
+            if col not in schema_names:
+                continue
+            exprs.append(pl.col(col).min().alias(f'{prefix}__min'))
+            exprs.append(pl.col(col).max().alias(f'{prefix}__max'))
+            valid.append(check)
+
+    return exprs, valid
 
 
-def _check_column_unique(lf: pl.LazyFrame, column: str, expected_unique: int | None) -> tuple[bool, str]:
-    df = lf.select(pl.col(column)).collect()
-    unique_count = df[column].n_unique()
-    if expected_unique is None:
-        return True, f'Unique values: {unique_count}'
-    passed = unique_count == expected_unique
-    return passed, f'Unique: {unique_count} (expected: {expected_unique})'
+def _evaluate_row_count(check: HealthCheck, row: pl.DataFrame) -> tuple[bool, str, dict]:
+    config = check.config
+    count: int = row[f'{check.id}__count'][0]
+    min_rows = config.get('min_rows')
+    max_rows = config.get('max_rows')
 
-
-def _check_column_range(
-    lf: pl.LazyFrame,
-    column: str,
-    min_value: float | None,
-    max_value: float | None,
-) -> tuple[bool, str]:
-    df = lf.select(pl.col(column)).collect()
-    if df.height == 0:
-        return True, 'No rows to evaluate'
-    col_min = df[column].min()
-    col_max = df[column].max()
     passed = True
     messages: list[str] = []
-    if min_value is not None and col_min < min_value:  # type: ignore[operator]
-        passed = False
-        messages.append(f'Min {col_min!r} < {min_value}')
-    if max_value is not None and col_max > max_value:  # type: ignore[operator]
-        passed = False
-        messages.append(f'Max {col_max!r} > {max_value}')
-    if messages:
-        return passed, '; '.join(messages)
-    return True, f'Range: [{col_min!r}, {col_max!r}]'
-
-
-def _check_row_count(lf: pl.LazyFrame, min_rows: int | None, max_rows: int | None) -> tuple[bool, str]:
-    count = lf.collect().height
-    passed = True
-    messages: list[str] = []
-    if min_rows is not None and count < min_rows:
+    if min_rows is not None and count < int(min_rows):
         passed = False
         messages.append(f'Too few: {count} < {min_rows}')
-    if max_rows is not None and count > max_rows:
+    if max_rows is not None and count > int(max_rows):
         passed = False
         messages.append(f'Too many: {count} > {max_rows}')
-    if messages:
-        return passed, '; '.join(messages)
-    return True, f'Row count: {count}'
+
+    message = '; '.join(messages) if messages else f'Row count: {count}'
+    details = {**config, 'actual_count': count}
+    return passed, message, details
 
 
-def run_healthcheck(session: Session, check: HealthCheck, lf: pl.LazyFrame) -> HealthCheckResult:
+def _evaluate_column_null(check: HealthCheck, row: pl.DataFrame) -> tuple[bool, str, dict]:
     config = check.config
-    if check.check_type == 'column_null':
-        passed, message = _check_column_null_percentage(
-            lf,
-            str(config.get('column')),
-            float(config.get('threshold', 0)),
-        )
-    elif check.check_type == 'column_unique':
-        expected_unique = config.get('expected_unique')
-        expected = int(expected_unique) if expected_unique is not None else None
-        passed, message = _check_column_unique(
-            lf,
-            str(config.get('column')),
-            expected,
-        )
-    elif check.check_type == 'column_range':
-        min_value = config.get('min')
-        max_value = config.get('max')
-        min_val = float(min_value) if min_value is not None else None
-        max_val = float(max_value) if max_value is not None else None
-        passed, message = _check_column_range(
-            lf,
-            str(config.get('column')),
-            min_val,
-            max_val,
-        )
-    elif check.check_type == 'row_count':
-        min_rows = config.get('min_rows')
-        max_rows = config.get('max_rows')
-        min_val = int(min_rows) if min_rows is not None else None
-        max_val = int(max_rows) if max_rows is not None else None
-        passed, message = _check_row_count(lf, min_val, max_val)
-    else:
-        raise ValueError(f'Unknown check type: {check.check_type}')
+    pct: float = row[f'{check.id}__null_pct'][0]
+    threshold = float(config.get('threshold', 0))
 
-    result = HealthCheckResult(
-        id=str(uuid.uuid4()),
-        healthcheck_id=check.id,
-        passed=passed,
-        message=message,
-        details=config,
-        checked_at=datetime.now(UTC),
-    )
-    session.add(result)
+    passed = pct <= threshold
+    message = f'Nulls: {pct:.1f}% (threshold: {threshold}%)'
+    details = {**config, 'actual_percentage': round(pct, 2)}
+    return passed, message, details
+
+
+def _evaluate_column_unique(check: HealthCheck, row: pl.DataFrame) -> tuple[bool, str, dict]:
+    config = check.config
+    unique: int = row[f'{check.id}__unique'][0]
+    expected_raw = config.get('expected_unique')
+    expected = int(expected_raw) if expected_raw is not None else None
+
+    if expected is None:
+        passed = True
+        message = f'Unique values: {unique}'
+    else:
+        passed = unique == expected
+        message = f'Unique: {unique} (expected: {expected})'
+
+    details = {**config, 'actual_unique': unique}
+    return passed, message, details
+
+
+def _evaluate_column_range(check: HealthCheck, row: pl.DataFrame) -> tuple[bool, str, dict]:
+    config = check.config
+    col_min = row[f'{check.id}__min'][0]
+    col_max = row[f'{check.id}__max'][0]
+    min_value = config.get('min')
+    max_value = config.get('max')
+
+    passed = True
+    messages: list[str] = []
+    if min_value is not None and col_min < float(min_value):
+        passed = False
+        messages.append(f'Min {col_min!r} < {min_value}')
+    if max_value is not None and col_max > float(max_value):
+        passed = False
+        messages.append(f'Max {col_max!r} > {max_value}')
+
+    message = '; '.join(messages) if messages else f'Range: [{col_min!r}, {col_max!r}]'
+    details = {**config, 'actual_min': col_min, 'actual_max': col_max}
+    return passed, message, details
+
+
+_EVALUATORS: dict[str, object] = {
+    'row_count': _evaluate_row_count,
+    'column_null': _evaluate_column_null,
+    'column_unique': _evaluate_column_unique,
+    'column_range': _evaluate_column_range,
+}
+
+
+def run_healthchecks(
+    session: Session,
+    checks: list[HealthCheck],
+    lf: pl.LazyFrame,
+) -> list[HealthCheckResult]:
+    """Run all health checks in a single LazyFrame evaluation.
+
+    1. Validate referenced columns against the LazyFrame schema.
+    2. Build one combined set of Polars aggregation expressions.
+    3. Collect once — single materialisation for all checks.
+    4. Evaluate each check against the collected scalars.
+    5. Persist and return ``HealthCheckResult`` rows.
+    """
+    if not checks:
+        return []
+
+    now = datetime.now(UTC)
+    schema_names = set(lf.collect_schema().names())
+    exprs, valid_checks = _build_expressions(checks, schema_names)
+
+    valid_ids = {c.id for c in valid_checks}
+    results: list[HealthCheckResult] = []
+    for check in checks:
+        if check.id in valid_ids:
+            continue
+        col = check.config.get('column', '')
+        result = HealthCheckResult(
+            id=str(uuid.uuid4()),
+            healthcheck_id=check.id,
+            passed=False,
+            message=f'Column "{col}" not found in dataset',
+            details={**check.config, 'error': 'column_not_found'},
+            checked_at=now,
+        )
+        session.add(result)
+        results.append(result)
+
+    if exprs:
+        collected = lf.select(exprs).collect()
+        for check in valid_checks:
+            evaluator = _EVALUATORS.get(check.check_type)
+            if not evaluator:
+                passed, message, details = False, f'Unknown check type: {check.check_type}', check.config
+            else:
+                passed, message, details = evaluator(check, collected)  # type: ignore[operator]
+
+            result = HealthCheckResult(
+                id=str(uuid.uuid4()),
+                healthcheck_id=check.id,
+                passed=passed,
+                message=message,
+                details=details,
+                checked_at=now,
+            )
+            session.add(result)
+            results.append(result)
+
     session.commit()
-    session.refresh(result)
-    return result
+    return results

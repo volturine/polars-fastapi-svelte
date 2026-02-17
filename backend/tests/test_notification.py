@@ -671,6 +671,8 @@ class TestSendPipelineNotifications:
                 },
             )
         mock_svc.send_telegram.assert_called_once()
+        message = mock_svc.send_telegram.call_args.kwargs['message']
+        assert 'Status: success' in message
 
     def test_output_notification_telegram_excludes_subscribers(self):
         with (

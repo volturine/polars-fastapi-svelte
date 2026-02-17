@@ -610,33 +610,6 @@ def _extract_schema(datasource: DataSource, sheet_name: str | None = None) -> Sc
             details={'datasource_id': datasource.id},
         )
 
-    if datasource.source_type == 'file':
-        config = {
-            'source_type': datasource.source_type,
-            **datasource.config,
-        }
-        if sheet_name:
-            config = {**config, 'sheet_name': sheet_name}
-        lazy = load_datasource(config)
-        schema = lazy.collect_schema()
-        row_count = lazy.select(pl.len()).collect().item()
-        sheet_names = None
-
-        # Get first non-null value for each column
-        sample_values = _get_first_non_null_samples(lazy)
-
-        columns = [
-            ColumnSchema(
-                name=name,
-                dtype=str(dtype),
-                nullable=True,
-                sample_value=sample_values.get(name),
-            )
-            for name, dtype in schema.items()
-        ]
-
-        return SchemaInfo(columns=columns, row_count=row_count, sheet_names=sheet_names)
-
     if datasource.source_type == 'database':
         connection_string = datasource.config['connection_string']
         query = datasource.config['query']
@@ -665,29 +638,33 @@ def _extract_schema(datasource: DataSource, sheet_name: str | None = None) -> Sc
 
         return SchemaInfo(columns=columns, row_count=row_count)
 
+    if datasource.source_type == 'file':
+        config = {
+            'source_type': datasource.source_type,
+            **datasource.config,
+        }
+        if sheet_name:
+            config = {**config, 'sheet_name': sheet_name}
+        try:
+            lazy = load_datasource(config)
+        except Exception as e:
+            raise DataSourceConnectionError(
+                'Failed to load file datasource',
+                details={'datasource_id': datasource.id, 'source_type': datasource.source_type},
+            ) from e
+
     if datasource.source_type == 'duckdb':
         config = {
             'source_type': datasource.source_type,
             **datasource.config,
         }
-        lazy = load_datasource(config)
-        schema = lazy.collect_schema()
-        row_count = lazy.select(pl.len()).collect().item()
-
-        # Get first non-null value for each column
-        sample_values = _get_first_non_null_samples(lazy)
-
-        columns = [
-            ColumnSchema(
-                name=name,
-                dtype=str(dtype),
-                nullable=True,
-                sample_value=sample_values.get(name),
-            )
-            for name, dtype in schema.items()
-        ]
-
-        return SchemaInfo(columns=columns, row_count=row_count)
+        try:
+            lazy = load_datasource(config)
+        except Exception as e:
+            raise DataSourceConnectionError(
+                'Failed to load DuckDB datasource',
+                details={'datasource_id': datasource.id, 'source_type': datasource.source_type},
+            ) from e
 
     if datasource.source_type == 'iceberg':
         config = {
@@ -698,29 +675,28 @@ def _extract_schema(datasource: DataSource, sheet_name: str | None = None) -> Sc
             lazy = load_datasource(config)
         except Exception as e:
             raise DataSourceConnectionError(
-                'Failed to load iceberg datasource',
+                'Failed to load Iceberg datasource',
                 details={'datasource_id': datasource.id, 'source_type': datasource.source_type},
             ) from e
-        schema = lazy.collect_schema()
-        row_count = lazy.select(pl.len()).collect().item()
 
-        sample_values = _get_first_non_null_samples(lazy)
+    schema = lazy.collect_schema()
+    row_count = lazy.select(pl.len()).collect().item()
+    sheet_names = None
 
-        columns = [
-            ColumnSchema(
-                name=name,
-                dtype=str(dtype),
-                nullable=True,
-                sample_value=sample_values.get(name),
-            )
-            for name, dtype in schema.items()
-        ]
-        return SchemaInfo(columns=columns, row_count=row_count)
+    # Get first non-null value for each column
+    sample_values = _get_first_non_null_samples(lazy)
 
-    raise DataSourceValidationError(
-        f'Schema extraction not supported for type: {datasource.source_type}',
-        details={'source_type': datasource.source_type},
-    )
+    columns = [
+        ColumnSchema(
+            name=name,
+            dtype=str(dtype),
+            nullable=True,
+            sample_value=sample_values.get(name),
+        )
+        for name, dtype in schema.items()
+    ]
+
+    return SchemaInfo(columns=columns, row_count=row_count, sheet_names=sheet_names)
 
 
 def list_data_files(path: str | None) -> FileListResponse:

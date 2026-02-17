@@ -412,6 +412,7 @@ def configure_logging() -> IcebergLogWriter:
         level=level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     )
+    logging.getLogger('httpx').setLevel(logging.WARNING)
 
     _writer = IcebergLogWriter(
         base_path=str(settings.log_iceberg_path),

@@ -90,9 +90,10 @@ def build_analysis_from_payload(
     request: schemas.BuildRequest,
     session: Session = Depends(get_db),
 ):
-    pipeline = request.analysis_pipeline.model_dump(mode='json')
-    if isinstance(pipeline, dict):
-        pipeline = {**pipeline, 'tab_id': request.tab_id}
+    pipeline = request.analysis_pipeline.model_dump(mode='json') if request.analysis_pipeline else None
+    if not isinstance(pipeline, dict):
+        raise ValueError('analysis_pipeline is required')
+    pipeline = {**pipeline, 'tab_id': request.tab_id}
     result = service.run_analysis_build_from_payload(session, pipeline)
     return schemas.BuildResponse(**result)
 

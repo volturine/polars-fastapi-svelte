@@ -16,18 +16,105 @@ from core.config import settings
 from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError, PipelineExecutionError
 from modules.analysis.models import Analysis
 from modules.compute.core.exports import get_export_format
-from modules.compute.engine import PolarsComputeEngine
 from modules.compute.manager import get_manager
 from modules.compute.operations.datasource import resolve_iceberg_metadata_path
 from modules.compute.utils import apply_pipeline_steps, await_engine_result, find_step_index, resolve_applied_target
 from modules.datasource.models import DataSource
 from modules.engine_runs import service as engine_run_service
 from modules.healthcheck import service as healthcheck_service
-from modules.healthcheck.models import HealthCheck
+from modules.healthcheck.models import HealthCheck, HealthCheckResult
 from modules.notification.service import notification_service, render_template
 from modules.udf.models import Udf
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_build_status(
+    hc_results: list[HealthCheckResult],
+    checks: list[HealthCheck] | None = None,
+) -> tuple[str, str | None, list[dict] | None]:
+    if not hc_results:
+        return 'success', None, None
+
+    name_map: dict[str, str] = {}
+    if checks:
+        name_map = {c.id: c.name for c in checks}
+
+    total = len(hc_results)
+    failed = [r for r in hc_results if not r.passed]
+
+    if not failed:
+        return 'success', f'{total}/{total} passed', None
+
+    details = [
+        {
+            'name': name_map.get(r.healthcheck_id, r.healthcheck_id),
+            'passed': r.passed,
+            'message': r.message,
+        }
+        for r in hc_results
+    ]
+    return 'warning', f'{len(failed)}/{total} failed', details
+
+
+def _build_subscriber_message(context: dict[str, object]) -> str:
+    status = str(context.get('status', 'unknown'))
+    analysis_name = str(context.get('analysis_name', ''))
+    row_count = str(context.get('row_count', ''))
+    duration = str(context.get('duration_ms', ''))
+    hc_summary = context.get('healthcheck_summary')
+    hc_details = context.get('healthcheck_details')
+
+    if status == 'warning':
+        msg = f'Build complete: {analysis_name}\nStatus: built successfully, health checks failed'
+    else:
+        msg = f'Build complete: {analysis_name}\nStatus: {status}'
+
+    if hc_summary:
+        msg += f'\nHealth checks: {hc_summary}'
+
+    msg += f'\nRows: {row_count}\nDuration: {duration}ms'
+
+    max_len = 3800
+    if len(msg) <= max_len:
+        return msg
+
+    hc_tail = ''
+    if isinstance(hc_details, list):
+        lines = []
+        for detail in hc_details:
+            icon = '\u2713' if detail.get('passed') else '\u2717'
+            name = detail.get('name', '?')
+            message = detail.get('message', '')
+            lines.append(f'  {icon} {name}: {message} ')
+        hc_tail = '\n'.join(lines)
+
+    if not hc_tail:
+        return msg[:max_len] + '\n…(truncated)'
+
+    header = msg
+    footer = f'\nHealth check details:\n{hc_tail}'
+    combined = header + footer
+    if len(combined) <= max_len:
+        return combined
+
+    available = max_len - len(header) - len('\nHealth check details:\n') - len('\n…(truncated)')
+    if available <= 0:
+        return header[:max_len] + '\n…(truncated)'
+    trimmed = hc_tail[:available]
+    return f'{header}\nHealth check details:\n{trimmed}\n…(truncated)'
+
+
+def _load_healthcheck_lazy(output_path: str, export_format: str) -> pl.LazyFrame | None:
+    if export_format == 'parquet':
+        return pl.scan_parquet(output_path)
+    if export_format == 'csv':
+        return pl.scan_csv(output_path)
+    if export_format == 'ndjson':
+        return pl.scan_ndjson(output_path)
+    if export_format == 'json':
+        return pl.read_json(output_path).lazy()
+    return None
 
 
 def _send_pipeline_notifications(
@@ -101,16 +188,7 @@ def _send_pipeline_notifications(
             if excluded:
                 pairs = [(cid, token) for cid, token in pairs if cid not in excluded]
             if pairs:
-                if output_notification and output_notification.get('method') == 'telegram':
-                    subject = render_template(subject_template, context)
-                    body = render_template(body_template, context)
-                    msg = f'{subject}\n\n{body}' if body else subject
-                else:
-                    status = str(context.get('status', 'unknown'))
-                    analysis_name = str(context.get('analysis_name', ''))
-                    row_count = str(context.get('row_count', ''))
-                    duration = str(context.get('duration_ms', ''))
-                    msg = f'Build complete: {analysis_name}\nStatus: {status}\nRows: {row_count}\nDuration: {duration}ms'
+                msg = _build_subscriber_message(context)
                 for cid, token in pairs:
                     if not token:
                         continue
@@ -763,22 +841,30 @@ def export_data(
                 data=data,
                 file_size_bytes=os.path.getsize(output_path),
             )
+            hc_results: list[HealthCheckResult] = []
+            hc_checks: list[HealthCheck] = []
+            hc_datasource_id = datasource_id
+            if destination == 'datasource' and output_datasource_id:
+                hc_datasource_id = str(output_datasource_id)
             if destination != 'download':
-                result = session.execute(select(HealthCheck).where(HealthCheck.datasource_id == datasource_id))  # type: ignore[arg-type]
-                checks = result.scalars().all()
-                checks = [check for check in checks if check.enabled]
-                if checks:
-                    lf = PolarsComputeEngine.build_pipeline(
-                        config,
-                        export_steps,
-                        f'healthcheck-{datasource_id}',
-                        additional_datasources,
-                    )
-                    for check in checks:
-                        healthcheck_service.run_healthcheck(session, check, lf)
+                db_result = session.execute(
+                    select(HealthCheck).where(HealthCheck.datasource_id == hc_datasource_id)  # type: ignore[arg-type]
+                )
+                hc_checks = [c for c in db_result.scalars().all() if c.enabled]
+                logger.info(f'Health checks: found {len(hc_checks)} enabled for datasource {hc_datasource_id}')
+                if hc_checks:
+                    try:
+                        hc_lf = _load_healthcheck_lazy(tmp_output, actual_format)
+                        if hc_lf is None:
+                            raise ValueError(f'Unsupported healthcheck export format: {actual_format}')
+                        hc_results = healthcheck_service.run_healthchecks(session, hc_checks, hc_lf)
+                        failed_count = sum(1 for r in hc_results if not r.passed)
+                        logger.info(f'Health checks: {len(hc_results)} evaluated, {failed_count} failed')
+                    except Exception:
+                        logger.exception('Health check evaluation failed')
 
-            # Send notifications for notification steps in the pipeline
-            # and output node notification (build-status alerts)
+            status, hc_summary, hc_details = _resolve_build_status(hc_results, hc_checks)
+
             analysis_name = ''
             if run_analysis_id:
                 analysis_obj = session.get(Analysis, run_analysis_id)
@@ -798,12 +884,14 @@ def export_data(
                 pipeline_steps=apply_pipeline_steps(export_steps),
                 context={
                     'analysis_name': analysis_name,
-                    'status': 'success',
+                    'status': status,
                     'duration_ms': str(duration_ms),
                     'row_count': str(row_count),
-                    'datasource_id': datasource_id,
+                    'datasource_id': hc_datasource_id,
                     'format': export_format,
                     'destination': destination,
+                    'healthcheck_summary': hc_summary,
+                    'healthcheck_details': hc_details,
                 },
                 output_notification=output_notification,
             )

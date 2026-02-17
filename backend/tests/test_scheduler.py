@@ -141,8 +141,11 @@ class TestShouldRun:
 
     def test_daily_cron_not_due(self):
         """Daily cron that ran a few minutes ago should not be due."""
-        last = datetime.now(UTC) - timedelta(minutes=5)
-        assert should_run('0 0 * * *', last) is False
+        now = datetime.now(UTC)
+        last = now - timedelta(minutes=5)
+        future = now + timedelta(hours=2)
+        cron_expr = f'{future.minute} {future.hour} * * *'
+        assert should_run(cron_expr, last) is False
 
 
 # ---------------------------------------------------------------------------

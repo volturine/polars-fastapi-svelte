@@ -4,7 +4,7 @@ from modules.healthcheck.service import (
     delete_healthcheck,
     list_healthchecks,
     list_results,
-    run_healthcheck,
+    run_healthchecks,
     update_healthcheck,
 )
 
@@ -14,6 +14,6 @@ __all__ = [
     'delete_healthcheck',
     'list_healthchecks',
     'list_results',
-    'run_healthcheck',
+    'run_healthchecks',
     'update_healthcheck',
 ]

@@ -2,6 +2,9 @@
 
 ## Status:
 
+- [x] Document OpenCode subagents and skills lists in AGENTS.md
+- [x] Follow-up: tweak OpenCode subagents note, fix Docs agent label, trim slash commands
+
 ### Critical
 
 - [x] 1. Compute engine job tracking race condition

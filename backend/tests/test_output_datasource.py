@@ -144,12 +144,13 @@ class TestUpsertOutputDatasource:
             config={'table': 't1'},
             schema_cache={'b': 'Utf8'},
             analysis_id='a2',
+            keep_schema_cache=True,
         )
         assert ds.id == existing_id  # Same row
         assert ds.name == 'new-name'
         assert ds.source_type == 'iceberg'
         assert ds.config == {'table': 't1'}
-        assert ds.schema_cache == {'b': 'Utf8'}
+        assert ds.schema_cache == {'a': 'Int64'}
         assert ds.created_by_analysis_id == 'a2'
         assert ds.created_by == 'analysis'
 
@@ -358,7 +359,7 @@ class TestRunAnalysisBuildOutputDatasource:
         ):
             mock_read.return_value.to_arrow.return_value = MagicMock(schema=MagicMock())
             mock_resolve.return_value = str(Path('/tmp/iceberg/warehouse/ns').joinpath(output_ds_id, 'metadata', 'v1.metadata.json'))
-            export_data(
+            _, _, _, _, created_ds_id, _ = export_data(
                 session=test_db_session,
                 target_step_id='source',
                 analysis_pipeline={
@@ -396,6 +397,10 @@ class TestRunAnalysisBuildOutputDatasource:
 
         identifier = mock_catalog.create_table.call_args.args[0]
         assert identifier == f'ns.{output_ds_id}'
+
+        output_ds = test_db_session.get(DataSource, created_ds_id)
+        assert output_ds is not None
+        assert output_ds.config['metadata_path'] == mock_resolve.return_value
 
     def test_tab_without_output_config_fails(self, test_db_session: Session, sample_datasource: DataSource):
         """Tabs without output config should fail."""

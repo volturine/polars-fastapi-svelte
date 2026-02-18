@@ -377,7 +377,9 @@ def execute_schedule(session: Session, schedule_id: str, triggered_by: str = 'sc
             'namespace': iceberg_cfg.get('namespace', 'exports'),
         }
 
-    logger.info(f'Schedule {schedule_id}: Building tab {tab_name} (lazyframe deps auto-resolved in query plan)')
+    tab_build_mode = output_config.get('build_mode', 'full') if isinstance(output_config, dict) else 'full'
+
+    logger.info(f'Schedule {schedule_id}: Building tab {tab_name} mode={tab_build_mode} (lazyframe deps auto-resolved in query plan)')
 
     pipeline_payload = compute_service.build_analysis_pipeline_payload(session, analysis, datasource_id=schedule.datasource_id)
     compute_service.export_data(
@@ -395,6 +397,7 @@ def execute_schedule(session: Session, schedule_id: str, triggered_by: str = 'sc
         triggered_by=triggered_by,
         output_datasource_id=schedule.datasource_id,
         tab_id=str(tab_id),
+        build_mode=tab_build_mode,
     )
 
     return {

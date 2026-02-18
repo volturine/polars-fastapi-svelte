@@ -10,6 +10,7 @@ from pydantic import ConfigDict
 
 from core.config import settings
 from modules.compute.core.base import OperationHandler, OperationParams
+from modules.compute.iceberg_reader import scan_iceberg_snapshot
 
 
 class DatasourceParams(OperationParams):
@@ -135,22 +136,18 @@ class DatasourceHandler(OperationHandler):
                 raise ValueError('Iceberg snapshot not found for the selected timestamp')
             snapshot_value = snapshot.snapshot_id
         reader = config.reader
-        reader_override: Literal['native', 'pyiceberg'] | None = None
+        reader_override: Literal['native', 'pyiceberg'] = 'pyiceberg'
         if reader == 'native':
             reader_override = 'native'
         if reader == 'pyiceberg':
             reader_override = 'pyiceberg'
-        if reader_override:
-            return pl.scan_iceberg(
-                metadata_path,
-                snapshot_id=snapshot_value,
-                storage_options=config.storage_options,
-                reader_override=reader_override,
-            )
+        if snapshot_value is not None:
+            return scan_iceberg_snapshot(metadata_path, snapshot_value, config.storage_options)
         return pl.scan_iceberg(
             metadata_path,
             snapshot_id=snapshot_value,
             storage_options=config.storage_options,
+            reader_override=reader_override,
         )
 
     def _load_analysis(self, config: DatasourceParams) -> pl.LazyFrame:

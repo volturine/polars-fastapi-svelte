@@ -54,7 +54,7 @@
 	const schemaQuery = createQuery(() => ({
 		queryKey: ['datasource-schema', datasource.id],
 		queryFn: async () => {
-			const result = await getDatasourceSchema(datasource.id);
+			const result = await getDatasourceSchema(datasource.id, { refresh: true });
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		},

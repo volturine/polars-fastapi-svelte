@@ -52,8 +52,8 @@
 - [x] 29. Join schema empty fallback handling
 - [x] 30. Schema refresh delay
 - [x] 31. Locks module tests
-- [X] 32. Engine runs module tests
-- [X] 33. Analysis versions tests
+- [x] 32. Engine runs module tests
+- [x] 33. Analysis versions tests
 - [x] 34. Frontend unit tests coverage
 - [x] 35. Performance tests baseline
 - [x] 36. Disabled steps passthrough + output notifications
@@ -75,6 +75,11 @@
 
 - [x] Iceberg snapshot comparison endpoint + build snapshot metadata + UI refresh
 - [x] Rework snapshot comparison stats into unified table with deltas
+- [x] Iceberg build mode: recreate (drop + create) support
+- [x] Iceberg snapshot selection deterministic (no fallback mapping)
+- [x] Iceberg output metadata_path uses latest metadata.json after recreate
+- [x] Iceberg snapshot preview uses pyiceberg reader to avoid schema mismatch panic
+- [x] Iceberg snapshot preview inserts missing columns to avoid failures
 
 - [x] 41. Remove hardcoded CORS IPs
 - [x] 42. Disable public IDB debug by default

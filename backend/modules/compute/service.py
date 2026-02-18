@@ -8,7 +8,9 @@ from pathlib import Path
 
 import duckdb
 import polars as pl
+import pyarrow as pa  # type: ignore[import-untyped]
 from pyiceberg.catalog import load_catalog
+from pyiceberg.table import Table as IcebergTable
 from sqlalchemy import select
 from sqlmodel import Session
 
@@ -213,6 +215,31 @@ def _send_pipeline_notifications(
         )
 
 
+def _sync_iceberg_schema(table: IcebergTable, new_schema: pa.Schema) -> bool:
+    """Sync Iceberg table schema to match new_schema exactly.
+
+    Drops removed columns, adds new columns via union_by_name.
+    Returns True if schema was modified.
+    """
+    current = table.schema()
+    current_names = {field.name for field in current.fields}
+    new_names = set(new_schema.names)
+
+    to_delete = current_names - new_names
+    has_additions = bool(new_names - current_names)
+
+    if not to_delete and not has_additions:
+        return False
+
+    update = table.update_schema()
+    for name in sorted(to_delete):
+        update.delete_column(name)
+    if has_additions:
+        update.union_by_name(new_schema)
+    update.commit()
+    return True
+
+
 def _upsert_output_datasource(
     session: Session,
     output_datasource_id: str | None,
@@ -222,6 +249,7 @@ def _upsert_output_datasource(
     schema_cache: dict,
     analysis_id: str | None,
     is_hidden: bool | None = None,
+    keep_schema_cache: bool = False,
 ) -> DataSource:
     """Create or update the output datasource for an export.
 
@@ -234,7 +262,8 @@ def _upsert_output_datasource(
             existing.name = name
             existing.source_type = source_type
             existing.config = config
-            existing.schema_cache = schema_cache
+            if not keep_schema_cache:
+                existing.schema_cache = schema_cache
             existing.created_by_analysis_id = analysis_id
             existing.created_by = 'analysis'
             if is_hidden is not None:
@@ -703,6 +732,7 @@ def export_data(
     request_json: dict | None = None,
     triggered_by: str | None = None,
     output_datasource_id: str | None = None,
+    build_mode: str = 'full',
 ) -> tuple[bytes | None, str | None, str | None, str | None, str | None, dict | None]:
     if timeout is None:
         timeout = settings.job_timeout
@@ -740,6 +770,7 @@ def export_data(
         'datasource_config': datasource_config,
         'analysis_pipeline': analysis_pipeline,
         'tab_id': tab_id,
+        'build_mode': build_mode,
     }
 
     pipeline_steps = apply_pipeline_steps(pipeline_steps)
@@ -1001,18 +1032,16 @@ def export_data(
                 identifier = f'{namespace}.{table_name}'
 
                 arrow_table = pl.read_parquet(output_path).to_arrow()
+                if build_mode == 'recreate' and catalog.table_exists(identifier):
+                    catalog.drop_table(identifier)
+
                 if catalog.table_exists(identifier):
                     iceberg_table = catalog.load_table(identifier)
-                    try:
+                    if build_mode == 'incremental':
+                        iceberg_table.append(arrow_table)
+                    else:
+                        _sync_iceberg_schema(iceberg_table, arrow_table.schema)
                         iceberg_table.overwrite(arrow_table)
-                    except Exception as exc:
-                        update = iceberg_table.update_schema()
-                        update.union_by_name(arrow_table.schema)
-                        update.commit()
-                        try:
-                            iceberg_table.overwrite(arrow_table)
-                        except Exception as retry_exc:
-                            raise ValueError(f'Failed to overwrite Iceberg table after schema update: {retry_exc}') from exc
                 else:
                     iceberg_table = catalog.create_table(identifier, schema=arrow_table.schema)
                     iceberg_table.append(arrow_table)
@@ -1026,7 +1055,6 @@ def export_data(
 
                 metadata_path = str(iceberg_table.metadata_location)
                 resolved_metadata = resolve_iceberg_metadata_path(metadata_path)
-                table_dir = str(Path(resolved_metadata).parents[1])
 
                 iceberg_ds_config = {
                     'catalog_type': 'sql',
@@ -1034,21 +1062,23 @@ def export_data(
                     'warehouse': f'file://{warehouse_path}',
                     'namespace': namespace,
                     'table': table_name,
-                    'metadata_path': table_dir,
+                    'metadata_path': resolved_metadata,
                 }
                 output_ds = session.get(DataSource, output_datasource_id)
                 output_hidden = True
                 if output_ds:
                     output_hidden = output_ds.is_hidden
+                schema_cache = data.get('schema', {})
                 target_ds = _upsert_output_datasource(
                     session=session,
                     output_datasource_id=output_datasource_id,
                     name=iceberg_opts.get('table_name', 'exported_data'),
                     source_type=DataSourceType.ICEBERG,
                     config=iceberg_ds_config,
-                    schema_cache=data.get('schema', {}),
+                    schema_cache=schema_cache,
                     analysis_id=run_analysis_id,
                     is_hidden=output_hidden,
+                    keep_schema_cache=build_mode == 'incremental',
                 )
                 ds_id = target_ds.id
                 run_kind = 'datasource_update' if output_datasource_id and target_ds.id == output_datasource_id else 'datasource_create'
@@ -1076,7 +1106,7 @@ def export_data(
                 )
                 engine_run_service.create_engine_run(session, payload)
 
-                return None, iceberg_opts.get('table_name', 'exported_data'), content_type, table_dir, ds_id, result_meta
+                return None, iceberg_opts.get('table_name', 'exported_data'), content_type, resolved_metadata, ds_id, result_meta
 
             return None, None, None, None, None, result_meta
         except Exception as exc:
@@ -1157,6 +1187,8 @@ def run_analysis_build_from_payload(session: Session, pipeline: dict | None) -> 
                         'namespace': iceberg_cfg.get('namespace', 'exports'),
                     }
 
+                tab_build_mode = output_config.get('build_mode', 'full') if isinstance(output_config, dict) else 'full'
+
                 export_data(
                     session=session,
                     target_step_id=target_step_id,
@@ -1171,6 +1203,7 @@ def run_analysis_build_from_payload(session: Session, pipeline: dict | None) -> 
                     analysis_id=analysis_id,
                     tab_id=str(tab_id) if tab_id else None,
                     output_datasource_id=tab.get('output_datasource_id'),
+                    build_mode=tab_build_mode,
                 )
             else:
                 raise ValueError(f'Tab {tab_id} missing output configuration')

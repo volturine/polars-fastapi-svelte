@@ -613,12 +613,16 @@ def get_datasource_schema(
 
     # Check if we have cached schema with row_count and sample_value
     if datasource.schema_cache and sheet_name is None and not refresh:
-        cached = SchemaInfo.model_validate(datasource.schema_cache)
-        # Re-extract if row_count or sample_value is missing
-        has_samples = cached.columns and any(c.sample_value is not None for c in cached.columns)
-        if cached.row_count is not None and has_samples:
-            logger.debug(f'Using cached schema for datasource {datasource_id}')
-            return cached
+        try:
+            cached = SchemaInfo.model_validate(datasource.schema_cache)
+        except Exception:
+            cached = None
+        if cached:
+            # Re-extract if row_count or sample_value is missing
+            has_samples = cached.columns and any(c.sample_value is not None for c in cached.columns)
+            if cached.row_count is not None and has_samples:
+                logger.debug(f'Using cached schema for datasource {datasource_id}')
+                return cached
 
     logger.info(f'Extracting schema for datasource {datasource_id}')
     schema_info = _extract_schema(datasource, sheet_name=sheet_name)

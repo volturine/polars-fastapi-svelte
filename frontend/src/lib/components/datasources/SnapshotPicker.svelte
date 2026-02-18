@@ -43,6 +43,7 @@
 	>([]);
 	let selectedSnapshotId = $state<string | null>(null);
 	let selectedSnapshotLabel = $state<string | null>(null);
+	let missingSnapshotId = $state<string | null>(null);
 	let calendarDays = $state<Array<{ key: string; day: number; count: number; inMonth: boolean }>>(
 		[]
 	);
@@ -91,6 +92,7 @@
 		} else {
 			selectedSnapshotLabel = null;
 		}
+		missingSnapshotId = selectedSnapshotId;
 		if (snapshotsOpen && snapshotMonth) {
 			buildCalendar(snapshotMonth);
 		}
@@ -133,18 +135,6 @@
 		});
 	}
 
-	function formatOperation(operation?: string | null) {
-		if (!operation) return '';
-		return operation.replace(/^Operation\./, '');
-	}
-
-	function findBuildForSnapshot(snapshotId: string): EngineRun | null {
-		for (const run of buildRuns) {
-			if (runSnapshotMap.get(run.id) === snapshotId) return run;
-		}
-		return null;
-	}
-
 	function buildSnapshotIndex(
 		items: Array<{
 			snapshot_id: string;
@@ -162,6 +152,9 @@
 			}))
 			.sort((a, b) => b.timestamp - a.timestamp);
 		snapshotList = list;
+		if (selectedSnapshotId && list.some((snap) => snap.id === selectedSnapshotId)) {
+			missingSnapshotId = null;
+		}
 		const monthSource = showBuildPreviews ? filteredSnapshotList : list;
 		const monthOptions = Array.from(
 			new Set(monthSource.map((snap) => formatSnapshotKey(snap.timestamp).slice(0, 7)))
@@ -313,12 +306,14 @@
 			delete nextConfig.snapshot_id;
 			delete nextConfig.snapshot_timestamp_ms;
 			selectedSnapshotLabel = null;
+			missingSnapshotId = null;
 		} else {
 			nextConfig.snapshot_id = snapshotId;
 			if (timestampMs) {
 				nextConfig.snapshot_timestamp_ms = timestampMs;
 				selectedSnapshotLabel = formatSnapshotLabel(timestampMs);
 			}
+			missingSnapshotId = null;
 		}
 		onConfigChange?.(nextConfig);
 		onSelect?.(snapshotId, timestampMs);
@@ -502,6 +497,18 @@
 					</button>
 				{/if}
 			</div>
+			{#if missingSnapshotId}
+				<div class="border border-warning bg-warning-bg px-2 py-1 text-[10px] text-warning-fg">
+					Selected snapshot #{missingSnapshotId} no longer exists.
+					<button
+						class="ml-2 border border-warning px-1.5 py-0.5"
+						onclick={() => setSnapshot(null)}
+						type="button"
+					>
+						Switch to latest
+					</button>
+				</div>
+			{/if}
 
 			{#if deleteError}
 				<div class="text-xs text-error-fg">{deleteError}</div>
@@ -577,19 +584,6 @@
 										onclick={() => setSnapshot(snap.id, snap.timestamp)}
 										type="button"
 									>
-										{#if snap.operation}
-											<span class="text-[10px] uppercase text-fg-tertiary">
-												{formatOperation(snap.operation)}
-											</span>
-										{/if}
-										{#if showBuildPreviews}
-											{@const run = findBuildForSnapshot(snap.id)}
-											{#if run}
-												<span class="text-[10px] uppercase text-accent-primary">
-													Build {run.id.slice(0, 6)}
-												</span>
-											{/if}
-										{/if}
 										<span
 											class="font-mono"
 											class:text-fg-secondary={selectedSnapshotId !== snap.id}
@@ -631,21 +625,6 @@
 							{/each}
 						{:else}
 							<div class="p-2 text-xs text-fg-tertiary">Select a day to view builds.</div>
-						{/if}
-						{#if showBuildPreviews}
-							<div class="border-t border-tertiary px-2 py-1 text-[10px] text-fg-tertiary">
-								{#if buildRuns.length === 0}
-									No build snapshots mapped.
-								{:else if selectedSnapshotId}
-									{#each buildRuns as run (run.id)}
-										{#if runSnapshotMap.get(run.id) === selectedSnapshotId}
-											<div class="text-accent-primary">
-												Mapped to build {run.id.slice(0, 8)}...
-											</div>
-										{/if}
-									{/each}
-								{/if}
-							</div>
 						{/if}
 					</div>
 				</div>

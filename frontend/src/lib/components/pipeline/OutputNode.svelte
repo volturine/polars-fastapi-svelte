@@ -350,10 +350,7 @@
 		<div class="mt-3 flex items-center justify-between gap-2 border-t border-tertiary pt-3">
 			<div class="flex flex-col gap-1 w-full">
 				<div class="flex items-center gap-2">
-					<label
-						class="text-[10px] uppercase text-fg-muted"
-						for={`${idPrefix}-build-mode`}
-					>
+					<label class="text-[10px] uppercase text-fg-muted" for={`${idPrefix}-build-mode`}>
 						Build Mode
 					</label>
 					<select
@@ -364,13 +361,16 @@
 					>
 						<option value="full">Full</option>
 						<option value="incremental">Incremental</option>
+						<option value="recreate">Recreate</option>
 					</select>
 				</div>
 				<span class="text-[10px] text-fg-muted">
 					{#if outputConfig.build_mode === 'full'}
 						Replaces all data and syncs schema
-					{:else}
+					{:else if outputConfig.build_mode === 'incremental'}
 						Appends new rows to existing data
+					{:else}
+						Drops table and recreates — destroys all history
 					{/if}
 				</span>
 			</div>

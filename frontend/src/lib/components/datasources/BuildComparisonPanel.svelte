@@ -201,7 +201,7 @@
 	});
 </script>
 
-<div class="border border-tertiary bg-bg-primary">
+<div class="border border-tertiary bg-bg-primary flex flex-col min-h-0">
 	<div class="flex items-center justify-between border-b border-tertiary bg-bg-tertiary px-4 py-3">
 		<h3 class="m-0 flex items-center gap-2 text-sm font-medium">
 			<GitCompareArrows size={16} class="text-accent-primary" />
@@ -219,7 +219,7 @@
 			Snapshot comparison is only available for Iceberg datasources.
 		</div>
 	{:else}
-		<div class="p-4 space-y-4">
+		<div class="flex-1 min-h-0 p-4 space-y-4 overflow-auto datasource-comparison-scroll">
 			<div class="grid gap-3 md:grid-cols-2">
 				<div class="border border-tertiary p-3">
 					<div class="mb-2 text-xs font-medium text-fg-muted">Select builds</div>

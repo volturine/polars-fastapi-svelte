@@ -7,7 +7,8 @@
 	import { createAnalysis } from '$lib/api/analysis';
 	import DatasourcePicker from '$lib/components/common/DatasourcePicker.svelte';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
-	import type { AnalysisCreate } from '$lib/types/analysis';
+	import type { AnalysisCreate, PipelineStep } from '$lib/types/analysis';
+	import { getDefaultConfig } from '$lib/utils/step-config-defaults';
 
 	let step = $state(1);
 	let name = $state('');
@@ -33,6 +34,24 @@
 		(datasourcesQuery.data ?? []).filter((ds) => ds.source_type !== 'analysis')
 	);
 
+	function makeId() {
+		if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+			return crypto.randomUUID();
+		}
+		return 'id-' + Math.random().toString(16).slice(2) + Date.now().toString(16);
+	}
+
+	function buildInitialSteps(): PipelineStep[] {
+		const step: PipelineStep = {
+			id: makeId(),
+			type: 'view',
+			config: getDefaultConfig('view') as Record<string, unknown>,
+			depends_on: [],
+			is_applied: true
+		};
+		return [step];
+	}
+
 	async function handleCreate() {
 		if (!canProceedStep1 || !canProceedStep2) return;
 
@@ -45,12 +64,12 @@
 			datasource_ids: selectedDatasourceIds,
 			pipeline_steps: [],
 			tabs: selectedDatasourceIds.map((datasourceId, index) => ({
-				id: `tab-${datasourceId}`,
+				id: makeId(),
 				name: `Source ${index + 1}`,
 				type: 'datasource' as const,
 				parent_id: null,
 				datasource_id: datasourceId,
-				steps: []
+				steps: buildInitialSteps()
 			}))
 		};
 

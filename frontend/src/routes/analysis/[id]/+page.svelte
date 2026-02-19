@@ -20,7 +20,7 @@
 		renameAnalysisVersion
 	} from '$lib/api/analysis';
 	import { getDatasourceSchema, listDatasources } from '$lib/api/datasource';
-	import { spawnEngine } from '$lib/api/compute';
+	import { getStepSchema, spawnEngine } from '$lib/api/compute';
 	import type { PipelineStep, AnalysisTab } from '$lib/types/analysis';
 	import { getDefaultConfig } from '$lib/utils/step-config-defaults';
 	import { idbGet, idbSet, idbDelete } from '$lib/utils/indexeddb';
@@ -68,7 +68,7 @@
 		}
 		draftLoaded = false;
 		schemaRefreshTimer = window.setTimeout(() => {
-			void datasourceStore.loadDatasources(true);
+			void datasourceStore.loadDatasources();
 		}, 1500);
 	});
 
@@ -258,34 +258,50 @@
 		);
 	});
 
-	const datasourceId = $derived.by(() => {
+	const datasourceId = $derived(analysisStore.activeTab?.datasource_id ?? undefined);
+	const schemaKey = $derived.by(() => {
 		const tab = analysisStore.activeTab;
-		if (!tab) return undefined;
+		if (!tab || !analysisId) return undefined;
 		if (tab.datasource_id) return tab.datasource_id;
 		const config = (tab.datasource_config ?? {}) as Record<string, unknown>;
 		const cfgAnalysisId = config.analysis_id as string | null | undefined;
 		const cfgTabId = config.analysis_tab_id as string | null | undefined;
-		if (!cfgAnalysisId || !cfgTabId || !analysisId) return undefined;
+		if (!cfgAnalysisId || !cfgTabId) return undefined;
 		if (String(cfgAnalysisId) !== String(analysisId)) return undefined;
 		return `output:${analysisId}:${String(cfgTabId)}`;
 	});
+	const analysisTabName = $derived.by(() => {
+		const tab = analysisStore.activeTab;
+		if (!tab || !analysisId) return null;
+		const config = (tab.datasource_config ?? {}) as Record<string, unknown>;
+		const cfgAnalysisId = config.analysis_id as string | null | undefined;
+		const cfgTabId = config.analysis_tab_id as string | null | undefined;
+		if (!cfgAnalysisId || !cfgTabId) return null;
+		if (String(cfgAnalysisId) !== String(analysisId)) return null;
+		const sourceTab = analysisStore.tabs.find((item) => item.id === String(cfgTabId));
+		return sourceTab?.name ?? null;
+	});
+	const previewDatasourceId = $derived.by(() => datasourceId ?? schemaKey ?? undefined);
 
 	$effect(() => {
 		const datasourceIdValue = datasourceId;
-		if (!datasourceIdValue) return;
-		if (!datasourcesQuery.data) return;
+		const schemaId = schemaKey;
+		if (!schemaId) return;
 
-		const existingSchema = analysisStore.sourceSchemas.get(datasourceIdValue);
+		const existingSchema = analysisStore.sourceSchemas.get(schemaId);
 		if (existingSchema) return;
 
-		isLoadingSchema = true;
 		const current = datasourcesQuery.data?.find((ds) => ds.id === datasourceIdValue) ?? null;
+		const activeTabConfig = (analysisStore.activeTab?.datasource_config ?? {}) as Record<
+			string,
+			unknown
+		>;
 		const analysisSourceId =
-			(analysisStore.activeTab?.datasource_config?.analysis_id as string | null) ??
+			(activeTabConfig.analysis_id as string | null) ??
 			(current?.config?.analysis_id as string | null) ??
 			null;
 		const analysisTabId =
-			(analysisStore.activeTab?.datasource_config?.analysis_tab_id as string | null) ??
+			(activeTabConfig.analysis_tab_id as string | null) ??
 			(current?.config?.analysis_tab_id as string | null) ??
 			null;
 		const analysisPayload =
@@ -294,55 +310,45 @@
 				: null;
 
 		if (analysisSourceId) {
-			if (!analysisPayload) {
-				isLoadingSchema = false;
-				return;
-			}
-			const tabParam = analysisTabId ? `?analysis_tab_id=${encodeURIComponent(analysisTabId)}` : '';
-			const body = JSON.stringify({ pipeline: analysisPayload });
-			void fetch(`/api/v1/analysis/${analysisSourceId}/execute${tabParam}`, {
-				method: 'POST',
-				body,
-				headers: { 'Content-Type': 'application/json' }
-			})
-				.then((response) => {
-					if (!response.ok) {
-						throw new Error('Failed to execute analysis');
-					}
-					return response.json() as Promise<{
-						schema: Record<string, string>;
-						rows: Array<Record<string, unknown>>;
-						row_count?: number;
-					}>;
-				})
-				.then((payload) => {
-					const columns = Object.entries(payload.schema).map(([name, dtype]) => ({
+			if (!analysisPayload) return;
+			isLoadingSchema = true;
+			const targetTabId = analysisTabId ?? analysisStore.activeTab?.id ?? null;
+			getStepSchema({
+				analysis_id: analysisSourceId,
+				analysis_pipeline: analysisPayload,
+				tab_id: targetTabId,
+				target_step_id: 'source'
+			}).match(
+				(payload) => {
+					const columns = payload.columns.map((name) => ({
 						name,
-						dtype: String(dtype),
+						dtype: payload.column_types[name] ?? 'unknown',
 						nullable: true
 					}));
-					analysisStore.setSourceSchema(datasourceIdValue, {
+					analysisStore.setSourceSchema(schemaId, {
 						columns,
-						row_count: payload.row_count ?? payload.rows.length
+						row_count: null
 					});
 					isLoadingSchema = false;
-				})
-				.catch((error: unknown) => {
-					const message = error instanceof Error ? error.message : 'Failed to execute analysis';
+				},
+				(error) => {
 					track({
 						event: 'schema_error',
 						action: 'analysis_source_schema',
 						target: analysisSourceId,
-						meta: { message }
+						meta: { message: error.message }
 					});
 					isLoadingSchema = false;
-				});
+				}
+			);
 			return;
 		}
 
+		if (!datasourcesQuery.data || !datasourceIdValue) return;
+		isLoadingSchema = true;
 		getDatasourceSchema(datasourceIdValue).match(
 			(schema) => {
-				analysisStore.setSourceSchema(datasourceIdValue, schema);
+				analysisStore.setSourceSchema(schemaId, schema);
 				isLoadingSchema = false;
 			},
 			(err) => {
@@ -363,6 +369,7 @@
 		if (!data) return null;
 		return data.find((ds) => ds.id === datasourceId) ?? null;
 	});
+	const datasourceLabel = $derived(analysisTabName ?? currentDatasource?.name ?? null);
 
 	function makeId() {
 		if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -617,7 +624,12 @@
 	function handleChangeDatasource(datasourceId: string, name: string) {
 		const active = analysisStore.activeTab;
 		if (!active) return;
-		analysisStore.updateTab(active.id, { datasource_id: datasourceId, name });
+		analysisStore.updateTab(active.id, {
+			datasource_id: datasourceId,
+			datasource_config: null,
+			name
+		});
+		if (schemaKey) analysisStore.sourceSchemas.delete(schemaKey);
 		showDatasourceModal = false;
 		markUnsaved();
 	}
@@ -634,6 +646,19 @@
 				if (item.config?.analysis_tab_id !== analysisTabId) return false;
 				return String(item.config?.analysis_id ?? '') === String(analysisId ?? '');
 			});
+			if (modalMode === 'change') {
+				const active = analysisStore.activeTab;
+				if (!active) return;
+				analysisStore.updateTab(active.id, {
+					datasource_id: analysisMatch?.id ?? null,
+					datasource_config: { analysis_id: analysisId, analysis_tab_id: analysisTabId },
+					name
+				});
+				if (schemaKey) analysisStore.sourceSchemas.delete(schemaKey);
+				showDatasourceModal = false;
+				markUnsaved();
+				return;
+			}
 			if (analysisMatch) {
 				handleAddAnalysisTab(
 					analysisMatch.id,
@@ -643,8 +668,6 @@
 				);
 				return;
 			}
-			// Defer datasource creation to save — backend update_analysis
-			// auto-creates analysis datasources when datasource_id is null
 			const tab: AnalysisTab = {
 				id: `tab-analysis-${Date.now()}`,
 				name,
@@ -683,7 +706,9 @@
 
 	function openDatasourceModal(mode: 'add' | 'change' = 'add') {
 		modalMode = mode;
-		modalSource = 'datasource';
+		const config = (analysisStore.activeTab?.datasource_config ?? {}) as Record<string, unknown>;
+		const sourceType = config.analysis_tab_id ? 'analysis' : 'datasource';
+		modalSource = sourceType;
 		showDatasourceModal = true;
 	}
 
@@ -978,8 +1003,9 @@
 				<PipelineCanvas
 					steps={analysisStore.pipeline}
 					analysisId={analysisId ?? undefined}
-					{datasourceId}
+					datasourceId={previewDatasourceId}
 					datasource={currentDatasource}
+					{datasourceLabel}
 					tabName={analysisStore.activeTab?.name}
 					activeTab={analysisStore.activeTab}
 					onStepClick={handleSelectStep}
@@ -1018,6 +1044,7 @@
 	isLoading={datasourcesQuery.isLoading}
 	mode={modalMode}
 	sourceType={modalSource}
+	allowAnalysis
 	{analysisTabs}
 	excludeTabId={analysisStore.activeTabId}
 	onSelect={handleDatasourceSelect}

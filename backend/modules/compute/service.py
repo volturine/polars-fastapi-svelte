@@ -478,23 +478,48 @@ def build_analysis_pipeline_payload(session: Session, analysis: Analysis, dataso
         return {'analysis_id': str(analysis.id), 'tabs': [], 'sources': {}}
 
     sources: dict[str, dict] = {}
+    output_map: dict[str, str] = {}
+    for tab in tabs:
+        tab_id = tab.get('id')
+        output_id = tab.get('output_datasource_id')
+        if not output_id and tab_id:
+            output_id = f'output:{analysis.id}:{tab_id}'
+        if output_id and tab_id:
+            output_map[str(tab_id)] = str(output_id)
+            sources[str(output_id)] = {
+                'source_type': 'analysis',
+                'analysis_id': str(analysis.id),
+                'analysis_tab_id': str(tab_id),
+            }
+
+    next_tabs: list[dict] = []
     for tab in tabs:
         tab_datasource_id = tab.get('datasource_id')
-        if not tab_datasource_id:
-            continue
-        if datasource_id and str(datasource_id) != str(tab.get('output_datasource_id')) and str(datasource_id) != str(tab_datasource_id):
-            continue
-        datasource = session.get(DataSource, str(tab_datasource_id))
-        if not datasource:
-            continue
-        sources[str(tab_datasource_id)] = {
-            'source_type': datasource.source_type,
-            **datasource.config,
-        }
+        config = tab.get('datasource_config') or {}
+        if isinstance(config, dict) and config.get('analysis_id') == str(analysis.id):
+            source_tab_id = config.get('analysis_tab_id')
+            if source_tab_id:
+                tab_datasource_id = output_map.get(str(source_tab_id))
+
+        if tab_datasource_id:
+            if (
+                datasource_id
+                and str(datasource_id) != str(tab.get('output_datasource_id'))
+                and str(datasource_id) != str(tab_datasource_id)
+            ):
+                next_tabs.append({**tab, 'datasource_id': tab_datasource_id})
+                continue
+            datasource = session.get(DataSource, str(tab_datasource_id))
+            if datasource:
+                sources[str(tab_datasource_id)] = {
+                    'source_type': datasource.source_type,
+                    **datasource.config,
+                }
+        next_tabs.append({**tab, 'datasource_id': tab_datasource_id})
 
     return {
         'analysis_id': str(analysis.id),
-        'tabs': tabs,
+        'tabs': next_tabs,
         'sources': sources,
     }
 

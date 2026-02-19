@@ -4,6 +4,9 @@
 
 - [x] Adjust analysis node behavior: auto-apply inline view steps at 100 rows, chart nodes require apply with placeholder
 - [x] Fix analysis save refresh + derived tab previews before save
+- [x] Unify analysis DAG across tabs and restore default view nodes on new analysis
+- [x] Make derived tabs behave like same-flow nodes (schema + datasource label + selection)
+- [x] Use shared datasource selector for change mode + refresh previews without save
 - [x] Document OpenCode subagents and skills lists in AGENTS.md
 - [x] Follow-up: tweak OpenCode subagents note, fix Docs agent label, trim slash commands
 - [x] Fix snapshot compare unique_count to ignore nulls

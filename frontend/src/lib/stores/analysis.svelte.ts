@@ -65,9 +65,19 @@ export class AnalysisStore {
 		if (!steps.length || !this.sourceSchemas.size) return null;
 
 		// Use the active tab's datasource schema
-		const datasourceId = this.activeTab?.datasource_id;
-		const sourceSchema = datasourceId
-			? this.sourceSchemas.get(datasourceId)
+		const active = this.activeTab;
+		const analysisId = this.current?.id ?? null;
+		let schemaId = active?.datasource_id ?? null;
+		if (!schemaId && active?.datasource_config && analysisId) {
+			const config = active.datasource_config as Record<string, unknown>;
+			const cfgAnalysisId = config.analysis_id as string | null | undefined;
+			const cfgTabId = config.analysis_tab_id as string | null | undefined;
+			if (cfgAnalysisId && cfgTabId && String(cfgAnalysisId) === String(analysisId)) {
+				schemaId = `output:${analysisId}:${String(cfgTabId)}`;
+			}
+		}
+		const sourceSchema = schemaId
+			? this.sourceSchemas.get(schemaId)
 			: this.sourceSchemas.values().next().value;
 		if (!sourceSchema) return null;
 

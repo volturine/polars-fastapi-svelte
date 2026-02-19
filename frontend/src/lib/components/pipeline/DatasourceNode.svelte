@@ -2,16 +2,9 @@
 	import type { DataSource } from '$lib/types/datasource';
 	import type { AnalysisTab } from '$lib/types/analysis';
 	import { getDatasourceSchema } from '$lib/api/datasource';
-	interface AnalysisExecuteResponse {
-		schema: Record<string, string>;
-		rows: Array<Record<string, unknown>>;
-		row_count?: number;
-	}
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { schemaStore } from '$lib/stores/schema.svelte';
-	import { datasourceStore } from '$lib/stores/datasource.svelte';
 	import { track } from '$lib/utils/audit-log';
-	import { buildAnalysisPipelinePayload } from '$lib/utils/analysis-pipeline';
 	import {
 		FileText,
 		Database,
@@ -34,6 +27,7 @@
 
 	interface Props {
 		datasource: DataSource | null;
+		datasourceLabel?: string | null;
 		tabName?: string;
 		analysisId?: string;
 		activeTab?: AnalysisTab | null;
@@ -41,8 +35,15 @@
 		onRenameTab?: (name: string) => void;
 	}
 
-	let { datasource, tabName, analysisId, activeTab, onChangeDatasource, onRenameTab }: Props =
-		$props();
+	let {
+		datasource,
+		datasourceLabel = null,
+		tabName,
+		analysisId,
+		activeTab,
+		onChangeDatasource,
+		onRenameTab
+	}: Props = $props();
 
 	let isEditing = $state(false);
 	let draftName = $state('');
@@ -95,7 +96,7 @@
 
 	$effect(() => {
 		if (!isEditing) {
-			draftName = tabName ?? datasource?.name ?? '';
+			draftName = tabName ?? datasourceLabel ?? datasource?.name ?? '';
 		}
 	});
 
@@ -139,12 +140,12 @@
 	function startEdit() {
 		if (!onRenameTab) return;
 		isEditing = true;
-		draftName = tabName ?? datasource?.name ?? '';
+		draftName = tabName ?? datasourceLabel ?? datasource?.name ?? '';
 	}
 
 	function cancelEdit() {
 		isEditing = false;
-		draftName = tabName ?? datasource?.name ?? '';
+		draftName = tabName ?? datasourceLabel ?? datasource?.name ?? '';
 	}
 
 	function commitEdit() {
@@ -163,50 +164,7 @@
 
 	async function calculateRowCount() {
 		if (isLoadingRowCount) return;
-		if (analysisSourceId) {
-			const analysisPayload =
-				analysisId && analysisSourceId === analysisId
-					? buildAnalysisPipelinePayload(
-							analysisId,
-							analysisStore.tabs,
-							datasourceStore.datasources
-						)
-					: null;
-			if (!analysisPayload) {
-				throw new Error('Analysis pipeline payload required for execute');
-			}
-			const tabParam = analysisSourceTabId
-				? `?analysis_tab_id=${encodeURIComponent(analysisSourceTabId)}`
-				: '';
-			const body = JSON.stringify({ pipeline: analysisPayload });
-			isLoadingRowCount = true;
-			await fetch(`/api/v1/analysis/${analysisSourceId}/execute${tabParam}`, {
-				method: 'POST',
-				body,
-				headers: { 'Content-Type': 'application/json' }
-			})
-				.then((response) => {
-					if (!response.ok) {
-						throw new Error('Failed to execute analysis');
-					}
-					return response.json() as Promise<AnalysisExecuteResponse>;
-				})
-				.then((payload) => {
-					rowCount = payload.row_count ?? payload.rows.length;
-					isLoadingRowCount = false;
-				})
-				.catch((error: unknown) => {
-					const message = error instanceof Error ? error.message : 'Failed to execute analysis';
-					track({
-						event: 'schema_error',
-						action: 'analysis_source_row_count',
-						target: analysisSourceId,
-						meta: { message }
-					});
-					isLoadingRowCount = false;
-				});
-			return;
-		}
+		if (analysisSourceId) return;
 
 		if (!datasource?.id) return;
 		isLoadingRowCount = true;
@@ -232,11 +190,6 @@
 	let analysisSourceId = $derived(
 		(activeTab?.datasource_config?.analysis_id as string | null) ??
 			(datasource?.config?.analysis_id as string | null) ??
-			null
-	);
-	let analysisSourceTabId = $derived(
-		(activeTab?.datasource_config?.analysis_tab_id as string | null) ??
-			(datasource?.config?.analysis_tab_id as string | null) ??
 			null
 	);
 	let sourceType = $derived(
@@ -311,7 +264,9 @@
 						</button>
 					</div>
 				{:else}
-					<span class="text-sm font-medium">{tabName ?? datasource?.name ?? 'Untitled'}</span>
+					<span class="text-sm font-medium"
+						>{tabName ?? datasourceLabel ?? datasource?.name ?? 'Untitled'}</span
+					>
 					{#if onRenameTab}
 						<button
 							class="icon-btn edit inline-flex h-5 w-5 cursor-pointer items-center justify-center border border-tertiary text-fg-muted bg-primary p-0 opacity-50 leading-none hover:border-tertiary hover:text-fg-primary hover:bg-tertiary hover:opacity-100"
@@ -334,26 +289,31 @@
 				<Database size={12} class="opacity-60" />
 				<span>Dataset</span>
 			</div>
-			{#if datasource}
+			{#if datasource || datasourceLabel}
 				<div class="flex flex-col gap-2 border border-tertiary bg-tertiary p-3">
 					<div class="flex items-center justify-between">
-						<div class="text-sm font-semibold">{datasource.name}</div>
+						<div class="text-sm font-semibold">{datasourceLabel ?? datasource?.name}</div>
 						<div class="flex items-center gap-2">
-							{#if datasource.source_type === 'file'}
-								<FileTypeBadge
-									path={(datasource.config?.file_path as string) ?? ''}
-									size="sm"
-									showIcon={true}
-								/>
-							{:else if datasource.source_type === 'analysis'}
+							{#if datasource}
+								{#if datasource.source_type === 'file'}
+									<FileTypeBadge
+										path={(datasource.config?.file_path as string) ?? ''}
+										size="sm"
+										showIcon={true}
+									/>
+								{:else if datasource.source_type === 'analysis'}
+									{@const badgeSource = sourceType as SourceType}
+									<FileTypeBadge sourceType={badgeSource} size="sm" showIcon={true} />
+								{:else}
+									<FileTypeBadge
+										sourceType={datasource.source_type as 'database' | 'api' | 'iceberg' | 'duckdb'}
+										size="sm"
+										showIcon={true}
+									/>
+								{/if}
+							{:else}
 								{@const badgeSource = sourceType as SourceType}
 								<FileTypeBadge sourceType={badgeSource} size="sm" showIcon={true} />
-							{:else}
-								<FileTypeBadge
-									sourceType={datasource.source_type as 'database' | 'api' | 'iceberg' | 'duckdb'}
-									size="sm"
-									showIcon={true}
-								/>
 							{/if}
 						</div>
 					</div>

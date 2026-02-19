@@ -13,6 +13,7 @@
 		analysisId?: string;
 		datasourceId?: string;
 		datasource?: DataSource | null;
+		datasourceLabel?: string | null;
 		tabName?: string;
 		activeTab?: AnalysisTab | null;
 		onStepClick: (id: string) => void;
@@ -29,6 +30,7 @@
 		analysisId,
 		datasourceId,
 		datasource = null,
+		datasourceLabel = null,
 		tabName: _tabName,
 		activeTab = null,
 		onStepClick,
@@ -219,7 +221,7 @@
 </script>
 
 <div class="pipeline-canvas flex-1 overflow-y-auto p-6 bg-secondary min-h-100">
-	{#if steps.length === 0 && !datasource && !activeTab?.datasource_config}
+	{#if steps.length === 0}
 		<div
 			class="empty-state flex min-h-100 h-full flex-col items-center justify-center text-center text-fg-muted"
 		>
@@ -273,6 +275,7 @@
 		<div class="steps-container mx-auto flex w-full max-w-full flex-col items-center" role="list">
 			<DatasourceNode
 				{datasource}
+				{datasourceLabel}
 				{analysisId}
 				tabName={_tabName}
 				{activeTab}

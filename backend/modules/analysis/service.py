@@ -113,8 +113,8 @@ def update_analysis(
 
     if data.pipeline_steps is not None or data.tabs is not None:
         tabs_payload = [tab.model_dump() for tab in data.tabs] if data.tabs is not None else analysis.pipeline_definition.get('tabs', [])
+        output_map: dict[str, str] = {}
         if data.tabs is not None:
-            output_map: dict[str, str] = {}
             for tab in tabs_payload:
                 output_id = tab.get('output_datasource_id')
                 if not output_id:
@@ -124,6 +124,7 @@ def update_analysis(
                 if tab_id:
                     output_map[str(tab_id)] = str(output_id)
 
+        if data.tabs is not None:
             for tab in tabs_payload:
                 config = tab.get('datasource_config') or {}
                 source_analysis_id = config.get('analysis_id')
@@ -132,14 +133,17 @@ def update_analysis(
                 if source_analysis_id:
                     if str(source_analysis_id) == analysis_id and not config.get('analysis_tab_id'):
                         raise ValueError('Analysis cannot use itself as a datasource')
-                    source_tab_id = config.get('analysis_tab_id')
-                    if str(source_analysis_id) == analysis_id and source_tab_id:
-                        output_id = output_map.get(str(source_tab_id))
+                    if str(source_analysis_id) == analysis_id and config.get('analysis_tab_id'):
+                        source_tab_id = config.get('analysis_tab_id')
+                        output_id = output_map.get(str(source_tab_id)) if source_tab_id else None
                         if output_id:
                             tab['datasource_id'] = output_id
                             datasource_id = output_id
-                    if not datasource_id:
-                        raise ValueError('Cross-analysis tab requires datasource_id')
+                    if str(source_analysis_id) != analysis_id:
+                        if not datasource_id:
+                            raise ValueError('Cross-analysis tab requires datasource_id')
+                        if not session.get(DataSource, datasource_id):
+                            raise DataSourceNotFoundError(str(datasource_id))
                 else:
                     if not datasource_id:
                         raise ValueError('Analysis tab missing datasource_id')
@@ -171,6 +175,16 @@ def update_analysis(
                     continue
                 if session.get(DataSource, ds_id):
                     datasource_ids.append(ds_id)
+                    continue
+                tab_config = tab.get('datasource_config') or {}
+                if not isinstance(tab_config, dict):
+                    continue
+                if tab_config.get('analysis_id') != analysis_id:
+                    continue
+                source_tab_id = tab_config.get('analysis_tab_id')
+                output_id = output_map.get(str(source_tab_id)) if source_tab_id else None
+                if output_id and output_id == ds_id:
+                    continue
         pipeline_definition = {
             'steps': (
                 [step.model_dump() for step in data.pipeline_steps]

@@ -42,3 +42,17 @@ Build targets must execute only the required upstream chain **within the same en
 - Lazyframe outputs are forwarded downstream; no reloading from output datasources.
 - Previews & chart visualizations should reuse the same engine for the analysis and should forward LazyFrames within that engine.
 - The full analysis pipeline is sent on preview/build so the engine can execute the full chain deterministically.
+
+## Analysis experience inconsistencies + unified DAG requirement (clarification)
+
+### Current issues
+- New analysis creation is not prepopulated with an inline DataTable/view step, while new tab creation is.
+- Datasource selection for new tab allows choosing an analysis tab, but the datasource node does not support it yet.
+- Cross-tab work requires additional compute that should be unnecessary.
+- Derived analysis tabs created before saving do not have LazyFrame schema; they only work after save.
+
+### Required behavior
+- Treat the analysis as **one big DAG** (backend + frontend): tabs are **frontend-only visualization** and grouping, not execution boundaries.
+- Backend should treat analysis as a single transform file, resolving everything in one request using the full pipeline payload.
+- Input datasource should be resolved immediately (LazyFrame) when the analysis is in the same DAG; no intermediate datasource reloads.
+- Cross-tab previews/exports should reuse the same engine run and forward LazyFrames within that run.

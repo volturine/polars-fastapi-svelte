@@ -16,7 +16,7 @@ from sqlmodel import Session, col
 
 from core.config import settings
 from core.exceptions import DataSourceConnectionError, DataSourceNotFoundError, DataSourceValidationError, FileError
-from modules.compute.operations.datasource import load_datasource, resolve_iceberg_metadata_path
+from modules.compute.operations.datasource import load_datasource, resolve_iceberg_branch_metadata_path
 from modules.datasource.models import DataSource
 from modules.datasource.schemas import (
     ColumnSchema,
@@ -495,7 +495,7 @@ def create_iceberg_datasource(
 
     normalized_path = _normalize_iceberg_path(metadata_path)
     try:
-        resolved_metadata = resolve_iceberg_metadata_path(normalized_path)
+        resolved_metadata = resolve_iceberg_branch_metadata_path(normalized_path, None)
     except ValueError as exc:
         raise DataSourceValidationError(str(exc), details={'metadata_path': metadata_path}) from exc
 
@@ -543,6 +543,7 @@ def create_iceberg_datasource(
     config['catalog_type'] = catalog_config['type']
     config['catalog_uri'] = catalog_config['uri']
     config['warehouse'] = catalog_config['warehouse']
+    config['branch'] = None
     config['namespace'] = namespace_value
     config['table'] = table_value
 

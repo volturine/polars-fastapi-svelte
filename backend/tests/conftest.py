@@ -72,6 +72,13 @@ def isolate_upload_dir(temp_upload_dir: Path, monkeypatch):
     monkeypatch.setattr(settings, 'upload_dir', temp_upload_dir, raising=False)
 
 
+@pytest.fixture(autouse=True, scope='function')
+def isolate_exports_dir(tmp_path: Path, monkeypatch):
+    exports_dir = tmp_path / 'exports'
+    exports_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(settings, 'exports_dir', exports_dir, raising=False)
+
+
 @pytest.fixture(scope='function')
 def sample_csv_file(temp_upload_dir: Path) -> Path:
     csv_path = temp_upload_dir / 'sample.csv'

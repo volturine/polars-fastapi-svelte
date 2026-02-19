@@ -33,10 +33,15 @@ def create_analysis(
             source_id = _get_analysis_source_id(datasource)
             _ensure_no_cycle(session, analysis_id, source_id)
 
+    tabs_payload = [tab.model_dump() for tab in data.tabs]
+    for tab in tabs_payload:
+        if not tab.get('output_datasource_id'):
+            tab['output_datasource_id'] = str(uuid.uuid4())
+
     pipeline_definition = {
         'steps': [step.model_dump() for step in data.pipeline_steps],
         'datasource_ids': data.datasource_ids,
-        'tabs': [tab.model_dump() for tab in data.tabs],
+        'tabs': tabs_payload,
     }
 
     now = datetime.now(UTC).replace(tzinfo=None)
@@ -116,12 +121,12 @@ def update_analysis(
         output_map: dict[str, str] = {}
         if data.tabs is not None:
             for tab in tabs_payload:
+                tab_id = tab.get('id')
                 output_id = tab.get('output_datasource_id')
                 if not output_id:
                     output_id = str(uuid.uuid4())
                     tab['output_datasource_id'] = output_id
-                tab_id = tab.get('id')
-                if tab_id:
+                if tab_id and output_id:
                     output_map[str(tab_id)] = str(output_id)
 
         if data.tabs is not None:

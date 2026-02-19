@@ -140,7 +140,7 @@ class TestBuildModeWiring:
         mock_catalog.load_table.return_value = mock_table
         mock_catalog.create_table.return_value = mock_table
         mock_table.current_snapshot.return_value = MagicMock(snapshot_id=123, timestamp_ms=1000)
-        mock_table.metadata_location = '/tmp/iceberg/warehouse/ns/tbl/metadata/v1.metadata.json'
+        mock_table.metadata_location = '/tmp/exports/ns/tbl/metadata/v1.metadata.json'
         mock_arrow = MagicMock(schema=pa.schema([pa.field('id', pa.int64())]))
         return mock_catalog, mock_table, mock_arrow
 
@@ -152,10 +152,6 @@ class TestBuildModeWiring:
         with (
             patch('modules.compute.service.load_catalog', return_value=mock_catalog),
             patch('modules.compute.service.pl.read_parquet') as mock_read,
-            patch(
-                'modules.compute.service.resolve_iceberg_metadata_path',
-                return_value='/tmp/iceberg/warehouse/ns/tbl/metadata/v1.metadata.json',
-            ),
             patch('modules.compute.service._sync_iceberg_schema', return_value=False) as mock_sync,
         ):
             mock_read.return_value.to_arrow.return_value = mock_arrow
@@ -184,10 +180,6 @@ class TestBuildModeWiring:
         with (
             patch('modules.compute.service.load_catalog', return_value=mock_catalog),
             patch('modules.compute.service.pl.read_parquet') as mock_read,
-            patch(
-                'modules.compute.service.resolve_iceberg_metadata_path',
-                return_value='/tmp/iceberg/warehouse/ns/tbl/metadata/v1.metadata.json',
-            ),
             patch('modules.compute.service._sync_iceberg_schema') as mock_sync,
         ):
             mock_read.return_value.to_arrow.return_value = mock_arrow
@@ -216,10 +208,6 @@ class TestBuildModeWiring:
         with (
             patch('modules.compute.service.load_catalog', return_value=mock_catalog),
             patch('modules.compute.service.pl.read_parquet') as mock_read,
-            patch(
-                'modules.compute.service.resolve_iceberg_metadata_path',
-                return_value='/tmp/iceberg/warehouse/ns/tbl/metadata/v1.metadata.json',
-            ),
         ):
             mock_read.return_value.to_arrow.return_value = mock_arrow
             export_data(
@@ -247,10 +235,6 @@ class TestBuildModeWiring:
         with (
             patch('modules.compute.service.load_catalog', return_value=mock_catalog),
             patch('modules.compute.service.pl.read_parquet') as mock_read,
-            patch(
-                'modules.compute.service.resolve_iceberg_metadata_path',
-                return_value='/tmp/iceberg/warehouse/ns/tbl/metadata/v1.metadata.json',
-            ),
         ):
             mock_read.return_value.to_arrow.return_value = mock_arrow
             export_data(
@@ -279,10 +263,6 @@ class TestBuildModeWiring:
         with (
             patch('modules.compute.service.load_catalog', return_value=mock_catalog),
             patch('modules.compute.service.pl.read_parquet') as mock_read,
-            patch(
-                'modules.compute.service.resolve_iceberg_metadata_path',
-                return_value='/tmp/iceberg/warehouse/ns/tbl/metadata/v1.metadata.json',
-            ),
         ):
             mock_read.return_value.to_arrow.return_value = mock_arrow
             export_data(

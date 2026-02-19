@@ -19,7 +19,10 @@ from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError, Pi
 from modules.analysis.models import Analysis
 from modules.compute.core.exports import get_export_format
 from modules.compute.manager import get_manager
-from modules.compute.operations.datasource import resolve_iceberg_metadata_path
+from modules.compute.operations.datasource import (
+    resolve_iceberg_branch_metadata_path,
+    resolve_iceberg_metadata_path,
+)
 from modules.compute.utils import apply_pipeline_steps, await_engine_result, find_step_index, resolve_applied_target
 from modules.datasource.models import DataSource
 from modules.datasource.source_types import DataSourceType
@@ -272,7 +275,7 @@ def _upsert_output_datasource(
             session.commit()
             return existing
 
-    new_id = str(uuid.uuid4())
+    new_id = str(output_datasource_id) if output_datasource_id else str(uuid.uuid4())
     ds = DataSource(
         id=new_id,
         name=name,
@@ -1041,10 +1044,14 @@ def export_data(
                     raise ValueError('Output datasource id is required for Iceberg exports')
                 table_name = output_datasource_id
 
-                iceberg_base = settings.data_dir / 'iceberg'
-                warehouse_path = iceberg_base / 'warehouse'
-                catalog_path = iceberg_base / 'catalog.db'
+                branch_name = 'master'
+                export_base = settings.exports_dir / str(output_datasource_id)
+                table_path = export_base / branch_name
+                warehouse_path = settings.exports_dir
+                catalog_path = export_base / 'catalog.db'
 
+                export_base.mkdir(parents=True, exist_ok=True)
+                table_path.mkdir(parents=True, exist_ok=True)
                 warehouse_path.mkdir(parents=True, exist_ok=True)
                 if not catalog_path.exists():
                     catalog_path.touch()
@@ -1072,7 +1079,7 @@ def export_data(
                         _sync_iceberg_schema(iceberg_table, arrow_table.schema)
                         iceberg_table.overwrite(arrow_table)
                 else:
-                    iceberg_table = catalog.create_table(identifier, schema=arrow_table.schema)
+                    iceberg_table = catalog.create_table(identifier, schema=arrow_table.schema, location=str(table_path))
                     iceberg_table.append(arrow_table)
 
                 snapshot_id = None
@@ -1082,16 +1089,14 @@ def export_data(
                     snapshot_id = str(current_snapshot.snapshot_id)
                     snapshot_timestamp_ms = int(current_snapshot.timestamp_ms)
 
-                metadata_path = str(iceberg_table.metadata_location)
-                resolved_metadata = resolve_iceberg_metadata_path(metadata_path)
-
                 iceberg_ds_config = {
                     'catalog_type': 'sql',
                     'catalog_uri': f'sqlite:///{catalog_path}',
                     'warehouse': f'file://{warehouse_path}',
                     'namespace': namespace,
                     'table': table_name,
-                    'metadata_path': resolved_metadata,
+                    'metadata_path': str(export_base),
+                    'branch': branch_name,
                 }
                 output_ds = session.get(DataSource, output_datasource_id)
                 output_hidden = True
@@ -1135,7 +1140,7 @@ def export_data(
                 )
                 engine_run_service.create_engine_run(session, payload)
 
-                return None, iceberg_opts.get('table_name', 'exported_data'), content_type, resolved_metadata, ds_id, result_meta
+                return None, iceberg_opts.get('table_name', 'exported_data'), content_type, str(table_path), ds_id, result_meta
 
             return None, None, None, None, None, result_meta
         except Exception as exc:
@@ -1295,6 +1300,7 @@ def list_iceberg_snapshots(session: Session, datasource_id: str):
     metadata_path = datasource.config.get('metadata_path')
     if not metadata_path:
         raise ValueError('Iceberg datasource missing metadata_path')
+    branch_name = datasource.config.get('branch')
 
     catalog_type = datasource.config.get('catalog_type')
     catalog_uri = datasource.config.get('catalog_uri')
@@ -1316,7 +1322,7 @@ def list_iceberg_snapshots(session: Session, datasource_id: str):
     else:
         from pyiceberg.table import StaticTable
 
-        resolved = resolve_iceberg_metadata_path(metadata_path)
+        resolved = resolve_iceberg_branch_metadata_path(metadata_path, branch_name)
         table = StaticTable.from_metadata(resolved)
 
     current_snapshot = table.current_snapshot()

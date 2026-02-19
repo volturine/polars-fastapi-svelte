@@ -70,7 +70,11 @@ export function buildAnalysisPipelinePayload(
 	const outputByTabId = new Map<string, string>();
 	for (const tab of tabs) {
 		if (!tab.id) continue;
-		const outputId = tab.output_datasource_id ?? `output:${analysisId}:${tab.id}`;
+		const outputId = tab.output_datasource_id ?? null;
+		if (!outputId) {
+			missing.push(`output:${tab.id}`);
+			continue;
+		}
 		outputByTabId.set(tab.id, outputId);
 		sources[outputId] = {
 			source_type: 'analysis',
@@ -92,7 +96,7 @@ export function buildAnalysisPipelinePayload(
 	}
 
 	const pipelineTabs = tabs.map((tab) => {
-		const outputId = outputByTabId.get(tab.id) ?? tab.output_datasource_id ?? null;
+		const outputId = outputByTabId.get(tab.id) ?? null;
 		const config = (tab.datasource_config as Record<string, unknown> | null) ?? null;
 		let datasourceId = tab.datasource_id ?? null;
 		if (config?.analysis_id === analysisId && config?.analysis_tab_id) {

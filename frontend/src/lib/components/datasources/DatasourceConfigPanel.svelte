@@ -670,6 +670,12 @@
 								<span class="uppercase tracking-wide text-fg-muted">Location</span>
 								<span class="break-all text-fg-secondary font-mono">{config.metadata_path}</span>
 							</div>
+							<div class="flex flex-col gap-1">
+								<span class="uppercase tracking-wide text-fg-muted">Branch</span>
+								<span class="break-all text-fg-secondary font-mono"
+									>{config.branch ?? 'master'}</span
+								>
+							</div>
 						{/if}
 
 						<div class="flex items-center gap-4">

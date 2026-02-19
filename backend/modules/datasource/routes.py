@@ -21,6 +21,18 @@ from modules.datasource.source_types import DataSourceType
 router = APIRouter(prefix='/datasource', tags=['datasource'])
 
 
+def _list_export_branches(metadata_path: str) -> list[str]:
+    normalized = str(Path(metadata_path))
+    path = Path(normalized)
+    if not path.is_dir():
+        return []
+    metadata_dir = path / 'metadata'
+    if metadata_dir.is_dir():
+        return []
+    entries = [entry.name for entry in path.iterdir() if entry.is_dir()]
+    return sorted(entries)
+
+
 def _matches_magic_number(file_extension: str, upload: UploadFile) -> bool:
     header = upload.file.read(8)
     upload.file.seek(0)
@@ -538,7 +550,12 @@ def get_datasource(
     session: Session = Depends(get_db),
 ):
     try:
-        return service.get_datasource(session, parse_datasource_id(datasource_id))
+        response = service.get_datasource(session, parse_datasource_id(datasource_id))
+        if response.source_type == DataSourceType.ICEBERG:
+            metadata_path = response.config.get('metadata_path')
+            if isinstance(metadata_path, str):
+                response.config['branches'] = _list_export_branches(metadata_path)
+        return response
     except DataSourceNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DataSourceValidationError as exc:

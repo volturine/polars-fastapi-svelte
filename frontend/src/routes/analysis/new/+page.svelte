@@ -65,6 +65,7 @@
 			pipeline_steps: [],
 			tabs: selectedDatasourceIds.map((datasourceId, index) => ({
 				id: makeId(),
+				output_datasource_id: makeId(),
 				name: `Source ${index + 1}`,
 				type: 'datasource' as const,
 				parent_id: null,

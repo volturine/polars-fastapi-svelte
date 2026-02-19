@@ -1,10 +1,10 @@
 import uuid
 from datetime import UTC, datetime
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from sqlmodel import Session
 
+from core.config import settings
 from modules.analysis.models import Analysis
 from modules.analysis.schemas import AnalysisUpdateSchema, TabSchema
 from modules.analysis.service import update_analysis
@@ -110,13 +110,11 @@ class TestUpsertOutputDatasource:
             schema_cache={},
             analysis_id=None,
         )
-        # Should create a new row with a different id
-        assert ds.id != 'nonexistent-id'
+        assert ds.id == 'nonexistent-id'
         assert ds.name == 'fallback'
         assert ds.is_hidden is True
 
     def test_updates_existing(self, test_db_session: Session):
-        # Create an existing datasource
         existing_id = str(uuid.uuid4())
         existing = DataSource(
             id=existing_id,
@@ -349,10 +347,8 @@ class TestRunAnalysisBuildOutputDatasource:
         with (
             patch('modules.compute.service.load_catalog', return_value=mock_catalog),
             patch('modules.compute.service.pl.read_parquet') as mock_read,
-            patch('modules.compute.service.resolve_iceberg_metadata_path') as mock_resolve,
         ):
             mock_read.return_value.to_arrow.return_value = MagicMock(schema=MagicMock())
-            mock_resolve.return_value = str(Path('/tmp/iceberg/warehouse/ns').joinpath(output_ds_id, 'metadata', 'v1.metadata.json'))
             _, _, _, _, created_ds_id, _ = export_data(
                 session=test_db_session,
                 target_step_id='source',
@@ -394,7 +390,9 @@ class TestRunAnalysisBuildOutputDatasource:
 
         output_ds = test_db_session.get(DataSource, created_ds_id)
         assert output_ds is not None
-        assert output_ds.config['metadata_path'] == mock_resolve.return_value
+        expected_path = str(settings.exports_dir / output_ds_id)
+        assert output_ds.config['metadata_path'] == expected_path
+        assert output_ds.config['branch'] == 'master'
 
     def test_tab_without_output_config_fails(self, test_db_session: Session, sample_datasource: DataSource):
         """Tabs without output config should fail."""

@@ -7,12 +7,20 @@
 - [x] Unify analysis DAG across tabs and restore default view nodes on new analysis
 - [x] Make derived tabs behave like same-flow nodes (schema + datasource label + selection)
 - [x] Use shared datasource selector for change mode + refresh previews without save
+- [x] Fix drag/drop after derived tab creation (active tab switch)
+- [x] Reuse existing output datasource on build (stable output IDs)
+- [x] Generate output datasource IDs at tab creation (UUID stored in analysis config)
 - [x] Document OpenCode subagents and skills lists in AGENTS.md
 - [x] Follow-up: tweak OpenCode subagents note, fix Docs agent label, trim slash commands
 - [x] Fix snapshot compare unique_count to ignore nulls
 - [x] Update monitoring/builds/datasources preview toggles + snapshot mapping reuse
 - [x] Datasources runs preview toggle + comparison toggle + bugs.md restore
 - [x] Update datasources compare layout + snapshot filtering + monitoring toggle placement
+- [x] Fix Iceberg export warehouse path to align with exports dir
+- [x] Use per-output Iceberg catalog.db for exports
+- [x] Branch-aware export path layout (master default)
+- [x] Test isolation for exports directory
+- [x] Branch-aware metadata path resolution and UI selection
 
 ### Critical
 

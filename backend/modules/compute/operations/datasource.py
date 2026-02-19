@@ -41,6 +41,7 @@ class DatasourceParams(OperationParams):
     db_path: str | None = None
     read_only: bool = True
     metadata_path: str | None = None
+    branch: str | None = None
     snapshot_id: str | None = None
     snapshot_timestamp_ms: int | None = None
     storage_options: dict | None = None
@@ -115,7 +116,7 @@ class DatasourceHandler(OperationHandler):
     def _load_iceberg(self, config: DatasourceParams) -> pl.LazyFrame:
         if not config.metadata_path:
             raise ValueError('Datasource Iceberg loading requires metadata_path')
-        metadata_path = resolve_iceberg_metadata_path(config.metadata_path)
+        metadata_path = resolve_iceberg_branch_metadata_path(config.metadata_path, config.branch)
         snapshot_id = config.snapshot_id
         snapshot_value: int | None = None
         if snapshot_id is not None:
@@ -413,6 +414,25 @@ def resolve_iceberg_metadata_path(metadata_path: str) -> str:
     if metadata_dir.is_dir():
         return _latest_metadata_file(metadata_dir)
     raise ValueError('Iceberg metadata_path must be a table directory containing metadata/')
+
+
+def resolve_iceberg_branch_metadata_path(metadata_path: str, branch: str | None) -> str:
+    normalized = _strip_file_scheme(metadata_path)
+    path = Path(normalized)
+    if path.suffix == '.metadata.json' or path.name == 'metadata' or path.is_file():
+        return resolve_iceberg_metadata_path(metadata_path)
+    if branch:
+        branch_path = path / branch
+        if branch_path.exists():
+            return resolve_iceberg_metadata_path(str(branch_path))
+    metadata_dir = path / 'metadata'
+    if metadata_dir.is_dir():
+        return resolve_iceberg_metadata_path(str(metadata_dir))
+    if path.is_dir():
+        children = [entry for entry in path.iterdir() if entry.is_dir()]
+        if len(children) == 1:
+            return resolve_iceberg_metadata_path(str(children[0]))
+    return resolve_iceberg_metadata_path(metadata_path)
 
 
 def _read_excel(path: str, opts: dict) -> pl.LazyFrame:

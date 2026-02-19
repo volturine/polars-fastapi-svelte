@@ -59,11 +59,13 @@
 	);
 	const selectedDatasource = $derived(datasources.find((d) => d.id === selectedId) ?? null);
 	let snapshotConfig = $state<Record<string, unknown> | null>(null);
+	let selectedBranch = $state<string | null>(null);
 
 	function selectDatasource(id: string | null) {
 		selectedId = id;
 		showConfig = id;
 		snapshotConfig = null;
+		selectedBranch = null;
 		showComparison = false;
 		const url = id ? `/datasources?id=${id}` : '/datasources';
 		goto(resolve(url as '/'), { replaceState: true });
@@ -81,6 +83,34 @@
 	function handleSnapshotConfigChange(config: Record<string, unknown>) {
 		snapshotConfig = config;
 	}
+
+	function handleBranchChange(event: Event) {
+		const target = event.target as HTMLSelectElement;
+		selectedBranch = target.value || null;
+		if (!selectedBranch) {
+			snapshotConfig = null;
+			return;
+		}
+		const next = { ...(snapshotConfig ?? selectedDatasource?.config ?? {}) } as Record<
+			string,
+			unknown
+		>;
+		next.branch = selectedBranch;
+		snapshotConfig = next;
+	}
+
+	const branchOptions = $derived.by(() => {
+		const config = (selectedDatasource?.config ?? {}) as Record<string, unknown>;
+		const branches = config.branches as string[] | undefined;
+		if (!branches || branches.length === 0) return ['master'];
+		return branches;
+	});
+	const activeBranch = $derived(() => {
+		if (snapshotConfig && snapshotConfig.branch) return String(snapshotConfig.branch);
+		const config = (selectedDatasource?.config ?? {}) as Record<string, unknown>;
+		const branch = config.branch as string | undefined | null;
+		return branch ?? 'master';
+	});
 </script>
 
 <div class="flex h-full">
@@ -234,6 +264,18 @@
 										showBuildPreviews
 										onConfigChange={handleSnapshotConfigChange}
 									/>
+								</div>
+								<div class="flex items-center gap-2">
+									<GitBranch size={14} class="text-fg-tertiary" />
+									<select
+										class="text-xs border border-tertiary bg-bg-primary px-2 py-1"
+										value={activeBranch}
+										onchange={handleBranchChange}
+									>
+										{#each branchOptions as branch (branch)}
+											<option value={branch}>{branch}</option>
+										{/each}
+									</select>
 								</div>
 								<button
 									class="btn-ghost btn-sm border border-tertiary text-xs"

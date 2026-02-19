@@ -577,6 +577,7 @@
 	function handleAddTab(datasourceId: string, name: string) {
 		const tab: AnalysisTab = {
 			id: `tab-${datasourceId}-${Date.now()}`,
+			output_datasource_id: makeId(),
 			name,
 			type: 'datasource',
 			parent_id: null,
@@ -606,6 +607,7 @@
 		}
 		const tab: AnalysisTab = {
 			id: `tab-analysis-${datasourceId}-${Date.now()}`,
+			output_datasource_id: makeId(),
 			name,
 			type: 'datasource',
 			parent_id: null,
@@ -670,6 +672,7 @@
 			}
 			const tab: AnalysisTab = {
 				id: `tab-analysis-${Date.now()}`,
+				output_datasource_id: makeId(),
 				name,
 				type: 'datasource',
 				parent_id: null,

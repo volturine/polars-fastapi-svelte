@@ -44,6 +44,21 @@
 
 	let canDrop = $derived(drag.active);
 	let hoverIndex = $derived(drag.target?.index ?? null);
+	let activeTabId = $derived(activeTab?.id ?? null);
+
+	let lastTabId = $state<string | null>(null);
+
+	// $effect: drag reset is a UI side effect not derivable from state
+	$effect(() => {
+		const tabId = activeTabId;
+		if (tabId === lastTabId) return;
+		lastTabId = tabId;
+		if (drag.active) {
+			drag.end();
+			return;
+		}
+		drag.clearTarget();
+	});
 
 	function getParentId(index: number): string | null {
 		if (index <= 0) return null;

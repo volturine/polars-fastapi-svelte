@@ -176,6 +176,7 @@ class IcebergDataSourceConfig(BaseModel):
     """Iceberg-specific datasource configuration."""
 
     metadata_path: str
+    branch: str | None = None
     snapshot_id: str | None = None
     snapshot_timestamp_ms: int | None = None
     storage_options: dict | None = None

@@ -38,6 +38,7 @@ Build targets must execute only the required upstream chain **within the same en
    - export 3
 
 ### Requirements
+
 - Preceding tabs must execute in dependency order in the **same engine**.
 - Lazyframe outputs are forwarded downstream; no reloading from output datasources.
 - Previews & chart visualizations should reuse the same engine for the analysis and should forward LazyFrames within that engine.
@@ -46,13 +47,73 @@ Build targets must execute only the required upstream chain **within the same en
 ## Analysis experience inconsistencies + unified DAG requirement (clarification)
 
 ### Current issues
+
 - New analysis creation is not prepopulated with an inline DataTable/view step, while new tab creation is.
 - Datasource selection for new tab allows choosing an analysis tab, but the datasource node does not support it yet.
 - Cross-tab work requires additional compute that should be unnecessary.
 - Derived analysis tabs created before saving do not have LazyFrame schema; they only work after save.
 
 ### Required behavior
+
 - Treat the analysis as **one big DAG** (backend + frontend): tabs are **frontend-only visualization** and grouping, not execution boundaries.
 - Backend should treat analysis as a single transform file, resolving everything in one request using the full pipeline payload.
 - Input datasource should be resolved immediately (LazyFrame) when the analysis is in the same DAG; no intermediate datasource reloads.
 - Cross-tab previews/exports should reuse the same engine run and forward LazyFrames within that run.
+
+---
+
+# Data handling redesign..
+
+whole app should be branch aware. and namespace aware
+in the left top most corner we have polars/analysis
+this should be analysis / namespace
+and it should be changable....
+
+UPLOAD_DIR=/home/kripso/workspace/polars-fastapi-svelte/data/uploads
+CLEAN_DIR=/home/kripso/workspace/polars-fastapi-svelte/data/clean
+EXPORTS_DIR=/home/kripso/workspace/polars-fastapi-svelte/data/exports
+
+right now we have three env variables for data handling we will have one env variable for the base data dir and then we will have a structure like this:
+DEFAULT_NAMESPACE=default
+DATA_DIR=/home/kripso/workspace/polars-fastapi-svelte/data
+
+then just automaticaly derive the upload and export dirs from that base dir and the namespace:
+UPLOAD_DIR=${DATA_DIR}/${NAMESPACE}/uploads
+CLEAN_DIR=${DATA_DIR}/${NAMESPACE}/clean
+
+you can change NAMESPACE in the top left corner and it will automatically use the right dirs for that namespace.
+
+In datasource creation page we will have three strategies:
+
+## 1. Upload file
+
+Upload file: this will upload the file to the UPLOAD_DIR and polars will read it from there and transform it to the CLEAN_DIR in iceberg format the same way we now handle exports:
+
+- creates UUID for the datasource
+- transforms it into CLEAN_DIR/${UUID}/master in iceberg format (uploads will be always master branches)
+- creates a datasource record with the path to the CLEAN_DIR/${UUID}/master
+
+## 2. Use existing datasource (only for iceberg datasources with our structure)
+
+- it takes the path to the datasource and checks if it is in the right structure (CLEAN_DIR/${UUID}/{branches})
+- adds the datasource record with the path to the CLEAN_DIR/${UUID}/{branches}
+
+## 3. Connect to external database
+
+Similar to point 1. in a sence that
+
+- we will use the original datasource as a source
+- we will transform it into our structure into CLEAN_DIR
+- but whenever we need to use update it we will injest it again from the original source and transform it again into our structure
+  - this way we add timetravel capabilities to external datasources as well
+  - but also have local iceberg copies of the data for faster use within the app
+  - this means we will have to store the connection details for the external datasource in our datasource record as well so we can use it for future updates
+  - but also have the path to the local iceberg copy for use within the app
+- ingestion can be triggered manually by the user or automatically on a schedule (e.g. daily)
+- also the target branch can be specified by the user (e.g. master or dev)
+
+All of these will be separated then by namespace so you can have different namespaces for different projects and each namespace will have its own database for all datarelated records (datasources, analyses, exports) and its own data directories for uploads, clean data and exports.
+That means our database has to split to two levels as well, we will have main database for all settings and such but then per namespace database for all data related records, inside the NAMESPACE_DIR/namespace.db
+
+
+so all our frontend and backend need to be aware of the namespaces and branches..so in analysis i can have per whole analysis output branch and that can per input datasource change the branch

@@ -116,4 +116,4 @@ All of these will be separated then by namespace so you can have different names
 That means our database has to split to two levels as well, we will have main database for all settings and such but then per namespace database for all data related records, inside the NAMESPACE_DIR/namespace.db
 
 
-so all our frontend and backend need to be aware of the namespaces and branches..so in analysis i can have per whole analysis output branch and that can per input datasource change the branch
+so all our frontend and backend need to be aware of the namespaces and branches..so in analysis i can have per whole analysis output branch and that can per input datasource change the branch...

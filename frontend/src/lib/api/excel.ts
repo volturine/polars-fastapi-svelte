@@ -56,6 +56,26 @@ export function preflightExcel(
 	});
 }
 
+export function preflightExcelFromPath(
+	filePath: string,
+	params: {
+		sheet_name?: string;
+		start_row?: number;
+		start_col?: number;
+		end_col?: number;
+		end_row?: number;
+		has_header?: boolean;
+		table_name?: string;
+		named_range?: string;
+		cell_range?: string;
+	}
+): ResultAsync<ExcelPreflightResponse, ApiError> {
+	return apiRequest<ExcelPreflightResponse>('/v1/datasource/preflight-path', {
+		method: 'POST',
+		body: JSON.stringify({ file_path: filePath, ...params })
+	});
+}
+
 export function previewExcel(
 	preflightId: string,
 	params: {

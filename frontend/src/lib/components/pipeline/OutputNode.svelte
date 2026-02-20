@@ -22,7 +22,9 @@
 		EyeOff,
 		HeartPulse,
 		Loader,
-		Play
+		Play,
+		ShieldCheck,
+		Table2
 	} from 'lucide-svelte';
 	import { listHealthChecks, listHealthCheckResults } from '$lib/api/healthcheck';
 	import { listSchedules } from '$lib/api/schedule';
@@ -160,13 +162,14 @@
 			typeof icebergRaw.branch === 'string' && icebergRaw.branch.trim().length > 0
 				? icebergRaw.branch.trim()
 				: defaultBranch;
+		const namespace = typeof icebergRaw.namespace === 'string' ? icebergRaw.namespace : '';
 		return {
 			datasource_type: 'iceberg',
 			format: 'parquet',
 			filename: (output.filename as string) || tableName,
 			build_mode: (output.build_mode as string) || 'full',
 			iceberg: {
-				namespace: (icebergRaw.namespace as string) || 'outputs',
+				namespace: namespace || 'outputs',
 				table_name: tableName,
 				branch
 			},
@@ -204,6 +207,11 @@
 		const currentOutput = (next.output as Record<string, unknown> | undefined) ?? {};
 		next.output = { ...currentOutput, ...patch };
 		analysisStore.updateTab(tab.id, { datasource_config: next });
+	}
+
+	function updateIcebergConfig(patch: Record<string, unknown>) {
+		const current = outputConfig.iceberg ?? {};
+		updateOutputConfig({ iceberg: { ...current, ...patch } });
 	}
 
 	function ensureOutputConfig(): void {
@@ -330,16 +338,23 @@
 
 <div class="step-node relative w-[65%]">
 	<div class="node-content border border-tertiary bg-primary p-3 shadow-sm">
-		<div class="flex items-center gap-2">
-			<span
-				class="rounded-sm border border-tertiary bg-tertiary px-2 py-1 text-[10px] uppercase text-fg-muted"
-			>
-				Output Node
-			</span>
+		<div class="flex items-center gap-3">
+			<div class="flex items-center gap-2">
+				<div class="flex h-6 w-6 items-center justify-center rounded-sm bg-accent text-bg-primary">
+					<Table2 size={12} />
+				</div>
+				<span class="text-sm font-semibold text-fg-primary">Output</span>
+				<span
+					class="rounded-sm border border-tertiary bg-tertiary px-2 py-1 text-[10px] uppercase text-fg-muted"
+				>
+					Output Node
+				</span>
+			</div>
+			<div class="flex-1"></div>
 			{#if canQueryOutput}
 				<button
 					type="button"
-					class="flex items-center gap-1 rounded-sm border border-tertiary px-1.5 py-0.5 text-[10px] transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+					class="flex items-center gap-1 rounded-sm border border-tertiary px-2 py-1 text-[10px] transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
 					class:text-fg-muted={hidden}
 					class:text-success-fg={!hidden}
 					onclick={toggleHidden}
@@ -350,15 +365,50 @@
 				>
 					{#if hidden}
 						<EyeOff size={10} />
-						<span>hidden</span>
+						<span>Hidden</span>
 					{:else}
 						<Database size={10} />
-						<span>visible</span>
+						<span>Visible</span>
 					{/if}
 				</button>
 			{/if}
-			<div class="flex-1"></div>
-			<div class="min-w-[140px]">
+		</div>
+
+		<div
+			class="mt-3 grid grid-cols-[minmax(200px,1fr)_minmax(140px,1fr)] gap-3 border-t border-tertiary pt-3"
+		>
+			<div class="flex flex-col gap-2">
+				<div class="flex items-center gap-2">
+					<ShieldCheck size={12} class="text-fg-muted" />
+					<span class="text-xs uppercase tracking-wide text-fg-muted">Output settings</span>
+				</div>
+				<label class="text-[10px] uppercase text-fg-muted" for={`${idPrefix}-iceberg-table`}>
+					Table name
+				</label>
+				<input
+					class="resource-input border border-tertiary bg-secondary p-1.5 px-2 text-xs text-fg-primary"
+					id={`${idPrefix}-iceberg-table`}
+					value={outputConfig.iceberg.table_name}
+					placeholder="Table name"
+					oninput={(e) => updateIcebergConfig({ table_name: e.currentTarget.value })}
+				/>
+				<label class="text-[10px] uppercase text-fg-muted" for={`${idPrefix}-iceberg-namespace`}>
+					Namespace
+				</label>
+				<input
+					class="resource-input border border-tertiary bg-secondary p-1.5 px-2 text-xs text-fg-primary"
+					id={`${idPrefix}-iceberg-namespace`}
+					value={outputConfig.iceberg.namespace}
+					placeholder="outputs"
+					oninput={(e) => updateIcebergConfig({ namespace: e.currentTarget.value })}
+				/>
+				<span class="text-[10px] text-fg-muted"> Defaults to outputs if left blank. </span>
+			</div>
+			<div class="flex flex-col gap-2">
+				<div class="flex items-center gap-2">
+					<Database size={12} class="text-fg-muted" />
+					<span class="text-xs uppercase tracking-wide text-fg-muted">Target branch</span>
+				</div>
 				<BranchPicker
 					branches={branchOptions}
 					value={branchValue}
@@ -366,35 +416,22 @@
 					allowCreate={true}
 					onChange={applyGlobalBranchValue}
 				/>
+				<button
+					class="flex items-center justify-center gap-1.5 border border-tertiary bg-secondary px-2 py-1.5 text-xs text-fg-primary transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+					onclick={handleManualBuild}
+					disabled={!analysisId || building}
+					title="Run analysis build"
+					type="button"
+				>
+					{#if building}
+						<Loader size={12} class="spin" />
+						<span>Building...</span>
+					{:else}
+						<Play size={12} />
+						<span>Build</span>
+					{/if}
+				</button>
 			</div>
-			<input
-				class="resource-input w-40 border border-tertiary bg-secondary p-1 px-2 text-xs text-fg-primary"
-				id={`${idPrefix}-iceberg-table`}
-				value={outputConfig.iceberg.table_name}
-				placeholder="Table name"
-				oninput={(e) =>
-					updateOutputConfig({
-						iceberg: {
-							...outputConfig.iceberg,
-							table_name: e.currentTarget.value
-						}
-					})}
-			/>
-			<button
-				class="flex items-center gap-1.5 border border-tertiary bg-secondary px-2 py-1 text-xs text-fg-primary transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
-				onclick={handleManualBuild}
-				disabled={!analysisId || building}
-				title="Run analysis build"
-				type="button"
-			>
-				{#if building}
-					<Loader size={12} class="spin" />
-					<span>Building...</span>
-				{:else}
-					<Play size={12} />
-					<span>Build</span>
-				{/if}
-			</button>
 		</div>
 
 		<!-- Row 3: Build Mode Selector -->

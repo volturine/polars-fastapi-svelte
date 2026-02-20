@@ -103,6 +103,19 @@ class ColumnStatsRequest(BaseModel):
     datasource_config: dict | None = None
 
 
+class ExcelPreflightPathRequest(BaseModel):
+    file_path: str
+    sheet_name: str | None = None
+    start_row: int = 0
+    start_col: int = 0
+    end_col: int = 0
+    end_row: int | None = None
+    has_header: bool = True
+    table_name: str | None = None
+    named_range: str | None = None
+    cell_range: str | None = None
+
+
 class ExcelPreflightResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

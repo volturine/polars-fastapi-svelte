@@ -13,6 +13,9 @@
   - [x] Branch picker width/z-index popover behavior
   - [x] Build logs show datasource create/update kinds
   - [x] Restore output hidden toggle and compact first row layout
+  - [x] Excel manual range input no longer resets + preview uses DataTable
+  - [x] Datasource config no longer auto-refreshes schema on open
+  - [x] Monitoring runs table labels datasource create/update kinds
   - [x] Datasources page defaults to master branch and branch list includes master
   - [x] Re-ingest uploads on CSV/Excel config change
   - [x] Fix Iceberg snapshot fallback (stale snapshot_id no longer crashes)

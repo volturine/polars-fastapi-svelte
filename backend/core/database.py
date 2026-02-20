@@ -1,11 +1,23 @@
 from collections.abc import Callable
 from typing import Concatenate, ParamSpec, TypeVar
 
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, create_engine
 
 from core.config import settings
 from core.namespace import get_namespace, list_namespaces, namespace_paths
+
+
+def _enable_sqlite_pragmas(engine: Engine) -> None:
+    """Set WAL journal mode and busy_timeout on every new SQLite connection."""
+
+    @event.listens_for(engine, 'connect')
+    def _on_connect(dbapi_conn, _connection_record):  # type: ignore[no-untyped-def]
+        cursor = dbapi_conn.cursor()
+        cursor.execute('PRAGMA journal_mode=WAL')
+        cursor.execute('PRAGMA busy_timeout=5000')
+        cursor.close()
 
 
 def _build_connect_args() -> dict:
@@ -27,6 +39,7 @@ settings_engine = create_engine(
     echo=settings.debug,
     connect_args=_build_connect_args(),
 )
+_enable_sqlite_pragmas(settings_engine)
 
 _namespace_engines: dict[str, Engine] = {}
 
@@ -155,6 +168,7 @@ def _get_namespace_engine() -> Engine:
         echo=settings.debug,
         connect_args={},
     )
+    _enable_sqlite_pragmas(engine_to_use)
     _namespace_engines[namespace] = engine_to_use
     _init_namespace_db(namespace)
     return engine_to_use
@@ -167,6 +181,7 @@ def _init_namespace_db(namespace: str) -> None:
         echo=settings.debug,
         connect_args={},
     )
+    _enable_sqlite_pragmas(namespace_engine)
     from modules.analysis.models import Analysis, AnalysisDataSource
     from modules.analysis_versions.models import AnalysisVersion
     from modules.datasource.models import DataSource

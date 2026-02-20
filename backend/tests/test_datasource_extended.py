@@ -202,6 +202,50 @@ class TestDataSourceValidation:
 
         assert response.status_code == 400
 
+    def test_preflight_excel_path_rejects_non_xlsx(self, client, temp_upload_dir: Path):
+        csv_path = temp_upload_dir / 'invalid.csv'
+        csv_path.write_text('a,b\n1,2')
+        payload = {'file_path': str(csv_path)}
+
+        response = client.post('/api/v1/datasource/preflight-path', json=payload)
+
+        assert response.status_code == 400
+
+    def test_preflight_excel_path_returns_preview(self, client, temp_upload_dir: Path, monkeypatch):
+        excel_path = temp_upload_dir / 'path.xlsx'
+        workbook = Workbook()
+        sheet = workbook.active
+        if sheet is None:
+            pytest.skip('Excel support not available')
+        sheet.title = 'Sheet1'
+        sheet.append(['id', 'name'])
+        sheet.append([1, 'A'])
+        sheet.append([2, 'B'])
+        workbook.save(excel_path)
+        from core import namespace
+        from modules.datasource import routes as datasource_routes
+
+        def fake_paths():
+            return namespace.NamespacePaths(
+                base_dir=temp_upload_dir.parent,
+                upload_dir=temp_upload_dir,
+                clean_dir=temp_upload_dir.parent / 'clean',
+                exports_dir=temp_upload_dir.parent / 'exports',
+                db_path=temp_upload_dir.parent / 'namespace.db',
+            )
+
+        monkeypatch.setattr(namespace, 'namespace_paths', fake_paths)
+        monkeypatch.setattr(datasource_routes, 'namespace_paths', fake_paths)
+        payload = {'file_path': str(excel_path)}
+
+        response = client.post('/api/v1/datasource/preflight-path', json=payload)
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body['sheet_name'] == 'Sheet1'
+        assert body['preflight_id']
+        assert len(body['preview']) == 3
+
     def test_confirm_excel_end_row(self, client, temp_upload_dir: Path):
         """Test Excel confirm stores manual end row selection."""
         excel_path = temp_upload_dir / 'bounds.xlsx'

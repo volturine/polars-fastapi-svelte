@@ -31,6 +31,7 @@
 	} from '$lib/types/datasource';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
+	import ExcelTableSelector from '$lib/components/common/ExcelTableSelector.svelte';
 	import ColumnStatsPanel from '$lib/components/datasources/ColumnStatsPanel.svelte';
 	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
@@ -59,11 +60,12 @@
 	const schemaQuery = createQuery(() => ({
 		queryKey: ['datasource-schema', datasource.id],
 		queryFn: async () => {
-			const result = await getDatasourceSchema(datasource.id, { refresh: true });
+			const result = await getDatasourceSchema(datasource.id);
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		},
-		enabled: !!datasource.id && datasource.source_type !== 'analysis'
+		enabled: !!datasource.id && datasource.source_type !== 'analysis',
+		staleTime: Infinity
 	}));
 
 	const runsQuery = createQuery(() => ({
@@ -141,7 +143,6 @@
 		activeTab = 'general';
 		statsOpen = false;
 		statsColumn = null;
-		endRowInput = '';
 
 		// Initialize type-specific config
 		const fileSource = getFileSource(ds);
@@ -177,7 +178,6 @@
 				end_row: endRowValue,
 				has_header: fileSource.has_header ?? true
 			};
-			endRowInput = endRowValue !== null ? String(endRowValue) : '';
 		}
 	});
 
@@ -218,7 +218,6 @@
 		end_row: null,
 		has_header: true
 	});
-	let endRowInput = $state('');
 
 	$effect(() => {
 		if (!schemaQuery.data) return;
@@ -281,51 +280,9 @@
 		hasChanges = true;
 	}
 
-	function handleExcelConfigChange<K extends keyof typeof excelConfig>(
-		key: K,
-		value: (typeof excelConfig)[K]
-	) {
-		const next = { ...excelConfig, [key]: value };
-		if (key === 'sheet_name' && typeof value === 'string' && value.trim()) {
-			next.table_name = '';
-			next.named_range = '';
-			next.cell_range = '';
-		}
-		if (key === 'table_name' && typeof value === 'string' && value.trim()) {
-			next.named_range = '';
-			next.cell_range = '';
-		}
-		if (key === 'named_range' && typeof value === 'string' && value.trim()) {
-			next.table_name = '';
-			next.cell_range = '';
-		}
-		if (key === 'cell_range' && typeof value === 'string' && value.trim()) {
-			next.table_name = '';
-			next.named_range = '';
-		}
-		excelConfig = next;
+	function handleExcelConfigUpdate(value: typeof excelConfig) {
+		excelConfig = value;
 		hasChanges = true;
-	}
-
-	function handleEndRowInput(event: Event) {
-		const target = event.currentTarget as HTMLInputElement;
-		endRowInput = target.value;
-	}
-
-	function handleEndRowBlur() {
-		const trimmed = endRowInput.trim();
-		if (!trimmed) {
-			handleExcelConfigChange('end_row', null);
-			endRowInput = '';
-			return;
-		}
-		const parsed = Number.parseInt(trimmed, 10);
-		if (Number.isNaN(parsed) || parsed < 0) {
-			endRowInput = excelConfig.end_row !== null ? String(excelConfig.end_row) : '';
-			return;
-		}
-		handleExcelConfigChange('end_row', parsed);
-		endRowInput = String(parsed);
 	}
 
 	async function handleSave() {
@@ -385,7 +342,7 @@
 			update.config = { ...datasourceQuery.data.config };
 		}
 
-		updateMutation.mutate(update);
+		await updateMutation.mutateAsync(update);
 		hasChanges = false;
 
 		if (update.config && ds.source_type === 'iceberg') {
@@ -456,17 +413,6 @@
 		} finally {
 			isRefreshing = false;
 		}
-	}
-
-	function cellLabel(col: number): string {
-		let idx = col + 1;
-		let label = '';
-		while (idx > 0) {
-			const rem = (idx - 1) % 26;
-			label = String.fromCharCode(65 + rem) + label;
-			idx = Math.floor((idx - 1) / 26);
-		}
-		return label;
 	}
 
 	const healthChecks = $derived(healthChecksQuery.data ?? []);
@@ -972,161 +918,15 @@
 				{/if}
 			</div>
 		{:else if activeTab === 'excel' && excel}
+			{@const fileSource = getFileSource(ds)}
 			<div class="flex flex-col gap-4">
-				<h3 class="m-0 text-sm font-semibold">Excel Options</h3>
-
-				<div class="grid grid-cols-2 gap-3">
-					<div class="flex flex-col gap-1.5">
-						<label for="excel-sheet-{datasource.id}" class="text-xs font-medium text-fg-secondary"
-							>Sheet Name</label
-						>
-						<input
-							id="excel-sheet-{datasource.id}"
-							type="text"
-							value={excelConfig.sheet_name}
-							oninput={(e) => handleExcelConfigChange('sheet_name', e.currentTarget.value)}
-							placeholder="Sheet1"
-							class="input-base border px-3 py-2 text-sm"
-						/>
-					</div>
-
-					<div class="flex flex-col gap-1.5">
-						<label for="excel-table-{datasource.id}" class="text-xs font-medium text-fg-secondary"
-							>Table Name</label
-						>
-						<input
-							id="excel-table-{datasource.id}"
-							type="text"
-							value={excelConfig.table_name}
-							oninput={(e) => handleExcelConfigChange('table_name', e.currentTarget.value)}
-							placeholder="Optional"
-							class="input-base border px-3 py-2 text-sm"
-						/>
-					</div>
-				</div>
-
-				<div class="flex flex-col gap-1.5">
-					<label for="excel-range-{datasource.id}" class="text-xs font-medium text-fg-secondary"
-						>Named Range</label
-					>
-					<input
-						id="excel-range-{datasource.id}"
-						type="text"
-						value={excelConfig.named_range}
-						oninput={(e) => handleExcelConfigChange('named_range', e.currentTarget.value)}
-						placeholder="Optional"
-						class="input-base border px-3 py-2 text-sm"
-					/>
-				</div>
-
-				<div class="flex flex-col gap-1.5">
-					<label
-						for="excel-cell-range-{datasource.id}"
-						class="text-xs font-medium text-fg-secondary">Manual Range</label
-					>
-					<input
-						id="excel-cell-range-{datasource.id}"
-						type="text"
-						value={excelConfig.cell_range}
-						oninput={(e) => handleExcelConfigChange('cell_range', e.currentTarget.value)}
-						placeholder="A1:D50"
-						class="input-base border px-3 py-2 text-sm"
-					/>
-					<span class="text-xs text-fg-muted">Optional A1 range (Sheet1!A1:D50).</span>
-				</div>
-
-				<div class="border border-tertiary bg-tertiary p-3">
-					<h4 class="m-0 mb-3 text-xs font-semibold text-fg-secondary">Table Bounds</h4>
-					<div class="grid grid-cols-4 gap-3">
-						<div class="flex flex-col gap-1.5">
-							<label
-								for="excel-start-row-{datasource.id}"
-								class="text-xs font-medium text-fg-secondary">Start Row</label
-							>
-							<input
-								id="excel-start-row-{datasource.id}"
-								type="number"
-								min="0"
-								value={excelConfig.start_row}
-								oninput={(e) =>
-									handleExcelConfigChange('start_row', parseInt(e.currentTarget.value) || 0)}
-								class="input-base border px-3 py-2 text-sm"
-							/>
-							<span class="text-xs text-fg-muted">Row {excelConfig.start_row + 1}</span>
-						</div>
-
-						<div class="flex flex-col gap-1.5">
-							<label
-								for="excel-start-col-{datasource.id}"
-								class="text-xs font-medium text-fg-secondary">Start Col</label
-							>
-							<input
-								id="excel-start-col-{datasource.id}"
-								type="number"
-								min="0"
-								value={excelConfig.start_col}
-								oninput={(e) =>
-									handleExcelConfigChange('start_col', parseInt(e.currentTarget.value) || 0)}
-								class="input-base border px-3 py-2 text-sm"
-							/>
-							<span class="text-xs text-fg-muted">{cellLabel(excelConfig.start_col)}</span>
-						</div>
-
-						<div class="flex flex-col gap-1.5">
-							<label
-								for="excel-end-col-{datasource.id}"
-								class="text-xs font-medium text-fg-secondary">End Col</label
-							>
-							<input
-								id="excel-end-col-{datasource.id}"
-								type="number"
-								min="0"
-								value={excelConfig.end_col}
-								oninput={(e) =>
-									handleExcelConfigChange('end_col', parseInt(e.currentTarget.value) || 0)}
-								class="input-base border px-3 py-2 text-sm"
-							/>
-							<span class="text-xs text-fg-muted">{cellLabel(excelConfig.end_col)}</span>
-						</div>
-
-						<div class="flex flex-col gap-1.5">
-							<label
-								for="excel-end-row-{datasource.id}"
-								class="text-xs font-medium text-fg-secondary">End Row</label
-							>
-							<input
-								id="excel-end-row-{datasource.id}"
-								type="number"
-								min="0"
-								value={endRowInput}
-								oninput={handleEndRowInput}
-								onblur={handleEndRowBlur}
-								onkeydown={(event) => {
-									if (event.key !== 'Enter') return;
-									handleEndRowBlur();
-								}}
-								class="input-base border px-3 py-2 text-sm"
-							/>
-							<span class="text-xs text-fg-muted">
-								Row {(excelConfig.end_row ?? 0) + 1}
-							</span>
-						</div>
-					</div>
-				</div>
-
-				<div class="flex items-center gap-2">
-					<input
-						id="excel-header-{datasource.id}"
-						type="checkbox"
-						checked={excelConfig.has_header}
-						onchange={(e) => handleExcelConfigChange('has_header', e.currentTarget.checked)}
-						class="h-4 w-4 cursor-pointer"
-					/>
-					<label for="excel-header-{datasource.id}" class="m-0 text-sm text-fg-secondary"
-						>First row is header</label
-					>
-				</div>
-
+				<ExcelTableSelector
+					mode="config"
+					filePath={fileSource?.file_path ?? null}
+					initialConfig={excelConfig}
+					disabled={updateMutation.isPending}
+					onConfigChange={handleExcelConfigUpdate}
+				/>
 				{#if hasChanges}
 					<button
 						class="btn btn-primary w-full flex items-center justify-center gap-2"
@@ -1141,6 +941,11 @@
 							Save Changes
 						{/if}
 					</button>
+				{/if}
+				{#if !fileSource?.file_path}
+					<p class="m-0 text-xs text-fg-muted">
+						No original file path available for Excel preview.
+					</p>
 				{/if}
 			</div>
 		{:else if activeTab === 'runs'}

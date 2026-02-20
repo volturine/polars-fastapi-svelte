@@ -1690,6 +1690,20 @@ button.btn-sm {
 	contain-intrinsic-size: auto 36px;
 }
 
+.excel-grid {
+	contain: content;
+}
+
+.excel-grid .dataset-table__row {
+	content-visibility: auto;
+	contain-intrinsic-size: auto 32px;
+}
+
+.excel-grid .preview-row {
+	content-visibility: auto;
+	contain-intrinsic-size: auto 32px;
+}
+
 /* Skip rendering off-screen step nodes in the pipeline canvas.
    The browser only renders steps visible in the scroll viewport. */
 .step-node {

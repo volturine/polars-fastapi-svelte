@@ -17,7 +17,9 @@
 		ArrowUp,
 		ArrowDown,
 		Timer,
-		CalendarClock
+		CalendarClock,
+		Database,
+		RefreshCw
 	} from 'lucide-svelte';
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
@@ -420,6 +422,12 @@
 									{#if run.kind === 'preview'}
 										<Eye size={14} class="text-accent" />
 										<span>Preview</span>
+									{:else if run.kind === 'datasource_create'}
+										<Database size={14} class="text-accent-primary" />
+										<span>Datasource Create</span>
+									{:else if run.kind === 'datasource_update'}
+										<RefreshCw size={14} class="text-warning-fg" />
+										<span>Datasource Update</span>
 									{:else}
 										<Download size={14} class="text-success-fg" />
 										<span>Export</span>

@@ -290,10 +290,10 @@ async def preflight_excel(
             file_path.unlink()
         raise HTTPException(status_code=500, detail=f'Failed to save file: {str(e)}') from e
 
-    preflight_id, preflight = create_preflight(file_path)
+    preflight_id, preflight = create_preflight(file_path, delete_file=False)
     target_sheet = sheet_name or (preflight.sheets[0] if preflight.sheets else None)
     if not target_sheet:
-        clear_preflight(preflight_id)
+        clear_preflight(preflight_id, delete_file=False)
         raise HTTPException(status_code=400, detail='No sheets found in file')
 
     preview_result = service.build_excel_preview(
@@ -307,6 +307,52 @@ async def preflight_excel(
         table_name=table_name,
         named_range=named_range,
         cell_range=cell_range,
+    )
+
+    return schemas.ExcelPreflightResponse(
+        preflight_id=preflight_id,
+        sheet_name=preview_result.sheet_name,
+        sheet_names=preflight.sheets,
+        tables=preflight.tables,
+        named_ranges=preflight.named_ranges,
+        preview=preview_result.preview,
+        start_row=preview_result.start_row,
+        start_col=preview_result.start_col,
+        end_col=preview_result.end_col,
+        detected_end_row=preview_result.detected_end_row,
+    )
+
+
+@router.post('/preflight-path', response_model=schemas.ExcelPreflightResponse)
+@handle_errors(operation='preflight excel path', value_error_status=400)
+async def preflight_excel_path(payload: schemas.ExcelPreflightPathRequest):
+    file_path = Path(payload.file_path)
+    paths = namespace_paths()
+    resolved = Path(file_path.resolve())
+    if paths.base_dir not in resolved.parents and paths.base_dir != resolved:
+        raise HTTPException(status_code=400, detail='Excel file must be inside the data directory')
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=400, detail='Excel file not found')
+    if file_path.suffix.lower() != '.xlsx':
+        raise HTTPException(status_code=400, detail='Only .xlsx files are supported for preflight')
+
+    preflight_id, preflight = create_preflight(file_path)
+    target_sheet = payload.sheet_name or (preflight.sheets[0] if preflight.sheets else None)
+    if not target_sheet:
+        clear_preflight(preflight_id)
+        raise HTTPException(status_code=400, detail='No sheets found in file')
+
+    preview_result = service.build_excel_preview(
+        file_path=file_path,
+        sheet_name=target_sheet,
+        start_row=payload.start_row,
+        start_col=payload.start_col,
+        end_col=payload.end_col,
+        end_row=payload.end_row,
+        has_header=payload.has_header,
+        table_name=payload.table_name,
+        named_range=payload.named_range,
+        cell_range=payload.cell_range,
     )
 
     return schemas.ExcelPreflightResponse(

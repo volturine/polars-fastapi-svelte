@@ -48,6 +48,9 @@
 	let healthOpen = $state(false);
 	let editingName = $state(false);
 	let draftName = $state('');
+	let modeMenuOpen = $state(false);
+	let modeMenuRef = $state<HTMLElement>();
+	let modeTriggerRef = $state<HTMLButtonElement>();
 
 	const defaultBranch = $derived.by(() => {
 		const current = analysisStore.current?.pipeline_definition ?? {};
@@ -354,6 +357,21 @@
 			}
 		);
 	}
+
+	$effect(() => {
+		if (!modeMenuOpen) return;
+		const handleOutside = (event: MouseEvent) => {
+			const target = event.target as Node | null;
+			if (!target) return;
+			if (modeMenuRef?.contains(target)) return;
+			if (modeTriggerRef?.contains(target)) return;
+			modeMenuOpen = false;
+		};
+		window.addEventListener('mousedown', handleOutside, true);
+		return () => {
+			window.removeEventListener('mousedown', handleOutside, true);
+		};
+	});
 </script>
 
 <div class="step-node relative w-[65%]">
@@ -455,21 +473,38 @@
 					</button>
 				</div>
 				<div class="grid grid-cols-2 gap-2 border-t border-tertiary pt-2">
-					<div class="relative">
-						<select
-							id={`${idPrefix}-build-mode`}
-							class="w-full appearance-none border border-tertiary bg-secondary py-2 pl-3 pr-8 text-sm text-fg-primary focus:border-accent-primary focus:outline-none"
-							value={outputConfig.build_mode}
-							onchange={(e) => updateOutputConfig({ build_mode: e.currentTarget.value })}
+					<div class="column-select relative" bind:this={modeMenuRef}>
+						<button
+							type="button"
+							class="column-trigger w-full"
+							onclick={() => (modeMenuOpen = !modeMenuOpen)}
+							aria-expanded={modeMenuOpen}
+							bind:this={modeTriggerRef}
 						>
-							<option value="full">Full</option>
-							<option value="incremental">Incremental</option>
-							<option value="recreate">Recreate</option>
-						</select>
-						<ChevronDown
-							size={12}
-							class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-fg-tertiary"
-						/>
+							<span class="column-label">{outputConfig.build_mode}</span>
+							<ChevronDown size={14} class="chevron" />
+						</button>
+						{#if modeMenuOpen}
+							<div class="column-menu" role="listbox">
+								<div class="column-options">
+									{#each ['full', 'incremental', 'recreate'] as mode (mode)}
+										<button
+											type="button"
+											class="column-option"
+											class:selected={outputConfig.build_mode === mode}
+											onclick={() => {
+												updateOutputConfig({ build_mode: mode });
+												modeMenuOpen = false;
+											}}
+											role="option"
+											aria-selected={outputConfig.build_mode === mode}
+										>
+											<span>{mode}</span>
+										</button>
+									{/each}
+								</div>
+							</div>
+						{/if}
 					</div>
 					<BranchPicker
 						branches={branchOptions}

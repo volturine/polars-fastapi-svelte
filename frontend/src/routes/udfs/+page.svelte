@@ -66,7 +66,7 @@
 
 	async function handleImport() {
 		importError = '';
-		let payload: UdfExport | null = null;
+		let payload: UdfExport;
 		try {
 			payload = JSON.parse(importText) as UdfExport;
 		} catch (err) {

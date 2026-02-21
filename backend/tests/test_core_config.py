@@ -33,7 +33,7 @@ class TestSettings:
         settings = Settings()
 
         assert settings.debug is False
-        assert settings.database_url == f'sqlite+libsql:///{settings.data_dir / "app.db"}'
+        assert settings.database_url == f'sqlite:///{settings.data_dir / "app.db"}'
         assert settings.data_dir.exists()
         assert settings.upload_chunk_size == 5 * 1024 * 1024
         assert settings.job_timeout == 300
@@ -44,7 +44,7 @@ class TestSettings:
     def test_custom_settings_from_env(self, monkeypatch, tmp_path):
         data_dir = tmp_path / 'data'
         monkeypatch.setenv('DEBUG', 'true')
-        monkeypatch.setenv('DATABASE_URL', 'sqlite+libsql:///./test.db')
+        monkeypatch.setenv('DATABASE_URL', 'sqlite:///./test.db')
         monkeypatch.setenv('DATA_DIR', str(data_dir))
         monkeypatch.setenv('DEFAULT_NAMESPACE', 'acme')
         monkeypatch.setenv('UPLOAD_CHUNK_SIZE', '2000000')
@@ -54,7 +54,7 @@ class TestSettings:
         settings = Settings()
 
         assert settings.debug is True
-        assert settings.database_url == 'sqlite+libsql:///./test.db'
+        assert settings.database_url == 'sqlite:///./test.db'
         assert settings.data_dir == data_dir
         assert settings.default_namespace == 'acme'
         assert settings.upload_chunk_size == 2000000

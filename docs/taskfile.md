@@ -3,6 +3,9 @@
 ## Status:
 
 - [x] Fix analysis output branch defaults + branch creation in OutputNode
+- [x] Fix OutputNode hidden toggle to refresh datasource lists immediately
+- [x] OutputNode layout update: compact header + row2 table/branch/build
+- [x] Remove sqlite+libsql usage from namespace DB init + docs/env defaults + docker-compose
 - [ ] Fix branch export metadata lookup (branch-specific tables + filter empty branches)
 - [ ] Move namespace storage under DATA_DIR/namespaces/ and harden test isolation
 - [ ] Fix datasource upload/ingest + branch UI regressions (CSV delimiter, Excel preflight, branch defaults, build logs, hidden toggle)
@@ -19,6 +22,7 @@
   - [x] Datasources page defaults to master branch and branch list includes master
   - [x] Re-ingest uploads on CSV/Excel config change
   - [x] Fix Iceberg snapshot fallback (stale snapshot_id no longer crashes)
+  - [x] Excel preflight manual inputs only refresh on button click
 - [x] Adjust analysis node behavior: auto-apply inline view steps at 100 rows, chart nodes require apply with placeholder
 - [x] Fix analysis save refresh + derived tab previews before save
 - [x] Unify analysis DAG across tabs and restore default view nodes on new analysis

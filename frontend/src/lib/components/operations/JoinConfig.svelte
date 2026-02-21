@@ -48,7 +48,7 @@
 			rightSchema = null;
 			return;
 		}
-		let schemaInfo: Awaited<ReturnType<typeof datasourceStore.getSchema>> | null = null;
+		let schemaInfo: Awaited<ReturnType<typeof datasourceStore.getSchema>> | null;
 		try {
 			schemaInfo = await datasourceStore.getSchema(datasourceId);
 		} catch (err) {

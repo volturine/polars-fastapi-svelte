@@ -20,24 +20,10 @@ def _enable_sqlite_pragmas(engine: Engine) -> None:
         cursor.close()
 
 
-def _build_connect_args() -> dict:
-    if 'libsql' not in settings.database_url:
-        return {}
-    if not settings.turso_database_url:
-        return {}
-    args: dict[str, object] = {
-        'sync_url': settings.turso_database_url,
-        'auth_token': settings.turso_auth_token,
-    }
-    if settings.turso_sync_interval:
-        args['sync_interval'] = settings.turso_sync_interval
-    return args
-
-
 settings_engine = create_engine(
     settings.database_url,
     echo=settings.debug,
-    connect_args=_build_connect_args(),
+    connect_args={},
 )
 _enable_sqlite_pragmas(settings_engine)
 
@@ -164,7 +150,7 @@ def _get_namespace_engine() -> Engine:
         return _namespace_engines[namespace]
     paths = namespace_paths(namespace)
     engine_to_use = create_engine(
-        f'sqlite+libsql:///{paths.db_path}',
+        f'sqlite:///{paths.db_path}',
         echo=settings.debug,
         connect_args={},
     )
@@ -177,7 +163,7 @@ def _get_namespace_engine() -> Engine:
 def _init_namespace_db(namespace: str) -> None:
     paths = namespace_paths(namespace)
     namespace_engine = create_engine(
-        f'sqlite+libsql:///{paths.db_path}',
+        f'sqlite:///{paths.db_path}',
         echo=settings.debug,
         connect_args={},
     )

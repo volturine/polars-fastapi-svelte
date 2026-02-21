@@ -1,14 +1,14 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class DataSourceType(str, Enum):
+class DataSourceType(StrEnum):
     FILE = 'file'
     DATABASE = 'database'
     ICEBERG = 'iceberg'
     ANALYSIS = 'analysis'
 
 
-class DataSourceCategory(str, Enum):
+class DataSourceCategory(StrEnum):
     FILE = 'file'
     DATABASE = 'database'
     ANALYSIS = 'analysis'

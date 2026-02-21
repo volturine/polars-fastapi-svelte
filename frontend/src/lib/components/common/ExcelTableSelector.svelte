@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { preflightExcel, preflightExcelFromPath, previewExcel } from '$lib/api/excel';
 	import DataTable from '$lib/components/viewers/DataTable.svelte';
 
@@ -56,6 +57,7 @@
 	let excelHeader = $state(true);
 	let previewLoading = $state(false);
 	let error = $state<string | null>(null);
+	let dirty = $state(false);
 
 	let previewTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -112,6 +114,7 @@
 		preflightId = null;
 		detectedEndRow = null;
 		error = null;
+		dirty = false;
 	}
 
 	function normalizeConfig(value: Partial<ExcelConfig>): ExcelConfig {
@@ -206,6 +209,7 @@
 				startRowInput = String(data.start_row + 1);
 				startColInput = cellLabel(data.start_col);
 				endColInput = cellLabel(data.end_col);
+				dirty = false;
 				previewLoading = false;
 			},
 			(err) => {
@@ -213,6 +217,14 @@
 				previewLoading = false;
 			}
 		);
+	}
+
+	async function handleRefreshClick(): Promise<void> {
+		if (preflightId) {
+			await refreshPreview();
+			return;
+		}
+		await runPreflight();
 	}
 
 	async function refreshPreview(): Promise<void> {
@@ -249,6 +261,7 @@
 				startRowInput = String(data.start_row + 1);
 				startColInput = cellLabel(data.start_col);
 				endColInput = cellLabel(data.end_col);
+				dirty = false;
 				previewLoading = false;
 			},
 			(err) => {
@@ -268,6 +281,10 @@
 		}, 120);
 	}
 
+	function markDirty() {
+		dirty = true;
+	}
+
 	function applySheet(sheet: string) {
 		selectedSheet = sheet;
 		startRow = 0;
@@ -284,6 +301,7 @@
 		startColInput = cellLabel(0);
 		endColInput = cellLabel(0);
 		schedulePreview();
+		dirty = false;
 	}
 
 	function applyTable(table: string) {
@@ -301,6 +319,7 @@
 		startColInput = cellLabel(0);
 		endColInput = cellLabel(0);
 		schedulePreview();
+		dirty = false;
 	}
 
 	function applyNamedRange(range: string) {
@@ -318,6 +337,7 @@
 		startColInput = cellLabel(0);
 		endColInput = cellLabel(0);
 		schedulePreview();
+		dirty = false;
 	}
 
 	function applyCellRange(range: string) {
@@ -334,7 +354,7 @@
 		startRowInput = '1';
 		startColInput = cellLabel(0);
 		endColInput = cellLabel(0);
-		schedulePreview();
+		markDirty();
 	}
 
 	function handleCellRangeInput(event: Event) {
@@ -345,12 +365,14 @@
 		endRowManual = false;
 		endRow = null;
 		endRowInput = '';
+		markDirty();
 	}
 
 	function handleCellRangeBlur() {
 		const trimmed = cellRangeInput.trim();
 		if (!trimmed) {
 			cellRange = '';
+			markDirty();
 			return;
 		}
 		applyCellRange(trimmed);
@@ -365,6 +387,10 @@
 	function handleEndRowInput(event: Event) {
 		const target = event.currentTarget as HTMLInputElement;
 		endRowInput = target.value;
+	}
+
+	function handleHeaderToggle() {
+		markDirty();
 	}
 
 	function handleStartRowInput(event: Event) {
@@ -388,7 +414,7 @@
 		selectedRange = '';
 		cellRange = '';
 		cellRangeInput = '';
-		schedulePreview();
+		markDirty();
 	}
 
 	function handleStartColInput(event: Event) {
@@ -407,7 +433,7 @@
 		selectedRange = '';
 		cellRange = '';
 		cellRangeInput = '';
-		schedulePreview();
+		markDirty();
 	}
 
 	function handleEndColInput(event: Event) {
@@ -426,7 +452,7 @@
 		selectedRange = '';
 		cellRange = '';
 		cellRangeInput = '';
-		schedulePreview();
+		markDirty();
 	}
 
 	function handleEndRowBlur() {
@@ -436,7 +462,7 @@
 			endRowManual = false;
 			cellRange = '';
 			cellRangeInput = '';
-			schedulePreview();
+			markDirty();
 			return;
 		}
 		const parsed = Number.parseInt(trimmed, 10);
@@ -450,11 +476,7 @@
 		selectedRange = '';
 		cellRange = '';
 		cellRangeInput = '';
-		schedulePreview();
-	}
-
-	function handleHeaderToggle() {
-		schedulePreview();
+		markDirty();
 	}
 
 	function cellLabel(col: number): string {
@@ -478,6 +500,12 @@
 		}
 		return index - 1;
 	}
+
+	onDestroy(() => {
+		if (!previewTimer) return;
+		clearTimeout(previewTimer);
+		previewTimer = null;
+	});
 
 	$effect(() => {
 		if (mode === 'upload') {
@@ -504,11 +532,14 @@
 		<button
 			type="button"
 			class="btn-secondary"
-			onclick={runPreflight}
+			onclick={handleRefreshClick}
 			disabled={disabled || previewLoading}
 		>
 			{previewLoading ? 'Loading preview...' : 'Refresh preview'}
 		</button>
+		{#if dirty}
+			<span class="text-xs text-fg-tertiary">Pending changes</span>
+		{/if}
 	</div>
 
 	{#if error}

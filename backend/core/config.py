@@ -65,10 +65,6 @@ class Settings(BaseSettings):
     # CORS origins - comma-separated list of allowed origins
     cors_origins: str = 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173'
 
-    turso_database_url: str = Field(default='', alias='TURSO_DATABASE_URL')
-    turso_auth_token: str = Field(default='', alias='TURSO_AUTH_TOKEN')
-    turso_sync_interval: int = Field(default=60, alias='TURSO_SYNC_INTERVAL')
-
     data_dir: Path = Field(default_factory=lambda: Path(tempfile.TemporaryDirectory().name), alias='DATA_DIR')
     database_url: str = Field(default='', alias='DATABASE_URL')
     default_namespace: str = Field(default='default', alias='DEFAULT_NAMESPACE')
@@ -190,13 +186,6 @@ class Settings(BaseSettings):
             raise ValueError(f'{info.field_name} must be positive, got {value}')
         return value
 
-    @field_validator('turso_sync_interval')
-    @classmethod
-    def _validate_turso_sync_interval(cls, value: int) -> int:
-        if value < 0:
-            raise ValueError(f'turso_sync_interval must be non-negative, got {value}')
-        return value
-
     @field_validator('upload_chunk_size')
     @classmethod
     def _validate_upload_chunk_size(cls, value: int) -> int:
@@ -257,7 +246,7 @@ class Settings(BaseSettings):
         if not value:
             data_dir = info.data.get('data_dir')
             if data_dir:
-                value = f'sqlite+libsql:///{Path(data_dir) / "app.db"}'
+                value = f'sqlite:///{Path(data_dir) / "app.db"}'
         try:
             make_url(value)
         except Exception as exc:

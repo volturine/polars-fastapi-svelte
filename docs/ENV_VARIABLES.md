@@ -12,7 +12,7 @@ This document lists ALL environment variables supported by the application.
 | `DEBUG`                              | boolean | false                               | Enable debug mode (verbose logging, SQL echo)        |
 | `PORT`                               | integer | 8000                                | Port to bind (Docker only)                           |
 | **Database**                         |         |                                     |                                                      |
-| `DATABASE_URL`                       | string  | sqlite+libsql:///${DATA_DIR}/app.db | Database connection URL                              |
+| `DATABASE_URL`                       | string  | sqlite:///${DATA_DIR}/app.db | Database connection URL                              |
 | `DATA_DIR`                           | path    | /app/data                           | Base data directory (namespaced below)               |
 | `DEFAULT_NAMESPACE`                  | string  | default                             | Default namespace for data directories               |
 | `ENV_FILE`                           | string  | .env                                | Path to env file (empty disables env-file loading)   |
@@ -141,7 +141,7 @@ DEFAULT_NAMESPACE=default
 ### SQLite (Default)
 
 ```bash
-DATABASE_URL="sqlite+libsql:///${DATA_DIR}/app.db"
+DATABASE_URL="sqlite:///${DATA_DIR}/app.db"
 ```
 
 ### PostgreSQL

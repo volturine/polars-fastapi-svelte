@@ -75,7 +75,7 @@ def isolate_data_dir(tmp_path: Path, monkeypatch):
     log_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv('ENV_FILE', '')
     monkeypatch.setattr(settings, 'data_dir', data_dir, raising=False)
-    monkeypatch.setattr(settings, 'database_url', f'sqlite+libsql:///{data_dir / "app.db"}', raising=False)
+    monkeypatch.setattr(settings, 'database_url', f'sqlite:///{data_dir / "app.db"}', raising=False)
     monkeypatch.setattr(settings, 'log_iceberg_path', log_dir, raising=False)
 
 
@@ -85,7 +85,7 @@ def isolate_settings_engine(isolate_data_dir, monkeypatch):
     from modules.settings.models import AppSettings
 
     settings_db_path = settings.data_dir / 'app.db'
-    settings_url = f'sqlite+libsql:///{settings_db_path}'
+    settings_url = f'sqlite:///{settings_db_path}'
     engine = create_engine(
         settings_url,
         echo=False,

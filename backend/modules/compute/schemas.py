@@ -1,9 +1,9 @@
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
-class EngineStatus(str, Enum):
+class EngineStatus(StrEnum):
     HEALTHY = 'healthy'
     TERMINATED = 'terminated'
 
@@ -135,7 +135,7 @@ class StepPreviewResponse(BaseModel):
 StepPreviewRequest.model_rebuild()
 
 
-class ExportFormat(str, Enum):
+class ExportFormat(StrEnum):
     CSV = 'csv'
     PARQUET = 'parquet'
     JSON = 'json'
@@ -143,13 +143,13 @@ class ExportFormat(str, Enum):
     DUCKDB = 'duckdb'
 
 
-class ExportDestination(str, Enum):
+class ExportDestination(StrEnum):
     DOWNLOAD = 'download'
     FILESYSTEM = 'filesystem'
     DATASOURCE = 'datasource'
 
 
-class ExportDatasourceType(str, Enum):
+class ExportDatasourceType(StrEnum):
     ICEBERG = 'iceberg'
     DUCKDB = 'duckdb'
     FILE = 'file'

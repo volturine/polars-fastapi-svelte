@@ -146,7 +146,7 @@ Once the server is running, visit:
 Configuration is managed through `core/config.py` using Pydantic settings.
 
 Key settings:
-- `DATABASE_URL` - Database connection string (default: `sqlite+libsql:///${DATA_DIR}/app.db`)
+- `DATABASE_URL` - Database connection string (default: `sqlite:///${DATA_DIR}/app.db`)
 - `DATA_DIR` - Base data directory (default: `./data`)
 - `DEFAULT_NAMESPACE` - Default namespace for data directories (default: `default`)
 - `UPLOAD_CHUNK_SIZE` - Upload chunk size in bytes (default: 5MB)
@@ -159,7 +159,7 @@ Override in `.env` file or environment variables. Use `ENV_FILE` to point to a s
 
 1. Set environment variables:
    ```bash
-export DATABASE_URL="sqlite+libsql:///${DATA_DIR}/app.db"
+export DATABASE_URL="sqlite:///${DATA_DIR}/app.db"
    # ... other settings
    ```
 

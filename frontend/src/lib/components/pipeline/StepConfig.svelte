@@ -224,7 +224,7 @@
 		class="step-config box-border flex h-full min-h-0 w-full flex-col overflow-y-auto bg-primary text-fg-primary"
 	>
 		<div
-			class="config-header relative flex items-center justify-between border-b border-tertiary bg-primary p-4"
+			class="config-header relative flex items-center justify-between border-b border-tertiary bg-primary px-4 p-2"
 		>
 			<h3 class="m-0 text-sm font-semibold uppercase tracking-widest text-fg-primary">
 				Configure Step

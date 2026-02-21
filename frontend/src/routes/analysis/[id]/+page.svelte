@@ -899,11 +899,11 @@
 						<ChevronLeft size={14} />
 					{/if}
 				</button>
-				<div class="flex-1 overflow-hidden flex items-center px-4">
-					<div class="tabs flex items-center overflow-x-auto w-full gap-1">
+				<div class="flex-1 overflow-hidden flex items-center">
+					<div class="tabs flex items-center overflow-x-auto">
 						{#each analysisStore.tabs.filter((t) => t.type === 'datasource') as tab (tab.id)}
 							<div
-								class="tab inline-flex items-center bg-transparent border-none text-sm font-medium uppercase px-2 py-1 text-fg-muted gap-1 tracking-[0.06em]"
+								class="tab inline-flex items-center bg-transparent border-none text-sm font-medium uppercase text-fg-muted"
 								class:active={analysisStore.activeTab?.id === tab.id}
 							>
 								<button
@@ -927,9 +927,9 @@
 								{/if}
 							</div>
 						{/each}
-						<div class="flex items-center gap-1">
+						<div class="flex items-center">
 							<button
-								class="tab add-tab inline-flex items-center bg-transparent border-none cursor-pointer text-sm font-semibold uppercase px-2 py-1 text-fg-muted gap-1 tracking-[0.06em]"
+								class="tab add-tab inline-flex items-center bg-transparent border-none cursor-pointer text-sm font-semibold uppercase text-fg-muted"
 								onclick={() => openDatasourceModal('add')}
 								type="button"
 								title="Add datasource tab"
@@ -953,7 +953,7 @@
 				{/if}
 			</button>
 			<button
-				class="collapse-arrow collapse-arrow-right shrink-0 h-full flex items-center justify-center bg-panel border-none text-lg cursor-pointer text-fg-muted hover:text-fg-primary hover:bg-hover"
+				class="collapse-arrow collapse-arrow-right items-center bg-panel border-none text-fg-muted"
 				class:collapsed={rightPaneCollapsed}
 				onclick={() => (rightPaneCollapsed = !rightPaneCollapsed)}
 				type="button"
@@ -972,8 +972,7 @@
 				{/if}
 			</button>
 			<div
-				class="header-right flex items-center justify-end h-full box-border border-l border-tertiary"
-				class:panel-width={configPosition === 'right'}
+				class="panel-width header-right flex items-center justify-end h-full box-border border-l border-tertiary"
 			>
 				<div class="mode-toggle-container relative items-center px-1">
 					<button
@@ -990,7 +989,7 @@
 							class="mode-dropdown absolute left-0 min-w-35 bg-panel border border-tertiary p-1 z-100"
 						>
 							<button
-								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary hover:bg-hover"
+								class="mode-option flex items-center bg-transparent border-none cursor-pointer text-sm text-left text-fg-secondary hover:bg-hover"
 								onclick={() => setMode('viewing')}
 								type="button"
 							>
@@ -1002,7 +1001,7 @@
 								<span>Viewing</span>
 							</button>
 							<button
-								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary hover:bg-hover"
+								class="mode-option flex items-center bg-transparent border-none cursor-pointer text-sm text-left text-fg-secondary hover:bg-hover"
 								onclick={() => setMode('editing')}
 								type="button"
 							>
@@ -1014,7 +1013,7 @@
 								<span>Editing</span>
 							</button>
 							<button
-								class="mode-option flex items-center w-full bg-transparent border-none cursor-pointer text-sm text-left gap-2 py-2 text-fg-secondary hover:bg-hover"
+								class="mode-option flex items-center bg-transparent border-none cursor-pointer text-sm text-left text-fg-secondary hover:bg-hover"
 								onclick={openVersionModal}
 								type="button"
 							>
@@ -1169,14 +1168,14 @@
 						<div
 							class="flex items-start justify-between gap-4 border border-tertiary bg-tertiary p-3"
 						>
-							<div class="flex min-w-0 flex-col gap-1">
-								<div class="text-[0.65rem] uppercase tracking-[0.1em] text-fg-muted">
+							<div class="flex min-w-0 flex-col">
+								<div class="text-[0.65rem] uppercase tracking-widest text-fg-muted">
 									Version {version.version} · {formatVersionDate(version.created_at)}
 								</div>
 								{#if editingVersionId === version.id}
 									<input
 										type="text"
-										class="text-sm font-semibold text-fg-primary bg-transparent border border-tertiary px-1 py-0.5 w-full"
+										class="text-sm font-semibold text-fg-primary bg-transparent border border-tertiary px-1 py-0.5"
 										bind:value={editingVersionName}
 										onblur={() => commitRenameVersion(version.version)}
 										onkeydown={(e) => {
@@ -1185,7 +1184,7 @@
 										}}
 									/>
 								{:else}
-									<div class="flex items-center gap-1.5">
+									<div class="flex items-center.5">
 										<span class="text-sm font-semibold text-fg-primary">
 											{version.name}
 										</span>

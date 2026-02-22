@@ -9,6 +9,7 @@
 - [x] Fix OutputNode hidden toggle to refresh datasource lists immediately
 - [x] OutputNode layout update: compact header + row2 table/branch/build
 - [x] Remove sqlite+libsql usage from namespace DB init + docs/env defaults + docker-compose
+- [x] Fix derived tab schema propagation before save (schemaKey checks datasource_config first)
 - [ ] Fix branch export metadata lookup (branch-specific tables + filter empty branches)
 - [ ] Move namespace storage under DATA_DIR/namespaces/ and harden test isolation
 - [ ] Fix datasource upload/ingest + branch UI regressions (CSV delimiter, Excel preflight, branch defaults, build logs, hidden toggle)

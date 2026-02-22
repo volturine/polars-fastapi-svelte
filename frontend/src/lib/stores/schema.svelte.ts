@@ -32,10 +32,8 @@ export class SchemaStore {
 		const schemas = new SvelteMap<string, StepSchemas>();
 		let currentSchema: Schema | null = null;
 
-		const activeTab = analysisStore.activeTab;
-		const sourceSchema = activeTab?.datasource_id
-			? (analysisStore.sourceSchemas.get(activeTab.datasource_id) ?? null)
-			: null;
+		const schemaKey = analysisStore.activeSchemaKey;
+		const sourceSchema = schemaKey ? (analysisStore.sourceSchemas.get(schemaKey) ?? null) : null;
 
 		for (const step of this.steps) {
 			const input =

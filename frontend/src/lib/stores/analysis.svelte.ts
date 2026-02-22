@@ -56,6 +56,19 @@ export class AnalysisStore {
 		return this.tabs[0] ?? null;
 	});
 
+	activeSchemaKey = $derived.by(() => {
+		const tab = this.activeTab;
+		const analysisId = this.current?.id ?? null;
+		if (!tab || !analysisId) return null;
+		const config = (tab.datasource_config ?? {}) as Record<string, unknown>;
+		const cfgAnalysisId = config.analysis_id as string | null | undefined;
+		const cfgTabId = config.analysis_tab_id as string | null | undefined;
+		if (cfgAnalysisId && cfgTabId && String(cfgAnalysisId) === String(analysisId)) {
+			return `output:${analysisId}:${String(cfgTabId)}`;
+		}
+		return tab.datasource_id ?? null;
+	});
+
 	// Current tab's pipeline
 	pipeline = $derived.by(() => {
 		return this.activeTab?.steps ?? [];
@@ -65,18 +78,7 @@ export class AnalysisStore {
 		const steps = this.pipeline;
 		if (!steps.length || !this.sourceSchemas.size) return null;
 
-		// Use the active tab's datasource schema
-		const active = this.activeTab;
-		const analysisId = this.current?.id ?? null;
-		let schemaId = active?.datasource_id ?? null;
-		if (!schemaId && active?.datasource_config && analysisId) {
-			const config = active.datasource_config as Record<string, unknown>;
-			const cfgAnalysisId = config.analysis_id as string | null | undefined;
-			const cfgTabId = config.analysis_tab_id as string | null | undefined;
-			if (cfgAnalysisId && cfgTabId && String(cfgAnalysisId) === String(analysisId)) {
-				schemaId = `output:${analysisId}:${String(cfgTabId)}`;
-			}
-		}
+		const schemaId = this.activeSchemaKey;
 		const sourceSchema = schemaId
 			? this.sourceSchemas.get(schemaId)
 			: this.sourceSchemas.values().next().value;

@@ -216,7 +216,9 @@
 		<div
 			class="mx-4 mt-4 mb-3 flex items-center justify-between border border-tertiary bg-secondary p-2 px-3"
 		>
-			<div class="info-label flex items-center gap-2 text-[0.625rem] uppercase tracking-widest text-fg-faint">
+			<div
+				class="info-label flex items-center gap-2 text-[0.625rem] uppercase tracking-widest text-fg-faint"
+			>
 				<PanelLeft size={11} class="opacity-50" />
 				<span>Tab name</span>
 			</div>

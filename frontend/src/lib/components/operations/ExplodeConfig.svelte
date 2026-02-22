@@ -52,16 +52,15 @@
 
 			{#if (config.columns ?? []).length > 0}
 				<span class="mt-2 block text-xs text-fg-muted">
-					{(config.columns ?? []).length} column{(config.columns ?? []).length !== 1
-						? 's'
-						: ''} selected: {(config.columns ?? []).join(', ')}
+					{(config.columns ?? []).length} column{(config.columns ?? []).length !== 1 ? 's' : ''} selected:
+					{(config.columns ?? []).join(', ')}
 				</span>
 			{/if}
 		{/if}
 	</div>
 
 	<div class="text-xs text-fg-muted leading-relaxed">
-		Each list element becomes a new row. Other column values are duplicated.
-		Null values are preserved; empty lists create no rows.
+		Each list element becomes a new row. Other column values are duplicated. Null values are
+		preserved; empty lists create no rows.
 	</div>
 </div>

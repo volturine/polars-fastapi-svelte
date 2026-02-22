@@ -107,11 +107,7 @@
 	</div>
 
 	{#if safeConfig.columns.length > 0}
-		<div
-			id="sort-rules-list"
-			role="region"
-			aria-labelledby="sort-order-heading"
-		>
+		<div id="sort-rules-list" role="region" aria-labelledby="sort-order-heading">
 			<h4 id="sort-order-heading" class="mt-0 mb-3">Sort Order</h4>
 			{#each safeConfig.columns as column, i (column)}
 				<div
@@ -168,11 +164,7 @@
 			{/each}
 		</div>
 	{:else}
-		<p
-			id="sort-empty-state"
-			class="py-8 text-center text-xs text-fg-muted"
-			role="status"
-		>
+		<p id="sort-empty-state" class="py-8 text-center text-xs text-fg-muted" role="status">
 			No sort rules configured. Add a column to sort by.
 		</p>
 	{/if}

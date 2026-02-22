@@ -141,9 +141,7 @@
 
 <div class="config-panel" role="region" aria-label="Notification configuration">
 	{#if !isReady}
-		<div class="warning-box mb-5">
-			Configure SMTP or Telegram in global settings first.
-		</div>
+		<div class="warning-box mb-5">Configure SMTP or Telegram in global settings first.</div>
 	{/if}
 
 	<div class="form-group mb-5">

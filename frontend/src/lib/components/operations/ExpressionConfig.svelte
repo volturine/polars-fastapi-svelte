@@ -38,11 +38,7 @@
 			>Enter a Polars expression using pl.col() to reference columns</span
 		>
 
-		<div
-			id="expr-syntax-help"
-			class="help-box leading-relaxed mt-3"
-			aria-label="Syntax help"
-		>
+		<div id="expr-syntax-help" class="help-box leading-relaxed mt-3" aria-label="Syntax help">
 			<strong>Polars Expression Syntax:</strong><br />
 			Use
 			<code class="rounded-[3px] bg-tertiary px-2 py-1 font-mono text-[0.85em] text-accent-primary"

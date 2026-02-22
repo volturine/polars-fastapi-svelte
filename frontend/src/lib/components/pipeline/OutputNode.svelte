@@ -394,7 +394,9 @@
 		<div
 			class="mx-4 mt-4 mb-3 flex items-center justify-between border border-tertiary bg-secondary p-2 px-3"
 		>
-			<div class="info-label flex items-center gap-2 text-[0.625rem] uppercase tracking-widest text-fg-faint">
+			<div
+				class="info-label flex items-center gap-2 text-[0.625rem] uppercase tracking-widest text-fg-faint"
+			>
 				<Pencil size={11} class="opacity-50" />
 				<span>Table name</span>
 			</div>
@@ -442,7 +444,7 @@
 		</div>
 
 		<!-- Output Details (mirrors DatasourceNode dataset card) -->
-		<div class="mb-3">
+		<div class="mx-4 mb-3">
 			<div
 				class="info-label mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-fg-muted"
 			>
@@ -518,7 +520,7 @@
 		</div>
 
 		<!-- Build Action -->
-		<div class="mb-3">
+		<div class="mx-4 mb-3">
 			<button
 				class="flex w-full cursor-pointer items-center justify-center gap-2 border border-tertiary bg-secondary p-2 px-3 text-xs font-medium text-fg-secondary hover:border-accent-primary hover:bg-tertiary hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-50 [&:hover_svg]:opacity-100"
 				onclick={handleManualBuild}
@@ -537,7 +539,7 @@
 		</div>
 
 		<!-- Collapsible Sections -->
-		<div class="flex flex-col gap-3 border-t border-tertiary pt-3">
+		<div class="flex flex-col gap-3 border-t border-tertiary pt-3 mx-4 mb-3">
 			<!-- Build Notification Section -->
 			<div>
 				<button

@@ -218,9 +218,7 @@
 	let selectedType = $state<string | null>(null);
 </script>
 
-<div
-	class="step-library flex h-full min-h-0 w-full flex-col overflow-hidden bg-primary"
->
+<div class="step-library flex h-full min-h-0 w-full flex-col overflow-hidden bg-primary">
 	<img
 		class="drag-preview pointer-events-none fixed -left-2500 -top-2500 h-px w-px opacity-0"
 		alt=""

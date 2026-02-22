@@ -613,11 +613,7 @@
 												</span>
 												{#if showTypeBadges}
 													{#if getColumnType(header.id)}
-														<ColumnTypeBadge
-															columnType={getColumnType(header.id)}
-															size="xs"
-															variant="compact"
-														/>
+														<ColumnTypeBadge columnType={getColumnType(header.id)} size="xs" />
 													{:else}
 														<span class="dataset-table__type-text">-</span>
 													{/if}

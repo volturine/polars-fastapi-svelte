@@ -48,6 +48,19 @@
 - [x] Branch-aware metadata path resolution and UI selection
 - [x] Namespace picker modal + branch pickers (searchable, no free-text)
 - [x] Add per-step row count endpoint + engine command + StepNode wiring
+- [x] Chart visual polish (Tier 1-2 of original plan): Contour-inspired spacing, fonts, grids, tooltips, hover effects
+- [x] Fix ESLint svelte/no-at-html-tags by refactoring tooltip from raw HTML to structured Svelte markup
+- [ ] Chart enrichment: Contour-level customization and segmentation
+  - [x] Research Palantir Contour chart capabilities (see docs/chart-enrichment-plan.md)
+  - [x] Analyze current implementation gaps
+  - [x] Create comprehensive enrichment plan with 7 tiers
+  - [ ] Tier 1: Configuration Foundation (sorting, axis formatting, legend control, title)
+  - [ ] Tier 2: Chart Type Extensions (horizontal bar, stacked bar, area, heat grid)
+  - [ ] Tier 3: Advanced Segmentation (group_column for all types, series colors)
+  - [ ] Tier 4: Date/Time Intelligence (date bucketing, time series)
+  - [ ] Tier 5: Interactivity & Selection (pan/zoom, click selection, area selection)
+  - [ ] Tier 6: Overlays & Dual Axis (multi-layer, reference lines)
+  - [ ] Tier 7: Polish & Export (PNG/CSV export, accessibility)
 
 ### Critical
 

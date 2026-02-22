@@ -351,7 +351,7 @@
 			<div class="border-t border-tertiary">
 				{#if !isApplied}
 					<div
-						class="chart-placeholder flex h-50 items-center justify-center text-[0.6875rem] text-fg-muted"
+						class="chart-placeholder flex h-75 items-center justify-center text-[0.6875rem] text-fg-muted"
 					>
 						<Icon size={14} class="mr-2" />
 						{#if ((step.config?.x_column as string | undefined) ?? '') === ''}

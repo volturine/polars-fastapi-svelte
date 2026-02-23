@@ -10,6 +10,7 @@ class PipelineStepSchema(BaseModel):
     type: str
     config: dict
     depends_on: list[str] = []
+    is_applied: bool | None = None
 
 
 class TabSchema(BaseModel):
@@ -17,10 +18,11 @@ class TabSchema(BaseModel):
 
     id: str
     name: str
-    type: str
+    type: str = 'datasource'
     parent_id: str | None = None
     datasource_id: str | None = None
     datasource_config: dict | None = None
+    output_datasource_id: str | None = None
     steps: list[PipelineStepSchema] = []
 
 
@@ -30,6 +32,7 @@ class AnalysisCreateSchema(BaseModel):
     datasource_ids: list[str]
     pipeline_steps: list[PipelineStepSchema]
     tabs: list[TabSchema] = []
+    output_branch: str | None = None
 
 
 class AnalysisUpdateSchema(BaseModel):
@@ -38,6 +41,9 @@ class AnalysisUpdateSchema(BaseModel):
     pipeline_steps: list[PipelineStepSchema] | None = None
     status: str | None = None
     tabs: list[TabSchema] | None = None
+    client_id: str | None = None
+    lock_token: str | None = None
+    output_branch: str | None = None
 
 
 class AnalysisResponseSchema(BaseModel):
@@ -63,5 +69,3 @@ class AnalysisGalleryItemSchema(BaseModel):
     thumbnail: str | None
     created_at: datetime
     updated_at: datetime
-    row_count: int | None = None
-    column_count: int | None = None

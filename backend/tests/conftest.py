@@ -1,56 +1,62 @@
 import uuid
-from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from pathlib import Path
 
 import polars as pl
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from fastapi.testclient import TestClient
+from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, create_engine
 
-from core.database import Base, get_db
+from core.config import settings
+from core.database import clear_engine_override, get_db, set_engine_override
 from main import app
 from modules.analysis.models import Analysis, AnalysisDataSource
 from modules.datasource.models import DataSource
 
 
+def acquire_lock(client: TestClient, resource_id: str) -> tuple[str, str]:
+    client_id = str(uuid.uuid4())
+    payload = {
+        'client_id': client_id,
+        'client_signature': 'test-signature',
+    }
+    response = client.post(f'/api/v1/locks/{resource_id}/acquire', json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    return client_id, data['lock_token']
+
+
 @pytest.fixture(scope='function')
-async def test_engine():
-    engine = create_async_engine(
-        'sqlite+aiosqlite:///:memory:',
+def test_engine():
+    engine = create_engine(
+        'sqlite:///:memory:',
         echo=False,
+        connect_args={'check_same_thread': False},
+        poolclass=StaticPool,
     )
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
+    SQLModel.metadata.create_all(engine)
     yield engine
 
-    await engine.dispose()
-
 
 @pytest.fixture(scope='function')
-async def test_db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
-    AsyncTestingSessionLocal = async_sessionmaker(
-        test_engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
-
-    async with AsyncTestingSessionLocal() as session:
+def test_db_session(test_engine):
+    # Set the engine override so run_db uses the test engine
+    set_engine_override(test_engine)
+    with Session(test_engine) as session:
         yield session
+    # Clear the override after the test
+    clear_engine_override()
 
 
 @pytest.fixture(scope='function')
-async def client(test_db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    async def override_get_db():
+def client(test_db_session):
+    def override_get_db():
         yield test_db_session
 
     app.dependency_overrides[get_db] = override_get_db
-
-    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as ac:
+    with TestClient(app) as ac:
         yield ac
-
     app.dependency_overrides.clear()
 
 
@@ -61,11 +67,46 @@ def temp_upload_dir(tmp_path: Path) -> Path:
     return upload_dir
 
 
-@pytest.fixture(scope='function')
-def temp_results_dir(tmp_path: Path) -> Path:
-    results_dir = tmp_path / 'results'
-    results_dir.mkdir(parents=True, exist_ok=True)
-    return results_dir
+@pytest.fixture(autouse=True, scope='function')
+def isolate_data_dir(tmp_path: Path, monkeypatch):
+    data_dir = tmp_path / 'data'
+    data_dir.mkdir(parents=True, exist_ok=True)
+    log_dir = data_dir / 'logs'
+    log_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv('ENV_FILE', '')
+    monkeypatch.setattr(settings, 'data_dir', data_dir, raising=False)
+    monkeypatch.setattr(settings, 'database_url', f'sqlite:///{data_dir / "app.db"}', raising=False)
+    monkeypatch.setattr(settings, 'log_sqlite_path', log_dir, raising=False)
+
+
+@pytest.fixture(autouse=True, scope='function')
+def isolate_settings_engine(isolate_data_dir, monkeypatch):
+    from core import database
+    from modules.settings.models import AppSettings
+
+    settings_db_path = settings.data_dir / 'app.db'
+    settings_url = f'sqlite:///{settings_db_path}'
+    engine = create_engine(
+        settings_url,
+        echo=False,
+        connect_args={'check_same_thread': False},
+        poolclass=StaticPool,
+    )
+    AppSettings.metadata.create_all(engine)
+    monkeypatch.setattr(settings, 'database_url', settings_url, raising=False)
+    monkeypatch.setattr(database, 'settings_engine', engine, raising=False)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture(autouse=True, scope='function')
+def cleanup_namespace_engines():
+    from core import database
+
+    yield
+    for engine in database._namespace_engines.values():
+        engine.dispose()
+    database._namespace_engines.clear()
 
 
 @pytest.fixture(scope='function')
@@ -127,7 +168,7 @@ def sample_json_file(temp_upload_dir: Path) -> Path:
 
 
 @pytest.fixture(scope='function')
-async def sample_datasource(test_db_session: AsyncSession, sample_csv_file: Path) -> DataSource:
+def sample_datasource(test_db_session: Session, sample_csv_file: Path) -> DataSource:
     datasource_id = str(uuid.uuid4())
 
     config = {
@@ -145,14 +186,14 @@ async def sample_datasource(test_db_session: AsyncSession, sample_csv_file: Path
     )
 
     test_db_session.add(datasource)
-    await test_db_session.commit()
-    await test_db_session.refresh(datasource)
+    test_db_session.commit()
+    test_db_session.refresh(datasource)
 
     return datasource
 
 
 @pytest.fixture(scope='function')
-async def sample_datasources(test_db_session: AsyncSession, sample_csv_file: Path, sample_parquet_file: Path) -> list[DataSource]:
+def sample_datasources(test_db_session: Session, sample_csv_file: Path, sample_parquet_file: Path) -> list[DataSource]:
     datasources = []
 
     for _idx, (file_path, file_type, name) in enumerate(
@@ -179,16 +220,16 @@ async def sample_datasources(test_db_session: AsyncSession, sample_csv_file: Pat
         test_db_session.add(datasource)
         datasources.append(datasource)
 
-    await test_db_session.commit()
+    test_db_session.commit()
 
     for datasource in datasources:
-        await test_db_session.refresh(datasource)
+        test_db_session.refresh(datasource)
 
     return datasources
 
 
 @pytest.fixture(scope='function')
-async def sample_analysis(test_db_session: AsyncSession, sample_datasource: DataSource) -> Analysis:
+def sample_analysis(test_db_session: Session, sample_datasource: DataSource) -> Analysis:
     analysis_id = str(uuid.uuid4())
 
     pipeline_definition = {
@@ -231,14 +272,14 @@ async def sample_analysis(test_db_session: AsyncSession, sample_datasource: Data
     )
     test_db_session.add(link)
 
-    await test_db_session.commit()
-    await test_db_session.refresh(analysis)
+    test_db_session.commit()
+    test_db_session.refresh(analysis)
 
     return analysis
 
 
 @pytest.fixture(scope='function')
-async def sample_analyses(test_db_session: AsyncSession, sample_datasources: list[DataSource]) -> list[Analysis]:
+def sample_analyses(test_db_session: Session, sample_datasources: list[DataSource]) -> list[Analysis]:
     analyses = []
 
     for idx in range(3):
@@ -286,29 +327,12 @@ async def sample_analyses(test_db_session: AsyncSession, sample_datasources: lis
 
         analyses.append(analysis)
 
-    await test_db_session.commit()
+    test_db_session.commit()
 
     for analysis in analyses:
-        await test_db_session.refresh(analysis)
+        test_db_session.refresh(analysis)
 
     return analyses
-
-
-@pytest.fixture(scope='function')
-def sample_result_file(temp_results_dir: Path) -> tuple[str, Path]:
-    analysis_id = str(uuid.uuid4())
-    result_path = temp_results_dir / f'{analysis_id}.parquet'
-
-    df = pl.DataFrame(
-        {
-            'id': list(range(1, 101)),
-            'value': [i * 10 for i in range(1, 101)],
-            'category': ['A' if i % 2 == 0 else 'B' for i in range(1, 101)],
-        }
-    )
-    df.write_parquet(result_path)
-
-    return analysis_id, result_path
 
 
 @pytest.fixture(scope='function')

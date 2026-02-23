@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
+	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 
 	interface StringMethodsConfigData {
 		column: string;
@@ -46,7 +47,8 @@
 		{ value: 'slice', label: 'Substring (Slice)', params: ['start', 'end'] },
 		{ value: 'replace', label: 'Replace Text', params: ['pattern', 'replacement'] },
 		{ value: 'extract', label: 'Extract (Regex)', params: ['pattern', 'group_index'] },
-		{ value: 'split', label: 'Split String', params: ['delimiter', 'index'] }
+		{ value: 'split', label: 'Split to List', params: ['delimiter'] },
+		{ value: 'split_take', label: 'Split & Take', params: ['delimiter', 'index'] }
 	];
 
 	const stringColumns = $derived(
@@ -66,17 +68,18 @@
 </script>
 
 <div class="config-panel" role="region" aria-label="String methods configuration">
-	<h3>String Methods Configuration</h3>
-
 	<div class="form-section" role="group" aria-labelledby="str-column-heading">
 		<h4 id="str-column-heading">Source Column</h4>
-		<label for="str-select-column" class="sr-only">Select string column</label>
-		<select id="str-select-column" data-testid="str-column-select" bind:value={config.column}>
-			<option value="">Select string column...</option>
-			{#each stringColumns as column (column.name)}
-				<option value={column.name}>{column.name} ({column.dtype})</option>
-			{/each}
-		</select>
+		<ColumnDropdown
+			{schema}
+			value={config.column ?? ''}
+			onChange={(val) => (config.column = val)}
+			placeholder="Select string column..."
+			filter={(col) =>
+				col.dtype.toLowerCase().includes('str') ||
+				col.dtype.toLowerCase().includes('string') ||
+				col.dtype.toLowerCase() === 'utf8'}
+		/>
 		{#if stringColumns.length === 0}
 			<p id="str-no-columns-warning" class="warning-box" role="alert">
 				No string columns detected in schema
@@ -97,9 +100,11 @@
 	{#if needsParam('start') || needsParam('end')}
 		<div class="form-section" role="group" aria-labelledby="slice-params-heading">
 			<h4 id="slice-params-heading">Slice Parameters</h4>
-			<div class="inline-group">
-				<div class="input-group">
-					<label for="str-input-start">Start Index:</label>
+			<div class="flex gap-4">
+				<div class="flex-1">
+					<label for="str-input-start" class="block text-sm font-medium mb-1 text-fg-secondary"
+						>Start Index:</label
+					>
 					<input
 						id="str-input-start"
 						data-testid="str-start-input"
@@ -109,8 +114,10 @@
 					/>
 					<span id="str-start-help" class="sr-only">Starting index for substring</span>
 				</div>
-				<div class="input-group">
-					<label for="str-input-end">End Index (optional):</label>
+				<div class="flex-1">
+					<label for="str-input-end" class="block text-sm font-medium mb-1 text-fg-secondary"
+						>End Index (optional):</label
+					>
 					<input
 						id="str-input-end"
 						data-testid="str-end-input"
@@ -130,8 +137,10 @@
 	{#if needsParam('pattern') && needsParam('replacement')}
 		<div class="form-section" role="group" aria-labelledby="replace-params-heading">
 			<h4 id="replace-params-heading">Replace Parameters</h4>
-			<div class="input-group">
-				<label for="str-input-pattern">Pattern to find:</label>
+			<div>
+				<label for="str-input-pattern" class="block text-sm font-medium mb-1 text-fg-secondary"
+					>Pattern to find:</label
+				>
 				<input
 					id="str-input-pattern"
 					data-testid="str-pattern-input"
@@ -144,8 +153,10 @@
 					>Text or regular expression pattern to find and replace</span
 				>
 			</div>
-			<div class="input-group">
-				<label for="str-input-replacement">Replacement:</label>
+			<div>
+				<label for="str-input-replacement" class="block text-sm font-medium mb-1 text-fg-secondary"
+					>Replacement:</label
+				>
 				<input
 					id="str-input-replacement"
 					data-testid="str-replacement-input"
@@ -164,8 +175,11 @@
 	{#if needsParam('pattern') && needsParam('group_index')}
 		<div class="form-section" role="group" aria-labelledby="extract-params-heading">
 			<h4 id="extract-params-heading">Extract Parameters</h4>
-			<div class="input-group">
-				<label for="str-input-extract-pattern">Regex Pattern:</label>
+			<div>
+				<label
+					for="str-input-extract-pattern"
+					class="block text-sm font-medium mb-1 text-fg-secondary">Regex Pattern:</label
+				>
 				<input
 					id="str-input-extract-pattern"
 					data-testid="str-extract-pattern-input"
@@ -178,8 +192,10 @@
 					>Regular expression with capture group to extract</span
 				>
 			</div>
-			<div class="input-group">
-				<label for="str-input-group-index">Group Index:</label>
+			<div>
+				<label for="str-input-group-index" class="block text-sm font-medium mb-1 text-fg-secondary"
+					>Group Index:</label
+				>
 				<input
 					id="str-input-group-index"
 					data-testid="str-group-index-input"
@@ -195,25 +211,52 @@
 		</div>
 	{/if}
 
+	{#if needsParam('delimiter') && !needsParam('index')}
+		<div class="form-section" role="group" aria-labelledby="split-delimiter-heading">
+			<h4 id="split-delimiter-heading">Split Delimiter</h4>
+			<div>
+				<label
+					for="str-input-delimiter-only"
+					class="block text-sm font-medium mb-1 text-fg-secondary">Delimiter:</label
+				>
+				<input
+					id="str-input-delimiter-only"
+					data-testid="str-delimiter-only-input"
+					type="text"
+					bind:value={config.delimiter}
+					placeholder="e.g., , or |"
+					aria-describedby="str-delimiter-only-help"
+				/>
+				<span id="str-delimiter-only-help" class="sr-only"
+					>Delimiter to split the string into a list</span
+				>
+			</div>
+		</div>
+	{/if}
+
 	{#if needsParam('delimiter') && needsParam('index')}
 		<div class="form-section" role="group" aria-labelledby="split-params-heading">
-			<h4 id="split-params-heading">Split Parameters</h4>
-			<div class="input-group">
-				<label for="str-input-delimiter">Delimiter:</label>
+			<h4 id="split-params-heading">Split & Take Parameters</h4>
+			<div>
+				<label for="str-input-delimiter" class="block text-sm font-medium mb-1 text-fg-secondary"
+					>Delimiter:</label
+				>
 				<input
 					id="str-input-delimiter"
 					data-testid="str-delimiter-input"
 					type="text"
 					bind:value={config.delimiter}
-					placeholder="e.g., space, comma"
+					placeholder="e.g., , or |"
 					aria-describedby="str-delimiter-help"
 				/>
 				<span id="str-delimiter-help" class="sr-only"
 					>Delimiter character or string to split on</span
 				>
 			</div>
-			<div class="input-group">
-				<label for="str-input-part-index">Part Index:</label>
+			<div>
+				<label for="str-input-part-index" class="block text-sm font-medium mb-1 text-fg-secondary"
+					>Part Index:</label
+				>
 				<input
 					id="str-input-part-index"
 					data-testid="str-part-index-input"
@@ -223,7 +266,7 @@
 					aria-describedby="str-part-index-help"
 				/>
 				<span id="str-part-index-help" class="sr-only"
-					>Index of the part to keep after splitting (0-based)</span
+					>Index of the part to take after splitting (0-based)</span
 				>
 			</div>
 		</div>
@@ -245,26 +288,3 @@
 		>
 	</div>
 </div>
-
-<style>
-	.warning-box {
-		font-size: var(--text-sm);
-		color: var(--error-fg);
-		margin-top: var(--space-2);
-		margin-bottom: 0;
-	}
-	.inline-group {
-		display: flex;
-		gap: var(--space-4);
-	}
-	.input-group {
-		flex: 1;
-	}
-	.input-group label {
-		display: block;
-		font-size: var(--text-sm);
-		font-weight: var(--font-medium);
-		margin-bottom: var(--space-1);
-		color: var(--fg-secondary);
-	}
-</style>

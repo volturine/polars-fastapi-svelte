@@ -28,29 +28,45 @@ def convert_step_format(frontend_step: dict) -> dict:
     if not step_type:
         raise ValueError('Step must have a type field')
 
-    step_id = frontend_step.get('id', 'Unknown Step')
     config = frontend_step.get('config', {})
+    config = _normalize_chart_config(step_type, config)
+    normalized_type = _normalize_chart_type(step_type)
+
+    step_id = frontend_step.get('id', 'Unknown Step')
 
     return {
         'name': step_id,
-        'operation': step_type,
-        'params': convert_config_to_params(step_type, config),
+        'operation': normalized_type,
+        'params': convert_config_to_params(normalized_type, config),
     }
 
 
 def convert_filter_config(config: dict) -> dict:
     """Convert filter config from frontend format to backend format.
 
-    Frontend: {conditions: [{column, operator, value}], logic: "AND"}
-    Backend: {conditions: [{column, operator, value}], logic: "AND"}
+    Frontend: {conditions: [{column, operator, value, value_type?, compare_column?}], logic: "AND"}
+    Backend: {conditions: [{column, operator, value, value_type, compare_column?}], logic: "AND"}
 
     Supports multiple conditions with AND/OR logic.
+    Supports typed values (string, number, date, datetime, column) and NULL checks.
     """
     conditions = config.get('conditions', [])
     if not conditions:
         raise ValueError('Filter requires at least one condition')
 
-    return {'conditions': conditions, 'logic': config.get('logic', 'AND')}
+    converted = []
+    for cond in conditions:
+        item = {
+            'column': cond.get('column', ''),
+            'operator': cond.get('operator', '='),
+            'value': cond.get('value'),
+            'value_type': cond.get('value_type', 'string'),
+        }
+        if cond.get('compare_column'):
+            item['compare_column'] = cond['compare_column']
+        converted.append(item)
+
+    return {'conditions': converted, 'logic': config.get('logic', 'AND')}
 
 
 def convert_groupby_config(config: dict) -> dict:
@@ -260,13 +276,16 @@ def convert_value_counts_config(config: dict) -> dict:
 def convert_export_config(config: dict) -> dict:
     """Convert export config from frontend to backend format.
 
-    Frontend: {format, filename, destination}
-    Backend: {format, filename, destination}
+    Frontend: {format, filename, destination, datasource_type, iceberg_options, duckdb_options}
+    Backend: {format, filename, destination, datasource_type, iceberg_options, duckdb_options}
     """
     return {
         'format': config.get('format', 'csv'),
         'filename': config.get('filename', 'export'),
         'destination': config.get('destination', 'download'),
+        'datasource_type': config.get('datasource_type', 'iceberg'),
+        'iceberg_options': config.get('iceberg_options'),
+        'duckdb_options': config.get('duckdb_options'),
     }
 
 
@@ -279,6 +298,144 @@ def convert_union_by_name_config(config: dict) -> dict:
     return {
         'sources': config.get('sources', []),
         'allow_missing': config.get('allow_missing', config.get('allowMissing', True)),
+    }
+
+
+def convert_expression_config(config: dict) -> dict:
+    """Convert expression config from frontend to backend format.
+
+    Frontend: {expression: str, column_name: str}
+    Backend: {expression: str, column_name: str}
+    """
+    return {
+        'expression': config.get('expression', ''),
+        'column_name': config.get('column_name', 'new_column'),
+    }
+
+
+def convert_plot_config(config: dict) -> dict:
+    return {
+        'chart_type': config.get('chart_type') or config.get('chartType') or 'bar',
+        'x_column': config.get('x_column') or config.get('xColumn') or '',
+        'y_column': config.get('y_column') or config.get('yColumn'),
+        'bins': config.get('bins', 10),
+        'aggregation': config.get('aggregation', 'sum'),
+        'group_column': config.get('group_column') or config.get('groupColumn'),
+        'group_sort_by': config.get('group_sort_by'),
+        'group_sort_order': config.get('group_sort_order', 'asc'),
+        'group_sort_column': config.get('group_sort_column'),
+        'stack_mode': config.get('stack_mode', 'grouped'),
+        'area_opacity': config.get('area_opacity', 0.35),
+        'date_bucket': config.get('date_bucket'),
+        'date_ordinal': config.get('date_ordinal'),
+        'sort_by': config.get('sort_by'),
+        'sort_order': config.get('sort_order', 'asc'),
+        'sort_column': config.get('sort_column'),
+        'x_axis_label': config.get('x_axis_label'),
+        'y_axis_label': config.get('y_axis_label'),
+        'y_axis_scale': config.get('y_axis_scale', 'linear'),
+        'y_axis_min': config.get('y_axis_min'),
+        'y_axis_max': config.get('y_axis_max'),
+        'display_units': config.get('display_units', ''),
+        'decimal_places': config.get('decimal_places', 2),
+        'legend_position': config.get('legend_position', 'right'),
+        'title': config.get('title'),
+        'series_colors': config.get('series_colors', []),
+        'overlays': config.get('overlays', []),
+        'reference_lines': config.get('reference_lines', []),
+        'pan_zoom_enabled': config.get('pan_zoom_enabled', False),
+        'selection_enabled': config.get('selection_enabled', False),
+        'area_selection_enabled': config.get('area_selection_enabled', False),
+    }
+
+
+def _normalize_chart_type(step_type: str) -> str:
+    if step_type == 'plot_bar':
+        return 'chart'
+    if step_type == 'plot_horizontal_bar':
+        return 'chart'
+    if step_type == 'plot_area':
+        return 'chart'
+    if step_type == 'plot_heatgrid':
+        return 'chart'
+    if step_type == 'plot_histogram':
+        return 'chart'
+    if step_type == 'plot_scatter':
+        return 'chart'
+    if step_type == 'plot_line':
+        return 'chart'
+    if step_type == 'plot_pie':
+        return 'chart'
+    if step_type == 'plot_boxplot':
+        return 'chart'
+    return step_type
+
+
+def _normalize_chart_config(step_type: str, config: dict) -> dict:
+    chart_map = {
+        'plot_bar': 'bar',
+        'plot_horizontal_bar': 'horizontal_bar',
+        'plot_area': 'area',
+        'plot_heatgrid': 'heatgrid',
+        'plot_histogram': 'histogram',
+        'plot_scatter': 'scatter',
+        'plot_line': 'line',
+        'plot_pie': 'pie',
+        'plot_boxplot': 'boxplot',
+    }
+    if step_type not in chart_map:
+        return config
+    return {**config, 'chart_type': chart_map[step_type]}
+
+
+def convert_ai_config(config: dict) -> dict:
+    raw_options = config.get('request_options') or config.get('requestOptions')
+    # Parse string JSON to dict if needed (frontend sends textarea value as string)
+    if isinstance(raw_options, str):
+        raw_options = raw_options.strip() or None
+
+    # Support both legacy input_column (singular) and input_columns (plural)
+    input_columns: list[str] = config.get('input_columns') or config.get('inputColumns') or []
+    legacy_col = config.get('input_column') or config.get('inputColumn')
+    if legacy_col and legacy_col not in input_columns:
+        input_columns = [legacy_col, *input_columns]
+
+    result: dict[str, object] = {
+        'provider': config.get('provider', 'ollama'),
+        'model': config.get('model', 'llama2'),
+        'input_columns': input_columns,
+        'output_column': config.get('output_column') or config.get('outputColumn') or 'ai_result',
+        'prompt_template': config.get('prompt_template') or config.get('promptTemplate') or 'Classify this text: {{text}}',
+        'batch_size': config.get('batch_size', 10),
+        'endpoint_url': config.get('endpoint_url') or config.get('endpointUrl'),
+        'api_key': config.get('api_key') or config.get('apiKey'),
+        'request_options': raw_options,
+    }
+    return result
+
+
+def convert_notification_config(config: dict) -> dict:
+    """Convert notification config — per-row UDF with column inputs."""
+    input_columns: list[str] = config.get('input_columns') or config.get('inputColumns') or []
+
+    recipients = config.get('recipient', '')
+    if not recipients:
+        selected = config.get('subscriber_ids')
+        if isinstance(selected, list):
+            recipients = ','.join(str(cid) for cid in selected)
+
+    return {
+        'method': config.get('method', 'email'),
+        'recipient': recipients,
+        'bot_token': config.get('bot_token', ''),
+        'subscriber_ids': config.get('subscriber_ids') or [],
+        'recipient_column': config.get('recipient_column') or config.get('recipientColumn') or '',
+        'input_columns': input_columns,
+        'output_column': config.get('output_column') or config.get('outputColumn') or 'notification_status',
+        'message_template': config.get('message_template') or config.get('messageTemplate') or '{{message}}',
+        'subject_template': config.get('subject_template') or config.get('subjectTemplate') or 'Notification',
+        'batch_size': config.get('batch_size', 10),
+        'timeout_seconds': config.get('timeout_seconds', 20),
     }
 
 
@@ -308,6 +465,10 @@ def get_converters() -> dict:
         'value_counts': convert_value_counts_config,
         'export': convert_export_config,
         'union_by_name': convert_union_by_name_config,
+        'expression': convert_expression_config,
+        'chart': convert_plot_config,
+        'ai': convert_ai_config,
+        'notification': convert_notification_config,
     }
 
 
@@ -318,5 +479,5 @@ def convert_config_to_params(operation: str, config: dict) -> dict:
     try:
         return converter(config)
     except Exception as e:
-        logger.error(f'Error converting {operation} config: {e}')
-        return config if isinstance(config, dict) else {}
+        logger.error(f'Error converting {operation} config: {e}', exc_info=True)
+        raise

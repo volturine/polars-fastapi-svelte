@@ -1,28 +1,35 @@
 import { getConfig, type FrontendConfig } from '$lib/api/config';
 
-class ConfigStore {
+export class ConfigStore {
 	config = $state<FrontendConfig | null>(null);
 	loading = $state(false);
 	error = $state<string | null>(null);
 	private fetched = false;
+	private pending: Promise<void> | null = null;
 
 	async fetch(): Promise<void> {
 		if (this.fetched) return;
+		if (this.pending) return this.pending;
 
 		this.loading = true;
 		this.error = null;
 
-		getConfig().match(
+		const request = getConfig().match(
 			(config) => {
 				this.config = config;
-				this.loading = false;
 				this.fetched = true;
 			},
 			(err) => {
 				this.error = err.message;
-				this.loading = false;
 			}
 		);
+
+		this.pending = request.finally(() => {
+			this.loading = false;
+			this.pending = null;
+		});
+
+		return this.pending;
 	}
 
 	// Getters with fallback defaults (in case config not loaded yet)
@@ -36,6 +43,46 @@ class ConfigStore {
 
 	get jobTimeout(): number {
 		return this.config?.job_timeout ?? 300; // 5min default
+	}
+
+	get timezone(): string {
+		return this.config?.timezone ?? 'UTC';
+	}
+
+	get normalizeTz(): boolean {
+		return this.config?.normalize_tz ?? false;
+	}
+
+	get auditLogBatchSize(): number {
+		return this.config?.log_client_batch_size ?? 20;
+	}
+
+	get auditLogFlushIntervalMs(): number {
+		return this.config?.log_client_flush_interval_ms ?? 5000;
+	}
+
+	get auditLogDedupeWindowMs(): number {
+		return this.config?.log_client_dedupe_window_ms ?? 500;
+	}
+
+	get auditLogFlushCooldownMs(): number {
+		return this.config?.log_client_flush_cooldown_ms ?? 3000;
+	}
+
+	get logQueueMaxSize(): number {
+		return this.config?.log_queue_max_size ?? 2000;
+	}
+
+	get publicIdbDebug(): boolean {
+		return this.config?.public_idb_debug ?? false;
+	}
+
+	get smtpEnabled(): boolean {
+		return this.config?.smtp_enabled ?? false;
+	}
+
+	get telegramEnabled(): boolean {
+		return this.config?.telegram_enabled ?? false;
 	}
 }
 

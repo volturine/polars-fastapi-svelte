@@ -1,8 +1,9 @@
 from collections.abc import Callable
+from typing import Literal, cast
 
 import polars as pl
 
-from modules.compute.operations.base import OperationHandler, OperationParams
+from modules.compute.core.base import OperationHandler, OperationParams
 
 
 class TimeseriesParams(OperationParams):
@@ -54,6 +55,12 @@ class TimeseriesHandler(OperationHandler):
         if validated.operation_type == 'extract':
             method = self._get_extractor(validated.component or '')
             return lf.with_columns(getattr(pl.col(validated.column).dt, method)().alias(validated.new_column))
+
+        if validated.operation_type == 'timestamp':
+            valid_units = {'ns', 'us', 'ms'}
+            unit = validated.unit if validated.unit in valid_units else 'us'
+            unit_literal = cast(Literal['ns', 'us', 'ms'], unit)
+            return lf.with_columns(pl.col(validated.column).dt.timestamp(unit_literal).alias(validated.new_column))
 
         if validated.operation_type in {'add', 'subtract', 'offset'}:
             if validated.value is None:

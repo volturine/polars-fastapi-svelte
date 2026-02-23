@@ -1,5 +1,6 @@
 import type { Schema } from '$lib/types/schema';
 import type { PipelineStep } from '$lib/types/analysis';
+import type { ColumnInfo } from '$lib/types/schema';
 import {
 	emptySchema,
 	unionByName,
@@ -40,6 +41,14 @@ export interface StepConfig {
 	right_columns?: string[];
 	sources?: string[];
 	allow_missing?: boolean;
+	expressions?: Array<{
+		name: string;
+		type: string;
+		value?: string | number | null;
+		column?: string | null;
+		args?: string[] | null;
+		code?: string | null;
+	}>;
 	[key: string]: unknown;
 }
 
@@ -117,8 +126,7 @@ export function groupbyTransform(input: Schema | null, config: StepConfig): Sche
 	for (const col of groupBy ?? []) {
 		result.push({
 			name: col,
-			dtype:
-				normalizeDtype(input.columns.find((column) => column.name === col)?.dtype) ?? 'Unknown',
+			dtype: normalizeDtype(input.columns.find((column) => column.name === col)?.dtype) ?? 'Any',
 			nullable: false
 		});
 	}
@@ -196,22 +204,42 @@ export function deduplicateTransform(input: Schema | null, _config: StepConfig):
 
 export function withColumnsTransform(input: Schema | null, config: StepConfig): Schema {
 	if (!input) return { columns: [], row_count: null };
-
-	const expression = config.expression as string | undefined;
-	const targetColumn = config.target_column as string | undefined;
-
-	if (!expression || !targetColumn) {
+	const expressions = config.expressions ?? [];
+	if (!Array.isArray(expressions) || expressions.length === 0) {
 		return { columns: input.columns, row_count: null };
 	}
 
-	const newColumn: (typeof input.columns)[0] = {
-		name: targetColumn,
-		dtype: 'unknown',
-		nullable: true
-	};
+	const inputMap = new Map(input.columns.map((col) => [col.name, col]));
+	const additions = expressions
+		.map((expr) => {
+			const name = typeof expr.name === 'string' ? expr.name : '';
+			if (!name) return null;
+			if (expr.type === 'column' && typeof expr.column === 'string') {
+				const source = inputMap.get(expr.column);
+				if (source) {
+					return { ...source, name };
+				}
+			}
+			return { name, dtype: 'Any', nullable: true };
+		})
+		.filter((col): col is ColumnInfo => col !== null);
+
+	const additionsByName = new Map(additions.map((col) => [col.name, col]));
+	const updated = input.columns.map((col) => additionsByName.get(col.name) ?? col);
+	const appendOrder = additions.filter((col) => !inputMap.has(col.name));
+	const seen = new Set<string>();
+	const append = appendOrder
+		.slice()
+		.reverse()
+		.filter((col) => {
+			if (seen.has(col.name)) return false;
+			seen.add(col.name);
+			return true;
+		})
+		.reverse();
 
 	return {
-		columns: [...input.columns, newColumn],
+		columns: [...updated, ...append],
 		row_count: null
 	};
 }
@@ -238,7 +266,7 @@ export function unpivotTransform(input: Schema | null, _config: StepConfig): Sch
 	return {
 		columns: [
 			{ name: 'variable', dtype: 'Utf8', nullable: false },
-			{ name: 'value', dtype: 'Unknown', nullable: true }
+			{ name: 'value', dtype: 'Any', nullable: true }
 		],
 		row_count: null
 	};
@@ -277,7 +305,7 @@ export function stringTransform(input: Schema | null, config: StepConfig): Schem
 	}
 
 	return {
-		columns: [...input.columns, { name: newColumn, dtype: 'Unknown', nullable: true }],
+		columns: [...input.columns, { name: newColumn, dtype: 'Any', nullable: true }],
 		row_count: null
 	};
 }
@@ -318,7 +346,7 @@ export function valueCountsTransform(input: Schema | null, _config: StepConfig):
 
 	return {
 		columns: [
-			{ name: 'value', dtype: 'Unknown', nullable: false },
+			{ name: 'value', dtype: 'Any', nullable: false },
 			{ name: 'count', dtype: 'UInt32', nullable: false }
 		],
 		row_count: null
@@ -337,14 +365,21 @@ export function expressionTransform(input: Schema | null, config: StepConfig): S
 	if (!input) return { columns: [], row_count: null };
 
 	const expression = config.expression as string | undefined;
-	const targetColumn = config.target_column as string | undefined;
+	const columnName =
+		(config.column_name as string | undefined) || (config.target_column as string | undefined);
 
-	if (!expression || !targetColumn) {
+	if (!expression || !columnName) {
+		return { columns: input.columns, row_count: null };
+	}
+
+	// Check if column already exists (update) or is new (add)
+	const exists = input.columns.some((c) => c.name === columnName);
+	if (exists) {
 		return { columns: input.columns, row_count: null };
 	}
 
 	return {
-		columns: [...input.columns, { name: targetColumn, dtype: 'Unknown', nullable: true }],
+		columns: [...input.columns, { name: columnName, dtype: 'Any', nullable: true }],
 		row_count: null
 	};
 }
@@ -410,7 +445,7 @@ export function normalizeDtype(dtype: string | undefined): string | undefined {
 		str: 'Utf8',
 		date: 'Date',
 		datetime: 'Datetime',
-		unknown: 'Unknown'
+		unknown: 'Any'
 	};
 	return map[dtype] ?? dtype;
 }

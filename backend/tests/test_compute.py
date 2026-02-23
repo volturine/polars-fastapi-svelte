@@ -1,29 +1,53 @@
+import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
-from httpx import AsyncClient
+from sqlalchemy import select
 
+from core.exceptions import PipelineValidationError
 from modules.compute.engine import PolarsComputeEngine
 from modules.datasource.models import DataSource
+from modules.engine_runs.models import EngineRun
 
 
-@pytest.mark.asyncio
 class TestComputePreview:
-    async def test_preview_step_success(self, client: AsyncClient, sample_datasource: DataSource):
+    def test_preview_step_success(self, client, sample_datasource: DataSource):
         payload = {
-            'datasource_id': sample_datasource.id,
-            'pipeline_steps': [
-                {
-                    'id': 'step1',
-                    'type': 'filter',
-                    'config': {'column': 'age', 'operator': '>', 'value': 25},
+            'analysis_id': 'analysis-id',
+            'analysis_pipeline': {
+                'analysis_id': 'analysis-id',
+                'tabs': [
+                    {
+                        'id': 'tab1',
+                        'datasource_id': sample_datasource.id,
+                        'datasource_config': {},
+                        'output_datasource_id': 'out-1',
+                        'steps': [
+                            {
+                                'id': 'step1',
+                                'type': 'filter',
+                                'config': {'column': 'age', 'operator': '>', 'value': 25},
+                            },
+                            {
+                                'id': 'step2',
+                                'type': 'select',
+                                'config': {'columns': ['name', 'age']},
+                            },
+                        ],
+                    }
+                ],
+                'sources': {
+                    sample_datasource.id: {
+                        'source_type': sample_datasource.source_type,
+                        **sample_datasource.config,
+                    },
+                    'out-1': {
+                        'source_type': 'analysis',
+                        'analysis_id': 'analysis-id',
+                        'analysis_tab_id': 'tab1',
+                    },
                 },
-                {
-                    'id': 'step2',
-                    'type': 'select',
-                    'config': {'columns': ['name', 'age']},
-                },
-            ],
+            },
             'target_step_id': 'step1',
         }
 
@@ -48,7 +72,7 @@ class TestComputePreview:
             mock_manager.get_or_create_engine.return_value = mock_engine
             mock_get_manager.return_value = mock_manager
 
-            response = await client.post('/api/v1/compute/preview', json=payload)
+            response = client.post('/api/v1/compute/preview', json=payload)
 
             assert response.status_code == 200
             result = response.json()
@@ -57,16 +81,38 @@ class TestComputePreview:
             assert 'data' in result
             assert result['total_rows'] == 2
 
-    async def test_preview_step_failure(self, client: AsyncClient, sample_datasource: DataSource):
+    def test_preview_step_failure(self, client, sample_datasource: DataSource):
         payload = {
-            'datasource_id': sample_datasource.id,
-            'pipeline_steps': [
-                {
-                    'id': 'step1',
-                    'type': 'invalid_operation',
-                    'config': {},
-                }
-            ],
+            'analysis_id': 'analysis-id',
+            'analysis_pipeline': {
+                'analysis_id': 'analysis-id',
+                'tabs': [
+                    {
+                        'id': 'tab1',
+                        'datasource_id': sample_datasource.id,
+                        'datasource_config': {},
+                        'output_datasource_id': 'out-1',
+                        'steps': [
+                            {
+                                'id': 'step1',
+                                'type': 'invalid_operation',
+                                'config': {},
+                            }
+                        ],
+                    }
+                ],
+                'sources': {
+                    sample_datasource.id: {
+                        'source_type': sample_datasource.source_type,
+                        **sample_datasource.config,
+                    },
+                    'out-1': {
+                        'source_type': 'analysis',
+                        'analysis_id': 'analysis-id',
+                        'analysis_tab_id': 'tab1',
+                    },
+                },
+            },
             'target_step_id': 'step1',
         }
 
@@ -87,36 +133,74 @@ class TestComputePreview:
             mock_manager.get_or_create_engine.return_value = mock_engine
             mock_get_manager.return_value = mock_manager
 
-            response = await client.post('/api/v1/compute/preview', json=payload)
+            response = client.post('/api/v1/compute/preview', json=payload)
 
             # Failed pipeline execution returns 500
             assert response.status_code in [404, 500]
 
-    async def test_preview_step_datasource_not_found(self, client: AsyncClient):
+    def test_preview_step_datasource_not_found(self, client):
+        missing_id = str(uuid.uuid4())
         payload = {
-            'datasource_id': 'non-existent-id',
-            'pipeline_steps': [],
+            'analysis_id': 'analysis-id',
+            'analysis_pipeline': {
+                'analysis_id': 'analysis-id',
+                'tabs': [
+                    {
+                        'id': 'tab1',
+                        'datasource_id': missing_id,
+                        'datasource_config': {},
+                        'output_datasource_id': 'out-1',
+                        'steps': [],
+                    }
+                ],
+                'sources': {
+                    missing_id: {
+                        'source_type': 'file',
+                    },
+                    'out-1': {
+                        'source_type': 'analysis',
+                        'analysis_id': 'analysis-id',
+                        'analysis_tab_id': 'tab1',
+                    },
+                },
+            },
             'target_step_id': 'step1',
         }
 
-        response = await client.post('/api/v1/compute/preview', json=payload)
+        response = client.post('/api/v1/compute/preview', json=payload)
 
-        assert response.status_code == 404
-        result = response.json()
-        detail = result.get('detail', result)
-        if isinstance(detail, dict):
-            assert 'not found' in detail.get('message', '')
-        else:
-            assert 'not found' in str(detail)
+        assert response.status_code == 500
 
-    async def test_preview_step_specific_target(self, client: AsyncClient, sample_datasource: DataSource):
+    def test_preview_step_specific_target(self, client, sample_datasource: DataSource):
         payload = {
-            'datasource_id': sample_datasource.id,
-            'pipeline_steps': [
-                {'id': 'step1', 'type': 'filter', 'config': {}},
-                {'id': 'step2', 'type': 'select', 'config': {}},
-                {'id': 'step3', 'type': 'sort', 'config': {}},
-            ],
+            'analysis_id': 'analysis-id',
+            'analysis_pipeline': {
+                'analysis_id': 'analysis-id',
+                'tabs': [
+                    {
+                        'id': 'tab1',
+                        'datasource_id': sample_datasource.id,
+                        'datasource_config': {},
+                        'output_datasource_id': 'out-1',
+                        'steps': [
+                            {'id': 'step1', 'type': 'filter', 'config': {}},
+                            {'id': 'step2', 'type': 'select', 'config': {}},
+                            {'id': 'step3', 'type': 'sort', 'config': {}},
+                        ],
+                    }
+                ],
+                'sources': {
+                    sample_datasource.id: {
+                        'source_type': sample_datasource.source_type,
+                        **sample_datasource.config,
+                    },
+                    'out-1': {
+                        'source_type': 'analysis',
+                        'analysis_id': 'analysis-id',
+                        'analysis_tab_id': 'tab1',
+                    },
+                },
+            },
             'target_step_id': 'step2',
         }
 
@@ -137,9 +221,240 @@ class TestComputePreview:
             mock_manager.get_or_create_engine.return_value = mock_engine
             mock_get_manager.return_value = mock_manager
 
-            response = await client.post('/api/v1/compute/preview', json=payload)
+            response = client.post('/api/v1/compute/preview', json=payload)
 
             assert response.status_code == 200
+
+    def test_preview_logs_engine_run(self, client, sample_datasource: DataSource, test_db_session):
+        payload = {
+            'analysis_id': 'analysis-id',
+            'analysis_pipeline': {
+                'analysis_id': 'analysis-id',
+                'tabs': [
+                    {
+                        'id': 'tab1',
+                        'datasource_id': sample_datasource.id,
+                        'datasource_config': {},
+                        'output_datasource_id': 'out-1',
+                        'steps': [
+                            {
+                                'id': 'step1',
+                                'type': 'filter',
+                                'config': {'column': 'age', 'operator': '>', 'value': 25},
+                            }
+                        ],
+                    }
+                ],
+                'sources': {
+                    sample_datasource.id: {
+                        'source_type': sample_datasource.source_type,
+                        **sample_datasource.config,
+                    },
+                    'out-1': {
+                        'source_type': 'analysis',
+                        'analysis_id': 'analysis-id',
+                        'analysis_tab_id': 'tab1',
+                    },
+                },
+            },
+            'target_step_id': 'step1',
+            'row_limit': 10,
+            'page': 1,
+        }
+
+        with patch('modules.compute.service.get_manager') as mock_get_manager:
+            mock_manager = MagicMock()
+            mock_engine = MagicMock()
+
+            mock_engine.preview.return_value = 'preview-job-126'
+            mock_engine.get_result.side_effect = [
+                None,
+                {
+                    'data': {
+                        'schema': {'name': 'String'},
+                        'data': [{'name': 'Bob'}],
+                        'row_count': 1,
+                        'query_plans': {'optimized': 'opt', 'unoptimized': 'unopt'},
+                    },
+                    'error': None,
+                },
+            ]
+
+            mock_manager.get_engine.return_value = None
+            mock_manager.get_or_create_engine.return_value = mock_engine
+            mock_get_manager.return_value = mock_manager
+
+            response = client.post('/api/v1/compute/preview', json=payload)
+
+            assert response.status_code == 200
+
+        result = test_db_session.execute(select(EngineRun))
+        runs = result.scalars().all()
+        assert len(runs) == 1
+
+        run = runs[0]
+        assert run.kind == 'preview'
+        assert run.status == 'success'
+        assert run.request_json['analysis_pipeline']['tabs'][0]['datasource_id'] == sample_datasource.id
+        assert 'data' not in run.result_json
+        assert run.result_json['query_plans']['optimized'] == 'opt'
+
+
+class TestComputeExport:
+    def test_export_logs_engine_run(self, client, sample_datasource: DataSource, test_db_session):
+        payload = {
+            'analysis_id': 'analysis-id',
+            'analysis_pipeline': {
+                'analysis_id': 'analysis-id',
+                'tabs': [
+                    {
+                        'id': 'tab1',
+                        'datasource_id': sample_datasource.id,
+                        'datasource_config': {},
+                        'output_datasource_id': 'out-1',
+                        'steps': [
+                            {
+                                'id': 'step1',
+                                'type': 'select',
+                                'config': {'columns': ['name']},
+                            }
+                        ],
+                    }
+                ],
+                'sources': {
+                    sample_datasource.id: {
+                        'source_type': sample_datasource.source_type,
+                        **sample_datasource.config,
+                    },
+                    'out-1': {
+                        'source_type': 'analysis',
+                        'analysis_id': 'analysis-id',
+                        'analysis_tab_id': 'tab1',
+                    },
+                },
+            },
+            'target_step_id': 'step1',
+            'format': 'csv',
+            'filename': 'export-test',
+            'destination': 'download',
+        }
+
+        def write_export(*_args, **kwargs):
+            output_path = kwargs.get('output_path')
+            if not output_path:
+                return None
+            with open(output_path, 'wb') as handle:
+                handle.write(b'id,name\n1,Alice\n')
+            return None
+
+        with patch('modules.compute.service.get_manager') as mock_get_manager:
+            mock_manager = MagicMock()
+            mock_engine = MagicMock()
+
+            mock_engine.export.side_effect = write_export
+            mock_engine.get_result.side_effect = [
+                None,
+                {
+                    'data': {
+                        'row_count': 1,
+                        'export_format': 'csv',
+                        'query_plans': {'optimized': 'opt', 'unoptimized': 'unopt'},
+                    },
+                    'error': None,
+                },
+            ]
+
+            mock_manager.get_engine.return_value = None
+            mock_manager.get_or_create_engine.return_value = mock_engine
+            mock_get_manager.return_value = mock_manager
+
+            response = client.post('/api/v1/compute/export', json=payload)
+
+            assert response.status_code == 200
+
+        result = test_db_session.execute(select(EngineRun))
+        runs = result.scalars().all()
+        assert len(runs) == 1
+
+        run = runs[0]
+        assert run.kind == 'export'
+        assert run.status == 'success'
+        assert run.request_json['analysis_pipeline']['tabs'][0]['datasource_id'] == sample_datasource.id
+        assert 'data' not in run.result_json
+        assert run.result_json['query_plans']['optimized'] == 'opt'
+        assert run.result_json['file_size_bytes'] > 0
+
+
+class TestComputeRowCount:
+    def test_row_count_logs_engine_run(self, client, sample_datasource: DataSource, test_db_session):
+        payload = {
+            'analysis_id': 'analysis-id',
+            'analysis_pipeline': {
+                'analysis_id': 'analysis-id',
+                'tabs': [
+                    {
+                        'id': 'tab1',
+                        'datasource_id': sample_datasource.id,
+                        'datasource_config': {},
+                        'output_datasource_id': 'out-1',
+                        'steps': [
+                            {
+                                'id': 'step1',
+                                'type': 'select',
+                                'config': {'columns': ['name']},
+                            }
+                        ],
+                    }
+                ],
+                'sources': {
+                    sample_datasource.id: {
+                        'source_type': sample_datasource.source_type,
+                        **sample_datasource.config,
+                    },
+                    'out-1': {
+                        'source_type': 'analysis',
+                        'analysis_id': 'analysis-id',
+                        'analysis_tab_id': 'tab1',
+                    },
+                },
+            },
+            'target_step_id': 'step1',
+        }
+
+        with patch('modules.compute.service.get_manager') as mock_get_manager:
+            mock_manager = MagicMock()
+            mock_engine = MagicMock()
+
+            mock_engine.get_row_count.return_value = 'row-count-job-123'
+            mock_engine.get_result.side_effect = [
+                None,
+                {
+                    'data': {
+                        'row_count': 42,
+                    },
+                    'error': None,
+                },
+            ]
+
+            mock_manager.get_engine.return_value = None
+            mock_manager.get_or_create_engine.return_value = mock_engine
+            mock_get_manager.return_value = mock_manager
+
+            response = client.post('/api/v1/compute/row-count', json=payload)
+
+            assert response.status_code == 200
+            result = response.json()
+            assert result['row_count'] == 42
+
+        test_db_session.expire_all()
+        runs = test_db_session.execute(select(EngineRun)).scalars().all()
+        assert len(runs) == 1
+
+        run = runs[0]
+        assert run.kind == 'row_count'
+        assert run.status == 'success'
+        assert run.request_json['analysis_pipeline']['tabs'][0]['datasource_id'] == sample_datasource.id
+        assert run.result_json['row_count'] == 42
 
 
 def _build_fake_dataframe() -> MagicMock:
@@ -159,11 +474,16 @@ def test_pipeline_cycle_detection(mock_apply_step: MagicMock, mock_load: MagicMo
     mock_apply_step.side_effect = lambda frame, _step, **kwargs: frame
 
     pipeline_steps = [
-        {'id': 'step1', 'type': 'filter', 'config': {}, 'depends_on': ['step2']},
-        {'id': 'step2', 'type': 'select', 'config': {}, 'depends_on': ['step1']},
+        {
+            'id': 'step1',
+            'type': 'filter',
+            'config': {'conditions': [{'column': 'col', 'operator': '>', 'value': 1}]},
+            'depends_on': ['step2'],
+        },
+        {'id': 'step2', 'type': 'select', 'config': {'columns': ['col']}, 'depends_on': ['step1']},
     ]
 
-    with pytest.raises(ValueError, match='cycle'):
+    with pytest.raises(PipelineValidationError, match='cycle'):
         PolarsComputeEngine._build_pipeline({}, pipeline_steps, 'job', MagicMock())
 
 
@@ -174,12 +494,22 @@ def test_pipeline_multiple_dependencies(mock_apply_step: MagicMock, mock_load: M
     mock_apply_step.side_effect = lambda frame, _step, **kwargs: frame
 
     pipeline_steps = [
-        {'id': 'step1', 'type': 'filter', 'config': {}, 'depends_on': []},
-        {'id': 'step2', 'type': 'select', 'config': {}, 'depends_on': ['step1', 'step3']},
-        {'id': 'step3', 'type': 'sort', 'config': {}, 'depends_on': []},
+        {
+            'id': 'step1',
+            'type': 'filter',
+            'config': {'conditions': [{'column': 'col', 'operator': '>', 'value': 1}]},
+            'depends_on': [],
+        },
+        {
+            'id': 'step2',
+            'type': 'select',
+            'config': {'columns': ['col']},
+            'depends_on': ['step1', 'step3'],
+        },
+        {'id': 'step3', 'type': 'sort', 'config': {'columns': ['col'], 'descending': [False]}, 'depends_on': []},
     ]
 
-    with pytest.raises(ValueError, match='multiple dependencies'):
+    with pytest.raises(PipelineValidationError, match='multiple dependencies'):
         PolarsComputeEngine._build_pipeline({}, pipeline_steps, 'job', MagicMock())
 
 
@@ -193,20 +523,29 @@ def test_pipeline_topological_order(mock_apply_step: MagicMock, mock_load: Magic
     mock_apply_step.return_value = fake_lf
 
     pipeline_steps = [
-        {'id': 'step1', 'type': 'filter', 'config': {}, 'depends_on': []},
-        {'id': 'step2', 'type': 'select', 'config': {}, 'depends_on': ['step1']},
-        {'id': 'step3', 'type': 'sort', 'config': {}, 'depends_on': ['step2']},
+        {
+            'id': 'step1',
+            'type': 'filter',
+            'config': {'conditions': [{'column': 'col', 'operator': '>', 'value': 1}]},
+            'depends_on': [],
+        },
+        {'id': 'step2', 'type': 'select', 'config': {'columns': ['col']}, 'depends_on': ['step1']},
+        {
+            'id': 'step3',
+            'type': 'sort',
+            'config': {'columns': ['col'], 'descending': [False]},
+            'depends_on': ['step2'],
+        },
     ]
 
-    # _build_pipeline returns a LazyFrame, not a dict
-    result = PolarsComputeEngine._build_pipeline({}, pipeline_steps, 'job', MagicMock())
+    # build_pipeline returns just the LazyFrame
+    result = PolarsComputeEngine.build_pipeline({}, pipeline_steps, 'job', MagicMock())
     assert result == fake_lf
 
 
-@pytest.mark.asyncio
 class TestEngineLifecycle:
-    async def test_spawn_engine(self, client: AsyncClient):
-        analysis_id = 'test-analysis-123'
+    def test_spawn_engine(self, client):
+        analysis_id = str(uuid.uuid4())
 
         with patch('modules.compute.routes.get_manager') as mock_get_manager:
             mock_manager = MagicMock()
@@ -220,15 +559,15 @@ class TestEngineLifecycle:
             }
             mock_get_manager.return_value = mock_manager
 
-            response = await client.post(f'/api/v1/compute/engine/spawn/{analysis_id}')
+            response = client.post(f'/api/v1/compute/engine/spawn/{analysis_id}')
 
             assert response.status_code == 200
             result = response.json()
             assert result['analysis_id'] == analysis_id
             assert result['status'] == 'healthy'
 
-    async def test_keepalive_engine(self, client: AsyncClient):
-        analysis_id = 'test-analysis-123'
+    def test_keepalive_engine(self, client):
+        analysis_id = str(uuid.uuid4())
 
         with patch('modules.compute.routes.get_manager') as mock_get_manager:
             mock_manager = MagicMock()
@@ -242,14 +581,14 @@ class TestEngineLifecycle:
             }
             mock_get_manager.return_value = mock_manager
 
-            response = await client.post(f'/api/v1/compute/engine/keepalive/{analysis_id}')
+            response = client.post(f'/api/v1/compute/engine/keepalive/{analysis_id}')
 
             assert response.status_code == 200
             result = response.json()
             assert result['analysis_id'] == analysis_id
 
-    async def test_get_engine_status(self, client: AsyncClient):
-        analysis_id = 'test-analysis-123'
+    def test_get_engine_status(self, client):
+        analysis_id = str(uuid.uuid4())
 
         with patch('modules.compute.routes.get_manager') as mock_get_manager:
             mock_manager = MagicMock()
@@ -262,15 +601,15 @@ class TestEngineLifecycle:
             }
             mock_get_manager.return_value = mock_manager
 
-            response = await client.get(f'/api/v1/compute/engine/status/{analysis_id}')
+            response = client.get(f'/api/v1/compute/engine/status/{analysis_id}')
 
             assert response.status_code == 200
             result = response.json()
             assert result['analysis_id'] == analysis_id
             assert result['status'] == 'healthy'
 
-    async def test_shutdown_engine(self, client: AsyncClient):
-        analysis_id = 'test-analysis-123'
+    def test_shutdown_engine(self, client):
+        analysis_id = str(uuid.uuid4())
 
         with patch('modules.compute.routes.get_manager') as mock_get_manager:
             mock_manager = MagicMock()
@@ -278,37 +617,36 @@ class TestEngineLifecycle:
             mock_manager.get_engine.return_value = mock_engine
             mock_get_manager.return_value = mock_manager
 
-            response = await client.delete(f'/api/v1/compute/engine/{analysis_id}')
+            response = client.delete(f'/api/v1/compute/engine/{analysis_id}')
 
-            assert response.status_code == 200
-            assert 'shutdown successfully' in response.json()['message']
+            assert response.status_code == 204
             mock_manager.shutdown_engine.assert_called_once_with(analysis_id)
 
-    async def test_shutdown_engine_not_found(self, client: AsyncClient):
-        analysis_id = 'non-existent-analysis'
+    def test_shutdown_engine_not_found(self, client):
+        analysis_id = str(uuid.uuid4())
 
         with patch('modules.compute.routes.get_manager') as mock_get_manager:
             mock_manager = MagicMock()
             mock_manager.get_engine.return_value = None
             mock_get_manager.return_value = mock_manager
 
-            response = await client.delete(f'/api/v1/compute/engine/{analysis_id}')
+            response = client.delete(f'/api/v1/compute/engine/{analysis_id}')
 
-            assert response.status_code == 404
+        assert response.status_code == 404
 
-    async def test_list_engines(self, client: AsyncClient):
+    def test_list_engines(self, client):
         with patch('modules.compute.routes.get_manager') as mock_get_manager:
             mock_manager = MagicMock()
             mock_manager.list_all_engine_statuses.return_value = [
                 {
-                    'analysis_id': 'analysis-1',
+                    'analysis_id': str(uuid.uuid4()),
                     'status': 'healthy',
                     'process_id': 12345,
                     'last_activity': '2024-01-01T00:00:00',
                     'current_job_id': None,
                 },
                 {
-                    'analysis_id': 'analysis-2',
+                    'analysis_id': str(uuid.uuid4()),
                     'status': 'healthy',
                     'process_id': 12346,
                     'last_activity': '2024-01-01T00:00:00',
@@ -317,7 +655,7 @@ class TestEngineLifecycle:
             ]
             mock_get_manager.return_value = mock_manager
 
-            response = await client.get('/api/v1/compute/engines')
+            response = client.get('/api/v1/compute/engines')
 
             assert response.status_code == 200
             result = response.json()

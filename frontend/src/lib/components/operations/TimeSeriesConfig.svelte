@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
+	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 
 	interface TimeSeriesConfigData {
 		column: string;
@@ -31,6 +32,7 @@
 
 	const operations = [
 		{ value: 'extract', label: 'Extract Component' },
+		{ value: 'timestamp', label: 'Convert to Timestamp' },
 		{ value: 'add', label: 'Add Time Period' },
 		{ value: 'subtract', label: 'Subtract Time Period' },
 		{ value: 'diff', label: 'Date Difference' }
@@ -50,6 +52,8 @@
 
 	const timeUnits = ['seconds', 'minutes', 'hours', 'days', 'weeks'];
 
+	const timestampUnits = ['ns', 'us', 'ms'];
+
 	const dateColumns = $derived(
 		schema.columns.filter(
 			(col) =>
@@ -62,19 +66,21 @@
 </script>
 
 <div class="config-panel" role="region" aria-label="Time series configuration">
-	<h3>Time Series Configuration</h3>
-
 	<div class="form-section" role="group" aria-labelledby="ts-source-column-heading">
 		<h4 id="ts-source-column-heading">Source Column</h4>
-		<label for="ts-select-column" class="sr-only">Select date/time column</label>
-		<select id="ts-select-column" data-testid="ts-column-select" bind:value={config.column}>
-			<option value="">Select date/time column...</option>
-			{#each dateColumns as column (column.name)}
-				<option value={column.name}>{column.name} ({column.dtype})</option>
-			{/each}
-		</select>
+		<ColumnDropdown
+			{schema}
+			value={config.column ?? ''}
+			onChange={(val) => (config.column = val)}
+			placeholder="Select date/time column..."
+			filter={(col) =>
+				col.dtype.toLowerCase().includes('date') ||
+				col.dtype.toLowerCase().includes('time') ||
+				col.dtype.toLowerCase() === 'date' ||
+				col.dtype.toLowerCase() === 'datetime'}
+		/>
 		{#if dateColumns.length === 0}
-			<p id="ts-no-columns-warning" class="warning-box" role="alert">
+			<p id="ts-no-columns-warning" class="text-sm mt-2 mb-0 text-error-fg" role="alert">
 				No date/time columns detected in schema
 			</p>
 		{/if}
@@ -108,24 +114,53 @@
 				{/each}
 			</select>
 		</div>
+	{:else if config.operation_type === 'timestamp'}
+		<div class="form-section" role="group" aria-labelledby="ts-timestamp-unit-heading">
+			<h4 id="ts-timestamp-unit-heading">Timestamp Unit</h4>
+			<label for="ts-select-timestamp-unit" class="sr-only">Select timestamp time unit</label>
+			<select
+				id="ts-select-timestamp-unit"
+				data-testid="ts-timestamp-unit-select"
+				bind:value={config.unit}
+			>
+				{#each timestampUnits as unit (unit)}
+					<option value={unit}
+						>{unit} ({unit === 'ns'
+							? 'nanoseconds'
+							: unit === 'us'
+								? 'microseconds'
+								: 'milliseconds'})</option
+					>
+				{/each}
+			</select>
+			<p class="text-sm mt-2 mb-0 text-fg-muted">
+				Convert datetime to integer timestamp in the specified time unit.
+			</p>
+		</div>
 	{:else if config.operation_type === 'add' || config.operation_type === 'subtract'}
 		<div class="form-section" role="group" aria-labelledby="ts-period-heading">
 			<h4 id="ts-period-heading">Time Period</h4>
-			<div class="inline-group">
-				<div class="input-group">
-					<label for="ts-input-value">Value:</label>
+			<div class="flex gap-3">
+				<div class="flex-1">
+					<label for="ts-input-value" class="block text-sm mb-1 text-fg-secondary">Value:</label>
 					<input
 						id="ts-input-value"
 						data-testid="ts-value-input"
 						type="number"
+						class="flex-1"
 						bind:value={config.value}
 						min="0"
 						aria-label="Time period value"
 					/>
 				</div>
-				<div class="input-group">
-					<label for="ts-select-unit">Unit:</label>
-					<select id="ts-select-unit" data-testid="ts-unit-select" bind:value={config.unit}>
+				<div class="flex-1">
+					<label for="ts-select-unit" class="block text-sm mb-1 text-fg-secondary">Unit:</label>
+					<select
+						id="ts-select-unit"
+						data-testid="ts-unit-select"
+						class="flex-1"
+						bind:value={config.unit}
+					>
 						{#each timeUnits as unit (unit)}
 							<option value={unit}>{unit}</option>
 						{/each}
@@ -136,13 +171,17 @@
 	{:else if config.operation_type === 'diff'}
 		<div class="form-section" role="group" aria-labelledby="ts-column2-heading">
 			<h4 id="ts-column2-heading">Second Date Column</h4>
-			<label for="ts-select-column2" class="sr-only">Select second date column</label>
-			<select id="ts-select-column2" data-testid="ts-column2-select" bind:value={config.column2}>
-				<option value="">Select column...</option>
-				{#each dateColumns as column (column.name)}
-					<option value={column.name}>{column.name} ({column.dtype})</option>
-				{/each}
-			</select>
+			<ColumnDropdown
+				{schema}
+				value={config.column2 ?? ''}
+				onChange={(val) => (config.column2 = val)}
+				placeholder="Select column..."
+				filter={(col) =>
+					col.dtype.toLowerCase().includes('date') ||
+					col.dtype.toLowerCase().includes('time') ||
+					col.dtype.toLowerCase() === 'date' ||
+					col.dtype.toLowerCase() === 'datetime'}
+			/>
 		</div>
 	{/if}
 
@@ -157,29 +196,3 @@
 		/>
 	</div>
 </div>
-
-<style>
-	.warning-box {
-		font-size: var(--text-sm);
-		color: var(--error-fg);
-		margin-top: var(--space-2);
-		margin-bottom: 0;
-	}
-	.input-group {
-		flex: 1;
-	}
-	.input-group label {
-		display: block;
-		font-size: var(--text-sm);
-		margin-bottom: var(--space-1);
-		color: var(--fg-secondary);
-	}
-	.inline-group {
-		display: flex;
-		gap: var(--space-2);
-	}
-	.inline-group input,
-	.inline-group select {
-		flex: 1;
-	}
-</style>

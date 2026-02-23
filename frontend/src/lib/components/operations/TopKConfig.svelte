@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
+	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 
 	interface Props {
 		schema: Schema;
@@ -19,19 +20,17 @@
 </script>
 
 <div class="config-panel" role="region" aria-label="Top K configuration">
-	<h3>Top K Configuration</h3>
-
-	<div class="form-group">
-		<label for="topk-select-column">Column to sort by</label>
-		<select id="topk-select-column" data-testid="topk-column-select" bind:value={config.column}>
-			<option value="">Select column...</option>
-			{#each schema.columns as col (col.name)}
-				<option value={col.name}>{col.name} ({col.dtype})</option>
-			{/each}
-		</select>
+	<div class="form-group mb-5">
+		<div class="form-label">Column to sort by</div>
+		<ColumnDropdown
+			{schema}
+			value={config.column ?? ''}
+			onChange={(val) => (config.column = val)}
+			placeholder="Select column..."
+		/>
 	</div>
 
-	<div class="form-group">
+	<div class="form-group mb-5">
 		<label for="topk-input-k">Number of rows (k)</label>
 		<input
 			id="topk-input-k"
@@ -44,8 +43,8 @@
 		/>
 	</div>
 
-	<div class="form-group">
-		<label class="checkbox-label">
+	<div class="form-group mb-0">
+		<label class="flex cursor-pointer items-center gap-3">
 			<input
 				id="topk-checkbox-descending"
 				data-testid="topk-descending-checkbox"
@@ -61,18 +60,3 @@
 		>
 	</div>
 </div>
-
-<style>
-	.form-group {
-		margin-bottom: var(--space-4);
-	}
-	.form-group:last-child {
-		margin-bottom: 0;
-	}
-	.checkbox-label {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		cursor: pointer;
-	}
-</style>

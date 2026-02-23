@@ -2,13 +2,16 @@
 
 import polars as pl
 
-from modules.compute.operations.base import OperationHandler, OperationParams
+from modules.compute.core.base import OperationHandler, OperationParams
 
 
 class ExportParams(OperationParams):
     format: str = 'csv'
     filename: str = 'export'
     destination: str = 'download'
+    datasource_type: str | None = None
+    iceberg_options: dict | None = None
+    duckdb_options: dict | None = None
 
 
 class ExportHandler(OperationHandler):

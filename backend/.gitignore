@@ -89,6 +89,7 @@ celerybeat-schedule
 
 # Environments
 .env
+.prod.env
 .venv
 env/
 venv/
@@ -127,7 +128,6 @@ Thumbs.db
 
 # FastAPI specific
 *.log
-logs/
 
 # Database
 *.db

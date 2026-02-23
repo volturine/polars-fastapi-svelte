@@ -30,9 +30,153 @@ def test_filter_handler():
     handler = FilterHandler()
     lf = handler(
         _frame(),
-        {'conditions': [{'column': 'age', 'operator': '>', 'value': 30}], 'logic': 'AND'},
+        {'conditions': [{'column': 'age', 'operator': '>', 'value': 30, 'value_type': 'number'}], 'logic': 'AND'},
     )
     assert lf.collect().height == 1
+
+
+def test_filter_handler_string():
+    handler = FilterHandler()
+    lf = handler(
+        _frame(),
+        {'conditions': [{'column': 'name', 'operator': 'contains', 'value': 'Ali', 'value_type': 'string'}], 'logic': 'AND'},
+    )
+    assert lf.collect().height == 1
+
+
+def test_filter_handler_null():
+    handler = FilterHandler()
+    lf = handler(
+        pl.DataFrame({'a': [1, None, 3]}).lazy(),
+        {'conditions': [{'column': 'a', 'operator': 'is_not_null', 'value': None, 'value_type': 'string'}], 'logic': 'AND'},
+    )
+    assert lf.collect().height == 2
+
+
+def test_filter_handler_column_comparison():
+    handler = FilterHandler()
+    lf = handler(
+        _frame(),
+        {
+            'conditions': [{'column': 'date', 'operator': '<', 'value': None, 'value_type': 'column', 'compare_column': 'date2'}],
+            'logic': 'AND',
+        },
+    )
+    assert lf.collect().height == 3
+
+
+def test_filter_handler_contains_list_or():
+    handler = FilterHandler()
+    lf = handler(
+        _frame(),
+        {
+            'conditions': [
+                {
+                    'column': 'name',
+                    'operator': 'contains',
+                    'value': ['Ali', 'Bob'],
+                    'value_type': 'string',
+                }
+            ],
+            'logic': 'AND',
+        },
+    )
+    assert lf.collect().height == 2
+
+
+def test_filter_handler_equals_list_or():
+    handler = FilterHandler()
+    lf = handler(
+        _frame(),
+        {
+            'conditions': [
+                {
+                    'column': 'group',
+                    'operator': '=',
+                    'value': ['a', 'b'],
+                    'value_type': 'string',
+                }
+            ],
+            'logic': 'AND',
+        },
+    )
+    assert lf.collect().height == 3
+
+
+def test_filter_handler_not_contains_list_and():
+    handler = FilterHandler()
+    lf = handler(
+        _frame(),
+        {
+            'conditions': [
+                {
+                    'column': 'name',
+                    'operator': 'not_contains',
+                    'value': ['Ali', 'Bob'],
+                    'value_type': 'string',
+                }
+            ],
+            'logic': 'AND',
+        },
+    )
+    assert lf.collect()['name'].to_list() == ['Charlie']
+
+
+def test_filter_handler_in_list():
+    handler = FilterHandler()
+    lf = handler(
+        _frame(),
+        {
+            'conditions': [
+                {
+                    'column': 'group',
+                    'operator': 'in',
+                    'value': ['a'],
+                    'value_type': 'string',
+                }
+            ],
+            'logic': 'AND',
+        },
+    )
+    assert lf.collect().height == 2
+
+
+def test_filter_handler_not_in_list():
+    handler = FilterHandler()
+    lf = handler(
+        _frame(),
+        {
+            'conditions': [
+                {
+                    'column': 'group',
+                    'operator': 'not_in',
+                    'value': ['a'],
+                    'value_type': 'string',
+                }
+            ],
+            'logic': 'AND',
+        },
+    )
+    assert lf.collect()['group'].to_list() == ['b']
+
+
+def test_filter_handler_empty_regex():
+    handler = FilterHandler()
+    lf = handler(
+        _frame(),
+        {
+            'conditions': [
+                {
+                    'column': 'name',
+                    'operator': 'regex',
+                    'value': '',
+                    'value_type': 'string',
+                }
+            ],
+            'logic': 'AND',
+        },
+    )
+    assert lf.collect().height == 0
 
 
 def test_groupby_handler():

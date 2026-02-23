@@ -1,4 +1,9 @@
-import type { CSVOptions, DataSource, SchemaInfo } from '$lib/types/datasource';
+import type {
+	CSVOptions,
+	DataSource,
+	IcebergDataSourceConfig,
+	SchemaInfo
+} from '$lib/types/datasource';
 import { apiRequest } from './client';
 import { ResultAsync } from 'neverthrow';
 import type { ApiError } from './client';
@@ -40,104 +45,81 @@ export function uploadFile(
 	});
 }
 
-export interface ExcelPreflightResponse {
-	preflight_id: string;
-	sheet_names: string[];
-	tables: Record<string, string[]>;
-	named_ranges: string[];
-	preview: Array<Array<string | null>>;
-	start_row: number;
-	start_col: number;
-	end_col: number;
-	detected_end_row: number | null;
+export interface BulkUploadResult {
+	name: string;
+	success: boolean;
+	datasource?: DataSource;
+	error?: string;
 }
 
-export interface ExcelPreviewResponse {
-	preview: Array<Array<string | null>>;
-	start_row: number;
-	start_col: number;
-	end_col: number;
-	detected_end_row: number | null;
+export interface BulkUploadResponse {
+	results: BulkUploadResult[];
+	total: number;
+	successful: number;
+	failed: number;
 }
 
-export function preflightExcel(
-	file: File,
-	params: {
-		sheet_name?: string;
-		start_row?: number;
-		start_col?: number;
-		end_col?: number;
-		has_header?: boolean;
-		table_name?: string;
-		named_range?: string;
-	}
-): ResultAsync<ExcelPreflightResponse, ApiError> {
+export function uploadBulkFiles(
+	files: File[],
+	csvOptions?: CSVOptions
+): ResultAsync<BulkUploadResponse, ApiError> {
 	const formData = new FormData();
-	formData.append('file', file);
-	if (params.sheet_name) formData.append('sheet_name', params.sheet_name);
-	if (params.start_row !== undefined) formData.append('start_row', String(params.start_row));
-	if (params.start_col !== undefined) formData.append('start_col', String(params.start_col));
-	if (params.end_col !== undefined) formData.append('end_col', String(params.end_col));
-	if (params.has_header !== undefined) formData.append('has_header', String(params.has_header));
-	if (params.table_name) formData.append('table_name', params.table_name);
-	if (params.named_range) formData.append('named_range', params.named_range);
-	return apiRequest<ExcelPreflightResponse>('/v1/datasource/preflight', {
+	files.forEach((file) => formData.append('files', file));
+
+	if (csvOptions) {
+		formData.append('delimiter', csvOptions.delimiter);
+		formData.append('quote_char', csvOptions.quote_char);
+		formData.append('has_header', String(csvOptions.has_header));
+		formData.append('skip_rows', String(csvOptions.skip_rows));
+		formData.append('encoding', csvOptions.encoding);
+	}
+
+	return apiRequest<BulkUploadResponse>('/v1/datasource/upload/bulk', {
 		method: 'POST',
 		body: formData
+	}).mapErr((error) => {
+		if (error.type === 'network') {
+			return createApiError('network', error.message || 'Bulk upload failed');
+		}
+		return error;
 	});
 }
 
-export function previewExcel(
-	preflightId: string,
-	params: {
-		sheet_name: string;
-		start_row?: number;
-		start_col?: number;
-		end_col?: number;
-		has_header?: boolean;
-		table_name?: string;
-		named_range?: string;
-	}
-): ResultAsync<ExcelPreviewResponse, ApiError> {
-	const query = new URLSearchParams();
-	query.set('sheet_name', params.sheet_name);
-	if (params.start_row !== undefined) query.set('start_row', String(params.start_row));
-	if (params.start_col !== undefined) query.set('start_col', String(params.start_col));
-	if (params.end_col !== undefined) query.set('end_col', String(params.end_col));
-	if (params.has_header !== undefined) query.set('has_header', String(params.has_header));
-	if (params.table_name) query.set('table_name', params.table_name);
-	if (params.named_range) query.set('named_range', params.named_range);
-	return apiRequest<ExcelPreviewResponse>(
-		`/v1/datasource/preflight/${preflightId}/preview?${query}`
-	);
+export function connectIcebergPath(
+	name: string,
+	metadataPath: string
+): ResultAsync<DataSource, ApiError> {
+	return apiRequest<DataSource>('/v1/datasource/connect', {
+		method: 'POST',
+		body: JSON.stringify({
+			name,
+			source_type: 'iceberg',
+			config: {
+				metadata_path: metadataPath
+			}
+		})
+	});
 }
 
-export function confirmExcel(
-	preflightId: string,
-	name: string,
-	params: {
-		sheet_name?: string;
-		start_row?: number;
-		start_col?: number;
-		end_col?: number;
-		has_header?: boolean;
-		table_name?: string;
-		named_range?: string;
+export interface FileListItem {
+	name: string;
+	path: string;
+	is_dir: boolean;
+}
+
+export interface FileListResponse {
+	base_path: string;
+	entries: FileListItem[];
+}
+
+export function listDataFiles(path?: string): ResultAsync<FileListResponse, ApiError> {
+	const params = new URLSearchParams();
+	if (path) {
+		params.set('path', path);
 	}
-): ResultAsync<DataSource, ApiError> {
-	const formData = new FormData();
-	formData.append('preflight_id', preflightId);
-	formData.append('name', name);
-	if (params.sheet_name) formData.append('sheet_name', params.sheet_name);
-	if (params.start_row !== undefined) formData.append('start_row', String(params.start_row));
-	if (params.start_col !== undefined) formData.append('start_col', String(params.start_col));
-	if (params.end_col !== undefined) formData.append('end_col', String(params.end_col));
-	if (params.has_header !== undefined) formData.append('has_header', String(params.has_header));
-	if (params.table_name) formData.append('table_name', params.table_name);
-	if (params.named_range) formData.append('named_range', params.named_range);
-	return apiRequest<DataSource>('/v1/datasource/confirm', {
-		method: 'POST',
-		body: formData
+	const suffix = params.toString() ? `?${params.toString()}` : '';
+	return apiRequest<FileListResponse>(`/v1/datasource/file/list${suffix}`, {
+		method: 'GET'
 	});
 }
 
@@ -156,57 +138,229 @@ export function connectDatabase(
 	});
 }
 
-export function connectApi(
+export function connectIceberg(
 	name: string,
-	url: string,
-	method: string = 'GET',
-	headers?: Record<string, string>,
-	auth?: Record<string, string>
+	config: IcebergDataSourceConfig
 ): ResultAsync<DataSource, ApiError> {
 	return apiRequest<DataSource>('/v1/datasource/connect', {
 		method: 'POST',
 		body: JSON.stringify({
 			name,
-			source_type: 'api',
-			config: { url, method, headers, auth }
+			source_type: 'iceberg',
+			config
 		})
 	});
 }
 
-export function connectDuckDB(
+export function connectAnalysisDatasource(
 	name: string,
-	query: string,
-	dbPath?: string,
-	readOnly: boolean = true
+	analysisId: string
 ): ResultAsync<DataSource, ApiError> {
 	return apiRequest<DataSource>('/v1/datasource/connect', {
 		method: 'POST',
 		body: JSON.stringify({
 			name,
-			source_type: 'duckdb',
-			config: { db_path: dbPath, query, read_only: readOnly }
+			source_type: 'analysis',
+			config: { analysis_id: analysisId }
 		})
 	});
 }
 
-export function listDatasources(): ResultAsync<DataSource[], ApiError> {
-	return apiRequest<DataSource[]>('/v1/datasource');
+export function resolveIcebergMetadata(
+	metadataPath: string
+): ResultAsync<{ metadata_path: string }, ApiError> {
+	const params = new URLSearchParams({ metadata_path: metadataPath });
+	return apiRequest<{ metadata_path: string }>(
+		`/v1/datasource/iceberg/resolve?${params.toString()}`,
+		{
+			method: 'GET'
+		}
+	);
+}
+
+export function refreshDatasource(datasourceId: string): ResultAsync<DataSource, ApiError> {
+	return apiRequest<DataSource>(`/v1/datasource/${datasourceId}/refresh`, {
+		method: 'POST'
+	});
+}
+
+export interface IcebergSnapshotInfo {
+	snapshot_id: string;
+	timestamp_ms: number;
+	parent_snapshot_id?: string | null;
+	operation?: string | null;
+}
+
+export interface IcebergSnapshotsResponse {
+	datasource_id: string;
+	table_path: string;
+	snapshots: IcebergSnapshotInfo[];
+}
+
+export function listIcebergSnapshots(
+	datasourceId: string
+): ResultAsync<IcebergSnapshotsResponse, ApiError> {
+	return apiRequest<IcebergSnapshotsResponse>(`/v1/compute/iceberg/${datasourceId}/snapshots`);
+}
+
+export interface SnapshotPreview {
+	columns: string[];
+	column_types: Record<string, string>;
+	data: Array<Record<string, unknown>>;
+	row_count: number;
+}
+
+export interface ColumnStats {
+	column: string;
+	dtype: string;
+	null_count: number;
+	unique_count?: number | null;
+	min?: unknown | null;
+	max?: unknown | null;
+}
+
+export interface SchemaDiff {
+	column: string;
+	status: 'added' | 'removed' | 'type_changed';
+	type_a?: string | null;
+	type_b?: string | null;
+}
+
+export interface SnapshotCompareResponse {
+	datasource_id: string;
+	snapshot_a: string;
+	snapshot_b: string;
+	row_count_a: number;
+	row_count_b: number;
+	row_count_delta: number;
+	schema_diff: SchemaDiff[];
+	stats_a: ColumnStats[];
+	stats_b: ColumnStats[];
+	preview_a: SnapshotPreview;
+	preview_b: SnapshotPreview;
+}
+
+export function compareDatasourceSnapshots(
+	datasourceId: string,
+	snapshotA: string,
+	snapshotB: string,
+	rowLimit: number = 100
+): ResultAsync<SnapshotCompareResponse, ApiError> {
+	return apiRequest<SnapshotCompareResponse>(`/v1/datasource/${datasourceId}/compare-snapshots`, {
+		method: 'POST',
+		body: JSON.stringify({
+			snapshot_a: snapshotA,
+			snapshot_b: snapshotB,
+			row_limit: rowLimit
+		})
+	});
+}
+
+export function listDatasources(includeHidden?: boolean): ResultAsync<DataSource[], ApiError> {
+	const params = new URLSearchParams();
+	if (includeHidden) {
+		params.set('include_hidden', 'true');
+	}
+	const suffix = params.toString() ? `?${params.toString()}` : '';
+	return apiRequest<DataSource[]>(`/v1/datasource${suffix}`);
 }
 
 export function getDatasource(id: string): ResultAsync<DataSource, ApiError> {
 	return apiRequest<DataSource>(`/v1/datasource/${id}`);
 }
 
+export function getDatasourceSchema(id: string): ResultAsync<SchemaInfo, ApiError>;
 export function getDatasourceSchema(
 	id: string,
-	sheetName?: string
+	options: { sheetName?: string; refresh?: boolean }
+): ResultAsync<SchemaInfo, ApiError>;
+export function getDatasourceSchema(
+	id: string,
+	options?: { sheetName?: string; refresh?: boolean }
 ): ResultAsync<SchemaInfo, ApiError> {
-	const params = sheetName ? `?sheet_name=${encodeURIComponent(sheetName)}` : '';
-	return apiRequest<SchemaInfo>(`/v1/datasource/${id}/schema${params}`);
+	const params = new URLSearchParams();
+	if (options?.sheetName) {
+		params.set('sheet_name', options.sheetName);
+	}
+	if (options?.refresh) {
+		params.set('refresh', 'true');
+	}
+	const suffix = params.toString() ? `?${params.toString()}` : '';
+	return apiRequest<SchemaInfo>(`/v1/datasource/${id}/schema${suffix}`);
+}
+
+export interface HistogramBin {
+	start: number;
+	end: number;
+	count: number;
+}
+
+export interface ColumnStatsResponse {
+	column: string;
+	dtype: string;
+	count: number;
+	null_count: number;
+	null_percentage: number;
+	unique?: number | null;
+	mean?: number | null;
+	std?: number | null;
+	min?: number | string | null;
+	max?: number | string | null;
+	median?: number | null;
+	q25?: number | null;
+	q75?: number | null;
+	true_count?: number | null;
+	false_count?: number | null;
+	min_length?: number | null;
+	max_length?: number | null;
+	avg_length?: number | null;
+	top_values?: Array<Record<string, unknown>> | null;
+	histogram?: HistogramBin[] | null;
+}
+
+export function getColumnStats(
+	datasourceId: string,
+	columnName: string,
+	options?: { sample?: boolean; datasource_config?: Record<string, unknown> }
+): ResultAsync<ColumnStatsResponse, ApiError> {
+	const params = new URLSearchParams();
+	if (options?.sample === false) {
+		params.set('sample', 'false');
+	}
+	const payload = options?.datasource_config ?? null;
+	const suffix = params.toString() ? `?${params.toString()}` : '';
+	if (!payload) {
+		return apiRequest<ColumnStatsResponse>(
+			`/v1/datasource/${datasourceId}/column/${encodeURIComponent(columnName)}/stats${suffix}`
+		);
+	}
+	return apiRequest<ColumnStatsResponse>(
+		`/v1/datasource/${datasourceId}/column/${encodeURIComponent(columnName)}/stats${suffix}`,
+		{
+			method: 'POST',
+			body: JSON.stringify({ datasource_config: payload })
+		}
+	);
 }
 
 export function deleteDatasource(id: string): ResultAsync<void, ApiError> {
 	return apiRequest<void>(`/v1/datasource/${id}`, {
 		method: 'DELETE'
+	});
+}
+
+export interface DataSourceUpdate {
+	name?: string;
+	config?: Record<string, unknown>;
+	is_hidden?: boolean;
+}
+
+export function updateDatasource(
+	id: string,
+	update: DataSourceUpdate
+): ResultAsync<DataSource, ApiError> {
+	return apiRequest<DataSource>(`/v1/datasource/${id}`, {
+		method: 'PUT',
+		body: JSON.stringify(update)
 	});
 }

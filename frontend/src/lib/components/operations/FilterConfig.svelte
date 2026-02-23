@@ -1,14 +1,23 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
+	import { X, Plus } from 'lucide-svelte';
+	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
+	import DateTimeInput from '$lib/components/common/DateTimeInput.svelte';
 
-	interface FilterCondition {
+	const uid = $props.id();
+
+	type ValueType = 'string' | 'number' | 'date' | 'datetime' | 'column' | 'boolean';
+
+	interface Condition {
 		column: string;
 		operator: string;
-		value: string;
+		value: string | number | boolean | string[] | null;
+		value_type: ValueType;
+		compare_column?: string;
 	}
 
 	interface FilterConfigData {
-		conditions: FilterCondition[];
+		conditions: Condition[];
 		logic: 'AND' | 'OR';
 	}
 
@@ -17,190 +26,420 @@
 		config?: FilterConfigData;
 	}
 
-	let {
-		schema,
-		config = $bindable({ conditions: [{ column: '', operator: '=', value: '' }], logic: 'AND' })
-	}: Props = $props();
+	const defaultCondition: Condition = {
+		column: '',
+		operator: '=',
+		value: '',
+		value_type: 'string'
+	};
 
-	// Safe accessors - config now guaranteed to have proper structure
-	let safeConditions = $derived(config.conditions);
-	let safeLogic = $derived(config.logic);
+	let { schema, config = $bindable({ conditions: [defaultCondition], logic: 'AND' }) }: Props =
+		$props();
 
-	const operators = ['=', '!=', '>', '<', '>=', '<=', 'contains', 'starts_with', 'ends_with'];
+	const conditions = $derived(config.conditions ?? [defaultCondition]);
+
+	const COMPARISON_OPS = ['=', '!=', '>', '<', '>=', '<='];
+	const LIST_OPS = ['in', 'not_in'];
+	const STRING_OPS = ['contains', 'not_contains', 'starts_with', 'ends_with', 'regex'];
+	const NULL_OPS = ['is_null', 'is_not_null'];
+
+	const OPERATOR_LABELS: Record<string, string> = {
+		'=': '=',
+		'!=': '!=',
+		'>': '>',
+		'<': '<',
+		'>=': '>=',
+		'<=': '<=',
+		contains: 'contains',
+		not_contains: 'not contains',
+		starts_with: 'starts with',
+		ends_with: 'ends with',
+		regex: 'regex',
+		in: 'in',
+		not_in: 'not in',
+		is_null: 'is null',
+		is_not_null: 'is not null'
+	};
+
+	function getColumnType(name: string): 'string' | 'number' | 'datetime' | 'date' | 'boolean' {
+		const col = schema.columns.find((c) => c.name === name);
+		if (!col) return 'string';
+		const dtype = col.dtype.toLowerCase();
+		if (dtype.includes('int') || dtype.includes('float') || dtype.includes('decimal'))
+			return 'number';
+		if (dtype.includes('datetime')) return 'datetime';
+		if (dtype.includes('date')) return 'date';
+		if (dtype.includes('bool')) return 'boolean';
+		return 'string';
+	}
+
+	function getOperatorsForType(type: string, isColumnMode: boolean): string[] {
+		if (isColumnMode) return COMPARISON_OPS;
+		if (type === 'string') return [...COMPARISON_OPS, ...LIST_OPS, ...STRING_OPS, ...NULL_OPS];
+		return [...COMPARISON_OPS, ...NULL_OPS];
+	}
+
+	function isNullOperator(op: string): boolean {
+		return NULL_OPS.includes(op);
+	}
 
 	function addCondition() {
-		config.conditions = [...safeConditions, { column: '', operator: '=', value: '' }];
+		config.conditions = [
+			...conditions,
+			{ column: '', operator: '=', value: '', value_type: 'string' as ValueType }
+		];
 	}
 
-	function updateCondition(index: number, updates: Partial<FilterCondition>) {
-		const next = safeConditions.map((condition, i) =>
-			i === index ? { ...condition, ...updates } : condition
-		);
-		config.conditions = next;
-	}
-
-	function removeCondition(index: number) {
-		config.conditions = safeConditions.filter((_, i) => i !== index);
-	}
-
-	function getInputType(columnName: string): string {
-		const column = schema.columns.find((c) => c.name === columnName);
-		if (!column) return 'text';
-
-		const dtype = column.dtype.toLowerCase();
-		if (dtype.includes('int') || dtype.includes('float') || dtype.includes('decimal')) {
-			return 'number';
+	function updateCondition(idx: number, updates: Partial<Condition>, coerce = true) {
+		const next = { ...conditions[idx], ...updates } as Condition;
+		if (coerce && next.value_type === 'number' && typeof next.value === 'string') {
+			const trimmed = next.value.trim();
+			if (trimmed === '') {
+				next.value = '';
+			} else {
+				next.value = Number(trimmed);
+			}
 		}
-		return 'text';
+		config.conditions = conditions.map((c, i) => (i === idx ? next : c));
+	}
+
+	function isMultiLiteralOperator(op: string): boolean {
+		return op !== 'regex' && op !== 'is_null' && op !== 'is_not_null';
+	}
+
+	function getLiteralList(value: string | number | boolean | string[] | null): string[] {
+		if (Array.isArray(value)) return value;
+		if (value === null || value === undefined) return [];
+		if (value === '') return [];
+		return [String(value)];
+	}
+
+	function setLiteralList(idx: number, values: string[]) {
+		const next = values.length === 0 ? '' : values;
+		updateCondition(idx, { value: next });
+	}
+
+	function appendLiteralToken(idx: number, token: string) {
+		const trimmed = token.trim();
+		if (!trimmed) return;
+		const next = [...getLiteralList(conditions[idx].value), trimmed];
+		setLiteralList(idx, next);
+	}
+
+	function removeLiteralToken(idx: number, tokenIndex: number) {
+		const next = getLiteralList(conditions[idx].value).filter((_, i) => i !== tokenIndex);
+		setLiteralList(idx, next);
+	}
+
+	function removeCondition(idx: number) {
+		config.conditions = conditions.filter((_, i) => i !== idx);
+	}
+
+	function handleColumnChange(idx: number, col: string) {
+		const type = getColumnType(col);
+		const cond = conditions[idx];
+		const isColumn = cond.value_type === 'column';
+		const ops = getOperatorsForType(type, isColumn);
+		const op = ops.includes(cond.operator) ? cond.operator : '=';
+		updateCondition(idx, {
+			column: col,
+			operator: op,
+			value_type: isColumn ? 'column' : type,
+			value: isColumn ? cond.value : ''
+		});
+	}
+
+	function handleModeChange(idx: number, mode: 'value' | 'column') {
+		const cond = conditions[idx];
+		const colType = getColumnType(cond.column);
+		const isColumn = mode === 'column';
+		const ops = getOperatorsForType(colType, isColumn);
+		const op = ops.includes(cond.operator) ? cond.operator : '=';
+
+		if (isColumn) {
+			updateCondition(idx, { value_type: 'column', compare_column: '', operator: op, value: '' });
+		} else {
+			updateCondition(idx, {
+				value_type: colType,
+				compare_column: undefined,
+				operator: op,
+				value: ''
+			});
+		}
+	}
+
+	function handleOperatorChange(idx: number, op: string) {
+		const updates: Partial<Condition> = { operator: op };
+		if (isNullOperator(op)) {
+			updates.value = '';
+			updates.compare_column = undefined;
+		}
+		if (op === 'regex' && Array.isArray(conditions[idx].value)) {
+			updates.value = '';
+		}
+		updateCondition(idx, updates);
+	}
+
+	function formatDatetimeForInput(val: string | number | boolean | string[] | null): string {
+		if (!val) return '';
+		if (Array.isArray(val)) return '';
+		const str = String(val);
+		// If already in datetime-local format (YYYY-MM-DDTHH:MM), return as-is
+		if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(str)) return str.slice(0, 16);
+		// If ISO format with Z or offset, parse and format without TZ conversion
+		const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(str);
+		if (match) return `${match[1]}T${match[2]}`;
+		// If date-only format (YYYY-MM-DD), return as-is (no time component)
+		if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+		return '';
+	}
+
+	function formatDateForInput(val: string | number | boolean | string[] | null): string {
+		if (!val) return '';
+		if (Array.isArray(val)) return '';
+		const str = String(val);
+		// If already in date format (YYYY-MM-DD), return as-is
+		if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+		// Extract date part from ISO string
+		const match = /^(\d{4}-\d{2}-\d{2})/.exec(str);
+		if (match) return match[1];
+		return '';
 	}
 </script>
 
 <div class="config-panel" role="region" aria-label="Filter configuration">
-	<h3>Filter Configuration</h3>
-
-	<div class="logic-selector">
-		<label for="filter-select-logic">
-			Combine conditions with:
-			<select id="filter-select-logic" data-testid="filter-logic-select" bind:value={config.logic}>
-				<option value="AND" selected={safeLogic === 'AND'}>AND</option>
-				<option value="OR" selected={safeLogic === 'OR'}>OR</option>
-			</select>
-		</label>
-	</div>
-
-	<div class="conditions" role="group" aria-label="Filter conditions">
-		{#each safeConditions as condition, i (i)}
-			<div class="condition-row" role="group" aria-label={`Condition ${i + 1}`}>
-				<label for={`filter-select-column-${i}`} class="sr-only">Column</label>
-				<select
-					id={`filter-select-column-${i}`}
-					data-testid={`filter-column-select-${i}`}
-					value={condition.column}
-					onchange={(event) =>
-						updateCondition(i, {
-							column: (event.currentTarget as HTMLSelectElement).value
-						})}
-					aria-label="Select column"
-				>
-					<option value="">Select column...</option>
-					{#each schema.columns as column (column.name)}
-						<option value={column.name}>{column.name} ({column.dtype})</option>
-					{/each}
-				</select>
-
-				<label for={`filter-select-operator-${i}`} class="sr-only">Operator</label>
-				<select
-					id={`filter-select-operator-${i}`}
-					data-testid={`filter-operator-select-${i}`}
-					value={condition.operator}
-					onchange={(event) =>
-						updateCondition(i, {
-							operator: (event.currentTarget as HTMLSelectElement).value
-						})}
-					aria-label="Select operator"
-				>
-					{#each operators as op (op)}
-						<option value={op}>{op}</option>
-					{/each}
-				</select>
-
-				<label for={`filter-input-value-${i}`} class="sr-only">Value</label>
-				<input
-					id={`filter-input-value-${i}`}
-					data-testid={`filter-value-input-${i}`}
-					type={getInputType(condition.column)}
-					value={condition.value}
-					oninput={(event) =>
-						updateCondition(i, {
-							value: (event.currentTarget as HTMLInputElement).value
-						})}
-					placeholder="Value"
-					aria-label="Filter value"
-				/>
-
+	<div role="group" aria-labelledby="{uid}-conditions-heading">
+		<div class="mb-5 flex items-center justify-between">
+			<h4 id="{uid}-conditions-heading" class="mb-0">Conditions</h4>
+			<div class="flex items-center gap-2">
+				<div class="flex" role="radiogroup" aria-label="Condition logic">
+					<button
+						type="button"
+						class="logic-btn flex cursor-pointer items-center justify-center border border-tertiary bg-transparent px-2 py-1 text-xs text-fg-muted hover:bg-hover hover:text-fg-secondary"
+						class:active={config.logic === 'AND'}
+						onclick={() => (config.logic = 'AND')}
+						aria-pressed={config.logic === 'AND'}
+					>
+						AND
+					</button>
+					<button
+						type="button"
+						class="logic-btn flex cursor-pointer items-center justify-center border border-tertiary bg-transparent px-2 py-1 text-xs text-fg-muted hover:bg-hover hover:text-fg-secondary"
+						class:active={config.logic === 'OR'}
+						onclick={() => (config.logic = 'OR')}
+						aria-pressed={config.logic === 'OR'}
+					>
+						OR
+					</button>
+				</div>
 				<button
-					id={`filter-btn-remove-${i}`}
-					data-testid={`filter-remove-button-${i}`}
 					type="button"
-					onclick={() => removeCondition(i)}
-					disabled={safeConditions.length === 1}
-					aria-label={`Remove condition ${i + 1}`}
+					class="btn-add flex h-7 w-7 cursor-pointer items-center justify-center border border-tertiary bg-tertiary p-0 text-fg-secondary hover:bg-hover hover:text-fg-primary"
+					onclick={addCondition}
+					aria-label="Add filter condition"
 				>
-					Remove
+					<Plus size={16} aria-hidden="true" />
 				</button>
 			</div>
-		{/each}
+		</div>
+
+		{#if conditions.length === 0}
+			<p class="empty-message" role="status">
+				No conditions configured. Click "+ Add" to create one.
+			</p>
+		{:else}
+			<div
+				class="flex flex-col gap-4"
+				role="list"
+				aria-label="Filter conditions"
+				aria-live="polite"
+			>
+				{#each conditions as cond, i (i)}
+					{@const colType = getColumnType(cond.column)}
+					{@const isColumn = cond.value_type === 'column'}
+					{@const isNull = isNullOperator(cond.operator)}
+					{@const multiLiteral =
+						!isColumn && !isNull && colType === 'string' && isMultiLiteralOperator(cond.operator)}
+					{@const ops = getOperatorsForType(colType, isColumn)}
+
+					<div
+						class="condition-card filter-config border-l-2 border-l-tertiary pl-4 pb-2"
+						role="listitem"
+					>
+						<div class="mb-3 flex items-center gap-2 pb-2">
+							<span class="text-xs font-semibold text-fg-muted">#{i + 1}</span>
+							{#if cond.column}
+								<span class="text-sm font-medium text-fg-primary">{cond.column}</span>
+							{/if}
+							<button
+								type="button"
+								class="btn-remove ml-auto flex h-6 w-6 cursor-pointer items-center justify-center border border-transparent bg-transparent p-0 text-fg-muted hover:border-error hover:bg-error hover:text-error disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-transparent disabled:hover:bg-transparent disabled:hover:text-fg-muted"
+								onclick={() => removeCondition(i)}
+								disabled={conditions.length === 1}
+								aria-label={`Remove condition ${i + 1}`}
+							>
+								<X size={14} aria-hidden="true" />
+							</button>
+						</div>
+
+						<div class="relative flex flex-wrap items-start gap-4">
+							<div class="flex min-w-55 flex-2 flex-col gap-1">
+								<label class="mb-0 text-xs font-normal text-fg-muted" for="{uid}-column-{i}"
+									>Column</label
+								>
+								<ColumnDropdown
+									{schema}
+									value={cond.column}
+									onChange={(val) => handleColumnChange(i, val)}
+									placeholder="Select..."
+								/>
+							</div>
+
+							<div class="flex min-w-37.5 flex-1 flex-col gap-1">
+								<label class="text-xs font-normal mb-0 text-fg-muted" for="{uid}-operator-{i}"
+									>Operator</label
+								>
+								<select
+									id="{uid}-operator-{i}"
+									data-testid={`filter-operator-select-${i}`}
+									value={cond.operator}
+									onchange={(e) => handleOperatorChange(i, e.currentTarget.value)}
+								>
+									{#each ops as op (op)}
+										<option value={op}>{OPERATOR_LABELS[op]}</option>
+									{/each}
+								</select>
+							</div>
+
+							{#if !isNull}
+								<div class="flex min-w-60 flex-2 flex-col gap-1">
+									<div class="flex items-center justify-between gap-2">
+										<span class="text-xs font-normal text-fg-muted">Compare to</span>
+										<div class="flex" role="radiogroup" aria-label="Value mode">
+											<button
+												type="button"
+												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer border border-tertiary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
+												class:active={!isColumn}
+												onclick={() => handleModeChange(i, 'value')}
+												aria-pressed={!isColumn}
+											>
+												Value
+											</button>
+											<button
+												type="button"
+												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer border border-tertiary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
+												class:active={isColumn}
+												onclick={() => handleModeChange(i, 'column')}
+												aria-pressed={isColumn}
+											>
+												Column
+											</button>
+										</div>
+									</div>
+
+									{#if isColumn}
+										<ColumnDropdown
+											{schema}
+											value={cond.compare_column ?? ''}
+											onChange={(val) => updateCondition(i, { compare_column: val })}
+											placeholder="Select..."
+										/>
+									{:else if colType === 'number'}
+										<input
+											id="{uid}-value-{i}"
+											data-testid={`filter-value-input-${i}`}
+											type="number"
+											step="any"
+											value={typeof cond.value === 'number'
+												? String(cond.value)
+												: (cond.value ?? '')}
+											oninput={(e) => updateCondition(i, { value: e.currentTarget.value }, false)}
+											onblur={(e) => updateCondition(i, { value: e.currentTarget.value })}
+											placeholder="0"
+										/>
+									{:else if colType === 'datetime'}
+										<DateTimeInput
+											id="{uid}-value-{i}"
+											value={formatDatetimeForInput(cond.value)}
+											onChange={(val) => updateCondition(i, { value: val })}
+										/>
+									{:else if colType === 'date'}
+										<input
+											id="{uid}-value-{i}"
+											data-testid={`filter-value-input-${i}`}
+											type="date"
+											value={formatDateForInput(cond.value)}
+											onchange={(e) => updateCondition(i, { value: e.currentTarget.value })}
+										/>
+									{:else if colType === 'boolean'}
+										<select
+											id="{uid}-value-{i}"
+											data-testid={`filter-value-input-${i}`}
+											value={String(cond.value ?? 'true')}
+											onchange={(e) =>
+												updateCondition(i, { value: e.currentTarget.value === 'true' })}
+										>
+											<option value="true">true</option>
+											<option value="false">false</option>
+										</select>
+									{:else if multiLiteral}
+										{@const tokens = getLiteralList(cond.value)}
+										<div class="filter-token-input">
+											<input
+												id="{uid}-value-{i}"
+												data-testid={`filter-value-input-${i}`}
+												type="text"
+												value=""
+												onkeydown={(e) => {
+													if (e.key !== 'Enter') return;
+													e.preventDefault();
+													const target = e.currentTarget as HTMLInputElement;
+													appendLiteralToken(i, target.value);
+													target.value = '';
+												}}
+												placeholder="Type value and press Enter"
+											/>
+											{#if tokens.length > 0}
+												<div class="filter-token-list" role="list" aria-label="Filter values">
+													{#each tokens as token, tokenIndex (tokenIndex)}
+														<span class="filter-token" role="listitem">
+															<span class="filter-token__label">{token}</span>
+															<button
+																class="filter-token__remove"
+																onclick={() => removeLiteralToken(i, tokenIndex)}
+																aria-label={`Remove ${token}`}
+																type="button"
+															>
+																<X size={12} />
+															</button>
+														</span>
+													{/each}
+												</div>
+											{/if}
+										</div>
+									{:else}
+										<input
+											id="{uid}-value-{i}"
+											data-testid={`filter-value-input-${i}`}
+											type="text"
+											value={cond.value ?? ''}
+											oninput={(e) => updateCondition(i, { value: e.currentTarget.value })}
+											placeholder={cond.operator === 'regex' ? 'pattern' : 'value'}
+										/>
+									{/if}
+								</div>
+							{:else}
+								<div class="flex min-w-60 flex-2 flex-col gap-1">
+									<span class="text-xs font-normal text-fg-muted">Value</span>
+									<div class="flex items-center h-9 px-3 text-xs italic text-fg-muted">
+										<span>No value needed</span>
+									</div>
+								</div>
+							{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
 	</div>
-
-	<button
-		id="filter-btn-add-condition"
-		data-testid="filter-add-condition-button"
-		type="button"
-		onclick={addCondition}
-		class="add-btn"
-		aria-label="Add new filter condition"
-	>
-		Add Condition
-	</button>
 </div>
-
-<style>
-	.logic-selector {
-		margin-bottom: var(--space-4);
-		color: var(--fg-secondary);
-	}
-	.logic-selector select {
-		margin-left: var(--space-2);
-		padding: var(--space-1) var(--space-2);
-	}
-	.conditions {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		margin-bottom: var(--space-4);
-	}
-	.condition-row {
-		display: flex;
-		gap: var(--space-2);
-		align-items: center;
-		flex-wrap: wrap;
-	}
-	.condition-row select:first-child {
-		flex: 2;
-		min-width: 160px;
-	}
-	.condition-row select:nth-child(2) {
-		flex: 1;
-		min-width: 120px;
-	}
-	.condition-row input {
-		flex: 2;
-		min-width: 160px;
-	}
-	.condition-row button {
-		padding: var(--space-2) var(--space-4);
-		background-color: var(--error-bg);
-		color: var(--error-fg);
-		border: 1px solid var(--error-border);
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-	}
-	.condition-row button:disabled {
-		background-color: var(--bg-muted);
-		cursor: not-allowed;
-		color: var(--fg-muted);
-		border-color: var(--border-secondary);
-	}
-	.add-btn {
-		padding: var(--space-2) var(--space-4);
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border: none;
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		margin-bottom: var(--space-4);
-	}
-	button:hover:not(:disabled) {
-		opacity: 0.9;
-	}
-</style>

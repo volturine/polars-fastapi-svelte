@@ -2,19 +2,22 @@
 	import type { AnalysisGalleryItem } from '$lib/types/analysis';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { BarChart3, Trash2 } from 'lucide-svelte';
+	import { ChartBar, Trash2 } from 'lucide-svelte';
+	import { formatDateDisplay, getYearDisplay } from '$lib/utils/datetime';
 
 	interface Props {
 		analysis: AnalysisGalleryItem;
+		selected: boolean;
 		onDelete: (id: string) => void;
+		onToggleSelect: (id: string) => void;
 	}
 
-	let { analysis, onDelete }: Props = $props();
+	let { analysis, selected, onDelete, onToggleSelect }: Props = $props();
 
 	function handleClick(e: MouseEvent) {
-		if (!(e.target as HTMLElement).closest('button')) {
-			goto(resolve(`/analysis/${analysis.id}`), { invalidateAll: true });
-		}
+		const target = e.target as HTMLElement;
+		if (target.closest('button') || target.closest('input[type=checkbox]')) return;
+		goto(resolve(`/analysis/${analysis.id}`), { invalidateAll: true });
 	}
 
 	function handleKeyPress(e: KeyboardEvent) {
@@ -24,141 +27,59 @@
 		}
 	}
 
-	function handleDelete(e: MouseEvent) {
-		e.stopPropagation();
-		onDelete(analysis.id);
-	}
-
 	function formatDate(date: string): string {
-		return new Date(date).toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric'
-		});
+		const now = new Date();
+		const year = getYearDisplay(date);
+		const currentYear = getYearDisplay(now);
+		const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+		if (year !== null && currentYear !== null && year !== currentYear) {
+			opts.year = 'numeric';
+		}
+		return formatDateDisplay(date, opts);
 	}
 </script>
 
-<div class="card" onclick={handleClick} onkeypress={handleKeyPress} role="button" tabindex="0">
-	<div class="thumbnail">
+<div
+	class="analysis-card group relative cursor-pointer overflow-hidden bg-primary"
+	class:selected
+	onclick={handleClick}
+	onkeypress={handleKeyPress}
+	role="button"
+	tabindex="0"
+>
+	<div class="relative flex aspect-video w-full items-center justify-center bg-tertiary">
+		<input
+			type="checkbox"
+			class="absolute left-5 top-5 h-4.5 w-4.5"
+			checked={selected}
+			onchange={(e) => {
+				e.stopPropagation();
+				onToggleSelect(analysis.id);
+			}}
+			onclick={(e) => e.stopPropagation()}
+			aria-label={`Select ${analysis.name}`}
+		/>
 		{#if analysis.thumbnail}
-			<img src={analysis.thumbnail} alt={analysis.name} />
+			<img src={analysis.thumbnail} alt={analysis.name} class="h-full w-full object-cover" />
 		{:else}
-			<div class="placeholder">
-				<BarChart3 size={32} strokeWidth={1.5} />
-			</div>
+			<ChartBar size={32} class="text-fg-faint" />
 		{/if}
 	</div>
 
-	<div class="content">
-		<div class="header">
-			<h3>{analysis.name}</h3>
-			<button class="btn-delete" onclick={handleDelete} aria-label="Delete analysis">
-				<Trash2 size={14} />
-			</button>
+	<div class="p-4">
+		<div class="mb-2 flex items-start justify-between gap-3">
+			<h3 class="m-0 min-w-0 flex-1 truncate text-sm font-semibold">{analysis.name}</h3>
+			<Trash2
+				size={16}
+				onclick={(e) => {
+					e.stopPropagation();
+					onDelete(analysis.id);
+				}}
+			/>
 		</div>
 
-		<div class="metadata">
-			<span class="stat">
-				{#if analysis.row_count !== null}
-					{analysis.row_count.toLocaleString()} rows
-				{:else}
-					-- rows
-				{/if}
-			</span>
-			<span class="divider">/</span>
-			<span class="stat">
-				{#if analysis.column_count !== null}
-					{analysis.column_count} cols
-				{:else}
-					-- cols
-				{/if}
-			</span>
-			<span class="divider">/</span>
-			<span class="date">{formatDate(analysis.updated_at)}</span>
+		<div class="text-xs text-fg-muted">
+			<span>{formatDate(analysis.updated_at)}</span>
 		</div>
 	</div>
 </div>
-
-<style>
-	.card {
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		overflow: hidden;
-		cursor: pointer;
-		transition: all var(--transition);
-		background-color: var(--bg-primary);
-		box-shadow: var(--card-shadow);
-	}
-	.card:hover {
-		border-color: var(--border-tertiary);
-		transform: translateY(-1px);
-	}
-	.card:focus {
-		outline: none;
-		border-color: var(--border-focus);
-	}
-	.thumbnail {
-		width: 100%;
-		aspect-ratio: 16 / 9;
-		background-color: var(--bg-tertiary);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-bottom: 1px solid var(--border-primary);
-	}
-	.thumbnail img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-	.placeholder {
-		color: var(--fg-faint);
-	}
-	.content {
-		padding: var(--space-4);
-	}
-	.header {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: var(--space-3);
-		margin-bottom: var(--space-3);
-	}
-	h3 {
-		margin: 0;
-		font-size: var(--text-sm);
-		font-weight: var(--font-semibold);
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.metadata {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
-	}
-	.divider {
-		color: var(--fg-faint);
-	}
-	.btn-delete {
-		flex-shrink: 0;
-		background-color: transparent;
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		padding: var(--space-1);
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--fg-muted);
-		transition: all var(--transition);
-	}
-	.btn-delete:hover {
-		background-color: var(--error-bg);
-		border-color: var(--error-border);
-		color: var(--error-fg);
-	}
-</style>

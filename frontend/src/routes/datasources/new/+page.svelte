@@ -1,16 +1,24 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { uploadFile, connectDatabase, connectApi, connectDuckDB } from '$lib/api/datasource';
-	import { preflightExcel, previewExcel, confirmExcel } from '$lib/api/excel';
-	import type { ExcelPreflightResponse, ExcelPreviewResponse } from '$lib/api/excel';
-	import type { CSVOptions } from '$lib/types/datasource';
+	import { useQueryClient } from '@tanstack/svelte-query';
+	import {
+		uploadFile,
+		uploadBulkFiles,
+		connectDatabase,
+		connectIcebergPath
+	} from '$lib/api/datasource';
+	import { confirmExcel } from '$lib/api/excel';
+	import ExcelTableSelector from '$lib/components/common/ExcelTableSelector.svelte';
+	import type { BulkUploadResult } from '$lib/api/datasource';
+	import FileBrowser from '$lib/components/common/FileBrowser.svelte';
+	import { SvelteSet } from 'svelte/reactivity';
+	import { Check, X } from 'lucide-svelte';
 
-	type Tab = 'file' | 'database' | 'api';
-	type DatabaseType = 'duckdb' | 'other';
+	type Tab = 'file' | 'database' | 'path';
 
+	const queryClient = useQueryClient();
 	let activeTab = $state<Tab>('file');
-	let databaseType = $state<DatabaseType>('duckdb');
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 
@@ -18,189 +26,163 @@
 	let file = $state<File | null>(null);
 	let fileName = $state('');
 	let preflightId = $state<string | null>(null);
-	let sheetNames = $state<string[]>([]);
-	let tableMap = $state<Record<string, string[]>>({});
-	let namedRanges = $state<string[]>([]);
-	let previewGrid = $state<Array<Array<string | null>>>([]);
-	let selectedSheet = $state<string>('');
-	let selectedTable = $state<string>('');
-	let selectedRange = $state<string>('');
-	let startRow = $state(0);
-	let startCol = $state(0);
-	let endCol = $state(0);
-	let detectedEndRow = $state<number | null>(null);
-	let excelHeader = $state(true);
-	let previewLoading = $state(false);
+	let excelConfig = $state({
+		sheet_name: '',
+		table_name: '',
+		named_range: '',
+		cell_range: '',
+		start_row: 0,
+		start_col: 0,
+		end_col: 0,
+		end_row: null as number | null,
+		has_header: true
+	});
 
-	// CSV options state
-	let delimiter = $state(',');
-	let quoteChar = $state('"');
-	let hasHeader = $state(true);
-	let skipRows = $state(0);
-	let encoding = $state('utf8');
-	let showCsvOptions = $state(false);
-
-	// DuckDB state
-	let duckdbName = $state('');
-	let duckdbPath = $state('');
-	let duckdbQuery = $state('');
-	let duckdbReadOnly = $state(true);
-
-	// Generic database state
+	// External database state
 	let dbName = $state('');
 	let connectionString = $state('');
 	let query = $state('');
 
-	// API state
-	let apiName = $state('');
-	let apiUrl = $state('');
-	let apiMethod = $state('GET');
+	// Upload state
+	let selectedFiles = $state<File[]>([]);
+	let bulkResults = $state<BulkUploadResult[]>([]);
+	let showBulkResults = $state(false);
+	const allowedFileTypes = new SvelteSet(['csv', 'xlsx']);
+	let batchType = $state<'csv' | 'excel' | null>(null);
+	let csvDelimiter = $state(',');
+	let csvQuoteChar = $state('"');
+	let csvEncoding = $state('utf8');
+	let csvSkipRows = $state(0);
+	let csvHasHeader = $state(true);
+
+	function resetExcelState() {
+		preflightId = null;
+		excelConfig = {
+			sheet_name: '',
+			table_name: '',
+			named_range: '',
+			cell_range: '',
+			start_row: 0,
+			start_col: 0,
+			end_col: 0,
+			end_row: null,
+			has_header: true
+		};
+	}
+
+	function applySelection(files: File[]) {
+		selectedFiles = files;
+		showBulkResults = false;
+		bulkResults = [];
+		resetExcelState();
+		batchType = null;
+		if (files.length === 0) {
+			file = null;
+			fileName = '';
+			return;
+		}
+		const types = new SvelteSet<string>();
+		for (const next of files) {
+			const ext = next.name.split('.').pop()?.toLowerCase() ?? '';
+			if (!allowedFileTypes.has(ext)) {
+				error = `Unsupported file type: .${ext}`;
+				selectedFiles = [];
+				file = null;
+				fileName = '';
+				return;
+			}
+			types.add(ext);
+		}
+		if (types.size > 1) {
+			error = 'Bulk upload must use a single file type per batch';
+			selectedFiles = [];
+			file = null;
+			fileName = '';
+			return;
+		}
+		batchType = types.has('csv') ? 'csv' : types.has('xlsx') ? 'excel' : null;
+		if (files.length !== 1) {
+			file = null;
+			fileName = '';
+			return;
+		}
+		file = files[0];
+		fileName = file.name.replace(/\.[^/.]+$/, '');
+	}
 
 	function handleFileChange(event: Event) {
 		const target = event.target as HTMLInputElement;
-		if (target.files && target.files.length > 0) {
-			file = target.files[0];
-			preflightId = null;
-			sheetNames = [];
-			tableMap = {};
-			namedRanges = [];
-			previewGrid = [];
-			selectedSheet = '';
-			selectedTable = '';
-			selectedRange = '';
-			startRow = 0;
-			startCol = 0;
-			endCol = 0;
-			detectedEndRow = null;
-			if (!fileName) {
-				fileName = file.name.replace(/\.[^/.]+$/, '');
-			}
-			if (file.name.endsWith('.csv')) {
-				showCsvOptions = true;
-			} else {
-				showCsvOptions = false;
-			}
-		}
+		if (!target.files || target.files.length === 0) return;
+		error = null;
+		applySelection(Array.from(target.files));
 	}
 
-	function cellLabel(col: number): string {
-		let idx = col + 1;
-		let label = '';
-		while (idx > 0) {
-			const rem = (idx - 1) % 26;
-			label = String.fromCharCode(65 + rem) + label;
-			idx = Math.floor((idx - 1) / 26);
+	async function handleBulkUpload() {
+		if (selectedFiles.length === 0) {
+			error = 'Please select at least one file';
+			return;
 		}
-		return label;
-	}
+		if (!batchType) {
+			error = 'Select a CSV or Excel batch to upload';
+			return;
+		}
 
-	async function runPreflight(): Promise<void> {
-		if (!file) return;
-		previewLoading = true;
-		const result = await preflightExcel(file, {
-			start_row: startRow,
-			start_col: startCol,
-			end_col: endCol,
-			has_header: excelHeader,
-			table_name: selectedTable || undefined,
-			named_range: selectedRange || undefined
-		});
+		loading = true;
+		error = null;
+		showBulkResults = false;
+
+		const csvOptions =
+			batchType === 'csv'
+				? {
+						delimiter: csvDelimiter,
+						quote_char: csvQuoteChar,
+						has_header: csvHasHeader,
+						skip_rows: csvSkipRows,
+						encoding: csvEncoding
+					}
+				: undefined;
+		const result = await uploadBulkFiles(selectedFiles, csvOptions);
 		result.match(
-			(data: ExcelPreflightResponse) => {
-				preflightId = data.preflight_id;
-				sheetNames = data.sheet_names;
-				tableMap = data.tables;
-				namedRanges = data.named_ranges;
-				previewGrid = data.preview;
-				selectedSheet = data.sheet_names[0] ?? '';
-				startRow = data.start_row;
-				startCol = data.start_col;
-				endCol = data.end_col;
-				detectedEndRow = data.detected_end_row;
-				previewLoading = false;
+			(response: import('$lib/api/datasource').BulkUploadResponse) => {
+				bulkResults = response.results;
+				showBulkResults = true;
+				if (response.successful === response.total) {
+					selectedFiles = [];
+					queryClient.invalidateQueries({ queryKey: ['datasources'] });
+					goto(resolve('/datasources'), { invalidateAll: true });
+				}
 			},
-			(err) => {
-				error = err.message || 'Preflight failed';
-				previewLoading = false;
+			(err: { message?: string }) => {
+				error = err.message || 'Bulk upload failed';
 			}
 		);
+
+		loading = false;
 	}
 
-	async function refreshPreview(): Promise<void> {
-		if (!preflightId || !selectedSheet) return;
-		previewLoading = true;
-		const result = await previewExcel(preflightId, {
-			sheet_name: selectedSheet,
-			start_row: startRow,
-			start_col: startCol,
-			end_col: endCol,
-			has_header: excelHeader,
-			table_name: selectedTable || undefined,
-			named_range: selectedRange || undefined
-		});
-		result.match(
-			(data: ExcelPreviewResponse) => {
-				previewGrid = data.preview;
-				startRow = data.start_row;
-				startCol = data.start_col;
-				endCol = data.end_col;
-				detectedEndRow = data.detected_end_row;
-				previewLoading = false;
-			},
-			(err) => {
-				error = err.message || 'Preview failed';
-				previewLoading = false;
-			}
-		);
+	function clearBulkSelection() {
+		selectedFiles = [];
+		bulkResults = [];
+		showBulkResults = false;
+		file = null;
+		fileName = '';
+		batchType = null;
+		resetExcelState();
 	}
 
-	function applySheet(sheet: string) {
-		selectedSheet = sheet;
-		startRow = 0;
-		startCol = 0;
-		endCol = 0;
-		selectedTable = '';
-		selectedRange = '';
-		refreshPreview();
-	}
-
-	function applyTable(table: string) {
-		selectedTable = table;
-		selectedRange = '';
-		startRow = 0;
-		startCol = 0;
-		endCol = 0;
-		refreshPreview();
-	}
-
-	function applyNamedRange(range: string) {
-		selectedRange = range;
-		selectedTable = '';
-		startRow = 0;
-		startCol = 0;
-		endCol = 0;
-		refreshPreview();
-	}
-
-	function handleStartRow(row: number) {
-		startRow = row;
-		selectedTable = '';
-		selectedRange = '';
-		refreshPreview();
-	}
-
-	function handleStartCol(col: number) {
-		startCol = col;
-		selectedTable = '';
-		selectedRange = '';
-		refreshPreview();
-	}
-
-	function handleEndCol(col: number) {
-		endCol = col;
-		selectedTable = '';
-		selectedRange = '';
-		refreshPreview();
+	function removeBulkFile(index: number) {
+		selectedFiles = selectedFiles.filter((_, i) => i !== index);
+		if (selectedFiles.length === 1) {
+			applySelection(selectedFiles);
+		}
+		if (selectedFiles.length === 0) {
+			bulkResults = [];
+			showBulkResults = false;
+			file = null;
+			fileName = '';
+			batchType = null;
+			resetExcelState();
+		}
 	}
 
 	async function handleFileUpload() {
@@ -212,17 +194,6 @@
 		loading = true;
 		error = null;
 
-		let csvOptions: CSVOptions | undefined;
-		if (file.name.endsWith('.csv')) {
-			csvOptions = {
-				delimiter,
-				quote_char: quoteChar,
-				has_header: hasHeader,
-				skip_rows: skipRows,
-				encoding
-			};
-		}
-
 		try {
 			if (file.name.endsWith('.xlsx')) {
 				if (!preflightId) {
@@ -230,23 +201,40 @@
 					loading = false;
 					return;
 				}
-				const result = await confirmExcel(preflightId, fileName, {
-					sheet_name: selectedSheet,
-					start_row: startRow,
-					start_col: startCol,
-					end_col: endCol,
-					has_header: excelHeader,
-					table_name: selectedTable || undefined,
-					named_range: selectedRange || undefined
-				});
+				const params: Record<string, unknown> = {
+					sheet_name: excelConfig.sheet_name || undefined,
+					start_row: excelConfig.start_row,
+					start_col: excelConfig.start_col,
+					end_col: excelConfig.end_col,
+					has_header: excelConfig.has_header,
+					table_name: excelConfig.table_name || undefined,
+					named_range: excelConfig.named_range || undefined,
+					cell_range: excelConfig.cell_range || undefined
+				};
+				if (excelConfig.end_row !== null) {
+					params.end_row = excelConfig.end_row;
+				}
+				const result = await confirmExcel(
+					preflightId,
+					fileName,
+					params as Parameters<typeof confirmExcel>[2]
+				);
 				if (result.isErr()) {
 					error = result.error.message || 'Upload failed';
 					loading = false;
 					return;
 				}
+				queryClient.invalidateQueries({ queryKey: ['datasources'] });
 				goto(resolve('/datasources'), { invalidateAll: true });
 			} else {
-				await uploadFile(file, fileName, csvOptions);
+				await uploadFile(file, fileName, {
+					delimiter: csvDelimiter,
+					quote_char: csvQuoteChar,
+					has_header: csvHasHeader,
+					skip_rows: csvSkipRows,
+					encoding: csvEncoding
+				});
+				queryClient.invalidateQueries({ queryKey: ['datasources'] });
 				goto(resolve('/datasources'), { invalidateAll: true });
 			}
 		} catch (err) {
@@ -256,29 +244,57 @@
 		}
 	}
 
-	async function handleDuckDBConnect() {
-		if (!duckdbName || !duckdbQuery) {
-			error = 'Please fill in name and query';
+	// Iceberg path datasource
+	let pathName = $state('');
+	let pathValue = $state('');
+	let pickerOpen = $state(false);
+
+	async function handlePathConnect() {
+		if (!pathName || !pathValue) {
+			error = 'Please fill in name and path';
 			return;
 		}
-
+		const trimmedPath = pathValue.trim().replace(/\/+$/, '');
+		if (!trimmedPath) {
+			error = 'Please provide the datasource root path';
+			return;
+		}
+		const parts = trimmedPath.split('/').filter((part) => part.length > 0);
+		const lastPart = parts[parts.length - 1] ?? '';
+		if (!/^[0-9a-fA-F-]{36}$/.test(lastPart)) {
+			error = 'Path must point to the datasource UUID directory';
+			return;
+		}
 		loading = true;
 		error = null;
 
-		const result = await connectDuckDB(
-			duckdbName,
-			duckdbQuery,
-			duckdbPath.trim() || undefined,
-			duckdbReadOnly
-		);
-
+		const result = await connectIcebergPath(pathName, trimmedPath);
 		if (result.isErr()) {
-			error = result.error.message || 'Connection failed';
+			error = result.error.message || 'Failed to create datasource';
 			loading = false;
 			return;
 		}
-
+		queryClient.invalidateQueries({ queryKey: ['datasources'] });
 		goto(resolve('/datasources'), { invalidateAll: true });
+	}
+
+	function openPicker() {
+		pickerOpen = true;
+	}
+
+	function closePicker() {
+		pickerOpen = false;
+	}
+
+	function handlePathSelect(next: string) {
+		pathValue = next.replace(/\/+$/, '');
+		pickerOpen = false;
+	}
+
+	function browserStart() {
+		const value = pathValue.trim();
+		if (!value) return '';
+		return value;
 	}
 
 	async function handleDatabaseConnect() {
@@ -292,25 +308,7 @@
 
 		try {
 			await connectDatabase(dbName, connectionString, query);
-			goto(resolve('/datasources'), { invalidateAll: true });
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Connection failed';
-		} finally {
-			loading = false;
-		}
-	}
-
-	async function handleApiConnect() {
-		if (!apiName || !apiUrl) {
-			error = 'Please fill in all required fields';
-			return;
-		}
-
-		loading = true;
-		error = null;
-
-		try {
-			await connectApi(apiName, apiUrl, apiMethod);
+			queryClient.invalidateQueries({ queryKey: ['datasources'] });
 			goto(resolve('/datasources'), { invalidateAll: true });
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Connection failed';
@@ -320,25 +318,35 @@
 	}
 </script>
 
-<div class="container">
-	<header>
-		<h1>Add Data Source</h1>
-		<a href={resolve('/datasources')} class="btn-secondary" data-sveltekit-reload>Cancel</a>
+<div class="datasource-new-page mx-auto box-border max-w-200 p-8">
+	<header class="mb-8 flex items-center justify-between">
+		<h1 class="m-0 text-2xl font-semibold">Add Data Source</h1>
+		<a href={resolve('/datasources')} class="btn-secondary no-underline" data-sveltekit-reload
+			>Cancel</a
+		>
 	</header>
 
-	<div class="tabs">
-		<button class="tab" class:active={activeTab === 'file'} onclick={() => (activeTab = 'file')}>
+	<div class="mb-8 flex gap-2 border-b-2 border-tertiary">
+		<button
+			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted hover:text-fg-secondary"
+			class:active={activeTab === 'file'}
+			onclick={() => (activeTab = 'file')}
+		>
 			File Upload
 		</button>
 		<button
-			class="tab"
+			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted hover:text-fg-secondary"
 			class:active={activeTab === 'database'}
 			onclick={() => (activeTab = 'database')}
 		>
-			Database
+			External DB
 		</button>
-		<button class="tab" class:active={activeTab === 'api'} onclick={() => (activeTab = 'api')}>
-			API
+		<button
+			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted hover:text-fg-secondary"
+			class:active={activeTab === 'path'}
+			onclick={() => (activeTab = 'path')}
+		>
+			Iceberg Path
 		</button>
 	</div>
 
@@ -346,604 +354,302 @@
 		<div class="error-box">{error}</div>
 	{/if}
 
-	<div class="content">
+	<div class="card-base border p-8">
 		{#if activeTab === 'file'}
-			<div class="form">
-				<div class="form-group">
-					<label for="file-name">Name</label>
-					<input
-						id="file-name"
-						type="text"
-						bind:value={fileName}
-						placeholder="My Dataset"
-						disabled={loading}
-					/>
+			<div class="flex flex-col gap-6">
+				<div class="flex flex-col gap-2">
+					<span class="text-sm font-medium text-fg-secondary">Source</span>
+					<div class="flex flex-col gap-3">
+						<div class="border border-tertiary bg-secondary p-3">
+							<div class="text-sm font-medium">Upload</div>
+							<div class="text-xs text-fg-muted">Upload one or many files in one step</div>
+						</div>
+					</div>
 				</div>
 
-				<div class="form-group">
-					<label for="file-input">File</label>
-					<input id="file-input" type="file" onchange={handleFileChange} disabled={loading} />
-					{#if file}
-						<p class="file-info">Selected: {file.name}</p>
+				<div class="flex flex-col gap-2">
+					<label for="file-input" class="text-sm font-medium text-fg-secondary">Files</label>
+					<input
+						id="file-input"
+						type="file"
+						multiple
+						accept=".csv,.xlsx"
+						onchange={handleFileChange}
+						disabled={loading}
+						class="border border-input p-2"
+					/>
+					<p class="m-0 text-xs leading-relaxed text-fg-muted">
+						Select one or more CSV or Excel files (one type per batch). Names are derived from
+						filenames.
+					</p>
+					{#if selectedFiles.length > 0}
+						<div class="mt-3 border border-tertiary bg-tertiary p-3">
+							<div
+								class="mb-2 flex items-center justify-between border-b border-tertiary pb-2 text-sm text-fg-secondary"
+							>
+								<span>{selectedFiles.length} file(s) selected</span>
+								<button
+									type="button"
+									class="btn-text border-none bg-transparent p-0 text-xs text-accent-primary hover:underline"
+									onclick={clearBulkSelection}
+									disabled={loading}>Clear all</button
+								>
+							</div>
+							{#each selectedFiles as selectedFile, index (index)}
+								<div class="flex items-center justify-between border-b border-tertiary p-2">
+									<span
+										class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-fg-primary"
+										>{selectedFile.name}</span
+									>
+									<button
+										type="button"
+										class="btn-remove border-none bg-transparent p-1 text-lg leading-none text-fg-muted hover:text-error-fg"
+										onclick={() => removeBulkFile(index)}
+										disabled={loading}>x</button
+									>
+								</div>
+							{/each}
+						</div>
 					{/if}
 				</div>
 
-				{#if showCsvOptions}
-					<div class="csv-options">
-						<h3>CSV Options</h3>
-						<div class="form-row">
-							<div class="form-group">
-								<label for="delimiter">Delimiter</label>
-								<select id="delimiter" bind:value={delimiter} disabled={loading}>
-									<option value=",">Comma (,)</option>
-									<option value=";">Semicolon (;)</option>
-									<option value="\t">Tab (\t)</option>
-									<option value="|">Pipe (|)</option>
-								</select>
-							</div>
-
-							<div class="form-group">
-								<label for="quote-char">Quote Character</label>
-								<input
-									id="quote-char"
-									type="text"
-									bind:value={quoteChar}
-									maxlength="1"
-									disabled={loading}
-								/>
-							</div>
-						</div>
-
-						<div class="form-row">
-							<div class="form-group checkbox-group">
-								<input
-									id="has-header"
-									type="checkbox"
-									bind:checked={hasHeader}
-									disabled={loading}
-								/>
-								<label for="has-header">Has Header Row</label>
-							</div>
-
-							<div class="form-group">
-								<label for="skip-rows">Skip Rows</label>
-								<input
-									id="skip-rows"
-									type="number"
-									bind:value={skipRows}
-									min="0"
-									disabled={loading}
-								/>
-							</div>
-						</div>
-
-						<div class="form-group">
-							<label for="encoding">Encoding</label>
-							<select id="encoding" bind:value={encoding} disabled={loading}>
-								<option value="utf8">UTF8</option>
-								<option value="utf8-lossy">UTF8 (lossy)</option>
-								<option value="latin1">Latin-1 (ISO-8859-1)</option>
-								<option value="cp1252">Windows-1252</option>
-							</select>
-						</div>
-					</div>
-				{/if}
-
-				{#if file?.name.endsWith('.xlsx')}
-					<div class="excel-preflight">
-						<h3>Excel Table Selection</h3>
-						<div class="form-row">
-							<div class="form-group">
-								<label for="excel-sheet">Sheet</label>
-								<select
-									id="excel-sheet"
-									value={selectedSheet}
-									onchange={(event) => applySheet(event.currentTarget.value)}
-									disabled={loading || previewLoading || !sheetNames.length}
-								>
-									<option value="">Select sheet</option>
-									{#each sheetNames as sheet (sheet)}
-										<option value={sheet}>{sheet}</option>
-									{/each}
-								</select>
-							</div>
-							<div class="form-group">
-								<label for="excel-table">Excel Table</label>
-								<select
-									id="excel-table"
-									value={selectedTable}
-									onchange={(event) => applyTable(event.currentTarget.value)}
-									disabled={loading || previewLoading || !selectedSheet}
-								>
-									<option value="">Manual selection</option>
-									{#each tableMap[selectedSheet] ?? [] as table (table)}
-										<option value={table}>{table}</option>
-									{/each}
-								</select>
-							</div>
-							<div class="form-group">
-								<label for="excel-range">Named Range</label>
-								<select
-									id="excel-range"
-									value={selectedRange}
-									onchange={(event) => applyNamedRange(event.currentTarget.value)}
-									disabled={loading || previewLoading}
-								>
-									<option value="">None</option>
-									{#each namedRanges as range (range)}
-										<option value={range}>{range}</option>
-									{/each}
-								</select>
-							</div>
-						</div>
-
-						<div class="form-row">
-							<div class="form-group checkbox-group">
-								<input
-									id="excel-header"
-									type="checkbox"
-									bind:checked={excelHeader}
-									onchange={() => refreshPreview()}
-									disabled={loading || previewLoading}
-								/>
-								<label for="excel-header">First row is header</label>
-							</div>
-							<button
-								type="button"
-								class="btn-secondary"
-								onclick={runPreflight}
-								disabled={loading || previewLoading}
-							>
-								{previewLoading ? 'Loading preview…' : 'Run preflight'}
-							</button>
-						</div>
-
-						{#if preflightId}
-							<div class="preview-panel">
-								<div class="preview-meta">
-									<span>Start row: {startRow + 1}</span>
-									<span>Start col: {cellLabel(startCol)}</span>
-									<span>End col: {cellLabel(endCol)}</span>
-									{#if detectedEndRow !== null}
-										<span>Detected end row: {detectedEndRow + 1}</span>
-									{/if}
-								</div>
-								<div class="preview-grid">
-									<div class="preview-row header">
-										<div class="cell corner"></div>
-										{#each previewGrid[0] ?? [] as _cell, index (index)}
-											<button class="cell header" onclick={() => handleEndCol(startCol + index)}>
-												{cellLabel(startCol + index)}
-											</button>
-										{/each}
-									</div>
-									{#each previewGrid as row, rowIndex (rowIndex)}
-										<div class="preview-row">
-											<button
-												class="cell header"
-												onclick={() => handleStartRow(startRow + rowIndex)}
-											>
-												{startRow + rowIndex + 1}
-											</button>
-											{#each row as cell, colIndex (colIndex)}
-												<button class="cell" onclick={() => handleStartCol(startCol + colIndex)}>
-													{cell ?? ''}
-												</button>
-											{/each}
-										</div>
-									{/each}
-								</div>
-							</div>
+				{#if selectedFiles.length === 1}
+					<div class="flex flex-col gap-2">
+						<label for="file-name" class="text-sm font-medium text-fg-secondary">Name</label>
+						<input
+							id="file-name"
+							type="text"
+							bind:value={fileName}
+							placeholder="My Dataset"
+							disabled={loading}
+							class="input-base border px-3 py-2 text-sm"
+						/>
+						{#if file}
+							<p class="m-0 text-sm text-fg-secondary">Selected: {file.name}</p>
 						{/if}
 					</div>
 				{/if}
 
-				<button class="btn-primary" onclick={handleFileUpload} disabled={loading || !file}>
-					{loading ? 'Uploading...' : 'Upload'}
+				{#if batchType === 'csv'}
+					<div class="flex flex-col gap-3 border border-tertiary bg-tertiary p-4">
+						<h3 class="m-0 text-sm font-semibold text-fg-secondary">CSV Options</h3>
+						<div class="grid grid-cols-2 gap-3">
+							<div class="flex flex-col gap-1.5">
+								<label for="csv-delimiter" class="text-xs font-medium text-fg-secondary"
+									>Delimiter</label
+								>
+								<select
+									id="csv-delimiter"
+									bind:value={csvDelimiter}
+									disabled={loading}
+									class="input-base border px-3 py-2 text-sm"
+								>
+									<option value=",">Comma (,)</option>
+									<option value=";">Semicolon (;)</option>
+									<option value="\t">Tab</option>
+									<option value="|">Pipe (|)</option>
+									<option value=" ">Space</option>
+								</select>
+							</div>
+							<div class="flex flex-col gap-1.5">
+								<label for="csv-quote" class="text-xs font-medium text-fg-secondary">Quote</label>
+								<select
+									id="csv-quote"
+									bind:value={csvQuoteChar}
+									disabled={loading}
+									class="input-base border px-3 py-2 text-sm"
+								>
+									<option value="&quot;">Double Quote (")</option>
+									<option value="'">Single Quote (')</option>
+									<option value="">None</option>
+								</select>
+							</div>
+							<div class="flex flex-col gap-1.5">
+								<label for="csv-encoding" class="text-xs font-medium text-fg-secondary"
+									>Encoding</label
+								>
+								<select
+									id="csv-encoding"
+									bind:value={csvEncoding}
+									disabled={loading}
+									class="input-base border px-3 py-2 text-sm"
+								>
+									<option value="utf8">UTF-8</option>
+									<option value="utf8-lossy">UTF-8 (lossy)</option>
+									<option value="latin1">Latin-1</option>
+									<option value="ascii">ASCII</option>
+								</select>
+							</div>
+							<div class="flex flex-col gap-1.5">
+								<label for="csv-skip-rows" class="text-xs font-medium text-fg-secondary"
+									>Skip Rows</label
+								>
+								<input
+									id="csv-skip-rows"
+									type="number"
+									min="0"
+									bind:value={csvSkipRows}
+									disabled={loading}
+									class="input-base border px-3 py-2 text-sm"
+								/>
+							</div>
+						</div>
+						<div class="flex items-center gap-2">
+							<input
+								id="csv-header"
+								type="checkbox"
+								bind:checked={csvHasHeader}
+								disabled={loading}
+								class="h-4 w-4 cursor-pointer"
+							/>
+							<label for="csv-header" class="m-0 text-sm text-fg-secondary"
+								>First row is header</label
+							>
+						</div>
+					</div>
+				{/if}
+
+				{#if showBulkResults && bulkResults.length > 0}
+					<div class="mt-4 border border-tertiary bg-tertiary p-4">
+						<h4 class="m-0 mb-3 text-sm font-semibold text-fg-secondary">Upload Results</h4>
+						{#each bulkResults as result (result.name)}
+							<div
+								class="flex items-center gap-2 border-b border-tertiary p-2 text-sm"
+								class:text-success={result.success}
+								class:text-error={!result.success}
+							>
+								<span class="w-5 text-center font-bold">
+									{#if result.success}
+										<Check size={12} />
+									{:else}
+										<X size={12} />
+									{/if}
+								</span>
+								<span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
+									>{result.name}</span
+								>
+								{#if result.error}
+									<span class="max-w-50 overflow-hidden text-ellipsis text-xs text-fg-muted"
+										>{result.error}</span
+									>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{/if}
+				{#if file?.name.endsWith('.xlsx')}
+					<ExcelTableSelector
+						mode="upload"
+						{file}
+						disabled={loading}
+						bind:preflightId
+						onConfigChange={(config) => {
+							excelConfig = config;
+						}}
+					/>
+				{/if}
+
+				<button
+					class="btn-primary"
+					onclick={selectedFiles.length === 1 ? handleFileUpload : handleBulkUpload}
+					disabled={loading ||
+						selectedFiles.length === 0 ||
+						(selectedFiles.length === 1 && !fileName)}
+				>
+					{loading
+						? 'Uploading...'
+						: selectedFiles.length === 1
+							? 'Upload'
+							: `Upload ${selectedFiles.length} Files`}
 				</button>
 			</div>
 		{:else if activeTab === 'database'}
-			<div class="form">
-				<div class="form-group">
-					<label for="db-type">Database Type</label>
-					<div class="radio-group">
-						<label class="radio-option">
-							<input
-								type="radio"
-								name="db-type"
-								value="duckdb"
-								bind:group={databaseType}
-								disabled={loading}
-							/>
-							<span class="radio-label">DuckDB</span>
-							<span class="radio-desc">In-memory or file-based analytics database</span>
-						</label>
-						<label class="radio-option">
-							<input
-								type="radio"
-								name="db-type"
-								value="other"
-								bind:group={databaseType}
-								disabled={loading}
-							/>
-							<span class="radio-label">Other Database</span>
-							<span class="radio-desc">PostgreSQL, MySQL, SQLite via connection string</span>
-						</label>
-					</div>
-				</div>
-
-				{#if databaseType === 'duckdb'}
-					<div class="form-group">
-						<label for="duckdb-name">Name</label>
-						<input
-							id="duckdb-name"
-							type="text"
-							bind:value={duckdbName}
-							placeholder="My DuckDB Data"
-							disabled={loading}
-						/>
-					</div>
-
-					<div class="form-group">
-						<label for="duckdb-path">Database Path (optional)</label>
-						<input
-							id="duckdb-path"
-							type="text"
-							bind:value={duckdbPath}
-							placeholder="/path/to/database.duckdb"
-							disabled={loading}
-						/>
-						<p class="hint">Leave empty for in-memory database</p>
-					</div>
-
-					<div class="form-group">
-						<label for="duckdb-query">Query</label>
-						<textarea
-							id="duckdb-query"
-							bind:value={duckdbQuery}
-							placeholder="SELECT * FROM read_csv_auto('data.csv')"
-							rows="5"
-							disabled={loading}
-						></textarea>
-						<p class="hint">
-							DuckDB can read CSV, Parquet, JSON directly: read_csv_auto(), read_parquet(),
-							read_json_auto()
-						</p>
-					</div>
-
-					<div class="form-group checkbox-group">
-						<input
-							id="duckdb-readonly"
-							type="checkbox"
-							bind:checked={duckdbReadOnly}
-							disabled={loading}
-						/>
-						<label for="duckdb-readonly">Read-only mode</label>
-					</div>
-
-					<button class="btn-primary" onclick={handleDuckDBConnect} disabled={loading}>
-						{loading ? 'Connecting...' : 'Connect'}
-					</button>
-				{:else}
-					<div class="form-group">
-						<label for="db-name">Name</label>
-						<input
-							id="db-name"
-							type="text"
-							bind:value={dbName}
-							placeholder="My Database"
-							disabled={loading}
-						/>
-					</div>
-
-					<div class="form-group">
-						<label for="connection-string">Connection String</label>
-						<input
-							id="connection-string"
-							type="text"
-							bind:value={connectionString}
-							placeholder="postgresql://user:pass@localhost/db"
-							disabled={loading}
-						/>
-						<p class="hint">Example: postgresql://user:pass@localhost/dbname</p>
-					</div>
-
-					<div class="form-group">
-						<label for="query">Query</label>
-						<textarea
-							id="query"
-							bind:value={query}
-							placeholder="SELECT * FROM table"
-							rows="5"
-							disabled={loading}
-						></textarea>
-					</div>
-
-					<button class="btn-primary" onclick={handleDatabaseConnect} disabled={loading}>
-						{loading ? 'Connecting...' : 'Connect'}
-					</button>
-				{/if}
-			</div>
-		{:else if activeTab === 'api'}
-			<div class="form">
-				<div class="form-group">
-					<label for="api-name">Name</label>
+			<div class="flex flex-col gap-6">
+				<div class="flex flex-col gap-2">
+					<label for="db-name" class="text-sm font-medium text-fg-secondary">Name</label>
 					<input
-						id="api-name"
+						id="db-name"
 						type="text"
-						bind:value={apiName}
-						placeholder="My API"
+						bind:value={dbName}
+						placeholder="My Database"
 						disabled={loading}
+						class="border px-3 py-2 text-sm input-base"
 					/>
 				</div>
 
-				<div class="form-group">
-					<label for="api-url">URL</label>
+				<div class="flex flex-col gap-2">
+					<label for="connection-string" class="text-sm font-medium text-fg-secondary"
+						>Connection String</label
+					>
 					<input
-						id="api-url"
-						type="url"
-						bind:value={apiUrl}
-						placeholder="https://api.example.com/data"
+						id="connection-string"
+						type="text"
+						bind:value={connectionString}
+						placeholder="postgresql://user:pass@localhost/db"
 						disabled={loading}
+						class="border px-3 py-2 text-sm input-base"
+					/>
+					<p class="m-0 text-xs text-fg-muted">Example: postgresql://user:pass@localhost/dbname</p>
+				</div>
+
+				<div class="flex flex-col gap-2">
+					<label for="query" class="text-sm font-medium text-fg-secondary">Query</label>
+					<textarea
+						id="query"
+						bind:value={query}
+						placeholder="SELECT * FROM table"
+						rows="5"
+						disabled={loading}
+						class="resize-y border px-3 py-2 text-sm input-base"
+					></textarea>
+				</div>
+
+				<button class="btn-primary" onclick={handleDatabaseConnect} disabled={loading}>
+					{loading ? 'Connecting...' : 'Connect'}
+				</button>
+			</div>
+		{:else if activeTab === 'path'}
+			<div class="flex flex-col gap-6">
+				<div class="flex flex-col gap-2">
+					<label for="iceberg-path-name" class="text-sm font-medium text-fg-secondary">Name</label>
+					<input
+						id="iceberg-path-name"
+						type="text"
+						bind:value={pathName}
+						placeholder="Existing Iceberg"
+						disabled={loading}
+						class="border px-3 py-2 text-sm input-base"
 					/>
 				</div>
-
-				<div class="form-group">
-					<label for="api-method">Method</label>
-					<select id="api-method" bind:value={apiMethod} disabled={loading}>
-						<option value="GET">GET</option>
-						<option value="POST">POST</option>
-					</select>
+				<div class="flex flex-col gap-2">
+					<label for="iceberg-path-value" class="text-sm font-medium text-fg-secondary"
+						>Table Root Path</label
+					>
+					<input
+						id="iceberg-path-value"
+						type="text"
+						bind:value={pathValue}
+						placeholder="/data/<namespace>/clean/<uuid>"
+						disabled={loading}
+						class="border px-3 py-2 text-sm input-base"
+					/>
+					<div class="flex items-center gap-2">
+						<button class="btn-secondary" type="button" onclick={openPicker} disabled={loading}>
+							Browse
+						</button>
+					</div>
 				</div>
-
-				<button class="btn-primary" onclick={handleApiConnect} disabled={loading}>
+				{#if pickerOpen}
+					<FileBrowser
+						initialPath={browserStart()}
+						oncancel={closePicker}
+						onselect={(path) => handlePathSelect(path)}
+					/>
+				{/if}
+				<button class="btn-primary" onclick={handlePathConnect} disabled={loading}>
 					{loading ? 'Connecting...' : 'Connect'}
 				</button>
 			</div>
 		{/if}
 	</div>
 </div>
-
-<style>
-	.container {
-		max-width: 800px;
-		margin: 0 auto;
-		padding: var(--space-8);
-	}
-	header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: var(--space-8);
-	}
-	h1 {
-		font-size: var(--text-2xl);
-		font-weight: var(--font-semibold);
-		margin: 0;
-	}
-	.btn-secondary {
-		text-decoration: none;
-	}
-	.tabs {
-		display: flex;
-		gap: var(--space-2);
-		border-bottom: 2px solid var(--border-primary);
-		margin-bottom: var(--space-8);
-	}
-	.tab {
-		padding: var(--space-3) var(--space-6);
-		background: none;
-		border: none;
-		border-bottom: 2px solid transparent;
-		cursor: pointer;
-		font-size: var(--text-sm);
-		font-weight: var(--font-medium);
-		color: var(--fg-muted);
-		margin-bottom: -2px;
-		transition: all var(--transition);
-	}
-	.tab:hover {
-		color: var(--fg-secondary);
-	}
-	.tab.active {
-		color: var(--accent-primary);
-		border-bottom-color: var(--accent-primary);
-	}
-	.content {
-		background-color: var(--card-bg);
-		padding: var(--space-8);
-		border-radius: var(--radius-md);
-		box-shadow: var(--card-shadow);
-	}
-	.form {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-	}
-	.form-group {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-	label {
-		font-weight: var(--font-medium);
-		font-size: var(--text-sm);
-		color: var(--fg-secondary);
-	}
-	input[type='text'],
-	input[type='url'],
-	input[type='number'],
-	select,
-	textarea {
-		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--input-border);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-sm);
-		background-color: var(--input-bg);
-		transition: border-color var(--transition);
-	}
-	input[type='text']:focus,
-	input[type='url']:focus,
-	input[type='number']:focus,
-	select:focus,
-	textarea:focus {
-		outline: none;
-		border-color: var(--border-focus);
-		box-shadow: 0 0 0 3px var(--accent-bg);
-	}
-	input[type='text']:disabled,
-	input[type='url']:disabled,
-	input[type='number']:disabled,
-	select:disabled,
-	textarea:disabled {
-		background: var(--bg-tertiary);
-		cursor: not-allowed;
-	}
-	input[type='file'] {
-		padding: var(--space-2);
-		border: 1px solid var(--input-border);
-		border-radius: var(--radius-sm);
-	}
-	textarea {
-		resize: vertical;
-	}
-	.hint,
-	.file-info {
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
-		margin: 0;
-	}
-	.file-info {
-		font-size: var(--text-sm);
-		color: var(--fg-secondary);
-	}
-	.csv-options {
-		background-color: var(--bg-tertiary);
-		padding: var(--space-4);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--border-primary);
-	}
-	.csv-options h3 {
-		font-size: var(--text-sm);
-		font-weight: var(--font-semibold);
-		margin: 0 0 var(--space-4) 0;
-		color: var(--fg-secondary);
-	}
-	.form-row {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: var(--space-4);
-	}
-	.excel-preflight {
-		background-color: var(--bg-tertiary);
-		padding: var(--space-4);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--border-primary);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
-	}
-	.excel-preflight h3 {
-		margin: 0;
-		font-size: var(--text-sm);
-		font-weight: var(--font-semibold);
-		color: var(--fg-secondary);
-	}
-	.preview-panel {
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		overflow: hidden;
-		background: var(--bg-primary);
-	}
-	.preview-meta {
-		display: flex;
-		gap: var(--space-3);
-		padding: var(--space-2) var(--space-3);
-		background: var(--bg-tertiary);
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
-		flex-wrap: wrap;
-	}
-	.preview-grid {
-		overflow: auto;
-		max-height: 320px;
-	}
-	.preview-row {
-		display: grid;
-		grid-auto-flow: column;
-		grid-auto-columns: minmax(120px, 1fr);
-	}
-	.cell {
-		padding: var(--space-2);
-		border-bottom: 1px solid var(--border-primary);
-		border-right: 1px solid var(--border-primary);
-		background: transparent;
-		text-align: left;
-		font-size: var(--text-xs);
-		color: var(--fg-secondary);
-		cursor: pointer;
-	}
-	.cell.header {
-		background: var(--bg-tertiary);
-		font-weight: var(--font-semibold);
-		color: var(--fg-primary);
-	}
-	.cell.corner {
-		background: var(--bg-tertiary);
-	}
-	.checkbox-group {
-		flex-direction: row;
-		align-items: center;
-		gap: var(--space-2);
-	}
-	.checkbox-group input {
-		width: auto;
-	}
-	.checkbox-group label {
-		margin: 0;
-	}
-	input[type='checkbox'] {
-		width: 1rem;
-		height: 1rem;
-		cursor: pointer;
-	}
-	.radio-group {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
-	}
-	.radio-option {
-		display: grid;
-		grid-template-columns: auto 1fr;
-		grid-template-rows: auto auto;
-		gap: 0 var(--space-3);
-		padding: var(--space-3) var(--space-4);
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		transition: all var(--transition);
-	}
-	.radio-option:hover {
-		background: var(--bg-hover);
-		border-color: var(--border-secondary);
-	}
-	.radio-option:has(input:checked) {
-		background: var(--accent-bg);
-		border-color: var(--accent-border);
-	}
-	.radio-option input[type='radio'] {
-		grid-row: span 2;
-		align-self: center;
-		width: 1rem;
-		height: 1rem;
-		cursor: pointer;
-	}
-	.radio-label {
-		font-weight: var(--font-medium);
-		font-size: var(--text-sm);
-	}
-	.radio-desc {
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
-	}
-</style>

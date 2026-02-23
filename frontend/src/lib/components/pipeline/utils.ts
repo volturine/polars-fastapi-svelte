@@ -1,9 +1,31 @@
-type StepTypeConfig = {
-	label: string;
-	icon: string;
-	typeLabel: string;
-	summary: (c: Record<string, unknown>) => string;
-};
+import {
+	ArrowUpDown,
+	BarChart3,
+	BarChart4,
+	Bomb,
+	Brush,
+	Calculator,
+	Calendar,
+	CircleHelp,
+	Dices,
+	Eye,
+	Filter,
+	LayoutGrid,
+	Link,
+	Pencil,
+	Repeat,
+	Repeat2,
+	Scissors,
+	Settings2,
+	Sparkles,
+	Trophy,
+	Type,
+	Upload,
+	Wrench,
+	ListChecks,
+	Trash2,
+	Bell
+} from 'lucide-svelte';
 
 function truncate(items: string[], max = 3, len = 20): string {
 	if (!items?.length) return '';
@@ -13,10 +35,17 @@ function truncate(items: string[], max = 3, len = 20): string {
 	return items.length > max ? `${shown.join(', ')} +${items.length - max}` : shown.join(', ');
 }
 
+type StepTypeConfig = {
+	label: string;
+	icon: typeof Filter;
+	typeLabel: string;
+	summary: (c: Record<string, unknown>) => string;
+};
+
 const stepTypes: Record<string, StepTypeConfig> = {
 	filter: {
 		label: 'Filter',
-		icon: '🔍',
+		icon: Filter,
 		typeLabel: 'filter',
 		summary: (c) => {
 			const conds = c.conditions as Array<{ column: string; operator: string; value: string }>;
@@ -30,7 +59,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	select: {
 		label: 'Select',
-		icon: '📋',
+		icon: ListChecks,
 		typeLabel: 'select',
 		summary: (c) => {
 			const cols = c.columns as string[];
@@ -39,7 +68,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	groupby: {
 		label: 'Group By',
-		icon: '📊',
+		icon: BarChart3,
 		typeLabel: 'group_by',
 		summary: (c) => {
 			const keys = c.groupBy as string[];
@@ -56,7 +85,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	sort: {
 		label: 'Sort',
-		icon: '↕️',
+		icon: ArrowUpDown,
 		typeLabel: 'sort',
 		summary: (c) => {
 			const cols = c.columns as string[];
@@ -67,7 +96,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	rename: {
 		label: 'Rename',
-		icon: '✏️',
+		icon: Pencil,
 		typeLabel: 'rename',
 		summary: (c) => {
 			const map = c.column_mapping as Record<string, string>;
@@ -79,7 +108,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	drop: {
 		label: 'Drop',
-		icon: '🗑️',
+		icon: Trash2,
 		typeLabel: 'drop',
 		summary: (c) => {
 			const cols = c.columns as string[];
@@ -88,7 +117,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	join: {
 		label: 'Join',
-		icon: '🔗',
+		icon: Link,
 		typeLabel: 'join',
 		summary: (c) => {
 			const how = (c.how as string) || 'inner';
@@ -101,7 +130,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	expression: {
 		label: 'Expression',
-		icon: '🧮',
+		icon: Calculator,
 		typeLabel: 'expression',
 		summary: (c) => {
 			const expr = c.expression as string;
@@ -113,19 +142,21 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	with_columns: {
 		label: 'With Columns',
-		icon: '🧮',
+		icon: Calculator,
 		typeLabel: 'with_columns',
 		summary: (c) => {
-			const expr = c.expression as string;
-			const col = c.column_name as string;
-			if (!expr) return 'no expression';
-			const short = expr.length > 25 ? expr.slice(0, 24) + '…' : expr;
-			return `${col} = ${short}`;
+			const expressions = c.expressions as Array<{ name?: string }>;
+			if (!expressions?.length) return 'no columns';
+			const names = expressions
+				.map((expr) => (typeof expr.name === 'string' ? expr.name : ''))
+				.filter((name) => !!name);
+			if (!names.length) return `${expressions.length} columns`;
+			return names.length === 1 ? names[0] : `${truncate(names, 2)} (${names.length})`;
 		}
 	},
 	pivot: {
 		label: 'Pivot',
-		icon: '🔄',
+		icon: Repeat,
 		typeLabel: 'pivot',
 		summary: (c) => {
 			const col = c.columns as string;
@@ -139,7 +170,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	unpivot: {
 		label: 'Unpivot',
-		icon: '🔃',
+		icon: Repeat2,
 		typeLabel: 'unpivot',
 		summary: (c) => {
 			const on = c.on as string[];
@@ -151,7 +182,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	fill_null: {
 		label: 'Fill Null',
-		icon: '🔧',
+		icon: Wrench,
 		typeLabel: 'fill_null',
 		summary: (c) => {
 			const strategy = (c.strategy as string) || 'literal';
@@ -164,7 +195,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	deduplicate: {
 		label: 'Deduplicate',
-		icon: '🧹',
+		icon: Brush,
 		typeLabel: 'deduplicate',
 		summary: (c) => {
 			const subset = c.subset as string[] | null;
@@ -175,7 +206,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	explode: {
 		label: 'Explode',
-		icon: '💥',
+		icon: Bomb,
 		typeLabel: 'explode',
 		summary: (c) => {
 			const cols = c.columns as string[];
@@ -184,7 +215,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	timeseries: {
 		label: 'Time Series',
-		icon: '📅',
+		icon: Calendar,
 		typeLabel: 'timeseries',
 		summary: (c) => {
 			const col = c.column as string;
@@ -200,7 +231,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	string_transform: {
 		label: 'String Transform',
-		icon: '📝',
+		icon: Type,
 		typeLabel: 'string',
 		summary: (c) => {
 			const col = c.column as string;
@@ -219,7 +250,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	sample: {
 		label: 'Sample',
-		icon: '🎲',
+		icon: Dices,
 		typeLabel: 'sample',
 		summary: (c) => {
 			const frac = c.fraction as number | undefined;
@@ -232,7 +263,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	limit: {
 		label: 'Limit',
-		icon: '✂️',
+		icon: Scissors,
 		typeLabel: 'limit',
 		summary: (c) => {
 			const n = c.n as number;
@@ -241,7 +272,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	topk: {
 		label: 'Top K',
-		icon: '🏆',
+		icon: Trophy,
 		typeLabel: 'topk',
 		summary: (c) => {
 			const col = c.column as string;
@@ -253,13 +284,13 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	null_count: {
 		label: 'Null Count',
-		icon: '❓',
+		icon: CircleHelp,
 		typeLabel: 'null_count',
 		summary: () => 'count nulls per column'
 	},
 	value_counts: {
 		label: 'Value Counts',
-		icon: '📊',
+		icon: BarChart3,
 		typeLabel: 'value_counts',
 		summary: (c) => {
 			const col = c.column as string;
@@ -272,15 +303,50 @@ const stepTypes: Record<string, StepTypeConfig> = {
 			return extras.length ? `${col} (${extras.join(', ')})` : col;
 		}
 	},
+	chart: {
+		label: 'Chart',
+		icon: BarChart4,
+		typeLabel: 'chart',
+		summary: (c) => {
+			const chartType = (c.chart_type as string) || 'chart';
+			const x = c.x_column as string;
+			const y = c.y_column as string;
+			if (!x) return chartType;
+			if (chartType === 'histogram') return `${chartType}: ${x}`;
+			if (!y) return `${chartType}: ${x}`;
+			if (chartType === 'line') return `${chartType}: ${y} over ${x}`;
+			return `${chartType}: ${y} by ${x}`;
+		}
+	},
+	notification: {
+		label: 'Notify',
+		icon: Bell,
+		typeLabel: 'notification',
+		summary: (c) => {
+			const method = (c.method as string) || 'email';
+			return `via ${method}`;
+		}
+	},
+	ai: {
+		label: 'AI',
+		icon: Sparkles,
+		typeLabel: 'ai',
+		summary: (c) => {
+			const cols = c.input_columns as string[] | undefined;
+			const output = c.output_column as string;
+			if (!cols?.length || !output) return 'not configured';
+			return `${cols.join(', ')} → ${output}`;
+		}
+	},
 	view: {
 		label: 'View',
-		icon: '👁️',
+		icon: Eye,
 		typeLabel: 'view',
 		summary: (c) => `limit ${(c.rowLimit as number) ?? 100} rows`
 	},
 	union_by_name: {
 		label: 'Union By Name',
-		icon: '🧩',
+		icon: LayoutGrid,
 		typeLabel: 'union_by_name',
 		summary: (c) => {
 			const sources = c.sources as string[];
@@ -292,24 +358,33 @@ const stepTypes: Record<string, StepTypeConfig> = {
 	},
 	export: {
 		label: 'Export',
-		icon: '📤',
+		icon: Upload,
 		typeLabel: 'export',
 		summary: (c) => {
 			const filename = (c.filename as string) || 'export';
 			const format = (c.format as string) || 'csv';
 			const dest = (c.destination as string) || 'download';
-			return dest === 'filesystem'
-				? `${filename}.${format} (save to disk)`
-				: `${filename}.${format}`;
+			if (dest === 'datasource') {
+				const dsType = (c.datasource_type as string) || 'iceberg';
+				return `datasource (${dsType})`;
+			}
+			return `${filename}.${format}`;
 		}
 	}
 };
 
 const defaultStepType: StepTypeConfig = {
 	label: 'Unknown',
-	icon: '⚙️',
+	icon: Settings2,
 	typeLabel: 'unknown',
 	summary: () => 'click to configure'
 };
 
-export { type StepTypeConfig, defaultStepType, stepTypes };
+function getStepTypeConfig(type: string): StepTypeConfig {
+	if (type.startsWith('plot_')) {
+		return stepTypes.chart ?? defaultStepType;
+	}
+	return stepTypes[type] ?? defaultStepType;
+}
+
+export { type StepTypeConfig, defaultStepType, stepTypes, getStepTypeConfig };

@@ -5,18 +5,19 @@ import {
 	getDatasourceSchema,
 	deleteDatasource as deleteDatasourceApi
 } from '$lib/api/datasource';
+import { SvelteMap } from 'svelte/reactivity';
 
-class DatasourceStore {
+export class DatasourceStore {
 	datasources = $state<DataSource[]>([]);
-	schemas = $state(new Map<string, SchemaInfo>());
+	schemas = $state(new SvelteMap<string, SchemaInfo>());
 	loading = $state(false);
 	error = $state<string | null>(null);
 
-	async loadDatasources(): Promise<void> {
+	async loadDatasources(includeHidden: boolean = false): Promise<void> {
 		this.loading = true;
 		this.error = null;
 
-		listDatasources().match(
+		listDatasources(includeHidden).match(
 			(datasources) => {
 				this.datasources = datasources;
 				this.loading = false;
@@ -50,12 +51,18 @@ class DatasourceStore {
 		const cached = this.schemas.get(id);
 		if (cached && !sheetName) return cached;
 
-		const result = await getDatasourceSchema(id, sheetName);
+		const datasource = this.getDatasource(id);
+		if (datasource?.source_type === 'analysis') {
+			throw new Error('Schema must be fetched via analysis output');
+		}
+
+		const result = sheetName
+			? await getDatasourceSchema(id, { sheetName, refresh: true })
+			: await getDatasourceSchema(id, { refresh: true });
 		return result.match(
 			(schema) => {
 				if (!sheetName) {
 					this.schemas.set(id, schema);
-					this.schemas = new Map(this.schemas);
 				}
 				return schema;
 			},
@@ -73,7 +80,6 @@ class DatasourceStore {
 			() => {
 				this.datasources = this.datasources.filter((ds) => ds.id !== id);
 				this.schemas.delete(id);
-				this.schemas = new Map(this.schemas);
 				this.loading = false;
 			},
 			(err) => {
@@ -93,13 +99,11 @@ class DatasourceStore {
 		} else {
 			this.schemas.clear();
 		}
-		this.schemas = new Map(this.schemas);
 	}
 
 	reset(): void {
 		this.datasources = [];
 		this.schemas.clear();
-		this.schemas = new Map();
 		this.error = null;
 		this.loading = false;
 	}

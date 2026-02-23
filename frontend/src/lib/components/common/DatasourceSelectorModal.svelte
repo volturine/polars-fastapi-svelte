@@ -1,81 +1,75 @@
 <script lang="ts">
-	import { onClickOutside, Debounced } from 'runed';
-	import { FileSpreadsheet, FileJson, FileType, Database, Globe, X } from 'lucide-svelte';
+	import { Debounced } from 'runed';
+	import { X } from 'lucide-svelte';
 	import type { DataSource } from '$lib/types/datasource';
+	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
+	import type { SourceType } from '$lib/utils/fileTypes';
+	import BaseModal from '$lib/components/ui/BaseModal.svelte';
 
 	interface Props {
 		show: boolean;
 		datasources: DataSource[];
 		isLoading?: boolean;
 		mode?: 'add' | 'change';
-		onSelect: (id: string, name: string) => void;
+		sourceType?: 'datasource' | 'analysis';
+		allowAnalysis?: boolean;
+		analysisTabs?: Array<{ id: string; name: string }>;
+		excludeTabId?: string | null;
+		onSelect: (id: string, name: string, sourceType: 'datasource' | 'analysis') => void;
 		onClose: () => void;
 	}
 
-	let { show, datasources, isLoading = false, mode = 'add', onSelect, onClose }: Props = $props();
+	let {
+		show,
+		datasources,
+		isLoading = false,
+		mode = 'add',
+		sourceType = 'datasource',
+		allowAnalysis = true,
+		analysisTabs = [],
+		excludeTabId = null,
+		onSelect,
+		onClose
+	}: Props = $props();
 
 	let searchQuery = $state('');
-	let debouncedSearch = new Debounced(() => searchQuery, 200);
-	let modalRef = $state<HTMLElement>();
+	const debouncedSearch = new Debounced(() => searchQuery, 200);
 	let searchInput = $state<HTMLInputElement>();
+	let activeOverride = $state<'datasource' | 'analysis' | null>(null);
+	const activeSource = $derived(activeOverride ?? (allowAnalysis ? sourceType : 'datasource'));
 
-	onClickOutside(
-		() => modalRef,
-		() => handleClose(),
-		{ immediate: true }
-	);
-
-	let filteredDatasources = $derived(
+	const filteredDatasources = $derived(
 		datasources.filter((ds) => {
 			const query = debouncedSearch.current.toLowerCase().trim();
 			if (!query) return true;
 			return ds.name.toLowerCase().includes(query);
 		})
 	);
-
-	function getFileTypeIcon(fileType: string | null) {
-		switch (fileType) {
-			case 'csv':
-				return FileSpreadsheet;
-			case 'json':
-				return FileJson;
-			case 'parquet':
-				return FileType;
-			case 'ndjson':
-				return FileJson;
-			case 'excel':
-				return FileSpreadsheet;
-			default:
-				return null;
-		}
-	}
-
-	function getSourceTypeIcon(sourceType: string) {
-		switch (sourceType) {
-			case 'database':
-				return Database;
-			case 'api':
-				return Globe;
-			default:
-				return null;
-		}
-	}
+	const filteredTabs = $derived(
+		analysisTabs.filter((tab) => {
+			if (mode === 'change' && excludeTabId && tab.id === excludeTabId) return false;
+			const query = debouncedSearch.current.toLowerCase().trim();
+			if (!query) return true;
+			return tab.name.toLowerCase().includes(query);
+		})
+	);
 
 	function handleClose() {
+		activeOverride = null;
 		onClose();
 		searchQuery = '';
 	}
 
 	function handleSelect(datasourceId: string, name: string) {
-		onSelect(datasourceId, name);
+		onSelect(datasourceId, name, activeSource);
 		handleClose();
 	}
 
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape') {
-			handleClose();
-		}
+	function handleAnalysisTabSelect(entry: { id: string; name: string }) {
+		onSelect(entry.id, entry.name, 'analysis');
+		handleClose();
 	}
+
 
 	function handleBackdropKeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter' || event.key === ' ') {
@@ -84,18 +78,7 @@
 		}
 	}
 
-	$effect(() => {
-		if (show) {
-			document.body.style.overflow = 'hidden';
-		} else {
-			document.body.style.overflow = '';
-		}
-
-		return () => {
-			document.body.style.overflow = '';
-		};
-	});
-
+	// DOM: $derived can't focus the search input.
 	$effect(() => {
 		if (show && searchInput) {
 			searchInput.focus();
@@ -103,232 +86,109 @@
 	});
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
+<BaseModal
+	open={show}
+	onClose={handleClose}
+	closeOnEscape={true}
+	closeOnBackdrop={true}
+	panelClass="flex max-h-[80vh] w-full max-w-120 flex-col border focus:outline-none max-sm:max-w-full bg-panel border-tertiary animate-slide-up"
+	ariaLabelledby="modal-title"
+	onBackdropKeydown={handleBackdropKeydown}
+	content={content}
+/>
 
-{#if show}
-	<div
-		class="modal-backdrop"
-		onclick={handleClose}
-		onkeydown={handleBackdropKeydown}
-		role="button"
-		tabindex="0"
-		aria-label="Close modal"
-	>
-		<div
-			class="modal"
-			bind:this={modalRef}
-			onclick={(e) => e.stopPropagation()}
-			onkeydown={(e) => e.stopPropagation()}
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="modal-title"
-			tabindex="-1"
+{#snippet content()}
+	<div class="flex items-center justify-between border-b p-4 border-tertiary">
+		<h2 id="modal-title" class="m-0 text-sm font-semibold text-fg-primary">
+			{mode === 'change' ? 'Change Datasource' : 'Add Datasource'}
+		</h2>
+		<button
+			class="flex cursor-pointer items-center justify-center border-none bg-transparent p-1 text-fg-muted hover:bg-hover hover:text-fg-primary"
+			onclick={handleClose}
+			aria-label="Close"
+			type="button"
 		>
-			<div class="modal-header">
-				<h2 id="modal-title">{mode === 'change' ? 'Change Datasource' : 'Add Datasource'}</h2>
-				<button class="modal-close" onclick={handleClose} aria-label="Close">
-					<X size={20} />
+			<X size={20} />
+		</button>
+	</div>
+	<div class="flex flex-col gap-4 overflow-y-auto p-4">
+		{#if allowAnalysis}
+			<div class="flex items-center gap-1 border border-tertiary bg-tertiary p-1">
+				<button
+					class="flex-1 border-none bg-transparent px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
+					class:text-fg-primary={activeSource === 'datasource'}
+					class:text-fg-muted={activeSource !== 'datasource'}
+					class:bg-panel={activeSource === 'datasource'}
+					onclick={() => (activeOverride = 'datasource')}
+					type="button"
+				>
+					Datasources
+				</button>
+				<button
+					class="flex-1 border-none bg-transparent px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
+					class:text-fg-primary={activeSource === 'analysis'}
+					class:text-fg-muted={activeSource !== 'analysis'}
+					class:bg-panel={activeSource === 'analysis'}
+					onclick={() => (activeOverride = 'analysis')}
+					type="button"
+				>
+					Analyses
 				</button>
 			</div>
-			<div class="modal-body">
-				<input
-					class="search-input"
-					type="text"
-					bind:this={searchInput}
-					bind:value={searchQuery}
-					placeholder="Search datasources..."
-				/>
-				<div class="datasource-list">
-					{#if isLoading}
-						<div class="list-empty">Loading...</div>
-					{:else if filteredDatasources.length === 0}
-						<div class="list-empty">
-							{searchQuery ? 'No matching datasources' : 'No datasources available'}
-						</div>
-					{:else}
-						{#each filteredDatasources as ds (ds.id)}
-							<button class="datasource-item" onclick={() => handleSelect(ds.id, ds.name)}>
-								<span class="datasource-name">{ds.name}</span>
-								<span class="datasource-type">
-									{#if ds.source_type === 'file'}
-										{@const Icon = getFileTypeIcon((ds.config.file_type as string) ?? null)}
-										{#if Icon}
-											<Icon size={16} />
-										{/if}
-									{:else}
-										{@const Icon = getSourceTypeIcon(ds.source_type)}
-										{#if Icon}
-											<Icon size={16} />
-										{/if}
-									{/if}
-								</span>
-							</button>
-						{/each}
-					{/if}
+		{/if}
+		<input
+			class="w-full border px-3 py-3 text-sm focus:outline-none border-tertiary text-fg-primary bg-primary focus:border-accent-primary"
+			type="text"
+			bind:this={searchInput}
+			bind:value={searchQuery}
+			placeholder={activeSource === 'analysis' ? 'Search analyses...' : 'Search datasources...'}
+		/>
+		<div class="flex max-h-75 flex-col gap-1 overflow-y-auto">
+			{#if isLoading}
+				<div class="flex items-center justify-center p-8 text-sm text-fg-muted">Loading...</div>
+			{:else if activeSource === 'analysis' && allowAnalysis && filteredTabs.length === 0}
+				<div class="flex items-center justify-center p-8 text-sm text-fg-muted">
+					{searchQuery ? 'No matching analysis tabs' : 'No analysis tabs available'}
 				</div>
-			</div>
+			{:else if activeSource === 'datasource' && filteredDatasources.length === 0}
+				<div class="flex items-center justify-center p-8 text-sm text-fg-muted">
+					{searchQuery ? 'No matching datasources' : 'No datasources available'}
+				</div>
+			{:else if activeSource === 'analysis' && allowAnalysis}
+				{#each filteredTabs as entry (entry.id)}
+					<button
+						class="flex cursor-pointer items-center justify-between border border-transparent bg-transparent p-3 text-left hover:bg-hover hover:border-tertiary"
+						onclick={() => handleAnalysisTabSelect(entry)}
+						type="button"
+					>
+						<span class="text-sm font-medium text-fg-primary">
+							{entry.name}
+						</span>
+						<span class="text-xs text-fg-muted">analysis tab</span>
+					</button>
+				{/each}
+			{:else}
+				{#each filteredDatasources as ds (ds.id)}
+					<button
+						class="flex cursor-pointer items-center justify-between border border-transparent bg-transparent p-3 text-left hover:bg-hover hover:border-tertiary"
+						onclick={() => handleSelect(ds.id, ds.name)}
+						type="button"
+					>
+						<span class="text-sm font-medium text-fg-primary">{ds.name}</span>
+						<span class="flex items-center gap-1 text-fg-muted">
+							{#if ds.source_type === 'file'}
+								<FileTypeBadge path={ds.config.file_path as string} size="sm" showIcon={true} />
+							{:else}
+								<FileTypeBadge
+									sourceType={ds.source_type as SourceType}
+									size="sm"
+									showIcon={true}
+								/>
+							{/if}
+						</span>
+					</button>
+				{/each}
+			{/if}
 		</div>
 	</div>
-{/if}
-
-<style>
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background-color: var(--overlay-bg);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 1000;
-		padding: var(--space-4);
-		animation: fadeIn var(--transition);
-	}
-
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
-
-	.modal {
-		background-color: var(--panel-bg);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-lg);
-		max-width: 480px;
-		width: 100%;
-		max-height: 80vh;
-		display: flex;
-		flex-direction: column;
-		animation: slideIn var(--transition);
-	}
-
-	@keyframes slideIn {
-		from {
-			transform: translateY(-10px);
-			opacity: 0;
-		}
-		to {
-			transform: translateY(0);
-			opacity: 1;
-		}
-	}
-
-	.modal:focus {
-		outline: none;
-	}
-
-	.modal-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: var(--space-4);
-		border-bottom: 1px solid var(--panel-border);
-	}
-
-	.modal-header h2 {
-		margin: 0;
-		font-size: var(--text-sm);
-		font-weight: var(--font-semibold);
-		color: var(--fg-primary);
-	}
-
-	.modal-close {
-		background: transparent;
-		border: none;
-		padding: var(--space-1);
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: var(--radius-sm);
-		color: var(--fg-muted);
-		transition: all var(--transition);
-	}
-
-	.modal-close:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-primary);
-	}
-
-	.modal-body {
-		padding: var(--space-4);
-		overflow-y: auto;
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
-	}
-
-	.search-input {
-		width: 100%;
-		padding: var(--space-3) var(--space-3);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-sm);
-		color: var(--fg-primary);
-		background-color: var(--bg-primary);
-		transition: border-color var(--transition);
-	}
-
-	.search-input:focus {
-		outline: none;
-		border-color: var(--accent-primary);
-	}
-
-	.datasource-list {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-1);
-		max-height: 300px;
-		overflow-y: auto;
-	}
-
-	.datasource-item {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: var(--space-3);
-		background: transparent;
-		border: 1px solid transparent;
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		text-align: left;
-		transition: all var(--transition);
-	}
-
-	.datasource-item:hover {
-		background-color: var(--bg-hover);
-		border-color: var(--panel-border);
-	}
-
-	.datasource-name {
-		font-size: var(--text-sm);
-		font-weight: 500;
-		color: var(--fg-primary);
-	}
-
-	.datasource-type {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-		color: var(--fg-muted);
-	}
-
-	.list-empty {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-8);
-		color: var(--fg-muted);
-		font-size: var(--text-sm);
-	}
-
-	@media (max-width: 640px) {
-		.modal {
-			max-width: 100%;
-		}
-	}
-</style>
+{/snippet}

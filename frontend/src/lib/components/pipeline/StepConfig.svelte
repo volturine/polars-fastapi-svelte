@@ -25,7 +25,19 @@
 	} from '$lib/types/operation-config';
 	import { schemaStore } from '$lib/stores/schema.svelte';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
-	import { getStepSchema, type StepSchemaResponse } from '$lib/api/compute';
+	import { configStore } from '$lib/stores/config.svelte';
+	import { datasourceStore } from '$lib/stores/datasource.svelte';
+	import { getStepSchema, type StepSchemaRequest, type StepSchemaResponse } from '$lib/api/compute';
+	import { track } from '$lib/utils/audit-log';
+	import {
+		normalizeConfig,
+		type NotificationConfigData,
+		type AIConfigData
+	} from '$lib/utils/step-config-defaults';
+	import {
+		buildAnalysisPipelinePayload,
+		buildDatasourceConfig
+	} from '$lib/utils/analysis-pipeline';
 	import FilterConfig from '$lib/components/operations/FilterConfig.svelte';
 	import SelectConfig from '$lib/components/operations/SelectConfig.svelte';
 	import GroupByConfig from '$lib/components/operations/GroupByConfig.svelte';
@@ -34,6 +46,7 @@
 	import DropConfig from '$lib/components/operations/DropConfig.svelte';
 	import JoinConfig from '$lib/components/operations/JoinConfig.svelte';
 	import ExpressionConfig from '$lib/components/operations/ExpressionConfig.svelte';
+	import WithColumnsConfig from '$lib/components/operations/WithColumnsConfig.svelte';
 	import DeduplicateConfig from '$lib/components/operations/DeduplicateConfig.svelte';
 	import FillNullConfig from '$lib/components/operations/FillNullConfig.svelte';
 	import ExplodeConfig from '$lib/components/operations/ExplodeConfig.svelte';
@@ -47,15 +60,30 @@
 	import NullCountConfig from '$lib/components/operations/NullCountConfig.svelte';
 	import ValueCountsConfig from '$lib/components/operations/ValueCountsConfig.svelte';
 	import UnpivotConfig from '$lib/components/operations/UnpivotConfig.svelte';
-	import ExportConfig from '$lib/components/operations/ExportConfig.svelte';
+	import PlotConfig from '$lib/components/operations/PlotConfig.svelte';
+	import NotificationConfig from '$lib/components/operations/NotificationConfig.svelte';
+	import AIConfig from '$lib/components/operations/AIConfig.svelte';
 	import UnionByNameConfig from '$lib/components/operations/UnionByNameConfig.svelte';
+	import { getStepTypeConfig } from '$lib/components/pipeline/utils';
+	import { Settings2, X } from 'lucide-svelte';
+
+	type WithColumnsConfigShape = {
+		expressions: Array<{
+			name: string;
+			type: 'literal' | 'column' | 'udf';
+			value?: string | number | null;
+			column?: string | null;
+			args?: string[] | null;
+			code?: string | null;
+		}>;
+	};
 
 	interface Props {
 		step?: PipelineStep | null;
 		schema: Schema | null;
 		isLoadingSchema?: boolean;
 		onClose?: () => void;
-		onConfigChange?: () => void;
+		onConfigApply?: () => void;
 	}
 
 	let {
@@ -63,43 +91,60 @@
 		schema,
 		isLoadingSchema = false,
 		onClose,
-		onConfigChange
+		onConfigApply
 	}: Props = $props();
+	const stepLabel = $derived(step ? getStepTypeConfig(step.type).label : '');
 	let fetchingPivotSchema = $state(false);
+	let draftStepId = $state<string | null>(null);
+	let draftConfig = $state<Record<string, unknown>>({});
+	// True when draftConfig has been synchronized with the current step.
+	// Prevents config components from rendering with stale/empty config before
+	// the $effect below runs (which fires after the first render frame).
+	const draftReady = $derived(step !== null && draftStepId === step.id);
 
-	let inputSchema = $derived(
+	const inputSchema = $derived(
 		step
 			? (schemaStore.getInput(step.id) ?? { columns: [], row_count: null })
 			: { columns: [], row_count: null }
 	);
 
-	let configSnapshot = $state<string>('');
-
-	$effect(() => {
-		if (step) {
-			const currentStep = step;
-			setTimeout(() => {
-				if (step === currentStep) {
-					configSnapshot = JSON.stringify(step.config);
-				}
-			}, 0);
-		}
+	const configFlags = $derived({
+		smtpEnabled: configStore.smtpEnabled,
+		telegramEnabled: configStore.telegramEnabled
 	});
 
-	$effect(() => {
-		if (!step || !configSnapshot) return;
+	function cloneConfig(
+		config: Record<string, unknown> | null | undefined
+	): Record<string, unknown> {
+		const payload = config ?? {};
+		return JSON.parse(JSON.stringify(payload)) as Record<string, unknown>;
+	}
 
-		const current = JSON.stringify(step.config);
-		if (current !== configSnapshot) {
-			onConfigChange?.();
-			configSnapshot = current;
+	// Subscription: $derived can't sync draft config.
+	$effect(() => {
+		if (!step) {
+			draftStepId = null;
+			draftConfig = {};
+			return;
 		}
+		if (draftStepId === step.id) return;
+		draftStepId = step.id;
+		const normalizedConfig = normalizeConfig(
+			step.type,
+			(step.config as Record<string, unknown>) ?? {}
+		) as Record<string, unknown>;
+		draftConfig = cloneConfig(normalizedConfig);
 	});
+
+	const hasChanges = $derived(
+		!!step &&
+			(JSON.stringify(step.config) !== JSON.stringify(draftConfig) ||
+				(step as PipelineStep & { is_applied?: boolean }).is_applied === false)
+	);
 
 	function handleRefreshPivotSchema() {
 		if (!step || step.type !== 'pivot') return;
-
-		const config = step.config as Record<string, unknown>;
+		const config = draftConfig;
 		if (!config || typeof config !== 'object') return;
 		const columns = config.columns;
 		const index = config.index;
@@ -111,284 +156,249 @@
 
 		fetchingPivotSchema = true;
 
-		const pipelineSteps = analysisStore.pipeline.map((s) => ({
-			id: s.id,
-			type: s.type,
-			config: s.config,
-			depends_on: s.depends_on
-		}));
+		const datasourceConfig = buildDatasourceConfig({
+			analysisId: analysis.id,
+			tab: analysisStore.activeTab ?? null,
+			tabs: analysisStore.tabs,
+			datasources: datasourceStore.datasources
+		});
+		const analysisPipeline = buildAnalysisPipelinePayload(
+			analysis.id,
+			analysisStore.tabs,
+			datasourceStore.datasources
+		);
+		if (!analysisPipeline) {
+			fetchingPivotSchema = false;
+			return;
+		}
 
 		getStepSchema({
 			analysis_id: analysis.id,
-			datasource_id: datasourceId,
-			pipeline_steps: pipelineSteps,
-			target_step_id: step.id
-		})
+			analysis_pipeline: analysisPipeline,
+			tab_id: analysisStore.activeTab?.id ?? null,
+			target_step_id: step.id,
+			datasource_config: datasourceConfig
+		} as unknown as StepSchemaRequest)
 			.map((response: StepSchemaResponse) => {
 				schemaStore.setPreviewSchema(step.id, response.columns, response.column_types);
 				fetchingPivotSchema = false;
 			})
 			.mapErr((error: unknown) => {
-				console.error('Failed to fetch pivot schema:', error);
+				const err = error instanceof Error ? error.message : String(error);
+				track({
+					event: 'schema_error',
+					action: 'pivot_schema',
+					target: step.id,
+					meta: { message: err }
+				});
 				fetchingPivotSchema = false;
 			});
 	}
 
+	function handleApplyConfig() {
+		if (!step) return;
+		analysisStore.updateStepConfig(step.id, cloneConfig(draftConfig));
+		if ((step as PipelineStep & { is_applied?: boolean }).is_applied === false) {
+			analysisStore.updateStep(step.id, { is_applied: true } as Partial<PipelineStep> & {
+				is_applied: boolean;
+			});
+		}
+		onConfigApply?.();
+	}
+
+	function handleCancelConfig() {
+		if (!step) return;
+		draftConfig = cloneConfig(step.config as Record<string, unknown>);
+	}
 </script>
 
 {#if step === null}
-	<div class="step-config empty">
-		<div class="empty-message">
-			<div class="empty-icon">⚙️</div>
-			<h3>No step selected</h3>
-			<p>Click on a pipeline step to configure it</p>
+	<div
+		class="step-config box-border flex h-full min-h-0 w-full flex-col items-center justify-center overflow-y-auto bg-primary text-fg-primary"
+	>
+		<div class="flex flex-col items-center justify-center p-10 text-center text-fg-muted">
+			<div class="mb-6 opacity-30"><Settings2 size={40} /></div>
+			<h3 class="m-0 mb-3 text-base text-fg-primary">No step selected</h3>
+			<p class="m-0 text-xs text-fg-muted">Click on a pipeline step to configure it</p>
 		</div>
 	</div>
 {:else}
-	<div class="step-config">
-		<div class="config-header">
-			<h3>Configure Step</h3>
-			<button class="close-button" onclick={() => onClose?.()} type="button" title="Close">×</button>
+	<div
+		class="step-config box-border flex h-full min-h-0 w-full flex-col overflow-y-auto bg-primary text-fg-primary"
+	>
+		<div
+			class="config-header relative flex items-center justify-between border-b border-tertiary bg-primary px-5 py-3"
+		>
+			<h3 class="m-0 text-xs font-semibold uppercase tracking-widest text-fg-muted">
+				{stepLabel}
+			</h3>
+			<button
+				class="close-button flex h-7 w-7 cursor-pointer items-center justify-center border-none bg-transparent p-0 leading-none text-fg-muted hover:bg-bg-hover hover:text-fg-primary"
+				onclick={() => onClose?.()}
+				type="button"
+				title="Close"
+			>
+				<X size={14} />
+			</button>
 		</div>
 
-		<div class="config-body">
-			{#if !schema && !isLoadingSchema}
-			<div class="warning-message">
-				<p>Schema not available. Please ensure the data source is loaded.</p>
-				<button onclick={() => onClose?.()} type="button">Close</button>
-			</div>
-			{:else if isLoadingSchema}
-				<div class="loading-message">
+		<div class="config-body flex-1 overflow-y-auto bg-primary p-5">
+			{#if !draftReady}
+				<div
+					class="flex flex-col items-center justify-center gap-4 bg-primary p-10 text-center text-fg-tertiary"
+				>
 					<div class="spinner-md"></div>
-					<p>Loading schema...</p>
+					<p class="m-0 text-xs">Initializing config...</p>
+				</div>
+			{:else if !schema && !isLoadingSchema}
+				<div class="warning-message">
+					<p>Schema not available. Please ensure the data source is loaded.</p>
+					<button onclick={() => onClose?.()} type="button">Close</button>
+				</div>
+			{:else if isLoadingSchema}
+				<div
+					class="flex flex-col items-center justify-center gap-4 bg-primary p-10 text-center text-fg-tertiary"
+				>
+					<div class="spinner-md"></div>
+					<p class="m-0 text-xs">Loading schema...</p>
 				</div>
 			{:else if step.type === 'filter'}
 				<FilterConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as FilterConfigData}
+					bind:config={draftConfig as unknown as FilterConfigData}
 				/>
 			{:else if step.type === 'select'}
 				<SelectConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as SelectConfigData}
+					bind:config={draftConfig as unknown as SelectConfigData}
 				/>
 			{:else if step.type === 'groupby'}
 				<GroupByConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as GroupByConfigData}
+					bind:config={draftConfig as unknown as GroupByConfigData}
 				/>
 			{:else if step.type === 'sort'}
-				<SortConfig schema={inputSchema} bind:config={step.config as unknown as SortConfigData} />
+				<SortConfig schema={inputSchema} bind:config={draftConfig as unknown as SortConfigData} />
 			{:else if step.type === 'rename'}
 				<RenameConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as RenameConfigData}
+					bind:config={draftConfig as unknown as RenameConfigData}
 				/>
 			{:else if step.type === 'drop'}
-				<DropConfig schema={inputSchema} bind:config={step.config as unknown as DropConfigData} />
+				<DropConfig schema={inputSchema} bind:config={draftConfig as unknown as DropConfigData} />
 			{:else if step.type === 'join'}
-				<JoinConfig schema={inputSchema} bind:config={step.config as unknown as JoinConfigData} />
-			{:else if step.type === 'expression' || step.type === 'with_columns'}
+				<JoinConfig schema={inputSchema} bind:config={draftConfig as unknown as JoinConfigData} />
+			{:else if step.type === 'expression'}
 				<ExpressionConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as ExpressionConfigData}
+					bind:config={draftConfig as unknown as ExpressionConfigData}
+				/>
+			{:else if step.type === 'with_columns'}
+				<WithColumnsConfig
+					schema={inputSchema}
+					bind:config={draftConfig as unknown as WithColumnsConfigShape}
 				/>
 			{:else if step.type === 'deduplicate'}
 				<DeduplicateConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as DeduplicateConfigData}
+					bind:config={draftConfig as unknown as DeduplicateConfigData}
 				/>
 			{:else if step.type === 'fill_null'}
 				<FillNullConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as FillNullConfigData}
+					bind:config={draftConfig as unknown as FillNullConfigData}
 				/>
 			{:else if step.type === 'explode'}
 				<ExplodeConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as ExplodeConfigData}
+					bind:config={draftConfig as unknown as ExplodeConfigData}
 				/>
 			{:else if step.type === 'pivot'}
 				<PivotConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as PivotConfigData}
+					bind:config={draftConfig as unknown as PivotConfigData}
 					onRefreshSchema={handleRefreshPivotSchema}
 					isRefreshing={fetchingPivotSchema}
 				/>
 			{:else if step.type === 'timeseries'}
 				<TimeSeriesConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as TimeSeriesConfigData}
+					bind:config={draftConfig as unknown as TimeSeriesConfigData}
 				/>
 			{:else if step.type === 'string_transform'}
 				<StringMethodsConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as StringMethodsConfigData}
+					bind:config={draftConfig as unknown as StringMethodsConfigData}
 				/>
 			{:else if step.type === 'view'}
-				<ViewConfig schema={inputSchema} bind:config={step.config as unknown as ViewConfigData} />
+				<ViewConfig schema={inputSchema} bind:config={draftConfig as unknown as ViewConfigData} />
 			{:else if step.type === 'datasource'}
-				<div class="not-implemented">
-					<p>Datasource options are set during upload.</p>
+				<div class="bg-primary p-10 text-center">
+					<p class="m-0 text-xs text-fg-muted">Datasource options are set during upload.</p>
 				</div>
 			{:else if step.type === 'sample'}
-				<SampleConfig bind:config={step.config as unknown as SampleConfigData} />
+				<SampleConfig bind:config={draftConfig as unknown as SampleConfigData} />
 			{:else if step.type === 'limit'}
-				<LimitConfig bind:config={step.config as unknown as LimitConfigData} />
+				<LimitConfig bind:config={draftConfig as unknown as LimitConfigData} />
 			{:else if step.type === 'topk'}
-				<TopKConfig schema={inputSchema} bind:config={step.config as unknown as TopKConfigData} />
+				<TopKConfig schema={inputSchema} bind:config={draftConfig as unknown as TopKConfigData} />
 			{:else if step.type === 'null_count'}
-				<NullCountConfig bind:config={step.config as unknown as Record<string, never>} />
+				<NullCountConfig bind:config={draftConfig as unknown as Record<string, never>} />
 			{:else if step.type === 'value_counts'}
 				<ValueCountsConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as ValueCountsConfigData}
+					bind:config={draftConfig as unknown as ValueCountsConfigData}
 				/>
 			{:else if step.type === 'unpivot'}
 				<UnpivotConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as UnpivotConfigData}
+					bind:config={draftConfig as unknown as UnpivotConfigData}
 				/>
 			{:else if step.type === 'union_by_name'}
 				<UnionByNameConfig
 					schema={inputSchema}
-					bind:config={step.config as unknown as { sources: string[]; allow_missing: boolean }}
+					bind:config={draftConfig as unknown as { sources: string[]; allow_missing: boolean }}
 				/>
-			{:else if step.type === 'export'}
-				<ExportConfig
-					bind:config={
-						step.config as unknown as { format?: string; filename?: string; destination?: string }
-					}
+			{:else if step.type === 'chart'}
+				<PlotConfig schema={inputSchema} bind:config={draftConfig} />
+			{:else if step.type === 'notification'}
+				<NotificationConfig
+					schema={inputSchema}
+					bind:config={draftConfig as unknown as NotificationConfigData}
+					{configFlags}
 				/>
+			{:else if step.type === 'ai'}
+				<AIConfig schema={inputSchema} bind:config={draftConfig as unknown as AIConfigData} />
 			{:else}
-			<div class="not-implemented">
-				<p>Configuration for {step.type} is not yet implemented</p>
-				<button onclick={() => onClose?.()} type="button">Close</button>
-			</div>
+				<div class="bg-primary p-10 text-center">
+					<p class="m-0 mb-4 text-xs text-fg-muted">
+						Configuration for {step.type} is not yet implemented
+					</p>
+					<button
+						class="cursor-pointer border border-tertiary bg-transparent px-5 py-2 font-mono text-xs text-fg-secondary hover:bg-hover"
+						onclick={() => onClose?.()}
+						type="button">Close</button
+					>
+				</div>
 			{/if}
+		</div>
+		<div class="flex gap-3 border-t border-tertiary bg-primary px-5 py-4">
+			<button
+				class="action-button cancel flex-1 cursor-pointer border border-tertiary bg-transparent px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wider text-fg-secondary hover:bg-hover hover:text-fg-primary disabled:cursor-not-allowed disabled:opacity-40"
+				onclick={handleCancelConfig}
+				disabled={!hasChanges}
+				type="button"
+			>
+				Cancel
+			</button>
+			<button
+				class="action-button apply flex-1 cursor-pointer border border-tertiary bg-accent-bg px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wider text-accent-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+				onclick={handleApplyConfig}
+				disabled={!hasChanges}
+				type="button"
+			>
+				Apply
+			</button>
 		</div>
 	</div>
 {/if}
-
-<style>
-	.step-config {
-		width: var(--operations-panel-width, 280px);
-		background-color: var(--panel-bg);
-		display: flex;
-		flex-direction: column;
-		overflow-y: auto;
-		color: var(--fg-primary);
-	}
-	.step-config,
-	.step-config * {
-		box-sizing: border-box;
-	}
-	.step-config.empty {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background-color: var(--panel-bg);
-	}
-	.empty-message {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-6);
-		color: var(--fg-muted);
-		text-align: center;
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		margin-bottom: var(--space-4);
-		opacity: 0.5;
-	}
-	.empty-message h3 {
-		margin: 0 0 var(--space-2) 0;
-		font-size: var(--text-lg);
-		color: var(--fg-primary);
-	}
-	.empty-message p {
-		margin: 0;
-		font-size: var(--text-sm);
-	}
-	.config-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: var(--space-4);
-		border-bottom: none;
-		background-color: var(--panel-bg);
-		position: relative;
-		box-shadow:
-			inset 0 -1px 0 var(--panel-border),
-			inset 0 -3px 0 var(--panel-border),
-			inset 0 -5px 0 var(--panel-border);
-	}
-	.config-header h3 {
-		margin: 0;
-		font-size: var(--text-sm);
-		font-weight: 600;
-		color: var(--fg-primary);
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-	}
-	.close-button {
-		width: 32px;
-		height: 32px;
-		padding: 0;
-		background-color: transparent;
-		border: none;
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		font-size: 1.5rem;
-		line-height: 1;
-		color: var(--fg-muted);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition: all var(--transition);
-	}
-	.close-button:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-primary);
-	}
-	.config-body {
-		flex: 1;
-		overflow-y: auto;
-		padding: var(--space-4);
-		background-color: var(--panel-bg);
-	}
-	.not-implemented {
-		padding: var(--space-6);
-		text-align: center;
-		background-color: var(--panel-bg);
-	}
-	.not-implemented p {
-		margin: 0 0 var(--space-4) 0;
-		color: var(--fg-tertiary);
-	}
-	.not-implemented button {
-		padding: var(--space-2) var(--space-5);
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border: none;
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		font-family: var(--font-mono);
-	}
-	.not-implemented button:hover {
-		opacity: 0.9;
-	}
-	.loading-message {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-6);
-		color: var(--fg-tertiary);
-		text-align: center;
-		gap: var(--space-3);
-		background-color: var(--panel-bg);
-	}
-</style>

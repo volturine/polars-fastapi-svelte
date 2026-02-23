@@ -5,6 +5,7 @@ export interface PipelineStep {
 	type: string;
 	config: Record<string, unknown>;
 	depends_on?: string[];
+	is_applied?: boolean;
 	inputSchema?: Schema;
 	outputSchema?: Schema;
 }
@@ -17,6 +18,7 @@ export interface AnalysisTab {
 	type: AnalysisTabType;
 	parent_id: string | null;
 	datasource_id: string | null;
+	output_datasource_id?: string | null;
 	datasource_config?: Record<string, unknown> | null;
 	steps: PipelineStep[];
 }
@@ -27,6 +29,7 @@ export interface AnalysisCreate {
 	datasource_ids: string[];
 	pipeline_steps: PipelineStep[];
 	tabs: AnalysisTab[];
+	output_branch?: string | null;
 }
 
 export interface AnalysisUpdate {
@@ -35,6 +38,9 @@ export interface AnalysisUpdate {
 	pipeline_steps?: PipelineStep[] | null;
 	status?: string | null;
 	tabs?: AnalysisTab[] | null;
+	client_id?: string | null;
+	lock_token?: string | null;
+	output_branch?: string | null;
 }
 
 export interface Analysis {
@@ -48,6 +54,8 @@ export interface Analysis {
 	result_path: string | null;
 	thumbnail: string | null;
 	tabs: AnalysisTab[];
+	version?: string | null;
+	output_branch?: string | null;
 }
 
 export interface AnalysisGalleryItem {
@@ -56,6 +64,4 @@ export interface AnalysisGalleryItem {
 	thumbnail: string | null;
 	created_at: string;
 	updated_at: string;
-	row_count: number | null;
-	column_count: number | null;
 }

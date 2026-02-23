@@ -1,9 +1,13 @@
 // Type definitions for operation configuration objects
 
+export type FilterValueType = 'string' | 'number' | 'date' | 'datetime' | 'column' | 'boolean';
+
 export interface FilterCondition {
 	column: string;
 	operator: string;
-	value: string;
+	value: string | number | boolean | string[] | null;
+	value_type: FilterValueType;
+	compare_column?: string;
 }
 
 export interface FilterConfigData {
@@ -56,6 +60,20 @@ export interface JoinConfigData {
 export interface ExpressionConfigData {
 	expression: string;
 	column_name: string;
+}
+
+export interface WithColumnsExpr {
+	name: string;
+	type: 'literal' | 'column' | 'udf';
+	value?: string | number | null;
+	column?: string | null;
+	args?: string[] | null;
+	code?: string | null;
+	udf_id?: string | null;
+}
+
+export interface WithColumnsConfigData {
+	expressions: WithColumnsExpr[];
 }
 
 export interface DeduplicateConfigData {
@@ -143,6 +161,108 @@ export interface UnionByNameConfigData {
 	allow_missing: boolean;
 }
 
+export interface PlotConfigData {
+	chart_type:
+		| 'bar'
+		| 'horizontal_bar'
+		| 'area'
+		| 'heatgrid'
+		| 'histogram'
+		| 'scatter'
+		| 'line'
+		| 'pie'
+		| 'boxplot';
+	x_column: string;
+	y_column: string;
+	bins: number;
+	aggregation:
+		| 'sum'
+		| 'mean'
+		| 'count'
+		| 'min'
+		| 'max'
+		| 'median'
+		| 'std'
+		| 'variance'
+		| 'unique_count';
+	group_column: string | null;
+	group_sort_by: 'name' | 'value' | 'custom' | null;
+	group_sort_order: 'asc' | 'desc';
+	group_sort_column: string | null;
+	stack_mode: 'grouped' | 'stacked' | '100%';
+	area_opacity: number;
+	date_bucket: 'exact' | 'year' | 'quarter' | 'month' | 'week' | 'day' | 'hour' | null;
+	date_ordinal: 'day_of_week' | 'month_of_year' | 'quarter_of_year' | null;
+	pan_zoom_enabled: boolean;
+	selection_enabled: boolean;
+	area_selection_enabled: boolean;
+	sort_by: 'x' | 'y' | 'custom' | null;
+	sort_order: 'asc' | 'desc';
+	sort_column: string | null;
+	x_axis_label: string | null;
+	y_axis_label: string | null;
+	y_axis_scale: 'linear' | 'log';
+	y_axis_min: number | null;
+	y_axis_max: number | null;
+	display_units: '' | 'K' | 'M' | 'B' | '%';
+	decimal_places: number;
+	legend_position: 'top' | 'bottom' | 'left' | 'right' | 'none';
+	title: string | null;
+	series_colors: string[];
+	overlays: OverlayConfig[];
+	reference_lines: ReferenceLineConfig[];
+}
+
+export interface OverlayConfig {
+	chart_type: 'line' | 'area' | 'bar' | 'scatter';
+	y_column: string;
+	aggregation:
+		| 'sum'
+		| 'mean'
+		| 'count'
+		| 'min'
+		| 'max'
+		| 'median'
+		| 'std'
+		| 'variance'
+		| 'unique_count';
+	y_axis_position: 'left' | 'right';
+}
+
+export interface ReferenceLineConfig {
+	axis: 'x' | 'y';
+	value: number | null;
+	label: string;
+	color: string;
+}
+
+export interface NotificationConfigData {
+	method: 'email' | 'telegram';
+	recipient: string;
+	subscriber_ids: string[];
+	bot_token: string;
+	recipient_source: 'manual' | 'column';
+	recipient_column: string;
+	input_columns: string[];
+	output_column: string;
+	message_template: string;
+	subject_template: string;
+	batch_size: number;
+	timeout_seconds: number;
+}
+
+export interface AIConfigData {
+	provider: 'ollama' | 'openai';
+	model: string;
+	input_columns: string[];
+	output_column: string;
+	prompt_template: string;
+	batch_size: number;
+	endpoint_url: string;
+	api_key: string;
+	request_options?: Record<string, unknown> | null;
+}
+
 // Union type for all possible config types
 export type OperationConfig =
 	| FilterConfigData
@@ -153,6 +273,7 @@ export type OperationConfig =
 	| DropConfigData
 	| JoinConfigData
 	| ExpressionConfigData
+	| WithColumnsConfigData
 	| DeduplicateConfigData
 	| FillNullConfigData
 	| ExplodeConfigData
@@ -166,4 +287,7 @@ export type OperationConfig =
 	| NullCountConfigData
 	| ValueCountsConfigData
 	| UnpivotConfigData
-	| UnionByNameConfigData;
+	| UnionByNameConfigData
+	| PlotConfigData
+	| NotificationConfigData
+	| AIConfigData;

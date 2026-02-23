@@ -1,10 +1,27 @@
 <script lang="ts">
 	import type { PipelineStep } from '$lib/types/analysis';
 	import { drag, type DropTarget } from '$lib/stores/drag.svelte';
-	import InlineDataTable from '$lib/components/viewers/InlineDataTable.svelte';
-	import { Download, Save } from 'lucide-svelte';
-	import { exportData, downloadBlob, type ExportRequest } from '$lib/api/compute';
-	import { defaultStepType, stepTypes } from '$lib/components/pipeline/utils';
+	import InlineDataTable from '$lib/components/pipeline/InlineDataTable.svelte';
+	import ChartPreview from '$lib/components/pipeline/ChartPreview.svelte';
+	import { createQuery } from '@tanstack/svelte-query';
+	import {
+		previewStepData,
+		getStepRowCount,
+		type StepPreviewRequest,
+		type StepPreviewResponse,
+		type StepRowCountRequest
+	} from '$lib/api/compute';
+	import { applySteps } from '$lib/utils/pipeline';
+	import { hashPipeline } from '$lib/utils/hash';
+	import { GripVertical, Hash, RefreshCw } from 'lucide-svelte';
+	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { datasourceStore } from '$lib/stores/datasource.svelte';
+	import { getStepTypeConfig } from '$lib/components/pipeline/utils';
+	import {
+		buildAnalysisPipelinePayload,
+		buildDatasourceConfig
+	} from '$lib/utils/analysis-pipeline';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	interface Props {
 		step: PipelineStep;
@@ -14,6 +31,7 @@
 		allSteps?: PipelineStep[];
 		onEdit: (id: string) => void;
 		onDelete: (id: string) => void;
+		onToggleApply: (id: string) => void;
 		onTouchMove: (stepId: string, target: DropTarget) => void;
 	}
 
@@ -25,11 +43,136 @@
 		allSteps = [],
 		onEdit,
 		onDelete,
+		onToggleApply,
 		onTouchMove
 	}: Props = $props();
 
-	let isExporting = $state(false);
-	let exportError = $state<string | null>(null);
+	const isChart = $derived(
+		step.type === 'chart' || step.type === 'plot' || step.type.startsWith('plot_')
+	);
+
+	// Derived values from declarative config
+	const stepConfig = $derived(getStepTypeConfig(step.type));
+	const Icon = $derived(stepConfig.icon);
+	const label = $derived(stepConfig.label);
+	const summary = $derived(stepConfig.summary(step.config as Record<string, unknown>));
+	const isApplied = $derived(
+		(step as PipelineStep & { is_applied?: boolean }).is_applied !== false
+	);
+
+	// Chart preview query (only for chart/plot steps) — run after apply
+	const chartPipeline = $derived(applySteps(allSteps));
+	const chartPipelineKey = $derived(hashPipeline(chartPipeline));
+	const chartDatasourceConfig = $derived.by(() => {
+		if (!isChart) return {};
+		return (
+			buildDatasourceConfig({
+				analysisId: analysisId ?? null,
+				tab: analysisStore.activeTab ?? null,
+				tabs: analysisStore.tabs,
+				datasources: datasourceStore.datasources
+			}) ??
+			analysisStore.activeTab?.datasource_config ??
+			{}
+		);
+	});
+	const analysisPipeline = $derived.by(() => {
+		if (!analysisId) return null;
+		return buildAnalysisPipelinePayload(
+			analysisId,
+			analysisStore.tabs,
+			datasourceStore.datasources
+		);
+	});
+
+	const chartQuery = createQuery(() => ({
+		queryKey: [
+			'chart-preview',
+			analysisId,
+			datasourceId,
+			step.id,
+			chartPipelineKey,
+			JSON.stringify(chartDatasourceConfig)
+		],
+		queryFn: async (): Promise<StepPreviewResponse> => {
+			const resourceConfig = analysisStore.resourceConfig as unknown as Record<
+				string,
+				unknown
+			> | null;
+			const result = await previewStepData({
+				analysis_pipeline: analysisPipeline,
+				tab_id: analysisStore.activeTab?.id ?? null,
+				target_step_id: step.id,
+				row_limit: 5000,
+				page: 1,
+				resource_config: resourceConfig,
+				datasource_config: chartDatasourceConfig
+			} as unknown as StepPreviewRequest);
+			if (result.isErr()) throw new Error(result.error.message);
+			return result.value;
+		},
+		staleTime: Infinity,
+		gcTime: Infinity,
+		refetchOnMount: false,
+		enabled:
+			isChart &&
+			isApplied &&
+			!!datasourceId &&
+			!!analysisId &&
+			!!analysisPipeline &&
+			((step.config?.x_column as string | undefined) ?? '') !== ''
+	}));
+
+	const rowCounts = new SvelteMap<string, number>();
+	const rowCountLoads = new SvelteMap<string, boolean>();
+	const rowCountErrors = new SvelteMap<string, string>();
+
+	const rowCountPipeline = $derived.by(() => applySteps(allSteps));
+	const rowCountPipelineKey = $derived.by(() => hashPipeline(rowCountPipeline));
+	const rowCountDatasourceConfig = $derived.by(() => {
+		return (
+			buildDatasourceConfig({
+				analysisId: analysisId ?? null,
+				tab: analysisStore.activeTab ?? null,
+				tabs: analysisStore.tabs,
+				datasources: datasourceStore.datasources
+			}) ??
+			analysisStore.activeTab?.datasource_config ??
+			{}
+		);
+	});
+	const rowCountKey = $derived.by(() => {
+		const configKey = JSON.stringify(rowCountDatasourceConfig ?? {});
+		return `${analysisId ?? ''}:${datasourceId ?? ''}:${step.id}:${rowCountPipelineKey}:${configKey}`;
+	});
+	const rowCount = $derived.by(() => rowCounts.get(rowCountKey) ?? null);
+	const isLoadingRowCount = $derived.by(() => rowCountLoads.get(rowCountKey) ?? false);
+	const rowCountError = $derived.by(() => rowCountErrors.get(rowCountKey) ?? null);
+	const rowCountLabel = $derived.by(() => {
+		if (rowCount === null) return '';
+		return `${rowCount.toLocaleString()} rows`;
+	});
+
+	async function calculateRowCount() {
+		if (!analysisId || !datasourceId) return;
+		if (!analysisPipeline) return;
+		if (isLoadingRowCount) return;
+		rowCountLoads.set(rowCountKey, true);
+		rowCountErrors.delete(rowCountKey);
+		const result = await getStepRowCount({
+			analysis_pipeline: analysisPipeline,
+			tab_id: analysisStore.activeTab?.id ?? null,
+			target_step_id: step.id,
+			datasource_config: rowCountDatasourceConfig
+		} as StepRowCountRequest);
+		rowCountLoads.set(rowCountKey, false);
+		if (result.isErr()) {
+			rowCountErrors.set(rowCountKey, result.error.message);
+			return;
+		}
+		rowCounts.set(rowCountKey, result.value.row_count);
+		rowCountErrors.delete(rowCountKey);
+	}
 
 	let dragging = $state(false);
 	let clickConsumed = $state(false);
@@ -40,17 +183,11 @@
 	const longPressDelay = 180;
 	const dragThreshold = 8;
 
-	// Derived values from declarative config
-	let stepConfig = $derived(stepTypes[step.type] || defaultStepType);
-	let currentStepInfo = $derived({ label: stepConfig.label, icon: stepConfig.icon });
-	let label = $derived(stepConfig.typeLabel);
-	let summary = $derived(stepConfig.summary(step.config as Record<string, unknown>));
-
 	// Is this node being dragged?
 	let isDragging = $state(false);
 
 	// Is another node being dragged (not this one)?
-	let isOtherDragging = $derived(drag.active && drag.stepId !== step.id);
+	const isOtherDragging = $derived(drag.active && drag.stepId !== step.id);
 
 	function handleClick(event: MouseEvent) {
 		if (!clickConsumed) return;
@@ -130,61 +267,21 @@
 		isDragging = false;
 		cancelLongPress();
 	}
-
-	async function handleExport() {
-		if (!datasourceId || isExporting) return;
-
-		isExporting = true;
-		exportError = null;
-
-		const format = (step.config.format as string) || 'csv';
-		const filename = (step.config.filename as string) || 'export';
-		const destination = (step.config.destination as string) || 'filesystem';
-
-		const request: ExportRequest = {
-			analysis_id: analysisId,
-			datasource_id: datasourceId,
-			pipeline_steps: allSteps.map((s) => ({
-				id: s.id,
-				type: s.type,
-				config: s.config,
-				depends_on: s.depends_on
-			})),
-			target_step_id: step.id,
-			format: format as 'csv' | 'parquet' | 'json',
-			filename,
-			destination: destination as 'download' | 'filesystem'
-		};
-
-		exportData(request).match(
-			(result) => {
-				if (destination === 'download' && result instanceof Blob) {
-					const ext = format === 'csv' ? '.csv' : format === 'parquet' ? '.parquet' : '.json';
-					downloadBlob(result, `${filename}${ext}`);
-				}
-				isExporting = false;
-			},
-			(err) => {
-				exportError = err.message;
-				isExporting = false;
-			}
-		);
-	}
 </script>
 
 <div
-	class="step-node"
+	class="step-node relative w-[60%]"
 	class:view-node={step.type === 'view'}
-	class:greyed-out={isDragging}
+	class:opacity-40={isDragging}
+	class:grayscale-50={isDragging}
 	class:drag-target={isOtherDragging}
 >
-	<div class="connection-point top"></div>
+	<div class="absolute left-1/2 -top-1 z-2 h-2 w-2 -translate-x-1/2 border-2 connector-dot"></div>
 
-	<div class="step-content" role="listitem">
-		<div class="step-header">
-			<!-- Drag handle (6-dot grip) -->
+	<div class="step-content card-base border hover:border-tertiary" role="listitem">
+		<div class="flex items-center gap-2 px-4 py-3 border-b border-tertiary">
 			<button
-				class="drag-handle"
+				class="drag-handle flex shrink-0 cursor-grab items-center justify-center border-none bg-transparent p-0.5 opacity-30 select-none text-fg-muted hover:opacity-100 hover:bg-hover active:cursor-grabbing"
 				class:dragging
 				title="Drag to reorder"
 				type="button"
@@ -195,52 +292,53 @@
 				onclick={handleClick}
 				data-drag-handle="true"
 			>
-				<svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor">
-					<circle cx="2" cy="2" r="1.5" />
-					<circle cx="8" cy="2" r="1.5" />
-					<circle cx="2" cy="8" r="1.5" />
-					<circle cx="8" cy="8" r="1.5" />
-					<circle cx="2" cy="14" r="1.5" />
-					<circle cx="8" cy="14" r="1.5" />
-				</svg>
+				<GripVertical size={14} />
 			</button>
 
-			<span class="step-icon">{currentStepInfo.icon}</span>
-			<span class="step-type">{label}</span>
-			<span class="step-number">#{index + 1}</span>
+			<Icon size={13} class="shrink-0 text-fg-muted" />
+			<span class="flex-1 text-xs font-semibold uppercase tracking-wide">{label}</span>
+			<span class="shrink-0 text-[0.625rem] text-fg-faint">#{index + 1}</span>
 		</div>
 
-		<div class="step-summary">{summary}</div>
+		<div class="px-4 py-3">
+			<div
+				class="step-summary px-3 py-2 text-[0.6875rem] bg-secondary text-fg-tertiary leading-relaxed"
+				class:inactive={!isApplied}
+			>
+				{summary}
+			</div>
+		</div>
 
-		<div class="step-actions">
-			<button class="action-btn" onclick={() => onEdit(step.id)} type="button"> edit </button>
-			<button class="action-btn danger" onclick={() => onDelete(step.id)} type="button">
+		<div class="flex gap-0 border-t border-tertiary">
+			<button
+				class="action-btn flex-1 cursor-pointer border-none bg-transparent py-2.5 font-medium uppercase tracking-widest text-[0.5625rem] text-fg-muted hover:bg-hover hover:text-fg-primary"
+				class:inactive={!isApplied}
+				onclick={() => onToggleApply(step.id)}
+				type="button"
+				title={isApplied ? 'Disable step' : 'Enable step'}
+			>
+				{isApplied ? 'disable' : 'enable'}
+			</button>
+			<div class="w-px bg-border-primary shrink-0"></div>
+			<button
+				class="action-btn flex-1 cursor-pointer border-none bg-transparent py-2.5 text-[0.5625rem] font-medium uppercase tracking-widest text-fg-muted hover:bg-hover hover:text-fg-primary"
+				onclick={() => onEdit(step.id)}
+				type="button"
+			>
+				edit
+			</button>
+			<div class="w-px bg-border-primary shrink-0"></div>
+			<button
+				class="action-btn danger flex-1 cursor-pointer border-none bg-transparent py-2.5 text-[0.5625rem] font-medium uppercase tracking-widest text-fg-muted hover:bg-error hover:text-error"
+				onclick={() => onDelete(step.id)}
+				type="button"
+			>
 				delete
 			</button>
 		</div>
 
-		{#if step.type === 'export' && datasourceId}
-			<div class="export-section">
-				{#if exportError}
-					<div class="export-error">{exportError}</div>
-				{/if}
-				<button class="export-btn" onclick={handleExport} disabled={isExporting} type="button">
-					{#if isExporting}
-						<span class="spinner-sm"></span>
-						Exporting...
-					{:else if step.config.destination === 'download'}
-						<Download size={14} />
-						Download
-					{:else}
-						<Save size={14} />
-						Save
-					{/if}
-				</button>
-			</div>
-		{/if}
-
 		{#if step.type === 'view' && datasourceId && analysisId}
-			<div class="view-preview expanded">
+			<div class="border-t border-tertiary">
 				<InlineDataTable
 					{analysisId}
 					{datasourceId}
@@ -250,204 +348,83 @@
 				/>
 			</div>
 		{/if}
+
+		{#if isChart && datasourceId && analysisId}
+			<div class="border-t border-tertiary">
+				{#if !isApplied}
+					<div
+						class="chart-placeholder flex h-75 items-center justify-center text-[0.6875rem] text-fg-muted"
+					>
+						<Icon size={14} class="mr-2" />
+						{#if ((step.config?.x_column as string | undefined) ?? '') === ''}
+							<span>Configure chart to preview</span>
+						{:else}
+							<span>Apply to preview</span>
+						{/if}
+					</div>
+				{:else if chartQuery.isFetching}
+					<div class="flex items-center justify-center gap-2 py-5 text-[0.6875rem] text-fg-muted">
+						<span class="spinner spinner-sm"></span>
+						Loading chart...
+					</div>
+				{:else if chartQuery.error}
+					<div class="border-t border-error bg-error p-3 text-xs text-error">
+						{chartQuery.error.message}
+					</div>
+				{:else if chartQuery.data}
+					<ChartPreview
+						data={chartQuery.data.data}
+						chartType={(step.config.chart_type as
+							| 'bar'
+							| 'horizontal_bar'
+							| 'area'
+							| 'heatgrid'
+							| 'line'
+							| 'pie'
+							| 'histogram'
+							| 'scatter'
+							| 'boxplot') ?? 'bar'}
+						config={step.config}
+						metadata={chartQuery.data.metadata}
+					/>
+				{/if}
+			</div>
+		{/if}
+
+		<div class="flex items-center px-4 py-2.5 border-t border-tertiary">
+			{#if rowCount !== null}
+				{#key `${rowCountKey}:${rowCount}`}
+					<span class="flex items-center gap-1 text-[0.625rem] text-fg-faint">
+						<Hash size={9} />
+						{rowCountLabel}
+					</span>
+				{/key}
+			{:else}
+				<button
+					class="calc-rows-btn flex cursor-pointer items-center gap-1 border border-tertiary bg-transparent text-fg-muted px-2 py-0.5 text-[0.5625rem] disabled:cursor-not-allowed disabled:opacity-70 hover:bg-hover hover:text-fg-primary"
+					onclick={calculateRowCount}
+					disabled={isLoadingRowCount}
+					type="button"
+					aria-label="Calculate row count"
+				>
+					{#if isLoadingRowCount}
+						<RefreshCw size={9} class="spinning" />
+						<span>counting...</span>
+					{:else}
+						<Hash size={9} />
+						<span>count rows</span>
+					{/if}
+				</button>
+			{/if}
+		</div>
+		{#if rowCountError}
+			<div class="border-t border-error bg-error px-4 py-2 text-xs text-error">
+				{rowCountError}
+			</div>
+		{/if}
 	</div>
 
-	<div class="connection-point bottom"></div>
+	<div
+		class="absolute left-1/2 -bottom-1 z-2 h-2 w-2 -translate-x-1/2 border-2 connector-dot"
+	></div>
 </div>
-
-<style>
-	.step-node {
-		position: relative;
-		width: min(55%, 640px);
-	}
-	.step-node.view-node {
-		max-width: 75%;
-		width: 75%;
-		min-width: 320px;
-	}
-	.step-node.greyed-out {
-		opacity: 0.4;
-		filter: grayscale(50%);
-	}
-
-	.connection-point {
-		position: absolute;
-		left: 50%;
-		transform: translateX(-50%);
-		width: 8px;
-		height: 8px;
-		background-color: var(--fg-muted);
-		border: 2px solid var(--bg-primary);
-		border-radius: 50%;
-		z-index: 2;
-	}
-	.connection-point.top {
-		top: -4px;
-	}
-	.connection-point.bottom {
-		bottom: -4px;
-	}
-
-	.step-content {
-		background-color: var(--bg-primary);
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		padding: var(--space-4);
-		transition: all var(--transition);
-		box-shadow: var(--card-shadow);
-	}
-	.step-content:hover {
-		border-color: var(--border-tertiary);
-		transform: translateY(-1px);
-	}
-
-	.step-header {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-	}
-
-	.drag-handle {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-1);
-		background: transparent;
-		border: none;
-		cursor: grab;
-		opacity: 0.4;
-		color: var(--fg-muted);
-		border-radius: var(--radius-sm);
-		transition:
-			opacity 0.15s,
-			background-color 0.15s;
-		flex-shrink: 0;
-		user-select: none;
-		-webkit-user-select: none;
-		appearance: none;
-	}
-	.drag-handle:hover {
-		opacity: 1;
-		background-color: var(--bg-hover);
-	}
-	.drag-handle:active {
-		cursor: grabbing;
-	}
-	.drag-handle.dragging {
-		user-select: none;
-		-webkit-user-select: none;
-		-webkit-touch-callout: none;
-		touch-action: none;
-	}
-
-	:global(body.touch-dragging) {
-		user-select: none;
-		-webkit-user-select: none;
-		-webkit-touch-callout: none;
-	}
-
-	.step-icon {
-		font-size: var(--text-base);
-		flex-shrink: 0;
-	}
-	.step-type {
-		font-size: var(--text-sm);
-		font-weight: 600;
-		flex: 1;
-	}
-	.step-number {
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
-		flex-shrink: 0;
-	}
-
-	.step-summary {
-		padding: var(--space-2) var(--space-3);
-		background-color: var(--bg-tertiary);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-xs);
-		color: var(--fg-tertiary);
-		margin-bottom: var(--space-3);
-	}
-
-	.step-actions {
-		display: flex;
-		gap: var(--space-2);
-	}
-
-	.view-preview {
-		margin-top: var(--space-3);
-		border-top: 1px solid var(--border-secondary);
-		padding-top: var(--space-3);
-	}
-
-	.action-btn {
-		flex: 1;
-		padding: var(--space-2);
-		background-color: transparent;
-		border: 1px solid var(--border-primary);
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		font-size: var(--text-xs);
-		font-weight: 500;
-		color: var(--fg-secondary);
-		transition: all var(--transition);
-	}
-	.action-btn:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-primary);
-	}
-	.action-btn.danger:hover {
-		background-color: var(--error-bg);
-		border-color: var(--error-border);
-		color: var(--error-fg);
-	}
-
-	.export-section {
-		margin-top: var(--space-3);
-		padding-top: var(--space-3);
-		border-top: 1px solid var(--border-primary);
-	}
-
-	.export-btn {
-		width: 100%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border: none;
-		border-radius: var(--radius-sm);
-		font-size: var(--text-xs);
-		font-weight: 500;
-		cursor: pointer;
-		transition: opacity var(--transition);
-	}
-	.export-btn:hover:not(:disabled) {
-		opacity: 0.9;
-	}
-	.export-btn:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.export-error {
-		padding: var(--space-2);
-		margin-bottom: var(--space-2);
-		background-color: var(--error-bg);
-		color: var(--error-fg);
-		border: 1px solid var(--error-border);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-xs);
-	}
-
-	.step-node.drag-target .step-content {
-		border-style: dashed;
-		border-color: var(--accent-primary);
-		opacity: 0.7;
-		transform: scale(0.98);
-	}
-</style>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
+	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 
 	interface Props {
 		schema: Schema;
@@ -14,27 +15,25 @@
 </script>
 
 <div class="config-panel">
-	<h3>Value Counts</h3>
-
-	<div class="form-group">
-		<label for="column">Column to count</label>
-		<select id="column" bind:value={config.column}>
-			<option value="">Select column...</option>
-			{#each schema.columns as col (col.name)}
-				<option value={col.name}>{col.name} ({col.dtype})</option>
-			{/each}
-		</select>
+	<div class="form-group mb-5">
+		<div class="form-label">Column to count</div>
+		<ColumnDropdown
+			{schema}
+			value={config.column ?? ''}
+			onChange={(val) => (config.column = val)}
+			placeholder="Select column..."
+		/>
 	</div>
 
-	<div class="form-group">
-		<label class="checkbox-label">
+	<div class="form-group mb-5">
+		<label class="flex cursor-pointer items-center gap-3">
 			<input id="normalize" type="checkbox" bind:checked={config.normalize} />
 			<span>Normalize (show proportions instead of counts)</span>
 		</label>
 	</div>
 
-	<div class="form-group">
-		<label class="checkbox-label">
+	<div class="form-group mb-0">
+		<label class="flex cursor-pointer items-center gap-3">
 			<input
 				id="sort"
 				type="checkbox"
@@ -45,18 +44,3 @@
 		</label>
 	</div>
 </div>
-
-<style>
-	.form-group {
-		margin-bottom: var(--space-4);
-	}
-	.form-group:last-child {
-		margin-bottom: 0;
-	}
-	.checkbox-label {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		cursor: pointer;
-	}
-</style>

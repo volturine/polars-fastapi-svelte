@@ -1,5 +1,9 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
+	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
+	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
+
+	const uid = $props.id();
 
 	interface Aggregation {
 		column: string;
@@ -19,9 +23,7 @@
 
 	let { schema, config = $bindable({ groupBy: [], aggregations: [] }) }: Props = $props();
 
-	// Config now guaranteed to have proper structure
-	let safeGroupBy = $derived(config.groupBy);
-	let safeAggregations = $derived(config.aggregations);
+	const safeAggregations = $derived(config.aggregations ?? []);
 
 	let newAggregation = $state<Aggregation>({
 		column: '',
@@ -42,15 +44,6 @@
 		'collect_list',
 		'collect_set'
 	];
-
-	function toggleGroupByColumn(columnName: string) {
-		const index = safeGroupBy.indexOf(columnName);
-		if (index > -1) {
-			config.groupBy = safeGroupBy.filter((_, i) => i !== index);
-		} else {
-			config.groupBy = [...safeGroupBy, columnName];
-		}
-	}
 
 	function addAggregation() {
 		if (!newAggregation.column) return;
@@ -79,53 +72,35 @@
 </script>
 
 <div class="config-panel" role="region" aria-label="Group by configuration">
-	<h3>Group By Configuration</h3>
-
-	<div class="form-section" role="group" aria-labelledby="groupby-columns-heading">
-		<h4 id="groupby-columns-heading">Group By Columns</h4>
-		<div class="column-list">
-			{#each schema.columns as column (column.name)}
-				<label class="column-item">
-					<input
-						id={`groupby-checkbox-${column.name}`}
-						data-testid={`groupby-checkbox-${column.name}`}
-						type="checkbox"
-						checked={safeGroupBy.includes(column.name)}
-						onchange={() => toggleGroupByColumn(column.name)}
-						aria-label={`Group by ${column.name}`}
-					/>
-					<span class="column-name">{column.name}</span>
-					<span class="column-type">{column.dtype}</span>
-				</label>
-			{/each}
-		</div>
-		{#if safeGroupBy.length > 0}
-			<div id="groupby-selected-info" class="info-box" aria-live="polite">
-				Selected: {safeGroupBy.join(', ')}
-			</div>
-		{/if}
+	<div class="form-section" role="group" aria-labelledby="{uid}-columns-heading">
+		<h4 id="{uid}-columns-heading">Group By Columns</h4>
+		<MultiSelectColumnDropdown
+			{schema}
+			value={config.groupBy ?? []}
+			onChange={(val) => (config.groupBy = val)}
+			showSelectAll={false}
+			placeholder="Select group by columns..."
+		/>
 	</div>
 
-	<div class="form-section" role="group" aria-labelledby="aggregations-heading">
-		<h4 id="aggregations-heading">Aggregations</h4>
+	<div class="form-section" role="group" aria-labelledby="{uid}-agg-heading">
+		<h4 id="{uid}-agg-heading">Aggregations</h4>
 
-		<div class="add-aggregation" role="group" aria-label="Add aggregation form">
-			<label for="agg-select-column" class="sr-only">Select column</label>
-			<select
-				id="agg-select-column"
-				data-testid="agg-column-select"
-				bind:value={newAggregation.column}
-			>
-				<option value="">Select column...</option>
-				{#each schema.columns as column (column.name)}
-					<option value={column.name}>{column.name} ({column.dtype})</option>
-				{/each}
-			</select>
+		<div class="flex flex-wrap gap-2 mb-5" role="group" aria-label="Add aggregation form">
+			<div class="flex-2 min-w-40">
+				<ColumnDropdown
+					{schema}
+					value={newAggregation.column}
+					onChange={(val) => (newAggregation.column = val)}
+					placeholder="Select column..."
+				/>
+			</div>
 
-			<label for="agg-select-function" class="sr-only">Aggregation function</label>
+			<label for="{uid}-agg-function" class="sr-only">Aggregation function</label>
 			<select
-				id="agg-select-function"
+				id="{uid}-agg-function"
 				data-testid="agg-function-select"
+				class="flex-1 min-w-30"
 				bind:value={newAggregation.function}
 			>
 				{#each aggregationFunctions as func (func)}
@@ -134,16 +109,18 @@
 			</select>
 
 			<input
-				id="agg-alias"
+				id="{uid}-agg-alias"
 				type="text"
+				class="flex-2 min-w-40"
 				bind:value={newAggregation.alias}
 				placeholder="Alias (optional)"
 			/>
 
 			<button
-				id="agg-btn-add"
+				id="{uid}-agg-add"
 				data-testid="agg-add-button"
 				type="button"
+				class="px-4 py-2 border border-transparent cursor-pointer accent-btn hover:opacity-90 disabled:bg-muted disabled:text-fg-muted disabled:border-tertiary disabled:cursor-not-allowed"
 				onclick={addAggregation}
 				disabled={!newAggregation.column}
 				aria-label="Add aggregation"
@@ -155,19 +132,20 @@
 		{#if safeAggregations.length > 0}
 			<div
 				id="aggregations-list"
-				class="aggregations-list"
+				class="flex flex-col gap-3"
 				role="list"
 				aria-label="Configured aggregations"
 			>
 				{#each safeAggregations as agg, i (i)}
-					<div class="aggregation-item" role="listitem">
-						<span class="agg-details">
+					<div class="flex justify-between items-center p-3 item-row" role="listitem">
+						<span class="text-sm font-mono text-fg-primary">
 							{agg.function}({agg.column}) as {agg.alias}
 						</span>
 						<button
 							id={`agg-btn-remove-${i}`}
 							data-testid={`agg-remove-button-${i}`}
 							type="button"
+							class="remove-btn remove-pill px-3 py-1 text-sm cursor-pointer"
 							onclick={() => removeAggregation(i)}
 							aria-label={`Remove aggregation ${agg.alias}`}
 						>
@@ -179,69 +157,3 @@
 		{/if}
 	</div>
 </div>
-
-<style>
-	.add-aggregation {
-		display: flex;
-		gap: var(--space-2);
-		margin-bottom: var(--space-4);
-		flex-wrap: wrap;
-	}
-	.add-aggregation select:first-child {
-		flex: 2;
-		min-width: 160px;
-	}
-	.add-aggregation select:nth-child(2) {
-		flex: 1;
-		min-width: 120px;
-	}
-	.add-aggregation input {
-		flex: 2;
-		min-width: 160px;
-	}
-	.add-aggregation button {
-		padding: var(--space-2) var(--space-4);
-		background-color: var(--accent-primary);
-		color: var(--bg-primary);
-		border: none;
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-	}
-	.add-aggregation button:disabled {
-		background-color: var(--bg-muted);
-		cursor: not-allowed;
-		color: var(--fg-muted);
-		border: 1px solid var(--border-secondary);
-	}
-	.aggregations-list {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-	.aggregation-item {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: var(--space-3);
-		background-color: var(--panel-bg);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-sm);
-	}
-	.agg-details {
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-		color: var(--fg-primary);
-	}
-	.aggregation-item button {
-		padding: var(--space-1) var(--space-3);
-		background-color: var(--error-bg);
-		color: var(--error-fg);
-		border: 1px solid var(--error-border);
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		font-size: var(--text-sm);
-	}
-	button:hover:not(:disabled) {
-		opacity: 0.9;
-	}
-</style>

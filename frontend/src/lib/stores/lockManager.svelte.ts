@@ -1,6 +1,7 @@
 import { getClientIdentity } from './clientIdentity.svelte';
 import { apiRequest } from '$lib/api/client';
-import type { ApiError } from '$lib/api/client';
+import { track } from '$lib/utils/audit-log';
+import { SvelteMap } from 'svelte/reactivity';
 
 export interface LockState {
 	locked: boolean;
@@ -24,10 +25,10 @@ interface LockStatusResponse {
 }
 
 // Store for lock states - resource_id -> LockState
-const locks = $state(new Map<string, LockState>());
+const locks = new SvelteMap<string, LockState>();
 
-// Track heartbeat intervals
-const heartbeatIntervals = new Map<string, number>();
+// Track heartbeat intervals for cleanup
+const heartbeatIntervals = new SvelteMap<string, number>();
 
 // HEARTBEAT_INTERVAL from architecture: 10 seconds
 const HEARTBEAT_INTERVAL_MS = 10000;
@@ -43,6 +44,13 @@ export function isLocked(resourceId: string): boolean {
 export function hasLock(resourceId: string): boolean {
 	const state = getLockState(resourceId);
 	return state.locked && state.byMe;
+}
+
+export function getLockPayload(resourceId: string): { clientId: string; lockToken: string } | null {
+	const state = getLockState(resourceId);
+	if (!state.byMe || !state.lockToken) return null;
+	const { clientId } = getClientIdentity();
+	return { clientId, lockToken: state.lockToken };
 }
 
 export async function acquireLock(resourceId: string): Promise<boolean> {
@@ -71,7 +79,13 @@ export async function acquireLock(resourceId: string): Promise<boolean> {
 			startHeartbeat(resourceId, response.lock_token);
 			return true;
 		},
-		(_error) => {
+		(error) => {
+			track({
+				event: 'lock_error',
+				action: 'acquire',
+				target: resourceId,
+				meta: { message: error.message }
+			});
 			// Failed to acquire - get status to update UI
 			checkLockStatus(resourceId);
 			return false;
@@ -104,7 +118,13 @@ export async function releaseLock(resourceId: string): Promise<boolean> {
 			locks.delete(resourceId);
 			return true;
 		},
-		(_error) => {
+		(error) => {
+			track({
+				event: 'lock_error',
+				action: 'release',
+				target: resourceId,
+				meta: { message: error.message }
+			});
 			// Even on error, clear local state
 			locks.delete(resourceId);
 			return false;
@@ -139,7 +159,13 @@ export async function checkLockStatus(resourceId: string): Promise<LockState> {
 
 			return state;
 		},
-		(_error) => {
+		(error) => {
+			track({
+				event: 'lock_error',
+				action: 'status',
+				target: resourceId,
+				meta: { message: error.message }
+			});
 			// On error, assume not locked
 			locks.delete(resourceId);
 			return { locked: false, byMe: false, lockToken: null, expiresAt: null };
@@ -174,7 +200,13 @@ async function sendHeartbeat(resourceId: string, lockToken: string): Promise<boo
 			}
 			return true;
 		},
-		(_error) => {
+		(error) => {
+			track({
+				event: 'lock_error',
+				action: 'heartbeat',
+				target: resourceId,
+				meta: { message: error.message }
+			});
 			// Heartbeat failed - lock lost
 			stopHeartbeat(resourceId);
 			locks.delete(resourceId);
@@ -190,7 +222,11 @@ function startHeartbeat(resourceId: string, lockToken: string) {
 		const success = await sendHeartbeat(resourceId, lockToken);
 		if (!success) {
 			// Lock lost, interval already stopped in sendHeartbeat
-			console.warn(`Lost lock on ${resourceId}`);
+			track({
+				event: 'lock_lost',
+				action: 'heartbeat',
+				target: resourceId
+			});
 		}
 	}, HEARTBEAT_INTERVAL_MS);
 
@@ -199,7 +235,7 @@ function startHeartbeat(resourceId: string, lockToken: string) {
 
 function stopHeartbeat(resourceId: string) {
 	const interval = heartbeatIntervals.get(resourceId);
-	if (interval) {
+	if (interval !== undefined) {
 		window.clearInterval(interval);
 		heartbeatIntervals.delete(resourceId);
 	}
@@ -211,14 +247,12 @@ if (typeof window !== 'undefined') {
 		locks.forEach((state, resourceId) => {
 			if (state.byMe && state.lockToken) {
 				const { clientId: cid } = getClientIdentity();
-				// Use sendBeacon for reliable delivery during unload
-				navigator.sendBeacon(
-					`/api/v1/locks/${encodeURIComponent(resourceId)}/release`,
-					JSON.stringify({
-						client_id: cid,
-						lock_token: state.lockToken
-					})
-				);
+				const payload = JSON.stringify({
+					client_id: cid,
+					lock_token: state.lockToken
+				});
+				const blob = new Blob([payload], { type: 'application/json' });
+				navigator.sendBeacon(`/api/v1/locks/${encodeURIComponent(resourceId)}/release`, blob);
 			}
 		});
 	});

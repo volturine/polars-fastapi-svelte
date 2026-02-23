@@ -1,6 +1,20 @@
 <script lang="ts">
 	import { X } from 'lucide-svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import type { DataSource } from '$lib/types/datasource';
+	import type { AnalysisGalleryItem } from '$lib/types/analysis';
+	import { listAnalyses } from '$lib/api/analysis';
+	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
+	import type { SourceType } from '$lib/utils/fileTypes';
+	import SearchableDropdown from '$lib/components/ui/SearchableDropdown.svelte';
+
+	interface PickerOption {
+		id: string;
+		label: string;
+		kind: 'datasource' | 'analysis';
+		payload: DataSource | AnalysisGalleryItem;
+		searchText?: string[];
+	}
 
 	interface Props {
 		datasources: DataSource[];
@@ -8,12 +22,12 @@
 		mode?: 'single' | 'multi';
 		placeholder?: string;
 		label?: string;
-		id?: string;
 		showChips?: boolean;
 		showBulkActions?: boolean;
 		excludeIds?: string[];
 		highlightId?: string;
 		searchFields?: ('name' | 'source_type' | 'file_type')[];
+		modeSource?: 'datasource' | 'analysis';
 		onSelect?: (id: string, name: string) => void;
 		onDeselect?: (id: string) => void;
 	}
@@ -24,107 +38,119 @@
 		mode = 'single',
 		placeholder = 'Search datasources...',
 		label,
-		id,
 		showChips = true,
 		showBulkActions = true,
 		excludeIds = [],
 		highlightId,
 		searchFields = ['name', 'source_type'],
+		modeSource = 'datasource',
 		onSelect,
 		onDeselect
 	}: Props = $props();
 
-	let search = $state('');
-	let showPicker = $state(false);
-	let blurTimeout = $state<ReturnType<typeof setTimeout> | null>(null);
+	let searchValue = $state('');
 
-	const selectedSet = $derived(() => {
-		if (mode === 'single') {
-			return selected ? new Set([selected as string]) : new Set<string>();
-		}
-		return new Set((selected as string[]) ?? []);
-	});
-
-	const excludedSet = $derived(new Set(excludeIds));
+	const excludedSet = $derived(new SvelteSet(excludeIds));
 
 	const availableOptions = $derived(datasources.filter((ds) => !excludedSet.has(ds.id)));
 
-	const filteredOptions = $derived(() => {
-		if (!search.trim()) return availableOptions;
-
-		const query = search.toLowerCase();
-		return availableOptions.filter((ds) => {
-			const matchesName = searchFields.includes('name') && ds.name.toLowerCase().includes(query);
-			const matchesSourceType =
-				searchFields.includes('source_type') && ds.source_type.toLowerCase().includes(query);
-			const fileType = (ds.config?.file_type as string) ?? '';
-			const matchesFileType =
-				searchFields.includes('file_type') && fileType.toLowerCase().includes(query);
-			return matchesName || matchesSourceType || matchesFileType;
-		});
-	});
-
-	const selectedDatasources = $derived(() => {
+	const selectedDatasources = $derived.by(() => {
+		if (modeSource !== 'datasource') return [];
 		if (mode === 'single') {
 			const s = selected as string | undefined;
 			return s ? datasources.filter((ds) => ds.id === s) : [];
 		}
 		const arr = selected as string[] | undefined;
 		if (!arr?.length) return [];
-		const set = new Set(arr);
+		const set = new SvelteSet(arr);
 		return datasources.filter((ds) => set.has(ds.id));
 	});
 
-	function handleFocus() {
-		if (blurTimeout) {
-			clearTimeout(blurTimeout);
-			blurTimeout = null;
+	let analyses = $state<AnalysisGalleryItem[]>([]);
+	let analysesLoaded = $state(false);
+
+	// Network: $derived can't fetch analyses.
+	$effect(() => {
+		if (modeSource !== 'analysis') return;
+		if (analysesLoaded) return;
+		listAnalyses()
+			.map((value) => {
+				analyses = value;
+				analysesLoaded = true;
+			})
+			.mapErr(() => {
+				analyses = [];
+				analysesLoaded = true;
+			});
+	});
+
+
+	const options = $derived.by(() => {
+		if (modeSource === 'analysis') {
+			return analyses.map((analysis) => ({
+				id: analysis.id,
+				label: analysis.name,
+				kind: 'analysis',
+				payload: analysis,
+				searchText: [analysis.name]
+			} satisfies PickerOption));
 		}
-		showPicker = true;
-	}
+		return availableOptions.map((ds) => {
+			const fileType = (ds.config?.file_type as string) ?? '';
+			const searchText = [
+				ds.name,
+				searchFields.includes('source_type') ? ds.source_type : '',
+				searchFields.includes('file_type') ? fileType : ''
+			].filter(Boolean);
+			return {
+				id: ds.id,
+				label: ds.name,
+				kind: 'datasource',
+				payload: ds,
+				searchText
+			} satisfies PickerOption;
+		});
+	});
 
-	function handleBlur() {
-		blurTimeout = setTimeout(() => {
-			showPicker = false;
-		}, 100);
-	}
+	const canSelectAll = $derived(
+		mode === 'multi' && modeSource === 'datasource' && options.length > 0
+	);
 
-	function toggle(id: string, name: string) {
+	function handleChange(next: string | string[]) {
 		if (mode === 'single') {
+			const id = next as string;
+			const match = options.find((option) => option.id === id);
+			if (!match) return;
 			selected = id;
-			onSelect?.(id, name);
-			showPicker = false;
-			search = '';
-		} else {
-			const arr = (selected as string[]) ?? [];
-			const set = new Set(arr);
-			if (set.has(id)) {
-				set.delete(id);
-				onDeselect?.(id);
-			} else {
-				set.add(id);
-				onSelect?.(id, name);
-			}
-			selected = Array.from(set);
+			onSelect?.(id, match.label);
+			searchValue = '';
+			return;
 		}
+		const nextIds = next as string[];
+		const nextSet = new SvelteSet(nextIds);
+		const prevSet = new SvelteSet((selected as string[]) ?? []);
+		const added = nextIds.filter((id) => !prevSet.has(id));
+		const removed = Array.from(prevSet).filter((id) => !nextSet.has(id));
+		selected = nextIds;
+		added.forEach((id) => {
+			const match = options.find((option) => option.id === id);
+			if (!match) return;
+			onSelect?.(id, match.label);
+		});
+		removed.forEach((id) => onDeselect?.(id));
 	}
 
 	function selectAll() {
-		if (mode !== 'multi') return;
-		const filtered = filteredOptions();
-		const filteredIds = filtered.map((ds) => ds.id);
-		const current = new Set((selected as string[]) ?? []);
-		filteredIds.forEach((id) => current.add(id));
-		selected = Array.from(current);
-		filtered.forEach((ds) => {
-			if (!selectedSet().has(ds.id)) {
-				onSelect?.(ds.id, ds.name);
-			}
-		});
+		if (!canSelectAll) return;
+		const ids = options.map((option) => option.id);
+		const current = new SvelteSet((selected as string[]) ?? []);
+		ids.forEach((id) => current.add(id));
+		const next = Array.from(current);
+		handleChange(next);
 	}
 
 	function deselectAll() {
-		if (mode !== 'multi') return;
+		if (!canSelectAll) return;
 		const current = (selected as string[]) ?? [];
 		current.forEach((id) => onDeselect?.(id));
 		selected = [];
@@ -133,75 +159,38 @@
 	function deselect(id: string) {
 		if (mode !== 'multi') return;
 		const arr = (selected as string[]) ?? [];
-		selected = arr.filter((x) => x !== id);
+		selected = arr.filter((value) => value !== id);
 		onDeselect?.(id);
 	}
-
-	function isSelected(id: string): boolean {
-		return selectedSet().has(id);
-	}
-
-	const inputId = $derived(id ? `${id}-datasource-search` : undefined);
-	const listboxId = $derived(id ? `${id}-datasource-listbox` : 'datasource-listbox');
 </script>
 
-<div
-	class="datasource-picker"
-	class:mode-single={mode === 'single'}
-	class:mode-multi={mode === 'multi'}
->
-	<input
-		type="text"
-		class="picker-input"
-		bind:value={search}
-		onfocus={handleFocus}
-		onblur={handleBlur}
-		{placeholder}
-		aria-label={label}
-		aria-haspopup="listbox"
-		aria-expanded={showPicker}
-		id={inputId}
-		role="combobox"
-		aria-controls={listboxId}
-	/>
+<SearchableDropdown
+	options={options}
+	value={selected}
+	onChange={handleChange}
+	placeholder={placeholder}
+	searchPlaceholder={placeholder}
+	mode={mode}
+	showSelectAll={showBulkActions}
+	showSelectedList={false}
+	triggerType="input"
+	inputClass="w-full border border-tertiary bg-primary px-3 py-2 font-mono text-sm text-fg-primary focus:border-accent-primary focus:outline-none"
+	searchValue={searchValue}
+	emptyLabel="No datasources found"
+	listAriaLabel={label ?? 'Available datasources'}
+	renderOption={renderOption}
+ />
 
-	{#if showPicker}
-		<div class="picker-dropdown" role="listbox" id={listboxId} aria-label="Available datasources">
-			{#if filteredOptions().length === 0}
-				<div class="picker-empty">No datasources found</div>
-			{:else}
-				{#each filteredOptions() as ds (ds.id)}
-					<button
-						class="picker-option"
-						class:selected={isSelected(ds.id)}
-						class:highlighted={ds.id === highlightId}
-						onmousedown={(e) => {
-							e.preventDefault();
-							toggle(ds.id, ds.name);
-						}}
-						role="option"
-						aria-selected={isSelected(ds.id)}
-						type="button"
-					>
-						<span class="option-name">{ds.name}</span>
-						{#if ds.id === highlightId}
-							<span class="option-badge current">current</span>
-						{:else}
-							<span class="option-badge">{ds.source_type}</span>
-						{/if}
-					</button>
-				{/each}
-			{/if}
-		</div>
-	{/if}
-
-	{#if mode === 'multi' && showChips && selectedDatasources().length > 0}
-		<div class="picker-chips">
-			{#each selectedDatasources() as ds (ds.id)}
-				<span class="chip" class:highlighted={ds.id === highlightId}>
+	{#if mode === 'multi' && modeSource === 'datasource' && showChips && selectedDatasources.length > 0}
+		<div class="mt-2 flex flex-wrap gap-2">
+			{#each selectedDatasources as ds (ds.id)}
+				<span
+					class="chip inline-flex items-center gap-1 border border-tertiary bg-badge-bg px-2 py-1 text-xs text-badge-fg"
+					class:highlighted={ds.id === highlightId}
+				>
 					{ds.name}
 					<button
-						class="chip-remove"
+						class="chip-remove inline-flex h-4 w-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-fg-muted hover:bg-bg-hover hover:text-fg-primary"
 						onclick={() => deselect(ds.id)}
 						aria-label={`Remove ${ds.name}`}
 						type="button"
@@ -213,160 +202,45 @@
 		</div>
 	{/if}
 
-	{#if mode === 'multi' && showBulkActions && filteredOptions().length > 0}
-		<div class="picker-actions">
+	{#if canSelectAll && showBulkActions}
+		<div class="mt-2 flex gap-2">
 			<button class="btn-secondary btn-sm" onclick={selectAll} type="button">Select All</button>
 			<button class="btn-secondary btn-sm" onclick={deselectAll} type="button">Deselect All</button>
 		</div>
 	{/if}
-</div>
 
-<style>
-	.datasource-picker {
-		position: relative;
-		width: 100%;
-	}
-
-	.picker-input {
-		width: 100%;
-		padding: var(--space-2) var(--space-3);
-		font-size: var(--text-sm);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-sm);
-		background-color: var(--panel-bg);
-		color: var(--fg-primary);
-		font-family: var(--font-mono);
-	}
-
-	.picker-input:focus {
-		outline: none;
-		border-color: var(--accent-primary);
-	}
-
-	.picker-dropdown {
-		position: absolute;
-		top: 100%;
-		left: 0;
-		right: 0;
-		margin-top: var(--space-1);
-		background-color: var(--panel-bg);
-		border: 1px solid var(--panel-border);
-		border-radius: var(--radius-sm);
-		box-shadow: var(--shadow-dropdown);
-		z-index: var(--z-dropdown);
-		max-height: 200px;
-		overflow-y: auto;
-	}
-
-	.picker-option {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		width: 100%;
-		padding: var(--space-2) var(--space-3);
-		background: none;
-		border: none;
-		cursor: pointer;
-		text-align: left;
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-		color: var(--fg-primary);
-		border-bottom: 1px solid var(--panel-border);
-	}
-
-	.picker-option:last-child {
-		border-bottom: none;
-	}
-
-	.picker-option:hover {
-		background-color: var(--bg-hover);
-	}
-
-	.picker-option.selected {
-		background-color: var(--accent-bg);
-	}
-
-	.picker-option.highlighted {
-		border-left: 3px solid var(--accent-primary);
-	}
-
-	.option-name {
-		flex: 1;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.option-badge {
-		font-size: var(--text-xs);
-		padding: var(--space-1) var(--space-2);
-		background-color: var(--badge-bg);
-		border: 1px solid var(--badge-border);
-		border-radius: var(--radius-sm);
-		color: var(--badge-fg);
-		margin-left: var(--space-2);
-	}
-
-	.option-badge.current {
-		background-color: var(--info-bg);
-		border-color: var(--info-border);
-		color: var(--info-fg);
-	}
-
-	.picker-chips {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-2);
-		margin-top: var(--space-2);
-	}
-
-	.chip {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		padding: var(--space-1) var(--space-2);
-		background-color: var(--badge-bg);
-		border: 1px solid var(--badge-border);
-		border-radius: var(--radius-sm);
-		font-size: var(--text-xs);
-		color: var(--badge-fg);
-	}
-
-	.chip.highlighted {
-		background-color: var(--info-bg);
-		border-color: var(--info-border);
-		color: var(--info-fg);
-	}
-
-	.chip-remove {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0;
-		background: none;
-		border: none;
-		cursor: pointer;
-		color: var(--fg-muted);
-		border-radius: var(--radius-sm);
-		width: 16px;
-		height: 16px;
-	}
-
-	.chip-remove:hover {
-		color: var(--fg-primary);
-		background-color: var(--bg-hover);
-	}
-
-	.picker-actions {
-		display: flex;
-		gap: var(--space-2);
-		margin-top: var(--space-2);
-	}
-
-	.picker-empty {
-		padding: var(--space-4);
-		text-align: center;
-		color: var(--fg-muted);
-		font-size: var(--text-sm);
-	}
-</style>
+{#snippet renderOption(payload: { option: { id: string; label: string }; selected: boolean; onSelect: () => void })}
+	{@const option = payload.option as PickerOption}
+	<button
+		class="picker-option flex w-full cursor-pointer items-center justify-between border-b border-tertiary bg-transparent px-3 py-2 font-mono text-left text-sm text-fg-primary last:border-b-0 hover:bg-bg-hover"
+		class:selected={payload.selected}
+		class:highlighted={option.id === highlightId}
+		onclick={payload.onSelect}
+		role="option"
+		aria-selected={payload.selected}
+		type="button"
+	>
+		<span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{option.label}</span>
+		{#if option.kind === 'datasource'}
+			{@const ds = option.payload as DataSource}
+			{#if ds.id === highlightId}
+				<span class="ml-2 border border-accent-primary bg-accent-bg px-2 py-1 text-xs text-accent-primary"
+					>current</span
+				>
+			{:else if ds.source_type === 'file'}
+				<FileTypeBadge
+					path={(ds.config?.file_path as string) ?? ''}
+					size="sm"
+					showIcon={false}
+				/>
+			{:else}
+				{@const badgeSource = ds.source_type as SourceType}
+				<FileTypeBadge sourceType={badgeSource} size="sm" showIcon={false} />
+			{/if}
+		{:else}
+			<span class="ml-2 border border-tertiary bg-tertiary px-2 py-1 text-xs text-fg-muted"
+				>analysis</span
+			>
+		{/if}
+	</button>
+{/snippet}

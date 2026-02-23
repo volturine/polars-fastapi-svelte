@@ -1,9 +1,9 @@
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
-class EngineStatus(str, Enum):
+class EngineStatus(StrEnum):
     HEALTHY = 'healthy'
     TERMINATED = 'terminated'
 
@@ -57,6 +57,25 @@ class EngineDefaults(BaseModel):
     streaming_chunk_size: int  # 0 = auto
 
 
+class AnalysisPipelineTab(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str | None = None
+    datasource_id: str | None = None
+    output_datasource_id: str | None = None
+    datasource_config: dict | None = None
+    steps: list[dict]
+
+
+class AnalysisPipelinePayload(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    analysis_id: str
+    tabs: list[AnalysisPipelineTab]
+    sources: dict[str, dict]
+
+
 class EngineStatusSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -92,12 +111,13 @@ class StepPreviewRequest(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     analysis_id: str | None = None
-    datasource_id: str
-    pipeline_steps: list[dict]
     target_step_id: str
+    analysis_pipeline: AnalysisPipelinePayload
+    tab_id: str | None = None
     row_limit: int = 1000
     page: int = 1
     resource_config: EngineResourceConfig | None = None
+    datasource_config: dict | None = None
 
 
 class StepPreviewResponse(BaseModel):
@@ -110,12 +130,13 @@ class StepPreviewResponse(BaseModel):
     total_rows: int
     page: int
     page_size: int
+    metadata: dict | None = None
 
 
 StepPreviewRequest.model_rebuild()
 
 
-class ExportFormat(str, Enum):
+class ExportFormat(StrEnum):
     CSV = 'csv'
     PARQUET = 'parquet'
     JSON = 'json'
@@ -123,21 +144,57 @@ class ExportFormat(str, Enum):
     DUCKDB = 'duckdb'
 
 
-class ExportDestination(str, Enum):
+class ExportDestination(StrEnum):
     DOWNLOAD = 'download'
     FILESYSTEM = 'filesystem'
+    DATASOURCE = 'datasource'
+
+
+class ExportDatasourceType(StrEnum):
+    ICEBERG = 'iceberg'
+    DUCKDB = 'duckdb'
+    FILE = 'file'
+
+
+class IcebergExportOptions(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    table_name: str = 'exported_data'
+    namespace: str = 'outputs'
+    branch: str = 'master'
+
+
+class DuckDBExportOptions(BaseModel):
+    """Options for DuckDB export when destination is 'datasource'."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    table_name: str = 'data'
 
 
 class ExportRequest(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     analysis_id: str | None = None
-    datasource_id: str
-    pipeline_steps: list[dict]
     target_step_id: str
+    analysis_pipeline: AnalysisPipelinePayload
+    tab_id: str | None = None
     format: ExportFormat = ExportFormat.CSV
     filename: str = 'export'
     destination: ExportDestination = ExportDestination.DOWNLOAD
+    datasource_type: ExportDatasourceType = ExportDatasourceType.ICEBERG
+    iceberg_options: IcebergExportOptions | None = None
+    duckdb_options: DuckDBExportOptions | None = None
+    datasource_config: dict | None = None
+    output_datasource_id: str | None = None
+
+    @field_validator('datasource_type')
+    @classmethod
+    def validate_datasource_type_for_output(cls, value: ExportDatasourceType, info):
+        destination = info.data.get('destination') if info.data else None
+        if destination == ExportDestination.DATASOURCE and value != ExportDatasourceType.ICEBERG:
+            raise ValueError('Output exports must use Iceberg datasources')
+        return value
 
 
 class ExportResponse(BaseModel):
@@ -149,15 +206,53 @@ class ExportResponse(BaseModel):
     destination: str
     file_path: str | None = None
     message: str | None = None
+    datasource_id: str | None = None
+    datasource_name: str | None = None
 
 
 class StepSchemaRequest(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    analysis_id: str
-    datasource_id: str
-    pipeline_steps: list[dict]
+    analysis_id: str | None = None
     target_step_id: str
+    analysis_pipeline: AnalysisPipelinePayload
+    tab_id: str | None = None
+    datasource_config: dict | None = None
+
+
+class StepRowCountRequest(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    analysis_id: str | None = None
+    target_step_id: str
+    analysis_pipeline: AnalysisPipelinePayload
+    tab_id: str | None = None
+    datasource_config: dict | None = None
+
+
+class IcebergSnapshotInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    snapshot_id: str
+    timestamp_ms: int
+    parent_snapshot_id: str | None = None
+    operation: str | None = None
+    is_current: bool | None = None
+
+
+class IcebergSnapshotsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    datasource_id: str
+    table_path: str
+    snapshots: list[IcebergSnapshotInfo]
+
+
+class IcebergSnapshotDeleteResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    datasource_id: str
+    snapshot_id: str
 
 
 class StepSchemaResponse(BaseModel):
@@ -166,3 +261,34 @@ class StepSchemaResponse(BaseModel):
     step_id: str
     columns: list[str]
     column_types: dict[str, str]
+
+
+class StepRowCountResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    step_id: str
+    row_count: int
+
+
+class BuildTabResult(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    tab_id: str
+    tab_name: str
+    status: str
+    error: str | None = None
+
+
+class BuildResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    analysis_id: str
+    tabs_built: int
+    results: list[BuildTabResult]
+
+
+class BuildRequest(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    analysis_pipeline: AnalysisPipelinePayload
+    tab_id: str | None = None

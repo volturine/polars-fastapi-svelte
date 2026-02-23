@@ -15,13 +15,6 @@ dev:
     @echo "Starting servers..."
     (cd backend && uv run --env-file .env ./main.py) & (cd frontend && npm run dev) & wait
 
-# Lint everything
-lint:
-    @echo "Linting backend..."
-    cd backend && uv run ruff check .
-    @echo "Linting frontend..."
-    cd frontend && npm run lint
-
 # Format code
 format:
     @echo "Formatting backend..."
@@ -29,7 +22,21 @@ format:
     @echo "Formatting frontend..."
     cd frontend && npm run format
 
+# Run all linters and type checks
+check: 
+    cd backend && uv run ruff format --check . && uv run ruff check . && uv run mypy .
+    cd frontend && npx svelte-check --threshold warning && npm run lint
+
+# Run backend tests
+test:
+    cd backend && uv run pytest --tb=short -q
+
+# Full verification gate — must pass before any task is declared done
+verify: format check
+
 # Build for production
-build:
+prod:
     @echo "Building frontend..."
     cd frontend && npm run build
+    @echo "Starting backend in production mode..."
+    cd backend && uv run --env-file .prod.env ./main.py

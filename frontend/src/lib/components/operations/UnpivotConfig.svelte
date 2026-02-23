@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
+	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
 
 	interface Props {
 		schema: Schema;
@@ -14,35 +15,32 @@
 </script>
 
 <div class="config-panel" role="region" aria-label="Unpivot configuration">
-	<h3>Unpivot Configuration</h3>
 	<p class="description">Transform wide data to long format (melt operation).</p>
 
-	<div class="form-group">
-		<label for="unpivot-select-index">Index columns (identifiers)</label>
-		<select
-			id="unpivot-select-index"
-			data-testid="unpivot-index-select"
-			multiple
-			bind:value={config.index}
+	<div class="form-group mb-5">
+		<div class="form-label">Index columns (identifiers)</div>
+		<MultiSelectColumnDropdown
+			{schema}
+			value={config.index ?? []}
+			onChange={(val) => (config.index = val)}
+			placeholder="Select index columns..."
+		/>
+		<span class="mt-1 block text-xs text-fg-tertiary">Columns to use as identifiers</span>
+	</div>
+
+	<div class="form-group mb-5">
+		<div class="form-label">Columns to unpivot</div>
+		<MultiSelectColumnDropdown
+			{schema}
+			value={config.on ?? []}
+			onChange={(val) => (config.on = val)}
+			placeholder="Select columns to unpivot..."
+		/>
+		<span class="mt-1 block text-xs text-fg-tertiary">Columns that will be transformed to rows</span
 		>
-			{#each schema.columns as col (col.name)}
-				<option value={col.name}>{col.name}</option>
-			{/each}
-		</select>
-		<span class="hint">Hold Ctrl/Cmd to select multiple</span>
 	</div>
 
-	<div class="form-group">
-		<label for="unpivot-select-on">Columns to unpivot</label>
-		<select id="unpivot-select-on" data-testid="unpivot-on-select" multiple bind:value={config.on}>
-			{#each schema.columns as col (col.name)}
-				<option value={col.name}>{col.name}</option>
-			{/each}
-		</select>
-		<span class="hint">Hold Ctrl/Cmd to select multiple</span>
-	</div>
-
-	<div class="form-group">
+	<div class="form-group mb-5">
 		<label for="unpivot-input-variable">Variable column name</label>
 		<input
 			id="unpivot-input-variable"
@@ -54,7 +52,7 @@
 		/>
 	</div>
 
-	<div class="form-group">
+	<div class="form-group mb-0">
 		<label for="unpivot-input-value">Value column name</label>
 		<input
 			id="unpivot-input-value"
@@ -66,21 +64,3 @@
 		/>
 	</div>
 </div>
-
-<style>
-	.form-group {
-		margin-bottom: var(--space-4);
-	}
-	.form-group:last-child {
-		margin-bottom: 0;
-	}
-	select[multiple] {
-		height: 80px;
-	}
-	.hint {
-		font-size: var(--text-xs);
-		color: var(--fg-tertiary);
-		display: block;
-		margin-top: var(--space-1);
-	}
-</style>

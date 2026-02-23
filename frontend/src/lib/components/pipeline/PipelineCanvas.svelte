@@ -1,9 +1,10 @@
 <script lang="ts">
-	import type { PipelineStep } from '$lib/types/analysis';
+	import type { PipelineStep, AnalysisTab } from '$lib/types/analysis';
 	import type { DataSource } from '$lib/types/datasource';
 	import { drag, type DropTarget } from '$lib/stores/drag.svelte';
 	import { LayoutGrid } from 'lucide-svelte';
 	import StepNode from './StepNode.svelte';
+	import OutputNode from './OutputNode.svelte';
 	import ConnectionLine from './ConnectionLine.svelte';
 	import DatasourceNode from './DatasourceNode.svelte';
 
@@ -12,9 +13,12 @@
 		analysisId?: string;
 		datasourceId?: string;
 		datasource?: DataSource | null;
+		datasourceLabel?: string | null;
 		tabName?: string;
+		activeTab?: AnalysisTab | null;
 		onStepClick: (id: string) => void;
 		onStepDelete: (id: string) => void;
+		onStepToggle: (id: string) => void;
 		onInsertStep: (type: string, target: DropTarget) => void;
 		onMoveStep: (stepId: string, target: DropTarget) => void;
 		onChangeDatasource?: () => void;
@@ -26,20 +30,36 @@
 		analysisId,
 		datasourceId,
 		datasource = null,
+		datasourceLabel = null,
 		tabName: _tabName,
+		activeTab = null,
 		onStepClick,
 		onStepDelete,
+		onStepToggle,
 		onInsertStep,
 		onMoveStep,
 		onChangeDatasource: _onChangeDatasource,
 		onRenameTab: _onRenameTab
 	}: Props = $props();
 
-	// Derived: whether we can accept drops
-	let canDrop = $derived(drag.active);
+	const canDrop = $derived(drag.active);
+	const hoverIndex = $derived(drag.target?.index ?? null);
+	const activeTabId = $derived(activeTab?.id ?? null);
 
-	// Derived: current hovered target index
-	let hoverIndex = $derived(drag.target?.index ?? null);
+	let lastTabId = $state<string | null>(null);
+
+	// $effect: drag reset is a UI side effect not derivable from state
+	// Subscription: $derived can't reset drag UI on tab change.
+	$effect(() => {
+		const tabId = activeTabId;
+		if (tabId === lastTabId) return;
+		lastTabId = tabId;
+		if (drag.active) {
+			drag.end();
+			return;
+		}
+		drag.clearTarget();
+	});
 
 	function getParentId(index: number): string | null {
 		if (index <= 0) return null;
@@ -71,6 +91,10 @@
 			if (index === currentIndex || index === currentIndex + 1) {
 				return false;
 			}
+		}
+
+		if (drag.type === 'chart' || drag.type?.startsWith('plot_')) {
+			return true;
 		}
 
 		const nextId = index < steps.length ? getNextId(index) : null;
@@ -167,6 +191,7 @@
 		return buildTarget(fallback.index);
 	}
 
+	// DOM: $derived can't update drop target from pointer.
 	$effect(() => {
 		if (!drag.active) return;
 		if (drag.pointerX === null || drag.pointerY === null) return;
@@ -178,16 +203,51 @@
 		const valid = isValidTarget(target.index);
 		drag.setTarget(target, valid);
 	});
+
+	const scrollThreshold = 60;
+	const scrollSpeed = 15;
+
+	function autoScroll(canvasEl: HTMLElement, pointerY: number) {
+		canvasEl.getBoundingClientRect();
+		const viewportHeight = window.innerHeight;
+
+		if (pointerY > viewportHeight - scrollThreshold) {
+			canvasEl.scrollTop += scrollSpeed;
+		}
+
+		if (pointerY < scrollThreshold) {
+			canvasEl.scrollTop -= scrollSpeed;
+		}
+	}
+
+	// DOM: $derived can't auto-scroll while dragging.
+	$effect(() => {
+		if (!drag.active) return;
+		if (drag.pointerY === null) return;
+
+		const canvas = document.querySelector('.pipeline-canvas') as HTMLElement | null;
+		if (!canvas) return;
+
+		const handleScroll = () => {
+			if (!drag.active || drag.pointerY === null) return;
+			autoScroll(canvas, drag.pointerY);
+		};
+
+		const intervalId = window.setInterval(handleScroll, 16);
+		return () => window.clearInterval(intervalId);
+	});
 </script>
 
-<div class="pipeline-canvas">
-	{#if steps.length === 0 && !datasource}
-		<div class="empty-state">
-			<LayoutGrid size={32} strokeWidth={1.5} />
-			<h3>No pipeline steps</h3>
-			<p>Drag operations from the library and drop here</p>
+<div class="pipeline-canvas flex-1 overflow-y-auto p-8 bg-secondary min-h-100">
+	{#if steps.length === 0}
+		<div
+			class="empty-state flex min-h-100 h-full flex-col items-center justify-center text-center text-fg-muted"
+		>
+			<LayoutGrid size={28} strokeWidth={1.2} class="mb-5 text-fg-faint opacity-40" />
+			<h3 class="m-0 mb-2 text-sm font-semibold text-fg-secondary">No pipeline steps</h3>
+			<p class="m-0 text-xs text-fg-muted">Drag operations from the library and drop here</p>
 			<div
-				class="insert-zone empty-drop"
+				class="insert-zone empty-drop flex w-full cursor-default flex-col items-center py-2"
 				class:ready={canDrop}
 				class:active={hoverIndex === 0}
 				class:invalid={hoverIndex === 0 && !drag.valid}
@@ -210,12 +270,14 @@
 
 				{#if canDrop}
 					<div
-						class="drop-slot"
+						class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center"
 						class:active={hoverIndex === 0}
 						class:invalid={hoverIndex === 0 && !drag.valid}
 					>
 						{#if hoverIndex === 0}
-							<span class="slot-label">{drag.type ?? 'step'}</span>
+							<span class="insert-label font-mono text-sm font-medium lowercase"
+								>{drag.type ?? 'step'}</span
+							>
 						{/if}
 					</div>
 					<ConnectionLine
@@ -228,17 +290,19 @@
 			</div>
 		</div>
 	{:else}
-		<div class="steps-container" role="list">
+		<div class="steps-container mx-auto flex w-full max-w-full flex-col items-center" role="list">
 			<DatasourceNode
 				{datasource}
+				{datasourceLabel}
 				{analysisId}
 				tabName={_tabName}
+				{activeTab}
 				onChangeDatasource={_onChangeDatasource}
 				onRenameTab={_onRenameTab}
 			/>
-			{#if shouldShowInsert(0)}
+			{#if shouldShowInsert(0) && (steps.length > 0 || canDrop)}
 				<div
-					class="insert-zone"
+					class="insert-zone flex w-full cursor-default flex-col items-center py-2"
 					class:ready={canDrop}
 					class:active={hoverIndex === 0}
 					class:invalid={hoverIndex === 0 && !drag.valid}
@@ -258,12 +322,14 @@
 					/>
 					{#if canDrop}
 						<div
-							class="drop-slot"
+							class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center"
 							class:active={hoverIndex === 0}
 							class:invalid={hoverIndex === 0 && !drag.valid}
 						>
 							{#if hoverIndex === 0}
-								<span class="slot-label">{drag.type ?? 'step'}</span>
+								<span class="insert-label font-mono text-sm font-medium lowercase"
+									>{drag.type ?? 'step'}</span
+								>
 							{/if}
 						</div>
 						{#if steps.length > 0}
@@ -277,7 +343,7 @@
 					{/if}
 				</div>
 			{:else if steps.length > 0}
-				<div class="insert-spacer" aria-hidden="true">
+				<div class="insert-spacer flex items-center justify-center py-2" aria-hidden="true">
 					<ConnectionLine fromStepIndex={-1} toStepIndex={0} totalSteps={steps.length} />
 				</div>
 			{/if}
@@ -290,13 +356,14 @@
 					allSteps={steps}
 					onEdit={onStepClick}
 					onDelete={onStepDelete}
+					onToggleApply={onStepToggle}
 					onTouchMove={onMoveStep}
 				/>
 				<!-- Connection + Drop zone after each step -->
 				{#if i < steps.length - 1 || canDrop}
 					{#if shouldShowInsert(i + 1)}
 						<div
-							class="insert-zone"
+							class="insert-zone flex w-full cursor-default flex-col items-center py-2"
 							class:ready={canDrop}
 							class:active={hoverIndex === i + 1}
 							class:invalid={hoverIndex === i + 1 && !drag.valid}
@@ -318,12 +385,14 @@
 							{/if}
 							{#if canDrop}
 								<div
-									class="drop-slot"
+									class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center"
 									class:active={hoverIndex === i + 1}
 									class:invalid={hoverIndex === i + 1 && !drag.valid}
 								>
 									{#if hoverIndex === i + 1}
-										<span class="slot-label">{drag.type ?? 'step'}</span>
+										<span class="insert-label font-mono text-sm font-medium lowercase"
+											>{drag.type ?? 'step'}</span
+										>
 									{/if}
 								</div>
 								{#if i < steps.length - 1}
@@ -337,132 +406,26 @@
 							{/if}
 						</div>
 					{:else if i < steps.length - 1 || !drag.isReorder || drag.stepId !== step.id}
-						<div class="insert-spacer" aria-hidden="true">
+						<div class="insert-spacer flex items-center justify-center py-2" aria-hidden="true">
 							<ConnectionLine fromStepIndex={i} toStepIndex={i + 1} totalSteps={steps.length} />
 						</div>
 					{/if}
 				{/if}
 			{/each}
+			{#if steps.length > 0}
+				<div class="insert-spacer flex items-center justify-center py-2" aria-hidden="true">
+					<ConnectionLine
+						fromStepIndex={steps.length - 1}
+						toStepIndex={steps.length}
+						totalSteps={steps.length + 1}
+					/>
+				</div>
+			{:else}
+				<div class="insert-spacer flex items-center justify-center py-2" aria-hidden="true">
+					<ConnectionLine fromStepIndex={-1} toStepIndex={0} totalSteps={1} />
+				</div>
+			{/if}
+			<OutputNode {analysisId} {datasourceId} {activeTab} />
 		</div>
 	{/if}
 </div>
-
-<style>
-	.pipeline-canvas {
-		flex: 1;
-		padding: var(--space-6);
-		background-color: var(--bg-secondary);
-		background-image:
-			repeating-linear-gradient(
-				90deg,
-				rgba(0, 0, 0, 0.04) 0,
-				rgba(0, 0, 0, 0.04) 1px,
-				transparent 1px,
-				transparent 64px
-			),
-			linear-gradient(180deg, transparent 0%, var(--bg-tertiary) 100%);
-		overflow-y: auto;
-		min-height: 400px;
-	}
-
-	/* When touch-dragging class is on body, prevent any scrolling on the canvas */
-	:global(body.touch-dragging) .pipeline-canvas {
-		overflow: hidden;
-		touch-action: none;
-	}
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		height: 100%;
-		min-height: 400px;
-		color: var(--fg-muted);
-		text-align: center;
-	}
-	.empty-state :global(svg) {
-		color: var(--fg-faint);
-		margin-bottom: var(--space-4);
-	}
-	.empty-state h3 {
-		margin: 0 0 var(--space-2) 0;
-		font-size: var(--text-base);
-		font-weight: 600;
-		color: var(--fg-secondary);
-	}
-	.empty-state p {
-		margin: 0;
-		font-size: var(--text-sm);
-		color: var(--fg-muted);
-	}
-	.steps-container {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		width: 100%;
-		max-width: 100%;
-		margin: 0 auto;
-	}
-	.insert-zone {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		width: 100%;
-		cursor: default;
-		transition: all var(--transition);
-		padding: var(--space-2) 0;
-	}
-	.insert-spacer {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-2) 0;
-	}
-	.insert-zone :global(.connection-line),
-	.insert-spacer :global(.connection-line) {
-		flex-shrink: 0;
-	}
-	.insert-zone.ready {
-		cursor: pointer;
-	}
-	.insert-zone.ready:hover :global(.connection-line) {
-		color: var(--accent-primary);
-	}
-	.drop-slot {
-		width: min(55%, 480px);
-		padding: var(--space-2) var(--space-4);
-		background-color: transparent;
-		border: 2px dashed var(--fg-faint);
-		border-radius: var(--radius-md);
-		text-align: center;
-		min-height: 28px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition: all var(--transition);
-		margin: var(--space-2) 0;
-		flex-shrink: 0;
-	}
-	.drop-slot:hover {
-		border-color: var(--fg-muted);
-		background-color: var(--bg-hover);
-	}
-	.drop-slot.active {
-		border-color: var(--fg-primary);
-		background-color: var(--bg-tertiary);
-	}
-	.drop-slot.invalid {
-		border-color: var(--error-border);
-		background-color: var(--error-bg);
-	}
-	.slot-label {
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-		font-weight: 500;
-		color: var(--fg-primary);
-		text-transform: lowercase;
-	}
-	.drop-slot.invalid .slot-label {
-		color: var(--error-fg);
-	}
-</style>

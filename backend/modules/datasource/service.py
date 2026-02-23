@@ -201,7 +201,7 @@ def create_file_datasource(
     session.commit()
     session.refresh(datasource)
 
-    _log_datasource_create(session, datasource_id, name, DataSourceType.ICEBERG, iceberg_config)
+    _log_datasource_create(session, datasource_id, name, DataSourceType.ICEBERG, iceberg_config, branch='master')
 
     try:
         schema_info = _extract_schema(datasource)
@@ -258,7 +258,7 @@ def create_analysis_datasource(
     session.commit()
     session.refresh(datasource)
 
-    _log_datasource_create(session, datasource_id, name, source_type, config)
+    _log_datasource_create(session, datasource_id, name, source_type, config, branch='master')
     return DataSourceResponse.model_validate(datasource)
 
 
@@ -409,10 +409,17 @@ def _resolve_excel_bounds(
     if cell_range:
         return _parse_cell_range(workbook, cell_range, sheet_name)
 
+    resolved_start_row = max(start_row, 0)
+    resolved_start_col = max(start_col, 0)
+    resolved_end_col = end_col
+    if resolved_end_col <= resolved_start_col:
+        sheet = workbook[sheet_name]
+        resolved_end_col = _detect_end_col(sheet, resolved_start_row, resolved_start_col)
+    resolved_end_col = max(resolved_end_col, resolved_start_col)
     end_row_value = end_row
     if end_row_value is not None:
-        end_row_value = max(end_row_value, start_row)
-    return _ExcelBounds(sheet_name, max(start_row, 0), max(start_col, 0), max(end_col, start_col), end_row_value)
+        end_row_value = max(end_row_value, resolved_start_row)
+    return _ExcelBounds(sheet_name, resolved_start_row, resolved_start_col, resolved_end_col, end_row_value)
 
 
 def _parse_cell_range(workbook, cell_range: str, default_sheet: str | None) -> _ExcelBounds:
@@ -467,6 +474,24 @@ def _validate_excel_bounds(sheet, start_row: int, start_col: int, end_col: int, 
         raise ValueError('Excel column bounds exceed sheet size')
 
 
+def _detect_end_col(sheet, start_row: int, start_col: int) -> int:
+    """Scan the header row (start_row) rightward to find the last non-empty column."""
+    max_col = sheet.max_column or 0
+    if max_col <= start_col:
+        return start_col
+    last_col = start_col
+    for cell in sheet.iter_rows(
+        min_row=start_row + 1,
+        max_row=start_row + 1,
+        min_col=start_col + 1,
+        max_col=max_col,
+    ):
+        for c in cell:
+            if c.value is not None and str(c.value).strip() != '':
+                last_col = c.column - 1  # 0-indexed
+    return last_col
+
+
 def _detect_end_row(sheet, start_row: int, start_col: int, end_col: int) -> int:
     max_row = sheet.max_row or 0
     if max_row <= start_row:
@@ -504,10 +529,10 @@ def create_database_datasource(
     name: str,
     connection_string: str,
     query: str,
-    branch: str | None = None,
+    branch: str = 'master',
 ) -> DataSourceResponse:
     datasource_id = str(uuid.uuid4())
-    branch_name = branch or 'master'
+    branch_name = branch
     source_config = {
         'connection_string': connection_string,
         'query': query,
@@ -533,7 +558,7 @@ def create_database_datasource(
             session.add(datasource)
             session.commit()
             session.refresh(datasource)
-            _log_datasource_create(session, datasource_id, name, DataSourceType.DATABASE, source_config)
+            _log_datasource_create(session, datasource_id, name, DataSourceType.DATABASE, source_config, branch=branch_name)
             return DataSourceResponse.model_validate(datasource)
         raise DataSourceConnectionError(
             'Failed to query database datasource',
@@ -562,7 +587,7 @@ def create_database_datasource(
     session.commit()
     session.refresh(datasource)
 
-    _log_datasource_create(session, datasource_id, name, DataSourceType.ICEBERG, iceberg_config)
+    _log_datasource_create(session, datasource_id, name, DataSourceType.ICEBERG, iceberg_config, branch=branch_name)
     return DataSourceResponse.model_validate(datasource)
 
 
@@ -638,7 +663,8 @@ def create_iceberg_datasource(
     if branch and branch != branch_from_path:
         raise DataSourceValidationError('Iceberg branch does not match table path')
     config['metadata_path'] = table_root
-    config['branch'] = branch or branch_from_path
+    resolved_branch = branch or branch_from_path
+    config['branch'] = resolved_branch
     config['namespace'] = namespace_value
     config['table'] = table_value
     config['namespace_name'] = get_namespace()
@@ -655,7 +681,7 @@ def create_iceberg_datasource(
     session.commit()
     session.refresh(datasource)
 
-    _log_datasource_create(session, datasource_id, name, DataSourceType.ICEBERG, config)
+    _log_datasource_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch=resolved_branch)
 
     try:
         schema_info = _extract_schema(datasource)
@@ -695,7 +721,7 @@ def refresh_external_datasource(session: Session, datasource_id: str) -> DataSou
             'Datasource source is not refreshable',
             details={'datasource_id': datasource_id, 'source_type': source_type},
         )
-    branch = source.get('branch') or 'master'
+    branch = source.get('branch', 'master')
     if source_type == DataSourceType.DATABASE:
         connection_string = source.get('connection_string')
         query = source.get('query')
@@ -751,7 +777,7 @@ def refresh_external_datasource(session: Session, datasource_id: str) -> DataSou
     session.commit()
     session.refresh(datasource)
 
-    _log_datasource_create(session, datasource.id, datasource.name, DataSourceType.ICEBERG, datasource.config)
+    _log_datasource_create(session, datasource.id, datasource.name, DataSourceType.ICEBERG, datasource.config, branch=branch)
     return DataSourceResponse.model_validate(datasource)
 
 
@@ -761,6 +787,7 @@ def _log_datasource_create(
     name: str,
     source_type: DataSourceType,
     config: dict,
+    branch: str,
 ) -> None:
     payload = engine_run_service.create_engine_run_payload(
         analysis_id=None,
@@ -771,6 +798,7 @@ def _log_datasource_create(
             'name': name,
             'source_type': source_type.value,
             'config': config,
+            'iceberg_options': {'branch': branch},
         },
         result_json={'datasource_id': datasource_id, 'datasource_name': name},
     )
@@ -1379,12 +1407,15 @@ def update_datasource(
     # Only log engine run for non-metadata updates (is_hidden toggle is metadata-only)
     has_config_or_name_update = update.name is not None or update.config is not None
     if has_config_or_name_update:
+        branch = datasource.config.get('branch', 'master') if isinstance(datasource.config, dict) else 'master'
+        update_request = update.model_dump(exclude_none=True)
+        update_request['iceberg_options'] = {'branch': branch}
         run_payload = engine_run_service.create_engine_run_payload(
             analysis_id=None,
             datasource_id=datasource_id,
             kind='datasource_update',
             status='success',
-            request_json=update.model_dump(exclude_none=True),
+            request_json=update_request,
             result_json={'datasource_id': datasource_id, 'datasource_name': datasource.name},
         )
         engine_run_service.create_engine_run(session, run_payload)

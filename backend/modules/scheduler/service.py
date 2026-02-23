@@ -389,7 +389,7 @@ def execute_schedule(session: Session, schedule_id: str, triggered_by: str = 'sc
         iceberg_options = {
             'table_name': iceberg_cfg.get('table_name', 'exported_data'),
             'namespace': iceberg_cfg.get('namespace', 'outputs'),
-            'branch': 'master',
+            'branch': iceberg_cfg.get('branch', 'master'),
         }
 
     tab_build_mode = output_config.get('build_mode', 'full') if isinstance(output_config, dict) else 'full'
@@ -531,7 +531,7 @@ def run_analysis_build(
                     iceberg_options = {
                         'table_name': iceberg_cfg.get('table_name', 'exported_data'),
                         'namespace': iceberg_cfg.get('namespace', 'outputs'),
-                        'branch': 'master',
+                        'branch': iceberg_cfg.get('branch', 'master'),
                     }
 
                 duckdb_options = None

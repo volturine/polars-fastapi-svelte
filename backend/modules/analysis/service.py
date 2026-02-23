@@ -163,6 +163,9 @@ def update_analysis(
                 if 'output' not in output_config:
                     base_name = tab.get('name') or 'export'
                     table_name = base_name.replace(' ', '_').lower() or 'export'
+                    output_branch = (
+                        analysis.pipeline_definition.get('output_branch') if isinstance(analysis.pipeline_definition, dict) else None
+                    )
                     output_config['output'] = {
                         'datasource_type': 'iceberg',
                         'format': 'parquet',
@@ -170,9 +173,7 @@ def update_analysis(
                         'iceberg': {
                             'namespace': 'outputs',
                             'table_name': table_name,
-                            'branch': analysis.pipeline_definition.get('output_branch')
-                            if isinstance(analysis.pipeline_definition, dict)
-                            else None,
+                            'branch': output_branch if isinstance(output_branch, str) and output_branch else 'master',
                         },
                     }
                     tab['datasource_config'] = output_config

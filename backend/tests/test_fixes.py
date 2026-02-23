@@ -138,6 +138,7 @@ def _chart_frame() -> pl.LazyFrame:
             'category': ['A', 'A', 'B', 'B', 'C'],
             'value': [10.0, 20.0, 30.0, 40.0, 50.0],
             'group': ['x', 'y', 'x', 'y', 'x'],
+            'group_rank': ['b', 'a', 'b', 'a', 'b'],
         }
     ).lazy()
 
@@ -154,6 +155,13 @@ class TestChartParams:
         assert params.bins == 10
         assert params.y_column is None
         assert params.group_column is None
+        assert params.sort_by is None
+        assert params.sort_order == 'asc'
+        assert params.legend_position == 'right'
+        assert params.decimal_places == 2
+        assert params.stack_mode == 'grouped'
+        assert params.group_sort_by is None
+        assert params.group_sort_order == 'asc'
 
     def test_extra_forbidden(self):
         with pytest.raises(ValidationError):
@@ -164,6 +172,78 @@ class TestChartParams:
                     'unknown': True,
                 }
             )
+
+    def test_group_sort_fields(self):
+        params = ChartParams.model_validate(
+            {
+                'chart_type': 'bar',
+                'x_column': 'category',
+                'group_column': 'group',
+                'group_sort_by': 'value',
+                'group_sort_order': 'desc',
+            }
+        )
+        assert params.group_sort_by == 'value'
+        assert params.group_sort_order == 'desc'
+
+    def test_overlay_validation(self):
+        with pytest.raises(ValidationError):
+            ChartParams.model_validate(
+                {
+                    'chart_type': 'bar',
+                    'x_column': 'category',
+                    'overlays': [
+                        {
+                            'chart_type': 'line',
+                            'y_column': 'value',
+                            'aggregation': 'sum',
+                            'y_axis_position': 'left',
+                            'extra': True,
+                        }
+                    ],
+                }
+            )
+
+    def test_reference_line_validation(self):
+        with pytest.raises(ValidationError):
+            ChartParams.model_validate(
+                {
+                    'chart_type': 'bar',
+                    'x_column': 'category',
+                    'reference_lines': [
+                        {
+                            'axis': 'z',
+                            'value': 1,
+                        }
+                    ],
+                }
+            )
+
+    def test_reference_line_value_optional(self):
+        params = ChartParams.model_validate(
+            {
+                'chart_type': 'bar',
+                'x_column': 'category',
+                'reference_lines': [
+                    {
+                        'axis': 'y',
+                        'value': None,
+                    }
+                ],
+            }
+        )
+        assert params.reference_lines[0].value is None
+
+    def test_interactivity_defaults(self):
+        params = ChartParams.model_validate(
+            {
+                'chart_type': 'bar',
+                'x_column': 'category',
+            }
+        )
+        assert params.pan_zoom_enabled is False
+        assert params.selection_enabled is False
+        assert params.area_selection_enabled is False
 
 
 class TestChartHandlerPassThrough:
@@ -263,6 +343,196 @@ class TestChartDataBar:
 
         assert result['y'].to_list() == [15.0, 35.0, 50.0]
 
+    def test_bar_aggregation_median(self):
+        result = (
+            compute_chart_data(
+                _chart_frame(),
+                {
+                    'chart_type': 'bar',
+                    'x_column': 'category',
+                    'y_column': 'value',
+                    'aggregation': 'median',
+                },
+            )
+            .collect()
+            .sort('x')
+        )
+
+        assert result['y'].to_list() == [15.0, 35.0, 50.0]
+
+    def test_bar_aggregation_std(self):
+        lf = pl.DataFrame(
+            {
+                'category': ['A', 'A', 'A', 'B', 'B', 'B'],
+                'value': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            }
+        ).lazy()
+        result = (
+            compute_chart_data(
+                lf,
+                {
+                    'chart_type': 'bar',
+                    'x_column': 'category',
+                    'y_column': 'value',
+                    'aggregation': 'std',
+                },
+            )
+            .collect()
+            .sort('x')
+        )
+
+        assert result['y'].to_list() == pytest.approx([1.0, 1.0])
+
+    def test_bar_aggregation_variance(self):
+        lf = pl.DataFrame(
+            {
+                'category': ['A', 'A', 'A', 'B', 'B', 'B'],
+                'value': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            }
+        ).lazy()
+        result = (
+            compute_chart_data(
+                lf,
+                {
+                    'chart_type': 'bar',
+                    'x_column': 'category',
+                    'y_column': 'value',
+                    'aggregation': 'variance',
+                },
+            )
+            .collect()
+            .sort('x')
+        )
+
+        assert result['y'].to_list() == pytest.approx([1.0, 1.0])
+
+    def test_bar_aggregation_unique_count(self):
+        result = (
+            compute_chart_data(
+                _chart_frame(),
+                {
+                    'chart_type': 'bar',
+                    'x_column': 'category',
+                    'y_column': 'group',
+                    'aggregation': 'unique_count',
+                },
+            )
+            .collect()
+            .sort('x')
+        )
+
+        assert result['y'].to_list() == [2, 2, 1]
+
+    def test_bar_sort_by_y_desc(self):
+        result = compute_chart_data(
+            _chart_frame(),
+            {
+                'chart_type': 'bar',
+                'x_column': 'category',
+                'y_column': 'value',
+                'aggregation': 'sum',
+                'sort_by': 'y',
+                'sort_order': 'desc',
+            },
+        ).collect()
+
+        assert result['y'].to_list() == sorted(result['y'].to_list(), reverse=True)
+
+    def test_bar_sort_by_x_desc(self):
+        result = compute_chart_data(
+            _chart_frame(),
+            {
+                'chart_type': 'bar',
+                'x_column': 'category',
+                'y_column': 'value',
+                'aggregation': 'sum',
+                'sort_by': 'x',
+                'sort_order': 'desc',
+            },
+        ).collect()
+
+        assert result['x'].to_list() == ['C', 'B', 'A']
+
+    def test_bar_date_bucket_month(self):
+        lf = pl.DataFrame(
+            {
+                'date': [
+                    '2024-01-05T00:00:00',
+                    '2024-01-15T00:00:00',
+                    '2024-02-01T00:00:00',
+                ],
+                'value': [1, 2, 3],
+            }
+        ).lazy()
+        result = (
+            compute_chart_data(
+                lf,
+                {
+                    'chart_type': 'bar',
+                    'x_column': 'date',
+                    'y_column': 'value',
+                    'aggregation': 'sum',
+                    'date_bucket': 'month',
+                },
+            )
+            .collect()
+            .sort('x')
+        )
+
+        assert result['y'].to_list() == [3, 3]
+
+    def test_bar_group_sort_by_value_desc(self):
+        result = compute_chart_data(
+            _chart_frame(),
+            {
+                'chart_type': 'bar',
+                'x_column': 'category',
+                'y_column': 'value',
+                'aggregation': 'sum',
+                'group_column': 'group',
+                'group_sort_by': 'value',
+                'group_sort_order': 'desc',
+            },
+        ).collect()
+
+        groups = result['group'].to_list()
+        assert groups[:2] == ['y', 'y']
+
+    def test_bar_group_sort_by_name_desc(self):
+        result = compute_chart_data(
+            _chart_frame(),
+            {
+                'chart_type': 'bar',
+                'x_column': 'category',
+                'y_column': 'value',
+                'aggregation': 'sum',
+                'group_column': 'group',
+                'group_sort_by': 'name',
+                'group_sort_order': 'desc',
+            },
+        ).collect()
+
+        groups = result['group'].to_list()
+        assert groups[:2] == ['y', 'y']
+
+    def test_bar_group_sort_by_custom_asc(self):
+        result = compute_chart_data(
+            _chart_frame(),
+            {
+                'chart_type': 'bar',
+                'x_column': 'category',
+                'y_column': 'value',
+                'aggregation': 'sum',
+                'group_column': 'group',
+                'group_sort_by': 'custom',
+                'group_sort_order': 'asc',
+                'group_sort_column': 'group_rank',
+            },
+        ).collect()
+
+        groups = result['group'].to_list()
+        assert groups[:2] == ['y', 'y']
+
 
 class TestChartDataLine:
     def test_line_basic(self):
@@ -325,6 +595,88 @@ class TestChartDataPie:
         # Should be sorted by y descending
         values = result['y'].to_list()
         assert values == sorted(values, reverse=True)
+
+    def test_pie_sort_by_label(self):
+        result = compute_chart_data(
+            _chart_frame(),
+            {
+                'chart_type': 'pie',
+                'x_column': 'category',
+                'y_column': 'value',
+                'sort_by': 'x',
+                'sort_order': 'asc',
+            },
+        ).collect()
+
+        assert result['label'].to_list() == ['A', 'B', 'C']
+
+    def test_pie_group_sort_by_name(self):
+        result = compute_chart_data(
+            _chart_frame(),
+            {
+                'chart_type': 'pie',
+                'x_column': 'category',
+                'y_column': 'value',
+                'group_column': 'group',
+                'group_sort_by': 'name',
+                'group_sort_order': 'desc',
+            },
+        ).collect()
+
+        assert result['group'].to_list()[0] == 'y'
+
+    def test_pie_date_ordinal_day_of_week(self):
+        lf = pl.DataFrame(
+            {
+                'date': [
+                    '2024-01-01T00:00:00',
+                    '2024-01-08T00:00:00',
+                ],
+                'value': [5, 7],
+            }
+        ).lazy()
+        result = compute_chart_data(
+            lf,
+            {
+                'chart_type': 'pie',
+                'x_column': 'date',
+                'y_column': 'value',
+                'date_ordinal': 'day_of_week',
+            },
+        ).collect()
+
+        assert set(result['label'].to_list()) == {0}
+
+    def test_pie_group_sort_by_value(self):
+        result = compute_chart_data(
+            _chart_frame(),
+            {
+                'chart_type': 'pie',
+                'x_column': 'category',
+                'y_column': 'value',
+                'group_column': 'group',
+                'group_sort_by': 'value',
+                'group_sort_order': 'desc',
+            },
+        ).collect()
+
+        assert result['group'].to_list()[0] == 'y'
+
+    def test_pie_group_sort_by_custom(self):
+        result = compute_chart_data(
+            _chart_frame(),
+            {
+                'chart_type': 'pie',
+                'x_column': 'category',
+                'y_column': 'value',
+                'group_column': 'group',
+                'group_sort_by': 'custom',
+                'group_sort_order': 'desc',
+                'group_sort_column': 'group',
+            },
+        ).collect()
+
+        assert result['group'].to_list()[0] == 'y'
 
 
 class TestChartDataHistogram:
@@ -459,6 +811,26 @@ class TestChartDataBoxplot:
         assert result['group'].to_list() == ['all']
         assert result['min'][0] == 0.0
         assert result['max'][0] == 99.0
+
+
+class TestChartDataHeatgrid:
+    def test_heatgrid_basic(self):
+        result = (
+            compute_chart_data(
+                _chart_frame(),
+                {
+                    'chart_type': 'heatgrid',
+                    'x_column': 'category',
+                    'y_column': 'group',
+                    'aggregation': 'count',
+                },
+            )
+            .collect()
+            .sort(['x', 'y'])
+        )
+
+        assert result.columns == ['x', 'y', 'value']
+        assert result['value'].to_list() == [1, 1, 1, 1, 1]
 
 
 # ---------------------------------------------------------------------------

@@ -16,9 +16,9 @@ just dev             # start both servers
 
 ## Definition of Done
 
-Nothing is complete until `just verify` passes with **zero errors and zero warnings**.
+Nothing in backend is complete until `just verify` passes with **zero errors and zero warnings**.
 
-- Run `just verify` before declaring any task done or asking for review
+- Run `just verify` before declaring any backend task done or asking for review
 - If `just verify` fails, fix the underlying issues immediately — do not ignore or suppress warnings, even if they seem unrelated. They indicate tech debt that must be addressed.
 - Write backend Python tests for new/changed functionality
 - Frontend API calls must match backend schema types exactly
@@ -31,7 +31,7 @@ Nothing is complete until `just verify` passes with **zero errors and zero warni
 1. **Explore** — Read relevant files, understand context
 2. **Plan** — Update `docs/taskfile.md`
 3. **Code** — Implement. Use parallel agents when possible
-4. **Verify** — Run `just verify`. Fix everything. No exceptions
+4. **Verify** — Run `just verify`. Fix all errors and warnings until it passes cleanly after backend changes
 5. **Reviewer** — Use this subagent before completing any task
 6. **Commit** — Well-formed commit. Update `docs/taskfile.md`
 

@@ -224,7 +224,32 @@ const defaultConfigs: Record<string, StepConfig> = {
 		y_column: '',
 		bins: 10,
 		aggregation: 'sum',
-		group_column: null
+		group_column: null,
+		group_sort_by: null,
+		group_sort_order: 'asc',
+		group_sort_column: null,
+		stack_mode: 'grouped',
+		area_opacity: 0.35,
+		date_bucket: null,
+		date_ordinal: null,
+		pan_zoom_enabled: false,
+		selection_enabled: false,
+		area_selection_enabled: false,
+		sort_by: null,
+		sort_order: 'asc',
+		sort_column: null,
+		x_axis_label: '',
+		y_axis_label: '',
+		y_axis_scale: 'linear',
+		y_axis_min: null,
+		y_axis_max: null,
+		display_units: '',
+		decimal_places: 2,
+		legend_position: 'right',
+		title: '',
+		series_colors: [],
+		overlays: [],
+		reference_lines: []
 	} satisfies PlotConfigData,
 
 	notification: {
@@ -340,6 +365,18 @@ export function normalizeConfig(stepType: string, config: Record<string, unknown
 		notif.recipient_column = notif.recipient_column ?? '';
 		if (!Array.isArray(notif.subscriber_ids)) {
 			notif.subscriber_ids = [];
+		}
+	}
+	if (normalizedType === 'chart') {
+		const chart = merged as Record<string, unknown>;
+		chart.x_axis_label = chart.x_axis_label ?? '';
+		chart.y_axis_label = chart.y_axis_label ?? '';
+		chart.title = chart.title ?? '';
+		if (!Array.isArray(chart.overlays)) {
+			chart.overlays = [];
+		}
+		if (!Array.isArray(chart.reference_lines)) {
+			chart.reference_lines = [];
 		}
 	}
 

@@ -162,12 +162,78 @@ export interface UnionByNameConfigData {
 }
 
 export interface PlotConfigData {
-	chart_type: 'bar' | 'histogram' | 'scatter' | 'line' | 'pie' | 'boxplot';
+	chart_type:
+		| 'bar'
+		| 'horizontal_bar'
+		| 'area'
+		| 'heatgrid'
+		| 'histogram'
+		| 'scatter'
+		| 'line'
+		| 'pie'
+		| 'boxplot';
 	x_column: string;
 	y_column: string;
 	bins: number;
-	aggregation: 'sum' | 'mean' | 'count' | 'min' | 'max';
+	aggregation:
+		| 'sum'
+		| 'mean'
+		| 'count'
+		| 'min'
+		| 'max'
+		| 'median'
+		| 'std'
+		| 'variance'
+		| 'unique_count';
 	group_column: string | null;
+	group_sort_by: 'name' | 'value' | 'custom' | null;
+	group_sort_order: 'asc' | 'desc';
+	group_sort_column: string | null;
+	stack_mode: 'grouped' | 'stacked' | '100%';
+	area_opacity: number;
+	date_bucket: 'exact' | 'year' | 'quarter' | 'month' | 'week' | 'day' | 'hour' | null;
+	date_ordinal: 'day_of_week' | 'month_of_year' | 'quarter_of_year' | null;
+	pan_zoom_enabled: boolean;
+	selection_enabled: boolean;
+	area_selection_enabled: boolean;
+	sort_by: 'x' | 'y' | 'custom' | null;
+	sort_order: 'asc' | 'desc';
+	sort_column: string | null;
+	x_axis_label: string | null;
+	y_axis_label: string | null;
+	y_axis_scale: 'linear' | 'log';
+	y_axis_min: number | null;
+	y_axis_max: number | null;
+	display_units: '' | 'K' | 'M' | 'B' | '%';
+	decimal_places: number;
+	legend_position: 'top' | 'bottom' | 'left' | 'right' | 'none';
+	title: string | null;
+	series_colors: string[];
+	overlays: OverlayConfig[];
+	reference_lines: ReferenceLineConfig[];
+}
+
+export interface OverlayConfig {
+	chart_type: 'line' | 'area' | 'bar' | 'scatter';
+	y_column: string;
+	aggregation:
+		| 'sum'
+		| 'mean'
+		| 'count'
+		| 'min'
+		| 'max'
+		| 'median'
+		| 'std'
+		| 'variance'
+		| 'unique_count';
+	y_axis_position: 'left' | 'right';
+}
+
+export interface ReferenceLineConfig {
+	axis: 'x' | 'y';
+	value: number | null;
+	label: string;
+	color: string;
 }
 
 export interface NotificationConfigData {

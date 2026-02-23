@@ -280,7 +280,22 @@
 		hasChanges = true;
 	}
 
+	function isExcelConfigEqual(a: typeof excelConfig, b: typeof excelConfig): boolean {
+		return (
+			a.sheet_name === b.sheet_name &&
+			a.table_name === b.table_name &&
+			a.named_range === b.named_range &&
+			a.cell_range === b.cell_range &&
+			a.start_row === b.start_row &&
+			a.start_col === b.start_col &&
+			a.end_col === b.end_col &&
+			a.end_row === b.end_row &&
+			a.has_header === b.has_header
+		);
+	}
+
 	function handleExcelConfigUpdate(value: typeof excelConfig) {
+		if (isExcelConfigEqual(value, excelConfig)) return;
 		excelConfig = value;
 		hasChanges = true;
 	}

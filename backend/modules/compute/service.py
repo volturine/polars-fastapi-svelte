@@ -317,6 +317,9 @@ def _build_preview_result_metadata(
     if query_plans:
         result['query_plans'] = query_plans
 
+    if data.get('metadata'):
+        result['metadata'] = data.get('metadata')
+
     return result
 
 
@@ -568,6 +571,7 @@ def preview_step(
 
     run_analysis_id = analysis_id_value
 
+    branch = config.get('branch', 'master')
     request_payload = request_json or {
         'analysis_id': run_analysis_id,
         'datasource_id': datasource_id,
@@ -578,6 +582,7 @@ def preview_step(
         'resource_config': resource_config,
         'analysis_pipeline': analysis_pipeline,
         'tab_id': tab_id,
+        'iceberg_options': {'branch': branch},
     }
 
     pipeline_steps = apply_pipeline_steps(pipeline_steps)
@@ -657,6 +662,7 @@ def preview_step(
             total_rows=data.get('row_count', 0),
             page=page,
             page_size=len(data.get('data', [])),
+            metadata=data.get('metadata'),
         )
     except Exception as exc:
         completed_at = datetime.now(UTC)
@@ -1038,7 +1044,7 @@ def export_data(
             )
             hc_results: list[HealthCheckResult] = []
             hc_checks: list[HealthCheck] = []
-            hc_datasource_id = datasource_id
+            hc_datasource_id: str = str(datasource_id)
             if destination == 'datasource' and output_datasource_id:
                 hc_datasource_id = str(output_datasource_id)
             if destination != 'download':
@@ -1165,12 +1171,14 @@ def export_data(
             if destination == 'datasource':
                 if datasource_type != 'iceberg':
                     raise ValueError('Output exports must use Iceberg datasources')
-                iceberg_opts = iceberg_options or {}
+                if not iceberg_options or not isinstance(iceberg_options.get('branch'), str):
+                    raise ValueError('Iceberg exports require iceberg_options with an explicit branch')
+                iceberg_opts = iceberg_options
                 namespace = iceberg_opts.get('namespace', 'outputs')
-                branch_name = iceberg_opts.get('branch') or 'master'
+                branch_name = iceberg_opts['branch']
                 if not output_datasource_id:
                     raise ValueError('Output datasource id is required for Iceberg exports')
-                safe_branch = re.sub(r'[^a-zA-Z0-9_]+', '_', str(branch_name)).strip('_') or 'master'
+                safe_branch = re.sub(r'[^a-zA-Z0-9_]+', '_', branch_name).strip('_')
                 table_name = f'{output_datasource_id}_{safe_branch}'
                 export_base = namespace_paths().exports_dir / str(output_datasource_id)
                 table_path = export_base / branch_name
@@ -1381,7 +1389,7 @@ def run_analysis_build_from_payload(session: Session, pipeline: dict | None) -> 
                     iceberg_options = {
                         'table_name': iceberg_cfg.get('table_name', 'exported_data'),
                         'namespace': iceberg_cfg.get('namespace', 'outputs'),
-                        'branch': iceberg_cfg.get('branch'),
+                        'branch': iceberg_cfg.get('branch', 'master'),
                     }
 
                 tab_build_mode = output_config.get('build_mode', 'full') if isinstance(output_config, dict) else 'full'

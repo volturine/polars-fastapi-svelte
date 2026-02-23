@@ -321,11 +321,42 @@ def convert_plot_config(config: dict) -> dict:
         'bins': config.get('bins', 10),
         'aggregation': config.get('aggregation', 'sum'),
         'group_column': config.get('group_column') or config.get('groupColumn'),
+        'group_sort_by': config.get('group_sort_by'),
+        'group_sort_order': config.get('group_sort_order', 'asc'),
+        'group_sort_column': config.get('group_sort_column'),
+        'stack_mode': config.get('stack_mode', 'grouped'),
+        'area_opacity': config.get('area_opacity', 0.35),
+        'date_bucket': config.get('date_bucket'),
+        'date_ordinal': config.get('date_ordinal'),
+        'sort_by': config.get('sort_by'),
+        'sort_order': config.get('sort_order', 'asc'),
+        'sort_column': config.get('sort_column'),
+        'x_axis_label': config.get('x_axis_label'),
+        'y_axis_label': config.get('y_axis_label'),
+        'y_axis_scale': config.get('y_axis_scale', 'linear'),
+        'y_axis_min': config.get('y_axis_min'),
+        'y_axis_max': config.get('y_axis_max'),
+        'display_units': config.get('display_units', ''),
+        'decimal_places': config.get('decimal_places', 2),
+        'legend_position': config.get('legend_position', 'right'),
+        'title': config.get('title'),
+        'series_colors': config.get('series_colors', []),
+        'overlays': config.get('overlays', []),
+        'reference_lines': config.get('reference_lines', []),
+        'pan_zoom_enabled': config.get('pan_zoom_enabled', False),
+        'selection_enabled': config.get('selection_enabled', False),
+        'area_selection_enabled': config.get('area_selection_enabled', False),
     }
 
 
 def _normalize_chart_type(step_type: str) -> str:
     if step_type == 'plot_bar':
+        return 'chart'
+    if step_type == 'plot_horizontal_bar':
+        return 'chart'
+    if step_type == 'plot_area':
+        return 'chart'
+    if step_type == 'plot_heatgrid':
         return 'chart'
     if step_type == 'plot_histogram':
         return 'chart'
@@ -343,6 +374,9 @@ def _normalize_chart_type(step_type: str) -> str:
 def _normalize_chart_config(step_type: str, config: dict) -> dict:
     chart_map = {
         'plot_bar': 'bar',
+        'plot_horizontal_bar': 'horizontal_bar',
+        'plot_area': 'area',
+        'plot_heatgrid': 'heatgrid',
         'plot_histogram': 'histogram',
         'plot_scatter': 'scatter',
         'plot_line': 'line',

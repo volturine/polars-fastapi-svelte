@@ -30,6 +30,7 @@ export interface StepPreviewResponse {
 	total_rows: number;
 	page: number;
 	page_size: number;
+	metadata?: Record<string, unknown>;
 }
 
 export function previewStepData(
@@ -100,6 +101,7 @@ export interface ExportRequest {
 	iceberg_options?: {
 		table_name?: string;
 		namespace?: string;
+		branch: string;
 	};
 	duckdb_options?: {
 		table_name?: string;

@@ -374,12 +374,16 @@
 						data={chartQuery.data.data}
 						chartType={(step.config.chart_type as
 							| 'bar'
+							| 'horizontal_bar'
+							| 'area'
+							| 'heatgrid'
 							| 'line'
 							| 'pie'
 							| 'histogram'
 							| 'scatter'
 							| 'boxplot') ?? 'bar'}
 						config={step.config}
+						metadata={chartQuery.data.metadata}
 					/>
 				{/if}
 			</div>

@@ -528,6 +528,7 @@ def _connect_database(datasource: schemas.DataSourceCreate, session: Session) ->
         name=datasource.name,
         connection_string=db_config.connection_string,
         query=db_config.query,
+        branch=db_config.branch,
     )
 
 

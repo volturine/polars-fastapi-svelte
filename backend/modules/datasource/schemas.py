@@ -171,12 +171,12 @@ class FileDataSourceConfig(BaseModel):
 class DatabaseDataSourceConfig(BaseModel):
     connection_string: str
     query: str
-    branch: str | None = None
+    branch: str = 'master'
 
 
 class IcebergDataSourceConfig(BaseModel):
     metadata_path: str
-    branch: str | None = None
+    branch: str = 'master'
     snapshot_id: str | None = None
     snapshot_timestamp_ms: int | None = None
     storage_options: dict | None = None

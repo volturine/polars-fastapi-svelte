@@ -10,9 +10,9 @@
 - [x] OutputNode layout update: compact header + row2 table/branch/build
 - [x] Remove sqlite+libsql usage from namespace DB init + docs/env defaults + docker-compose
 - [x] Fix derived tab schema propagation before save (schemaKey checks datasource_config first)
-- [ ] Fix branch export metadata lookup (branch-specific tables + filter empty branches)
-- [ ] Move namespace storage under DATA_DIR/namespaces/ and harden test isolation
-- [ ] Fix datasource upload/ingest + branch UI regressions (CSV delimiter, Excel preflight, branch defaults, build logs, hidden toggle)
+- [x] Fix branch export metadata lookup (branch-specific tables + filter empty branches)
+- [x] Move namespace storage under DATA_DIR/namespaces/ and harden test isolation
+- [x] Fix datasource upload/ingest + branch UI regressions (CSV delimiter, Excel preflight, branch defaults, build logs, hidden toggle)
   - [x] Upload UI: upload-only file tab with CSV options and Excel preflight fixes
   - [x] Enforce single file type per bulk upload (frontend + backend)
   - [x] Iceberg add: root path only, remove branch input (frontend + backend)
@@ -54,13 +54,19 @@
   - [x] Research Palantir Contour chart capabilities (see docs/chart-enrichment-plan.md)
   - [x] Analyze current implementation gaps
   - [x] Create comprehensive enrichment plan with 7 tiers
-  - [ ] Tier 1: Configuration Foundation (sorting, axis formatting, legend control, title)
-  - [ ] Tier 2: Chart Type Extensions (horizontal bar, stacked bar, area, heat grid)
-  - [ ] Tier 3: Advanced Segmentation (group_column for all types, series colors)
-  - [ ] Tier 4: Date/Time Intelligence (date bucketing, time series)
-  - [ ] Tier 5: Interactivity & Selection (pan/zoom, click selection, area selection)
-  - [ ] Tier 6: Overlays & Dual Axis (multi-layer, reference lines)
-  - [ ] Tier 7: Polish & Export (PNG/CSV export, accessibility)
+  - [x] Tier 1: Configuration Foundation (sorting, axis formatting, legend control, title)
+  - [x] Tier 1 follow-up: wire ChartPreview config + std/variance tests
+- [x] Tier 2: Chart Type Extensions (horizontal bar, stacked bar, area, heat grid)
+  - [x] Tier 2 follow-up: add area opacity config
+  - [x] Tier 3: Advanced Segmentation (group_column for all types, series colors)
+    - [x] Group sorting (name/value/custom)
+    - [x] Series colors wiring
+  - [x] Tier 4: Date/Time Intelligence (date bucketing, time series)
+  - [x] Tier 5: Interactivity & Selection (pan/zoom, click selection, area selection)
+    - [x] Add reset zoom control
+    - [x] Persist zoom on redraw
+- [x] Tier 6: Overlays & Dual Axis (multi-layer, reference lines)
+- [x] Tier 7: Polish & Export (PNG/CSV export, accessibility) (recheck: reference lines + export)
 
 ### Critical
 

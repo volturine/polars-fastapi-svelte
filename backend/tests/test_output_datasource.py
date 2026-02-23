@@ -381,7 +381,7 @@ class TestRunAnalysisBuildOutputDatasource:
                 filename='test_out',
                 destination='datasource',
                 datasource_type='iceberg',
-                iceberg_options={'namespace': 'ns', 'table_name': 'tbl'},
+                iceberg_options={'namespace': 'ns', 'table_name': 'tbl', 'branch': 'master'},
                 output_datasource_id=output_ds_id,
             )
 

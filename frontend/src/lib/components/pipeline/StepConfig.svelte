@@ -359,10 +359,7 @@
 					bind:config={draftConfig as unknown as { sources: string[]; allow_missing: boolean }}
 				/>
 			{:else if step.type === 'chart'}
-				<PlotConfig
-					schema={inputSchema}
-					bind:config={draftConfig as unknown as Record<string, unknown>}
-				/>
+				<PlotConfig schema={inputSchema} bind:config={draftConfig} />
 			{:else if step.type === 'notification'}
 				<NotificationConfig
 					schema={inputSchema}

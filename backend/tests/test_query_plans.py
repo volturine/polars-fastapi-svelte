@@ -46,3 +46,47 @@ def test_query_plan_merges_eager_segments(test_db_session, tmp_path):
     assert '-- EAGER STEP (notification) / MATERIALIZE --' not in plans['optimized']
     assert 'query plan includes lazy segments only' not in plans['optimized'].lower()
     assert result['query_plan']
+
+
+def test_chart_preview_metadata_includes_overlays_and_reference_lines(test_db_session, tmp_path):
+    csv_path = tmp_path / 'chart.csv'
+    csv_path.write_text('category,value,value2\nA,1,10\nB,2,20\n')
+    datasource_config = {'source_type': 'file', 'file_path': str(csv_path), 'file_type': 'csv', 'options': {}}
+    steps = [
+        {
+            'id': 's1',
+            'type': 'chart',
+            'config': {
+                'chart_type': 'bar',
+                'x_column': 'category',
+                'y_column': 'value',
+                'aggregation': 'sum',
+                'overlays': [
+                    {
+                        'chart_type': 'line',
+                        'y_column': 'value2',
+                        'aggregation': 'sum',
+                        'y_axis_position': 'right',
+                    }
+                ],
+                'reference_lines': [{'axis': 'y', 'value': 5.0, 'label': 'target', 'color': '#ff0000'}],
+            },
+            'depends_on': [],
+        }
+    ]
+
+    result = PolarsComputeEngine._execute_preview(
+        datasource_config=datasource_config,
+        pipeline_steps=steps,
+        row_limit=10,
+        offset=0,
+        job_id='job-chart',
+        additional_datasources=None,
+    )
+
+    metadata = result.get('metadata')
+    assert isinstance(metadata, dict)
+    assert isinstance(metadata.get('overlays'), list)
+    assert isinstance(metadata.get('reference_lines'), list)
+    assert metadata['overlays'][0]['y_column'] == 'value2'
+    assert metadata['reference_lines'][0]['label'] == 'target'

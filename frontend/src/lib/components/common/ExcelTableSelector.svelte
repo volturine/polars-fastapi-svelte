@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { preflightExcel, preflightExcelFromPath, previewExcel } from '$lib/api/excel';
 	import DataTable from '$lib/components/viewers/DataTable.svelte';
 
@@ -48,16 +48,14 @@
 	let startCol = $state(0);
 	let endCol = $state(0);
 	let endRow = $state<number | null>(null);
-	let endRowInput = $state('');
-	let startRowInput = $state('');
-	let startColInput = $state('');
-	let endColInput = $state('');
 	let endRowManual = $state(false);
 	let detectedEndRow = $state<number | null>(null);
 	let excelHeader = $state(true);
 	let previewLoading = $state(false);
 	let error = $state<string | null>(null);
 	let dirty = $state(false);
+	let initialized = $state(false);
+	let suppressNotification = $state(false);
 
 	let previewTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -76,13 +74,17 @@
 	const previewColumns = $derived.by(() => {
 		if (previewGrid.length === 0) return [] as string[];
 		const cols = previewGrid[0]?.length ?? 0;
+		if (excelHeader && previewGrid[0]) {
+			return previewGrid[0].map((val, index) => (val ? String(val) : cellLabel(startCol + index)));
+		}
 		return Array.from({ length: cols }, (_, index) => cellLabel(startCol + index));
 	});
 
 	const previewData = $derived.by(() => {
 		if (previewGrid.length === 0) return [] as Record<string, unknown>[];
 		const columns = previewColumns;
-		return previewGrid.map((row) => {
+		const dataRows = excelHeader ? previewGrid.slice(1) : previewGrid;
+		return dataRows.map((row) => {
 			const record: Record<string, unknown> = {};
 			columns.forEach((col, index) => {
 				record[col] = row[index] ?? null;
@@ -92,8 +94,13 @@
 	});
 
 	// $effect required to notify parent callback; $derived can't emit side effects.
+	// Suppress notification during initial sync to avoid spurious hasChanges.
 	$effect(() => {
-		if (!onConfigChange) return;
+		if (!onConfigChange || !initialized) return;
+		if (suppressNotification) {
+			suppressNotification = false;
+			return;
+		}
 		onConfigChange(config);
 	});
 
@@ -102,8 +109,13 @@
 		const next = initialConfig;
 		if (!next) return;
 		const normalized = normalizeConfig(next);
-		if (isConfigEqual(normalized, config)) return;
+		if (isConfigEqual(normalized, config)) {
+			if (!initialized) initialized = true;
+			return;
+		}
+		suppressNotification = true;
 		applyConfig(normalized);
+		initialized = true;
 	});
 
 	function resetPreviewState() {
@@ -115,6 +127,8 @@
 		detectedEndRow = null;
 		error = null;
 		dirty = false;
+		initialized = false;
+		suppressNotification = false;
 	}
 
 	function normalizeConfig(value: Partial<ExcelConfig>): ExcelConfig {
@@ -155,13 +169,8 @@
 		startCol = next.start_col;
 		endCol = next.end_col;
 		endRow = next.end_row;
-		endRowInput =
-			next.end_row !== null && next.end_row !== undefined ? String(next.end_row + 1) : '';
 		endRowManual = next.end_row !== null && next.end_row !== undefined;
 		excelHeader = next.has_header;
-		startRowInput = String(next.start_row + 1);
-		startColInput = cellLabel(next.start_col);
-		endColInput = cellLabel(next.end_col);
 	}
 
 	async function runPreflight(): Promise<void> {
@@ -204,12 +213,9 @@
 				detectedEndRow = data.detected_end_row;
 				if (!endRowManual) {
 					endRow = data.detected_end_row;
-					endRowInput = data.detected_end_row !== null ? String(data.detected_end_row + 1) : '';
 				}
-				startRowInput = String(data.start_row + 1);
-				startColInput = cellLabel(data.start_col);
-				endColInput = cellLabel(data.end_col);
 				dirty = false;
+				initialized = true;
 				previewLoading = false;
 			},
 			(err) => {
@@ -256,11 +262,7 @@
 				detectedEndRow = data.detected_end_row;
 				if (!endRowManual) {
 					endRow = data.detected_end_row;
-					endRowInput = data.detected_end_row !== null ? String(data.detected_end_row + 1) : '';
 				}
-				startRowInput = String(data.start_row + 1);
-				startColInput = cellLabel(data.start_col);
-				endColInput = cellLabel(data.end_col);
 				dirty = false;
 				previewLoading = false;
 			},
@@ -295,11 +297,7 @@
 		cellRange = '';
 		cellRangeInput = '';
 		endRow = null;
-		endRowInput = '';
 		endRowManual = false;
-		startRowInput = '1';
-		startColInput = cellLabel(0);
-		endColInput = cellLabel(0);
 		schedulePreview();
 		dirty = false;
 	}
@@ -313,11 +311,7 @@
 		startCol = 0;
 		endCol = 0;
 		endRow = null;
-		endRowInput = '';
 		endRowManual = false;
-		startRowInput = '1';
-		startColInput = cellLabel(0);
-		endColInput = cellLabel(0);
 		schedulePreview();
 		dirty = false;
 	}
@@ -331,11 +325,7 @@
 		startCol = 0;
 		endCol = 0;
 		endRow = null;
-		endRowInput = '';
 		endRowManual = false;
-		startRowInput = '1';
-		startColInput = cellLabel(0);
-		endColInput = cellLabel(0);
 		schedulePreview();
 		dirty = false;
 	}
@@ -349,11 +339,7 @@
 		startCol = 0;
 		endCol = 0;
 		endRow = null;
-		endRowInput = '';
 		endRowManual = false;
-		startRowInput = '1';
-		startColInput = cellLabel(0);
-		endColInput = cellLabel(0);
 		markDirty();
 	}
 
@@ -364,7 +350,6 @@
 		selectedRange = '';
 		endRowManual = false;
 		endRow = null;
-		endRowInput = '';
 		markDirty();
 	}
 
@@ -384,98 +369,7 @@
 		applyCellRange(trimmed);
 	}
 
-	function handleEndRowInput(event: Event) {
-		const target = event.currentTarget as HTMLInputElement;
-		endRowInput = target.value;
-	}
-
 	function handleHeaderToggle() {
-		markDirty();
-	}
-
-	function handleStartRowInput(event: Event) {
-		const target = event.currentTarget as HTMLInputElement;
-		startRowInput = target.value;
-	}
-
-	function handleStartRowBlur() {
-		const trimmed = startRowInput.trim();
-		if (!trimmed) {
-			startRowInput = String(startRow + 1);
-			return;
-		}
-		const parsed = Number.parseInt(trimmed, 10);
-		if (Number.isNaN(parsed) || parsed <= 0) {
-			startRowInput = String(startRow + 1);
-			return;
-		}
-		startRow = parsed - 1;
-		selectedTable = '';
-		selectedRange = '';
-		cellRange = '';
-		cellRangeInput = '';
-		markDirty();
-	}
-
-	function handleStartColInput(event: Event) {
-		const target = event.currentTarget as HTMLInputElement;
-		startColInput = target.value;
-	}
-
-	function handleStartColBlur() {
-		const parsed = parseColumnLabel(startColInput);
-		if (parsed === null) {
-			startColInput = cellLabel(startCol);
-			return;
-		}
-		startCol = parsed;
-		selectedTable = '';
-		selectedRange = '';
-		cellRange = '';
-		cellRangeInput = '';
-		markDirty();
-	}
-
-	function handleEndColInput(event: Event) {
-		const target = event.currentTarget as HTMLInputElement;
-		endColInput = target.value;
-	}
-
-	function handleEndColBlur() {
-		const parsed = parseColumnLabel(endColInput);
-		if (parsed === null) {
-			endColInput = cellLabel(endCol);
-			return;
-		}
-		endCol = parsed;
-		selectedTable = '';
-		selectedRange = '';
-		cellRange = '';
-		cellRangeInput = '';
-		markDirty();
-	}
-
-	function handleEndRowBlur() {
-		const trimmed = endRowInput.trim();
-		if (!trimmed) {
-			endRow = null;
-			endRowManual = false;
-			cellRange = '';
-			cellRangeInput = '';
-			markDirty();
-			return;
-		}
-		const parsed = Number.parseInt(trimmed, 10);
-		if (Number.isNaN(parsed) || parsed <= 0) {
-			endRowInput = endRow !== null ? String(endRow + 1) : '';
-			return;
-		}
-		endRow = parsed - 1;
-		endRowManual = true;
-		selectedTable = '';
-		selectedRange = '';
-		cellRange = '';
-		cellRangeInput = '';
 		markDirty();
 	}
 
@@ -490,39 +384,33 @@
 		return label;
 	}
 
-	function parseColumnLabel(value: string): number | null {
-		const trimmed = value.trim().toUpperCase();
-		if (!trimmed) return null;
-		if (!/^[A-Z]+$/.test(trimmed)) return null;
-		let index = 0;
-		for (const char of trimmed) {
-			index = index * 26 + (char.charCodeAt(0) - 64);
-		}
-		return index - 1;
-	}
-
 	onDestroy(() => {
 		if (!previewTimer) return;
 		clearTimeout(previewTimer);
 		previewTimer = null;
 	});
 
+	// $effect runs preflight only when file/path changes; untrack prevents re-runs on config changes.
 	$effect(() => {
 		if (mode === 'upload') {
 			if (!file) {
 				resetPreviewState();
 				return;
 			}
-			resetPreviewState();
-			void runPreflight();
+			untrack(() => {
+				resetPreviewState();
+				void runPreflight();
+			});
 			return;
 		}
 		if (!filePath) {
 			resetPreviewState();
 			return;
 		}
-		resetPreviewState();
-		void runPreflight();
+		untrack(() => {
+			resetPreviewState();
+			void runPreflight();
+		});
 	});
 </script>
 
@@ -532,14 +420,12 @@
 		<button
 			type="button"
 			class="btn-secondary"
+			class:unsaved={dirty}
 			onclick={handleRefreshClick}
 			disabled={disabled || previewLoading}
 		>
 			{previewLoading ? 'Loading preview...' : 'Refresh preview'}
 		</button>
-		{#if dirty}
-			<span class="text-xs text-fg-tertiary">Pending changes</span>
-		{/if}
 	</div>
 
 	{#if error}
@@ -614,88 +500,18 @@
 		</div>
 	</div>
 
-	<div class="flex flex-wrap items-center gap-4">
-		<div class="flex items-center gap-2">
-			<input
-				id="excel-header"
-				type="checkbox"
-				bind:checked={excelHeader}
-				onchange={handleHeaderToggle}
-				disabled={disabled || previewLoading}
-				class="h-4 w-4 cursor-pointer"
-			/>
-			<label for="excel-header" class="m-0 text-sm font-medium text-fg-secondary"
-				>First row is header</label
-			>
-		</div>
-		<div class="flex flex-wrap items-center gap-2">
-			<label for="excel-start-row" class="m-0 text-sm font-medium text-fg-secondary"
-				>Start row</label
-			>
-			<input
-				id="excel-start-row"
-				type="text"
-				value={startRowInput}
-				oninput={handleStartRowInput}
-				onblur={handleStartRowBlur}
-				onkeydown={(event) => {
-					if (event.key !== 'Enter') return;
-					handleStartRowBlur();
-				}}
-				disabled={disabled || previewLoading}
-				placeholder="1"
-				class="w-20 border px-3 py-2 text-sm input-base"
-			/>
-			<label for="excel-start-col" class="m-0 text-sm font-medium text-fg-secondary"
-				>Start col</label
-			>
-			<input
-				id="excel-start-col"
-				type="text"
-				value={startColInput}
-				oninput={handleStartColInput}
-				onblur={handleStartColBlur}
-				onkeydown={(event) => {
-					if (event.key !== 'Enter') return;
-					handleStartColBlur();
-				}}
-				disabled={disabled || previewLoading}
-				placeholder="A"
-				class="w-20 border px-3 py-2 text-sm input-base"
-			/>
-			<label for="excel-end-col" class="m-0 text-sm font-medium text-fg-secondary">End col</label>
-			<input
-				id="excel-end-col"
-				type="text"
-				value={endColInput}
-				oninput={handleEndColInput}
-				onblur={handleEndColBlur}
-				onkeydown={(event) => {
-					if (event.key !== 'Enter') return;
-					handleEndColBlur();
-				}}
-				disabled={disabled || previewLoading}
-				placeholder="D"
-				class="w-20 border px-3 py-2 text-sm input-base"
-			/>
-		</div>
-		<div class="flex items-center gap-2">
-			<label for="excel-end-row" class="m-0 text-sm font-medium text-fg-secondary">End row</label>
-			<input
-				id="excel-end-row"
-				type="text"
-				value={endRowInput}
-				oninput={handleEndRowInput}
-				onblur={handleEndRowBlur}
-				onkeydown={(event) => {
-					if (event.key !== 'Enter') return;
-					handleEndRowBlur();
-				}}
-				disabled={disabled || previewLoading}
-				placeholder={detectedEndRow !== null ? String(detectedEndRow + 1) : 'Auto'}
-				class="border px-3 py-2 text-sm input-base"
-			/>
-		</div>
+	<div class="flex items-center gap-2">
+		<input
+			id="excel-header"
+			type="checkbox"
+			bind:checked={excelHeader}
+			onchange={handleHeaderToggle}
+			disabled={disabled || previewLoading}
+			class="h-4 w-4 cursor-pointer"
+		/>
+		<label for="excel-header" class="m-0 text-sm font-medium text-fg-secondary"
+			>First row is header</label
+		>
 	</div>
 
 	{#if preflightId}

@@ -1988,6 +1988,12 @@ body.touch-dragging .pipeline-canvas {
 	border-left: 1px solid var(--warning-border);
 }
 
+button.unsaved {
+	background-color: var(--warning-bg);
+	color: var(--warning-fg);
+	border-color: var(--warning-border);
+}
+
 .analysis-page .tab.active {
 	color: var(--fg-primary);
 	background-color: var(--bg-secondary);

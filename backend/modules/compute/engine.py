@@ -15,7 +15,7 @@ from core.exceptions import PipelineValidationError
 from modules.compute.core.exports import get_export_format
 from modules.compute.operations import get_operation_handlers
 from modules.compute.operations.datasource import load_datasource
-from modules.compute.operations.plot import compute_chart_data
+from modules.compute.operations.plot import ChartParams, compute_chart_data, compute_overlay_datasets
 from modules.compute.step_converter import convert_config_to_params, convert_step_format
 from modules.compute.utils import apply_pipeline_steps, normalize_timezones
 
@@ -615,21 +615,6 @@ class PolarsComputeEngine:
         if last_frame is None:
             raise ValueError(f'Missing frame for step {last_id}')
 
-        last_type = last_step.get('type', '')
-        if last_type == 'chart' or str(last_type).startswith('plot_'):
-            chart_config = last_step.get('config', {})
-            if str(last_type).startswith('plot_'):
-                chart_sub = str(last_type).replace('plot_', '')
-                chart_config = {**chart_config, 'chart_type': chart_sub}
-            try:
-                backend_params = convert_config_to_params(
-                    'chart',
-                    chart_config,
-                )
-            except ValueError:
-                backend_params = chart_config
-            last_frame = compute_chart_data(last_frame, backend_params)
-
         plan_frames.append(last_frame)
 
         return last_frame, step_timings, plan_frames
@@ -690,15 +675,48 @@ class PolarsComputeEngine:
         query_plans = PolarsComputeEngine._merge_query_plans(plan_segments)
         query_plan = query_plans.get('optimized') if query_plans else None
 
+        preview_lf = lf
+        metadata: dict | None = None
+        if pipeline_steps:
+            last_step = pipeline_steps[-1]
+            last_type = str(last_step.get('type', ''))
+            if last_type == 'chart' or last_type.startswith('plot_'):
+                chart_config = last_step.get('config', {})
+                if last_type.startswith('plot_'):
+                    chart_sub = last_type.replace('plot_', '')
+                    chart_config = {**chart_config, 'chart_type': chart_sub}
+                try:
+                    chart_params = convert_config_to_params('chart', chart_config)
+                except ValueError:
+                    chart_params = chart_config
+                chart_model = ChartParams.model_validate(chart_params)
+                preview_lf = compute_chart_data(lf, chart_params)
+                metadata = {
+                    'y_axis_scale': chart_model.y_axis_scale,
+                    'y_axis_min': chart_model.y_axis_min,
+                    'y_axis_max': chart_model.y_axis_max,
+                    'display_units': chart_model.display_units,
+                    'decimal_places': chart_model.decimal_places,
+                    'legend_position': chart_model.legend_position,
+                    'title': chart_model.title,
+                    'overlays': compute_overlay_datasets(
+                        lf,
+                        chart_model,
+                        row_limit=row_limit,
+                        offset=offset,
+                    ),
+                    'reference_lines': [line.model_dump() for line in chart_model.reference_lines],
+                }
+
         # Get schema from lazy frame (no collection needed)
-        schema_obj = lf.collect_schema()
+        schema_obj = preview_lf.collect_schema()
         schema = {col: str(dtype) for col, dtype in schema_obj.items()}
-        lf = normalize_timezones(lf, schema_obj)
+        preview_lf = normalize_timezones(preview_lf, schema_obj)
 
         # Collect only the rows we need for preview
-        preview_df = lf.slice(offset, row_limit).collect()
+        preview_df = preview_lf.slice(offset, row_limit).collect()
 
-        return {
+        result: dict = {
             'schema': schema,
             'row_count': preview_df.height,  # Rows in this preview page
             'data': preview_df.to_dicts(),
@@ -706,6 +724,11 @@ class PolarsComputeEngine:
             'query_plans': query_plans,
             'step_timings': step_timings,
         }
+
+        if metadata:
+            result['metadata'] = metadata
+
+        return result
 
     @staticmethod
     def _execute_export(

@@ -130,6 +130,7 @@ class StepPreviewResponse(BaseModel):
     total_rows: int
     page: int
     page_size: int
+    metadata: dict | None = None
 
 
 StepPreviewRequest.model_rebuild()
@@ -160,7 +161,7 @@ class IcebergExportOptions(BaseModel):
 
     table_name: str = 'exported_data'
     namespace: str = 'outputs'
-    branch: str | None = None
+    branch: str = 'master'
 
 
 class DuckDBExportOptions(BaseModel):

@@ -27,7 +27,7 @@ just dev             # start both servers
 1. **Explore** — Read relevant files, understand context
 2. **Plan** — Update `docs/taskfile.md`
 3. **Code** — Implement. Use parallel agents when possible
-4. **Verify** — Run `just verify`
+4. **Verify** — Run `just verify` mandatorily before declaring any task done
 5. **Reviewer** — Ask for review and address feedback
 6. **Finish** — Update `docs/taskfile.md`
 7. **Reflect** — Update `AGENTS.md` if you did anything wrong on first pass either prompted by user feedback or your own reflection
@@ -47,6 +47,10 @@ just dev             # start both servers
 - **Fix warnings, not just errors.** Treat warnings as bugs
 - **Autonomous completion.** Continue until every requirement is implemented, tested, and verified
 - **No legacy support.** New features/redesigns must not preserve legacy paths or backward compatibility
+
+## Learnings
+
+- When adding new API endpoints mirroring existing behavior (e.g., download vs preview), compare response payload shapes end-to-end. Don’t assume fields like `columns` exist; follow the engine response (`data.schema` + `data.data`) to avoid false “no data” errors.
 
 ### Transitions
 

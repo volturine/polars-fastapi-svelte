@@ -127,7 +127,8 @@
 		Trash2,
 		BarChart4,
 		Bell,
-		Sparkles
+		Sparkles,
+		Download
 	} from 'lucide-svelte';
 
 	const stepTypes: StepType[] = [
@@ -211,6 +212,12 @@
 			label: 'Union By Name',
 			icon: LayoutGrid,
 			description: 'Union rows from multiple datasources'
+		},
+		{
+			type: 'download',
+			label: 'Download',
+			icon: Download,
+			description: 'Download data in various formats'
 		}
 	];
 

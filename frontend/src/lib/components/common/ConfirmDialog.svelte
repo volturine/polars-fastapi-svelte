@@ -41,7 +41,7 @@
 	panelClass="w-full max-w-100 animate-slide-up overflow-hidden border max-sm:max-w-full bg-dialog border-tertiary focus:outline-none"
 	ariaLabelledby="dialog-title"
 	ariaDescribedby="dialog-message"
-	content={content}
+	{content}
 />
 
 {#snippet content()}

@@ -143,6 +143,29 @@ export function exportData(request: ExportRequest): ResultAsync<Blob | ExportRes
 	});
 }
 
+export interface DownloadRequest {
+	analysis_id?: string;
+	target_step_id: string;
+	analysis_pipeline: AnalysisPipelinePayload;
+	tab_id?: string | null;
+	format?: 'csv' | 'parquet' | 'json' | 'ndjson' | 'excel' | 'duckdb';
+	filename?: string;
+	datasource_config?: Record<string, unknown> | null;
+}
+
+export function downloadStep(request: DownloadRequest): ResultAsync<Blob, ApiError> {
+	return apiBlobRequest('/v1/compute/download', {
+		method: 'POST',
+		body: JSON.stringify(request)
+	}).andThen((blob) => {
+		const filename = request.filename ?? 'download';
+		const format = request.format ?? 'csv';
+		const ext = format.startsWith('.') ? format : `.${format}`;
+		downloadBlob(blob, `${filename}${ext}`);
+		return okAsync(blob);
+	});
+}
+
 export function downloadBlob(blob: Blob, filename: string): void {
 	const url = URL.createObjectURL(blob);
 	const link = document.createElement('a');

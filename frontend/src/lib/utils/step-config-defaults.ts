@@ -90,6 +90,11 @@ export interface ExportConfigData {
 	destination: string;
 }
 
+export interface DownloadConfigData {
+	format: string;
+	filename: string;
+}
+
 export type ChartConfigData = PlotConfigData;
 
 export interface NotificationConfigData {
@@ -135,6 +140,7 @@ export type StepConfig =
 	| TopKConfigData
 	| ViewConfigData
 	| ExportConfigData
+	| DownloadConfigData
 	| PlotConfigData
 	| NotificationConfigData
 	| AIConfigData
@@ -217,6 +223,11 @@ const defaultConfigs: Record<string, StepConfig> = {
 		filename: 'export',
 		destination: 'download'
 	} satisfies ExportConfigData,
+
+	download: {
+		format: 'csv',
+		filename: 'download'
+	} satisfies DownloadConfigData,
 
 	chart: {
 		chart_type: 'bar',

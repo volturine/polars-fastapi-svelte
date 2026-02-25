@@ -23,12 +23,12 @@
 
 <BaseModal
 	open={show}
-	onClose={onClose}
+	{onClose}
 	closeOnEscape={true}
 	closeOnBackdrop={true}
 	panelClass="w-full max-w-120 max-h-[90vh] overflow-y-auto border bg-dialog border-tertiary"
 	ariaLabelledby="udf-modal-title"
-	content={content}
+	{content}
 />
 
 {#snippet content()}

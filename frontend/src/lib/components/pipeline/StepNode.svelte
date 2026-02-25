@@ -7,6 +7,7 @@
 	import {
 		previewStepData,
 		getStepRowCount,
+		downloadStep,
 		type StepPreviewRequest,
 		type StepPreviewResponse,
 		type StepRowCountRequest
@@ -19,7 +20,8 @@
 	import { getStepTypeConfig } from '$lib/components/pipeline/utils';
 	import {
 		buildAnalysisPipelinePayload,
-		buildDatasourceConfig
+		buildDatasourceConfig,
+		buildTabPipelinePayload
 	} from '$lib/utils/analysis-pipeline';
 	import { SvelteMap } from 'svelte/reactivity';
 
@@ -155,7 +157,13 @@
 
 	async function calculateRowCount() {
 		if (!analysisId || !datasourceId) return;
-		if (!analysisPipeline) return;
+		const tabPayload = buildTabPipelinePayload({
+			analysisId,
+			tab: analysisStore.activeTab ?? null,
+			tabs: analysisStore.tabs,
+			datasources: datasourceStore.datasources
+		});
+		if (!tabPayload) return;
 		if (isLoadingRowCount) return;
 		rowCountLoads.set(rowCountKey, true);
 		rowCountErrors.delete(rowCountKey);
@@ -194,6 +202,29 @@
 		event.preventDefault();
 		event.stopPropagation();
 		clickConsumed = false;
+	}
+
+	async function handleDownload() {
+		if (!datasourceId || !analysisId) return;
+
+		const tabPayload = buildTabPipelinePayload({
+			analysisId,
+			tab: analysisStore.activeTab ?? null,
+			tabs: analysisStore.tabs,
+			datasources: datasourceStore.datasources
+		});
+		if (!tabPayload) return;
+
+		downloadStep({
+			analysis_id: analysisId,
+			target_step_id: step.id,
+			analysis_pipeline: tabPayload,
+			tab_id: analysisStore.activeTab?.id ?? null,
+			format:
+				(step.config?.format as 'csv' | 'parquet' | 'json' | 'ndjson' | 'excel' | 'duckdb') ??
+				'csv',
+			filename: (step.config?.filename as string) ?? 'download'
+		});
 	}
 
 	function startDrag(event: PointerEvent) {
@@ -346,6 +377,14 @@
 					stepId={step.id}
 					rowLimit={typeof step.config?.rowLimit === 'number' ? step.config.rowLimit : 100}
 				/>
+			</div>
+		{/if}
+
+		{#if step.type === 'download' && datasourceId && analysisId}
+			<div class="border-t border-tertiary p-3">
+				<button class="btn-primary w-full" onclick={() => handleDownload()} disabled={!isApplied}>
+					Download File
+				</button>
 			</div>
 		{/if}
 

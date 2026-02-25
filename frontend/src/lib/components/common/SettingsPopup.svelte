@@ -167,19 +167,18 @@
 		);
 		testingSmtp = false;
 	}
-
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
 <BaseModal
-	open={open}
+	{open}
 	onClose={() => (open = false)}
 	closeOnEscape={true}
 	closeOnBackdrop={true}
 	panelClass="w-full max-w-120 max-h-[90vh] overflow-y-auto border animate-slide-up bg-dialog border-tertiary focus:outline-none"
 	ariaLabelledby="settings-title"
-	content={content}
+	{content}
 />
 
 {#snippet content()}
@@ -342,7 +341,9 @@
 			</div>
 
 			{#if statusQuery.data}
-				<div class="flex items-center justify-between border px-3 py-2 text-xs border-tertiary bg-tertiary">
+				<div
+					class="flex items-center justify-between border px-3 py-2 text-xs border-tertiary bg-tertiary"
+				>
 					<span class="flex items-center gap-1.5">
 						<span
 							class="inline-block h-1.5 w-1.5 shrink-0"

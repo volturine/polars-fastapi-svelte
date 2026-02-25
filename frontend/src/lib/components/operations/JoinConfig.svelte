@@ -9,7 +9,7 @@
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
 	import { X } from 'lucide-svelte';
 
-	const uid = $props.id();
+	const _uid = $props.id();
 
 	const defaultConfig: JoinConfigData = {
 		how: 'inner',

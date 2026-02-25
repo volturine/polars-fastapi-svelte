@@ -33,19 +33,22 @@
 			dtype: column.dtype
 		}))
 	);
-
 </script>
 
 <SearchableDropdown
-	options={options}
-	value={value}
+	{options}
+	{value}
 	onChange={(next) => onChange(next as string)}
-	placeholder={placeholder}
+	{placeholder}
 	searchPlaceholder="Search columns..."
-	renderOption={renderOption}
+	{renderOption}
 />
 
-{#snippet renderOption(payload: { option: { id: string; label: string }; selected: boolean; onSelect: () => void })}
+{#snippet renderOption(payload: {
+	option: { id: string; label: string };
+	selected: boolean;
+	onSelect: () => void;
+})}
 	{@const item = payload.option as ColumnOption}
 	{@const isSelected = payload.selected}
 	{@const onPick = payload.onSelect}

@@ -70,7 +70,6 @@
 		handleClose();
 	}
 
-
 	function handleBackdropKeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter' || event.key === ' ') {
 			event.preventDefault();
@@ -94,7 +93,7 @@
 	panelClass="flex max-h-[80vh] w-full max-w-120 flex-col border focus:outline-none max-sm:max-w-full bg-panel border-tertiary animate-slide-up"
 	ariaLabelledby="modal-title"
 	onBackdropKeydown={handleBackdropKeydown}
-	content={content}
+	{content}
 />
 
 {#snippet content()}

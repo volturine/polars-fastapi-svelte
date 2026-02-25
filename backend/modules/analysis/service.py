@@ -249,11 +249,26 @@ def delete_analysis(
     session: Session,  # type: ignore[type-arg]
     analysis_id: str,
 ) -> None:
+    from modules.datasource.service import _delete_datasource_files
+
     analysis = session.get(Analysis, analysis_id)
 
     if not analysis:
         raise AnalysisNotFoundError(analysis_id)
 
+    # Find all datasources created by this analysis (exports)
+    result = session.execute(
+        select(DataSource).where(col(DataSource.created_by_analysis_id) == analysis_id)  # type: ignore[arg-type]
+    )
+    created_datasources = result.scalars().all()
+
+    # Delete hidden exports (both DB record and files), keep non-hidden
+    for ds in created_datasources:
+        if ds.is_hidden:
+            _delete_datasource_files(ds)
+            session.delete(ds)
+
+    # Remove analysis datasource links
     session.execute(delete(AnalysisDataSource).where(col(AnalysisDataSource.analysis_id) == analysis_id))  # type: ignore[arg-type]
 
     session.delete(analysis)

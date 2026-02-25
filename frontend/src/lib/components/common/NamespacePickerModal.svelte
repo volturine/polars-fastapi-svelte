@@ -126,7 +126,6 @@
 		};
 	});
 
-
 	// DOM: $derived can't lock scroll.
 	$effect(() => {
 		if (!open) return;

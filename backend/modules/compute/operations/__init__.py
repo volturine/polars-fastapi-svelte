@@ -2,6 +2,7 @@ from modules.compute.core.base import OperationHandler, OperationParams
 from modules.compute.operations.ai import AIHandler
 from modules.compute.operations.datasource import DatasourceHandler
 from modules.compute.operations.deduplicate import DeduplicateHandler
+from modules.compute.operations.download import DownloadHandler
 from modules.compute.operations.drop import DropHandler
 from modules.compute.operations.explode import ExplodeHandler
 from modules.compute.operations.export import ExportHandler
@@ -36,6 +37,7 @@ __all__ = [
     'DatasourceHandler',
     'AIHandler',
     'DeduplicateHandler',
+    'DownloadHandler',
     'DropHandler',
     'ExplodeHandler',
     'ExportHandler',
@@ -85,6 +87,7 @@ def _register_defaults() -> None:
     register_operation('datasource', DatasourceHandler())
     register_operation('ai', AIHandler())
     register_operation('deduplicate', DeduplicateHandler())
+    register_operation('download', DownloadHandler())
     register_operation('drop', DropHandler())
     register_operation('explode', ExplodeHandler())
     register_operation('export', ExportHandler())

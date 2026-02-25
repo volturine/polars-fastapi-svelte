@@ -54,6 +54,7 @@
 	import TimeSeriesConfig from '$lib/components/operations/TimeSeriesConfig.svelte';
 	import StringMethodsConfig from '$lib/components/operations/StringMethodsConfig.svelte';
 	import ViewConfig from '$lib/components/operations/ViewConfig.svelte';
+	import DownloadConfig from '$lib/components/operations/DownloadConfig.svelte';
 	import SampleConfig from '$lib/components/operations/SampleConfig.svelte';
 	import LimitConfig from '$lib/components/operations/LimitConfig.svelte';
 	import TopKConfig from '$lib/components/operations/TopKConfig.svelte';
@@ -332,6 +333,10 @@
 				/>
 			{:else if step.type === 'view'}
 				<ViewConfig schema={inputSchema} bind:config={draftConfig as unknown as ViewConfigData} />
+			{:else if step.type === 'download'}
+				<DownloadConfig
+					bind:config={draftConfig as unknown as { format: string; filename: string }}
+				/>
 			{:else if step.type === 'datasource'}
 				<div class="bg-primary p-10 text-center">
 					<p class="m-0 text-xs text-fg-muted">Datasource options are set during upload.</p>

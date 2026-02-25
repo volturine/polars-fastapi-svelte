@@ -5,7 +5,10 @@
 
 	import type { Snippet } from 'svelte';
 
-	type Action<T = unknown> = (node: HTMLElement, value: T) => {
+	type Action<T = unknown> = (
+		node: HTMLElement,
+		value: T
+	) => {
 		update?: (value: T) => void;
 		destroy?: () => void;
 	};
@@ -111,9 +114,7 @@
 
 	const debouncedSearch = $derived(new Debounced(() => searchValue, searchDelay));
 
-	const selectedSet = $derived(
-		new SvelteSet(Array.isArray(value) ? value : value ? [value] : [])
-	);
+	const selectedSet = $derived(new SvelteSet(Array.isArray(value) ? value : value ? [value] : []));
 	const selectedCount = $derived(selectedSet.size);
 
 	const filteredOptions = $derived.by(() => {
@@ -234,7 +235,7 @@
 			type="text"
 			class={inputClass}
 			bind:value={searchValue}
-			placeholder={placeholder}
+			{placeholder}
 			onfocus={openMenu}
 			aria-haspopup="listbox"
 			use:setTriggerRef={undefined}
@@ -304,11 +305,11 @@
 					<div class="no-results">{emptyLabel}</div>
 				{:else}
 					{#each filteredOptions as option (option.id)}
-					{@render renderOption({
-						option,
-						selected: isSelected(option.id),
-						onSelect: () => handleSelect(option.id)
-					})}
+						{@render renderOption({
+							option,
+							selected: isSelected(option.id),
+							onSelect: () => handleSelect(option.id)
+						})}
 					{/each}
 				{/if}
 			</div>

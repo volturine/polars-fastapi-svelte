@@ -8,6 +8,7 @@ import {
 	Calendar,
 	CircleHelp,
 	Dices,
+	Download,
 	Eye,
 	Filter,
 	LayoutGrid,
@@ -368,6 +369,16 @@ const stepTypes: Record<string, StepTypeConfig> = {
 				const dsType = (c.datasource_type as string) || 'iceberg';
 				return `datasource (${dsType})`;
 			}
+			return `${filename}.${format}`;
+		}
+	},
+	download: {
+		label: 'Download',
+		icon: Download,
+		typeLabel: 'download',
+		summary: (c) => {
+			const filename = (c.filename as string) || 'download';
+			const format = (c.format as string) || 'csv';
 			return `${filename}.${format}`;
 		}
 	}

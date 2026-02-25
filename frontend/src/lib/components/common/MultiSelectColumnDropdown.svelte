@@ -38,20 +38,26 @@
 </script>
 
 <SearchableDropdown
-	options={options}
-	value={value}
+	{options}
+	{value}
 	onChange={(next) => onChange(next as string[])}
-	placeholder={placeholder}
+	{placeholder}
 	searchPlaceholder="Search columns..."
 	mode="multi"
-	showSelectAll={showSelectAll}
+	{showSelectAll}
 	showSelectedList={true}
-	renderOption={renderOption}
- />
+	{renderOption}
+/>
 
-{#snippet renderOption(payload: { option: { id: string; label: string }; selected: boolean; onSelect: () => void })}
+{#snippet renderOption(payload: {
+	option: { id: string; label: string };
+	selected: boolean;
+	onSelect: () => void;
+})}
 	{@const item = payload.option as ColumnOption}
-	<label class="multi-select-option flex cursor-pointer items-center gap-2 px-3 py-2 text-fg-primary">
+	<label
+		class="multi-select-option flex cursor-pointer items-center gap-2 px-3 py-2 text-fg-primary"
+	>
 		<input
 			type="checkbox"
 			checked={payload.selected}

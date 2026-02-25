@@ -1,5 +1,8 @@
 <script lang="ts">
-	type Action<T = unknown> = (node: HTMLElement, value: T) => {
+	type Action<T = unknown> = (
+		node: HTMLElement,
+		value: T
+	) => {
 		update?: (value: T) => void;
 		destroy?: () => void;
 	};
@@ -35,10 +38,8 @@
 		onClose,
 		closeOnEscape = true,
 		closeOnBackdrop = true,
-		overlayClass =
-			'fixed inset-0 z-1000 flex items-center justify-center p-4 bg-overlay animate-fade-in',
-		panelClass =
-			'w-full max-h-[90vh] overflow-y-auto border bg-dialog border-tertiary animate-slide-up focus:outline-none',
+		overlayClass = 'fixed inset-0 z-1000 flex items-center justify-center p-4 bg-overlay animate-fade-in',
+		panelClass = 'w-full max-h-[90vh] overflow-y-auto border bg-dialog border-tertiary animate-slide-up focus:outline-none',
 		panelAction = noopAction,
 		panelActionValue,
 		role = 'dialog',
@@ -93,7 +94,7 @@
 	>
 		<div
 			class={panelClass}
-			role={role}
+			{role}
 			aria-modal={ariaModal}
 			aria-labelledby={ariaLabelledby}
 			aria-describedby={ariaDescribedby}

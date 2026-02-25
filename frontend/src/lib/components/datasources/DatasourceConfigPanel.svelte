@@ -1063,10 +1063,10 @@
 					{#if filteredRuns.length >= 50}
 						<p class="text-xs text-fg-tertiary text-center">
 							Showing last 50 runs.
-						<a
-							href="{resolve('/monitoring')}?datasource_id={datasource.id}"
-							class="text-accent-primary hover:underline"
-						>
+							<a
+								href="{resolve('/monitoring')}?datasource_id={datasource.id}"
+								class="text-accent-primary hover:underline"
+							>
 								View all runs
 							</a>
 						</p>

@@ -10,6 +10,7 @@
 		Calendar,
 		CircleHelp,
 		Dices,
+		Download,
 		Eye,
 		Filter,
 		Link,
@@ -52,7 +53,8 @@
 		chart: { label: 'Chart', icon: BarChart4 },
 		notification: { label: 'Notify', icon: Bell },
 		ai: { label: 'AI', icon: Sparkles },
-		view: { label: 'View', icon: Eye }
+		view: { label: 'View', icon: Eye },
+		download: { label: 'Download', icon: Download }
 	};
 
 	// Derive reactive values from drag store

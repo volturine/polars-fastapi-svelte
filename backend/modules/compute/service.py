@@ -437,12 +437,36 @@ def _resolve_pipeline_request(
     selected = None
     if tab_id:
         selected = next((tab for tab in tabs if tab.get('id') == tab_id), None)
+    if selected and target_step_id != 'source':
+        steps = selected.get('steps', []) if isinstance(selected, dict) else []
+        if not any(step.get('id') == target_step_id for step in steps):
+            selected = None
+    if not selected and target_step_id != 'source':
+        selected = next(
+            (tab for tab in tabs if isinstance(tab, dict) and any(step.get('id') == target_step_id for step in tab.get('steps', []))),
+            None,
+        )
     if not selected:
         selected = next((tab for tab in tabs if tab.get('steps')), None)
     if not selected:
         selected = tabs[0]
 
     datasource_id = selected.get('datasource_id')
+    if not datasource_id:
+        config = selected.get('datasource_config') or {}
+        if isinstance(config, dict) and config.get('analysis_id') and config.get('analysis_tab_id'):
+            output_map: dict[str, str] = {}
+            for tab in tabs:
+                tab_id_value = tab.get('id')
+                output_id = tab.get('output_datasource_id')
+                if not tab_id_value or not output_id:
+                    continue
+                output_map[str(tab_id_value)] = str(output_id)
+            datasource_id = output_map.get(str(config.get('analysis_tab_id')))
+    if not datasource_id:
+        sources = pipeline.get('sources', {})
+        if isinstance(sources, dict) and len(sources) == 1:
+            datasource_id = next(iter(sources.keys()))
     if not datasource_id:
         raise ValueError('analysis_pipeline tab missing datasource_id')
 
@@ -1307,6 +1331,176 @@ def export_data(
             os.unlink(tmp_db_path)
         if os.path.exists(tmp_output):
             os.unlink(tmp_output)
+
+
+def download_step(
+    session: Session,
+    target_step_id: str,
+    analysis_pipeline: dict,
+    export_format: str = 'csv',
+    filename: str = 'download',
+    timeout: int | None = None,
+    analysis_id: str | None = None,
+    datasource_config: dict | None = None,
+    tab_id: str | None = None,
+):
+    """Download the result of a pipeline step in a specific format."""
+    import tempfile
+
+    from modules.compute.core.exports import get_export_format
+
+    started_at = datetime.now(UTC)
+    started_perf = time.perf_counter()
+
+    if timeout is None:
+        timeout = settings.job_timeout
+
+    resolved = _resolve_pipeline_request(analysis_pipeline, tab_id, target_step_id)
+    datasource_id = resolved['datasource_id']
+    pipeline_steps = resolved['pipeline_steps']
+    target_step_id = resolved['target_step_id']
+    resolved_config = resolved['datasource_config']
+    analysis_id_value = resolved['analysis_id'] or analysis_id
+
+    datasource_config = {**resolved_config, **datasource_config} if isinstance(datasource_config, dict) else resolved_config
+    if not isinstance(datasource_config, dict):
+        raise ValueError('Download requires datasource_config')
+
+    if not analysis_id_value:
+        analysis_id_value = f'__download__{datasource_id}'
+
+    download_steps = [step for step in pipeline_steps if step.get('operation') != 'download']
+    target_step = next((step for step in pipeline_steps if step.get('id') == target_step_id), None)
+    if target_step and target_step.get('operation') == 'download':
+        depends_on = target_step.get('depends_on') or []
+        parent_id = str(depends_on[0]) if depends_on and depends_on[0] else None
+        if parent_id:
+            target_step_id = parent_id
+        elif download_steps:
+            target_step_id = str(download_steps[-1].get('id') or 'source')
+        else:
+            target_step_id = 'source'
+
+    pipeline_steps = apply_pipeline_steps(download_steps)
+
+    if target_step_id == 'source':
+        download_steps = []
+    else:
+        step_index = find_step_index(pipeline_steps, target_step_id)
+        download_steps = pipeline_steps[: step_index + 1]
+        download_steps = _hydrate_udfs(session, download_steps)
+
+    manager = get_manager()
+    engine = manager.get_or_create_engine(analysis_id_value)
+
+    additional_datasources = _get_additional_datasources(session, download_steps, analysis_pipeline)
+
+    export_fmt = get_export_format(export_format)
+    ext = export_fmt.extension
+    content_type = export_fmt.content_type
+
+    tmp_output = tempfile.mktemp(suffix=ext)
+
+    step_timings: dict = {}
+    query_plan: str | None = None
+    try:
+        job_id = engine.preview(
+            datasource_config=datasource_config,
+            pipeline_steps=download_steps,
+            row_limit=10_000_000,  # Large limit to get all data for download
+            offset=0,
+            additional_datasources=additional_datasources,
+        )
+
+        result_data = await_engine_result(engine, timeout, job_id=job_id)
+        step_timings = result_data.get('step_timings', {}) if isinstance(result_data, dict) else {}
+        query_plan = result_data.get('query_plan') if isinstance(result_data, dict) else None
+        error = result_data.get('error')
+        if error:
+            raise PipelineExecutionError(
+                f'Download failed: {error}',
+                details={'operation': 'download', 'datasource_id': datasource_id},
+            )
+
+        data = result_data.get('data', {})
+        df_data = data.get('data', [])
+        schema = data.get('schema', {})
+
+        if not schema:
+            raise ValueError('No data to download')
+
+        import polars as pl
+
+        from modules.compute.operations.fill_null import get_polars_type
+
+        schema_types = {name: get_polars_type(dtype) or pl.Utf8() for name, dtype in schema.items()}
+        df = pl.DataFrame(df_data, schema=schema_types)
+        export_fmt.writer(df, tmp_output)
+
+        with open(tmp_output, 'rb') as f:
+            file_bytes = f.read()
+
+        completed_at = datetime.now(UTC)
+        duration_ms = int((time.perf_counter() - started_perf) * 1000)
+        payload = engine_run_service.create_engine_run_payload(
+            analysis_id=analysis_id_value,
+            datasource_id=datasource_id,
+            kind='download',
+            status='success',
+            request_json={
+                'analysis_id': analysis_id_value,
+                'datasource_id': datasource_id,
+                'pipeline_steps': download_steps,
+                'target_step_id': target_step_id,
+                'format': export_format,
+                'filename': filename,
+                'tab_id': tab_id,
+                'analysis_pipeline': analysis_pipeline,
+            },
+            result_json={'filename': f'{filename}{ext}', 'format': export_format},
+            created_at=started_at,
+            completed_at=completed_at,
+            duration_ms=duration_ms,
+            step_timings=step_timings,
+            query_plan=query_plan,
+            progress=1.0,
+        )
+        engine_run_service.create_engine_run(session, payload)
+
+        return file_bytes, f'{filename}{ext}', content_type
+    except Exception as exc:
+        completed_at = datetime.now(UTC)
+        duration_ms = int((time.perf_counter() - started_perf) * 1000)
+        payload = engine_run_service.create_engine_run_payload(
+            analysis_id=analysis_id_value,
+            datasource_id=datasource_id,
+            kind='download',
+            status='failed',
+            request_json={
+                'analysis_id': analysis_id_value,
+                'datasource_id': datasource_id,
+                'pipeline_steps': download_steps,
+                'target_step_id': target_step_id,
+                'format': export_format,
+                'filename': filename,
+                'tab_id': tab_id,
+                'analysis_pipeline': analysis_pipeline,
+            },
+            error_message=str(exc),
+            created_at=started_at,
+            completed_at=completed_at,
+            duration_ms=duration_ms,
+            step_timings=step_timings,
+            query_plan=query_plan,
+            progress=0.0,
+        )
+        engine_run_service.create_engine_run(session, payload)
+        raise
+    finally:
+        import os
+
+        if os.path.exists(tmp_output):
+            os.remove(tmp_output)
 
 
 def _resolve_upstream_tabs(tabs: list[dict], target_tab_id: str) -> set[str]:

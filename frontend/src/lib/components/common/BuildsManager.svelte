@@ -331,6 +331,7 @@
 			>
 				<option value="">All types</option>
 				<option value="preview">Preview</option>
+				<option value="download">Download</option>
 				<option value="export">Export</option>
 				<option value="datasource_create">Datasource Create</option>
 				<option value="datasource_update">Datasource Update</option>
@@ -428,6 +429,9 @@
 									{:else if run.kind === 'datasource_update'}
 										<RefreshCw size={14} class="text-warning-fg" />
 										<span>Datasource Update</span>
+									{:else if run.kind === 'download'}
+										<Download size={14} class="text-success-fg" />
+										<span>Download</span>
 									{:else}
 										<Download size={14} class="text-success-fg" />
 										<span>Export</span>

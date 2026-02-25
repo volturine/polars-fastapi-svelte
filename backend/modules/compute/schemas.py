@@ -142,6 +142,7 @@ class ExportFormat(StrEnum):
     JSON = 'json'
     NDJSON = 'ndjson'
     DUCKDB = 'duckdb'
+    EXCEL = 'excel'
 
 
 class ExportDestination(StrEnum):
@@ -208,6 +209,20 @@ class ExportResponse(BaseModel):
     message: str | None = None
     datasource_id: str | None = None
     datasource_name: str | None = None
+
+
+class DownloadRequest(BaseModel):
+    """Request to download the result of a pipeline step in a specific format."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    analysis_id: str | None = None
+    target_step_id: str
+    analysis_pipeline: AnalysisPipelinePayload
+    tab_id: str | None = None
+    format: ExportFormat = ExportFormat.CSV
+    filename: str = 'download'
+    datasource_config: dict | None = None
 
 
 class StepSchemaRequest(BaseModel):

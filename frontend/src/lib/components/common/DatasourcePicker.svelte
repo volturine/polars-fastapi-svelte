@@ -22,6 +22,7 @@
 		mode?: 'single' | 'multi';
 		placeholder?: string;
 		label?: string;
+		id?: string;
 		showChips?: boolean;
 		showBulkActions?: boolean;
 		excludeIds?: string[];
@@ -38,6 +39,7 @@
 		mode = 'single',
 		placeholder = 'Search datasources...',
 		label,
+		id: _id,
 		showChips = true,
 		showBulkActions = true,
 		excludeIds = [],
@@ -84,16 +86,18 @@
 			});
 	});
 
-
 	const options = $derived.by(() => {
 		if (modeSource === 'analysis') {
-			return analyses.map((analysis) => ({
-				id: analysis.id,
-				label: analysis.name,
-				kind: 'analysis',
-				payload: analysis,
-				searchText: [analysis.name]
-			} satisfies PickerOption));
+			return analyses.map(
+				(analysis) =>
+					({
+						id: analysis.id,
+						label: analysis.name,
+						kind: 'analysis',
+						payload: analysis,
+						searchText: [analysis.name]
+					}) satisfies PickerOption
+			);
 		}
 		return availableOptions.map((ds) => {
 			const fileType = (ds.config?.file_type as string) ?? '';
@@ -165,51 +169,55 @@
 </script>
 
 <SearchableDropdown
-	options={options}
+	{options}
 	value={selected}
 	onChange={handleChange}
-	placeholder={placeholder}
+	{placeholder}
 	searchPlaceholder={placeholder}
-	mode={mode}
+	{mode}
 	showSelectAll={showBulkActions}
 	showSelectedList={false}
 	triggerType="input"
 	inputClass="w-full border border-tertiary bg-primary px-3 py-2 font-mono text-sm text-fg-primary focus:border-accent-primary focus:outline-none"
-	searchValue={searchValue}
+	{searchValue}
 	emptyLabel="No datasources found"
 	listAriaLabel={label ?? 'Available datasources'}
-	renderOption={renderOption}
- />
+	{renderOption}
+/>
 
-	{#if mode === 'multi' && modeSource === 'datasource' && showChips && selectedDatasources.length > 0}
-		<div class="mt-2 flex flex-wrap gap-2">
-			{#each selectedDatasources as ds (ds.id)}
-				<span
-					class="chip inline-flex items-center gap-1 border border-tertiary bg-badge-bg px-2 py-1 text-xs text-badge-fg"
-					class:highlighted={ds.id === highlightId}
+{#if mode === 'multi' && modeSource === 'datasource' && showChips && selectedDatasources.length > 0}
+	<div class="mt-2 flex flex-wrap gap-2">
+		{#each selectedDatasources as ds (ds.id)}
+			<span
+				class="chip inline-flex items-center gap-1 border border-tertiary bg-badge-bg px-2 py-1 text-xs text-badge-fg"
+				class:highlighted={ds.id === highlightId}
+			>
+				{ds.name}
+				<button
+					class="chip-remove inline-flex h-4 w-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-fg-muted hover:bg-bg-hover hover:text-fg-primary"
+					onclick={() => deselect(ds.id)}
+					aria-label={`Remove ${ds.name}`}
+					type="button"
 				>
-					{ds.name}
-					<button
-						class="chip-remove inline-flex h-4 w-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-fg-muted hover:bg-bg-hover hover:text-fg-primary"
-						onclick={() => deselect(ds.id)}
-						aria-label={`Remove ${ds.name}`}
-						type="button"
-					>
-						<X size={12} />
-					</button>
-				</span>
-			{/each}
-		</div>
-	{/if}
+					<X size={12} />
+				</button>
+			</span>
+		{/each}
+	</div>
+{/if}
 
-	{#if canSelectAll && showBulkActions}
-		<div class="mt-2 flex gap-2">
-			<button class="btn-secondary btn-sm" onclick={selectAll} type="button">Select All</button>
-			<button class="btn-secondary btn-sm" onclick={deselectAll} type="button">Deselect All</button>
-		</div>
-	{/if}
+{#if canSelectAll && showBulkActions}
+	<div class="mt-2 flex gap-2">
+		<button class="btn-secondary btn-sm" onclick={selectAll} type="button">Select All</button>
+		<button class="btn-secondary btn-sm" onclick={deselectAll} type="button">Deselect All</button>
+	</div>
+{/if}
 
-{#snippet renderOption(payload: { option: { id: string; label: string }; selected: boolean; onSelect: () => void })}
+{#snippet renderOption(payload: {
+	option: { id: string; label: string };
+	selected: boolean;
+	onSelect: () => void;
+})}
 	{@const option = payload.option as PickerOption}
 	<button
 		class="picker-option flex w-full cursor-pointer items-center justify-between border-b border-tertiary bg-transparent px-3 py-2 font-mono text-left text-sm text-fg-primary last:border-b-0 hover:bg-bg-hover"
@@ -224,15 +232,12 @@
 		{#if option.kind === 'datasource'}
 			{@const ds = option.payload as DataSource}
 			{#if ds.id === highlightId}
-				<span class="ml-2 border border-accent-primary bg-accent-bg px-2 py-1 text-xs text-accent-primary"
+				<span
+					class="ml-2 border border-accent-primary bg-accent-bg px-2 py-1 text-xs text-accent-primary"
 					>current</span
 				>
 			{:else if ds.source_type === 'file'}
-				<FileTypeBadge
-					path={(ds.config?.file_path as string) ?? ''}
-					size="sm"
-					showIcon={false}
-				/>
+				<FileTypeBadge path={(ds.config?.file_path as string) ?? ''} size="sm" showIcon={false} />
 			{:else}
 				{@const badgeSource = ds.source_type as SourceType}
 				<FileTypeBadge sourceType={badgeSource} size="sm" showIcon={false} />

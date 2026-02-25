@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 import sqlite3
 import uuid
 from collections.abc import Callable
@@ -1565,7 +1566,15 @@ def delete_datasource(session: Session, datasource_id: str) -> None:
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
 
-    # Delete associated file if it's a file datasource
+    _delete_datasource_files(datasource)
+
+    session.delete(datasource)
+    session.commit()
+    logger.info(f'Deleted datasource {datasource_id}')
+
+
+def _delete_datasource_files(datasource: DataSource) -> None:
+    # Delete associated file if it's a file datasource (original file in uploads)
     if datasource.source_type == 'file' and 'file_path' in datasource.config:
         file_path = Path(datasource.config['file_path'])
         if file_path.exists():
@@ -1591,6 +1600,31 @@ def delete_datasource(session: Session, datasource_id: str) -> None:
                     details={'file_path': str(file_path), 'error': str(e)},
                 )
 
-    session.delete(datasource)
-    session.commit()
-    logger.info(f'Deleted datasource {datasource_id}')
+    # Delete Iceberg datasource files from clean or exports directory
+    if datasource.source_type == 'iceberg' and isinstance(datasource.config, dict):
+        config = datasource.config
+        metadata_path = config.get('metadata_path')
+        if metadata_path:
+            metadata_path_obj = Path(metadata_path)
+            paths = namespace_paths()
+            exports_dir = paths.exports_dir
+            clean_dir = paths.clean_dir
+
+            # Determine if this is in exports_dir or clean_dir
+            is_under_exports = exports_dir in metadata_path_obj.parents or metadata_path_obj.parent == exports_dir
+            is_under_clean = clean_dir in metadata_path_obj.parents or metadata_path_obj.parent == clean_dir
+
+            if is_under_exports or is_under_clean:
+                # This is an exported or ingested datasource - delete the entire directory
+                parent_dir = metadata_path_obj.parent
+                try:
+                    if parent_dir.exists() and parent_dir.is_dir():
+                        shutil.rmtree(parent_dir)
+                        logger.info(f'Deleted Iceberg directory: {parent_dir}')
+                except OSError as e:
+                    logger.error(f'OS error when deleting Iceberg directory {parent_dir}: {e}')
+                    raise FileError(
+                        f'Failed to delete Iceberg directory: {parent_dir}',
+                        error_code='FILE_DELETE_ERROR',
+                        details={'path': str(parent_dir), 'error': str(e)},
+                    )

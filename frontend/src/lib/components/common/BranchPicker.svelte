@@ -37,11 +37,14 @@
 	);
 	const currentValue = $derived(value || 'master');
 	const options = $derived.by(() => {
-		const base = normalizedBranches.map((branch) => ({
-			id: branch,
-			label: branch,
-			kind: 'branch'
-		}) satisfies BranchOption);
+		const base = normalizedBranches.map(
+			(branch) =>
+				({
+					id: branch,
+					label: branch,
+					kind: 'branch'
+				}) satisfies BranchOption
+		);
 		if (!canCreate) return base;
 		return [
 			{
@@ -131,22 +134,33 @@
 </script>
 
 <SearchableDropdown
-	options={options}
+	{options}
 	value={currentValue}
 	onChange={handleChange}
-	placeholder={placeholder}
+	{placeholder}
 	searchPlaceholder="Search branches..."
 	menuClass="branch-picker__menu fixed z-popover"
 	menuAction={portal}
 	menuActionValue={popoverRect}
-	searchValue={searchValue}
+	{searchValue}
 	onOpen={handleOpen}
 	onClose={handleClose}
-	renderTrigger={renderTrigger}
-	renderOption={renderOption}
+	{renderTrigger}
+	{renderOption}
 />
 
-{#snippet renderTrigger(payload: { open: boolean; selectedCount: number; selectedOption: unknown; displayLabel: string; disabled: boolean; onOpen: () => void; triggerAction: (node: HTMLElement, value: unknown) => { update?: (value: unknown) => void; destroy?: () => void } })}
+{#snippet renderTrigger(payload: {
+	open: boolean;
+	selectedCount: number;
+	selectedOption: unknown;
+	displayLabel: string;
+	disabled: boolean;
+	onOpen: () => void;
+	triggerAction: (
+		node: HTMLElement,
+		value: unknown
+	) => { update?: (value: unknown) => void; destroy?: () => void };
+})}
 	<button
 		type="button"
 		class="column-trigger"
@@ -163,7 +177,11 @@
 	</button>
 {/snippet}
 
-{#snippet renderOption(payload: { option: { id: string; label: string }; selected: boolean; onSelect: () => void })}
+{#snippet renderOption(payload: {
+	option: { id: string; label: string };
+	selected: boolean;
+	onSelect: () => void;
+})}
 	{@const option = payload.option as BranchOption}
 	<button
 		type="button"

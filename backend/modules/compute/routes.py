@@ -265,3 +265,34 @@ def export_data(
             datasource_id=datasource_id,
             datasource_name=result_meta.get('datasource_name') if isinstance(result_meta, dict) else None,
         )
+
+
+@router.post('/download')
+@handle_errors(operation='download step')
+def download_step(
+    request: schemas.DownloadRequest,
+    session: Session = Depends(get_db),
+):
+    """Download the result of a pipeline step in a specified format."""
+    file_bytes, filename, content_type = service.download_step(
+        session=session,
+        target_step_id=request.target_step_id,
+        analysis_pipeline=request.analysis_pipeline.model_dump(mode='json'),
+        export_format=request.format.value,
+        filename=request.filename,
+        analysis_id=request.analysis_id,
+        datasource_config=request.datasource_config,
+        tab_id=request.tab_id,
+    )
+
+    if file_bytes is None or filename is None or content_type is None:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=500, detail='Download file content not available')
+
+    safe_name = quote(filename)
+    return Response(
+        content=file_bytes,
+        media_type=content_type,
+        headers={'Content-Disposition': f'attachment; filename="{safe_name}"'},
+    )

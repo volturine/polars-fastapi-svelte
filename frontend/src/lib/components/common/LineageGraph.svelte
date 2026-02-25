@@ -358,7 +358,7 @@
 		zoomPercent = Math.round(scale * 100);
 	});
 
-	const transform = $derived(`translate(${pan.x}px, ${pan.y}px) scale(${scale})`);
+	const _transform = $derived(`translate(${pan.x}px, ${pan.y}px) scale(${scale})`);
 
 	function setPosition(node: HTMLElement, coords: { x: number; y: number }) {
 		node.style.left = `${coords.x}px`;

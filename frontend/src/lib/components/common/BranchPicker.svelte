@@ -28,14 +28,14 @@
 	let menuOpen = $state(false);
 	let popoverRect = $state({ left: 0, top: 0, width: 240 });
 
-	const normalizedBranches = $derived(branches.length ? branches : ['master']);
+	const normalizedBranches = $derived(branches);
 	const trimmedSearch = $derived(searchValue.trim());
 	const canCreate = $derived(
 		allowCreate &&
 			trimmedSearch.length > 0 &&
 			!normalizedBranches.some((branch) => branch === trimmedSearch)
 	);
-	const currentValue = $derived(value || 'master');
+	const currentValue = $derived(value ?? 'master');
 	const options = $derived.by(() => {
 		const base = normalizedBranches.map(
 			(branch) =>
@@ -45,13 +45,19 @@
 					kind: 'branch'
 				}) satisfies BranchOption
 		);
-		if (!canCreate) return base;
+		const current = value?.trim?.() ?? '';
+		const hasCurrent = current && !base.some((option) => option.id === current);
+		const extras = hasCurrent
+			? ([{ id: current, label: current, kind: 'branch' }] satisfies BranchOption[])
+			: [];
+		if (!canCreate) return [...extras, ...base];
 		return [
 			{
 				id: `__create__${trimmedSearch}`,
 				label: `Create "${trimmedSearch}"`,
 				kind: 'create'
 			} satisfies BranchOption,
+			...extras,
 			...base
 		];
 	});
@@ -142,7 +148,7 @@
 	menuClass="branch-picker__menu fixed z-popover"
 	menuAction={portal}
 	menuActionValue={popoverRect}
-	{searchValue}
+	bind:searchValue
 	onOpen={handleOpen}
 	onClose={handleClose}
 	{renderTrigger}
@@ -163,7 +169,7 @@
 })}
 	<button
 		type="button"
-		class="column-trigger"
+		class="branch-picker__trigger"
 		onclick={payload.onOpen}
 		aria-expanded={payload.open}
 		use:payload.triggerAction={undefined}

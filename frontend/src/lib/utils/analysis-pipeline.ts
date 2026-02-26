@@ -262,7 +262,7 @@ export function buildDatasourcePipelinePayload(args: {
 				analysis_tab_id: null,
 				config: {
 					branch: String(
-						(args.datasourceConfig as { branch?: string } | null | undefined)?.branch ?? ''
+						(args.datasourceConfig as { branch?: string } | null | undefined)?.branch ?? 'master'
 					).trim(),
 					...(args.datasourceConfig ?? {})
 				}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { resolve } from '$app/paths';
-	import { listDatasources, deleteDatasource } from '$lib/api/datasource';
+	import { listDatasources, deleteDatasource, getDatasource } from '$lib/api/datasource';
 	import {
 		Plus,
 		Trash2,
@@ -24,6 +24,12 @@
 
 	let showHidden = $state(false);
 
+	let selectedId = $state<string | null>(page.url.searchParams.get('id'));
+	let showConfig = $state<string | null>(page.url.searchParams.get('id'));
+	let deletingId = $state<string | null>(null);
+	let searchQuery = $state('');
+	let showComparison = $state(false);
+
 	const query = createQuery(() => ({
 		queryKey: ['datasources', showHidden],
 		queryFn: async () => {
@@ -31,6 +37,17 @@
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		}
+	}));
+
+	const selectedDatasourceQuery = createQuery(() => ({
+		queryKey: ['datasource', selectedId],
+		queryFn: async () => {
+			if (!selectedId) return null;
+			const result = await getDatasource(selectedId);
+			if (result.isErr()) throw new Error(result.error.message);
+			return result.value;
+		},
+		enabled: !!selectedId
 	}));
 
 	const deleteMutation = createMutation(() => ({
@@ -46,34 +63,38 @@
 		}
 	}));
 
-	let selectedId = $state<string | null>(page.url.searchParams.get('id'));
-	let showConfig = $state<string | null>(page.url.searchParams.get('id'));
-	let deletingId = $state<string | null>(null);
-	let searchQuery = $state('');
-	let showComparison = $state(false);
-
 	const datasources = $derived(query.data ?? []);
 	const filteredDatasources = $derived(
 		searchQuery
 			? datasources.filter((d) => d.name.toLowerCase().includes(searchQuery.toLowerCase()))
 			: datasources
 	);
-	const selectedDatasource = $derived(datasources.find((d) => d.id === selectedId) ?? null);
+	const selectedDatasource = $derived(
+		selectedDatasourceQuery.data ?? datasources.find((d) => d.id === selectedId) ?? null
+	);
 	let snapshotConfig = $state<Record<string, unknown> | null>(null);
 	let selectedBranch = $state<string | null>(null);
 
 	function selectDatasource(id: string | null) {
 		selectedId = id;
 		showConfig = id;
-		const nextDatasource = id ? (datasources.find((d) => d.id === id) ?? null) : null;
-		const nextConfig = (nextDatasource?.config ?? {}) as Record<string, unknown>;
-		const nextBranch = 'master';
-		snapshotConfig = id ? { ...nextConfig, branch: nextBranch } : null;
-		selectedBranch = id ? nextBranch : null;
+		snapshotConfig = null;
+		selectedBranch = id ? 'master' : null;
 		showComparison = false;
 		const url = id ? `/datasources?id=${id}` : '/datasources';
 		goto(resolve(url as '/'), { replaceState: true });
 	}
+
+	$effect(() => {
+		const selected = selectedDatasource;
+		if (!selectedId) return;
+		if (!selected) return;
+		if (snapshotConfig?.branch) return;
+		const nextConfig = (selected.config ?? {}) as Record<string, unknown>;
+		const nextBranch = selectedBranch ?? 'master';
+		snapshotConfig = { ...nextConfig, branch: nextBranch };
+		selectedBranch = nextBranch;
+	});
 
 	function handleDelete(id: string) {
 		deletingId = id;
@@ -92,10 +113,11 @@
 		const config = (selectedDatasource?.config ?? {}) as Record<string, unknown>;
 		const branches = (config.branches as string[] | undefined) ?? [];
 		const cleaned = branches.map((branch) => branch.trim()).filter((branch) => branch.length > 0);
-		if (!cleaned.includes('master')) {
-			cleaned.unshift('master');
-		}
-		return cleaned;
+		const next = cleaned.includes('master') ? cleaned : ['master', ...cleaned];
+		const active = activeBranch.trim();
+		if (!active) return next;
+		if (next.includes(active)) return next;
+		return [active, ...next];
 	});
 	const activeBranch = $derived.by(() => {
 		if (snapshotConfig && snapshotConfig.branch) return String(snapshotConfig.branch);
@@ -264,11 +286,10 @@
 										placeholder="Select branch"
 										onChange={(value: string) => {
 											selectedBranch = value;
-											const next = {
-												...(snapshotConfig ?? selectedDatasource?.config ?? {})
+											snapshotConfig = {
+												...(snapshotConfig ?? selectedDatasource?.config ?? {}),
+												branch: value
 											} as Record<string, unknown>;
-											next.branch = value;
-											snapshotConfig = next;
 										}}
 									/>
 								</div>

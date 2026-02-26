@@ -300,10 +300,10 @@
 	const schemaKey = $derived.by(() => {
 		const tab = activeTab;
 		if (!tab || !analysisId) return undefined;
-		if (tab.datasource.id) return tab.datasource.id;
 		const sourceTabId = tab.datasource.analysis_tab_id;
-		if (!sourceTabId) return undefined;
-		return `output:${analysisId}:${String(sourceTabId)}`;
+		if (sourceTabId) return `output:${analysisId}:${String(sourceTabId)}`;
+		if (tab.datasource.id) return tab.datasource.id;
+		return undefined;
 	});
 	const analysisTabName = $derived.by(() => {
 		const tab = activeTab;
@@ -680,6 +680,9 @@
 			steps: buildInitialSteps()
 		});
 		analysisStore.setActiveTab(tabId);
+		if (analysisId && sourceTabId) {
+			analysisStore.sourceSchemas.delete(`output:${analysisId}:${String(sourceTabId)}`);
+		}
 		showDatasourceModal = false;
 		markUnsaved();
 	}

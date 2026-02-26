@@ -670,13 +670,7 @@
 								<span class="uppercase tracking-wide text-fg-muted">Location</span>
 								<span class="break-all text-fg-secondary font-mono">{config.metadata_path}</span>
 							</div>
-							<div class="flex flex-col gap-1">
-								<span class="uppercase tracking-wide text-fg-muted">Branch</span>
-								<span class="break-all text-fg-secondary font-mono"
-									>{config.branch ?? 'master'}</span
-								>
-								<span class="text-[10px] text-fg-tertiary">Input branch for this datasource</span>
-							</div>
+						<!-- Branch selection lives in the preview header; omit here to avoid confusion. -->
 							{#if config.source}
 								{@const fileSource = config.source as Record<string, unknown>}
 								<div class="border-t border-tertiary pt-2 mt-1 flex flex-col gap-2">

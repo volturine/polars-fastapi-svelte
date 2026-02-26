@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Tab output configuration is required
-Each analysis pipeline tab MUST include an `output` object with `output_datasource_id`, `datasource_type`, `format`, and `filename` fields.
+Each analysis pipeline tab MUST include an `output` object with `output_datasource_id`, `datasource_type`, `format`, and `filename` fields. The system MUST hydrate schema for tabs created from an analysis output before node configuration begins.
 
 #### Scenario: Missing output object
 - **WHEN** a tab is submitted without an `output` object
@@ -35,3 +35,7 @@ The system MUST validate tab schema requirements before compute build execution 
 #### Scenario: Early validation failure
 - **WHEN** a build request includes a tab missing required fields
 - **THEN** the request fails before compute starts and returns the specific missing field names
+
+#### Scenario: Derived tab schema hydration
+- **WHEN** a tab is created from an upstream analysis output
+- **THEN** the schema is loaded for the tab's datasource before node configuration is available

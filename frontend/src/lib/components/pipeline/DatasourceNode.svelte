@@ -15,7 +15,9 @@
 		iceberg?: Record<string, unknown>;
 		[key: string]: unknown;
 	};
+	import { createQuery } from '@tanstack/svelte-query';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { getDatasource } from '$lib/api/datasource';
 	import { schemaStore } from '$lib/stores/schema.svelte';
 	import { track } from '$lib/utils/audit-log';
 	import {
@@ -121,6 +123,17 @@
 	});
 
 	const isIceberg = $derived(datasource?.source_type === 'iceberg');
+	const datasourceQuery = createQuery(() => ({
+		queryKey: ['datasource', datasource?.id ?? null],
+		queryFn: async () => {
+			if (!datasource?.id) return null;
+			const result = await getDatasource(datasource.id);
+			if (result.isErr()) throw new Error(result.error.message);
+			return result.value;
+		},
+		enabled: !!datasource?.id
+	}));
+	const resolvedDatasource = $derived(datasourceQuery.data ?? datasource);
 	const outputId = $derived(activeTab?.output.output_datasource_id ?? null);
 	const isOutputSource = $derived(activeTab?.datasource?.id === outputId && !!outputId);
 	function ensureBranch(config: Record<string, unknown> | null | undefined, fallback: string) {
@@ -199,9 +212,9 @@
 		isEditing = false;
 	}
 
-	const analysisSourceId = $derived(datasource?.created_by_analysis_id ?? null);
+	const analysisSourceId = $derived(resolvedDatasource?.created_by_analysis_id ?? null);
 	const sourceType = $derived(
-		(analysisSourceId ? 'analysis' : (datasource?.source_type ?? 'file')) as string
+		(analysisSourceId ? 'analysis' : (resolvedDatasource?.source_type ?? 'file')) as string
 	);
 	const isDragActive = $derived(drag.active);
 	const snapshotConfig = $derived.by(() => activeTab?.datasource?.config ?? {});
@@ -363,7 +376,7 @@
 							</div>
 							<div class="min-w-32 shrink-0">
 								<BranchPicker
-									branches={(datasource?.config?.branches as string[] | undefined) ?? []}
+									branches={(resolvedDatasource?.config?.branches as string[] | undefined) ?? []}
 									value={branchValue}
 									placeholder="master"
 									onChange={applyBranchValue}

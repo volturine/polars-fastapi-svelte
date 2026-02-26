@@ -227,7 +227,7 @@ def update_analysis(
         }
         analysis.pipeline_definition = pipeline_definition
 
-        datasource_ids = []
+        datasource_ids: set[str] = set()
         output_ids = set(output_map.values())
         session.execute(delete(AnalysisDataSource).where(col(AnalysisDataSource.analysis_id) == analysis_id))
         for tab in tabs_payload:
@@ -239,7 +239,10 @@ def update_analysis(
                 raise ValueError('Analysis tab missing datasource.id')
             if not session.get(DataSource, ds_id) and str(ds_id) not in output_ids:
                 raise DataSourceNotFoundError(str(ds_id))
-            datasource_ids.append(ds_id)
+            ds_id_value = str(ds_id)
+            if ds_id_value in datasource_ids:
+                continue
+            datasource_ids.add(ds_id_value)
             datasource_model = session.get(DataSource, ds_id)
             if datasource_model and datasource_model.source_type == 'analysis':
                 source_id = _get_analysis_source_id(datasource_model)
@@ -247,7 +250,7 @@ def update_analysis(
             session.add(
                 AnalysisDataSource(
                     analysis_id=analysis_id,
-                    datasource_id=ds_id,
+                    datasource_id=ds_id_value,
                 )
             )
 

@@ -196,12 +196,7 @@ export function getStepSchema(
 	});
 }
 
-export interface StepRowCountRequest {
-	analysis_id?: string;
-	target_step_id: string;
-	analysis_pipeline: AnalysisPipelinePayload;
-	tab_id?: string | null;
-}
+export type StepRowCountRequest = StepSchemaRequest;
 
 export interface StepRowCountResponse {
 	step_id: string;

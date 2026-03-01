@@ -69,13 +69,6 @@ function cyrb53(str: string): string {
 }
 
 /**
- * Simple hash comparison
- */
-export function hashesEqual(hash1: string, hash2: string): boolean {
-	return hash1 === hash2;
-}
-
-/**
  * Check if cached preview is stale based on current pipeline hash
  */
 export function isCacheStale(
@@ -87,6 +80,5 @@ export function isCacheStale(
 		depends_on?: string[];
 	}>
 ): boolean {
-	const currentHash = hashPipeline(currentSteps);
-	return !hashesEqual(cachedHash, currentHash);
+	return hashPipeline(currentSteps) !== cachedHash;
 }

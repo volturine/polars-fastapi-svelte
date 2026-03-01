@@ -56,9 +56,7 @@ export class DatasourceStore {
 			throw new Error('Schema must be fetched via analysis output');
 		}
 
-		const result = sheetName
-			? await getDatasourceSchema(id, { sheetName, refresh: true })
-			: await getDatasourceSchema(id, { refresh: true });
+		const result = await getDatasourceSchema(id, { sheetName, refresh: true });
 		return result.match(
 			(schema) => {
 				if (!sheetName) {

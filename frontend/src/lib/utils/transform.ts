@@ -54,16 +54,10 @@ export interface StepConfig {
 
 export type SchemaTransformer = (input: Schema | null, config: StepConfig) => Schema;
 
-export function filterTransform(input: Schema | null, config: StepConfig): Schema {
-	if (!input) return { columns: [], row_count: null };
-
-	const conditions = config.conditions as
-		| Array<{ column: string; operator: string; value: string }>
-		| undefined;
-	if (!conditions || conditions.length === 0) {
-		return { columns: input.columns, row_count: null };
-	}
-
+const EMPTY: Schema = { columns: [], row_count: null };
+function passthrough(input: Schema | null): Schema { return input ?? EMPTY; }
+function clearCount(input: Schema | null): Schema {
+	if (!input) return EMPTY;
 	return { columns: input.columns, row_count: null };
 }
 
@@ -170,12 +164,6 @@ export function groupbyTransform(input: Schema | null, config: StepConfig): Sche
 	return { columns: result, row_count: null };
 }
 
-export function sortTransform(input: Schema | null, _config: StepConfig): Schema {
-	if (!input) return { columns: [], row_count: null };
-
-	return { columns: input.columns, row_count: null };
-}
-
 export function fillNullTransform(input: Schema | null, config: StepConfig): Schema {
 	if (!input) return { columns: [], row_count: null };
 
@@ -194,12 +182,6 @@ export function fillNullTransform(input: Schema | null, config: StepConfig): Sch
 		}),
 		row_count: null
 	};
-}
-
-export function deduplicateTransform(input: Schema | null, _config: StepConfig): Schema {
-	if (!input) return { columns: [], row_count: null };
-
-	return { columns: input.columns, row_count: null };
 }
 
 export function withColumnsTransform(input: Schema | null, config: StepConfig): Schema {
@@ -284,12 +266,6 @@ export function explodeTransform(input: Schema | null, config: StepConfig): Sche
 	};
 }
 
-export function timeseriesTransform(input: Schema | null, _config: StepConfig): Schema {
-	if (!input) return { columns: [], row_count: null };
-
-	return { columns: input.columns, row_count: null };
-}
-
 export function stringTransform(input: Schema | null, config: StepConfig): Schema {
 	if (!input) return { columns: [], row_count: null };
 
@@ -310,22 +286,27 @@ export function stringTransform(input: Schema | null, config: StepConfig): Schem
 	};
 }
 
-export function sampleTransform(input: Schema | null, _config: StepConfig): Schema {
-	if (!input) return { columns: [], row_count: null };
+export function timeseriesTransform(input: Schema | null, config: StepConfig): Schema {
+	if (!input) return EMPTY;
+	const column = config.column as string | undefined;
+	const newColumn = config.new_column as string | undefined;
+	const operationType = config.operation_type as string | undefined;
+	if (!newColumn || !operationType) return passthrough(input);
 
-	return { columns: input.columns, row_count: null };
-}
+	let dtype: string;
+	if (operationType === 'extract') dtype = 'Int32';
+	else if (operationType === 'timestamp') dtype = 'Int64';
+	else if (operationType === 'diff') dtype = 'Duration';
+	else dtype = input.columns.find((c) => c.name === column)?.dtype ?? 'Datetime';
 
-export function limitTransform(input: Schema | null, _config: StepConfig): Schema {
-	if (!input) return { columns: [], row_count: null };
-
-	return { columns: input.columns, row_count: null };
-}
-
-export function topkTransform(input: Schema | null, _config: StepConfig): Schema {
-	if (!input) return { columns: [], row_count: null };
-
-	return { columns: input.columns, row_count: null };
+	const newCol: ColumnInfo = { name: newColumn, dtype, nullable: false };
+	const exists = input.columns.some((c) => c.name === newColumn);
+	return {
+		columns: exists
+			? input.columns.map((c) => (c.name === newColumn ? newCol : c))
+			: [...input.columns, newCol],
+		row_count: null
+	};
 }
 
 export function nullCountTransform(input: Schema | null, _config: StepConfig): Schema {
@@ -351,14 +332,6 @@ export function valueCountsTransform(input: Schema | null, _config: StepConfig):
 		],
 		row_count: null
 	};
-}
-
-export function viewTransform(input: Schema | null, _config: StepConfig): Schema {
-	return input ?? { columns: [], row_count: null };
-}
-
-export function exportTransform(input: Schema | null, _config: StepConfig): Schema {
-	return input ?? { columns: [], row_count: null };
 }
 
 export function expressionTransform(input: Schema | null, config: StepConfig): Schema {
@@ -450,31 +423,32 @@ export function normalizeDtype(dtype: string | undefined): string | undefined {
 	return map[dtype] ?? dtype;
 }
 
-export function getStepTransform(step: PipelineStep): SchemaTransformer {
-	const transformers: Record<string, SchemaTransformer> = {
-		filter: filterTransform,
-		select: selectTransform,
-		drop: dropTransform,
-		rename: renameTransform,
-		groupby: groupbyTransform,
-		sort: sortTransform,
-		fill_null: fillNullTransform,
-		deduplicate: deduplicateTransform,
-		with_columns: withColumnsTransform,
-		pivot: pivotTransform,
-		unpivot: unpivotTransform,
-		explode: explodeTransform,
-		timeseries: timeseriesTransform,
-		string_transform: stringTransform,
-		sample: sampleTransform,
-		limit: limitTransform,
-		topk: topkTransform,
-		null_count: nullCountTransform,
-		value_counts: valueCountsTransform,
-		view: viewTransform,
-		export: exportTransform,
-		expression: expressionTransform
-	};
+const TRANSFORMERS: Record<string, SchemaTransformer> = {
+	filter: clearCount,
+	select: selectTransform,
+	drop: dropTransform,
+	rename: renameTransform,
+	groupby: groupbyTransform,
+	sort: passthrough,
+	fill_null: fillNullTransform,
+	deduplicate: clearCount,
+	with_columns: withColumnsTransform,
+	pivot: pivotTransform,
+	unpivot: unpivotTransform,
+	explode: explodeTransform,
+	timeseries: timeseriesTransform,
+	string_transform: stringTransform,
+	sample: clearCount,
+	limit: clearCount,
+	topk: clearCount,
+	null_count: nullCountTransform,
+	value_counts: valueCountsTransform,
+	view: passthrough,
+	export: passthrough,
+	expression: expressionTransform
+};
 
-	return transformers[step.type] ?? ((input) => input ?? { columns: [], row_count: null });
+export function getStepTransform(step: PipelineStep): SchemaTransformer {
+	if (step.type.startsWith('plot_')) return passthrough;
+	return TRANSFORMERS[step.type] ?? passthrough;
 }

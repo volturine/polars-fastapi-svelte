@@ -392,9 +392,7 @@ const defaultStepType: StepTypeConfig = {
 };
 
 function getStepTypeConfig(type: string): StepTypeConfig {
-	if (type.startsWith('plot_')) {
-		return stepTypes.chart ?? defaultStepType;
-	}
+	if (type.startsWith('plot_')) return stepTypes.chart;
 	return stepTypes[type] ?? defaultStepType;
 }
 

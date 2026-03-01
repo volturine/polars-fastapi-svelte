@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 import polars as pl
 
@@ -32,18 +32,10 @@ class PivotHandler(OperationHandler):
             raise ValueError('Pivot requires at least one index column')
 
         agg = None if validated.aggregate_function == 'count' else validated.aggregate_function
-        agg_value: Any = agg
-        if validated.values:
-            return lf.pivot(
-                on=validated.columns,
-                on_columns=on_columns,
-                index=validated.index,
-                values=validated.values,
-                aggregate_function=agg_value,
-            )
         return lf.pivot(
             on=validated.columns,
             on_columns=on_columns,
             index=validated.index,
-            aggregate_function=agg_value,
+            aggregate_function=agg,
+            **({'values': validated.values} if validated.values else {}),
         )

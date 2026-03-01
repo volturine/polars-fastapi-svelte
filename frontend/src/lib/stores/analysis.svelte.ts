@@ -18,6 +18,10 @@ import { ResultAsync, err, ok } from 'neverthrow';
 import type { ApiError } from '$lib/api/client';
 import { idbGet, idbSet } from '$lib/utils/indexeddb';
 
+function cloneConfig(config: unknown): Record<string, unknown> {
+	return JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
+}
+
 async function loadPreviewRuns(map: SvelteMap<string, boolean>): Promise<void> {
 	const stored = await idbGet<Array<[string, boolean]>>('analysis_preview_runs');
 	if (!stored) return;
@@ -221,10 +225,7 @@ export class AnalysisStore {
 		const steps = this.activeTab.steps;
 		const parentId = steps.length ? (steps[steps.length - 1]?.id ?? null) : null;
 		step.depends_on = parentId ? [parentId] : [];
-		const newSteps = [...steps, step].map((item) => ({
-			...item,
-			config: JSON.parse(JSON.stringify(item.config)) as Record<string, unknown>
-		}));
+		const newSteps = [...steps, step].map((item) => ({ ...item, config: cloneConfig(item.config) }));
 		this.updateTabSteps(this.activeTab.id, newSteps);
 		this.logStep('add', step, { index: newSteps.length - 1 });
 	}
@@ -344,10 +345,7 @@ export class AnalysisStore {
 		}
 
 		nextPipeline.splice(index, 0, step);
-		const nextSteps = nextPipeline.map((item) => ({
-			...item,
-			config: JSON.parse(JSON.stringify(item.config)) as Record<string, unknown>
-		}));
+		const nextSteps = nextPipeline.map((item) => ({ ...item, config: cloneConfig(item.config) }));
 		this.updateTabSteps(this.activeTab.id, nextSteps);
 		this.logStep('insert', step, { index });
 		return true;
@@ -356,10 +354,7 @@ export class AnalysisStore {
 	addBranchStep(step: PipelineStep, parentId: string | null): void {
 		if (!this.activeTab) return;
 		step.depends_on = parentId ? [parentId] : [];
-		const newSteps = [...this.activeTab.steps, step].map((item) => ({
-			...item,
-			config: JSON.parse(JSON.stringify(item.config)) as Record<string, unknown>
-		}));
+		const newSteps = [...this.activeTab.steps, step].map((item) => ({ ...item, config: cloneConfig(item.config) }));
 		this.updateTabSteps(this.activeTab.id, newSteps);
 		this.logStep('branch', step, { parent_id: parentId });
 	}
@@ -371,9 +366,7 @@ export class AnalysisStore {
 				? {
 						...step,
 						...updates,
-						config: JSON.parse(
-							JSON.stringify((updates.config ?? step.config) as Record<string, unknown>)
-						) as Record<string, unknown>
+						config: cloneConfig(updates.config ?? step.config)
 					}
 				: step
 		);
@@ -382,7 +375,7 @@ export class AnalysisStore {
 
 	updateStepConfig(id: string, config: Record<string, unknown>): void {
 		if (!this.activeTab) return;
-		const safeConfig = JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
+		const safeConfig = cloneConfig(config);
 		const nextPipeline = this.activeTab.steps.map((step) =>
 			step.id === id ? { ...step, config: safeConfig } : step
 		);
@@ -473,10 +466,7 @@ export class AnalysisStore {
 		if (!this.activeTab) return;
 		const steps = [...this.activeTab.steps];
 		const [moved] = steps.splice(fromIndex, 1);
-		const movedCopy = {
-			...moved,
-			config: JSON.parse(JSON.stringify(moved.config))
-		};
+		const movedCopy = { ...moved, config: cloneConfig(moved.config) };
 		steps.splice(toIndex, 0, movedCopy);
 		this.updateTabSteps(this.activeTab.id, steps);
 		this.logStep('reorder', movedCopy, { from: fromIndex, to: toIndex });

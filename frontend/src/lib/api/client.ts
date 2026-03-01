@@ -1,4 +1,4 @@
-import { err, ResultAsync } from 'neverthrow';
+import { err, okAsync, ResultAsync } from 'neverthrow';
 import { getClientIdentity } from '$lib/stores/clientIdentity.svelte';
 import { getNamespace } from '$lib/stores/namespace.svelte';
 import { track } from '$lib/utils/audit-log';
@@ -18,6 +18,16 @@ export interface ApiError {
 export interface ApiResponse<T> {
 	data: T;
 	headers: Headers;
+}
+
+function trackParseError(endpoint: string, method?: string): void {
+	track({
+		event: 'api_error',
+		action: method ?? 'GET',
+		page: typeof window !== 'undefined' ? window.location.pathname : undefined,
+		target: endpoint,
+		meta: { type: 'parse' }
+	});
 }
 
 function createApiError(
@@ -77,20 +87,9 @@ export function apiRequest<T>(endpoint: string, options?: RequestInit): ResultAs
 			createApiError('network', error instanceof Error ? error.message : 'Network error')
 	).andThen((response) => {
 		if (!response.ok) return handleErrorResponse(response, endpoint, options);
-		if (response.status === 204) {
-			return ResultAsync.fromPromise(
-				Promise.resolve(undefined as T),
-				(): ApiError => createApiError('parse', 'Failed to parse response JSON')
-			);
-		}
+		if (response.status === 204) return okAsync(undefined as T);
 		return ResultAsync.fromPromise(response.json() as Promise<T>, (): ApiError => {
-			track({
-				event: 'api_error',
-				action: options?.method ?? 'GET',
-				page: typeof window !== 'undefined' ? window.location.pathname : undefined,
-				target: endpoint,
-				meta: { type: 'parse' }
-			});
+			trackParseError(endpoint, options?.method);
 			return createApiError('parse', 'Failed to parse response JSON');
 		});
 	});
@@ -107,20 +106,9 @@ export function apiRequestWithHeaders<T>(
 			createApiError('network', error instanceof Error ? error.message : 'Network error')
 	).andThen((response) => {
 		if (!response.ok) return handleErrorResponse(response, endpoint, options);
-		if (response.status === 204) {
-			return ResultAsync.fromPromise(
-				Promise.resolve(undefined as T),
-				(): ApiError => createApiError('parse', 'Failed to parse response JSON')
-			).map((data) => ({ data, headers: response.headers }));
-		}
+		if (response.status === 204) return okAsync({ data: undefined as T, headers: response.headers });
 		return ResultAsync.fromPromise(response.json() as Promise<T>, (): ApiError => {
-			track({
-				event: 'api_error',
-				action: options?.method ?? 'GET',
-				page: typeof window !== 'undefined' ? window.location.pathname : undefined,
-				target: endpoint,
-				meta: { type: 'parse' }
-			});
+			trackParseError(endpoint, options?.method);
 			return createApiError('parse', 'Failed to parse response JSON');
 		}).map((data) => ({ data, headers: response.headers }));
 	});
@@ -138,13 +126,7 @@ export function apiBlobRequest(
 	).andThen((response) => {
 		if (!response.ok) return handleErrorResponse(response, endpoint, options);
 		return ResultAsync.fromPromise(response.blob(), (): ApiError => {
-			track({
-				event: 'api_error',
-				action: options?.method ?? 'GET',
-				page: typeof window !== 'undefined' ? window.location.pathname : undefined,
-				target: endpoint,
-				meta: { type: 'parse' }
-			});
+			trackParseError(endpoint, options?.method);
 			return createApiError('parse', 'Failed to read response');
 		});
 	});

@@ -7,6 +7,8 @@ from modules.compute.schemas import EngineStatus
 
 logger = logging.getLogger(__name__)
 
+_RESOURCE_KEYS = frozenset({'max_threads', 'max_memory_mb', 'streaming_chunk_size'})
+
 
 class EngineInfo:
     """Tracks engine and activity timestamp."""
@@ -97,31 +99,13 @@ class ProcessManager:
             return info
 
     def _configs_differ(self, old_config: dict, new_config: dict) -> bool:
-        """Check if two resource configs differ in meaningful ways."""
-        keys = {'max_threads', 'max_memory_mb', 'streaming_chunk_size'}
-        for key in keys:
-            old_val = old_config.get(key)
-            new_val = new_config.get(key)
-            if old_val != new_val:
-                return True
-        return False
+        return any(old_config.get(k) != new_config.get(k) for k in _RESOURCE_KEYS)
 
     def _normalize_config(self, config: dict | None) -> dict:
-        """Normalize resource config by stripping default values."""
         if not config:
             return {}
-
         defaults = self._get_defaults()
-        normalized: dict = {}
-        keys = {'max_threads', 'max_memory_mb', 'streaming_chunk_size'}
-        for key in keys:
-            value = config.get(key)
-            if value is None:
-                continue
-            if value == defaults.get(key):
-                continue
-            normalized[key] = value
-        return normalized
+        return {k: v for k in _RESOURCE_KEYS if (v := config.get(k)) is not None and v != defaults.get(k)}
 
     def get_or_create_engine(self, analysis_id: str, resource_config: dict | None = None) -> PolarsComputeEngine:
         """Get existing engine or create a new one for the analysis."""

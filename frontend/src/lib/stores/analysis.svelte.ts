@@ -106,46 +106,7 @@ export class AnalysisStore {
 			this.activeTabId = null;
 			this.sourceSchemas.clear();
 		}
-
-		const definition = analysis.pipeline_definition as {
-			steps?: PipelineStep[];
-			tabs?: AnalysisTab[];
-		};
-
-		const tabs = analysis.tabs.length ? analysis.tabs : definition?.tabs;
-		if (tabs && tabs.length && tabs[0].steps !== undefined) {
-			const normalized = this.normalizeTabSteps(tabs);
-			const sanitized = normalized.map((tab, index) => ensureTabDefaults(tab, index));
-			this.setTabs(sanitized);
-			this.savedTabs = sanitized;
-			this.loading = false;
-			this.error = null;
-			return;
-		}
-
-		const legacySteps = definition?.steps ?? [];
-
-		if (tabs && tabs.length) {
-			const migratedTabs = tabs.map((tab, index) => ({
-				...tab,
-				steps: index === 0 ? legacySteps : []
-			}));
-			const normalized = this.normalizeTabSteps(migratedTabs);
-			const sanitized = normalized.map((tab, index) => ensureTabDefaults(tab, index));
-			this.setTabs(sanitized);
-			this.savedTabs = sanitized;
-			this.loading = false;
-			this.error = null;
-			return;
-		}
-
-		const defaults = this.buildTabs([], legacySteps);
-		const normalized = this.normalizeTabSteps(defaults);
-		const sanitized = normalized.map((tab, index) => ensureTabDefaults(tab, index));
-		this.setTabs(sanitized);
-		this.savedTabs = sanitized;
-		this.loading = false;
-		this.error = null;
+		this.resolveTabs(analysis);
 	}
 
 	loadAnalysis(id: string): ResultAsync<void, ApiError> {
@@ -160,43 +121,7 @@ export class AnalysisStore {
 				if (this.loadId !== token) return ok(undefined);
 				this.current = { ...analysis, version };
 				this.lastSaved = { name: analysis.name, description: analysis.description ?? null };
-
-				const definition = analysis.pipeline_definition as {
-					steps?: PipelineStep[];
-					tabs?: AnalysisTab[];
-				};
-
-				const tabs = analysis.tabs.length ? analysis.tabs : definition?.tabs;
-				if (tabs && tabs.length && tabs[0].steps !== undefined) {
-					const normalized = this.normalizeTabSteps(tabs);
-					const sanitized = normalized.map((tab, index) => ensureTabDefaults(tab, index));
-					this.setTabs(sanitized);
-					this.savedTabs = sanitized;
-					this.loading = false;
-					return ok(undefined);
-				}
-
-				const legacySteps = definition?.steps ?? [];
-
-				if (tabs && tabs.length) {
-					const migratedTabs = tabs.map((tab, index) => ({
-						...tab,
-						steps: index === 0 ? legacySteps : []
-					}));
-					const normalized = this.normalizeTabSteps(migratedTabs);
-					const sanitized = normalized.map((tab, index) => ensureTabDefaults(tab, index));
-					this.setTabs(sanitized);
-					this.savedTabs = sanitized;
-					this.loading = false;
-					return ok(undefined);
-				}
-
-				const defaults = this.buildTabs([], legacySteps);
-				const normalized = this.normalizeTabSteps(defaults);
-				const sanitized = normalized.map((tab, index) => ensureTabDefaults(tab, index));
-				this.setTabs(sanitized);
-				this.savedTabs = sanitized;
-				this.loading = false;
+				this.resolveTabs(analysis);
 				return ok(undefined);
 			})
 			.mapErr((error) => {
@@ -205,6 +130,24 @@ export class AnalysisStore {
 				this.loading = false;
 				return error;
 			});
+	}
+
+	private resolveTabs(analysis: Analysis): void {
+		const definition = analysis.pipeline_definition as {
+			steps?: PipelineStep[];
+			tabs?: AnalysisTab[];
+		};
+		const tabs = analysis.tabs.length ? analysis.tabs : definition?.tabs;
+		if (tabs?.length && tabs[0].steps !== undefined) {
+			this.applyTabs(tabs);
+			return;
+		}
+		const legacySteps = definition?.steps ?? [];
+		if (tabs?.length) {
+			this.applyTabs(tabs.map((tab, index) => ({ ...tab, steps: index === 0 ? legacySteps : [] })));
+			return;
+		}
+		this.applyTabs(this.buildTabs([], legacySteps));
 	}
 
 	isDirty(): boolean {
@@ -294,6 +237,14 @@ export class AnalysisStore {
 		this.activeTabId = tabs[0]?.id ?? null;
 	}
 
+	private applyTabs(tabs: AnalysisTab[]): void {
+		const sanitized = this.normalizeTabSteps(tabs).map((tab, i) => ensureTabDefaults(tab, i));
+		this.setTabs(sanitized);
+		this.savedTabs = sanitized;
+		this.loading = false;
+		this.error = null;
+	}
+
 	private normalizeTabSteps(tabs: AnalysisTab[]): AnalysisTab[] {
 		return tabs.map((tab) => {
 			return {
@@ -307,43 +258,25 @@ export class AnalysisStore {
 	private normalizeSteps(steps: PipelineStep[]): PipelineStep[] {
 		if (!steps.length) return steps;
 		const hasDependencies = steps.some((step) => (step.depends_on ?? []).length > 0);
-
-		const normalized = steps.map((step, index) => {
-			const isApplied = step.is_applied !== false;
-			const normalizedType = step.type.startsWith('plot_') ? 'chart' : step.type;
-			// Normalize config to ensure proper shape (handles backward compatibility)
-			const normalizedConfig = normalizeConfig(step.type, step.config as Record<string, unknown>);
-
-			if (!hasDependencies) {
-				// Legacy: add dependencies based on position
-				if (index === 0) {
-					return {
-						...step,
-						type: normalizedType,
-						config: normalizedConfig as Record<string, unknown>,
-						depends_on: [],
-						is_applied: isApplied
-					};
-				}
-				const parentId = steps[index - 1]?.id ?? null;
-				return {
-					...step,
-					type: normalizedType,
-					config: normalizedConfig as Record<string, unknown>,
-					depends_on: parentId ? [parentId] : [],
-					is_applied: isApplied
-				};
-			}
-
+		return steps.map((step, index) => {
+			const depends_on = hasDependencies
+				? step.depends_on
+				: index === 0
+					? []
+					: steps[index - 1]?.id
+						? [steps[index - 1].id]
+						: [];
 			return {
 				...step,
-				type: normalizedType,
-				config: normalizedConfig as Record<string, unknown>,
-				is_applied: isApplied
+				type: step.type.startsWith('plot_') ? 'chart' : step.type,
+				config: normalizeConfig(step.type, step.config as Record<string, unknown>) as Record<
+					string,
+					unknown
+				>,
+				depends_on,
+				is_applied: step.is_applied !== false
 			};
 		});
-
-		return normalized;
 	}
 
 	setActiveTab(id: string): void {
@@ -520,36 +453,20 @@ export class AnalysisStore {
 		const removedStep = steps.find((step) => step.id === id);
 		if (!removedStep) return;
 
-		// Find the parent of the removed step
-		const removedDeps = removedStep.depends_on ?? [];
-		const removedParentId = removedDeps[0] ?? null;
+		const removedParentId = (removedStep.depends_on ?? [])[0] ?? null;
 
-		// Update steps that depended on the removed step to now depend on its parent
 		const nextPipeline = steps
 			.filter((step) => step.id !== id)
 			.map((step) => {
 				const deps = step.depends_on ?? [];
 				if (deps.includes(id)) {
-					// This step depended on the removed step, update to point to removed step's parent
-					return {
-						...step,
-						depends_on: removedParentId ? [removedParentId] : []
-					};
+					return { ...step, depends_on: removedParentId ? [removedParentId] : [] };
 				}
 				return step;
 			});
 
-		// Get all affected step IDs (the removed step and all its descendants)
-		const affectedIds = [id];
-		for (const step of steps) {
-			if (step.depends_on?.includes(id)) {
-				affectedIds.push(step.id);
-			}
-		}
-
 		this.updateTabSteps(this.activeTab.id, nextPipeline);
 		this.logStep('remove', removedStep, { parent_id: removedParentId });
-		// No cache invalidation needed - SchemaStore uses $derived
 	}
 
 	reorderSteps(fromIndex: number, toIndex: number): void {

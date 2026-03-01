@@ -1,6 +1,5 @@
 import type { AnalysisTab, PipelineStep } from '$lib/types/analysis';
 import type { DataSource } from '$lib/types/datasource';
-import { ensureTabDefaults } from '$lib/utils/analysis-tab';
 import { applySteps } from '$lib/utils/pipeline';
 
 type PipelineTab = {
@@ -28,70 +27,29 @@ export type AnalysisPipelinePayload = {
 	sources: Record<string, Record<string, unknown>>;
 };
 
-function getTabSteps(tab: AnalysisTab): PipelineStep[] {
-	return applySteps(tab.steps ?? []);
-}
-
-function collectSourceIds(tabs: AnalysisTab[]): Set<string> {
-	const ids = new Set<string>();
-	for (const tab of tabs) {
-		const datasourceId = tab.datasource.id;
-		ids.add(datasourceId);
-		const steps = getTabSteps(tab);
-		for (const step of steps) {
-			const config = step.config ?? {};
-			if (typeof config !== 'object' || Array.isArray(config)) {
-				continue;
-			}
-			const rightSource =
-				(config as Record<string, unknown>).right_source ??
-				(config as Record<string, unknown>).rightDataSource;
-			if (typeof rightSource === 'string' && rightSource) {
-				ids.add(rightSource);
-			}
-			const sources = (config as Record<string, unknown>).sources;
-			if (typeof sources === 'string' && sources) {
-				ids.add(sources);
-			}
-			if (Array.isArray(sources)) {
-				for (const source of sources) {
-					if (typeof source === 'string' && source) {
-						ids.add(source);
-					}
-				}
+function collectTabSourceIds(tab: AnalysisTab): Set<string> {
+	const ids = new Set<string>([tab.datasource.id]);
+	for (const step of applySteps(tab.steps ?? [])) {
+		const config = step.config ?? {};
+		if (typeof config !== 'object' || Array.isArray(config)) continue;
+		const cfg = config as Record<string, unknown>;
+		const rightSource = cfg.right_source ?? cfg.rightDataSource;
+		if (typeof rightSource === 'string' && rightSource) ids.add(rightSource);
+		const sources = cfg.sources;
+		if (typeof sources === 'string' && sources) ids.add(sources);
+		if (Array.isArray(sources)) {
+			for (const source of sources) {
+				if (typeof source === 'string' && source) ids.add(source);
 			}
 		}
 	}
 	return ids;
 }
 
-function collectTabSourceIds(tab: AnalysisTab): Set<string> {
+function collectSourceIds(tabs: AnalysisTab[]): Set<string> {
 	const ids = new Set<string>();
-	const datasourceId = tab.datasource.id;
-	ids.add(datasourceId);
-	const steps = applySteps(tab.steps ?? []);
-	for (const step of steps) {
-		const config = step.config ?? {};
-		if (typeof config !== 'object' || Array.isArray(config)) {
-			continue;
-		}
-		const rightSource =
-			(config as Record<string, unknown>).right_source ??
-			(config as Record<string, unknown>).rightDataSource;
-		if (typeof rightSource === 'string' && rightSource) {
-			ids.add(rightSource);
-		}
-		const sources = (config as Record<string, unknown>).sources;
-		if (typeof sources === 'string' && sources) {
-			ids.add(sources);
-		}
-		if (Array.isArray(sources)) {
-			for (const source of sources) {
-				if (typeof source === 'string' && source) {
-					ids.add(source);
-				}
-			}
-		}
+	for (const tab of tabs) {
+		for (const id of collectTabSourceIds(tab)) ids.add(id);
 	}
 	return ids;
 }
@@ -104,13 +62,12 @@ export function buildAnalysisPipelinePayload(
 	if (!analysisId) return null;
 	if (!tabs.length) return null;
 
-	const normalizedTabs = tabs.map((tab, index) => ensureTabDefaults(tab, index));
-	const sourceIds = collectSourceIds(normalizedTabs);
+	const sourceIds = collectSourceIds(tabs);
 	const datasourceMap = new Map(datasources.map((ds) => [ds.id, ds]));
 	const sources: Record<string, Record<string, unknown>> = {};
 	const missing: string[] = [];
 	const outputByTabId = new Map<string, string>();
-	for (const tab of normalizedTabs) {
+	for (const tab of tabs) {
 		if (!tab.id) continue;
 		const outputId = tab.output.output_datasource_id;
 		if (!outputId) {
@@ -137,7 +94,7 @@ export function buildAnalysisPipelinePayload(
 		return null;
 	}
 
-	const pipelineTabs = normalizedTabs.map((tab) => {
+	const pipelineTabs = tabs.map((tab) => {
 		const outputId = outputByTabId.get(tab.id);
 		const config = tab.datasource.config;
 		const datasourceId = tab.datasource.id;
@@ -158,7 +115,7 @@ export function buildAnalysisPipelinePayload(
 				config: config as { branch: string } & Record<string, unknown>
 			},
 			output: { ...tab.output, output_datasource_id: outputId },
-			steps: getTabSteps(tab)
+			steps: applySteps(tab.steps ?? [])
 		};
 	});
 
@@ -181,8 +138,6 @@ export function buildTabPipelinePayload(args: {
 
 	const outputMap = new Map<string, string>();
 	const outputById = new Map<string, string>();
-	const tabIndex = args.tabs.findIndex((item) => item.id === tab.id);
-	const normalizedTab = ensureTabDefaults(tab, tabIndex >= 0 ? tabIndex : 0);
 	for (const item of args.tabs) {
 		if (!item.id) continue;
 		const outputId = item.output.output_datasource_id;
@@ -191,9 +146,9 @@ export function buildTabPipelinePayload(args: {
 		outputById.set(outputId, item.id);
 	}
 
-	const config = normalizedTab.datasource.config;
-	const datasourceId = normalizedTab.datasource.id;
-	const analysisTabId = normalizedTab.datasource.analysis_tab_id;
+	const config = tab.datasource.config;
+	const datasourceId = tab.datasource.id;
+	const analysisTabId = tab.datasource.analysis_tab_id;
 	if (!datasourceId) return null;
 
 	const steps = applySteps(tab.steps ?? []);
@@ -210,7 +165,7 @@ export function buildTabPipelinePayload(args: {
 		};
 	};
 
-	const sourceIds = collectTabSourceIds(normalizedTab);
+	const sourceIds = collectTabSourceIds(tab);
 	for (const sourceId of sourceIds) {
 		const tabId = outputById.get(sourceId);
 		if (tabId) {
@@ -230,17 +185,14 @@ export function buildTabPipelinePayload(args: {
 		analysis_id: args.analysisId,
 		tabs: [
 			{
-				id: normalizedTab.id,
-				name: normalizedTab.name,
+				id: tab.id,
+				name: tab.name,
 				datasource: {
 					id: datasourceId,
 					analysis_tab_id: analysisTabId,
 					config: config as { branch: string } & Record<string, unknown>
 				},
-				output: {
-					...normalizedTab.output,
-					output_datasource_id: normalizedTab.output.output_datasource_id
-				},
+				output: { ...tab.output },
 				steps
 			}
 		],
@@ -253,6 +205,10 @@ export function buildDatasourcePipelinePayload(args: {
 	datasourceConfig?: Record<string, unknown> | null;
 }): AnalysisPipelinePayload {
 	const datasource = args.datasource;
+	const branch = String(
+		(args.datasourceConfig as { branch?: string } | null | undefined)?.branch ?? 'master'
+	).trim();
+	const filename = (datasource.name ?? 'export').replace(/\s+/g, '_').toLowerCase();
 	const tabs: PipelineTab[] = [
 		{
 			id: `datasource-${datasource.id}`,
@@ -260,12 +216,7 @@ export function buildDatasourcePipelinePayload(args: {
 			datasource: {
 				id: datasource.id,
 				analysis_tab_id: null,
-				config: {
-					branch: String(
-						(args.datasourceConfig as { branch?: string } | null | undefined)?.branch ?? 'master'
-					).trim(),
-					...(args.datasourceConfig ?? {})
-				}
+				config: { branch, ...(args.datasourceConfig ?? {}) }
 			},
 			output: {
 				output_datasource_id: datasource.id,
@@ -273,13 +224,7 @@ export function buildDatasourcePipelinePayload(args: {
 				format: 'parquet',
 				filename: datasource.name ?? 'export',
 				build_mode: 'full',
-				iceberg: {
-					namespace: 'outputs',
-					table_name: (datasource.name ?? 'export').replace(/\s+/g, '_').toLowerCase(),
-					branch: String(
-						(args.datasourceConfig as { branch?: string } | null | undefined)?.branch ?? 'master'
-					).trim()
-				}
+				iceberg: { namespace: 'outputs', table_name: filename, branch }
 			},
 			steps: []
 		}

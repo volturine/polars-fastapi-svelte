@@ -8,10 +8,7 @@ const defaultDatasourceType = 'iceberg';
 const outputNameFallback = 'export';
 
 function makeId(): string {
-	if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-		return crypto.randomUUID();
-	}
-	return `id-${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`;
+	return crypto.randomUUID();
 }
 
 function cleanBranch(value: unknown): string {
@@ -24,9 +21,7 @@ function cleanBranch(value: unknown): string {
 function toSlug(value: string): string {
 	const trimmed = value.trim();
 	if (!trimmed) return outputNameFallback;
-	const normalized = trimmed.replace(/\s+/g, '_').toLowerCase();
-	if (!normalized) return outputNameFallback;
-	return normalized;
+	return trimmed.replace(/\s+/g, '_').toLowerCase();
 }
 
 export function buildOutputConfig(args: {
@@ -141,30 +136,6 @@ export function validatePipelineTabs(tabs: AnalysisTab[]): PipelineValidationErr
 				message: `Tab ${tabId} missing output.output_datasource_id`
 			});
 		}
-		const filename = output.filename as string | undefined;
-		if (!filename) {
-			errors.push({
-				tabId,
-				field: 'output.filename',
-				message: `Tab ${tabId} missing output filename`
-			});
-		}
-		const format = output.format as string | undefined;
-		if (!format) {
-			errors.push({
-				tabId,
-				field: 'output.format',
-				message: `Tab ${tabId} missing output format`
-			});
-		}
-		const datasourceType = output.datasource_type as string | undefined;
-		if (!datasourceType) {
-			errors.push({
-				tabId,
-				field: 'output.datasource_type',
-				message: `Tab ${tabId} missing output datasource_type`
-			});
-		}
 
 		const analysisTabId = datasource.analysis_tab_id;
 		if (!analysisTabId) continue;
@@ -191,7 +162,6 @@ export function validatePipelineTabs(tabs: AnalysisTab[]): PipelineValidationErr
 export function formatPipelineErrors(errors: PipelineValidationError[]): string {
 	if (!errors.length) return '';
 	const [first, ...rest] = errors;
-	if (!first) return '';
 	const suffix = rest.length ? ` (+${rest.length} more)` : '';
 	return `${first.message}${suffix}`;
 }

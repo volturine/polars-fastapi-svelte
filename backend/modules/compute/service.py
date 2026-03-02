@@ -45,13 +45,11 @@ def _resolve_build_status(
         return 'success', None, None
 
     name_map: dict[str, str] = {}
-    if checks:
-        name_map = {c.id: c.name for c in checks}
-
-    total = len(hc_results)
     critical_map: dict[str, bool] = {}
     if checks:
+        name_map = {c.id: c.name for c in checks}
         critical_map = {c.id: c.critical for c in checks}
+    total = len(hc_results)
     failed = [r for r in hc_results if not r.passed]
 
     if not failed:

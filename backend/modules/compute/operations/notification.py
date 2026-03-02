@@ -112,9 +112,7 @@ class NotificationHandler(OperationHandler):
                 batch = rows[offset : offset + validated.batch_size]
                 for row in batch:
                     message = _build_message(validated.message_template, row)
-                    recipient_value: object | None = None
-                    if validated.recipient_column:
-                        recipient_value = row.get(validated.recipient_column)
+                    recipient_value = row.get(validated.recipient_column) if validated.recipient_column else None
                     try:
                         recipients = parse_recipients(recipient_value)
                         if not recipients:

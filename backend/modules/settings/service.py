@@ -46,11 +46,7 @@ def get_settings(session: Session) -> SettingsResponse:
         session.commit()
         session.refresh(row)
 
-    smtp_password = ''
-    if row.smtp_password_encrypted:
-        smtp_password = _decrypt_password(row.smtp_password_encrypted)
-    elif row.smtp_password:
-        smtp_password = row.smtp_password
+    smtp_password = _decrypt_password(row.smtp_password_encrypted) if row.smtp_password_encrypted else row.smtp_password or ''
 
     return SettingsResponse(
         smtp_host=row.smtp_host,
@@ -97,11 +93,7 @@ def get_resolved_smtp() -> dict[str, object]:
     def _read(session: Session) -> dict[str, object]:
         row = session.exec(select(AppSettings).where(AppSettings.id == 1)).first()
         if row and row.smtp_host:
-            password = ''
-            if row.smtp_password_encrypted:
-                password = _decrypt_password(row.smtp_password_encrypted)
-            elif row.smtp_password:
-                password = row.smtp_password
+            password = _decrypt_password(row.smtp_password_encrypted) if row.smtp_password_encrypted else row.smtp_password or ''
             return {
                 'host': row.smtp_host,
                 'port': row.smtp_port,

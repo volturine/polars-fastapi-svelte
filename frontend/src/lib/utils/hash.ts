@@ -12,10 +12,7 @@ export function hashPipeline(
 		depends_on?: string[];
 	}>
 ): string {
-	// Sort by ID to ensure consistent hashing
 	const sorted = [...steps].sort((a, b) => a.id.localeCompare(b.id));
-
-	// Create a minimal representation for hashing
 	const hashable = sorted.map((step) => ({
 		id: step.id,
 		type: step.type,
@@ -64,7 +61,6 @@ function cyrb53(str: string): string {
 	h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
 	h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
 
-	// Convert to hex string
 	return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
 }
 

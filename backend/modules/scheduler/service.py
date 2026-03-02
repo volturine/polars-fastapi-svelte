@@ -29,10 +29,7 @@ def _resolve_schedule_target(session: Session, datasource_id: str) -> tuple[str,
     if not analysis_id:
         raise ScheduleValidationError('Datasource has no provenance (not created by analysis)', details={'datasource_id': datasource_id})
 
-    # Tab ID is stored in config
-    tab_id = None
-    if isinstance(datasource.config, dict):
-        tab_id = datasource.config.get('analysis_tab_id')
+    tab_id = datasource.config.get('analysis_tab_id') if isinstance(datasource.config, dict) else None
 
     return analysis_id, tab_id
 
@@ -56,10 +53,7 @@ def _enrich_schedule_response(session: Session, schedule: Schedule) -> ScheduleR
     if datasource:
         data['analysis_id'] = datasource.created_by_analysis_id
 
-        # Tab ID is stored in config
-        tab_id = None
-        if isinstance(datasource.config, dict):
-            tab_id = datasource.config.get('analysis_tab_id')
+        tab_id = datasource.config.get('analysis_tab_id') if isinstance(datasource.config, dict) else None
         data['tab_id'] = tab_id
 
         # Get analysis name
@@ -68,15 +62,11 @@ def _enrich_schedule_response(session: Session, schedule: Schedule) -> ScheduleR
             if analysis:
                 data['analysis_name'] = analysis.name
 
-                # Get tab name from pipeline definition
-                if tab_id and analysis.pipeline_definition:
-                    pipeline = analysis.pipeline_definition
-                    if isinstance(pipeline, dict):
-                        tabs = pipeline.get('tabs', [])
-                        for tab in tabs:
-                            if tab.get('id') == tab_id:
-                                data['tab_name'] = tab.get('name', 'unnamed')
-                                break
+                if tab_id and isinstance(analysis.pipeline_definition, dict):
+                    for tab in analysis.pipeline_definition.get('tabs', []):
+                        if tab.get('id') == tab_id:
+                            data['tab_name'] = tab.get('name', 'unnamed')
+                            break
 
     return ScheduleResponse.model_validate(data)
 
@@ -432,9 +422,9 @@ def _resolve_upstream_tabs(tabs: list[dict], target_tab_id: str) -> set[str]:
     for tab in tabs:
         tid = tab.get('id')
         output = tab.get('output') if isinstance(tab, dict) else None
-        output_id = output.get('output_datasource_id') if isinstance(output, dict) else None
+        output_id = output.get('output_datasource_id') if output else None
         datasource = tab.get('datasource') if isinstance(tab, dict) else None
-        input_id = datasource.get('id') if isinstance(datasource, dict) else None
+        input_id = datasource.get('id') if datasource else None
         if tid and output_id:
             output_to_tab[str(output_id)] = str(tid)
         if tid and input_id:
@@ -516,9 +506,7 @@ def run_analysis_build(
         output_config = output if output else None
 
         # Determine the target step (last step, or 'source' if no steps)
-        target_step_id = 'source'
-        if steps:
-            target_step_id = steps[-1].get('id', 'source')
+        target_step_id = steps[-1].get('id', 'source') if steps else 'source'
 
         try:
             if output_config is not None:
@@ -527,14 +515,16 @@ def run_analysis_build(
                 export_format = 'parquet'
                 filename = output_config.get('filename', f'{tab_name}_out')
 
-                iceberg_options = None
                 iceberg_cfg = output_config.get('iceberg')
-                if isinstance(iceberg_cfg, dict):
-                    iceberg_options = {
+                iceberg_options = (
+                    {
                         'table_name': iceberg_cfg.get('table_name', 'exported_data'),
                         'namespace': iceberg_cfg.get('namespace', 'outputs'),
                         'branch': iceberg_cfg.get('branch', 'master'),
                     }
+                    if isinstance(iceberg_cfg, dict)
+                    else None
+                )
 
                 duckdb_options = None
 

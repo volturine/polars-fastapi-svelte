@@ -314,7 +314,7 @@
 		const sourceTab = analysisStore.tabs.find((item) => item.id === String(sourceTabId));
 		return sourceTab?.name ?? null;
 	});
-	const previewDatasourceId = $derived.by(() => datasourceId ?? schemaKey ?? null);
+	const previewDatasourceId = $derived(datasourceId ?? schemaKey ?? null);
 
 	// Network: $derived can't load schema via network calls.
 	$effect(() => {
@@ -1190,7 +1190,7 @@
 										onblur={() => commitRenameVersion(version.version)}
 										onkeydown={(e) => {
 											if (e.key === 'Enter') commitRenameVersion(version.version);
-											if (e.key === 'Escape') editingVersionId = null;
+											else if (e.key === 'Escape') editingVersionId = null;
 										}}
 									/>
 								{:else}

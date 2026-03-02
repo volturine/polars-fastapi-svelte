@@ -21,9 +21,7 @@ class PivotHandler(OperationHandler):
         **_,
     ) -> pl.LazyFrame:
         validated = PivotParams.model_validate(params)
-        on_columns = validated.on_columns or params.get('onColumns')
-        if not on_columns:
-            on_columns = lf.collect_schema().names()
+        on_columns = validated.on_columns or params.get('onColumns') or lf.collect_schema().names()
 
         if not validated.columns:
             raise ValueError('Pivot requires a pivot column')
@@ -37,5 +35,5 @@ class PivotHandler(OperationHandler):
             on_columns=on_columns,
             index=validated.index,
             aggregate_function=agg,
-            **({'values': validated.values} if validated.values else {}),
+            values=validated.values,
         )

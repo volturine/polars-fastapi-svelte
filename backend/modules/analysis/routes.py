@@ -1,3 +1,5 @@
+import contextlib
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlmodel import Session
 
@@ -96,10 +98,8 @@ async def execute_analysis(
 ):
     analysis_payload = None
     body = None
-    try:
+    with contextlib.suppress(ValueError):
         body = await request.json()
-    except ValueError:
-        body = None
     if isinstance(body, dict):
         analysis_payload = body.get('pipeline')
 
@@ -124,9 +124,9 @@ async def execute_analysis(
     if not isinstance(pipeline_steps, list):
         raise HTTPException(status_code=400, detail='Analysis tab steps must be a list')
     config = datasource.get('config') or {}
-    if config and not isinstance(config, dict):
+    if not isinstance(config, dict):
         raise HTTPException(status_code=400, detail='Analysis tab datasource.config must be a dict')
-    branch = config.get('branch') if isinstance(config, dict) else None
+    branch = config.get('branch')
     if not isinstance(branch, str) or not branch.strip():
         raise HTTPException(status_code=400, detail='Analysis tab datasource.config.branch is required')
     output_config = selected.get('output')

@@ -128,8 +128,8 @@
 	const rowCountLoads = new SvelteMap<string, boolean>();
 	const rowCountErrors = new SvelteMap<string, string>();
 
-	const rowCountPipeline = $derived.by(() => applySteps(allSteps));
-	const rowCountPipelineKey = $derived.by(() => hashPipeline(rowCountPipeline));
+	const rowCountPipeline = $derived(applySteps(allSteps));
+	const rowCountPipelineKey = $derived(hashPipeline(rowCountPipeline));
 	const rowCountDatasourceConfig = $derived.by(() => {
 		const config = buildDatasourceConfig({
 			analysisId: analysisId ?? null,
@@ -146,9 +146,9 @@
 		const configKey = JSON.stringify(rowCountDatasourceConfig ?? {});
 		return `${analysisId ?? ''}:${datasourceId ?? ''}:${step.id}:${rowCountPipelineKey}:${configKey}`;
 	});
-	const rowCount = $derived.by(() => rowCounts.get(rowCountKey) ?? null);
-	const isLoadingRowCount = $derived.by(() => rowCountLoads.get(rowCountKey) ?? false);
-	const rowCountError = $derived.by(() => rowCountErrors.get(rowCountKey) ?? null);
+	const rowCount = $derived(rowCounts.get(rowCountKey) ?? null);
+	const isLoadingRowCount = $derived(rowCountLoads.get(rowCountKey) ?? false);
+	const rowCountError = $derived(rowCountErrors.get(rowCountKey) ?? null);
 	const rowCountLabel = $derived.by(() => {
 		if (rowCount === null) return '';
 		return `${rowCount.toLocaleString()} rows`;

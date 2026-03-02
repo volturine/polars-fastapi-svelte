@@ -41,7 +41,7 @@
 		enabled: datasource.source_type === 'iceberg'
 	}));
 
-	const runs = $derived.by(() =>
+	const runs = $derived(
 		(runsQuery.data ?? []).filter(
 			(run) =>
 				(run.kind === 'datasource_update' || run.kind === 'datasource_create') &&
@@ -73,7 +73,7 @@
 
 	const snapshots = $derived(snapshotsQuery.data ?? []);
 
-	const runSnapshotMap = $derived.by(() => buildSnapshotMap(runs, snapshots));
+	const runSnapshotMap = $derived(buildSnapshotMap(runs, snapshots));
 	const snapshotA = $derived(runA ? (runSnapshotMap.get(runA.id) ?? null) : null);
 	const snapshotB = $derived(runB ? (runSnapshotMap.get(runB.id) ?? null) : null);
 

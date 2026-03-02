@@ -51,28 +51,22 @@ class StringTransformHandler(OperationHandler):
             return lf.with_columns(method(base).alias(target))
 
         if validated.method == 'slice':
-            start = validated.start or 0
-            return lf.with_columns(base.str.slice(start, validated.end).alias(target))
+            return lf.with_columns(base.str.slice(validated.start or 0, validated.end).alias(target))
 
         if validated.method == 'replace':
             if not validated.pattern:
                 raise ValueError('string_transform replace requires pattern parameter')
-            replacement = validated.replacement or ''
-            return lf.with_columns(base.str.replace_all(validated.pattern, replacement).alias(target))
+            return lf.with_columns(base.str.replace_all(validated.pattern, validated.replacement or '').alias(target))
 
         if validated.method == 'extract':
             if not validated.pattern:
                 raise ValueError('string_transform extract requires pattern parameter')
-            group_index = validated.group_index or 0
-            return lf.with_columns(base.str.extract(validated.pattern, group_index).alias(target))
+            return lf.with_columns(base.str.extract(validated.pattern, validated.group_index or 0).alias(target))
 
         if validated.method == 'split':
-            delimiter = validated.delimiter or ' '
-            return lf.with_columns(base.str.split(delimiter).alias(target))
+            return lf.with_columns(base.str.split(validated.delimiter or ' ').alias(target))
 
         if validated.method == 'split_take':
-            delimiter = validated.delimiter or ' '
-            index = validated.index or 0
-            return lf.with_columns(base.str.split(delimiter).list.get(index).alias(target))
+            return lf.with_columns(base.str.split(validated.delimiter or ' ').list.get(validated.index or 0).alias(target))
 
         raise ValueError(f'Unsupported string method: {validated.method}')

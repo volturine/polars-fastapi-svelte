@@ -8,15 +8,6 @@ import { apiRequest } from './client';
 import { ResultAsync } from 'neverthrow';
 import type { ApiError } from './client';
 
-function createApiError(
-	type: 'network' | 'http' | 'parse',
-	message: string,
-	status?: number,
-	statusText?: string
-): ApiError {
-	return { type, message, status, statusText };
-}
-
 export function uploadFile(
 	file: File,
 	name: string,
@@ -39,7 +30,7 @@ export function uploadFile(
 		body: formData
 	}).mapErr((error) => {
 		if (error.type === 'network') {
-			return createApiError('network', error.message || 'Upload failed');
+			return { type: 'network' as const, message: error.message || 'Upload failed' };
 		}
 		return error;
 	});
@@ -79,7 +70,7 @@ export function uploadBulkFiles(
 		body: formData
 	}).mapErr((error) => {
 		if (error.type === 'network') {
-			return createApiError('network', error.message || 'Bulk upload failed');
+			return { type: 'network' as const, message: error.message || 'Bulk upload failed' };
 		}
 		return error;
 	});

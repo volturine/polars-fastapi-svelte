@@ -58,11 +58,9 @@ export class AnalysisStore {
 		savePreviewRuns(this.previewRuns);
 	}
 
-	activeTab: AnalysisTab | null = $derived.by((): AnalysisTab | null => {
-		const match = this.tabs.find((tab) => tab.id === this.activeTabId) ?? null;
-		if (match) return match;
-		return this.tabs[0] ?? null;
-	});
+	activeTab: AnalysisTab | null = $derived(
+		this.tabs.find((tab) => tab.id === this.activeTabId) ?? this.tabs[0] ?? null
+	);
 
 	activeSchemaKey = $derived.by(() => {
 		const tab = this.activeTab;
@@ -75,18 +73,13 @@ export class AnalysisStore {
 		return tab.datasource.id;
 	});
 
-	// Current tab's pipeline
-	pipeline = $derived.by(() => {
-		return this.activeTab?.steps ?? [];
-	});
+	pipeline = $derived(this.activeTab?.steps ?? []);
 
 	calculatedSchema = $derived.by(() => {
-		const steps = this.pipeline;
-		if (!steps.length || !this.sourceSchemas.size) return null;
+		if (!this.pipeline.length || !this.sourceSchemas.size) return null;
 
-		const schemaId = this.activeSchemaKey;
-		const sourceSchema = schemaId
-			? this.sourceSchemas.get(schemaId)
+		const sourceSchema = this.activeSchemaKey
+			? this.sourceSchemas.get(this.activeSchemaKey)
 			: this.sourceSchemas.values().next().value;
 		if (!sourceSchema) return null;
 
@@ -191,9 +184,7 @@ export class AnalysisStore {
 				const currentDepends = currentStep.depends_on ?? [];
 				const savedDepends = savedStep.depends_on ?? [];
 				if (currentDepends.length !== savedDepends.length) return true;
-				for (let k = 0; k < currentDepends.length; k += 1) {
-					if (currentDepends[k] !== savedDepends[k]) return true;
-				}
+				if (currentDepends.some((d, k) => d !== savedDepends[k])) return true;
 				const currentConfig = JSON.stringify(currentStep.config ?? {});
 				const savedConfig = JSON.stringify(savedStep.config ?? {});
 				if (currentConfig !== savedConfig) return true;
@@ -206,13 +197,12 @@ export class AnalysisStore {
 	}
 
 	private logStep(action: string, step: PipelineStep, meta?: Record<string, unknown>): void {
-		const analysisId = this.current ? this.current.id : null;
 		track({
 			event: 'analysis_step',
 			action,
 			target: step.type,
 			meta: {
-				analysis_id: analysisId,
+				analysis_id: this.current?.id ?? null,
 				tab_id: this.activeTabId,
 				step_id: step.id,
 				...meta
@@ -223,9 +213,12 @@ export class AnalysisStore {
 	addStep(step: PipelineStep): void {
 		if (!this.activeTab) return;
 		const steps = this.activeTab.steps;
-		const parentId = steps.length ? (steps[steps.length - 1]?.id ?? null) : null;
+		const parentId = steps.at(-1)?.id ?? null;
 		step.depends_on = parentId ? [parentId] : [];
-		const newSteps = [...steps, step].map((item) => ({ ...item, config: cloneConfig(item.config) }));
+		const newSteps = [...steps, step].map((item) => ({
+			...item,
+			config: cloneConfig(item.config)
+		}));
 		this.updateTabSteps(this.activeTab.id, newSteps);
 		this.logStep('add', step, { index: newSteps.length - 1 });
 	}
@@ -247,13 +240,11 @@ export class AnalysisStore {
 	}
 
 	private normalizeTabSteps(tabs: AnalysisTab[]): AnalysisTab[] {
-		return tabs.map((tab) => {
-			return {
-				...tab,
-				datasource: { ...tab.datasource, config: { ...tab.datasource.config } },
-				steps: this.normalizeSteps(tab.steps)
-			};
-		});
+		return tabs.map((tab) => ({
+			...tab,
+			datasource: { ...tab.datasource, config: { ...tab.datasource.config } },
+			steps: this.normalizeSteps(tab.steps)
+		}));
 	}
 
 	private normalizeSteps(steps: PipelineStep[]): PipelineStep[] {
@@ -285,7 +276,6 @@ export class AnalysisStore {
 	}
 
 	addTab(tab: AnalysisTab): void {
-		// Ensure new tabs have empty steps array
 		const newTab = { ...tab, steps: tab.steps ?? [] };
 		this.tabs = [...this.tabs, newTab];
 		this.activeTabId = newTab.id;
@@ -315,31 +305,18 @@ export class AnalysisStore {
 		if (!this.activeTab) return false;
 
 		const nextPipeline = [...this.activeTab.steps];
-		const normalizedParentId = parentId ?? null;
-		step.depends_on = normalizedParentId ? [normalizedParentId] : [];
+		step.depends_on = parentId ? [parentId] : [];
 		const isChart = step.type === 'chart' || step.type.startsWith('plot_');
 
 		if (nextId) {
 			const nextStepIndex = nextPipeline.findIndex((item) => item.id === nextId);
-			if (nextStepIndex < 0) {
-				return false;
-			}
-			if (isChart) {
-				// Charts are pass-through — do not rewire dependencies.
-				// The chart simply observes data at this point; downstream
-				// steps keep their existing parent link.
-			} else {
+			if (nextStepIndex < 0) return false;
+			if (!isChart) {
 				const nextStep = nextPipeline[nextStepIndex];
 				const nextDeps = nextStep.depends_on ?? [];
-				if (nextDeps.length > 1) {
-					return false;
-				}
-				if (normalizedParentId && nextDeps.length > 0 && nextDeps[0] !== normalizedParentId) {
-					return false;
-				}
-				if (!normalizedParentId && nextDeps.length > 0) {
-					return false;
-				}
+				if (nextDeps.length > 1) return false;
+				if (parentId && nextDeps.length > 0 && nextDeps[0] !== parentId) return false;
+				if (!parentId && nextDeps.length > 0) return false;
 				nextPipeline[nextStepIndex] = { ...nextStep, depends_on: [step.id] };
 			}
 		}
@@ -354,7 +331,10 @@ export class AnalysisStore {
 	addBranchStep(step: PipelineStep, parentId: string | null): void {
 		if (!this.activeTab) return;
 		step.depends_on = parentId ? [parentId] : [];
-		const newSteps = [...this.activeTab.steps, step].map((item) => ({ ...item, config: cloneConfig(item.config) }));
+		const newSteps = [...this.activeTab.steps, step].map((item) => ({
+			...item,
+			config: cloneConfig(item.config)
+		}));
 		this.updateTabSteps(this.activeTab.id, newSteps);
 		this.logStep('branch', step, { parent_id: parentId });
 	}
@@ -393,11 +373,8 @@ export class AnalysisStore {
 		const snapshotKey = `${snapshotId ?? 'latest'}:${snapshotMs ?? 0}`;
 		const edges: Record<string, string[]> = {};
 		for (const item of nextPipeline) {
-			const deps = item.depends_on ?? [];
-			for (const dep of deps) {
-				const next = edges[dep] ?? [];
-				next.push(item.id);
-				edges[dep] = next;
+			for (const dep of item.depends_on ?? []) {
+				(edges[dep] ??= []).push(item.id);
 			}
 		}
 		const reachable: Record<string, true> = {};
@@ -446,7 +423,7 @@ export class AnalysisStore {
 		const removedStep = steps.find((step) => step.id === id);
 		if (!removedStep) return;
 
-		const removedParentId = (removedStep.depends_on ?? [])[0] ?? null;
+		const removedParentId = removedStep.depends_on?.[0] ?? null;
 
 		const nextPipeline = steps
 			.filter((step) => step.id !== id)
@@ -567,12 +544,11 @@ export class AnalysisStore {
 				message: errors[0]?.message ?? 'Pipeline validation failed'
 			}) as unknown as ResultAsync<void, ApiError>;
 		}
-		const pipelineSteps = this.tabs.flatMap((tab) => tab.steps ?? []);
 		const update: AnalysisUpdate = {
 			name: this.current.name,
 			description: this.current.description,
 			tabs: this.tabs,
-			pipeline_steps: pipelineSteps,
+			pipeline_steps: this.tabs.flatMap((tab) => tab.steps ?? []),
 			client_id: lockPayload.clientId,
 			lock_token: lockPayload.lockToken
 		};
@@ -584,8 +560,7 @@ export class AnalysisStore {
 				this.lastSaved = { name: updated.name, description: updated.description ?? null };
 				const tabs = updated.tabs ?? [];
 				if (tabs.length) {
-					const normalized = this.normalizeTabSteps(tabs);
-					const sanitized = normalized.map((tab, index) => ensureTabDefaults(tab, index));
+					const sanitized = this.normalizeTabSteps(tabs).map((tab, i) => ensureTabDefaults(tab, i));
 					this.tabs = sanitized;
 					this.savedTabs = sanitized;
 					if (!this.activeTabId || !tabs.some((tab) => tab.id === this.activeTabId)) {

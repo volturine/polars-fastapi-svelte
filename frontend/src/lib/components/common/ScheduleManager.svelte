@@ -77,21 +77,17 @@
 		staleTime: 60_000
 	}));
 
-	const datasourceMap = $derived.by(() => {
-		const map = new SvelteMap<string, DataSource>();
-		for (const ds of datasourcesQuery.data ?? []) {
-			map.set(ds.id, ds);
-		}
-		return map;
-	});
+	const datasourceMap = $derived(
+		new SvelteMap((datasourcesQuery.data ?? []).map((ds) => [ds.id, ds] as [string, DataSource]))
+	);
 
-	const analysisOutputs = $derived.by(() => {
-		return (datasourcesQuery.data ?? []).filter((ds) => ds.created_by === 'analysis');
-	});
+	const analysisOutputs = $derived(
+		(datasourcesQuery.data ?? []).filter((ds) => ds.created_by === 'analysis')
+	);
 
-	const triggerables = $derived.by(() => {
-		return (datasourcesQuery.data ?? []).filter((ds) => ds.source_type === 'iceberg');
-	});
+	const triggerables = $derived(
+		(datasourcesQuery.data ?? []).filter((ds) => ds.source_type === 'iceberg')
+	);
 
 	const schedules = $derived(schedulesQuery.data ?? []);
 	const allSchedules = $derived(allSchedulesQuery.data ?? []);
@@ -121,32 +117,27 @@
 		});
 	});
 
-	const targetDatasource = $derived.by(() => {
-		if (!datasourceId) return null;
-		return datasourceMap.get(datasourceId) ?? null;
-	});
+	const targetDatasource = $derived(
+		datasourceId ? (datasourceMap.get(datasourceId) ?? null) : null
+	);
 
-	const scheduleBlocked = $derived.by(() => {
-		if (!datasourceId) return false;
-		if (!targetDatasource) return true;
-		return targetDatasource.created_by !== 'analysis';
-	});
+	const scheduleBlocked = $derived(
+		!!datasourceId && (!targetDatasource || targetDatasource.created_by !== 'analysis')
+	);
 
-	const showBlockedMessage = $derived.by(() => {
-		if (!datasourceId) return false;
-		if (!targetDatasource) return false;
-		return targetDatasource.created_by !== 'analysis';
-	});
+	const showBlockedMessage = $derived(
+		!!datasourceId && !!targetDatasource && targetDatasource.created_by !== 'analysis'
+	);
 
-	const currentTarget = $derived.by(() => {
-		const ds = targetDatasource;
-		if (!ds) return null;
-		return {
-			datasourceName: ds.name,
-			analysisName: ds.created_by_analysis_id ? 'Analysis' : 'Unknown',
-			tabName: ds.output_of_tab_id ? 'Tab' : null
-		};
-	});
+	const currentTarget = $derived(
+		targetDatasource
+			? {
+					datasourceName: targetDatasource.name,
+					analysisName: targetDatasource.created_by_analysis_id ? 'Analysis' : 'Unknown',
+					tabName: targetDatasource.output_of_tab_id ? 'Tab' : null
+				}
+			: null
+	);
 
 	const selectedDatasource = $derived.by(() => {
 		if (!newDatasourceId) return null;

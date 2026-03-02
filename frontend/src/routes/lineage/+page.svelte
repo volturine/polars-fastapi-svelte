@@ -36,7 +36,7 @@
 		}
 	}));
 
-	const outputDatasources = $derived.by(() =>
+	const outputDatasources = $derived(
 		(datasourcesQuery.data ?? []).filter((ds) => ds.created_by === 'analysis')
 	);
 

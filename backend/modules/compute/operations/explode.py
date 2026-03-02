@@ -17,9 +17,7 @@ class ExplodeHandler(OperationHandler):
         **_,
     ) -> pl.LazyFrame:
         validated = ExplodeParams.model_validate(params)
-        columns = validated.columns
-        if isinstance(columns, str):
-            columns = [columns]
+        columns = [validated.columns] if isinstance(validated.columns, str) else validated.columns
         if not columns:
             raise ValueError('Explode requires at least one column')
         return lf.explode(columns)

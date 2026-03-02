@@ -48,9 +48,7 @@ def apply_pipeline_steps(pipeline_steps: list[dict]) -> list[dict]:
         visited = seen or set()
         if parent_id in visited:
             return None
-        next_seen = set(visited)
-        next_seen.add(parent_id)
-        return resolve_parent(parent_id, next_seen)
+        return resolve_parent(parent_id, visited | {parent_id})
 
     next_steps: list[dict] = []
     for step in applied:
@@ -84,7 +82,7 @@ def resolve_applied_target(pipeline_steps: list[dict], target_step_id: str) -> s
     while True:
         if current is None:
             return 'source'
-        step = step_map.get(current) or {}
+        step = step_map.get(current)
         if not step:
             return 'source'
         deps = step.get('depends_on') or []
@@ -143,10 +141,8 @@ def normalize_timezones(lf: pl.LazyFrame, schema: pl.Schema | None = None) -> pl
         if not isinstance(dtype, pl.Datetime):
             continue
         tz = dtype.time_zone
-        if tz is None:
-            exprs.append(pl.col(name).dt.replace_time_zone(settings.timezone).alias(name))
-            continue
-        exprs.append(pl.col(name).dt.convert_time_zone(settings.timezone).alias(name))
+        expr = pl.col(name).dt.replace_time_zone(settings.timezone) if tz is None else pl.col(name).dt.convert_time_zone(settings.timezone)
+        exprs.append(expr.alias(name))
 
     if not exprs:
         return lf

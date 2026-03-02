@@ -8,16 +8,12 @@ const defaultDatasourceType = 'iceberg';
 const outputNameFallback = 'export';
 
 function cleanBranch(value: unknown): string {
-	if (typeof value !== 'string') return defaultBranch;
-	const trimmed = value.trim();
-	if (!trimmed) return defaultBranch;
-	return trimmed;
+	const trimmed = typeof value === 'string' ? value.trim() : '';
+	return trimmed || defaultBranch;
 }
 
 function toSlug(value: string): string {
-	const trimmed = value.trim();
-	if (!trimmed) return outputNameFallback;
-	return trimmed.replace(/\s+/g, '_').toLowerCase();
+	return value.trim().replace(/\s+/g, '_').toLowerCase() || outputNameFallback;
 }
 
 export function buildOutputConfig(args: {
@@ -25,8 +21,7 @@ export function buildOutputConfig(args: {
 	name?: string | null;
 	branch?: string | null;
 }): AnalysisTabOutput {
-	const outputId =
-		args.outputId && args.outputId.trim() ? args.outputId.trim() : crypto.randomUUID();
+	const outputId = args.outputId?.trim() || crypto.randomUUID();
 	const name = args.name ?? outputNameFallback;
 	const tableName = toSlug(name);
 	const branch = cleanBranch(args.branch);

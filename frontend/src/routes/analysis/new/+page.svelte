@@ -31,7 +31,7 @@
 
 	const canProceedStep1 = $derived(name.trim().length > 0);
 	const canProceedStep2 = $derived(selectedDatasourceIds.length > 0);
-	const datasourceOptions = $derived.by(() =>
+	const datasourceOptions = $derived(
 		(datasourcesQuery.data ?? []).filter((ds) => ds.source_type !== 'analysis')
 	);
 

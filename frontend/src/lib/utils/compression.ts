@@ -15,7 +15,10 @@ async function collectStream(readable: ReadableStream<Uint8Array>): Promise<Uint
 	}
 	const out = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
 	let offset = 0;
-	for (const chunk of chunks) { out.set(chunk, offset); offset += chunk.length; }
+	for (const chunk of chunks) {
+		out.set(chunk, offset);
+		offset += chunk.length;
+	}
 	return out;
 }
 
@@ -74,10 +77,5 @@ function arrayBufferToBase64(buffer: Uint8Array): string {
  * Convert base64 string to Uint8Array
  */
 function base64ToArrayBuffer(base64: string): Uint8Array {
-	const binary = atob(base64);
-	const bytes = new Uint8Array(binary.length);
-	for (let i = 0; i < binary.length; i++) {
-		bytes[i] = binary.charCodeAt(i);
-	}
-	return bytes;
+	return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 }

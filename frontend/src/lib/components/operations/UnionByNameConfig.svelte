@@ -29,7 +29,7 @@
 	const currentDatasource = $derived(
 		datasourceStore.datasources.find((ds) => ds.id === currentTabDatasource)
 	);
-	const datasourceOptions = $derived.by(() => datasourceStore.datasources);
+	const datasourceOptions = $derived(datasourceStore.datasources);
 
 	// Sync selectedSources with config.sources
 	// Subscription: $derived can't sync selected sources to config.

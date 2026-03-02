@@ -29,7 +29,7 @@ def create_analysis(
     tabs_payload = [tab.model_dump() for tab in data.tabs]
     output_map: dict[str, str] = {}
     for tab in tabs_payload:
-        output = tab.get('output') if isinstance(tab, dict) else None
+        output = tab.get('output')
         if not isinstance(output, dict):
             raise ValueError('Analysis tab missing output configuration')
         output_id = output.get('output_datasource_id')
@@ -133,10 +133,7 @@ def get_analysis(
 def list_analyses(
     session: Session,  # type: ignore[type-arg]
 ) -> list[AnalysisGalleryItemSchema]:
-    result = session.execute(select(Analysis))
-    analyses = result.scalars().all()
-
-    return [AnalysisGalleryItemSchema.model_validate(a) for a in analyses]
+    return [AnalysisGalleryItemSchema.model_validate(a) for a in session.execute(select(Analysis)).scalars()]
 
 
 def update_analysis(
@@ -165,7 +162,7 @@ def update_analysis(
                 raise ValueError('Analysis requires at least one tab')
             for tab in tabs_payload:
                 tab_id = tab.get('id')
-                output = tab.get('output') if isinstance(tab, dict) else None
+                output = tab.get('output')
                 if not isinstance(output, dict):
                     raise ValueError('Analysis tab missing output configuration')
                 output_id = output.get('output_datasource_id')
@@ -237,13 +234,13 @@ def update_analysis(
             ds_id = datasource.get('id')
             if not ds_id:
                 raise ValueError('Analysis tab missing datasource.id')
-            if not session.get(DataSource, ds_id) and str(ds_id) not in output_ids:
-                raise DataSourceNotFoundError(str(ds_id))
             ds_id_value = str(ds_id)
+            datasource_model = session.get(DataSource, ds_id)
+            if not datasource_model and ds_id_value not in output_ids:
+                raise DataSourceNotFoundError(ds_id_value)
             if ds_id_value in datasource_ids:
                 continue
             datasource_ids.add(ds_id_value)
-            datasource_model = session.get(DataSource, ds_id)
             if datasource_model and datasource_model.source_type == 'analysis':
                 source_id = _get_analysis_source_id(datasource_model)
                 _ensure_no_cycle(session, analysis_id, source_id)
@@ -281,19 +278,19 @@ def delete_analysis(
     if not analysis:
         raise AnalysisNotFoundError(analysis_id)
 
-    # Find all datasources created by this analysis (exports)
-    result = session.execute(
-        select(DataSource).where(col(DataSource.created_by_analysis_id) == analysis_id)  # type: ignore[arg-type]
+    created_datasources = (
+        session.execute(
+            select(DataSource).where(col(DataSource.created_by_analysis_id) == analysis_id)  # type: ignore[arg-type]
+        )
+        .scalars()
+        .all()
     )
-    created_datasources = result.scalars().all()
 
-    # Delete hidden exports (both DB record and files), keep non-hidden
     for ds in created_datasources:
         if ds.is_hidden:
             _delete_datasource_files(ds)
             session.delete(ds)
 
-    # Remove analysis datasource links
     session.execute(delete(AnalysisDataSource).where(col(AnalysisDataSource.analysis_id) == analysis_id))  # type: ignore[arg-type]
 
     session.delete(analysis)
@@ -311,18 +308,16 @@ def link_datasource(
     if not analysis:
         raise AnalysisNotFoundError(analysis_id)
 
-    result = session.execute(select(DataSource).where(col(DataSource.id) == datasource_id))  # type: ignore[arg-type]
-    datasource = result.scalar_one_or_none()
+    datasource = session.execute(select(DataSource).where(col(DataSource.id) == datasource_id)).scalar_one_or_none()  # type: ignore[arg-type]
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
 
-    result = session.execute(
+    existing = session.execute(
         select(AnalysisDataSource).where(  # type: ignore[arg-type]
             col(AnalysisDataSource.analysis_id) == analysis_id,
             col(AnalysisDataSource.datasource_id) == datasource_id,
         )
-    )
-    existing = result.scalar_one_or_none()
+    ).scalar_one_or_none()
     if existing:
         return
 
@@ -421,13 +416,11 @@ def unlink_datasource(
     analysis_id: str,
     datasource_id: str,
 ) -> None:
-    result = session.execute(select(Analysis).where(col(Analysis.id) == analysis_id))  # type: ignore[arg-type]
-    analysis = result.scalar_one_or_none()
+    analysis = session.execute(select(Analysis).where(col(Analysis.id) == analysis_id)).scalar_one_or_none()  # type: ignore[arg-type]
     if not analysis:
         raise AnalysisNotFoundError(analysis_id)
 
-    result = session.execute(select(DataSource).where(col(DataSource.id) == datasource_id))  # type: ignore[arg-type]
-    datasource = result.scalar_one_or_none()
+    datasource = session.execute(select(DataSource).where(col(DataSource.id) == datasource_id)).scalar_one_or_none()  # type: ignore[arg-type]
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
 

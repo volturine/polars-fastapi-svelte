@@ -61,19 +61,12 @@
 		drag.clearTarget();
 	});
 
-	function getParentId(index: number): string | null {
-		if (index <= 0) return null;
-		return steps[index - 1]?.id ?? null;
-	}
-
-	function getNextId(index: number): string | null {
-		return steps[index]?.id ?? null;
-	}
-
 	function buildTarget(index: number): DropTarget {
-		const parentId = index === 0 ? null : getParentId(index);
-		const nextId = index < steps.length ? getNextId(index) : null;
-		return { index, parentId, nextId };
+		return {
+			index,
+			parentId: index === 0 ? null : (steps[index - 1]?.id ?? null),
+			nextId: steps[index]?.id ?? null
+		};
 	}
 
 	function shouldShowInsert(index: number): boolean {
@@ -97,7 +90,7 @@
 			return true;
 		}
 
-		const nextId = index < steps.length ? getNextId(index) : null;
+		const nextId = steps[index]?.id ?? null;
 		if (!nextId) return true;
 
 		// For reorder, the next step might be the one we're moving
@@ -111,7 +104,7 @@
 		// Valid if no dependencies or single dependency matching expected parent
 		if (deps.length === 0) return true;
 		if (deps.length > 1) return false;
-		const parentId = index === 0 ? null : getParentId(index);
+		const parentId = index === 0 ? null : (steps[index - 1]?.id ?? null);
 		return deps[0] === parentId;
 	}
 
@@ -208,7 +201,6 @@
 	const scrollSpeed = 15;
 
 	function autoScroll(canvasEl: HTMLElement, pointerY: number) {
-		canvasEl.getBoundingClientRect();
 		const viewportHeight = window.innerHeight;
 
 		if (pointerY > viewportHeight - scrollThreshold) {

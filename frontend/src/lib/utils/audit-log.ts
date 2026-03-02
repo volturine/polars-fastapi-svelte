@@ -51,9 +51,7 @@ function ensureSessionId(): string {
 }
 
 function shouldSkipTarget(el: Element | null): boolean {
-	if (!el) return true;
-	if (el.closest('[data-audit="off"]')) return true;
-	return false;
+	return !el || !!el.closest('[data-audit="off"]');
 }
 
 function getTargetLabel(el: Element | null): string | undefined {
@@ -95,7 +93,10 @@ function extractFields(form: HTMLFormElement): AuditField[] {
 
 function scheduleFlush(flushIntervalMs: number) {
 	if (state.timer) return;
-	state.timer = window.setTimeout(() => { state.timer = null; flush(); }, flushIntervalMs);
+	state.timer = window.setTimeout(() => {
+		state.timer = null;
+		flush();
+	}, flushIntervalMs);
 }
 
 function pushLog(item: AuditLogItem) {

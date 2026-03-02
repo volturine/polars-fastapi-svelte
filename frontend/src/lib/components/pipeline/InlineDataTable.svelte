@@ -34,7 +34,7 @@
 
 	const activePipeline = $derived(applySteps(pipeline));
 	const isActiveStep = $derived(activePipeline.some((step) => step.id === stepId));
-	const pipelineKey = $derived.by(() => hashPipeline(activePipeline));
+	const pipelineKey = $derived(hashPipeline(activePipeline));
 	const datasourceConfig = $derived.by(() => {
 		const config = buildDatasourceConfig({
 			analysisId,

@@ -97,10 +97,9 @@
 	}
 
 	function selectAll() {
-		const ids = filteredAndSortedAnalyses.map((a) => a.id);
 		selectedIds.clear();
-		for (const id of ids) {
-			selectedIds.add(id);
+		for (const a of filteredAndSortedAnalyses) {
+			selectedIds.add(a.id);
 		}
 	}
 

@@ -3,14 +3,8 @@ import { configStore } from '$lib/stores/config.svelte';
 type DateInput = string | number | Date;
 
 function toDate(value: DateInput): Date | null {
-	if (value instanceof Date) {
-		const time = value.getTime();
-		if (Number.isNaN(time)) return null;
-		return value;
-	}
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) return null;
-	return date;
+	const date = value instanceof Date ? value : new Date(value);
+	return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function hasTimezone(value: string): boolean {

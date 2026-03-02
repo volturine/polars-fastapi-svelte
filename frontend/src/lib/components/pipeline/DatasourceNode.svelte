@@ -217,12 +217,12 @@
 		(analysisSourceId ? 'analysis' : (resolvedDatasource?.source_type ?? 'file')) as string
 	);
 	const isDragActive = $derived(drag.active);
-	const snapshotConfig = $derived.by(() => activeTab?.datasource?.config ?? {});
+	const snapshotConfig = $derived(activeTab?.datasource?.config ?? {});
 	const snapshotBranch = $derived.by((): string | null => {
 		const branch = activeTab?.datasource?.config?.branch;
 		return typeof branch === 'string' ? branch : null;
 	});
-	const branchValue = $derived.by(() => activeTab?.datasource?.config?.branch ?? '');
+	const branchValue = $derived(activeTab?.datasource?.config?.branch ?? '');
 
 	function applyBranchValue(next: string) {
 		const active = activeTab;

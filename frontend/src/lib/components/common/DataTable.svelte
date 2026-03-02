@@ -203,8 +203,9 @@
 				columnPinning = typeof updater === 'function' ? updater(columnPinning) : updater;
 			},
 			onColumnSizingChange: (updater) => {
-				const next = typeof updater === 'function' ? updater(columnSizing) : updater;
-				columnSizing = normalizeSizing(next);
+				columnSizing = normalizeSizing(
+					typeof updater === 'function' ? updater(columnSizing) : updater
+				);
 			},
 			onColumnSizingInfoChange: (updater) => {
 				const next = typeof updater === 'function' ? updater(columnSizingInfo) : updater;
@@ -278,15 +279,10 @@
 	function pinColumn(columnId: string, side: 'left' | 'right' | 'none') {
 		const left = (columnPinning.left ?? []).filter((id) => id !== columnId);
 		const right = (columnPinning.right ?? []).filter((id) => id !== columnId);
-		if (side === 'left') {
-			columnPinning = { left: [...left, columnId], right };
-			return;
-		}
-		if (side === 'right') {
-			columnPinning = { left, right: [...right, columnId] };
-			return;
-		}
-		columnPinning = { left, right };
+		columnPinning = {
+			left: side === 'left' ? [...left, columnId] : left,
+			right: side === 'right' ? [...right, columnId] : right
+		};
 	}
 
 	function toggleColumnMenu(columnId: string) {

@@ -126,12 +126,12 @@ export function exportData(request: ExportRequest): ResultAsync<Blob | ExportRes
 			body: JSON.stringify(request)
 		}).andThen((blob) => {
 			const filename = request.filename ?? 'export';
-			if (request.format) {
-				const ext = request.format.startsWith('.') ? request.format : `.${request.format}`;
-				downloadBlob(blob, `${filename}${ext}`);
-				return okAsync(blob);
-			}
-			downloadBlob(blob, filename);
+			const ext = request.format
+				? request.format.startsWith('.')
+					? request.format
+					: `.${request.format}`
+				: '';
+			downloadBlob(blob, `${filename}${ext}`);
 			return okAsync(blob);
 		});
 	}

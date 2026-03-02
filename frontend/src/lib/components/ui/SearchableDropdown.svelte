@@ -202,7 +202,7 @@
 		};
 	};
 
-	const triggerPayload = $derived.by(() => ({
+	const triggerPayload = $derived({
 		open: menuOpen,
 		selectedCount,
 		selectedOption: options.find((option) => option.id === value),
@@ -210,7 +210,7 @@
 		disabled,
 		onOpen: openMenu,
 		triggerAction: setTriggerRef
-	}));
+	});
 
 	// DOM: $derived can't detect outside clicks.
 	$effect(() => {

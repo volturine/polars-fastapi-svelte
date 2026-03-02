@@ -20,6 +20,15 @@ from modules.datasource.source_types import DataSourceType
 
 router = APIRouter(prefix='/datasource', tags=['datasource'])
 
+_FILE_TYPE_MAPPING: dict[str, str] = {
+    '.csv': 'csv',
+    '.parquet': 'parquet',
+    '.json': 'json',
+    '.ndjson': 'ndjson',
+    '.jsonl': 'ndjson',
+    '.xlsx': 'excel',
+}
+
 
 def _list_export_branches(metadata_path: str) -> list[str]:
     normalized = str(Path(metadata_path))
@@ -70,24 +79,15 @@ async def upload_file(
         raise HTTPException(status_code=400, detail='No filename provided')
 
     file_extension = Path(file.filename).suffix.lower()
-    file_type_mapping = {
-        '.csv': 'csv',
-        '.parquet': 'parquet',
-        '.json': 'json',
-        '.ndjson': 'ndjson',
-        '.jsonl': 'ndjson',
-        '.xlsx': 'excel',
-    }
-
-    if file_extension not in file_type_mapping:
+    if file_extension not in _FILE_TYPE_MAPPING:
         raise HTTPException(
             status_code=400,
-            detail=f'Unsupported file type: {file_extension}. Supported types: {", ".join(file_type_mapping.keys())}',
+            detail=f'Unsupported file type: {file_extension}. Supported types: {", ".join(_FILE_TYPE_MAPPING.keys())}',
         )
 
     if not _matches_magic_number(file_extension, file):
         raise HTTPException(status_code=400, detail='File content does not match extension')
-    file_type = file_type_mapping[file_extension]
+    file_type = _FILE_TYPE_MAPPING[file_extension]
     unique_filename = f'{uuid.uuid4()}{file_extension}'
     file_path = namespace_paths().upload_dir / unique_filename
 
@@ -150,15 +150,6 @@ async def upload_bulk(
     if not files:
         raise HTTPException(status_code=400, detail='No files provided')
 
-    file_type_mapping = {
-        '.csv': 'csv',
-        '.parquet': 'parquet',
-        '.json': 'json',
-        '.ndjson': 'ndjson',
-        '.jsonl': 'ndjson',
-        '.xlsx': 'excel',
-    }
-
     csv_options = schemas.CSVOptions(
         delimiter=delimiter,
         quote_char=quote_char,
@@ -182,7 +173,7 @@ async def upload_bulk(
 
         file_extension = Path(file.filename).suffix.lower()
 
-        if file_extension not in file_type_mapping:
+        if file_extension not in _FILE_TYPE_MAPPING:
             results.append(schemas.BulkUploadResult(name=file.filename, success=False, error=f'Unsupported file type: {file_extension}'))
             continue
 
@@ -195,7 +186,7 @@ async def upload_bulk(
                 )
             )
             continue
-        file_type = file_type_mapping[file_extension]
+        file_type = _FILE_TYPE_MAPPING[file_extension]
         unique_filename = f'{uuid.uuid4()}{file_extension}'
         file_path = namespace_paths().upload_dir / unique_filename
         name = Path(file.filename).stem

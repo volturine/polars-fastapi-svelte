@@ -106,7 +106,8 @@ export function apiRequestWithHeaders<T>(
 			createApiError('network', error instanceof Error ? error.message : 'Network error')
 	).andThen((response) => {
 		if (!response.ok) return handleErrorResponse(response, endpoint, options);
-		if (response.status === 204) return okAsync({ data: undefined as T, headers: response.headers });
+		if (response.status === 204)
+			return okAsync({ data: undefined as T, headers: response.headers });
 		return ResultAsync.fromPromise(response.json() as Promise<T>, (): ApiError => {
 			trackParseError(endpoint, options?.method);
 			return createApiError('parse', 'Failed to parse response JSON');

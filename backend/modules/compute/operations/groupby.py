@@ -50,9 +50,7 @@ class GroupByHandler(OperationHandler):
         **_,
     ) -> pl.LazyFrame:
         validated = GroupByParams.model_validate(params)
-        exprs: list[pl.Expr] = []
-        for agg in validated.aggregations:
-            expr = get_aggregation(agg.function)(agg.column)
-            alias = agg.alias or f'{agg.column}_{agg.function}'
-            exprs.append(expr.alias(alias))
+        exprs = [
+            get_aggregation(agg.function)(agg.column).alias(agg.alias or f'{agg.column}_{agg.function}') for agg in validated.aggregations
+        ]
         return lf.group_by(validated.group_by).agg(exprs)

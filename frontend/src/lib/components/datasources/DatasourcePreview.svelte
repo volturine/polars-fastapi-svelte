@@ -52,7 +52,7 @@
 		page = 1;
 	});
 
-	const resolvedDatasource = $derived.by(() => datasource ?? null);
+	const resolvedDatasource = $derived(datasource ?? null);
 	const analysisSourceId = $derived.by(() => {
 		return (
 			(datasourceConfig?.analysis_id as string | null | undefined) ??

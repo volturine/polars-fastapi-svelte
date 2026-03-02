@@ -96,7 +96,7 @@
 	];
 
 	const currentTabDatasource = $derived(analysisStore.activeTab?.datasource.id ?? null);
-	const datasourceOptions = $derived.by(() =>
+	const datasourceOptions = $derived(
 		datasourceStore.datasources.filter((ds) => ds.source_type !== 'analysis')
 	);
 </script>

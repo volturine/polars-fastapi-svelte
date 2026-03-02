@@ -77,10 +77,7 @@ class FillNullHandler(OperationHandler):
                 return lf.with_columns([build_expr(col) for col in columns])
             return lf.with_columns([build_expr(col) for col in lf.collect_schema().names()])
 
-        if validated.strategy in {'forward', 'backward', 'mean', 'median', 'zero'}:
-            strategy = get_fill_strategy(validated.strategy)
-            if not strategy:
-                raise ValueError(f'Unsupported fill_null strategy: {validated.strategy}')
+        if strategy := get_fill_strategy(validated.strategy):
             if columns:
                 return lf.with_columns([strategy(pl.col(col)) for col in columns])
             return lf.with_columns([strategy(pl.col(col)) for col in lf.collect_schema().names()])

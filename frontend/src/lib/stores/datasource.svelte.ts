@@ -92,11 +92,8 @@ export class DatasourceStore {
 	}
 
 	clearSchemaCache(id?: string): void {
-		if (id) {
-			this.schemas.delete(id);
-		} else {
-			this.schemas.clear();
-		}
+		if (id) this.schemas.delete(id);
+		else this.schemas.clear();
 	}
 
 	reset(): void {

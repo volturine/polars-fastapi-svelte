@@ -34,9 +34,8 @@ def scan_iceberg_snapshot(
 
     expected = set(names)
     for name in names:
-        if name in frame.columns:
-            continue
-        frame = frame.with_columns(pl.lit(None).alias(name))
+        if name not in frame.columns:
+            frame = frame.with_columns(pl.lit(None).alias(name))
     extra = [name for name in frame.columns if name not in expected]
     if extra:
         frame = frame.drop(extra)

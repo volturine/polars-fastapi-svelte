@@ -38,16 +38,12 @@
 	const canEmail = $derived(configFlags.smtpEnabled);
 	const canTelegram = $derived(configFlags.telegramEnabled);
 	const method = $derived(config?.method ?? 'email');
-	const inputColumns = $derived.by(() =>
-		Array.isArray(config?.input_columns) ? config.input_columns : []
-	);
-	const subscriberIds = $derived.by(() =>
+	const inputColumns = $derived(Array.isArray(config?.input_columns) ? config.input_columns : []);
+	const subscriberIds = $derived(
 		Array.isArray(config?.subscriber_ids) ? config.subscriber_ids : []
 	);
-	const recipientSource = $derived.by(() =>
-		config?.recipient_source === 'column' ? 'column' : 'manual'
-	);
-	const recipientColumn = $derived.by(() =>
+	const recipientSource = $derived(config?.recipient_source === 'column' ? 'column' : 'manual');
+	const recipientColumn = $derived(
 		typeof config?.recipient_column === 'string' ? config.recipient_column : ''
 	);
 	const isReady = $derived(

@@ -10,10 +10,7 @@ from sqlalchemy.engine.url import make_url
 
 
 def _get_env_file() -> str | None:
-    env_file = os.getenv('ENV_FILE', '.env')
-    if env_file:
-        return env_file
-    return None
+    return os.getenv('ENV_FILE', '.env') or None
 
 
 def _resolve_dir(value: Path | str) -> Path:

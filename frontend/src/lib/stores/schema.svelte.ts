@@ -18,16 +18,11 @@ export interface StepSchemas {
 
 export class SchemaStore {
 	joinSchemas = $state(new SvelteMap<string, Schema>());
-	// Cache for actual output schemas from preview (for dynamic steps like pivot)
 	previewSchemas = $state(new SvelteMap<string, Schema>());
 
-	// Derived: primary datasource ID from active tab
 	primaryDatasourceId = $derived(analysisStore.activeTab?.datasource.id ?? null);
-
-	// Derived: current pipeline steps
 	steps = $derived(analysisStore.pipeline);
 
-	// Auto-memoized step schemas - only recalculates when dependencies change
 	stepSchemas = $derived.by(() => {
 		const schemas = new SvelteMap<string, StepSchemas>();
 		let currentSchema: Schema | null = null;
@@ -44,8 +39,6 @@ export class SchemaStore {
 			const isApplied = (step as PipelineStep & { is_applied?: boolean }).is_applied !== false;
 
 			let output: Schema;
-
-			// Check if we have a cached preview schema for dynamic steps
 			const cachedSchema = this.previewSchemas.get(step.id);
 			if (!isApplied) {
 				output = input;
@@ -86,7 +79,6 @@ export class SchemaStore {
 		return this.joinSchemas.get(datasourceId) ?? null;
 	}
 
-	// Store actual schema from preview response
 	setPreviewSchema(stepId: string, columns: string[], columnTypes?: Record<string, string>): void {
 		const schemaColumns: ColumnInfo[] = columns.map((name) => ({
 			name,
@@ -109,17 +101,12 @@ export class SchemaStore {
 	}
 
 	getAllOutputs(): Schema[] {
-		const result: Schema[] = [];
-		for (const step of this.steps) {
-			const output = this.getOutput(step.id);
-			if (output) result.push(output);
-		}
-		return result;
+		return this.steps.map((step) => this.getOutput(step.id)).filter((s): s is Schema => s !== null);
 	}
 
 	getLastOutput(): Schema | null {
-		if (this.steps.length === 0) return null;
-		return this.getOutput(this.steps[this.steps.length - 1].id);
+		const last = this.steps.at(-1);
+		return last ? this.getOutput(last.id) : null;
 	}
 
 	reset(): void {

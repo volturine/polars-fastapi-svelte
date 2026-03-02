@@ -39,7 +39,7 @@
 		{ value: 'duckdb', label: 'DuckDB (.duckdb)' }
 	];
 
-	const formatOptions = $derived.by(() => formats);
+	const formatOptions = $derived(formats);
 </script>
 
 <div class="config-panel" role="region" aria-label="Export configuration">

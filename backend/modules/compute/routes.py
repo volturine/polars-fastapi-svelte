@@ -21,10 +21,6 @@ def preview_step(
     session: Session = Depends(get_db),
 ):
     """Preview the result of a pipeline step with pagination."""
-    resource_config = None
-    if request.resource_config:
-        resource_config = request.resource_config.model_dump()
-
     analysis_id = request.analysis_id or request.analysis_pipeline.analysis_id
 
     return service.preview_step(
@@ -34,7 +30,7 @@ def preview_step(
         row_limit=request.row_limit,
         page=request.page,
         analysis_id=analysis_id,
-        resource_config=resource_config,
+        resource_config=request.resource_config.model_dump() if request.resource_config else None,
         tab_id=request.tab_id,
         request_json=request.model_dump(mode='json'),
     )
@@ -127,9 +123,7 @@ def spawn_engine(analysis_id: AnalysisId, request: schemas.SpawnEngineRequest | 
     Optionally accepts resource configuration overrides.
     """
     manager = get_manager()
-    resource_config = None
-    if request and request.resource_config:
-        resource_config = request.resource_config.model_dump()
+    resource_config = request.resource_config.model_dump() if request and request.resource_config else None
     analysis_id_value = parse_analysis_id(analysis_id)
     manager.spawn_engine(analysis_id_value, resource_config=resource_config)
     return manager.get_engine_status(analysis_id_value)
@@ -241,15 +235,14 @@ def export_data(
         )
     else:
         message = None
+        response_format = request.format.value
         if request.destination == schemas.ExportDestination.FILESYSTEM:
             message = f'File saved to {file_path}'
-        if request.destination == schemas.ExportDestination.DATASOURCE:
+        elif request.destination == schemas.ExportDestination.DATASOURCE:
             message = f'Created datasource {filename}'
-        response_format = request.format.value
-        if request.destination == schemas.ExportDestination.DATASOURCE:
             if request.datasource_type == schemas.ExportDatasourceType.ICEBERG:
                 response_format = 'iceberg'
-            if request.datasource_type == schemas.ExportDatasourceType.DUCKDB:
+            elif request.datasource_type == schemas.ExportDatasourceType.DUCKDB:
                 response_format = 'duckdb'
         return schemas.ExportResponse(
             success=True,

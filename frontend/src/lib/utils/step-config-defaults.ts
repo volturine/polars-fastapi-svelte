@@ -310,11 +310,7 @@ const defaultConfigs: Record<string, StepConfig> = {
 export function getDefaultConfig(stepType: string): StepConfig {
 	const normalizedType = stepType.startsWith('plot_') ? 'chart' : stepType;
 	const defaults = defaultConfigs[normalizedType];
-	if (!defaults) {
-		return {};
-	}
-	// Deep clone to prevent shared references
-	return JSON.parse(JSON.stringify(defaults));
+	return defaults ? JSON.parse(JSON.stringify(defaults)) : {};
 }
 
 /**

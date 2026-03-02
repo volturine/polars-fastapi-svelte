@@ -68,7 +68,36 @@
 	let modeMenuRef = $state<HTMLElement>();
 	let modeTriggerRef = $state<HTMLButtonElement>();
 
-	const branchValue = $derived.by(() => outputConfig.iceberg.branch);
+	const outputConfig = $derived.by(() => {
+		const tab = activeTab as (OutputTab & { datasource?: { config?: { branch?: string } } }) | null;
+		const output = (tab?.output as Record<string, unknown> | null) ?? null;
+		const icebergRaw = output?.iceberg as Record<string, unknown> | undefined;
+		const defaultName = tab?.name ? tab.name.trim() : 'export';
+		const tableName =
+			(icebergRaw?.table_name as string) ||
+			defaultName.replace(/\s+/g, '_').toLowerCase() ||
+			'export';
+		const branch =
+			typeof icebergRaw?.branch === 'string'
+				? icebergRaw.branch
+				: (((tab?.datasource as Record<string, unknown>)?.config as { branch?: string } | undefined)
+						?.branch ?? '');
+		const namespace = (icebergRaw?.namespace as string) || 'outputs';
+		return {
+			datasource_type: 'iceberg',
+			format: 'parquet',
+			filename: (output?.filename as string) || tableName,
+			build_mode: (output?.build_mode as string) || 'full',
+			iceberg: {
+				namespace,
+				table_name: tableName,
+				branch
+			},
+			notification: (output?.notification as Record<string, unknown> | undefined) ?? null
+		};
+	});
+
+	const branchValue = $derived(outputConfig.iceberg.branch);
 	const branchOptions = $derived.by(() => {
 		const branches = (outputDatasourceQuery.data?.config?.branches as string[] | undefined) ?? [];
 		const cleaned = branches.map((branch) => branch.trim()).filter((branch) => branch.length > 0);
@@ -189,35 +218,6 @@
 		staleTime: 30_000,
 		enabled: canTelegram
 	}));
-
-	const outputConfig = $derived.by(() => {
-		const tab = activeTab as (OutputTab & { datasource?: { config?: { branch?: string } } }) | null;
-		const output = (tab?.output as Record<string, unknown> | null) ?? null;
-		const icebergRaw = output?.iceberg as Record<string, unknown> | undefined;
-		const defaultName = tab?.name ? tab.name.trim() : 'export';
-		const tableName =
-			(icebergRaw?.table_name as string) ||
-			defaultName.replace(/\s+/g, '_').toLowerCase() ||
-			'export';
-		const branch =
-			typeof icebergRaw?.branch === 'string'
-				? icebergRaw.branch
-				: (((tab?.datasource as Record<string, unknown>)?.config as { branch?: string } | undefined)
-						?.branch ?? '');
-		const namespace = (icebergRaw?.namespace as string) || 'outputs';
-		return {
-			datasource_type: 'iceberg',
-			format: 'parquet',
-			filename: (output?.filename as string) || tableName,
-			build_mode: (output?.build_mode as string) || 'full',
-			iceberg: {
-				namespace,
-				table_name: tableName,
-				branch
-			},
-			notification: (output?.notification as Record<string, unknown> | undefined) ?? null
-		};
-	});
 
 	const notifyConfig = $derived.by(() => {
 		const n = outputConfig.notification;

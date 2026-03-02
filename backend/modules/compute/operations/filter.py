@@ -125,7 +125,6 @@ class FilterHandler(OperationHandler):
         raise ValueError(f'Unsupported logic operator: {validated.logic}')
 
     def _build_expr(self, cond: FilterCondition) -> pl.Expr:
-        """Build a filter expression from a condition."""
         left = pl.col(cond.column)
         schema = self._schema
         col_dtype = schema.get(cond.column) if schema else None
@@ -133,10 +132,7 @@ class FilterHandler(OperationHandler):
             left = self._normalize_datetime_col(left, col_dtype)
 
         if cond.operator in ('is_null', 'is_not_null'):
-            op = self.OPERATORS.get(cond.operator)
-            if not op:
-                raise ValueError(f'Unsupported filter operator: {cond.operator}')
-            return op(left, None)
+            return get_operator(cond.operator)(left, None)
 
         if cond.value_type == 'column':
             op = self.COLUMN_OPERATORS.get(cond.operator)
@@ -149,23 +145,14 @@ class FilterHandler(OperationHandler):
                 right = self._normalize_datetime_col(right, schema[cond.compare_column])
             return op(left, right)
 
-        # Check if this is a date-only value against a datetime column
         is_date_only = self._is_date_only_value(cond.value)
         is_datetime_col = isinstance(col_dtype, pl.Datetime)
 
-        # For date-only comparisons against datetime columns, compare by date
         if is_date_only and is_datetime_col and cond.value_type == 'datetime':
-            date_val = coerce_value(cond.value, 'date')
-            left_date = pl.col(cond.column).dt.date()
-            op = self.OPERATORS.get(cond.operator)
-            if not op:
-                raise ValueError(f'Unsupported filter operator: {cond.operator}')
-            return op(left_date, date_val)
+            return get_operator(cond.operator)(pl.col(cond.column).dt.date(), coerce_value(cond.value, 'date'))
 
         coerced = coerce_value(cond.value, cond.value_type)
-        op = self.OPERATORS.get(cond.operator)
-        if not op:
-            raise ValueError(f'Unsupported filter operator: {cond.operator}')
+        op = get_operator(cond.operator)
         if cond.operator == 'regex' and coerced == '':
             return pl.lit(False)
         if isinstance(coerced, list):
@@ -194,7 +181,7 @@ class FilterHandler(OperationHandler):
 
     @property
     def _schema(self) -> dict[str, pl.DataType] | None:
-        return getattr(self, '_last_schema', None)
+        return self._last_schema
 
     def _normalize_datetime_col(self, expr: pl.Expr, dtype: pl.DataType) -> pl.Expr:
         if not isinstance(dtype, pl.Datetime):

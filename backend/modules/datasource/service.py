@@ -142,8 +142,7 @@ def create_file_datasource(
     if file_type == 'parquet' and not (resolved_path.is_file() or resolved_path.is_dir()):
         raise ValueError('Parquet path must be a file or directory')
 
-    config = {
-        'source_type': DataSourceType.FILE,
+    file_config = {
         'file_path': str(resolved_path),
         'file_type': file_type,
         'options': options or {},
@@ -158,6 +157,7 @@ def create_file_datasource(
         'named_range': named_range,
         'cell_range': cell_range,
     }
+    config = {'source_type': DataSourceType.FILE, **file_config}
     try:
         lazy = load_datasource(config)
     except Exception as exc:
@@ -174,22 +174,6 @@ def create_file_datasource(
         snapshot_ts = current_snapshot.timestamp_ms
         iceberg_config['snapshot_id'] = str(snapshot_id)
         iceberg_config['snapshot_timestamp_ms'] = int(snapshot_ts)
-
-    file_config = {
-        'file_path': str(resolved_path),
-        'file_type': file_type,
-        'options': options or {},
-        'csv_options': csv_options.model_dump() if csv_options else None,
-        'sheet_name': sheet_name,
-        'start_row': start_row,
-        'start_col': start_col,
-        'end_col': end_col,
-        'end_row': end_row,
-        'has_header': has_header,
-        'table_name': table_name,
-        'named_range': named_range,
-        'cell_range': cell_range,
-    }
     datasource = DataSource(
         id=datasource_id,
         name=name,

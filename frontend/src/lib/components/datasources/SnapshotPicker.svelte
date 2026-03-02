@@ -53,9 +53,7 @@
 	let deleteLoading = $state(false);
 	let deleteError = $state<string | null>(null);
 	let buildRuns = $state<EngineRun[]>([]);
-	const runSnapshotMap = $derived.by(() =>
-		buildSnapshotMap(buildRuns, toSnapshotRefs(snapshotList))
-	);
+	const runSnapshotMap = $derived(buildSnapshotMap(buildRuns, toSnapshotRefs(snapshotList)));
 	const filteredSnapshotList = $derived.by(() => {
 		if (!showBuildPreviews) return snapshotList;
 		const mapped = new SvelteMap<string, boolean>();

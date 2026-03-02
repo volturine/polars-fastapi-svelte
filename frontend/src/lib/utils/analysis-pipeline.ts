@@ -47,11 +47,7 @@ function collectTabSourceIds(tab: AnalysisTab): Set<string> {
 }
 
 function collectSourceIds(tabs: AnalysisTab[]): Set<string> {
-	const ids = new Set<string>();
-	for (const tab of tabs) {
-		for (const id of collectTabSourceIds(tab)) ids.add(id);
-	}
-	return ids;
+	return new Set(tabs.flatMap((tab) => [...collectTabSourceIds(tab)]));
 }
 
 export function buildAnalysisPipelinePayload(
@@ -99,12 +95,6 @@ export function buildAnalysisPipelinePayload(
 		const config = tab.datasource.config;
 		const datasourceId = tab.datasource.id;
 		const analysisTabId = tab.datasource.analysis_tab_id;
-		if (!datasourceId) {
-			missing.push(`datasource:${tab.id}`);
-		}
-		if (!outputId) {
-			missing.push(`output:${tab.id}`);
-		}
 		if (!datasourceId || !outputId) return null;
 		return {
 			id: tab.id,
@@ -119,11 +109,8 @@ export function buildAnalysisPipelinePayload(
 		};
 	});
 
-	if (pipelineTabs.some((tab) => tab === null)) {
-		return null;
-	}
-
 	const tabsPayload = pipelineTabs.filter((tab): tab is PipelineTab => tab !== null);
+	if (tabsPayload.length !== pipelineTabs.length) return null;
 	return { analysis_id: analysisId, tabs: tabsPayload, sources };
 }
 

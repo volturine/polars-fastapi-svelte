@@ -67,13 +67,13 @@ class TimeseriesHandler(OperationHandler):
             if not validated.unit:
                 raise ValueError('timeseries operation requires unit parameter')
 
+            subtracting = validated.operation_type == 'subtract' or validated.direction == 'subtract'
+
             if validated.unit == 'months':
-                subtracting = validated.operation_type == 'subtract' or validated.direction == 'subtract'
                 offset = f'-{validated.value}mo' if subtracting else f'{validated.value}mo'
                 return lf.with_columns(pl.col(validated.column).dt.offset_by(offset).alias(validated.new_column))
 
             duration = get_duration(validated.unit, int(validated.value))
-            subtracting = validated.operation_type == 'subtract' or validated.direction == 'subtract'
             expr = pl.col(validated.column) - duration if subtracting else pl.col(validated.column) + duration
             return lf.with_columns(expr.alias(validated.new_column))
 

@@ -26,9 +26,7 @@
 		config.input_columns = columns;
 	}
 
-	const inputColumns = $derived.by(() =>
-		Array.isArray(config?.input_columns) ? config.input_columns : []
-	);
+	const inputColumns = $derived(Array.isArray(config?.input_columns) ? config.input_columns : []);
 
 	const placeholderHint = $derived.by(() => {
 		if (inputColumns.length === 0) return 'Select column(s), then use {{column_name}} in prompt';

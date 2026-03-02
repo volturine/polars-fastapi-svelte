@@ -149,12 +149,7 @@ class DatasourceHandler(OperationHandler):
             if snapshot is None:
                 raise ValueError('Iceberg snapshot not found for the selected timestamp')
             snapshot_value = snapshot.snapshot_id
-        reader = config.reader
-        reader_override: Literal['native', 'pyiceberg'] = 'pyiceberg'
-        if reader == 'native':
-            reader_override = 'native'
-        if reader == 'pyiceberg':
-            reader_override = 'pyiceberg'
+        reader_override: Literal['native', 'pyiceberg'] = 'native' if config.reader == 'native' else 'pyiceberg'
         if snapshot_value is not None:
             return scan_iceberg_snapshot(metadata_path, snapshot_value, config.storage_options)
         return pl.scan_iceberg(
@@ -169,9 +164,7 @@ class DatasourceHandler(OperationHandler):
         if isinstance(pipeline, dict):
             pipeline_id = pipeline.get('analysis_id')
             if pipeline_id:
-                pipeline_id = str(pipeline_id)
-            if pipeline_id:
-                return _load_analysis_pipeline(pipeline, pipeline_id, config.analysis_tab_id)
+                return _load_analysis_pipeline(pipeline, str(pipeline_id), config.analysis_tab_id)
         raise ValueError('analysis_pipeline is required for analysis datasource loading')
 
 

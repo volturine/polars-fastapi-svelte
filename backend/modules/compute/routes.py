@@ -205,55 +205,44 @@ def export_data(
     request: schemas.ExportRequest,
     session: Session = Depends(get_db),
 ):
-    """Export pipeline result to file (download, save to filesystem, or create datasource)."""
-    file_bytes, filename, content_type, file_path, datasource_id, result_meta = service.export_data(
-        session=session,
-        target_step_id=request.target_step_id,
-        analysis_pipeline=request.analysis_pipeline.model_dump(mode='json'),
-        export_format=request.format.value,
-        filename=request.filename,
-        destination=request.destination.value,
-        datasource_type=request.datasource_type.value,
-        iceberg_options=request.iceberg_options.model_dump() if request.iceberg_options else None,
-        duckdb_options=request.duckdb_options.model_dump() if request.duckdb_options else None,
-        analysis_id=request.analysis_id,
-        tab_id=request.tab_id,
-        request_json=request.model_dump(mode='json'),
-        output_datasource_id=request.output_datasource_id,
-    )
-
+    """Export pipeline result to download or output datasource."""
     if request.destination == schemas.ExportDestination.DOWNLOAD:
-        if file_bytes is None or filename is None or content_type is None:
-            from fastapi import HTTPException
-
-            raise HTTPException(status_code=500, detail='Export file content not available')
+        file_bytes, filename, content_type = service.download_step(
+            session=session,
+            target_step_id=request.target_step_id,
+            analysis_pipeline=request.analysis_pipeline.model_dump(mode='json'),
+            export_format=request.format.value,
+            filename=request.filename,
+            analysis_id=request.analysis_id,
+            tab_id=request.tab_id,
+        )
         safe_name = quote(filename)
         return Response(
             content=file_bytes,
             media_type=content_type,
             headers={'Content-Disposition': f'attachment; filename="{safe_name}"'},
         )
-    else:
-        message = None
-        response_format = request.format.value
-        if request.destination == schemas.ExportDestination.FILESYSTEM:
-            message = f'File saved to {file_path}'
-        elif request.destination == schemas.ExportDestination.DATASOURCE:
-            message = f'Created datasource {filename}'
-            if request.datasource_type == schemas.ExportDatasourceType.ICEBERG:
-                response_format = 'iceberg'
-            elif request.datasource_type == schemas.ExportDatasourceType.DUCKDB:
-                response_format = 'duckdb'
-        return schemas.ExportResponse(
-            success=True,
-            filename=filename or request.filename,
-            format=response_format,
-            destination=request.destination.value,
-            file_path=file_path,
-            message=message,
-            datasource_id=datasource_id,
-            datasource_name=result_meta.get('datasource_name') if isinstance(result_meta, dict) else None,
-        )
+
+    result = service.export_data(
+        session=session,
+        target_step_id=request.target_step_id,
+        analysis_pipeline=request.analysis_pipeline.model_dump(mode='json'),
+        filename=request.filename,
+        iceberg_options=request.iceberg_options.model_dump() if request.iceberg_options else None,
+        analysis_id=request.analysis_id,
+        tab_id=request.tab_id,
+        request_json=request.model_dump(mode='json'),
+        output_datasource_id=request.output_datasource_id,
+    )
+    return schemas.ExportResponse(
+        success=True,
+        filename=result.datasource_name,
+        format='iceberg',
+        destination=request.destination.value,
+        message=f'Created datasource {result.datasource_name}',
+        datasource_id=result.datasource_id,
+        datasource_name=result.result_meta.get('datasource_name') if isinstance(result.result_meta, dict) else None,
+    )
 
 
 @router.post('/download')

@@ -32,11 +32,7 @@ def scan_iceberg_snapshot(
     if isinstance(frame, pl.Series):
         frame = frame.to_frame()
 
-    expected = set(names)
     for name in names:
         if name not in frame.columns:
             frame = frame.with_columns(pl.lit(None).alias(name))
-    extra = [name for name in frame.columns if name not in expected]
-    if extra:
-        frame = frame.drop(extra)
     return frame.lazy().select(names)

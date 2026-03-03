@@ -9,9 +9,7 @@ class ExportParams(OperationParams):
     format: str = 'csv'
     filename: str = 'export'
     destination: str = 'download'
-    datasource_type: str | None = None
     iceberg_options: dict | None = None
-    duckdb_options: dict | None = None
 
 
 class ExportHandler(OperationHandler):

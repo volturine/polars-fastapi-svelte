@@ -336,6 +336,7 @@ class TestComputePreview:
         assert run.kind == 'preview'
         assert run.status == 'success'
         assert run.request_json['analysis_pipeline']['tabs'][0]['datasource']['id'] == sample_datasource.id
+        assert run.request_json['iceberg_options']['branch'] == 'master'
         assert 'data' not in run.result_json
         assert run.result_json['query_plans']['optimized'] == 'opt'
 
@@ -387,26 +388,18 @@ class TestComputeExport:
             'destination': 'download',
         }
 
-        def write_export(*_args, **kwargs):
-            output_path = kwargs.get('output_path')
-            if not output_path:
-                return None
-            with open(output_path, 'wb') as handle:
-                handle.write(b'id,name\n1,Alice\n')
-            return None
-
         with patch('modules.compute.service.get_manager') as mock_get_manager:
             mock_manager = MagicMock()
             mock_engine = MagicMock()
 
-            mock_engine.export.side_effect = write_export
+            mock_engine.preview.return_value = 'preview-job-126'
             mock_engine.get_result.side_effect = [
                 None,
                 {
                     'data': {
+                        'schema': {'id': 'Int64', 'name': 'String'},
+                        'data': [{'id': 1, 'name': 'Alice'}],
                         'row_count': 1,
-                        'export_format': 'csv',
-                        'query_plans': {'optimized': 'opt', 'unoptimized': 'unopt'},
                     },
                     'error': None,
                 },
@@ -425,12 +418,12 @@ class TestComputeExport:
         assert len(runs) == 1
 
         run = runs[0]
-        assert run.kind == 'export'
+        assert run.kind == 'download'
         assert run.status == 'success'
         assert run.request_json['analysis_pipeline']['tabs'][0]['datasource']['id'] == sample_datasource.id
-        assert 'data' not in run.result_json
-        assert run.result_json['query_plans']['optimized'] == 'opt'
-        assert run.result_json['file_size_bytes'] > 0
+        assert run.request_json['iceberg_options']['branch'] == 'master'
+        assert run.result_json['format'] == 'csv'
+        assert run.result_json['filename'] == 'export-test.csv'
 
 
 class TestComputeRowCount:
@@ -510,6 +503,7 @@ class TestComputeRowCount:
         assert run.kind == 'row_count'
         assert run.status == 'success'
         assert run.request_json['analysis_pipeline']['tabs'][0]['datasource']['id'] == sample_datasource.id
+        assert run.request_json['iceberg_options']['branch'] == 'master'
         assert run.result_json['row_count'] == 42
 
 

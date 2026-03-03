@@ -63,13 +63,11 @@ def coerce_value(value: Any, value_type: ValueType) -> Any:
 
     if value_type == 'datetime':
         dt = value if isinstance(value, datetime) else datetime.fromisoformat(str(value).replace('Z', '+00:00'))
-        if not dt.tzinfo:
-            if settings.normalize_tz:
-                return dt.replace(tzinfo=ZoneInfo(settings.timezone))
+        if not dt.tzinfo and not settings.normalize_tz:
             return dt
-        if settings.normalize_tz:
-            return dt.astimezone(ZoneInfo(settings.timezone))
-        return dt.astimezone(ZoneInfo(settings.timezone)).replace(tzinfo=None)
+        tz = ZoneInfo(settings.timezone)
+        dt = dt.replace(tzinfo=tz) if not dt.tzinfo else dt.astimezone(tz)
+        return dt if settings.normalize_tz else dt.replace(tzinfo=None)
 
     return str(value)
 

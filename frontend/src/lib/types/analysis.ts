@@ -18,7 +18,6 @@ export interface AnalysisTabDatasource {
 
 export interface AnalysisTabOutput {
 	output_datasource_id: string;
-	datasource_type: string;
 	format: string;
 	filename: string;
 	build_mode?: string;

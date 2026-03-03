@@ -4,7 +4,6 @@ const defaultBranch = 'master';
 const defaultNamespace = 'outputs';
 const defaultBuildMode = 'full';
 const defaultFormat = 'parquet';
-const defaultDatasourceType = 'iceberg';
 const outputNameFallback = 'export';
 
 function cleanBranch(value: unknown): string {
@@ -27,7 +26,6 @@ export function buildOutputConfig(args: {
 	const branch = cleanBranch(args.branch);
 	return {
 		output_datasource_id: outputId,
-		datasource_type: defaultDatasourceType,
 		format: defaultFormat,
 		filename: tableName,
 		build_mode: defaultBuildMode,

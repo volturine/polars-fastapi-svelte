@@ -121,13 +121,7 @@ def await_engine_result(engine, timeout: int, job_id: str | None = None) -> dict
 
 
 def build_datasource_config(datasource, overrides: dict | None = None) -> dict:
-    base = {
-        'source_type': datasource.source_type,
-        **datasource.config,
-    }
-    if not overrides:
-        return base
-    return {**base, **overrides}
+    return {'source_type': datasource.source_type, **datasource.config, **(overrides or {})}
 
 
 def normalize_timezones(lf: pl.LazyFrame, schema: pl.Schema | None = None) -> pl.LazyFrame:

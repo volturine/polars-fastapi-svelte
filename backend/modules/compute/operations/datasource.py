@@ -294,8 +294,7 @@ def _build_tab_pipeline(
         if not isinstance(branch, str) or not branch.strip():
             raise ValueError('Analysis tab datasource.config.branch is required')
 
-        base_config = datasource_config if isinstance(datasource_config, dict) else {}
-        merged = {**base_config, **overrides}
+        merged = {**datasource_config, **overrides}
         output_override = tab.get('output')
         if isinstance(output_override, dict):
             merged = {**merged, **output_override}
@@ -383,11 +382,7 @@ def _collect_analysis_sources(
         if isinstance(union_sources, str):
             union_sources = [union_sources]
 
-        source_ids = []
-        if right_source_id:
-            source_ids.append(right_source_id)
-        if isinstance(union_sources, list):
-            source_ids.extend(union_sources)
+        source_ids = ([right_source_id] if right_source_id else []) + union_sources
 
         for source_id in source_ids:
             if not source_id:

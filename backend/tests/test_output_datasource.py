@@ -32,7 +32,6 @@ class TestTabSchemaOutputDatasourceId:
             ),
             output=TabOutputSchema(
                 output_datasource_id='ds-abc',
-                datasource_type='iceberg',
                 format='parquet',
                 filename='tab_output',
             ),
@@ -51,7 +50,6 @@ class TestTabSchemaOutputDatasourceId:
             ),
             output=TabOutputSchema(
                 output_datasource_id='ds-xyz',
-                datasource_type='iceberg',
                 format='parquet',
                 filename='tab_output',
             ),
@@ -190,7 +188,6 @@ class TestUpdateAnalysisOutputDatasource:
                 ),
                 output=TabOutputSchema(
                     output_datasource_id='out-1',
-                    datasource_type='iceberg',
                     format='parquet',
                     filename='tab_output',
                 ),
@@ -220,7 +217,6 @@ class TestUpdateAnalysisOutputDatasource:
                 ),
                 output=TabOutputSchema(
                     output_datasource_id='out-1',
-                    datasource_type='iceberg',
                     format='parquet',
                     filename='tab_output',
                 ),
@@ -243,7 +239,6 @@ class TestUpdateAnalysisOutputDatasource:
                 ),
                 output=TabOutputSchema(
                     output_datasource_id=output_id_1,
-                    datasource_type='iceberg',
                     format='parquet',
                     filename='tab_output',
                 ),
@@ -268,7 +263,6 @@ class TestUpdateAnalysisOutputDatasource:
                 ),
                 output=TabOutputSchema(
                     output_datasource_id='out-a',
-                    datasource_type='iceberg',
                     format='parquet',
                     filename='tab_output',
                 ),
@@ -285,7 +279,6 @@ class TestUpdateAnalysisOutputDatasource:
                 ),
                 output=TabOutputSchema(
                     output_datasource_id='out-b',
-                    datasource_type='iceberg',
                     format='parquet',
                     filename='tab_output',
                 ),
@@ -336,7 +329,6 @@ class TestRunAnalysisBuildOutputDatasource:
                         ],
                         'output': {
                             'output_datasource_id': output_ds_id,
-                            'datasource_type': 'iceberg',
                             'format': 'parquet',
                             'filename': 'test_out',
                             'iceberg': {'namespace': 'ns', 'table_name': 'tbl'},
@@ -392,7 +384,6 @@ class TestRunAnalysisBuildOutputDatasource:
                         'steps': [],
                         'output': {
                             'output_datasource_id': output_ds_id,
-                            'datasource_type': 'iceberg',
                             'format': 'parquet',
                             'filename': 'test_out',
                             'iceberg': {'namespace': 'ns', 'table_name': 'tbl'},
@@ -417,7 +408,7 @@ class TestRunAnalysisBuildOutputDatasource:
             patch('modules.compute.service.pl.read_parquet') as mock_read,
         ):
             mock_read.return_value.to_arrow.return_value = MagicMock(schema=MagicMock())
-            _, _, _, _, created_ds_id, _ = export_data(
+            export_result = export_data(
                 session=test_db_session,
                 target_step_id='source',
                 analysis_pipeline={
@@ -432,7 +423,6 @@ class TestRunAnalysisBuildOutputDatasource:
                             },
                             'output': {
                                 'output_datasource_id': output_ds_id,
-                                'datasource_type': 'iceberg',
                                 'format': 'parquet',
                                 'filename': 'test_out',
                                 'iceberg': {'namespace': 'ns', 'table_name': 'tbl'},
@@ -447,10 +437,7 @@ class TestRunAnalysisBuildOutputDatasource:
                         }
                     },
                 },
-                export_format='parquet',
                 filename='test_out',
-                destination='datasource',
-                datasource_type='iceberg',
                 iceberg_options={'namespace': 'ns', 'table_name': 'tbl', 'branch': 'master'},
                 output_datasource_id=output_ds_id,
             )
@@ -458,7 +445,7 @@ class TestRunAnalysisBuildOutputDatasource:
         identifier = mock_catalog.create_table.call_args.args[0]
         assert identifier == f'ns.{output_ds_id}_master'
 
-        output_ds = test_db_session.get(DataSource, created_ds_id)
+        output_ds = test_db_session.get(DataSource, export_result.datasource_id)
         assert output_ds is not None
         expected_path = str(namespace_paths().exports_dir / output_ds_id)
         assert output_ds.config['metadata_path'] == expected_path
@@ -485,7 +472,6 @@ class TestRunAnalysisBuildOutputDatasource:
                         },
                         'output': {
                             'output_datasource_id': 'some-output-id',
-                            'datasource_type': 'iceberg',
                             'format': 'parquet',
                         },
                         'steps': [],
@@ -602,7 +588,6 @@ class TestSourceTypeCreatedBy:
                 ),
                 output=TabOutputSchema(
                     output_datasource_id='out-1',
-                    datasource_type='iceberg',
                     format='parquet',
                     filename='tab_output',
                 ),

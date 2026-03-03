@@ -39,8 +39,6 @@ def create_analysis(
             raise ValueError('Analysis tab missing output.filename')
         if not output.get('format'):
             raise ValueError('Analysis tab missing output.format')
-        if not output.get('datasource_type'):
-            raise ValueError('Analysis tab missing output.datasource_type')
         output_id = str(output_id)
         tab_id = tab.get('id')
         if tab_id:
@@ -172,13 +170,10 @@ def update_analysis(
                     raise ValueError('Analysis tab missing output.filename')
                 if not output.get('format'):
                     raise ValueError('Analysis tab missing output.format')
-                if not output.get('datasource_type'):
-                    raise ValueError('Analysis tab missing output.datasource_type')
                 output_id = str(output_id)
                 if tab_id and output_id:
                     output_map[str(tab_id)] = output_id
 
-        if data.tabs is not None:
             output_ids = set(output_map.values())
             for tab in tabs_payload:
                 datasource = tab.get('datasource')
@@ -200,20 +195,6 @@ def update_analysis(
                 config['branch'] = branch.strip()
                 datasource['config'] = config
                 tab['datasource'] = datasource
-
-                output_config = tab.get('output')
-                if not isinstance(output_config, dict):
-                    raise ValueError('Analysis tab missing output configuration')
-                output_id = output_config.get('output_datasource_id')
-                if not output_id:
-                    raise ValueError('Analysis tab missing output.output_datasource_id')
-                if not output_config.get('filename'):
-                    raise ValueError('Analysis tab missing output.filename')
-                if not output_config.get('format'):
-                    raise ValueError('Analysis tab missing output.format')
-                if not output_config.get('datasource_type'):
-                    raise ValueError('Analysis tab missing output.datasource_type')
-                tab['output'] = {**output_config, 'output_datasource_id': output_id}
         pipeline_definition: dict[str, object] = {
             'steps': (
                 [step.model_dump() for step in data.pipeline_steps]
@@ -347,7 +328,6 @@ def link_datasource(
                 },
                 'output': {
                     'output_datasource_id': str(uuid.uuid4()),
-                    'datasource_type': 'iceberg',
                     'format': 'parquet',
                     'filename': f'Source {len(tabs) + 1}',
                     'iceberg': {
@@ -360,7 +340,6 @@ def link_datasource(
             }
         )
         analysis.pipeline_definition['tabs'] = tabs
-        analysis.updated_at = datetime.now(UTC).replace(tzinfo=None)
 
     session.commit()
 

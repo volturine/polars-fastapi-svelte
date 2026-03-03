@@ -57,20 +57,12 @@ class ProcessManager:
         with self._engines_lock:
             if analysis_id in self._engines:
                 info = self._engines[analysis_id]
-                existing_config = self._normalize_config(info.engine.resource_config)
-                new_config = normalized_config
-
-                # Check if config changed (compare non-None values)
-                config_changed = self._configs_differ(existing_config, new_config)
-
-                if not config_changed:
+                if not self._configs_differ(self._normalize_config(info.engine.resource_config), normalized_config):
                     info.touch()
                     logger.debug(f'Reusing existing engine for analysis {analysis_id}')
                     return info
 
-                # Config changed - need to restart
                 logger.info(f'Resource config changed for analysis {analysis_id}, restarting engine')
-                logger.debug(f'Old config: {existing_config}, new config: {new_config}')
 
         # Shutdown outside lock to avoid deadlock
         if analysis_id in self._engines:
@@ -180,16 +172,8 @@ class ProcessManager:
             engine.check_health()
 
             is_alive = engine.is_process_alive()
-
-            # Build resource config dict (only overrides vs defaults)
-            resource_config = None
-            if engine.resource_config:
-                resource_config = self._normalize_config(engine.resource_config) or None
-
-            # Build effective resources dict
-            effective_resources = None
-            if engine.effective_resources:
-                effective_resources = engine.effective_resources
+            resource_config = (self._normalize_config(engine.resource_config) or None) if engine.resource_config else None
+            effective_resources = engine.effective_resources or None
 
             return {
                 'analysis_id': analysis_id,

@@ -4,7 +4,6 @@
 		name: string;
 		output: {
 			output_datasource_id: string;
-			datasource_type: string;
 			format: string;
 			filename: string;
 			build_mode?: string;
@@ -84,7 +83,6 @@
 						?.branch ?? '');
 		const namespace = (icebergRaw?.namespace as string) || 'outputs';
 		return {
-			datasource_type: 'iceberg',
 			format: 'parquet',
 			filename: (output?.filename as string) || tableName,
 			build_mode: (output?.build_mode as string) || 'full',
@@ -126,7 +124,6 @@
 				: (((tab.datasource as Record<string, unknown>)?.config as { branch?: string } | undefined)
 						?.branch ?? '');
 		return {
-			datasource_type: 'iceberg',
 			format: 'parquet',
 			filename: (output?.filename as string) || tableName,
 			build_mode: (output?.build_mode as string) || 'full',
@@ -248,7 +245,6 @@
 		const currentOutput = tab.output as Record<string, unknown>;
 		const fallback = outputDefaults ?? {
 			output_datasource_id: tab.output.output_datasource_id,
-			datasource_type: 'iceberg',
 			format: 'parquet',
 			filename: 'export',
 			build_mode: 'full',

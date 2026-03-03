@@ -95,19 +95,9 @@ class PolarsComputeEngine:
 
         from core.config import settings
 
-        # Determine effective resource values (override > settings)
-        # None in resource_config means use settings default
-        max_threads = self.resource_config.get('max_threads')
-        if max_threads is None:
-            max_threads = settings.polars_max_threads
-
-        max_memory_mb = self.resource_config.get('max_memory_mb')
-        if max_memory_mb is None:
-            max_memory_mb = settings.polars_max_memory_mb
-
-        streaming_chunk_size = self.resource_config.get('streaming_chunk_size')
-        if streaming_chunk_size is None:
-            streaming_chunk_size = settings.polars_streaming_chunk_size
+        max_threads = self.resource_config.get('max_threads', settings.polars_max_threads)
+        max_memory_mb = self.resource_config.get('max_memory_mb', settings.polars_max_memory_mb)
+        streaming_chunk_size = self.resource_config.get('streaming_chunk_size', settings.polars_streaming_chunk_size)
 
         # Store effective resources for status reporting
         self.effective_resources = {
@@ -417,16 +407,15 @@ class PolarsComputeEngine:
         lf = load_datasource(datasource_config)
 
         right_sources: dict[str, pl.LazyFrame] = {}
-        if additional_datasources:
-            for ds_id, ds_config in additional_datasources.items():
-                try:
-                    right_sources[ds_id] = load_datasource(ds_config)
-                except Exception as e:
-                    logger.error(f'Failed to load additional datasource {ds_id}: {e}', exc_info=True)
-                    raise PipelineValidationError(
-                        f'Failed to load datasource {ds_id}: {e}',
-                        details={'datasource_id': ds_id},
-                    ) from e
+        for ds_id, ds_config in (additional_datasources or {}).items():
+            try:
+                right_sources[ds_id] = load_datasource(ds_config)
+            except Exception as e:
+                logger.error(f'Failed to load additional datasource {ds_id}: {e}', exc_info=True)
+                raise PipelineValidationError(
+                    f'Failed to load datasource {ds_id}: {e}',
+                    details={'datasource_id': ds_id},
+                ) from e
 
         pipeline_steps = apply_pipeline_steps(pipeline_steps)
 
@@ -616,8 +605,7 @@ class PolarsComputeEngine:
             if last_type == 'chart' or last_type.startswith('plot_'):
                 chart_config = last_step.get('config', {})
                 if last_type.startswith('plot_'):
-                    chart_sub = last_type.replace('plot_', '')
-                    chart_config = {**chart_config, 'chart_type': chart_sub}
+                    chart_config = {**chart_config, 'chart_type': last_type.replace('plot_', '')}
                 try:
                     chart_params = convert_config_to_params('chart', chart_config)
                 except ValueError:

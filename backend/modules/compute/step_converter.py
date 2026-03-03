@@ -221,16 +221,14 @@ def convert_string_transform_config(config: dict) -> dict:
 def convert_export_config(config: dict) -> dict:
     """Convert export config from frontend to backend format.
 
-    Frontend: {format, filename, destination, datasource_type, iceberg_options, duckdb_options}
-    Backend: {format, filename, destination, datasource_type, iceberg_options, duckdb_options}
+    Frontend: {format, filename, destination, iceberg_options}
+    Backend: {format, filename, destination, iceberg_options}
     """
     return {
         'format': config.get('format', 'csv'),
         'filename': config.get('filename', 'export'),
         'destination': config.get('destination', 'download'),
-        'datasource_type': config.get('datasource_type', 'iceberg'),
         'iceberg_options': config.get('iceberg_options'),
-        'duckdb_options': config.get('duckdb_options'),
     }
 
 

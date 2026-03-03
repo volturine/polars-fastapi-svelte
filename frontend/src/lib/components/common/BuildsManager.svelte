@@ -19,7 +19,8 @@
 		Timer,
 		CalendarClock,
 		Database,
-		RefreshCw
+		RefreshCw,
+		Hash
 	} from 'lucide-svelte';
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
@@ -45,7 +46,7 @@
 	let sortColumn = $state<string>('created_at');
 	let sortDir = $state<'asc' | 'desc'>('desc');
 	const limit = 50;
-	const previewsVisible = $derived(showPreviews);
+	const previewsVisible = $derived(!compact || showPreviews);
 
 	const params = $derived({
 		analysis_id: (pageState.url.searchParams.get('analysis_id') ?? undefined) || undefined,
@@ -106,7 +107,7 @@
 	const filteredRuns = $derived.by(() => {
 		let result = runs;
 
-		if (!previewsVisible) {
+		if (!previewsVisible && kindFilter !== 'preview') {
 			result = result.filter((run) => run.kind !== 'preview');
 		}
 
@@ -135,9 +136,7 @@
 
 		if (branchFilter) {
 			result = result.filter((run) => {
-				const payload = run.request_json as Record<string, unknown>;
-				const opts = payload.iceberg_options as Record<string, unknown> | undefined;
-				const runBranch = opts?.branch as string | undefined;
+				const runBranch = getRunBranch(run);
 				return runBranch === branchFilter;
 			});
 		}
@@ -286,6 +285,32 @@
 		if (typeof name === 'string') return name;
 		return null;
 	}
+
+	function getKindLabel(kind: string): string {
+		if (kind === 'preview') return 'Preview';
+		if (kind === 'download') return 'Download';
+		if (kind === 'export') return 'Download';
+		if (kind === 'datasource_create') return 'Output Create';
+		if (kind === 'datasource_update') return 'Output Update';
+		if (kind === 'row_count') return 'Row Count';
+		return kind;
+	}
+
+	function getRunBranch(run: EngineRun): string | null {
+		const payload = run.request_json as Record<string, unknown>;
+		const opts = payload.iceberg_options as Record<string, unknown> | undefined;
+		if (typeof opts?.branch === 'string' && opts.branch.trim()) return opts.branch;
+
+		const datasource = payload.datasource_config as Record<string, unknown> | undefined;
+		if (typeof datasource?.branch === 'string' && datasource.branch.trim())
+			return datasource.branch;
+
+		const result = run.result_json as Record<string, unknown> | null;
+		const meta = result?.metadata as Record<string, unknown> | undefined;
+		if (typeof meta?.branch === 'string' && meta.branch.trim()) return meta.branch;
+
+		return null;
+	}
 </script>
 
 <div class="builds-page flex flex-col h-full w-full">
@@ -349,9 +374,9 @@
 				<option value="">All types</option>
 				<option value="preview">Preview</option>
 				<option value="download">Download</option>
-				<option value="export">Export</option>
-				<option value="datasource_create">Datasource Create</option>
-				<option value="datasource_update">Datasource Update</option>
+				<option value="datasource_create">Output Create</option>
+				<option value="datasource_update">Output Update</option>
+				<option value="row_count">Row Count</option>
 			</select>
 			<select
 				class="border border-tertiary bg-transparent px-3 py-1.5 text-sm"
@@ -365,7 +390,7 @@
 			</select>
 			<BranchPicker
 				branches={branchOptions}
-				value={branchFilter || 'master'}
+				value={branchFilter}
 				placeholder="Branch"
 				onChange={(value: string) => (branchFilter = value)}
 			/>
@@ -445,19 +470,22 @@
 								<span class="inline-flex items-center gap-1.5">
 									{#if run.kind === 'preview'}
 										<Eye size={14} class="text-accent" />
-										<span>Preview</span>
+										<span>{getKindLabel(run.kind)}</span>
 									{:else if run.kind === 'datasource_create'}
 										<Database size={14} class="text-accent-primary" />
-										<span>Datasource Create</span>
+										<span>{getKindLabel(run.kind)}</span>
 									{:else if run.kind === 'datasource_update'}
 										<RefreshCw size={14} class="text-warning-fg" />
-										<span>Datasource Update</span>
-									{:else if run.kind === 'download'}
+										<span>{getKindLabel(run.kind)}</span>
+									{:else if run.kind === 'download' || run.kind === 'export'}
 										<Download size={14} class="text-success-fg" />
-										<span>Download</span>
+										<span>{getKindLabel(run.kind)}</span>
+									{:else if run.kind === 'row_count'}
+										<Hash size={14} class="text-fg-muted" />
+										<span>{getKindLabel(run.kind)}</span>
 									{:else}
-										<Download size={14} class="text-success-fg" />
-										<span>Export</span>
+										<Database size={14} class="text-fg-muted" />
+										<span>{getKindLabel(run.kind)}</span>
 									{/if}
 									{#if run.triggered_by === 'schedule'}
 										<span

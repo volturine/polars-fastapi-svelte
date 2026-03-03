@@ -366,8 +366,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 			const format = (c.format as string) || 'csv';
 			const dest = (c.destination as string) || 'download';
 			if (dest === 'datasource') {
-				const dsType = (c.datasource_type as string) || 'iceberg';
-				return `datasource (${dsType})`;
+				return 'datasource (iceberg)';
 			}
 			return `${filename}.${format}`;
 		}

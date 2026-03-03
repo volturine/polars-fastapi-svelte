@@ -369,8 +369,6 @@ def execute_schedule(session: Session, schedule_id: str, triggered_by: str = 'sc
         target_step_id = steps[-1].get('id', 'source')
 
     # Build the tab (single execution - query plan handles lazyframe deps automatically)
-    datasource_type = 'iceberg'
-    export_format = 'parquet'
     filename = output_config.get('filename', f'{tab_name}_out')
 
     iceberg_options = None
@@ -391,12 +389,8 @@ def execute_schedule(session: Session, schedule_id: str, triggered_by: str = 'sc
         session=session,
         target_step_id=target_step_id,
         analysis_pipeline=pipeline_payload,
-        export_format=export_format,
         filename=filename,
-        destination='datasource',
-        datasource_type=datasource_type,
         iceberg_options=iceberg_options,
-        duckdb_options=None,
         analysis_id=analysis_id,
         triggered_by=triggered_by,
         output_datasource_id=schedule.datasource_id,
@@ -511,8 +505,6 @@ def run_analysis_build(
         try:
             if output_config is not None:
                 # Tab has export config — run full export (Iceberg-only)
-                datasource_type = 'iceberg'
-                export_format = 'parquet'
                 filename = output_config.get('filename', f'{tab_name}_out')
 
                 iceberg_cfg = output_config.get('iceberg')
@@ -526,18 +518,12 @@ def run_analysis_build(
                     else None
                 )
 
-                duckdb_options = None
-
                 compute_service.export_data(
                     session=session,
                     target_step_id=target_step_id,
                     analysis_pipeline=pipeline_payload,
-                    export_format=export_format,
                     filename=filename,
-                    destination='datasource',
-                    datasource_type=datasource_type,
                     iceberg_options=iceberg_options,
-                    duckdb_options=duckdb_options,
                     analysis_id=analysis_id,
                     triggered_by=triggered_by,
                     output_datasource_id=output_config.get('output_datasource_id'),

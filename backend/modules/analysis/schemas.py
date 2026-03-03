@@ -32,7 +32,6 @@ class TabOutputSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True, extra='allow')
 
     output_datasource_id: Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
-    datasource_type: Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
     format: Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
     filename: Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
 

@@ -27,7 +27,6 @@ def test_performance_baseline(test_db_session, sample_datasource, sample_analysi
                 },
                 'output': {
                     'output_datasource_id': 'out-1',
-                    'datasource_type': 'iceberg',
                     'format': 'parquet',
                     'filename': 'perf_out',
                 },
@@ -69,14 +68,13 @@ def test_performance_baseline(test_db_session, sample_datasource, sample_analysi
             analysis_pipeline=pipeline,
             export_format='csv',
             destination='download',
-            datasource_type='file',
             analysis_id=analysis_id,
         )
     finally:
         if manager.get_engine(analysis_id):
             manager.shutdown_engine(analysis_id)
 
-    file_bytes, _name, _content_type, _path, _ds_id, export_meta = export_result
+    file_bytes, _name, _content_type, _ds_id, export_meta = export_result
 
     assert preview_result.total_rows == 5
     assert schema_result.columns

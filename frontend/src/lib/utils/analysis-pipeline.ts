@@ -12,7 +12,6 @@ type PipelineTab = {
 	};
 	output: {
 		output_datasource_id: string;
-		datasource_type: string;
 		format: string;
 		filename: string;
 		build_mode?: string;
@@ -207,7 +206,6 @@ export function buildDatasourcePipelinePayload(args: {
 			},
 			output: {
 				output_datasource_id: datasource.id,
-				datasource_type: 'iceberg',
 				format: 'parquet',
 				filename: datasource.name ?? 'export',
 				build_mode: 'full',

@@ -95,15 +95,11 @@ export interface ExportRequest {
 	tab_id?: string | null;
 	format?: 'csv' | 'parquet' | 'json' | 'ndjson' | 'duckdb';
 	filename?: string;
-	destination: 'download' | 'filesystem' | 'datasource';
-	datasource_type?: 'iceberg' | 'duckdb' | 'file';
+	destination: 'download' | 'datasource';
 	iceberg_options?: {
 		table_name?: string;
 		namespace?: string;
 		branch: string;
-	};
-	duckdb_options?: {
-		table_name?: string;
 	};
 	output_datasource_id: string;
 }
@@ -113,7 +109,6 @@ export interface ExportResponse {
 	filename: string;
 	format: string;
 	destination: string;
-	file_path: string | null;
 	message: string | null;
 	datasource_id: string | null;
 	datasource_name?: string | null;

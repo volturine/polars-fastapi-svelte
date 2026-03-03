@@ -15,6 +15,7 @@
 		onChange: (value: string) => void;
 		placeholder?: string;
 		filter?: (column: { name: string; dtype: string }) => boolean;
+		clearable?: boolean;
 	}
 
 	let {
@@ -22,7 +23,8 @@
 		value = $bindable(),
 		onChange,
 		placeholder = 'Select column...',
-		filter
+		filter,
+		clearable = false
 	}: Props = $props();
 
 	const columns = $derived(filter ? schema.columns.filter(filter) : schema.columns);
@@ -40,6 +42,7 @@
 	{value}
 	onChange={(next) => onChange(next as string)}
 	{placeholder}
+	{clearable}
 	searchPlaceholder="Search columns..."
 	{renderOption}
 />

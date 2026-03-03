@@ -260,7 +260,9 @@ const defaultConfigs: Record<string, StepConfig> = {
 		title: '',
 		series_colors: [],
 		overlays: [],
-		reference_lines: []
+		reference_lines: [],
+		chart_height: 'medium',
+		chart_width: 'normal'
 	} satisfies PlotConfigData,
 
 	notification: {

@@ -5,7 +5,18 @@
 		PlotConfigData as PlotConfigBase,
 		ReferenceLineConfig
 	} from '$lib/types/operation-config';
-	import { Plus, X } from 'lucide-svelte';
+	import {
+		BarChart2,
+		LineChart,
+		AreaChart,
+		ScatterChart,
+		PieChart,
+		BarChart3,
+		LayoutGrid,
+		BoxSelect,
+		Plus,
+		X
+	} from 'lucide-svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 
 	type PlotConfigData = Omit<PlotConfigBase, 'aggregation' | 'chart_type' | 'stack_mode'> & {
@@ -94,7 +105,9 @@
 		area_selection_enabled: false,
 		series_colors: [],
 		overlays: [],
-		reference_lines: []
+		reference_lines: [],
+		chart_height: 'medium' as const,
+		chart_width: 'normal' as const
 	} satisfies PlotConfigData;
 
 	const configDefaults = defaultConfig satisfies Record<string, unknown>;
@@ -102,16 +115,23 @@
 	let { schema, config = $bindable(configDefaults) }: Props = $props();
 	const plotConfig = $derived(config as unknown as PlotConfigData);
 
-	const chartTypes: Array<{ value: PlotConfigData['chart_type']; label: string }> = [
-		{ value: 'bar', label: 'Bar Chart' },
-		{ value: 'horizontal_bar', label: 'Horizontal Bar' },
-		{ value: 'area', label: 'Area Chart' },
-		{ value: 'heatgrid', label: 'Heat Grid' },
-		{ value: 'histogram', label: 'Histogram' },
-		{ value: 'scatter', label: 'Scatter Plot' },
-		{ value: 'line', label: 'Line Chart' },
-		{ value: 'pie', label: 'Pie Chart' },
-		{ value: 'boxplot', label: 'Box Plot' }
+	let activeTab = $state<'data' | 'look'>('data');
+
+	const chartTypeGrid: Array<{
+		value: PlotConfigData['chart_type'];
+		label: string;
+		icon: typeof BarChart2;
+		rotate?: boolean;
+	}> = [
+		{ value: 'bar', label: 'Bar', icon: BarChart2 },
+		{ value: 'horizontal_bar', label: 'H. Bar', icon: BarChart2, rotate: true },
+		{ value: 'line', label: 'Line', icon: LineChart },
+		{ value: 'area', label: 'Area', icon: AreaChart },
+		{ value: 'scatter', label: 'Scatter', icon: ScatterChart },
+		{ value: 'pie', label: 'Pie', icon: PieChart },
+		{ value: 'histogram', label: 'Hist', icon: BarChart3 },
+		{ value: 'heatgrid', label: 'Heat', icon: LayoutGrid },
+		{ value: 'boxplot', label: 'Box', icon: BoxSelect }
 	];
 
 	const aggregations = [
@@ -190,6 +210,9 @@
 			plotConfig.chart_type === 'scatter'
 	);
 	const showAreaSelection = $derived(plotConfig.chart_type === 'scatter');
+	const showAxisFormatting = $derived(
+		plotConfig.chart_type !== 'pie' && plotConfig.chart_type !== 'heatgrid'
+	);
 
 	function parseSeriesColors(value: string): string[] {
 		return value
@@ -197,9 +220,6 @@
 			.map((item) => item.trim())
 			.filter((item) => item.length > 0);
 	}
-	const showAxisFormatting = $derived(
-		plotConfig.chart_type !== 'pie' && plotConfig.chart_type !== 'heatgrid'
-	);
 
 	let yMinInput = $state('');
 	let yMaxInput = $state('');
@@ -379,624 +399,805 @@
 </script>
 
 <div class="config-panel" role="region" aria-label="Plot configuration">
-	<div class="form-section" role="group" aria-labelledby={`${uid}-plot-type`}>
-		<h4 id={`${uid}-plot-type`}>Chart Type</h4>
-		<select id={`${uid}-chart-type`} bind:value={plotConfig.chart_type} class="select-mono">
-			{#each chartTypes as type (type.value)}
-				<option value={type.value}>{type.label}</option>
+	<div class="chart-type-section" role="group" aria-labelledby={`${uid}-plot-type`}>
+		<div class="chart-type-label" id={`${uid}-plot-type`}>Chart Type</div>
+		<div class="chart-type-grid">
+			{#each chartTypeGrid as ct (ct.value)}
+				<button
+					type="button"
+					class="chart-type-btn"
+					class:active={plotConfig.chart_type === ct.value}
+					onclick={() => (plotConfig.chart_type = ct.value)}
+					title={ct.label}
+					aria-pressed={plotConfig.chart_type === ct.value}
+					aria-label={ct.label}
+				>
+					<ct.icon size={18} class={ct.rotate ? 'rotate-90' : ''} aria-hidden="true" />
+					<span>{ct.label}</span>
+				</button>
 			{/each}
-		</select>
+		</div>
 	</div>
 
-	<div class="form-section" role="group" aria-labelledby={`${uid}-plot-x`}>
-		<h4 id={`${uid}-plot-x`}>X Column</h4>
-		<ColumnDropdown
-			{schema}
-			value={plotConfig.x_column}
-			onChange={(val) => (plotConfig.x_column = val)}
-			placeholder="Select column..."
-		/>
+	<div class="plot-tabs border-b border-tertiary flex">
+		<button
+			type="button"
+			class="tab -mb-px bg-transparent border-b-2 border-transparent px-3 py-1.5 text-xs font-medium text-fg-muted hover:text-fg-secondary"
+			class:active={activeTab === 'data'}
+			onclick={() => (activeTab = 'data')}
+		>
+			Data
+		</button>
+		<button
+			type="button"
+			class="tab -mb-px bg-transparent border-b-2 border-transparent px-3 py-1.5 text-xs font-medium text-fg-muted hover:text-fg-secondary"
+			class:active={activeTab === 'look'}
+			onclick={() => (activeTab = 'look')}
+		>
+			Look
+		</button>
 	</div>
 
-	{#if plotConfig.chart_type !== 'histogram' && plotConfig.chart_type !== 'heatgrid'}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-y`}>
-			<h4 id={`${uid}-plot-y`}>Y Column</h4>
-			<ColumnDropdown
-				{schema}
-				value={plotConfig.y_column}
-				onChange={(val) => (plotConfig.y_column = val)}
-				placeholder="Select column..."
-			/>
-		</div>
-	{/if}
-
-	{#if needsHeatgridY}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-heat-y`}>
-			<h4 id={`${uid}-plot-heat-y`}>Heat Grid Y Column</h4>
-			<ColumnDropdown
-				{schema}
-				value={plotConfig.y_column}
-				onChange={(val) => (plotConfig.y_column = val)}
-				placeholder="Select column..."
-			/>
-		</div>
-	{/if}
-
-	{#if needsBins}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-bins`}>
-			<h4 id={`${uid}-plot-bins`}>Bins</h4>
-			<input id={`${uid}-bins`} type="number" min="2" max="100" bind:value={plotConfig.bins} />
-		</div>
-	{/if}
-
-	{#if needsAggregation}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-agg`}>
-			<h4 id={`${uid}-plot-agg`}>Aggregation</h4>
-			<select id={`${uid}-aggregation`} bind:value={plotConfig.aggregation} class="select-mono">
-				{#each aggregations as agg (agg.value)}
-					<option value={agg.value}>{agg.label}</option>
-				{/each}
-			</select>
-		</div>
-	{/if}
-
-	{#if showStackMode}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-stack`}>
-			<h4 id={`${uid}-plot-stack`}>Stack Mode</h4>
-			<select id={`${uid}-stack-mode`} bind:value={plotConfig.stack_mode} class="select-mono">
-				<option value="grouped">Grouped</option>
-				<option value="stacked">Stacked</option>
-				<option value="100%">100%</option>
-			</select>
-		</div>
-	{/if}
-
-	{#if needsGroup}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-group`}>
-			<h4 id={`${uid}-plot-group`}>Segment By</h4>
-			<ColumnDropdown
-				{schema}
-				value={plotConfig.group_column ?? ''}
-				onChange={(val) => (plotConfig.group_column = val)}
-				placeholder="Optional group column..."
-			/>
-		</div>
-	{/if}
-
-	{#if showGroupSort}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-group-sort`}>
-			<h4 id={`${uid}-plot-group-sort`}>Group Sorting</h4>
-			<div class="grid gap-3">
-				<div>
-					<label class="form-label" for={`${uid}-group-sort-by`}>Sort By</label>
-					<select
-						id={`${uid}-group-sort-by`}
-						bind:value={plotConfig.group_sort_by}
-						class="select-mono"
-					>
-						<option value={null}>Default</option>
-						<option value="name">Name</option>
-						<option value="value">Value</option>
-						<option value="custom">Custom column</option>
-					</select>
-				</div>
-				<div>
-					<label class="form-label" for={`${uid}-group-sort-order`}>Order</label>
-					<select
-						id={`${uid}-group-sort-order`}
-						bind:value={plotConfig.group_sort_order}
-						class="select-mono"
-					>
-						<option value="asc">Ascending</option>
-						<option value="desc">Descending</option>
-					</select>
-				</div>
-				{#if plotConfig.group_sort_by === 'custom'}
-					<div>
-						<div class="form-label">Sort Column</div>
-						<div>
-							<ColumnDropdown
-								{schema}
-								value={plotConfig.group_sort_column ?? ''}
-								onChange={(val) => (plotConfig.group_sort_column = val)}
-								placeholder="Select column..."
-							/>
-						</div>
-					</div>
-				{/if}
-			</div>
-		</div>
-	{/if}
-
-	{#if showSeriesColors}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-colors`}>
-			<h4 id={`${uid}-plot-colors`}>Series Colors</h4>
-			<input
-				id={`${uid}-series-colors`}
-				type="text"
-				value={plotConfig.series_colors.join(', ')}
-				oninput={(e) => (plotConfig.series_colors = parseSeriesColors(e.currentTarget.value))}
-				placeholder="#4A8FE7, #50B88E, #E8A838"
-			/>
-			<p class="form-help">Comma-separated colors (hex or CSS names)</p>
-		</div>
-	{/if}
-
-	{#if showAreaOpacity}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-area-opacity`}>
-			<h4 id={`${uid}-plot-area-opacity`}>Area Opacity</h4>
-			<input
-				id={`${uid}-area-opacity`}
-				type="number"
-				min="0"
-				max="1"
-				step="0.05"
-				value={areaOpacityDisplay}
-				oninput={(e) => setAreaOpacity(e.currentTarget.value)}
-				onblur={commitAreaOpacity}
-			/>
-			<p class="form-help">Range 0–1</p>
-		</div>
-	{/if}
-
-	{#if showDateBucket}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-date-bucket`}>
-			<h4 id={`${uid}-plot-date-bucket`}>Date Bucketing</h4>
-			<div class="grid gap-3">
-				<div>
-					<label class="form-label" for={`${uid}-date-bucket`}>Bucket</label>
-					<select id={`${uid}-date-bucket`} bind:value={plotConfig.date_bucket} class="select-mono">
-						<option value={null}>None</option>
-						<option value="exact">Exact</option>
-						<option value="year">Year</option>
-						<option value="quarter">Quarter</option>
-						<option value="month">Month</option>
-						<option value="week">Week</option>
-						<option value="day">Day</option>
-						<option value="hour">Hour</option>
-					</select>
-				</div>
-				<div>
-					<label class="form-label" for={`${uid}-date-ordinal`}>Ordinal</label>
-					<select
-						id={`${uid}-date-ordinal`}
-						bind:value={plotConfig.date_ordinal}
-						class="select-mono"
-					>
-						<option value={null}>None</option>
-						<option value="day_of_week">Day of Week</option>
-						<option value="month_of_year">Month of Year</option>
-						<option value="quarter_of_year">Quarter of Year</option>
-					</select>
-				</div>
-			</div>
-			<p class="form-help">Applies when X column is a date/time field.</p>
-		</div>
-	{/if}
-
-	{#if showInteractivity}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-interactivity`}>
-			<h4 id={`${uid}-plot-interactivity`}>Interactivity</h4>
-			<div class="grid gap-3">
-				<label class="form-checkbox" for={`${uid}-plot-zoom`}>
-					<input
-						id={`${uid}-plot-zoom`}
-						type="checkbox"
-						bind:checked={plotConfig.pan_zoom_enabled}
-					/>
-					<span>Pan & Zoom</span>
-				</label>
-				<label class="form-checkbox" for={`${uid}-plot-select`}>
-					<input
-						id={`${uid}-plot-select`}
-						type="checkbox"
-						bind:checked={plotConfig.selection_enabled}
-					/>
-					<span>Click Selection</span>
-				</label>
-				{#if showAreaSelection}
-					<label class="form-checkbox" for={`${uid}-plot-area-select`}>
-						<input
-							id={`${uid}-plot-area-select`}
-							type="checkbox"
-							bind:checked={plotConfig.area_selection_enabled}
-						/>
-						<span>Area Selection (scatter)</span>
-					</label>
-				{/if}
-			</div>
-		</div>
-	{/if}
-
-	<div class="form-section" role="group" aria-labelledby={`${uid}-plot-title`}>
-		<h4 id={`${uid}-plot-title`}>Chart Title</h4>
-		<input
-			id={`${uid}-title`}
-			type="text"
-			value={plotConfig.title ?? ''}
-			oninput={(e) => (plotConfig.title = e.currentTarget.value)}
-			placeholder="Optional title"
-		/>
-	</div>
-
-	{#if showSort}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-sort`}>
-			<h4 id={`${uid}-plot-sort`}>Sort Options</h4>
-			<div class="grid gap-3">
-				<div>
-					<label class="form-label" for={`${uid}-sort-by`}>Sort By</label>
-					<select id={`${uid}-sort-by`} bind:value={plotConfig.sort_by} class="select-mono">
-						<option value={null}>Default</option>
-						<option value="x">X value</option>
-						<option value="y">Y value</option>
-						<option value="custom">Custom column</option>
-					</select>
-				</div>
-				<div>
-					<label class="form-label" for={`${uid}-sort-order`}>Order</label>
-					<select id={`${uid}-sort-order`} bind:value={plotConfig.sort_order} class="select-mono">
-						<option value="asc">Ascending</option>
-						<option value="desc">Descending</option>
-					</select>
-				</div>
-				{#if plotConfig.sort_by === 'custom'}
-					<div>
-						<div class="form-label">Sort Column</div>
-						<div>
-							<ColumnDropdown
-								{schema}
-								value={plotConfig.sort_column ?? ''}
-								onChange={(val) => (plotConfig.sort_column = val)}
-								placeholder="Select column..."
-							/>
-						</div>
-					</div>
-				{/if}
-			</div>
-		</div>
-	{/if}
-
-	{#if showAxisFormatting}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-axis`}>
-			<h4 id={`${uid}-plot-axis`}>Axis Formatting</h4>
-			<div class="grid gap-3">
-				<div>
-					<label class="form-label" for={`${uid}-axis-x-label`}>X Axis Label</label>
-					<input
-						id={`${uid}-axis-x-label`}
-						type="text"
-						value={plotConfig.x_axis_label ?? ''}
-						oninput={(e) => (plotConfig.x_axis_label = e.currentTarget.value)}
-						placeholder="Optional label"
-					/>
-				</div>
-				<div>
-					<label class="form-label" for={`${uid}-axis-y-label`}>Y Axis Label</label>
-					<input
-						id={`${uid}-axis-y-label`}
-						type="text"
-						value={plotConfig.y_axis_label ?? ''}
-						oninput={(e) => (plotConfig.y_axis_label = e.currentTarget.value)}
-						placeholder="Optional label"
-					/>
-				</div>
-				{#if needsYAxis}
-					<div>
-						<label class="form-label" for={`${uid}-axis-y-scale`}>Y Axis Scale</label>
-						<select
-							id={`${uid}-axis-y-scale`}
-							bind:value={plotConfig.y_axis_scale}
-							class="select-mono"
-						>
-							<option value="linear">Linear</option>
-							<option value="log">Log</option>
-						</select>
-					</div>
-					<div>
-						<label class="form-label" for={`${uid}-axis-y-min`}>Y Axis Min</label>
-						<input
-							id={`${uid}-axis-y-min`}
-							type="number"
-							value={yMinDisplay}
-							oninput={(e) => setYAxisMin(e.currentTarget.value)}
-							onblur={commitYAxisMin}
-							placeholder="auto"
-						/>
-					</div>
-					<div>
-						<label class="form-label" for={`${uid}-axis-y-max`}>Y Axis Max</label>
-						<input
-							id={`${uid}-axis-y-max`}
-							type="number"
-							value={yMaxDisplay}
-							oninput={(e) => setYAxisMax(e.currentTarget.value)}
-							onblur={commitYAxisMax}
-							placeholder="auto"
-						/>
-					</div>
-				{/if}
-				<div>
-					<label class="form-label" for={`${uid}-axis-units`}>Display Units</label>
-					<select
-						id={`${uid}-axis-units`}
-						bind:value={plotConfig.display_units}
-						class="select-mono"
-					>
-						<option value="">None</option>
-						<option value="K">Thousands (K)</option>
-						<option value="M">Millions (M)</option>
-						<option value="B">Billions (B)</option>
-						<option value="%">Percent (%)</option>
-					</select>
-				</div>
-				<div>
-					<label class="form-label" for={`${uid}-axis-decimals`}>Decimal Places</label>
-					<input
-						id={`${uid}-axis-decimals`}
-						type="number"
-						min="0"
-						max="4"
-						value={decimalDisplay}
-						oninput={(e) => setDecimalPlaces(e.currentTarget.value)}
-						onblur={commitDecimalPlaces}
-					/>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	{#if showLegend}
-		<div class="form-section" role="group" aria-labelledby={`${uid}-plot-legend`}>
-			<h4 id={`${uid}-plot-legend`}>Legend Position</h4>
-			<select
-				id={`${uid}-legend-position`}
-				bind:value={plotConfig.legend_position}
-				class="select-mono"
-			>
-				<option value="right">Right</option>
-				<option value="left">Left</option>
-				<option value="top">Top</option>
-				<option value="bottom">Bottom</option>
-				<option value="none">Hidden</option>
-			</select>
-		</div>
-	{/if}
-
-	<div class="form-section" role="group" aria-labelledby={`${uid}-plot-overlays`}>
-		<h4 id={`${uid}-plot-overlays`}>Overlays</h4>
-		<div class="grid gap-3">
-			<div>
-				<div class="form-label">Y Column</div>
+	{#if activeTab === 'data'}
+		<div class="tab-content">
+			<div class="form-section" role="group" aria-labelledby={`${uid}-plot-x`}>
+				<h4 id={`${uid}-plot-x`}>X Column</h4>
 				<ColumnDropdown
 					{schema}
-					value={overlayValue}
-					onChange={(val) => (overlayValue = val)}
+					value={plotConfig.x_column}
+					onChange={(val) => (plotConfig.x_column = val)}
 					placeholder="Select column..."
 				/>
 			</div>
-			<div>
-				<label class="form-label" for={`${uid}-overlay-type`}>Chart Type</label>
-				<select id={`${uid}-overlay-type`} bind:value={overlayType} class="select-mono">
-					<option value="line">Line</option>
-					<option value="area">Area</option>
-					<option value="bar">Bar</option>
-					<option value="scatter">Scatter</option>
-				</select>
-			</div>
-			<div>
-				<label class="form-label" for={`${uid}-overlay-axis`}>Axis</label>
-				<select id={`${uid}-overlay-axis`} bind:value={overlayAxis} class="select-mono">
-					<option value="left">Left</option>
-					<option value="right">Right</option>
-				</select>
-			</div>
-			<div>
-				<label class="form-label" for={`${uid}-overlay-agg`}>Aggregation</label>
-				<select id={`${uid}-overlay-agg`} bind:value={overlayAgg} class="select-mono">
-					{#each aggregations as agg (agg.value)}
-						<option value={agg.value}>{agg.label}</option>
-					{/each}
-				</select>
-			</div>
-			<button
-				type="button"
-				class="flex items-center gap-1 py-2 px-4 border-none cursor-pointer whitespace-nowrap bg-accent-bg text-accent-primary disabled:bg-border-tertiary disabled:cursor-not-allowed disabled:text-fg-muted"
-				onclick={addOverlay}
-				disabled={!overlayValue}
-				aria-label="Add overlay"
-			>
-				<Plus size={16} aria-hidden="true" />
-				Add overlay
-			</button>
-		</div>
 
-		{#if plotConfig.overlays.length > 0}
-			<div class="grid gap-2">
-				{#each plotConfig.overlays as overlay, index (index)}
-					<div class="flex flex-wrap items-center gap-2 border border-tertiary p-2" role="group">
-						<div class="min-w-40 flex-1">
-							<ColumnDropdown
-								{schema}
-								value={overlay.y_column}
-								onChange={(val) => updateOverlay(index, { y_column: val })}
-								placeholder="Select column..."
-							/>
+			{#if plotConfig.chart_type !== 'histogram' && plotConfig.chart_type !== 'heatgrid'}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-y`}>
+					<h4 id={`${uid}-plot-y`}>Y Column</h4>
+					<ColumnDropdown
+						{schema}
+						value={plotConfig.y_column}
+						onChange={(val) => (plotConfig.y_column = val)}
+						placeholder="Select column..."
+					/>
+				</div>
+			{/if}
+
+			{#if needsHeatgridY}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-heat-y`}>
+					<h4 id={`${uid}-plot-heat-y`}>Heat Grid Y Column</h4>
+					<ColumnDropdown
+						{schema}
+						value={plotConfig.y_column}
+						onChange={(val) => (plotConfig.y_column = val)}
+						placeholder="Select column..."
+					/>
+				</div>
+			{/if}
+
+			{#if needsBins}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-bins`}>
+					<h4 id={`${uid}-plot-bins`}>Bins</h4>
+					<input id={`${uid}-bins`} type="number" min="2" max="100" bind:value={plotConfig.bins} />
+				</div>
+			{/if}
+
+			{#if needsAggregation}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-agg`}>
+					<h4 id={`${uid}-plot-agg`}>Aggregation</h4>
+					<select id={`${uid}-aggregation`} bind:value={plotConfig.aggregation} class="select-mono">
+						{#each aggregations as agg (agg.value)}
+							<option value={agg.value}>{agg.label}</option>
+						{/each}
+					</select>
+				</div>
+			{/if}
+
+			{#if showStackMode}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-stack`}>
+					<h4 id={`${uid}-plot-stack`}>Stack Mode</h4>
+					<select id={`${uid}-stack-mode`} bind:value={plotConfig.stack_mode} class="select-mono">
+						<option value="grouped">Grouped</option>
+						<option value="stacked">Stacked</option>
+						<option value="100%">100%</option>
+					</select>
+				</div>
+			{/if}
+
+			{#if needsGroup}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-group`}>
+					<h4 id={`${uid}-plot-group`}>Segment By</h4>
+					<ColumnDropdown
+						{schema}
+						value={plotConfig.group_column ?? ''}
+						onChange={(val) => (plotConfig.group_column = val || null)}
+						placeholder="Optional group column..."
+						clearable
+					/>
+				</div>
+			{/if}
+
+			{#if showGroupSort}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-group-sort`}>
+					<h4 id={`${uid}-plot-group-sort`}>Group Sorting</h4>
+					<div class="grid gap-3">
+						<div>
+							<label class="form-label" for={`${uid}-group-sort-by`}>Sort By</label>
+							<select
+								id={`${uid}-group-sort-by`}
+								bind:value={plotConfig.group_sort_by}
+								class="select-mono"
+							>
+								<option value={null}>Default</option>
+								<option value="name">Name</option>
+								<option value="value">Value</option>
+								<option value="custom">Custom column</option>
+							</select>
 						</div>
-						<select
-							id={`${uid}-overlay-${index}-type`}
-							aria-label="Overlay chart type"
-							class="select-mono"
-							bind:value={overlay.chart_type}
-							onchange={(e) =>
-								updateOverlay(index, {
-									chart_type: e.currentTarget.value as OverlayConfig['chart_type']
-								})}
-						>
+						<div>
+							<label class="form-label" for={`${uid}-group-sort-order`}>Order</label>
+							<select
+								id={`${uid}-group-sort-order`}
+								bind:value={plotConfig.group_sort_order}
+								class="select-mono"
+							>
+								<option value="asc">Ascending</option>
+								<option value="desc">Descending</option>
+							</select>
+						</div>
+						{#if plotConfig.group_sort_by === 'custom'}
+							<div>
+								<div class="form-label">Sort Column</div>
+								<div>
+									<ColumnDropdown
+										{schema}
+										value={plotConfig.group_sort_column ?? ''}
+										onChange={(val) => (plotConfig.group_sort_column = val)}
+										placeholder="Select column..."
+									/>
+								</div>
+							</div>
+						{/if}
+					</div>
+				</div>
+			{/if}
+
+			{#if showDateBucket}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-date-bucket`}>
+					<h4 id={`${uid}-plot-date-bucket`}>Date Bucketing</h4>
+					<div class="grid gap-3">
+						<div>
+							<label class="form-label" for={`${uid}-date-bucket`}>Bucket</label>
+							<select
+								id={`${uid}-date-bucket`}
+								bind:value={plotConfig.date_bucket}
+								class="select-mono"
+							>
+								<option value={null}>None</option>
+								<option value="exact">Exact</option>
+								<option value="year">Year</option>
+								<option value="quarter">Quarter</option>
+								<option value="month">Month</option>
+								<option value="week">Week</option>
+								<option value="day">Day</option>
+								<option value="hour">Hour</option>
+							</select>
+						</div>
+						<div>
+							<label class="form-label" for={`${uid}-date-ordinal`}>Ordinal</label>
+							<select
+								id={`${uid}-date-ordinal`}
+								bind:value={plotConfig.date_ordinal}
+								class="select-mono"
+							>
+								<option value={null}>None</option>
+								<option value="day_of_week">Day of Week</option>
+								<option value="month_of_year">Month of Year</option>
+								<option value="quarter_of_year">Quarter of Year</option>
+							</select>
+						</div>
+					</div>
+					<p class="form-help">Applies when X column is a date/time field.</p>
+				</div>
+			{/if}
+
+			{#if showSort}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-sort`}>
+					<h4 id={`${uid}-plot-sort`}>Sort Options</h4>
+					<div class="grid gap-3">
+						<div>
+							<label class="form-label" for={`${uid}-sort-by`}>Sort By</label>
+							<select id={`${uid}-sort-by`} bind:value={plotConfig.sort_by} class="select-mono">
+								<option value={null}>Default</option>
+								<option value="x">X value</option>
+								<option value="y">Y value</option>
+								<option value="custom">Custom column</option>
+							</select>
+						</div>
+						<div>
+							<label class="form-label" for={`${uid}-sort-order`}>Order</label>
+							<select
+								id={`${uid}-sort-order`}
+								bind:value={plotConfig.sort_order}
+								class="select-mono"
+							>
+								<option value="asc">Ascending</option>
+								<option value="desc">Descending</option>
+							</select>
+						</div>
+						{#if plotConfig.sort_by === 'custom'}
+							<div>
+								<div class="form-label">Sort Column</div>
+								<div>
+									<ColumnDropdown
+										{schema}
+										value={plotConfig.sort_column ?? ''}
+										onChange={(val) => (plotConfig.sort_column = val)}
+										placeholder="Select column..."
+									/>
+								</div>
+							</div>
+						{/if}
+					</div>
+				</div>
+			{/if}
+
+			{#if showInteractivity}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-interactivity`}>
+					<h4 id={`${uid}-plot-interactivity`}>Interactivity</h4>
+					<div class="grid gap-3">
+						<label class="form-checkbox" for={`${uid}-plot-zoom`}>
+							<input
+								id={`${uid}-plot-zoom`}
+								type="checkbox"
+								bind:checked={plotConfig.pan_zoom_enabled}
+							/>
+							<span>Pan & Zoom</span>
+						</label>
+						<label class="form-checkbox" for={`${uid}-plot-select`}>
+							<input
+								id={`${uid}-plot-select`}
+								type="checkbox"
+								bind:checked={plotConfig.selection_enabled}
+							/>
+							<span>Click Selection</span>
+						</label>
+						{#if showAreaSelection}
+							<label class="form-checkbox" for={`${uid}-plot-area-select`}>
+								<input
+									id={`${uid}-plot-area-select`}
+									type="checkbox"
+									bind:checked={plotConfig.area_selection_enabled}
+								/>
+								<span>Area Selection (scatter)</span>
+							</label>
+						{/if}
+					</div>
+				</div>
+			{/if}
+
+			<div class="form-section" role="group" aria-labelledby={`${uid}-plot-overlays`}>
+				<h4 id={`${uid}-plot-overlays`}>Overlays</h4>
+				<div class="grid gap-3">
+					<div>
+						<div class="form-label">Y Column</div>
+						<ColumnDropdown
+							{schema}
+							value={overlayValue}
+							onChange={(val) => (overlayValue = val)}
+							placeholder="Select column..."
+						/>
+					</div>
+					<div>
+						<label class="form-label" for={`${uid}-overlay-type`}>Chart Type</label>
+						<select id={`${uid}-overlay-type`} bind:value={overlayType} class="select-mono">
 							<option value="line">Line</option>
 							<option value="area">Area</option>
 							<option value="bar">Bar</option>
 							<option value="scatter">Scatter</option>
 						</select>
-						<select
-							id={`${uid}-overlay-${index}-agg`}
-							aria-label="Overlay aggregation"
-							class="select-mono"
-							bind:value={overlay.aggregation}
-							onchange={(e) =>
-								updateOverlay(index, {
-									aggregation: e.currentTarget.value as OverlayConfig['aggregation']
-								})}
-						>
+					</div>
+					<div>
+						<label class="form-label" for={`${uid}-overlay-axis`}>Axis</label>
+						<select id={`${uid}-overlay-axis`} bind:value={overlayAxis} class="select-mono">
+							<option value="left">Left</option>
+							<option value="right">Right</option>
+						</select>
+					</div>
+					<div>
+						<label class="form-label" for={`${uid}-overlay-agg`}>Aggregation</label>
+						<select id={`${uid}-overlay-agg`} bind:value={overlayAgg} class="select-mono">
 							{#each aggregations as agg (agg.value)}
 								<option value={agg.value}>{agg.label}</option>
 							{/each}
 						</select>
-						<select
-							id={`${uid}-overlay-${index}-yaxis`}
-							aria-label="Overlay Y axis position"
-							class="select-mono"
-							bind:value={overlay.y_axis_position}
-							onchange={(e) =>
-								updateOverlay(index, {
-									y_axis_position: e.currentTarget.value as OverlayConfig['y_axis_position']
-								})}
-						>
-							<option value="left">Left</option>
-							<option value="right">Right</option>
-						</select>
-						<button
-							type="button"
-							class="flex items-center justify-center w-7 h-7 p-0 bg-transparent cursor-pointer text-fg-secondary border border-transparent hover:bg-error! hover:text-error-fg! hover:border-error!"
-							onclick={() => removeOverlay(index)}
-							title="Remove overlay"
-							aria-label="Remove overlay"
-						>
-							<X size={14} aria-hidden="true" />
-						</button>
 					</div>
-				{/each}
-			</div>
-		{:else}
-			<p class="form-help">No overlays configured.</p>
-		{/if}
-	</div>
+					<button
+						type="button"
+						class="flex items-center gap-1 py-2 px-4 border-none cursor-pointer whitespace-nowrap bg-accent-bg text-accent-primary disabled:bg-border-tertiary disabled:cursor-not-allowed disabled:text-fg-muted"
+						onclick={addOverlay}
+						disabled={!overlayValue}
+						aria-label="Add overlay"
+					>
+						<Plus size={16} aria-hidden="true" />
+						Add overlay
+					</button>
+				</div>
 
-	<div class="form-section" role="group" aria-labelledby={`${uid}-plot-reference-lines`}>
-		<h4 id={`${uid}-plot-reference-lines`}>Reference Lines</h4>
-		<div class="grid gap-3">
-			<div>
-				<label class="form-label" for={`${uid}-ref-axis`}>Axis</label>
-				<select id={`${uid}-ref-axis`} bind:value={refAxis} class="select-mono">
-					<option value="y">Y</option>
-					<option value="x">X</option>
-				</select>
+				{#if plotConfig.overlays.length > 0}
+					<div class="grid gap-2">
+						{#each plotConfig.overlays as overlay, index (index)}
+							<div
+								class="flex flex-wrap items-center gap-2 border border-tertiary p-2"
+								role="group"
+							>
+								<div class="min-w-40 flex-1">
+									<ColumnDropdown
+										{schema}
+										value={overlay.y_column}
+										onChange={(val) => updateOverlay(index, { y_column: val })}
+										placeholder="Select column..."
+									/>
+								</div>
+								<select
+									id={`${uid}-overlay-${index}-type`}
+									aria-label="Overlay chart type"
+									class="select-mono"
+									bind:value={overlay.chart_type}
+									onchange={(e) =>
+										updateOverlay(index, {
+											chart_type: e.currentTarget.value as OverlayConfig['chart_type']
+										})}
+								>
+									<option value="line">Line</option>
+									<option value="area">Area</option>
+									<option value="bar">Bar</option>
+									<option value="scatter">Scatter</option>
+								</select>
+								<select
+									id={`${uid}-overlay-${index}-agg`}
+									aria-label="Overlay aggregation"
+									class="select-mono"
+									bind:value={overlay.aggregation}
+									onchange={(e) =>
+										updateOverlay(index, {
+											aggregation: e.currentTarget.value as OverlayConfig['aggregation']
+										})}
+								>
+									{#each aggregations as agg (agg.value)}
+										<option value={agg.value}>{agg.label}</option>
+									{/each}
+								</select>
+								<select
+									id={`${uid}-overlay-${index}-yaxis`}
+									aria-label="Overlay Y axis position"
+									class="select-mono"
+									bind:value={overlay.y_axis_position}
+									onchange={(e) =>
+										updateOverlay(index, {
+											y_axis_position: e.currentTarget.value as OverlayConfig['y_axis_position']
+										})}
+								>
+									<option value="left">Left</option>
+									<option value="right">Right</option>
+								</select>
+								<button
+									type="button"
+									class="flex items-center justify-center w-7 h-7 p-0 bg-transparent cursor-pointer text-fg-secondary border border-transparent hover:bg-error! hover:text-error-fg! hover:border-error!"
+									onclick={() => removeOverlay(index)}
+									title="Remove overlay"
+									aria-label="Remove overlay"
+								>
+									<X size={14} aria-hidden="true" />
+								</button>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="form-help">No overlays configured.</p>
+				{/if}
 			</div>
-			<div>
-				<label class="form-label" for={`${uid}-ref-value`}>Value</label>
-				<input
-					id={`${uid}-ref-value`}
-					type="number"
-					value={refValue}
-					oninput={(e) => (refValue = e.currentTarget.value)}
-					placeholder="0"
-				/>
-			</div>
-			<div>
-				<label class="form-label" for={`${uid}-ref-label`}>Label</label>
-				<input
-					id={`${uid}-ref-label`}
-					type="text"
-					value={refLabel}
-					oninput={(e) => (refLabel = e.currentTarget.value)}
-					placeholder="Optional"
-				/>
-			</div>
-			<div>
-				<label class="form-label" for={`${uid}-ref-color`}>Color</label>
-				<input
-					id={`${uid}-ref-color`}
-					type="text"
-					value={refColor}
-					oninput={(e) => (refColor = e.currentTarget.value)}
-					placeholder="#E0687A"
-				/>
-			</div>
-			<button
-				type="button"
-				class="flex items-center gap-1 py-2 px-4 border-none cursor-pointer whitespace-nowrap bg-accent-bg text-accent-primary disabled:bg-border-tertiary disabled:cursor-not-allowed disabled:text-fg-muted"
-				onclick={addReferenceLine}
-				disabled={refValue.trim() === ''}
-				aria-label="Add reference line"
-			>
-				<Plus size={16} aria-hidden="true" />
-				Add reference line
-			</button>
-		</div>
 
-		{#if plotConfig.reference_lines.length > 0}
-			<div class="grid gap-2">
-				{#each plotConfig.reference_lines as line, index (index)}
-					<div class="flex flex-wrap items-center gap-2 border border-tertiary p-2" role="group">
-						<select
-							id={`${uid}-ref-${index}-axis`}
-							aria-label="Reference line axis"
-							class="select-mono"
-							bind:value={line.axis}
-							onchange={(e) =>
-								updateReferenceLine(index, {
-									axis: e.currentTarget.value as ReferenceLineConfig['axis']
-								})}
-						>
+			<div class="form-section" role="group" aria-labelledby={`${uid}-plot-reference-lines`}>
+				<h4 id={`${uid}-plot-reference-lines`}>Reference Lines</h4>
+				<div class="grid gap-3">
+					<div>
+						<label class="form-label" for={`${uid}-ref-axis`}>Axis</label>
+						<select id={`${uid}-ref-axis`} bind:value={refAxis} class="select-mono">
 							<option value="y">Y</option>
 							<option value="x">X</option>
 						</select>
+					</div>
+					<div>
+						<label class="form-label" for={`${uid}-ref-value`}>Value</label>
 						<input
-							id={`${uid}-ref-${index}-value`}
-							aria-label="Reference line value"
+							id={`${uid}-ref-value`}
 							type="number"
-							value={line.value ?? ''}
-							oninput={(e) =>
-								updateReferenceLine(index, {
-									value: Number(e.currentTarget.value)
-								})}
+							value={refValue}
+							oninput={(e) => (refValue = e.currentTarget.value)}
 							placeholder="0"
 						/>
+					</div>
+					<div>
+						<label class="form-label" for={`${uid}-ref-label`}>Label</label>
 						<input
-							id={`${uid}-ref-${index}-label`}
-							aria-label="Reference line label"
+							id={`${uid}-ref-label`}
 							type="text"
-							value={line.label ?? ''}
-							oninput={(e) =>
-								updateReferenceLine(index, {
-									label: e.currentTarget.value
-								})}
-							placeholder="Label"
+							value={refLabel}
+							oninput={(e) => (refLabel = e.currentTarget.value)}
+							placeholder="Optional"
 						/>
+					</div>
+					<div>
+						<label class="form-label" for={`${uid}-ref-color`}>Color</label>
 						<input
-							id={`${uid}-ref-${index}-color`}
-							aria-label="Reference line color"
+							id={`${uid}-ref-color`}
 							type="text"
-							value={line.color ?? ''}
-							oninput={(e) =>
-								updateReferenceLine(index, {
-									color: e.currentTarget.value
-								})}
+							value={refColor}
+							oninput={(e) => (refColor = e.currentTarget.value)}
 							placeholder="#E0687A"
 						/>
+					</div>
+					<button
+						type="button"
+						class="flex items-center gap-1 py-2 px-4 border-none cursor-pointer whitespace-nowrap bg-accent-bg text-accent-primary disabled:bg-border-tertiary disabled:cursor-not-allowed disabled:text-fg-muted"
+						onclick={addReferenceLine}
+						disabled={refValue.trim() === ''}
+						aria-label="Add reference line"
+					>
+						<Plus size={16} aria-hidden="true" />
+						Add reference line
+					</button>
+				</div>
+
+				{#if plotConfig.reference_lines.length > 0}
+					<div class="grid gap-2">
+						{#each plotConfig.reference_lines as line, index (index)}
+							<div
+								class="flex flex-wrap items-center gap-2 border border-tertiary p-2"
+								role="group"
+							>
+								<select
+									id={`${uid}-ref-${index}-axis`}
+									aria-label="Reference line axis"
+									class="select-mono"
+									bind:value={line.axis}
+									onchange={(e) =>
+										updateReferenceLine(index, {
+											axis: e.currentTarget.value as ReferenceLineConfig['axis']
+										})}
+								>
+									<option value="y">Y</option>
+									<option value="x">X</option>
+								</select>
+								<input
+									id={`${uid}-ref-${index}-value`}
+									aria-label="Reference line value"
+									type="number"
+									value={line.value ?? ''}
+									oninput={(e) =>
+										updateReferenceLine(index, {
+											value: Number(e.currentTarget.value)
+										})}
+									placeholder="0"
+								/>
+								<input
+									id={`${uid}-ref-${index}-label`}
+									aria-label="Reference line label"
+									type="text"
+									value={line.label ?? ''}
+									oninput={(e) =>
+										updateReferenceLine(index, {
+											label: e.currentTarget.value
+										})}
+									placeholder="Label"
+								/>
+								<input
+									id={`${uid}-ref-${index}-color`}
+									aria-label="Reference line color"
+									type="text"
+									value={line.color ?? ''}
+									oninput={(e) =>
+										updateReferenceLine(index, {
+											color: e.currentTarget.value
+										})}
+									placeholder="#E0687A"
+								/>
+								<button
+									type="button"
+									class="flex items-center justify-center w-7 h-7 p-0 bg-transparent cursor-pointer text-fg-secondary border border-transparent hover:bg-error! hover:text-error-fg! hover:border-error!"
+									onclick={() => removeReferenceLine(index)}
+									title="Remove reference line"
+									aria-label="Remove reference line"
+								>
+									<X size={14} aria-hidden="true" />
+								</button>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="form-help">No reference lines configured.</p>
+				{/if}
+			</div>
+		</div>
+	{/if}
+
+	{#if activeTab === 'look'}
+		<div class="tab-content">
+			<div class="form-section" role="group" aria-labelledby={`${uid}-plot-title`}>
+				<h4 id={`${uid}-plot-title`}>Chart Title</h4>
+				<input
+					id={`${uid}-title`}
+					type="text"
+					value={plotConfig.title ?? ''}
+					oninput={(e) => (plotConfig.title = e.currentTarget.value)}
+					placeholder="Optional title"
+				/>
+			</div>
+
+			{#if showLegend}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-legend`}>
+					<h4 id={`${uid}-plot-legend`}>Legend Position</h4>
+					<select
+						id={`${uid}-legend-position`}
+						bind:value={plotConfig.legend_position}
+						class="select-mono"
+					>
+						<option value="right">Right</option>
+						<option value="left">Left</option>
+						<option value="top">Top</option>
+						<option value="bottom">Bottom</option>
+						<option value="none">Hidden</option>
+					</select>
+				</div>
+			{/if}
+
+			{#if showAxisFormatting}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-axis`}>
+					<h4 id={`${uid}-plot-axis`}>Axis Formatting</h4>
+					<div class="grid gap-3">
+						<div>
+							<label class="form-label" for={`${uid}-axis-x-label`}>X Axis Label</label>
+							<input
+								id={`${uid}-axis-x-label`}
+								type="text"
+								value={plotConfig.x_axis_label ?? ''}
+								oninput={(e) => (plotConfig.x_axis_label = e.currentTarget.value)}
+								placeholder="Optional label"
+							/>
+						</div>
+						<div>
+							<label class="form-label" for={`${uid}-axis-y-label`}>Y Axis Label</label>
+							<input
+								id={`${uid}-axis-y-label`}
+								type="text"
+								value={plotConfig.y_axis_label ?? ''}
+								oninput={(e) => (plotConfig.y_axis_label = e.currentTarget.value)}
+								placeholder="Optional label"
+							/>
+						</div>
+						{#if needsYAxis}
+							<div>
+								<label class="form-label" for={`${uid}-axis-y-scale`}>Y Axis Scale</label>
+								<select
+									id={`${uid}-axis-y-scale`}
+									bind:value={plotConfig.y_axis_scale}
+									class="select-mono"
+								>
+									<option value="linear">Linear</option>
+									<option value="log">Log</option>
+								</select>
+							</div>
+							<div>
+								<label class="form-label" for={`${uid}-axis-y-min`}>Y Axis Min</label>
+								<input
+									id={`${uid}-axis-y-min`}
+									type="number"
+									value={yMinDisplay}
+									oninput={(e) => setYAxisMin(e.currentTarget.value)}
+									onblur={commitYAxisMin}
+									placeholder="auto"
+								/>
+							</div>
+							<div>
+								<label class="form-label" for={`${uid}-axis-y-max`}>Y Axis Max</label>
+								<input
+									id={`${uid}-axis-y-max`}
+									type="number"
+									value={yMaxDisplay}
+									oninput={(e) => setYAxisMax(e.currentTarget.value)}
+									onblur={commitYAxisMax}
+									placeholder="auto"
+								/>
+							</div>
+						{/if}
+						<div>
+							<label class="form-label" for={`${uid}-axis-units`}>Display Units</label>
+							<select
+								id={`${uid}-axis-units`}
+								bind:value={plotConfig.display_units}
+								class="select-mono"
+							>
+								<option value="">None</option>
+								<option value="K">Thousands (K)</option>
+								<option value="M">Millions (M)</option>
+								<option value="B">Billions (B)</option>
+								<option value="%">Percent (%)</option>
+							</select>
+						</div>
+						<div>
+							<label class="form-label" for={`${uid}-axis-decimals`}>Decimal Places</label>
+							<input
+								id={`${uid}-axis-decimals`}
+								type="number"
+								min="0"
+								max="4"
+								value={decimalDisplay}
+								oninput={(e) => setDecimalPlaces(e.currentTarget.value)}
+								onblur={commitDecimalPlaces}
+							/>
+						</div>
+					</div>
+				</div>
+			{/if}
+
+			{#if showAreaOpacity}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-area-opacity`}>
+					<h4 id={`${uid}-plot-area-opacity`}>Area Opacity</h4>
+					<input
+						id={`${uid}-area-opacity`}
+						type="number"
+						min="0"
+						max="1"
+						step="0.05"
+						value={areaOpacityDisplay}
+						oninput={(e) => setAreaOpacity(e.currentTarget.value)}
+						onblur={commitAreaOpacity}
+					/>
+					<p class="form-help">Range 0–1</p>
+				</div>
+			{/if}
+
+			{#if showSeriesColors}
+				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-colors`}>
+					<h4 id={`${uid}-plot-colors`}>Series Colors</h4>
+					<input
+						id={`${uid}-series-colors`}
+						type="text"
+						value={plotConfig.series_colors.join(', ')}
+						oninput={(e) => (plotConfig.series_colors = parseSeriesColors(e.currentTarget.value))}
+						placeholder="#4A8FE7, #50B88E, #E8A838"
+					/>
+					<p class="form-help">Comma-separated colors (hex or CSS names)</p>
+				</div>
+			{/if}
+
+			<div class="form-section" role="group" aria-labelledby={`${uid}-plot-width`}>
+				<h4 id={`${uid}-plot-width`}>Chart Width</h4>
+				<div class="seg-buttons" role="group" aria-label="Chart width">
+					{#each [{ value: 'normal', label: 'Normal' }, { value: 'wide', label: 'Wide' }, { value: 'full', label: 'Full' }] as opt (opt.value)}
 						<button
 							type="button"
-							class="flex items-center justify-center w-7 h-7 p-0 bg-transparent cursor-pointer text-fg-secondary border border-transparent hover:bg-error! hover:text-error-fg! hover:border-error!"
-							onclick={() => removeReferenceLine(index)}
-							title="Remove reference line"
-							aria-label="Remove reference line"
+							class="seg-btn"
+							class:active={(plotConfig.chart_width ?? 'normal') === opt.value}
+							onclick={() => (plotConfig.chart_width = opt.value as PlotConfigData['chart_width'])}
+							aria-pressed={(plotConfig.chart_width ?? 'normal') === opt.value}
 						>
-							<X size={14} aria-hidden="true" />
+							{opt.label}
 						</button>
-					</div>
-				{/each}
+					{/each}
+				</div>
 			</div>
-		{:else}
-			<p class="form-help">No reference lines configured.</p>
-		{/if}
-	</div>
+
+			<div class="form-section" role="group" aria-labelledby={`${uid}-plot-height`}>
+				<h4 id={`${uid}-plot-height`}>Chart Height</h4>
+				<div class="seg-buttons" role="group" aria-label="Chart height">
+					{#each [{ value: 'small', label: 'S' }, { value: 'medium', label: 'M' }, { value: 'large', label: 'L' }, { value: 'xlarge', label: 'XL' }] as opt (opt.value)}
+						<button
+							type="button"
+							class="seg-btn"
+							class:active={(plotConfig.chart_height ?? 'medium') === opt.value}
+							onclick={() =>
+								(plotConfig.chart_height = opt.value as PlotConfigData['chart_height'])}
+							aria-pressed={(plotConfig.chart_height ?? 'medium') === opt.value}
+						>
+							{opt.label}
+						</button>
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
+
+<style>
+	.chart-type-section {
+		padding: 12px 0 12px 0;
+		border-bottom: 1px solid var(--border-tertiary);
+	}
+
+	.chart-type-label {
+		margin-bottom: 8px;
+		font-size: 0.6875rem;
+		font-family: var(--font-mono);
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--fg-muted);
+	}
+
+	.chart-type-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 4px;
+	}
+
+	.chart-type-btn {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 4px;
+		padding: 8px 4px;
+		border: 1px solid var(--border-primary);
+		background: transparent;
+		color: var(--fg-muted);
+		font-size: 0.625rem;
+		font-family: var(--font-mono);
+		cursor: pointer;
+		transition:
+			background-color var(--transition),
+			color var(--transition),
+			border-color var(--transition);
+	}
+
+	.chart-type-btn:hover {
+		background-color: var(--bg-hover);
+		color: var(--fg-primary);
+	}
+
+	.chart-type-btn.active {
+		border-color: var(--accent-secondary);
+		background-color: var(--accent-bg);
+		color: var(--accent-primary);
+	}
+
+	.seg-buttons {
+		display: flex;
+		gap: 4px;
+	}
+
+	.seg-btn {
+		flex: 1;
+		padding: 5px 8px;
+		border: 1px solid var(--border-primary);
+		background: transparent;
+		color: var(--fg-muted);
+		font-size: 0.6875rem;
+		font-family: var(--font-mono);
+		cursor: pointer;
+		text-align: center;
+		letter-spacing: 0.04em;
+		transition:
+			background-color var(--transition),
+			color var(--transition),
+			border-color var(--transition);
+	}
+
+	.seg-btn:hover {
+		background-color: var(--bg-hover);
+		color: var(--fg-primary);
+	}
+
+	.seg-btn.active {
+		border-color: var(--accent-secondary);
+		background-color: var(--accent-bg);
+		color: var(--accent-primary);
+	}
+
+	.plot-tabs {
+		margin: 0;
+	}
+
+	.tab-content {
+		padding-top: 1.25rem;
+	}
+</style>

@@ -53,6 +53,26 @@
 		step.type === 'chart' || step.type === 'plot' || step.type.startsWith('plot_')
 	);
 
+	const chartWidth = $derived(
+		isChart ? (step.config?.chart_width as string | undefined) : undefined
+	);
+	const chartHeight = $derived(
+		isChart ? (step.config?.chart_height as string | undefined) : undefined
+	);
+
+	const nodeWidthClass = $derived.by(() => {
+		if (!isChart || !chartWidth || chartWidth === 'normal') return 'w-[60%]';
+		if (chartWidth === 'wide') return 'w-[80%]';
+		return 'w-[95%]';
+	});
+
+	const chartHeightPx = $derived.by(() => {
+		if (chartHeight === 'small') return 200;
+		if (chartHeight === 'large') return 450;
+		if (chartHeight === 'xlarge') return 600;
+		return 300;
+	});
+
 	// Derived values from declarative config
 	const stepConfig = $derived(getStepTypeConfig(step.type));
 	const Icon = $derived(stepConfig.icon);
@@ -299,9 +319,10 @@
 </script>
 
 <div
-	class="step-node relative w-[60%]"
+	class="step-node relative {nodeWidthClass}"
 	data-step-id={step.id}
 	data-step-type={step.type}
+	class:chart-node={isChart}
 	class:view-node={step.type === 'view'}
 	class:opacity-40={isDragging}
 	class:grayscale-50={isDragging}
@@ -392,7 +413,8 @@
 			<div class="border-t border-tertiary">
 				{#if !isApplied}
 					<div
-						class="chart-placeholder flex h-75 items-center justify-center text-[0.6875rem] text-fg-muted"
+						class="chart-placeholder flex items-center justify-center text-[0.6875rem] text-fg-muted"
+						style="height: {chartHeightPx}px"
 					>
 						<Icon size={14} class="mr-2" />
 						{#if ((step.config?.x_column as string | undefined) ?? '') === ''}
@@ -425,6 +447,7 @@
 							| 'boxplot') ?? 'bar'}
 						config={step.config}
 						metadata={chartQuery.data.metadata}
+						height={chartHeightPx}
 					/>
 				{/if}
 			</div>

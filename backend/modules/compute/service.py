@@ -4,6 +4,7 @@ import re
 import tempfile
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -118,7 +119,7 @@ def _build_subscriber_message(context: dict[str, object]) -> str:
     return f'{header}\nHealth check details:\n{trimmed}\n…(truncated)'
 
 
-_HC_SCANNERS = {
+_HC_SCANNERS: dict[str, Callable[[str], pl.LazyFrame]] = {
     'parquet': pl.scan_parquet,
     'csv': pl.scan_csv,
     'ndjson': pl.scan_ndjson,

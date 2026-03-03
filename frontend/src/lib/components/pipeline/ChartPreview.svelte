@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as d3 from 'd3';
+	import { ChevronLeft, ChevronRight } from 'lucide-svelte';
 	import { downloadBlob } from '$lib/api/compute';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
@@ -20,9 +21,10 @@
 		chartType: ChartType;
 		config: Record<string, unknown>;
 		metadata?: Record<string, unknown> | null;
+		height?: number;
 	}
 
-	const { data, chartType, config, metadata }: Props = $props();
+	const { data, chartType, config, metadata, height = 300 }: Props = $props();
 
 	/* ── Enterprise color palette (Contour-inspired) ── */
 	const PALETTE = [
@@ -45,11 +47,20 @@
 	/* ── Tooltip state (reactive, avoids direct DOM manipulation) ── */
 	let tipTitle = $state('');
 	let tipLines: Array<{ label: string; value: string }> = $state([]);
-	let tipX = $state(0);
-	let tipY = $state(0);
+	let _tipX = $state(0);
+	let _tipY = $state(0);
 	let tipVisible = $state(false);
 	const selectedKeys = new SvelteSet<string>();
 	const hiddenSeries = new SvelteSet<string>();
+	type HtmlLegend = {
+		labels: string[];
+		getColor: (l: string) => string;
+		onClick: (label: string, event: MouseEvent | KeyboardEvent) => void;
+		position: 'top' | 'bottom' | 'left' | 'right';
+	};
+	let htmlLegend = $state<HtmlLegend | null>(null);
+	let legendCollapsed = $state(false);
+	const legendPosition = $derived((config.legend_position as string) || 'right');
 	let zoomTransform = $state<d3.ZoomTransform | null>(null);
 	let zoomBehavior = $state<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 	let zoomTarget = $state<SVGSVGElement | null>(null);
@@ -439,8 +450,8 @@
 		if (top < 4) top = event.clientY - rect.top + 14;
 		tipTitle = title;
 		tipLines = lines;
-		tipX = left;
-		tipY = top;
+		_tipX = left;
+		_tipY = top;
 		tipVisible = true;
 	}
 	function hideTip() {
@@ -580,68 +591,26 @@
 	}
 
 	function addLegend(
-		svg: Svg,
+		_svg: Svg,
 		labels: string[],
 		color: (l: string) => string,
-		w: number,
-		h: number,
+		_w: number,
+		_h: number,
 		options?: { onClick?: (label: string, event: MouseEvent | KeyboardEvent) => void }
 	) {
 		const position = str(config.legend_position) || 'right';
-		if (position === 'none') return;
-		const g = svg.append('g').attr('class', 'legend');
-		const isVertical = position === 'left' || position === 'right';
-		let xOff = 0;
-		let yOff = 0;
-		let maxWidth = 0;
-		for (const label of labels) {
-			const truncated = label.length > 14 ? label.slice(0, 14) + '…' : label;
-			const item = g
-				.append('g')
-				.attr('class', 'legend-item')
-				.attr('data-legend', label)
-				.attr('transform', isVertical ? `translate(0, ${yOff})` : `translate(${xOff}, 0)`);
-			if (options?.onClick) {
-				item
-					.attr('role', 'button')
-					.attr('tabindex', 0)
-					.attr('aria-label', `Toggle ${label}`)
-					.style('cursor', 'pointer')
-					.on('click', function (event: MouseEvent) {
-						options.onClick?.(label, event);
-					})
-					.on('keydown', function (event: KeyboardEvent) {
-						if (event.key !== 'Enter' && event.key !== ' ') return;
-						event.preventDefault();
-						options.onClick?.(label, event);
-					});
-			}
-			item
-				.append('rect')
-				.attr('width', 8)
-				.attr('height', 8)
-				.attr('y', -8)
-				.attr('fill', color(label))
-				.attr('rx', 1);
-			item
-				.append('text')
-				.attr('x', 12)
-				.attr('fill', 'var(--fg-muted)')
-				.style('font-size', '10px')
-				.style('font-family', 'var(--font-mono)')
-				.text(truncated);
-			const itemWidth = truncated.length * 6.2 + 24;
-			if (itemWidth > maxWidth) maxWidth = itemWidth;
-			if (isVertical) yOff += 16;
-			if (!isVertical) xOff += itemWidth;
+		if (position === 'none') {
+			htmlLegend = null;
+			return;
 		}
-		const baseY = position === 'top' ? -24 : -8;
-		const y = position === 'bottom' ? h + 12 : baseY;
-		let x = 0;
-		if (position === 'right') x = w - maxWidth;
-		if (position === 'top' || position === 'bottom') x = (w - xOff) / 2;
-		g.attr('transform', `translate(${x}, ${y})`);
-		updateLegend(svg);
+		htmlLegend = {
+			labels,
+			getColor: color,
+			position: position as 'top' | 'bottom' | 'left' | 'right',
+			onClick: (label: string, event: MouseEvent | KeyboardEvent) => {
+				options?.onClick?.(label, event);
+			}
+		};
 	}
 
 	function addRightYAxis(svg: Svg, y: AxisScale, w: number) {
@@ -1034,6 +1003,7 @@
 
 		function draw() {
 			if (!chartEl) return;
+			htmlLegend = null;
 			d3.select(chartEl).selectAll('svg').remove();
 			const rect = chartEl.getBoundingClientRect();
 			const w = rect.width || 400;
@@ -1161,7 +1131,7 @@
 			const series = d3.stack<StackRow>().keys(groups)(stackData.rows);
 
 			const maxValue = normalized ? 1 : (d3.max(stackData.totals) ?? 0);
-			const y = buildYScale([maxValue], 0, h);
+			const y = buildYScale([0, maxValue], 0, h);
 
 			refX = x;
 			refY = y;
@@ -2084,7 +2054,7 @@
 			const normalized = stackMode === '100%';
 			const stackData = buildStackRows(labels, groups, groupCol);
 			const maxValue = normalized ? 1 : (d3.max(stackData.totals) ?? 0);
-			const y = buildYScale([maxValue], 0, h);
+			const y = buildYScale([0, maxValue], 0, h);
 
 			addGrid(svg, y, w);
 			makeXAxis(svg, x, h, labels);
@@ -3616,34 +3586,67 @@
 	}
 </script>
 
-<div class="chart-wrapper" bind:this={wrapperEl}>
-	<div class="chart-controls">
-		<button
-			type="button"
-			class="btn-ghost btn-sm border border-tertiary text-xs"
-			aria-label="Export chart as PNG"
-			onclick={exportChartPng}
-		>
-			Export PNG
-		</button>
-		<button
-			type="button"
-			class="btn-ghost btn-sm border border-tertiary text-xs"
-			aria-label="Export chart data as CSV"
-			onclick={exportChartCsv}
-		>
-			Export CSV
-		</button>
-	</div>
-	<div class="chart-area" bind:this={chartEl}>
-		{#if data.length === 0}
-			<div class="chart-empty">
-				<span>No data to display</span>
-			</div>
-		{/if}
-	</div>
-	{#if zoomEnabled && zoomActive}
-		<div class="chart-reset">
+<div class="chart-outer">
+	{#if htmlLegend && legendPosition === 'top'}
+		<div class="html-legend legend-top" class:collapsed={legendCollapsed}>
+			{#if legendCollapsed}
+				<button
+					type="button"
+					class="legend-mini-pill"
+					onclick={() => (legendCollapsed = false)}
+					title="Show legend"
+				>
+					{#each htmlLegend.labels.slice(0, 12) as label (label)}
+						<span
+							class="mini-dot"
+							class:faded={!isSeriesVisible(label)}
+							style:background={htmlLegend.getColor(label)}
+						></span>
+					{/each}
+				</button>
+			{:else}
+				{#each htmlLegend.labels as label (label)}
+					<button
+						type="button"
+						class="html-legend-item"
+						class:dimmed={!isSeriesVisible(label)}
+						onclick={(e) => htmlLegend?.onClick(label, e)}
+					>
+						<span class="legend-swatch" style:background={htmlLegend.getColor(label)}></span>
+						{label.length > 14 ? label.slice(0, 14) + '…' : label}
+					</button>
+				{/each}
+				<div
+					role="button"
+					tabindex="0"
+					class="legend-handle"
+					onclick={() => (legendCollapsed = true)}
+					onkeydown={(e) => e.key === 'Enter' && (legendCollapsed = true)}
+					title="Minimize legend"
+				></div>
+			{/if}
+		</div>
+	{/if}
+	<div class="chart-toolbar">
+		<div class="chart-controls">
+			<button
+				type="button"
+				class="btn-ghost btn-sm border border-tertiary text-xs"
+				aria-label="Export chart as PNG"
+				onclick={exportChartPng}
+			>
+				Export PNG
+			</button>
+			<button
+				type="button"
+				class="btn-ghost btn-sm border border-tertiary text-xs"
+				aria-label="Export chart data as CSV"
+				onclick={exportChartCsv}
+			>
+				Export CSV
+			</button>
+		</div>
+		{#if zoomEnabled && zoomActive}
 			<button
 				type="button"
 				class="btn-ghost btn-sm border border-tertiary text-xs"
@@ -3652,29 +3655,137 @@
 			>
 				Reset zoom
 			</button>
+		{/if}
+	</div>
+	<div class="chart-wrapper" bind:this={wrapperEl} style="height: {height}px">
+		<div class="chart-area" bind:this={chartEl}>
+			{#if data.length === 0}
+				<div class="chart-empty">
+					<span>No data to display</span>
+				</div>
+			{/if}
+		</div>
+		<div
+			class="chart-tooltip absolute pointer-events-none opacity-0 px-3 py-2 bg-background border border-border text-sm shadow-lg break-words z-[var(--z-tooltip)] transition-opacity duration-75"
+			class:tip-visible={tipVisible}
+		>
+			{#if tipTitle}<strong>{tipTitle}</strong>{/if}
+			{#each tipLines as line, i (i)}
+				{#if tipTitle || tipLines.length > 1}<br />{/if}
+				{#if line.label}{line.label}:
+				{/if}{line.value}
+			{/each}
+		</div>
+		{#if htmlLegend && (legendPosition === 'left' || legendPosition === 'right')}
+			<div class="legend-side legend-{legendPosition}" class:collapsed={legendCollapsed}>
+				{#if legendPosition === 'right'}
+					<button
+						class="legend-tab p-0"
+						onclick={() => (legendCollapsed = !legendCollapsed)}
+						title={legendCollapsed ? 'Show legend' : 'Hide legend'}
+					>
+						{#if legendCollapsed}
+							<ChevronLeft size={11} />
+						{:else}
+							<ChevronRight size={11} />
+						{/if}
+					</button>
+				{/if}
+				{#if !legendCollapsed}
+					<div class="legend-items">
+						{#each htmlLegend.labels as label (label)}
+							<button
+								type="button"
+								class="html-legend-item"
+								class:dimmed={!isSeriesVisible(label)}
+								onclick={(e) => htmlLegend?.onClick(label, e)}
+							>
+								<span class="legend-swatch" style:background={htmlLegend.getColor(label)}></span>
+								{label.length > 14 ? label.slice(0, 14) + '…' : label}
+							</button>
+						{/each}
+					</div>
+				{/if}
+				{#if legendPosition === 'left'}
+					<button
+						class="legend-tab p-0"
+						onclick={() => (legendCollapsed = !legendCollapsed)}
+						title={legendCollapsed ? 'Show legend' : 'Hide legend'}
+					>
+						{#if legendCollapsed}
+							<ChevronRight size={11} />
+						{:else}
+							<ChevronLeft size={11} />
+						{/if}
+					</button>
+				{/if}
+			</div>
+		{/if}
+	</div>
+	{#if htmlLegend && legendPosition === 'bottom'}
+		<div class="html-legend legend-bottom" class:collapsed={legendCollapsed}>
+			{#if legendCollapsed}
+				<button
+					type="button"
+					class="legend-mini-pill"
+					onclick={() => (legendCollapsed = false)}
+					title="Show legend"
+				>
+					{#each htmlLegend.labels.slice(0, 12) as label (label)}
+						<span
+							class="mini-dot"
+							class:faded={!isSeriesVisible(label)}
+							style:background={htmlLegend.getColor(label)}
+						></span>
+					{/each}
+				</button>
+			{:else}
+				{#each htmlLegend.labels as label (label)}
+					<button
+						type="button"
+						class="html-legend-item"
+						class:dimmed={!isSeriesVisible(label)}
+						onclick={(e) => htmlLegend?.onClick(label, e)}
+					>
+						<span class="legend-swatch" style:background={htmlLegend.getColor(label)}></span>
+						{label.length > 14 ? label.slice(0, 14) + '…' : label}
+					</button>
+				{/each}
+				<div
+					role="button"
+					tabindex="0"
+					class="legend-handle"
+					onclick={() => (legendCollapsed = true)}
+					onkeydown={(e) => e.key === 'Enter' && (legendCollapsed = true)}
+					title="Minimize legend"
+				></div>
+			{/if}
 		</div>
 	{/if}
-	<div
-		class="chart-tooltip"
-		class:tip-visible={tipVisible}
-		style:left="{tipX}px"
-		style:top="{tipY}px"
-	>
-		{#if tipTitle}<strong>{tipTitle}</strong>{/if}
-		{#each tipLines as line, i (i)}
-			{#if tipTitle || tipLines.length > 1}<br />{/if}
-			{#if line.label}{line.label}:
-			{/if}{line.value}
-		{/each}
-	</div>
 </div>
 
 <style>
+	.chart-outer {
+		width: 100%;
+		background-color: var(--bg-primary);
+	}
+
+	.chart-toolbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 6px 10px;
+		border-bottom: 1px solid var(--border-tertiary);
+	}
+
+	.chart-controls {
+		display: flex;
+		gap: 6px;
+	}
+
 	.chart-wrapper {
 		position: relative;
 		width: 100%;
-		height: 300px;
-		background-color: var(--bg-primary);
 		overflow: hidden;
 		contain: content;
 	}
@@ -3682,22 +3793,6 @@
 	.chart-area {
 		width: 100%;
 		height: 100%;
-	}
-
-	.chart-controls {
-		position: absolute;
-		top: 10px;
-		left: 12px;
-		display: flex;
-		gap: 8px;
-		z-index: var(--z-overlay);
-	}
-
-	.chart-reset {
-		position: absolute;
-		top: 10px;
-		right: 12px;
-		z-index: var(--z-overlay);
 	}
 
 	.chart-empty {
@@ -3709,23 +3804,199 @@
 		font-size: 0.75rem;
 	}
 
-	.chart-tooltip {
-		position: absolute;
-		pointer-events: none;
-		opacity: 0;
-		padding: 8px 12px;
-		background-color: var(--bg-tertiary);
-		border: 1px solid var(--border-primary);
-		color: var(--fg-primary);
-		font-family: var(--font-mono);
-		font-size: 0.6875rem;
-		line-height: 1.6;
-		white-space: nowrap;
-		z-index: var(--z-tooltip);
-		transition: opacity 80ms ease;
-	}
-
 	.chart-tooltip.tip-visible {
 		opacity: 1;
+	}
+
+	.html-legend {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 4px 8px;
+		background-color: var(--bg-secondary);
+		border-bottom: 1px solid var(--border-tertiary);
+	}
+
+	.html-legend.legend-top.collapsed,
+	.html-legend.legend-bottom.collapsed {
+		background: transparent;
+		border: none;
+		justify-content: flex-end;
+	}
+
+	.legend-bottom {
+		border-bottom: none;
+		border-top: 1px solid var(--border-tertiary);
+	}
+
+	.legend-bottom.collapsed {
+		justify-content: flex-start;
+	}
+
+	.legend-mini-pill {
+		display: flex;
+		align-items: center;
+		gap: 3px;
+		padding: 4px 8px;
+		background: color-mix(in srgb, var(--bg-primary) 90%, transparent);
+		border: 1px solid var(--border-tertiary);
+		border-radius: 20px;
+		cursor: pointer;
+		transition:
+			background 120ms ease,
+			border-color 120ms ease;
+	}
+
+	.legend-mini-pill:hover {
+		background: var(--bg-secondary);
+		border-color: var(--border-primary);
+	}
+
+	.mini-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		flex-shrink: 0;
+		transition: opacity 120ms ease;
+	}
+
+	.mini-dot.faded {
+		opacity: 0.3;
+	}
+
+	.mini-more {
+		font-size: 9px;
+		color: var(--fg-muted);
+		line-height: 1;
+	}
+
+	.legend-handle {
+		flex-shrink: 0;
+		align-self: stretch;
+		width: 4px;
+		border-radius: 2px;
+		margin-left: 2px;
+		cursor: pointer;
+		opacity: 0;
+		background: var(--fg-muted);
+		transition: opacity 150ms ease;
+	}
+
+	.html-legend:hover .legend-handle {
+		opacity: 0.15;
+	}
+
+	.legend-handle:hover {
+		opacity: 0.5;
+	}
+
+	.legend-side {
+		position: absolute;
+		top: 28px;
+		max-height: calc(100% - 44px);
+		display: flex;
+		flex-direction: row;
+		align-items: flex-start;
+		z-index: 5;
+	}
+
+	.legend-right {
+		right: 24px;
+	}
+
+	.legend-left {
+		left: 64px;
+	}
+
+	.legend-tab {
+		flex-shrink: 0;
+		align-self: center;
+		width: 18px;
+		height: 36px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		background: color-mix(in srgb, var(--bg-secondary) 95%, transparent);
+		border: 1px solid var(--border-secondary);
+		color: var(--fg-muted);
+		transition:
+			background-color 120ms ease,
+			color 120ms ease;
+	}
+
+	.legend-tab :global(svg) {
+		stroke: currentColor;
+	}
+
+	.legend-tab:hover {
+		background: var(--bg-tertiary);
+		color: var(--fg-primary);
+	}
+
+	.legend-right .legend-tab {
+		border-radius: 6px 0 0 6px;
+		border-right: none;
+	}
+
+	.legend-left .legend-tab {
+		border-radius: 0 6px 6px 0;
+		border-left: none;
+	}
+
+	.legend-side.collapsed .legend-tab {
+		border-radius: 6px;
+		border: 1px solid var(--border-secondary);
+	}
+
+	.legend-items {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		padding: 6px 6px 8px;
+		max-height: calc(100vh - 200px);
+		overflow-y: auto;
+		background-color: color-mix(in srgb, var(--bg-secondary) 95%, transparent);
+		border: 1px solid var(--border-tertiary);
+	}
+
+	.legend-right .legend-items {
+		border-radius: 0 4px 4px 0;
+	}
+
+	.legend-left .legend-items {
+		border-radius: 4px 0 0 4px;
+	}
+
+	.html-legend-item {
+		display: flex;
+		align-items: center;
+		gap: 5px;
+		background: none;
+		border: none;
+		padding: 2px 4px;
+		cursor: pointer;
+		font-size: 10px;
+		font-family: var(--font-mono);
+		color: var(--fg-muted);
+		border-radius: 3px;
+		transition: opacity 120ms ease;
+		white-space: nowrap;
+	}
+
+	.html-legend-item:hover {
+		color: var(--fg-primary);
+		background-color: var(--bg-tertiary);
+	}
+
+	.html-legend-item.dimmed {
+		opacity: 0.35;
+	}
+
+	.legend-swatch {
+		width: 8px;
+		height: 8px;
+		border-radius: 1px;
+		flex-shrink: 0;
 	}
 </style>

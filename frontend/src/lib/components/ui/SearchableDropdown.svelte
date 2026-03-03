@@ -66,6 +66,7 @@
 		menuActionValue?: MenuActionValue;
 		searchValue?: string;
 		closeOnOutside?: boolean;
+		clearable?: boolean;
 		onOpen?: (trigger: HTMLButtonElement | HTMLInputElement | undefined) => void;
 		onClose?: () => void;
 	}
@@ -94,6 +95,7 @@
 		menuActionValue = { left: 0, top: 0, width: 0 },
 		searchValue = $bindable(''),
 		closeOnOutside = true,
+		clearable = false,
 		onOpen,
 		onClose,
 		renderTrigger
@@ -257,7 +259,28 @@
 			{disabled}
 		>
 			<span class={selectedCount > 0 ? 'column-label' : 'column-placeholder'}>{displayLabel}</span>
-			<ChevronDown size={14} class="chevron" />
+			{#if clearable && selectedCount > 0}
+				<span
+					role="button"
+					tabindex="0"
+					class="trigger-clear"
+					onclick={(e) => {
+						e.stopPropagation();
+						updateValue(mode === 'multi' ? [] : '');
+						onClose?.();
+					}}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.stopPropagation();
+							updateValue(mode === 'multi' ? [] : '');
+							onClose?.();
+						}
+					}}
+					aria-label="Clear selection">✕</span
+				>
+			{:else}
+				<ChevronDown size={14} class="chevron" />
+			{/if}
 		</button>
 	{/if}
 	{#if menuOpen}

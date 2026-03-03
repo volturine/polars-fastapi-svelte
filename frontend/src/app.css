@@ -679,6 +679,25 @@ button.btn-sm {
 	color: var(--fg-muted);
 }
 
+.trigger-clear {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+	color: var(--fg-muted);
+	font-size: 0.625rem;
+	border-radius: 2px;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.trigger-clear:hover {
+	color: var(--fg-primary);
+	background-color: var(--bg-tertiary);
+}
+
 .column-menu {
 	position: absolute;
 	z-index: var(--z-dropdown);
@@ -1754,6 +1773,10 @@ button.btn-sm {
 }
 
 .step-node.view-node {
+	contain-intrinsic-size: auto 500px;
+}
+
+.step-node.chart-node {
 	contain-intrinsic-size: auto 500px;
 }
 

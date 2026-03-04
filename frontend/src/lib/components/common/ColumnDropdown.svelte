@@ -2,6 +2,7 @@
 	import type { Schema } from '$lib/types/schema';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import SearchableDropdown from '$lib/components/ui/SearchableDropdown.svelte';
+	import { css, cx } from '$lib/styles/panda';
 
 	interface ColumnOption {
 		id: string;
@@ -16,6 +17,9 @@
 		placeholder?: string;
 		filter?: (column: { name: string; dtype: string }) => boolean;
 		clearable?: boolean;
+		containerClass?: string;
+		triggerClass?: string;
+		menuClass?: string;
 	}
 
 	let {
@@ -24,7 +28,10 @@
 		onChange,
 		placeholder = 'Select column...',
 		filter,
-		clearable = false
+		clearable = false,
+		containerClass = '',
+		triggerClass = '',
+		menuClass = ''
 	}: Props = $props();
 
 	const columns = $derived(filter ? schema.columns.filter(filter) : schema.columns);
@@ -44,6 +51,9 @@
 	{placeholder}
 	{clearable}
 	searchPlaceholder="Search columns..."
+	{containerClass}
+	{triggerClass}
+	{menuClass}
 	{renderOption}
 />
 
@@ -57,8 +67,28 @@
 	{@const onPick = payload.onSelect}
 	<button
 		type="button"
-		class="column-option"
-		class:selected={isSelected}
+		class={cx(
+			css({
+				minWidth: '0',
+				width: '100%',
+				padding: '0.5rem 0.75rem',
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'transparent',
+				background: 'transparent',
+				textAlign: 'left',
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'flex-start',
+				gap: '2',
+				cursor: 'pointer',
+				color: 'fg.primary',
+				fontSize: 'sm',
+				'& span': { minWidth: '0', overflowWrap: 'anywhere' },
+				_hover: { backgroundColor: 'bg.hover', borderColor: 'border.primary' }
+			}),
+			isSelected && css({ backgroundColor: 'bg.hover', borderColor: 'border.primary' })
+		)}
 		onclick={onPick}
 		role="option"
 		aria-selected={isSelected}

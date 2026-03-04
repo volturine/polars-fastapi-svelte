@@ -12,6 +12,7 @@
 	import { Plus } from 'lucide-svelte';
 	import type { SortOption } from '$lib/components/gallery/AnalysisFilters.svelte';
 	import { toEpochDisplay } from '$lib/utils/datetime';
+	import { css, spinner } from '$lib/styles/panda';
 
 	const queryClient = useQueryClient();
 
@@ -166,15 +167,57 @@
 	});
 </script>
 
-<div class="mx-auto box-border max-w-300 px-8 py-8 md:px-4 md:py-4">
+<div
+	class={css({
+		marginX: 'auto',
+		boxSizing: 'border-box',
+		maxWidth: '300',
+		paddingX: '8',
+		paddingY: '8',
+		md: { paddingX: '4', paddingY: '4' }
+	})}
+>
 	<header
-		class="mb-8 flex flex-col items-stretch justify-between gap-6 border-b border-tertiary pb-6 md:flex-row md:items-start"
+		class={css({
+			marginBottom: '8',
+			display: 'flex',
+			flexDirection: 'column',
+			alignItems: 'stretch',
+			justifyContent: 'space-between',
+			gap: '6',
+			borderBottomWidth: '1px',
+			borderBottomStyle: 'solid',
+			borderBottomColor: 'border.tertiary',
+			paddingBottom: '6',
+			md: { flexDirection: 'row', alignItems: 'flex-start' }
+		})}
 	>
 		<div>
-			<h1 class="m-0 mb-2 text-2xl font-semibold">Analyses</h1>
-			<p class="m-0 text-sm text-fg-tertiary">Browse and manage your data analyses</p>
+			<h1 class={css({ margin: '0', marginBottom: '2', fontSize: '2xl', fontWeight: 'semibold' })}>
+				Analyses
+			</h1>
+			<p class={css({ margin: '0', fontSize: 'sm', color: 'fg.tertiary' })}>
+				Browse and manage your data analyses
+			</p>
 		</div>
-		<button class="btn-primary w-full justify-center md:w-auto" onclick={createNew}>
+		<button
+			class={css({
+				width: '100%',
+				justifyContent: 'center',
+				backgroundColor: 'accent.primary',
+				color: 'bg.primary',
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'border.primary',
+				paddingX: '4',
+				paddingY: '2',
+				display: 'inline-flex',
+				alignItems: 'center',
+				gap: '2',
+				md: { width: 'auto' }
+			})}
+			onclick={createNew}
+		>
 			<Plus size={16} />
 			New Analysis
 		</button>
@@ -182,17 +225,63 @@
 
 	<main>
 		{#if query.isPending}
-			<div class="flex h-full items-center justify-center">
-				<div class="spinner"></div>
+			<div
+				class={css({
+					display: 'flex',
+					height: '100%',
+					alignItems: 'center',
+					justifyContent: 'center'
+				})}
+			>
+				<div class={spinner()}></div>
 			</div>
 		{:else if query.isError}
 			<div
-				class="error-box flex min-h-100 flex-col items-center justify-center px-6 py-12 text-center"
+				class={css({
+					display: 'flex',
+					minHeight: '100',
+					flexDirection: 'column',
+					alignItems: 'center',
+					justifyContent: 'center',
+					paddingX: '6',
+					paddingY: '12',
+					textAlign: 'center'
+				})}
 			>
-				<div class="mb-6 flex h-12 w-12 items-center justify-center text-xl font-bold">!</div>
-				<h2 class="m-0 mb-2 text-lg font-semibold">Failed to load analyses</h2>
-				<p class="m-0 mb-6 max-w-100 text-sm">{query.error.message}</p>
-				<button class="btn-primary" onclick={() => query.refetch()}>Try again</button>
+				<div
+					class={css({
+						marginBottom: '6',
+						display: 'flex',
+						height: '12',
+						width: '12',
+						alignItems: 'center',
+						justifyContent: 'center',
+						fontSize: 'xl',
+						fontWeight: 'bold'
+					})}
+				>
+					!
+				</div>
+				<h2 class={css({ margin: '0', marginBottom: '2', fontSize: 'lg', fontWeight: 'semibold' })}>
+					Failed to load analyses
+				</h2>
+				<p class={css({ margin: '0', marginBottom: '6', maxWidth: '100', fontSize: 'sm' })}>
+					{query.error.message}
+				</p>
+				<button
+					class={css({
+						backgroundColor: 'accent.primary',
+						color: 'bg.primary',
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.primary',
+						paddingX: '4',
+						paddingY: '2'
+					})}
+					onclick={() => query.refetch()}
+				>
+					Try again
+				</button>
 			</div>
 		{:else if query.data}
 			{#if query.data.length === 0}
@@ -209,8 +298,19 @@
 					onBulkDelete={requestBulkDelete}
 				/>
 				{#if filteredAndSortedAnalyses.length === 0}
-					<div class="border border-dashed border-tertiary px-6 py-12 text-center">
-						<p class="text-fg-tertiary m-0 text-sm">No analyses match your search.</p>
+					<div
+						class={css({
+							borderWidth: '1px',
+							borderStyle: 'dashed',
+							borderColor: 'border.tertiary',
+							paddingX: '6',
+							paddingY: '12',
+							textAlign: 'center'
+						})}
+					>
+						<p class={css({ color: 'fg.tertiary', margin: '0', fontSize: 'sm' })}>
+							No analyses match your search.
+						</p>
 					</div>
 				{:else}
 					<GalleryGrid

@@ -10,6 +10,7 @@
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
 	import { Pencil, X } from 'lucide-svelte';
+	import { css, button } from '$lib/styles/panda';
 
 	interface WithColumnsExpr {
 		name: string;
@@ -218,10 +219,25 @@
 	);
 </script>
 
-<div class="config-panel" role="region" aria-label="With columns configuration">
-	<h3 class="m-0 mb-5 text-sm uppercase tracking-wider text-fg-muted">With Columns</h3>
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+	role="region"
+	aria-label="With columns configuration"
+>
+	<h3
+		class={css({
+			margin: '0',
+			marginBottom: '5',
+			fontSize: 'sm',
+			textTransform: 'uppercase',
+			letterSpacing: 'wider',
+			color: 'fg.muted'
+		})}
+	>
+		With Columns
+	</h3>
 
-	<div class="flex flex-col gap-3 mb-5">
+	<div class={css({ display: 'flex', flexDirection: 'column', gap: '3', marginBottom: '5' })}>
 		<label for="wc-expr-type">Type</label>
 		<select id="wc-expr-type" bind:value={exprType}>
 			<option value="column">From column</option>
@@ -243,31 +259,60 @@
 			<label for="wc-expr-value">Value</label>
 			<input id="wc-expr-value" type="text" bind:value={exprValue} placeholder="Literal value" />
 		{:else}
-			<div class="flex flex-col gap-3">
-				<div class="flex gap-3 items-center">
-					<label class="inline-flex items-center gap-2 text-sm text-fg-secondary">
+			<div class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
+				<div class={css({ display: 'flex', gap: '3', alignItems: 'center' })}>
+					<label
+						class={css({
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: '2',
+							fontSize: 'sm',
+							color: 'fg.secondary'
+						})}
+					>
 						<input id="wc-use-lib-no" type="radio" bind:group={useLibrary} value={false} />
 						Inline UDF
 					</label>
-					<label class="inline-flex items-center gap-2 text-sm text-fg-secondary">
+					<label
+						class={css({
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: '2',
+							fontSize: 'sm',
+							color: 'fg.secondary'
+						})}
+					>
 						<input id="wc-use-lib-yes" type="radio" bind:group={useLibrary} value={true} />
 						Library UDF
 					</label>
 				</div>
 
 				{#if useLibrary}
-					<div class="flex items-center gap-2">
-						<button type="button" class="btn-secondary btn-sm" onclick={openPicker}>
+					<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+						<button
+							type="button"
+							class={button({ variant: 'secondary', size: 'sm' })}
+							onclick={openPicker}
+						>
 							Select UDF
 						</button>
 						{#if exprUdfId}
 							{@const selectedUdf = (udfQuery.data ?? []).find((item) => item.id === exprUdfId)}
-							<span class="text-xs text-fg-muted">Selected: {selectedUdf?.name ?? exprUdfId}</span>
+							<span class={css({ fontSize: 'xs', color: 'fg.muted' })}
+								>Selected: {selectedUdf?.name ?? exprUdfId}</span
+							>
 						{:else}
-							<span class="text-xs text-fg-muted">No UDF selected</span>
+							<span class={css({ fontSize: 'xs', color: 'fg.muted' })}>No UDF selected</span>
 						{/if}
 					</div>
-					<span class="text-xs uppercase tracking-wider text-fg-muted">Input columns</span>
+					<span
+						class={css({
+							fontSize: 'xs',
+							textTransform: 'uppercase',
+							letterSpacing: 'wider',
+							color: 'fg.muted'
+						})}>Input columns</span
+					>
 					<MultiSelectColumnDropdown
 						{schema}
 						value={exprArgs}
@@ -275,7 +320,14 @@
 						placeholder="Select input columns..."
 					/>
 				{:else}
-					<span class="text-xs uppercase tracking-wider text-fg-muted">Input columns</span>
+					<span
+						class={css({
+							fontSize: 'xs',
+							textTransform: 'uppercase',
+							letterSpacing: 'wider',
+							color: 'fg.muted'
+						})}>Input columns</span
+					>
 					<MultiSelectColumnDropdown
 						{schema}
 						value={exprArgs}
@@ -283,26 +335,58 @@
 						placeholder="Select input columns..."
 					/>
 
-					<div class="flex items-center justify-between">
-						<label for="wc-expr-code" class="text-xs uppercase tracking-wider text-fg-muted"
-							>Function</label
+					<div
+						class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}
+					>
+						<label
+							for="wc-expr-code"
+							class={css({
+								fontSize: 'xs',
+								textTransform: 'uppercase',
+								letterSpacing: 'wider',
+								color: 'fg.muted'
+							})}>Function</label
 						>
-						<button type="button" class="btn-ghost btn-sm" onclick={openEditor}>Expand</button>
+						<button
+							type="button"
+							class={button({ variant: 'ghost', size: 'sm' })}
+							onclick={openEditor}>Expand</button
+						>
 					</div>
 					<textarea
 						id="wc-expr-code"
-						class="resize-y min-h-25 text-sm font-mono"
+						class={css({ resize: 'vertical', minHeight: '25', fontSize: 'sm', fontFamily: 'mono' })}
 						rows="5"
 						placeholder="def udf(*args):&#10;    return ..."
 						bind:value={exprCode}
 						oninput={() => (codeEdited = true)}
 					></textarea>
-					<label class="inline-flex items-center gap-2 text-sm mt-2 text-fg-secondary">
+					<label
+						class={css({
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: '2',
+							fontSize: 'sm',
+							marginTop: '2',
+							color: 'fg.secondary'
+						})}
+					>
 						<input id="wc-save-to-lib" type="checkbox" bind:checked={saveToLibrary} />
 						Save to UDF Library
 					</label>
 					{#if saveToLibrary}
-						<div class="flex flex-col gap-3 mt-3 pt-3 border-t border-tertiary">
+						<div
+							class={css({
+								display: 'flex',
+								flexDirection: 'column',
+								gap: '3',
+								marginTop: '3',
+								paddingTop: '3',
+								borderTopWidth: '1px',
+								borderTopStyle: 'solid',
+								borderTopColor: 'border.tertiary'
+							})}
+						>
 							<label for="wc-save-name">Name</label>
 							<input id="wc-save-name" type="text" placeholder="UDF name" bind:value={saveName} />
 							<label for="wc-save-desc">Description</label>
@@ -321,7 +405,7 @@
 							/>
 							<button
 								type="button"
-								class="btn-secondary btn-sm"
+								class={button({ variant: 'secondary', size: 'sm' })}
 								onclick={() => saveMutation.mutate()}
 								disabled={!exprCode.trim()}
 							>
@@ -333,37 +417,88 @@
 			</div>
 		{/if}
 
-		<div class="flex gap-3">
+		<div class={css({ display: 'flex', gap: '3' })}>
 			{#if isEditing}
-				<button type="button" class="btn-primary" onclick={saveExpression} disabled={!canAdd}
-					>Save</button
+				<button
+					type="button"
+					class={button({ variant: 'primary' })}
+					onclick={saveExpression}
+					disabled={!canAdd}>Save</button
 				>
-				<button type="button" class="btn-secondary" onclick={cancelEdit}>Cancel</button>
+				<button type="button" class={button({ variant: 'secondary' })} onclick={cancelEdit}
+					>Cancel</button
+				>
 			{:else}
-				<button type="button" class="btn-primary" onclick={addExpression} disabled={!canAdd}
-					>Add</button
+				<button
+					type="button"
+					class={button({ variant: 'primary' })}
+					onclick={addExpression}
+					disabled={!canAdd}>Add</button
 				>
 			{/if}
 		</div>
 	</div>
 
 	{#if (config.expressions ?? []).length > 0}
-		<div class="flex flex-col" role="list">
-			<h4 class="m-0 mb-3">Columns</h4>
+		<div class={css({ display: 'flex', flexDirection: 'column' })} role="list">
+			<h4
+				class={css({
+					marginTop: '0',
+					marginBottom: '3',
+					margin: '0',
+					fontSize: '0.6875rem',
+					fontWeight: '600',
+					color: 'fg.muted',
+					textTransform: 'uppercase',
+					letterSpacing: '0.08em'
+				})}
+			>
+				Columns
+			</h4>
 			{#each config.expressions ?? [] as expr, index (index)}
 				<div
-					class="item item-row flex justify-between items-center py-2"
-					class:editing={editIndex === index}
-					class:border-accent-primary={editIndex === index}
-					class:bg-hover={editIndex === index}
+					class={editIndex === index
+						? css({
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+								paddingY: '2',
+								borderBottomWidth: '1px',
+								borderBottomStyle: 'solid',
+								borderBottomColor: 'border.tertiary',
+								borderLeftWidth: '2px',
+								borderLeftStyle: 'solid',
+								borderLeftColor: 'accent.primary',
+								backgroundColor: 'bg.hover',
+								'&:last-child': { borderBottomWidth: '0' }
+							})
+						: css({
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+								paddingY: '2',
+								borderBottomWidth: '1px',
+								borderBottomStyle: 'solid',
+								borderBottomColor: 'border.tertiary',
+								backgroundColor: 'transparent',
+								border: 'none',
+								'&:last-child': { borderBottomWidth: '0' }
+							})}
 					role="listitem"
 				>
-					<div class="flex items-center gap-3 min-w-0">
+					<div class={css({ display: 'flex', alignItems: 'center', gap: '3', minWidth: '0' })}>
 						<span
-							class="font-semibold max-w-30 overflow-hidden text-ellipsis whitespace-nowrap text-fg-primary"
+							class={css({
+								fontWeight: 'semibold',
+								maxWidth: '30',
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+								color: 'fg.primary'
+							})}
 							title={expr.name}>{expr.name}</span
 						>
-						<span class="text-xs text-fg-muted">
+						<span class={css({ fontSize: 'xs', color: 'fg.muted' })}>
 							{expr.type === 'column'
 								? `<- ${expr.column ?? ''}`
 								: expr.type === 'udf'
@@ -371,10 +506,25 @@
 									: `= "${expr.value}"`}
 						</span>
 					</div>
-					<div class="flex gap-1 shrink-0">
+					<div class={css({ display: 'flex', gap: '1', flexShrink: '0' })}>
 						<button
 							type="button"
-							class="w-6 h-6 p-0 inline-flex items-center justify-center bg-transparent cursor-pointer text-base leading-none text-fg-muted border border-transparent"
+							class={css({
+								width: '6',
+								height: '6',
+								padding: '0',
+								display: 'inline-flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								backgroundColor: 'transparent',
+								cursor: 'pointer',
+								fontSize: 'md',
+								lineHeight: 'none',
+								color: 'fg.muted',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.transparent'
+							})}
 							onclick={() => editExpression(index)}
 							aria-label="Edit"
 						>
@@ -382,7 +532,27 @@
 						</button>
 						<button
 							type="button"
-							class="btn-remove w-6 h-6 p-0 inline-flex items-center justify-center bg-transparent cursor-pointer text-base leading-none text-fg-muted border border-transparent hover:text-error-fg hover:bg-error hover:border-error"
+							class={css({
+								width: '6',
+								height: '6',
+								padding: '0',
+								display: 'inline-flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								backgroundColor: 'transparent',
+								cursor: 'pointer',
+								fontSize: 'md',
+								lineHeight: 'none',
+								color: 'fg.muted',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.transparent',
+								_hover: {
+									color: 'error.fg',
+									backgroundColor: 'error.bg',
+									borderColor: 'error.border'
+								}
+							})}
 							onclick={() => removeExpression(index)}
 							aria-label="Remove"
 						>
@@ -393,27 +563,97 @@
 			{/each}
 		</div>
 	{:else}
-		<p class="py-8 text-center text-xs text-fg-muted">No columns configured yet.</p>
+		<p class={css({ paddingY: '8', textAlign: 'center', fontSize: 'xs', color: 'fg.muted' })}>
+			No columns configured yet.
+		</p>
 	{/if}
 </div>
 
 {#if showEditor}
-	<div class="modal-backdrop" aria-hidden="true"></div>
-	<div class="modal" role="dialog" aria-modal="true" bind:this={modalRef}>
-		<div class="modal-header">
+	<div
+		class={css({ position: 'fixed', inset: '0', background: 'var(--overlay-bg)', zIndex: 'modal' })}
+		aria-hidden="true"
+	></div>
+	<div
+		class={css({
+			position: 'fixed',
+			left: '50%',
+			top: '50%',
+			transform: 'translate(-50%, -50%)',
+			width: 'min(720px, 92vw)',
+			backgroundColor: 'bg.primary',
+			borderWidth: '1px',
+			borderStyle: 'solid',
+			borderColor: 'border.primary',
+			zIndex: 'calc(var(--z-modal) + 1)',
+			display: 'flex',
+			flexDirection: 'column',
+			_focus: { outline: 'none' }
+		})}
+		role="dialog"
+		aria-modal="true"
+		bind:this={modalRef}
+	>
+		<div
+			class={css({
+				display: 'flex',
+				justifyContent: 'space-between',
+				alignItems: 'center',
+				padding: '0.75rem 1rem',
+				borderBottom: '1px solid var(--color-border-primary)',
+				'& h2': { margin: '0', fontSize: '1rem', color: 'fg.primary' }
+			})}
+		>
 			<h2>UDF Editor</h2>
-			<button class="modal-close" onclick={() => (showEditor = false)} aria-label="Close">
+			<button
+				class={css({
+					background: 'transparent',
+					border: 'none',
+					color: 'fg.muted',
+					cursor: 'pointer',
+					fontSize: '1.25rem',
+					padding: '0.25rem',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					transitionProperty: 'color, background-color',
+					transitionDuration: 'normal',
+					_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+				})}
+				onclick={() => (showEditor = false)}
+				aria-label="Close"
+			>
 				<X size={16} />
 			</button>
 		</div>
-		<div class="modal-body">
+		<div
+			class={css({
+				padding: '1rem',
+				overflowY: 'auto',
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '0.75rem'
+			})}
+		>
 			<CodeEditor bind:value={exprCode} height="400px" onEdit={() => (codeEdited = true)} />
-			<p class="text-sm m-0 text-fg-muted">
+			<p class={css({ fontSize: 'sm', margin: '0', color: 'fg.muted' })}>
 				Define a function named <code>udf</code> that returns a value per row.
 			</p>
 		</div>
-		<div class="modal-footer">
-			<button class="btn-secondary" onclick={() => (showEditor = false)} type="button">Done</button>
+		<div
+			class={css({
+				padding: '0.75rem 1rem',
+				borderTop: '1px solid var(--color-border-primary)',
+				display: 'flex',
+				justifyContent: 'flex-end',
+				gap: '0.5rem'
+			})}
+		>
+			<button
+				class={button({ variant: 'secondary' })}
+				onclick={() => (showEditor = false)}
+				type="button">Done</button
+			>
 		</div>
 	</div>
 {/if}

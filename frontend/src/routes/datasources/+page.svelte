@@ -19,6 +19,7 @@
 	import BuildComparisonPanel from '$lib/components/datasources/BuildComparisonPanel.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { css, cx, spinner, button } from '$lib/styles/panda';
 
 	const queryClient = useQueryClient();
 
@@ -126,19 +127,53 @@
 	});
 </script>
 
-<div class="flex h-full">
+<div class={css({ display: 'flex', height: '100%' })}>
 	<!-- Left Pane -->
 	<aside
-		class="w-(--datasource-panel-width) border-r border-tertiary flex flex-col bg-bg-primary shrink-0"
+		class={css({
+			width: 'var(--datasource-panel-width)',
+			borderRightWidth: '1px',
+			borderRightStyle: 'solid',
+			borderRightColor: 'border.tertiary',
+			display: 'flex',
+			flexDirection: 'column',
+			backgroundColor: 'bg.primary',
+			flexShrink: '0'
+		})}
 	>
 		<!-- Header -->
-		<header class="flex flex-col gap-2 px-4 py-3 border-b border-tertiary h-25 box-border">
-			<div class="flex items-center justify-between">
-				<h1 class="text-sm font-semibold">Data Sources</h1>
-				<div class="flex items-center gap-1">
+		<header
+			class={css({
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '2',
+				paddingX: '4',
+				paddingY: '3',
+				borderBottomWidth: '1px',
+				borderBottomStyle: 'solid',
+				borderBottomColor: 'border.tertiary',
+				height: '6.25rem',
+				boxSizing: 'border-box'
+			})}
+		>
+			<div class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
+				<h1 class={css({ fontSize: 'sm', fontWeight: 'semibold' })}>Data Sources</h1>
+				<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
 					<button
-						class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 bg-transparent border border-tertiary"
-						class:text-accent-primary={showHidden}
+						class={css({
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: '1',
+							fontSize: 'xs',
+							fontWeight: 'medium',
+							paddingX: '2',
+							paddingY: '1',
+							backgroundColor: 'transparent',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.tertiary',
+							color: showHidden ? 'accent.primary' : undefined
+						})}
 						title={showHidden
 							? 'Hide auto-generated datasources'
 							: 'Show auto-generated datasources'}
@@ -152,7 +187,21 @@
 					</button>
 					<a
 						href={resolve('/datasources/new')}
-						class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 no-underline bg-accent text-bg-primary border border-accent-primary"
+						class={css({
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: '1',
+							fontSize: 'xs',
+							fontWeight: 'medium',
+							paddingX: '2',
+							paddingY: '1',
+							textDecoration: 'none',
+							backgroundColor: 'accent.primary',
+							color: 'bg.primary',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'accent.primary'
+						})}
 						data-sveltekit-reload
 					>
 						<Plus size={14} />
@@ -160,65 +209,168 @@
 					</a>
 				</div>
 			</div>
-			<div class="relative">
-				<Search size={14} class="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted" />
+			<div class={css({ position: 'relative' })}>
+				<Search
+					size={14}
+					class={css({
+						position: 'absolute',
+						left: '0.625rem',
+						top: '50%',
+						transform: 'translateY(-50%)',
+						color: 'fg.muted'
+					})}
+				/>
 				<input
 					type="text"
 					id="ds-search"
 					aria-label="Search datasources"
 					placeholder="Search datasources..."
-					class="w-full bg-transparent border border-tertiary px-3 py-1 pl-8 text-sm"
+					class={css({
+						width: '100%',
+						backgroundColor: 'transparent',
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.tertiary',
+						paddingX: '3',
+						paddingY: '1',
+						paddingLeft: '8',
+						fontSize: 'sm'
+					})}
 					bind:value={searchQuery}
 				/>
 			</div>
 		</header>
 
 		<!-- Datasource List -->
-		<div class="flex-1 overflow-y-auto">
+		<div class={css({ flex: '1', overflowY: 'auto' })}>
 			{#if query.isLoading}
-				<div class="flex h-full items-center justify-center">
-					<div class="spinner"></div>
+				<div
+					class={css({
+						display: 'flex',
+						height: '100%',
+						alignItems: 'center',
+						justifyContent: 'center'
+					})}
+				>
+					<div class={spinner()}></div>
 				</div>
 			{:else if query.isError}
-				<div class="error-box m-4 text-sm">
+				<div
+					class={css({
+						padding: '0.625rem 0.75rem',
+						border: 'none',
+						borderLeft: '2px solid',
+						borderRadius: '0',
+						marginTop: '0.75rem',
+						marginBottom: '0',
+						lineHeight: '1.5',
+						backgroundColor: 'transparent',
+						borderLeftColor: 'error.border',
+						color: 'error.fg',
+						margin: '4',
+						fontSize: 'sm'
+					})}
+				>
 					Error: {query.error instanceof Error ? query.error.message : 'Unknown error'}
 				</div>
 			{:else if datasources.length === 0}
-				<div class="p-8 text-center">
-					<p class="text-sm text-fg-muted mb-4">No data sources yet.</p>
+				<div class={css({ padding: '8', textAlign: 'center' })}>
+					<p class={css({ fontSize: 'sm', color: 'fg.muted', marginBottom: '4' })}>
+						No data sources yet.
+					</p>
 					<a
 						href={resolve('/datasources/new')}
-						class="inline-flex items-center gap-1 text-sm font-medium px-3 py-2 no-underline bg-accent text-bg-primary border border-accent-primary"
+						class={css({
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: '1',
+							fontSize: 'sm',
+							fontWeight: 'medium',
+							paddingX: '3',
+							paddingY: '2',
+							textDecoration: 'none',
+							backgroundColor: 'accent.primary',
+							color: 'bg.primary',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'accent.primary'
+						})}
 						data-sveltekit-reload
 					>
 						Create your first data source
 					</a>
 				</div>
 			{:else if filteredDatasources.length === 0}
-				<div class="p-8 text-center text-sm text-fg-muted">
+				<div class={css({ padding: '8', textAlign: 'center', fontSize: 'sm', color: 'fg.muted' })}>
 					No datasources match "{searchQuery}"
 				</div>
 			{:else}
 				{#each filteredDatasources as datasource (datasource.id)}
 					<div
-						class="datasource-item border-b border-tertiary"
-						class:selected={selectedId === datasource.id}
+						class={css({
+							borderBottomWidth: '1px',
+							borderBottomStyle: 'solid',
+							borderBottomColor: 'border.tertiary',
+							...(selectedId === datasource.id
+								? {
+										backgroundColor: 'accent.bg',
+										borderLeft: '2px solid',
+										borderLeftColor: 'accent.primary'
+									}
+								: {})
+						})}
 					>
 						<!-- Row -->
-						<div class="flex items-center justify-between px-3 py-2.5">
+						<div
+							class={css({
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'space-between',
+								paddingX: '3',
+								paddingY: '2.5'
+							})}
+						>
 							<button
-								class="flex items-center gap-2 min-w-0 flex-1 text-left bg-transparent p-0 border-transparent"
+								class={css({
+									display: 'flex',
+									alignItems: 'center',
+									gap: '2',
+									minWidth: '0',
+									flex: '1',
+									textAlign: 'left',
+									backgroundColor: 'transparent',
+									padding: '0',
+									borderColor: 'transparent'
+								})}
 								onclick={() => selectDatasource(datasource.id)}
 							>
 								<span
-									class="font-medium truncate text-sm"
-									class:text-accent-primary={selectedId === datasource.id}
+									class={css({
+										fontWeight: 'medium',
+										textOverflow: 'ellipsis',
+										overflow: 'hidden',
+										whiteSpace: 'nowrap',
+										fontSize: 'sm',
+										color: selectedId === datasource.id ? 'accent.primary' : undefined
+									})}
 								>
 									{datasource.name}
 								</span>
 								{#if datasource.created_by === 'analysis'}
 									<span
-										class="inline-flex items-center gap-0.5 shrink-0 bg-accent-bg px-1.5 py-0.5 text-[10px] uppercase font-medium text-accent-primary"
+										class={css({
+											display: 'inline-flex',
+											alignItems: 'center',
+											gap: '0.125rem',
+											flexShrink: '0',
+											backgroundColor: 'accent.bg',
+											paddingX: '1.5',
+											paddingY: '0.5',
+											fontSize: '0.625rem',
+											textTransform: 'uppercase',
+											fontWeight: 'medium',
+											color: 'accent.primary'
+										})}
 										title="Created by analysis"
 									>
 										<GitBranch size={10} />
@@ -226,7 +378,19 @@
 									</span>
 								{:else}
 									<span
-										class="inline-flex items-center gap-0.5 shrink-0 bg-tertiary px-1.5 py-0.5 text-[10px] uppercase font-medium text-fg-muted"
+										class={css({
+											display: 'inline-flex',
+											alignItems: 'center',
+											gap: '0.125rem',
+											flexShrink: '0',
+											backgroundColor: 'bg.tertiary',
+											paddingX: '1.5',
+											paddingY: '0.5',
+											fontSize: '0.625rem',
+											textTransform: 'uppercase',
+											fontWeight: 'medium',
+											color: 'fg.muted'
+										})}
 										title="Imported datasource"
 									>
 										<Upload size={10} />
@@ -234,15 +398,25 @@
 									</span>
 								{/if}
 							</button>
-							<div class="flex items-center shrink-0">
+							<div class={css({ display: 'flex', alignItems: 'center', flexShrink: '0' })}>
 								<button
-									class="action-icon p-1.5 bg-transparent border-transparent hover:text-error-fg"
+									class={css({
+										padding: '1.5',
+										backgroundColor: 'transparent',
+										borderColor: 'transparent',
+										borderRadius: 'sm',
+										transitionProperty: 'color, background-color',
+										transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+										transitionDuration: '150ms',
+										color: 'fg.muted',
+										_hover: { color: 'error.fg', backgroundColor: 'bg.hover' }
+									})}
 									title="Delete"
 									onclick={() => handleDelete(datasource.id)}
 									disabled={deleteMutation.isPending && deletingId === datasource.id}
 								>
 									{#if deleteMutation.isPending && deletingId === datasource.id}
-										<LoaderCircle size={14} class="spinning" />
+										<LoaderCircle size={14} class={css({ animation: 'spin 1s linear infinite' })} />
 									{:else}
 										<Trash2 size={14} />
 									{/if}
@@ -261,16 +435,26 @@
 	</aside>
 
 	<!-- Right Pane -->
-	<main class="flex-1 overflow-hidden">
+	<main class={css({ flex: '1', overflow: 'hidden' })}>
 		{#if selectedDatasource}
-			<div class="h-full flex flex-col">
+			<div class={css({ height: '100%', display: 'flex', flexDirection: 'column' })}>
 				<div
-					class="border-b border-tertiary bg-bg-secondary p-3 flex items-center justify-between gap-3"
+					class={css({
+						borderBottomWidth: '1px',
+						borderBottomStyle: 'solid',
+						borderBottomColor: 'border.tertiary',
+						backgroundColor: 'bg.secondary',
+						padding: '3',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between',
+						gap: '3'
+					})}
 				>
-					<div class="flex-1 min-w-0">
+					<div class={css({ flex: '1', minWidth: '0' })}>
 						{#if selectedDatasource.source_type === 'iceberg'}
-							<div class="flex items-center gap-2">
-								<div class="flex-1 min-w-0">
+							<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+								<div class={css({ flex: '1', minWidth: '0' })}>
 									<SnapshotPicker
 										datasourceId={selectedDatasource.id}
 										datasourceConfig={snapshotConfig ?? selectedDatasource.config}
@@ -281,8 +465,8 @@
 										onConfigChange={handleSnapshotConfigChange}
 									/>
 								</div>
-								<div class="flex items-center gap-2">
-									<GitBranch size={14} class="text-fg-tertiary" />
+								<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+									<GitBranch size={14} class={css({ color: 'fg.tertiary' })} />
 									<BranchPicker
 										branches={branchOptions}
 										value={activeBranch}
@@ -297,7 +481,15 @@
 									/>
 								</div>
 								<button
-									class="btn-ghost btn-sm border border-tertiary text-xs"
+									class={cx(
+										button({ variant: 'ghost', size: 'sm' }),
+										css({
+											borderWidth: '1px',
+											borderStyle: 'solid',
+											borderColor: 'border.tertiary',
+											fontSize: 'xs'
+										})
+									)}
 									onclick={() => (showComparison = !showComparison)}
 									aria-pressed={showComparison}
 								>
@@ -309,13 +501,13 @@
 								</button>
 							</div>
 						{:else}
-							<div class="text-xs text-fg-tertiary">
+							<div class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>
 								Time travel is available for Iceberg datasources.
 							</div>
 						{/if}
 					</div>
 				</div>
-				<div class="flex-1 min-h-0 overflow-auto">
+				<div class={css({ flex: '1', minHeight: '0', overflow: 'auto' })}>
 					{#if showComparison}
 						<BuildComparisonPanel datasource={selectedDatasource} />
 					{:else}
@@ -328,10 +520,21 @@
 				</div>
 			</div>
 		{:else}
-			<div class="h-full flex items-center justify-center text-fg-muted bg-secondary">
-				<div class="text-center">
-					<p class="text-lg font-medium mb-2">No datasource selected</p>
-					<p class="text-sm">Select a datasource from the list to preview</p>
+			<div
+				class={css({
+					height: '100%',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					color: 'fg.muted',
+					backgroundColor: 'bg.secondary'
+				})}
+			>
+				<div class={css({ textAlign: 'center' })}>
+					<p class={css({ fontSize: 'lg', fontWeight: 'medium', marginBottom: '2' })}>
+						No datasource selected
+					</p>
+					<p class={css({ fontSize: 'sm' })}>Select a datasource from the list to preview</p>
 				</div>
 			</div>
 		{/if}

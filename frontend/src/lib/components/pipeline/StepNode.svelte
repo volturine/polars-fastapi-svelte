@@ -24,6 +24,7 @@
 		buildTabPipelinePayload
 	} from '$lib/utils/analysis-pipeline';
 	import { SvelteMap } from 'svelte/reactivity';
+	import { css, cx, spinner, button } from '$lib/styles/panda';
 
 	interface Props {
 		step: PipelineStep;
@@ -61,9 +62,9 @@
 	);
 
 	const nodeWidthClass = $derived.by(() => {
-		if (!isChart || !chartWidth || chartWidth === 'normal') return 'w-[60%]';
-		if (chartWidth === 'wide') return 'w-[80%]';
-		return 'w-[95%]';
+		if (!isChart || !chartWidth || chartWidth === 'normal') return css({ width: '60%' });
+		if (chartWidth === 'wide') return css({ width: '80%' });
+		return css({ width: '95%' });
 	});
 
 	const chartHeightPx = $derived.by(() => {
@@ -319,22 +320,94 @@
 </script>
 
 <div
-	class="step-node relative {nodeWidthClass}"
+	class={cx(
+		'step-node',
+		nodeWidthClass,
+		isOtherDragging && 'drag-target',
+		isDragging &&
+			css({
+				opacity: '0.4',
+				filter: 'grayscale(1)'
+			}),
+		css({
+			position: 'relative',
+			contentVisibility: 'auto',
+			containIntrinsicSize: isChart || step.type === 'view' ? 'auto 500px' : 'auto 200px',
+			...(step.type === 'view' ? { width: '85%', minWidth: '320px' } : {})
+		})
+	)}
 	data-step-id={step.id}
 	data-step-type={step.type}
-	class:chart-node={isChart}
-	class:view-node={step.type === 'view'}
-	class:opacity-40={isDragging}
-	class:grayscale-50={isDragging}
-	class:drag-target={isOtherDragging}
 >
-	<div class="absolute left-1/2 -top-1 z-2 h-2 w-2 -translate-x-1/2 border-2 connector-dot"></div>
+	<div
+		class={cx(
+			css({
+				position: 'absolute',
+				left: '50%',
+				top: '-0.25rem',
+				zIndex: '2',
+				height: '0.5rem',
+				width: '0.5rem',
+				borderWidth: '2px',
+				borderStyle: 'solid',
+				transform: 'translateX(-50%)',
+				backgroundColor: 'fg.muted',
+				borderColor: 'border.primary'
+			})
+		)}
+	></div>
 
-	<div class="step-content card-base border hover:border-tertiary" role="listitem">
-		<div class="flex items-center gap-2 px-4 py-3 border-b border-tertiary">
+	<div
+		class={cx(
+			'step-content',
+			css({
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'border.tertiary',
+				backgroundColor: 'bg.primary',
+				_hover: { borderColor: 'border.tertiary' }
+			})
+		)}
+		role="listitem"
+	>
+		<div
+			class={css({
+				display: 'flex',
+				alignItems: 'center',
+				gap: '2',
+				paddingX: '4',
+				paddingY: '3',
+				borderBottomWidth: '1px',
+				borderBottomStyle: 'solid',
+				borderBottomColor: 'border.tertiary'
+			})}
+		>
 			<button
-				class="drag-handle flex shrink-0 cursor-grab items-center justify-center border-none bg-transparent p-0.5 opacity-30 select-none text-fg-muted hover:opacity-100 hover:bg-hover active:cursor-grabbing"
-				class:dragging
+				class={cx(
+					'drag-handle',
+					css({
+						display: 'flex',
+						flexShrink: '0',
+						cursor: 'grab',
+						alignItems: 'center',
+						justifyContent: 'center',
+						border: 'none',
+						backgroundColor: 'transparent',
+						padding: '0.125rem',
+						opacity: '0.3',
+						userSelect: 'none',
+						color: 'fg.muted',
+						_hover: { opacity: '1', backgroundColor: 'bg.hover' },
+						_active: { cursor: 'grabbing' },
+						...(dragging
+							? {
+									WebkitUserSelect: 'none',
+									WebkitTouchCallout: 'none',
+									touchAction: 'none'
+								}
+							: {})
+					})
+				)}
 				title="Drag to reorder"
 				type="button"
 				onpointerdown={startDrag}
@@ -347,41 +420,132 @@
 				<GripVertical size={14} />
 			</button>
 
-			<Icon size={13} class="shrink-0 text-fg-muted" />
-			<span class="flex-1 text-xs font-semibold uppercase tracking-wide">{label}</span>
-			<span class="shrink-0 text-[0.625rem] text-fg-faint">#{index + 1}</span>
+			<Icon size={13} class={css({ flexShrink: '0', color: 'fg.muted' })} />
+			<span
+				class={css({
+					flex: '1',
+					fontSize: 'xs',
+					fontWeight: '600',
+					textTransform: 'uppercase',
+					letterSpacing: '0.05em'
+				})}
+			>
+				{label}
+			</span>
+			<span class={css({ flexShrink: '0', fontSize: '0.625rem', color: 'fg.faint' })}>
+				#{index + 1}
+			</span>
 		</div>
 
-		<div class="px-4 py-3">
+		<div class={css({ paddingX: '4', paddingY: '3' })}>
 			<div
-				class="step-summary px-3 py-2 text-[0.6875rem] bg-secondary text-fg-tertiary leading-relaxed"
-				class:inactive={!isApplied}
+				class={cx(
+					'step-summary',
+					css({
+						paddingX: '3',
+						paddingY: '2',
+						fontSize: '0.6875rem',
+						backgroundColor: 'bg.secondary',
+						color: 'fg.tertiary',
+						lineHeight: 'relaxed',
+						...(!isApplied
+							? {
+									backgroundColor: 'bg.secondary',
+									color: 'fg.muted',
+									border: '1px dashed',
+									borderColor: 'border.primary'
+								}
+							: {})
+					})
+				)}
 			>
 				{summary}
 			</div>
 		</div>
 
-		<div class="flex gap-0 border-t border-tertiary">
+		<div
+			class={css({
+				display: 'flex',
+				gap: '0',
+				borderTopWidth: '1px',
+				borderTopStyle: 'solid',
+				borderTopColor: 'border.tertiary'
+			})}
+		>
 			<button
-				class="action-btn flex-1 cursor-pointer border-none bg-transparent py-2.5 font-medium uppercase tracking-widest text-[0.5625rem] text-fg-muted hover:bg-hover hover:text-fg-primary"
-				class:inactive={!isApplied}
+				class={cx(
+					'action-btn',
+					css({
+						flex: '1',
+						cursor: 'pointer',
+						border: 'none',
+						backgroundColor: 'transparent',
+						paddingY: '2.5',
+						fontWeight: '500',
+						textTransform: 'uppercase',
+						letterSpacing: '0.2em',
+						fontSize: '0.5625rem',
+						color: 'fg.muted',
+						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
+						...(!isApplied
+							? {
+									borderStyle: 'dashed',
+									color: 'fg.muted',
+									_hover: {
+										backgroundColor: 'bg.tertiary',
+										color: 'fg.secondary'
+									}
+								}
+							: {})
+					})
+				)}
 				onclick={() => onToggleApply(step.id)}
 				type="button"
 				title={isApplied ? 'Disable step' : 'Enable step'}
 			>
 				{isApplied ? 'disable' : 'enable'}
 			</button>
-			<div class="w-px bg-border-primary shrink-0"></div>
+			<div class={css({ width: '1px', backgroundColor: 'border.primary', flexShrink: '0' })}></div>
 			<button
-				class="action-btn flex-1 cursor-pointer border-none bg-transparent py-2.5 text-[0.5625rem] font-medium uppercase tracking-widest text-fg-muted hover:bg-hover hover:text-fg-primary"
+				class={cx(
+					'action-btn',
+					css({
+						flex: '1',
+						cursor: 'pointer',
+						border: 'none',
+						backgroundColor: 'transparent',
+						paddingY: '2.5',
+						fontSize: '0.5625rem',
+						fontWeight: '500',
+						textTransform: 'uppercase',
+						letterSpacing: '0.2em',
+						color: 'fg.muted',
+						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+					})
+				)}
 				onclick={() => onEdit(step.id)}
 				type="button"
 			>
 				edit
 			</button>
-			<div class="w-px bg-border-primary shrink-0"></div>
+			<div class={css({ width: '1px', backgroundColor: 'border.primary', flexShrink: '0' })}></div>
 			<button
-				class="action-btn danger flex-1 cursor-pointer border-none bg-transparent py-2.5 text-[0.5625rem] font-medium uppercase tracking-widest text-fg-muted hover:bg-error hover:text-error"
+				class={cx(
+					'action-btn',
+					css({
+						flex: '1',
+						cursor: 'pointer',
+						border: 'none',
+						backgroundColor: 'transparent',
+						paddingY: '2.5',
+						fontSize: '0.5625rem',
+						fontWeight: '500',
+						textTransform: 'uppercase',
+						letterSpacing: '0.2em',
+						color: 'fg.muted',
+						_hover: { backgroundColor: 'error.bg', color: 'error.fg' }
+					})
+				)}
 				onclick={() => onDelete(step.id)}
 				type="button"
 			>
@@ -390,7 +554,13 @@
 		</div>
 
 		{#if step.type === 'view' && datasourceId && analysisId}
-			<div class="border-t border-tertiary">
+			<div
+				class={css({
+					borderTopWidth: '1px',
+					borderTopStyle: 'solid',
+					borderTopColor: 'border.tertiary'
+				})}
+			>
 				<InlineDataTable
 					{analysisId}
 					{datasourceId}
@@ -402,21 +572,47 @@
 		{/if}
 
 		{#if step.type === 'download' && datasourceId && analysisId}
-			<div class="border-t border-tertiary p-3">
-				<button class="btn-primary w-full" onclick={() => handleDownload()} disabled={!isApplied}>
+			<div
+				class={css({
+					borderTopWidth: '1px',
+					borderTopStyle: 'solid',
+					borderTopColor: 'border.tertiary',
+					padding: '3'
+				})}
+			>
+				<button
+					class={cx(button({ variant: 'primary' }), css({ width: '100%' }))}
+					onclick={() => handleDownload()}
+					disabled={!isApplied}
+				>
 					Download File
 				</button>
 			</div>
 		{/if}
 
 		{#if isChart && datasourceId && analysisId}
-			<div class="border-t border-tertiary">
+			<div
+				class={css({
+					borderTopWidth: '1px',
+					borderTopStyle: 'solid',
+					borderTopColor: 'border.tertiary'
+				})}
+			>
 				{#if !isApplied}
 					<div
-						class="chart-placeholder flex items-center justify-center text-[0.6875rem] text-fg-muted"
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							fontSize: '0.6875rem',
+							color: 'fg.muted',
+							border: '1px dashed',
+							borderColor: 'border.primary',
+							backgroundColor: 'bg.primary'
+						})}
 						style="height: {chartHeightPx}px"
 					>
-						<Icon size={14} class="mr-2" />
+						<Icon size={14} class={css({ marginRight: '2' })} />
 						{#if ((step.config?.x_column as string | undefined) ?? '') === ''}
 							<span>Configure chart to preview</span>
 						{:else}
@@ -424,12 +620,32 @@
 						{/if}
 					</div>
 				{:else if chartQuery.isFetching}
-					<div class="flex items-center justify-center gap-2 py-5 text-[0.6875rem] text-fg-muted">
-						<span class="spinner spinner-sm"></span>
+					<div
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							gap: '2',
+							paddingY: '5',
+							fontSize: '0.6875rem',
+							color: 'fg.muted'
+						})}
+					>
+						<span class={spinner({ size: 'sm' })}></span>
 						Loading chart...
 					</div>
 				{:else if chartQuery.error}
-					<div class="border-t border-error bg-error p-3 text-xs text-error">
+					<div
+						class={css({
+							borderTopWidth: '1px',
+							borderTopStyle: 'solid',
+							borderTopColor: 'error.border',
+							backgroundColor: 'error.bg',
+							padding: '3',
+							fontSize: 'xs',
+							color: 'error.fg'
+						})}
+					>
 						{chartQuery.error.message}
 					</div>
 				{:else if chartQuery.data}
@@ -453,24 +669,57 @@
 			</div>
 		{/if}
 
-		<div class="flex items-center px-4 py-2.5 border-t border-tertiary">
+		<div
+			class={css({
+				display: 'flex',
+				alignItems: 'center',
+				paddingX: '4',
+				paddingY: '2.5',
+				borderTopWidth: '1px',
+				borderTopStyle: 'solid',
+				borderTopColor: 'border.tertiary'
+			})}
+		>
 			{#if rowCount !== null}
 				{#key `${rowCountKey}:${rowCount}`}
-					<span class="flex items-center gap-1 text-[0.625rem] text-fg-faint">
+					<span
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							gap: '1',
+							fontSize: '0.625rem',
+							color: 'fg.faint'
+						})}
+					>
 						<Hash size={9} />
 						{rowCountLabel}
 					</span>
 				{/key}
 			{:else}
 				<button
-					class="calc-rows-btn flex cursor-pointer items-center gap-1 border border-tertiary bg-transparent text-fg-muted px-2 py-0.5 text-[0.5625rem] disabled:cursor-not-allowed disabled:opacity-70 hover:bg-hover hover:text-fg-primary"
+					class={css({
+						display: 'flex',
+						cursor: 'pointer',
+						alignItems: 'center',
+						gap: '1',
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.tertiary',
+						backgroundColor: 'transparent',
+						color: 'fg.muted',
+						paddingX: '2',
+						paddingY: '0.5',
+						fontSize: '0.5625rem',
+						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
+						_disabled: { cursor: 'not-allowed', opacity: '0.7' }
+					})}
 					onclick={calculateRowCount}
 					disabled={isLoadingRowCount}
 					type="button"
 					aria-label="Calculate row count"
 				>
 					{#if isLoadingRowCount}
-						<RefreshCw size={9} class="spinning" />
+						<RefreshCw size={9} class={css({ animation: 'spin 1s linear infinite' })} />
 						<span>counting...</span>
 					{:else}
 						<Hash size={9} />
@@ -480,13 +729,36 @@
 			{/if}
 		</div>
 		{#if rowCountError}
-			<div class="border-t border-error bg-error px-4 py-2 text-xs text-error">
+			<div
+				class={css({
+					borderTopWidth: '1px',
+					borderTopStyle: 'solid',
+					borderTopColor: 'error.border',
+					backgroundColor: 'error.bg',
+					paddingX: '4',
+					paddingY: '2',
+					fontSize: 'xs',
+					color: 'error.fg'
+				})}
+			>
 				{rowCountError}
 			</div>
 		{/if}
 	</div>
 
 	<div
-		class="absolute left-1/2 -bottom-1 z-2 h-2 w-2 -translate-x-1/2 border-2 connector-dot"
+		class={css({
+			position: 'absolute',
+			left: '50%',
+			bottom: '-0.25rem',
+			zIndex: '2',
+			height: '0.5rem',
+			width: '0.5rem',
+			borderWidth: '2px',
+			borderStyle: 'solid',
+			transform: 'translateX(-50%)',
+			backgroundColor: 'fg.muted',
+			borderColor: 'border.primary'
+		})}
 	></div>
 </div>

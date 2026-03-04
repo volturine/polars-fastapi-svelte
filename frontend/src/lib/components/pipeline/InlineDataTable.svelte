@@ -14,6 +14,7 @@
 		buildDatasourceConfig
 	} from '$lib/utils/analysis-pipeline';
 	import DataTable from '$lib/components/common/DataTable.svelte';
+	import { css } from '$lib/styles/panda';
 
 	interface Props {
 		analysisId: string;
@@ -154,7 +155,7 @@
 	}
 </script>
 
-<div class="inline-preview-table w-full h-100 overflow-hidden">
+<div class={css({ contain: 'content', width: 'full', height: '25rem', overflow: 'hidden' })}>
 	<DataTable
 		columns={data?.columns ?? []}
 		data={data?.data ?? []}

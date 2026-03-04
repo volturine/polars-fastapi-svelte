@@ -24,6 +24,7 @@
 	} from 'lucide-svelte';
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+	import { css, cx, spinner, button } from '$lib/styles/panda';
 
 	interface Props {
 		compact?: boolean;
@@ -313,31 +314,74 @@
 	}
 </script>
 
-<div class="builds-page flex flex-col h-full w-full">
+<div
+	class={cx(
+		'builds-page',
+		css({ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' })
+	)}
+>
 	{#if !compact}
-		<header class="mb-6 border-b border-tertiary pb-5">
-			<h1 class="m-0 mb-2 text-2xl">Builds</h1>
-			<p class="m-0 text-fg-tertiary">Engine run history for previews and exports</p>
+		<header
+			class={css({
+				marginBottom: '6',
+				borderBottomWidth: '1px',
+				borderBottomStyle: 'solid',
+				borderBottomColor: 'border.tertiary',
+				paddingBottom: '5'
+			})}
+		>
+			<h1 class={css({ margin: '0', marginBottom: '2', fontSize: '2xl' })}>Builds</h1>
+			<p class={css({ margin: '0', color: 'fg.tertiary' })}>
+				Engine run history for previews and exports
+			</p>
 		</header>
 	{/if}
 
 	{#if compact}
 		{#if searchQuery === undefined}
-			<div class="mb-3 flex items-center gap-2">
-				<div class="relative min-w-60 flex-1">
-					<Search size={14} class="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted" />
+			<div class={css({ marginBottom: '3', display: 'flex', alignItems: 'center', gap: '2' })}>
+				<div class={css({ position: 'relative', minWidth: '60', flex: '1' })}>
+					<Search
+						size={14}
+						class={css({
+							position: 'absolute',
+							left: '0.625rem',
+							top: '50%',
+							transform: 'translateY(-50%)',
+							color: 'fg.muted'
+						})}
+					/>
 					<input
 						type="text"
 						id="builds-search"
 						aria-label="Search builds"
 						placeholder="Search builds..."
-						class="w-full border border-tertiary bg-transparent px-3 py-1.5 pl-8 text-sm"
+						class={css({
+							width: '100%',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.tertiary',
+							backgroundColor: 'transparent',
+							paddingX: '3',
+							paddingY: '1.5',
+							paddingLeft: '8',
+							fontSize: 'sm'
+						})}
 						bind:value={search}
 					/>
 				</div>
 			</div>
 			<button
-				class="btn-ghost btn-sm border border-tertiary text-xs w-fit"
+				class={cx(
+					button({ variant: 'ghost', size: 'sm' }),
+					css({
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.tertiary',
+						fontSize: 'xs',
+						width: 'fit-content'
+					})
+				)}
 				onclick={() => (showPreviews = !showPreviews)}
 				aria-pressed={showPreviews}
 			>
@@ -351,22 +395,57 @@
 			</button>
 		{/if}
 	{:else}
-		<div class="mb-4 flex flex-wrap items-center gap-3">
+		<div
+			class={css({
+				marginBottom: '4',
+				display: 'flex',
+				flexWrap: 'wrap',
+				alignItems: 'center',
+				gap: '3'
+			})}
+		>
 			{#if searchQuery === undefined}
-				<div class="relative min-w-60 max-w-100 flex-1">
-					<Search size={14} class="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted" />
+				<div class={css({ position: 'relative', minWidth: '60', maxWidth: '100', flex: '1' })}>
+					<Search
+						size={14}
+						class={css({
+							position: 'absolute',
+							left: '0.625rem',
+							top: '50%',
+							transform: 'translateY(-50%)',
+							color: 'fg.muted'
+						})}
+					/>
 					<input
 						type="text"
 						id="builds-search-full"
 						aria-label="Search builds"
 						placeholder="Search by name, ID, datasource, or analysis..."
-						class="w-full border border-tertiary bg-transparent px-3 py-1.5 pl-8 text-sm"
+						class={css({
+							width: '100%',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.tertiary',
+							backgroundColor: 'transparent',
+							paddingX: '3',
+							paddingY: '1.5',
+							paddingLeft: '8',
+							fontSize: 'sm'
+						})}
 						bind:value={search}
 					/>
 				</div>
 			{/if}
 			<select
-				class="border border-tertiary bg-transparent px-3 py-1.5 text-sm"
+				class={css({
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.tertiary',
+					backgroundColor: 'transparent',
+					paddingX: '3',
+					paddingY: '1.5',
+					fontSize: 'sm'
+				})}
 				id="builds-kind-filter"
 				aria-label="Filter by type"
 				bind:value={kindFilter}
@@ -379,7 +458,15 @@
 				<option value="row_count">Row Count</option>
 			</select>
 			<select
-				class="border border-tertiary bg-transparent px-3 py-1.5 text-sm"
+				class={css({
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.tertiary',
+					backgroundColor: 'transparent',
+					paddingX: '3',
+					paddingY: '1.5',
+					fontSize: 'sm'
+				})}
 				id="builds-status-filter"
 				aria-label="Filter by status"
 				bind:value={statusFilter}
@@ -394,19 +481,35 @@
 				placeholder="Branch"
 				onChange={(value: string) => (branchFilter = value)}
 			/>
-			<div class="flex items-center gap-1.5 text-sm">
-				<span class="text-fg-muted">From</span>
+			<div class={css({ display: 'flex', alignItems: 'center', gap: '1.5', fontSize: 'sm' })}>
+				<span class={css({ color: 'fg.muted' })}>From</span>
 				<input
 					type="date"
-					class="border border-tertiary bg-transparent px-2 py-1 text-sm"
+					class={css({
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.tertiary',
+						backgroundColor: 'transparent',
+						paddingX: '2',
+						paddingY: '1',
+						fontSize: 'sm'
+					})}
 					id="builds-date-from"
 					aria-label="From date"
 					bind:value={dateFrom}
 				/>
-				<span class="text-fg-muted">To</span>
+				<span class={css({ color: 'fg.muted' })}>To</span>
 				<input
 					type="date"
-					class="border border-tertiary bg-transparent px-2 py-1 text-sm"
+					class={css({
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.tertiary',
+						backgroundColor: 'transparent',
+						paddingX: '2',
+						paddingY: '1',
+						fontSize: 'sm'
+					})}
 					id="builds-date-to"
 					aria-label="To date"
 					bind:value={dateTo}
@@ -416,33 +519,95 @@
 	{/if}
 
 	{#if query.isLoading}
-		<div class="flex h-full items-center justify-center">
-			<div class="spinner"></div>
+		<div
+			class={css({
+				display: 'flex',
+				height: '100%',
+				alignItems: 'center',
+				justifyContent: 'center'
+			})}
+		>
+			<div class={spinner()}></div>
 		</div>
 	{:else if query.isError}
-		<div class="error-box">
+		<div
+			class={css({
+				padding: '0.625rem 0.75rem',
+				border: 'none',
+				borderLeft: '2px solid',
+				borderRadius: '0',
+				marginTop: '0.75rem',
+				marginBottom: '0',
+				fontSize: '0.75rem',
+				lineHeight: '1.5',
+				backgroundColor: 'transparent',
+				borderLeftColor: 'error.border',
+				color: 'error.fg'
+			})}
+		>
 			{query.error instanceof Error ? query.error.message : 'Error loading runs.'}
 		</div>
 	{:else if runs.length === 0}
-		<div class="border border-dashed border-tertiary p-8 text-center">
-			<p class="text-fg-muted">No engine runs yet.</p>
-			<p class="text-sm text-fg-tertiary">
+		<div
+			class={css({
+				borderWidth: '1px',
+				borderStyle: 'dashed',
+				borderColor: 'border.tertiary',
+				padding: '8',
+				textAlign: 'center'
+			})}
+		>
+			<p class={css({ color: 'fg.muted' })}>No engine runs yet.</p>
+			<p class={css({ fontSize: 'sm', color: 'fg.tertiary' })}>
 				Runs will appear here when you preview or export data in analyses. Compare builds from the
 				Datasources tab.
 			</p>
 		</div>
 	{:else}
-		<div class="overflow-x-auto border border-tertiary">
-			<table class="w-full border-collapse text-sm">
+		<div
+			class={css({
+				overflowX: 'auto',
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'border.tertiary'
+			})}
+		>
+			<table class={css({ width: '100%', borderCollapse: 'collapse', fontSize: 'sm' })}>
 				<thead>
-					<tr class="bg-bg-tertiary">
-						<th class="w-8 border-b border-tertiary px-3 py-2 text-left font-medium"></th>
+					<tr class={css({ backgroundColor: 'bg.tertiary' })}>
+						<th
+							class={css({
+								width: '2rem',
+								borderBottomWidth: '1px',
+								borderBottomStyle: 'solid',
+								borderBottomColor: 'border.tertiary',
+								paddingX: '3',
+								paddingY: '2',
+								textAlign: 'left',
+								fontWeight: 'medium'
+							})}
+						></th>
 						{#each [{ key: 'kind', label: 'Type' }, { key: 'status', label: 'Status' }, { key: 'datasource', label: 'Datasource' }, { key: 'analysis', label: 'Analysis' }, { key: 'output', label: 'Output' }, { key: 'duration_ms', label: 'Duration' }, { key: 'created_at', label: 'Created' }] as col (col.key)}
 							<th
-								class="cursor-pointer border-b border-tertiary px-3 py-2 text-left font-medium transition-colors hover:bg-hover"
+								class={css({
+									cursor: 'pointer',
+									borderBottomWidth: '1px',
+									borderBottomStyle: 'solid',
+									borderBottomColor: 'border.tertiary',
+									paddingX: '3',
+									paddingY: '2',
+									textAlign: 'left',
+									fontWeight: 'medium',
+									transitionProperty: 'background-color',
+									transitionDuration: '160ms',
+									transitionTimingFunction: 'ease',
+									_hover: {
+										backgroundColor: 'bg.hover'
+									}
+								})}
 								onclick={() => toggleSort(col.key)}
 							>
-								<span class="inline-flex items-center gap-1">
+								<span class={css({ display: 'inline-flex', alignItems: 'center', gap: '1' })}>
 									{col.label}
 									{#if sortColumn === col.key}
 										{#if sortDir === 'asc'}
@@ -459,37 +624,71 @@
 				<tbody>
 					{#each filteredRuns as run (run.id)}
 						<tr
-							class="cursor-pointer hover:bg-bg-hover"
-							class:bg-bg-secondary={expandedId === run.id}
+							class={cx(
+								css({
+									cursor: 'pointer',
+									_hover: { backgroundColor: 'bg.hover' }
+								}),
+								expandedId === run.id && css({ backgroundColor: 'bg.secondary' })
+							)}
 							onclick={() => toggleExpand(run.id)}
 						>
-							<td class="border-b border-tertiary px-3 py-2">
-								<ChevronDown size={14} class={expandedId === run.id ? '' : '-rotate-90'} />
+							<td
+								class={css({
+									borderBottomWidth: '1px',
+									borderBottomStyle: 'solid',
+									borderBottomColor: 'border.tertiary',
+									paddingX: '3',
+									paddingY: '2'
+								})}
+							>
+								<ChevronDown
+									size={14}
+									class={expandedId === run.id ? undefined : css({ transform: 'rotate(-90deg)' })}
+								/>
 							</td>
-							<td class="border-b border-tertiary px-3 py-2">
-								<span class="inline-flex items-center gap-1.5">
+							<td
+								class={css({
+									borderBottomWidth: '1px',
+									borderBottomStyle: 'solid',
+									borderBottomColor: 'border.tertiary',
+									paddingX: '3',
+									paddingY: '2'
+								})}
+							>
+								<span class={css({ display: 'inline-flex', alignItems: 'center', gap: '1.5' })}>
 									{#if run.kind === 'preview'}
-										<Eye size={14} class="text-accent" />
+										<Eye size={14} class={css({ color: 'accent.primary' })} />
 										<span>{getKindLabel(run.kind)}</span>
 									{:else if run.kind === 'datasource_create'}
-										<Database size={14} class="text-accent-primary" />
+										<Database size={14} class={css({ color: 'accent.primary' })} />
 										<span>{getKindLabel(run.kind)}</span>
 									{:else if run.kind === 'datasource_update'}
-										<RefreshCw size={14} class="text-warning-fg" />
+										<RefreshCw size={14} class={css({ color: 'warning.fg' })} />
 										<span>{getKindLabel(run.kind)}</span>
 									{:else if run.kind === 'download' || run.kind === 'export'}
-										<Download size={14} class="text-success-fg" />
+										<Download size={14} class={css({ color: 'success.fg' })} />
 										<span>{getKindLabel(run.kind)}</span>
 									{:else if run.kind === 'row_count'}
-										<Hash size={14} class="text-fg-muted" />
+										<Hash size={14} class={css({ color: 'fg.muted' })} />
 										<span>{getKindLabel(run.kind)}</span>
 									{:else}
-										<Database size={14} class="text-fg-muted" />
+										<Database size={14} class={css({ color: 'fg.muted' })} />
 										<span>{getKindLabel(run.kind)}</span>
 									{/if}
 									{#if run.triggered_by === 'schedule'}
 										<span
-											class="ml-1 inline-flex items-center gap-0.5 bg-accent-bg px-1 py-0.5 text-xs text-accent-primary"
+											class={css({
+												marginLeft: '1',
+												display: 'inline-flex',
+												alignItems: 'center',
+												gap: '0.5',
+												backgroundColor: 'accent.bg',
+												paddingX: '1',
+												paddingY: '0.5',
+												fontSize: 'xs',
+												color: 'accent.primary'
+											})}
 											title="Triggered by schedule"
 										>
 											<CalendarClock size={11} />
@@ -497,57 +696,146 @@
 									{/if}
 								</span>
 							</td>
-							<td class="border-b border-tertiary px-3 py-2">
-								<span class="inline-flex items-center gap-1.5">
+							<td
+								class={css({
+									borderBottomWidth: '1px',
+									borderBottomStyle: 'solid',
+									borderBottomColor: 'border.tertiary',
+									paddingX: '3',
+									paddingY: '2'
+								})}
+							>
+								<span class={css({ display: 'inline-flex', alignItems: 'center', gap: '1.5' })}>
 									{#if run.status === 'success'}
-										<CircleCheck size={14} class="text-success-fg" />
-										<span class="text-success-fg">Success</span>
+										<CircleCheck size={14} class={css({ color: 'success.fg' })} />
+										<span class={css({ color: 'success.fg' })}>Success</span>
 									{:else}
-										<CircleX size={14} class="text-error-fg" />
-										<span class="text-error-fg">Failed</span>
+										<CircleX size={14} class={css({ color: 'error.fg' })} />
+										<span class={css({ color: 'error.fg' })}>Failed</span>
 									{/if}
 								</span>
 							</td>
-							<td class="border-b border-tertiary px-3 py-2">
-								<span class="text-xs text-fg-secondary" title={run.datasource_id}>
+							<td
+								class={css({
+									borderBottomWidth: '1px',
+									borderBottomStyle: 'solid',
+									borderBottomColor: 'border.tertiary',
+									paddingX: '3',
+									paddingY: '2'
+								})}
+							>
+								<span
+									class={css({ fontSize: 'xs', color: 'fg.secondary' })}
+									title={run.datasource_id}
+								>
 									{resolveName(run.datasource_id, dsNames)}
 								</span>
 							</td>
-							<td class="border-b border-tertiary px-3 py-2">
+							<td
+								class={css({
+									borderBottomWidth: '1px',
+									borderBottomStyle: 'solid',
+									borderBottomColor: 'border.tertiary',
+									paddingX: '3',
+									paddingY: '2'
+								})}
+							>
 								{#if run.analysis_id}
-									<span class="text-xs text-fg-secondary" title={run.analysis_id}>
+									<span
+										class={css({ fontSize: 'xs', color: 'fg.secondary' })}
+										title={run.analysis_id}
+									>
 										{resolveName(run.analysis_id, analysisNames)}
 									</span>
 								{:else}
-									<span class="text-fg-muted">-</span>
+									<span class={css({ color: 'fg.muted' })}>-</span>
 								{/if}
 							</td>
-							<td class="border-b border-tertiary px-3 py-2">
+							<td
+								class={css({
+									borderBottomWidth: '1px',
+									borderBottomStyle: 'solid',
+									borderBottomColor: 'border.tertiary',
+									paddingX: '3',
+									paddingY: '2'
+								})}
+							>
 								{#if getOutputName(run)}
-									<span class="text-xs text-fg-secondary" title={getOutputName(run) ?? ''}>
+									<span
+										class={css({ fontSize: 'xs', color: 'fg.secondary' })}
+										title={getOutputName(run) ?? ''}
+									>
 										{getOutputName(run)}
 									</span>
 								{:else}
-									<span class="text-fg-muted">-</span>
+									<span class={css({ color: 'fg.muted' })}>-</span>
 								{/if}
 							</td>
-							<td class="border-b border-tertiary px-3 py-2 font-mono text-xs">
+							<td
+								class={css({
+									borderBottomWidth: '1px',
+									borderBottomStyle: 'solid',
+									borderBottomColor: 'border.tertiary',
+									paddingX: '3',
+									paddingY: '2',
+									fontFamily: 'var(--font-mono)',
+									fontSize: 'xs'
+								})}
+							>
 								{formatDuration(run.duration_ms)}
 							</td>
-							<td class="border-b border-tertiary px-3 py-2 text-fg-secondary">
+							<td
+								class={css({
+									borderBottomWidth: '1px',
+									borderBottomStyle: 'solid',
+									borderBottomColor: 'border.tertiary',
+									paddingX: '3',
+									paddingY: '2',
+									color: 'fg.secondary'
+								})}
+							>
 								{formatDate(run.created_at)}
 							</td>
 						</tr>
 						{#if expandedId === run.id}
 							<tr>
-								<td colspan="8" class="border-b border-tertiary bg-bg-primary p-0">
-									<div class="p-4">
-										<!-- Tab buttons -->
-										<div class="mb-4 flex gap-1 border-b border-tertiary">
+								<td
+									colspan="8"
+									class={css({
+										borderBottomWidth: '1px',
+										borderBottomStyle: 'solid',
+										borderBottomColor: 'border.tertiary',
+										backgroundColor: 'bg.primary',
+										padding: '0'
+									})}
+								>
+									<div class={css({ padding: '4' })}>
+										<div
+											class={css({
+												marginBottom: '4',
+												display: 'flex',
+												gap: '1',
+												borderBottomWidth: '1px',
+												borderBottomStyle: 'solid',
+												borderBottomColor: 'border.tertiary'
+											})}
+										>
 											<button
-												class="border-b-2 px-3 py-1.5 text-sm -mb-px {activeTab === 'request'
-													? 'border-accent-primary text-fg-primary'
-													: 'border-transparent text-fg-tertiary hover:text-fg-secondary'}"
+												class={cx(
+													css({
+														borderBottomWidth: '2px',
+														paddingX: '3',
+														paddingY: '1.5',
+														fontSize: 'sm',
+														marginBottom: '-1px',
+														borderBottomStyle: 'solid',
+														borderBottomColor: 'transparent',
+														color: 'fg.tertiary',
+														_hover: { color: 'fg.secondary' }
+													}),
+													activeTab === 'request' &&
+														css({ borderBottomColor: 'accent.primary', color: 'fg.primary' })
+												)}
 												onclick={(e) => {
 													e.stopPropagation();
 													activeTab = 'request';
@@ -556,9 +844,21 @@
 												Request Config
 											</button>
 											<button
-												class="border-b-2 px-3 py-1.5 text-sm -mb-px {activeTab === 'result'
-													? 'border-accent-primary text-fg-primary'
-													: 'border-transparent text-fg-tertiary hover:text-fg-secondary'}"
+												class={cx(
+													css({
+														borderBottomWidth: '2px',
+														paddingX: '3',
+														paddingY: '1.5',
+														fontSize: 'sm',
+														marginBottom: '-1px',
+														borderBottomStyle: 'solid',
+														borderBottomColor: 'transparent',
+														color: 'fg.tertiary',
+														_hover: { color: 'fg.secondary' }
+													}),
+													activeTab === 'result' &&
+														css({ borderBottomColor: 'accent.primary', color: 'fg.primary' })
+												)}
 												onclick={(e) => {
 													e.stopPropagation();
 													activeTab = 'result';
@@ -568,15 +868,29 @@
 											</button>
 											{#if hasTimings(run)}
 												<button
-													class="border-b-2 px-3 py-1.5 text-sm -mb-px {activeTab === 'timings'
-														? 'border-accent-primary text-fg-primary'
-														: 'border-transparent text-fg-tertiary hover:text-fg-secondary'}"
+													class={cx(
+														css({
+															borderBottomWidth: '2px',
+															paddingX: '3',
+															paddingY: '1.5',
+															fontSize: 'sm',
+															marginBottom: '-1px',
+															borderBottomStyle: 'solid',
+															borderBottomColor: 'transparent',
+															color: 'fg.tertiary',
+															_hover: { color: 'fg.secondary' }
+														}),
+														activeTab === 'timings' &&
+															css({ borderBottomColor: 'accent.primary', color: 'fg.primary' })
+													)}
 													onclick={(e) => {
 														e.stopPropagation();
 														activeTab = 'timings';
 													}}
 												>
-													<span class="inline-flex items-center gap-1">
+													<span
+														class={css({ display: 'inline-flex', alignItems: 'center', gap: '1' })}
+													>
 														<Timer size={13} />
 														Step Timings
 													</span>
@@ -584,9 +898,21 @@
 											{/if}
 											{#if hasPlans(run)}
 												<button
-													class="border-b-2 px-3 py-1.5 text-sm -mb-px {activeTab === 'plans'
-														? 'border-accent-primary text-fg-primary'
-														: 'border-transparent text-fg-tertiary hover:text-fg-secondary'}"
+													class={cx(
+														css({
+															borderBottomWidth: '2px',
+															paddingX: '3',
+															paddingY: '1.5',
+															fontSize: 'sm',
+															marginBottom: '-1px',
+															borderBottomStyle: 'solid',
+															borderBottomColor: 'transparent',
+															color: 'fg.tertiary',
+															_hover: { color: 'fg.secondary' }
+														}),
+														activeTab === 'plans' &&
+															css({ borderBottomColor: 'accent.primary', color: 'fg.primary' })
+													)}
 													onclick={(e) => {
 														e.stopPropagation();
 														activeTab = 'plans';
@@ -599,31 +925,53 @@
 
 										<!-- Tab content -->
 										{#if activeTab === 'request'}
-											<div class="space-y-3">
-												<div class="grid grid-cols-2 gap-4 text-sm">
+											<div class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
+												<div
+													class={css({
+														display: 'grid',
+														gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+														gap: '4',
+														fontSize: 'sm'
+													})}
+												>
 													<div>
-														<span class="text-fg-muted">Run ID:</span>
-														<span class="ml-2 font-mono text-xs">{run.id}</span>
+														<span class={css({ color: 'fg.muted' })}>Run ID:</span>
+														<span
+															class={css({
+																marginLeft: '2',
+																fontFamily: 'var(--font-mono)',
+																fontSize: 'xs'
+															})}
+														>
+															{run.id}
+														</span>
 													</div>
 													<div>
-														<span class="text-fg-muted">Datasource:</span>
-														<span class="ml-2 text-xs">
+														<span class={css({ color: 'fg.muted' })}>Datasource:</span>
+														<span class={css({ marginLeft: '2', fontSize: 'xs' })}>
 															{resolveName(run.datasource_id, dsNames)}
 														</span>
 													</div>
 													{#if run.analysis_id}
 														<div>
-															<span class="text-fg-muted">Analysis:</span>
-															<span class="ml-2 text-xs">
+															<span class={css({ color: 'fg.muted' })}>Analysis:</span>
+															<span class={css({ marginLeft: '2', fontSize: 'xs' })}>
 																{resolveName(run.analysis_id, analysisNames)}
 															</span>
 														</div>
 													{/if}
 													{#if run.triggered_by}
 														<div>
-															<span class="text-fg-muted">Triggered by:</span>
+															<span class={css({ color: 'fg.muted' })}>Triggered by:</span>
 															<span
-																class="ml-2 inline-flex items-center gap-1 text-xs text-accent-primary"
+																class={css({
+																	marginLeft: '2',
+																	display: 'inline-flex',
+																	alignItems: 'center',
+																	gap: '1',
+																	fontSize: 'xs',
+																	color: 'accent.primary'
+																})}
 															>
 																<CalendarClock size={12} />
 																{run.triggered_by}
@@ -632,75 +980,162 @@
 													{/if}
 												</div>
 												<div>
-													<h4 class="mb-2 text-sm font-medium text-fg-secondary">
+													<h4
+														class={css({
+															marginBottom: '2',
+															fontSize: 'sm',
+															fontWeight: 'medium',
+															color: 'fg.secondary'
+														})}
+													>
 														Request Payload
 													</h4>
 													<pre
-														class="max-h-80 overflow-x-auto border border-tertiary bg-bg-tertiary p-3 font-mono text-xs">{JSON.stringify(
-															run.request_json,
-															null,
-															2
-														)}</pre>
+														class={css({
+															maxHeight: '80',
+															overflowX: 'auto',
+															borderWidth: '1px',
+															borderStyle: 'solid',
+															borderColor: 'border.tertiary',
+															backgroundColor: 'bg.tertiary',
+															padding: '3',
+															fontFamily: 'var(--font-mono)',
+															fontSize: 'xs'
+														})}>{JSON.stringify(run.request_json, null, 2)}</pre>
 												</div>
 											</div>
 										{:else if activeTab === 'result'}
-											<div class="space-y-3">
+											<div class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
 												{#if run.status === 'failed' && run.error_message}
-													<div class="error-box">
-														<h4 class="mb-1 text-sm font-medium">Error</h4>
-														<p class="text-sm">{run.error_message}</p>
+													<div
+														class={css({
+															padding: '0.625rem 0.75rem',
+															border: 'none',
+															borderLeft: '2px solid',
+															borderRadius: '0',
+															marginTop: '0.75rem',
+															marginBottom: '0',
+															fontSize: '0.75rem',
+															lineHeight: '1.5',
+															backgroundColor: 'transparent',
+															borderLeftColor: 'error.border',
+															color: 'error.fg'
+														})}
+													>
+														<h4
+															class={css({
+																marginBottom: '1',
+																fontSize: 'sm',
+																fontWeight: 'medium'
+															})}
+														>
+															Error
+														</h4>
+														<p class={css({ fontSize: 'sm' })}>{run.error_message}</p>
 													</div>
 												{/if}
 												{#if run.result_json}
 													{@const result = run.result_json}
 													<div>
-														<h4 class="mb-2 text-sm font-medium text-fg-secondary">
+														<h4
+															class={css({
+																marginBottom: '2',
+																fontSize: 'sm',
+																fontWeight: 'medium',
+																color: 'fg.secondary'
+															})}
+														>
 															Result Metadata
 														</h4>
-														<div class="mb-3 grid grid-cols-2 gap-4 text-sm">
+														<div
+															class={css({
+																marginBottom: '3',
+																display: 'grid',
+																gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+																gap: '4',
+																fontSize: 'sm'
+															})}
+														>
 															{#if 'row_count' in result}
 																<div>
-																	<span class="text-fg-muted">Rows:</span>
-																	<span class="ml-2 font-mono">{result.row_count}</span>
+																	<span class={css({ color: 'fg.muted' })}>Rows:</span>
+																	<span
+																		class={css({ marginLeft: '2', fontFamily: 'var(--font-mono)' })}
+																	>
+																		{result.row_count}
+																	</span>
 																</div>
 															{/if}
 															{#if 'page' in result}
 																<div>
-																	<span class="text-fg-muted">Page:</span>
-																	<span class="ml-2 font-mono">{result.page}</span>
+																	<span class={css({ color: 'fg.muted' })}>Page:</span>
+																	<span
+																		class={css({ marginLeft: '2', fontFamily: 'var(--font-mono)' })}
+																	>
+																		{result.page}
+																	</span>
 																</div>
 															{/if}
 															{#if 'page_size' in result}
 																<div>
-																	<span class="text-fg-muted">Page Size:</span>
-																	<span class="ml-2 font-mono">{result.page_size}</span>
+																	<span class={css({ color: 'fg.muted' })}>Page Size:</span>
+																	<span
+																		class={css({ marginLeft: '2', fontFamily: 'var(--font-mono)' })}
+																	>
+																		{result.page_size}
+																	</span>
 																</div>
 															{/if}
 															{#if 'export_format' in result}
 																<div>
-																	<span class="text-fg-muted">Format:</span>
-																	<span class="ml-2 font-mono">{result.export_format}</span>
+																	<span class={css({ color: 'fg.muted' })}>Format:</span>
+																	<span
+																		class={css({ marginLeft: '2', fontFamily: 'var(--font-mono)' })}
+																	>
+																		{result.export_format}
+																	</span>
 																</div>
 															{/if}
 															{#if 'file_size_bytes' in result}
 																<div>
-																	<span class="text-fg-muted">File Size:</span>
-																	<span class="ml-2 font-mono"
-																		>{(Number(result.file_size_bytes) / 1024).toFixed(1)} KB</span
+																	<span class={css({ color: 'fg.muted' })}>File Size:</span>
+																	<span
+																		class={css({ marginLeft: '2', fontFamily: 'var(--font-mono)' })}
 																	>
+																		{(Number(result.file_size_bytes) / 1024).toFixed(1)} KB
+																	</span>
 																</div>
 															{/if}
 														</div>
 														{#if 'schema' in result && result.schema}
 															<div>
-																<h4 class="mb-2 text-sm font-medium text-fg-secondary">Schema</h4>
+																<h4
+																	class={css({
+																		marginBottom: '2',
+																		fontSize: 'sm',
+																		fontWeight: 'medium',
+																		color: 'fg.secondary'
+																	})}
+																>
+																	Schema
+																</h4>
 																<div
-																	class="max-h-40 overflow-x-auto border border-tertiary bg-bg-tertiary p-3 font-mono text-xs"
+																	class={css({
+																		maxHeight: '40',
+																		overflowX: 'auto',
+																		borderWidth: '1px',
+																		borderStyle: 'solid',
+																		borderColor: 'border.tertiary',
+																		backgroundColor: 'bg.tertiary',
+																		padding: '3',
+																		fontFamily: 'var(--font-mono)',
+																		fontSize: 'xs'
+																	})}
 																>
 																	{#each Object.entries(result.schema as Record<string, string>) as [col, dtype] (col)}
 																		<div>
-																			<span class="text-accent-primary">{col}</span>:
-																			<span class="text-fg-muted">{dtype}</span>
+																			<span class={css({ color: 'accent.primary' })}>{col}</span>:
+																			<span class={css({ color: 'fg.muted' })}>{dtype}</span>
 																		</div>
 																	{/each}
 																</div>
@@ -708,37 +1143,92 @@
 														{/if}
 													</div>
 												{:else}
-													<p class="text-sm text-fg-muted">No result data available.</p>
+													<p class={css({ fontSize: 'sm', color: 'fg.muted' })}>
+														No result data available.
+													</p>
 												{/if}
 											</div>
 										{:else if activeTab === 'timings'}
 											{@const entries = getTimingEntries(run)}
-											<div class="space-y-2">
-												<h4 class="mb-3 text-sm font-medium text-fg-secondary">
+											<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+												<h4
+													class={css({
+														marginBottom: '3',
+														fontSize: 'sm',
+														fontWeight: 'medium',
+														color: 'fg.secondary'
+													})}
+												>
 													Step Execution Timeline
 												</h4>
 												{#each entries as entry (entry.name)}
-													<div class="flex items-center gap-3 text-xs">
+													<div
+														class={css({
+															display: 'flex',
+															alignItems: 'center',
+															gap: '3',
+															fontSize: 'xs'
+														})}
+													>
 														<span
-															class="w-36 shrink-0 truncate font-mono text-fg-secondary"
+															class={css({
+																width: '36',
+																flexShrink: '0',
+																overflow: 'hidden',
+																textOverflow: 'ellipsis',
+																whiteSpace: 'nowrap',
+																fontFamily: 'var(--font-mono)',
+																color: 'fg.secondary'
+															})}
 															title={entry.name}
 														>
 															{entry.name}
 														</span>
-														<div class="relative h-5 flex-1 bg-bg-tertiary">
+														<div
+															class={css({
+																position: 'relative',
+																height: '5',
+																flex: '1',
+																backgroundColor: 'bg.tertiary'
+															})}
+														>
 															<div
-																class="absolute inset-y-0 left-0 bg-accent-bg"
-																style="width: {Math.max(entry.pct, 1)}%"
+																class={css({
+																	position: 'absolute',
+																	top: '0',
+																	bottom: '0',
+																	left: '0',
+																	backgroundColor: 'accent.bg'
+																})}
+																style={`width: ${Math.max(entry.pct, 1)}%`}
 															></div>
 														</div>
-														<span class="w-16 shrink-0 text-right font-mono text-fg-muted">
+														<span
+															class={css({
+																width: '16',
+																flexShrink: '0',
+																textAlign: 'right',
+																fontFamily: 'var(--font-mono)',
+																color: 'fg.muted'
+															})}
+														>
 															{formatDuration(entry.ms)}
 														</span>
 													</div>
 												{/each}
 												{#if entries.length > 0}
 													<div
-														class="mt-3 border-t border-tertiary pt-2 text-right font-mono text-xs text-fg-muted"
+														class={css({
+															marginTop: '3',
+															borderTopWidth: '1px',
+															borderTopStyle: 'solid',
+															borderTopColor: 'border.tertiary',
+															paddingTop: '2',
+															textAlign: 'right',
+															fontFamily: 'var(--font-mono)',
+															fontSize: 'xs',
+															color: 'fg.muted'
+														})}
 													>
 														Total: {formatDuration(run.duration_ms)}
 													</div>
@@ -747,26 +1237,62 @@
 										{:else if activeTab === 'plans'}
 											{@const plans = getQueryPlans(run)}
 											{#if plans}
-												<div class="space-y-4">
+												<div class={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
 													<div>
-														<h4 class="mb-2 text-sm font-medium text-fg-secondary">
+														<h4
+															class={css({
+																marginBottom: '2',
+																fontSize: 'sm',
+																fontWeight: 'medium',
+																color: 'fg.secondary'
+															})}
+														>
 															Optimized Plan
 														</h4>
 														<pre
-															class="max-h-60 overflow-x-auto whitespace-pre-wrap border border-tertiary bg-bg-tertiary p-3 font-mono text-xs">{plans.optimized ||
-																'N/A'}</pre>
+															class={css({
+																maxHeight: '60',
+																overflowX: 'auto',
+																whiteSpace: 'pre-wrap',
+																borderWidth: '1px',
+																borderStyle: 'solid',
+																borderColor: 'border.tertiary',
+																backgroundColor: 'bg.tertiary',
+																padding: '3',
+																fontFamily: 'var(--font-mono)',
+																fontSize: 'xs'
+															})}>{plans.optimized || 'N/A'}</pre>
 													</div>
 													<div>
-														<h4 class="mb-2 text-sm font-medium text-fg-secondary">
+														<h4
+															class={css({
+																marginBottom: '2',
+																fontSize: 'sm',
+																fontWeight: 'medium',
+																color: 'fg.secondary'
+															})}
+														>
 															Unoptimized Plan
 														</h4>
 														<pre
-															class="max-h-60 overflow-x-auto whitespace-pre-wrap border border-tertiary bg-bg-tertiary p-3 font-mono text-xs">{plans.unoptimized ||
-																'N/A'}</pre>
+															class={css({
+																maxHeight: '60',
+																overflowX: 'auto',
+																whiteSpace: 'pre-wrap',
+																borderWidth: '1px',
+																borderStyle: 'solid',
+																borderColor: 'border.tertiary',
+																backgroundColor: 'bg.tertiary',
+																padding: '3',
+																fontFamily: 'var(--font-mono)',
+																fontSize: 'xs'
+															})}>{plans.unoptimized || 'N/A'}</pre>
 													</div>
 												</div>
 											{:else}
-												<p class="text-sm text-fg-muted">No query plans available for this run.</p>
+												<p class={css({ fontSize: 'sm', color: 'fg.muted' })}>
+													No query plans available for this run.
+												</p>
 											{/if}
 										{/if}
 									</div>
@@ -778,19 +1304,34 @@
 			</table>
 		</div>
 
-		<div class="mt-4 flex items-center justify-between">
-			<span class="text-sm text-fg-tertiary">
+		<div
+			class={css({
+				marginTop: '4',
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'space-between'
+			})}
+		>
+			<span class={css({ fontSize: 'sm', color: 'fg.tertiary' })}>
 				Page {page}
 				{#if filteredRuns.length < runs.length}
 					({filteredRuns.length} of {runs.length} shown)
 				{/if}
 			</span>
-			<div class="flex items-center gap-2">
-				<button class="btn-ghost btn-sm" onclick={prevPage} disabled={page === 1}>
+			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+				<button
+					class={button({ variant: 'ghost', size: 'sm' })}
+					onclick={prevPage}
+					disabled={page === 1}
+				>
 					<ChevronLeft size={14} />
 					Previous
 				</button>
-				<button class="btn-ghost btn-sm" onclick={nextPage} disabled={filteredRuns.length < limit}>
+				<button
+					class={button({ variant: 'ghost', size: 'sm' })}
+					onclick={nextPage}
+					disabled={filteredRuns.length < limit}
+				>
 					Next
 					<ChevronRight size={14} />
 				</button>

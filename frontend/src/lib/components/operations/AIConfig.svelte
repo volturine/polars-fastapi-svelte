@@ -2,6 +2,7 @@
 	import type { Schema } from '$lib/types/schema';
 	import type { AIConfigData } from '$lib/utils/step-config-defaults';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
+	import { css } from '$lib/styles/panda';
 
 	interface Props {
 		config?: AIConfigData;
@@ -36,8 +37,12 @@
 	});
 </script>
 
-<div class="config-panel" role="region" aria-label="AI configuration">
-	<div class="form-group mb-5">
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+	role="region"
+	aria-label="AI configuration"
+>
+	<div class={css({ marginBottom: '5' })}>
 		<label for="ai-provider">Provider</label>
 		<select id="ai-provider" bind:value={config.provider}>
 			<option value="ollama">Ollama (Local)</option>
@@ -45,7 +50,7 @@
 		</select>
 	</div>
 
-	<div class="form-group mb-5">
+	<div class={css({ marginBottom: '5' })}>
 		<label for="ai-model">Model</label>
 		<input
 			id="ai-model"
@@ -55,7 +60,7 @@
 		/>
 	</div>
 
-	<div class="form-group mb-5">
+	<div class={css({ marginBottom: '5' })}>
 		<label for="ai-endpoint">Endpoint URL</label>
 		<input
 			id="ai-endpoint"
@@ -68,14 +73,14 @@
 	</div>
 
 	{#if config.provider === 'openai'}
-		<div class="form-group mb-5">
+		<div class={css({ marginBottom: '5' })}>
 			<label for="ai-api-key">API Key</label>
 			<input id="ai-api-key" type="password" bind:value={config.api_key} placeholder="sk-..." />
 		</div>
 	{/if}
 
 	<!-- svelte-ignore a11y_label_has_associated_control -->
-	<div class="form-group mb-5">
+	<div class={css({ marginBottom: '5' })}>
 		<label>Input Column(s)</label>
 		<MultiSelectColumnDropdown
 			{schema}
@@ -86,15 +91,15 @@
 		/>
 	</div>
 
-	<div class="form-group mb-5">
+	<div class={css({ marginBottom: '5' })}>
 		<label for="ai-output">Output Column</label>
 		<input id="ai-output" type="text" bind:value={config.output_column} placeholder="ai_result" />
 	</div>
 
-	<div class="form-group mb-0">
+	<div class={css({ marginBottom: '0' })}>
 		<label for="ai-prompt">Prompt Template</label>
 		<textarea id="ai-prompt" rows="4" bind:value={config.prompt_template}></textarea>
-		<span class="hint mt-1 block text-xs text-fg-muted">
+		<span class={css({ marginTop: '1', display: 'block', fontSize: 'xs', color: 'fg.muted' })}>
 			{placeholderHint}
 		</span>
 	</div>

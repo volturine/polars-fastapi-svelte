@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
+	import { css } from '$lib/styles/panda';
 
 	interface ViewConfigData {
 		rowLimit: number;
@@ -13,9 +14,19 @@
 	let { schema: _schema, config = $bindable({ rowLimit: 100 }) }: Props = $props();
 </script>
 
-<div class="config-panel">
-	<div class="form-section">
-		<label for="row-limit" class="flex flex-col gap-3">
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+>
+	<div
+		class={css({
+			marginBottom: '0',
+			padding: '0 0 1.25rem 0',
+			backgroundColor: 'transparent',
+			borderRadius: '0',
+			border: 'none'
+		})}
+	>
+		<label for="row-limit" class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
 			Preview Rows
 			<input
 				id="row-limit"
@@ -26,7 +37,15 @@
 				step="10"
 			/>
 		</label>
-		<p class="mt-2 mb-0 text-sm font-normal text-fg-tertiary">
+		<p
+			class={css({
+				marginTop: '2',
+				marginBottom: '0',
+				fontSize: 'sm',
+				fontWeight: 'normal',
+				color: 'fg.tertiary'
+			})}
+		>
 			Number of rows to display (10-1000)
 		</p>
 	</div>

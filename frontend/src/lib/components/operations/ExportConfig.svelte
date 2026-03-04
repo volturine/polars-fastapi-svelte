@@ -1,6 +1,7 @@
 <script lang="ts">
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import type { FileType } from '$lib/utils/fileTypes';
+	import { css } from '$lib/styles/panda';
 
 	interface Props {
 		config?: {
@@ -42,22 +43,36 @@
 	const formatOptions = $derived(formats);
 </script>
 
-<div class="config-panel" role="region" aria-label="Export configuration">
-	<div class="form-group mb-5">
-		<div class="flex items-center gap-2">
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+	role="region"
+	aria-label="Export configuration"
+>
+	<div class={css({ marginBottom: '5' })}>
+		<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 			Destination
 			<span
-				class="border border-tertiary bg-tertiary px-2 py-1 text-[10px] uppercase text-fg-muted"
+				class={css({
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.tertiary',
+					backgroundColor: 'bg.tertiary',
+					paddingX: '2',
+					paddingY: '1',
+					fontSize: '10px',
+					textTransform: 'uppercase',
+					color: 'fg.muted'
+				})}
 			>
 				Browser download
 			</span>
 		</div>
-		<span class="hint mt-1 block text-xs text-fg-muted">
+		<span class={css({ marginTop: '1', display: 'block', fontSize: 'xs', color: 'fg.muted' })}>
 			File will be downloaded to your browser
 		</span>
 	</div>
 
-	<div class="form-group mb-5">
+	<div class={css({ marginBottom: '5' })}>
 		<label for="export-input-filename">Filename</label>
 		<input
 			id="export-input-filename"
@@ -67,14 +82,19 @@
 			placeholder="e.g., my_data"
 			aria-describedby="export-filename-hint"
 		/>
-		<span id="export-filename-hint" class="hint mt-1 block text-xs text-fg-muted"
+		<span
+			id="export-filename-hint"
+			class={css({ marginTop: '1', display: 'block', fontSize: 'xs', color: 'fg.muted' })}
 			>Extension will be added automatically</span
 		>
 	</div>
 
 	{#if showFormatOptions}
-		<div class="form-group mb-5">
-			<label for="export-select-format" class="flex items-center gap-2">
+		<div class={css({ marginBottom: '5' })}>
+			<label
+				for="export-select-format"
+				class={css({ display: 'flex', alignItems: 'center', gap: '2' })}
+			>
 				Format
 				{#if selectedFileType === 'duckdb'}
 					<FileTypeBadge sourceType="duckdb" size="sm" />
@@ -95,7 +115,7 @@
 	{/if}
 
 	{#if showDuckDBOptions}
-		<div class="form-group mb-0">
+		<div class={css({ marginBottom: '0' })}>
 			<label for="export-input-tablename">Table Name</label>
 			<input
 				id="export-input-tablename"
@@ -106,7 +126,9 @@
 				placeholder="e.g., my_data"
 				aria-describedby="export-tablename-hint"
 			/>
-			<span id="export-tablename-hint" class="hint mt-1 block text-xs text-fg-muted"
+			<span
+				id="export-tablename-hint"
+				class={css({ marginTop: '1', display: 'block', fontSize: 'xs', color: 'fg.muted' })}
 				>Name of the table in the DuckDB database</span
 			>
 		</div>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
+	import { css } from '$lib/styles/panda';
 
 	interface Props {
 		schema: Schema;
@@ -14,33 +15,74 @@
 		(config[key] as T) ?? defaultValue;
 </script>
 
-<div class="config-panel" role="region" aria-label="Unpivot configuration">
-	<p class="description">Transform wide data to long format (melt operation).</p>
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+	role="region"
+	aria-label="Unpivot configuration"
+>
+	<p
+		class={css({
+			marginTop: '0',
+			marginBottom: '3',
+			color: 'fg.tertiary',
+			fontSize: 'xs',
+			lineHeight: '1.6'
+		})}
+	>
+		Transform wide data to long format (melt operation).
+	</p>
 
-	<div class="form-group mb-5">
-		<div class="form-label">Index columns (identifiers)</div>
+	<div class={css({ marginBottom: '5' })}>
+		<div
+			class={css({
+				display: 'block',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				marginBottom: '1.5',
+				textTransform: 'uppercase',
+				letterSpacing: '0.05em'
+			})}
+		>
+			Index columns (identifiers)
+		</div>
 		<MultiSelectColumnDropdown
 			{schema}
 			value={config.index ?? []}
 			onChange={(val) => (config.index = val)}
 			placeholder="Select index columns..."
 		/>
-		<span class="mt-1 block text-xs text-fg-tertiary">Columns to use as identifiers</span>
+		<span class={css({ marginTop: '1', display: 'block', fontSize: 'xs', color: 'fg.tertiary' })}
+			>Columns to use as identifiers</span
+		>
 	</div>
 
-	<div class="form-group mb-5">
-		<div class="form-label">Columns to unpivot</div>
+	<div class={css({ marginBottom: '5' })}>
+		<div
+			class={css({
+				display: 'block',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				marginBottom: '1.5',
+				textTransform: 'uppercase',
+				letterSpacing: '0.05em'
+			})}
+		>
+			Columns to unpivot
+		</div>
 		<MultiSelectColumnDropdown
 			{schema}
 			value={config.on ?? []}
 			onChange={(val) => (config.on = val)}
 			placeholder="Select columns to unpivot..."
 		/>
-		<span class="mt-1 block text-xs text-fg-tertiary">Columns that will be transformed to rows</span
+		<span class={css({ marginTop: '1', display: 'block', fontSize: 'xs', color: 'fg.tertiary' })}
+			>Columns that will be transformed to rows</span
 		>
 	</div>
 
-	<div class="form-group mb-5">
+	<div class={css({ marginBottom: '5' })}>
 		<label for="unpivot-input-variable">Variable column name</label>
 		<input
 			id="unpivot-input-variable"
@@ -52,7 +94,7 @@
 		/>
 	</div>
 
-	<div class="form-group mb-0">
+	<div class={css({ marginBottom: '0' })}>
 		<label for="unpivot-input-value">Value column name</label>
 		<input
 			id="unpivot-input-value"

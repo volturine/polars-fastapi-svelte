@@ -7,6 +7,7 @@
 	import OutputNode from './OutputNode.svelte';
 	import ConnectionLine from './ConnectionLine.svelte';
 	import DatasourceNode from './DatasourceNode.svelte';
+	import { css, cx } from '$lib/styles/panda';
 
 	interface Props {
 		steps: PipelineStep[];
@@ -230,19 +231,63 @@
 	});
 </script>
 
-<div class="pipeline-canvas flex-1 overflow-y-auto p-8 bg-secondary min-h-100">
+<div
+	class={cx(
+		'pipeline-canvas',
+		css({
+			flex: '1',
+			overflowY: 'auto',
+			padding: '8',
+			backgroundColor: 'bg.secondary',
+			minHeight: '25rem'
+		})
+	)}
+>
 	{#if steps.length === 0}
 		<div
-			class="empty-state flex min-h-100 h-full flex-col items-center justify-center text-center text-fg-muted"
+			class={css({
+				display: 'flex',
+				minHeight: '25rem',
+				height: '100%',
+				flexDirection: 'column',
+				alignItems: 'center',
+				justifyContent: 'center',
+				textAlign: 'center',
+				color: 'fg.muted'
+			})}
 		>
-			<LayoutGrid size={28} strokeWidth={1.2} class="mb-5 text-fg-faint opacity-40" />
-			<h3 class="m-0 mb-2 text-sm font-semibold text-fg-secondary">No pipeline steps</h3>
-			<p class="m-0 text-xs text-fg-muted">Drag operations from the library and drop here</p>
+			<LayoutGrid
+				size={28}
+				strokeWidth={1.2}
+				class={css({ marginBottom: '5', color: 'fg.faint', opacity: '0.4' })}
+			/>
+			<h3
+				class={css({
+					margin: '0',
+					marginBottom: '2',
+					fontSize: 'sm',
+					fontWeight: '600',
+					color: 'fg.secondary'
+				})}
+			>
+				No pipeline steps
+			</h3>
+			<p class={css({ margin: '0', fontSize: 'xs', color: 'fg.muted' })}>
+				Drag operations from the library and drop here
+			</p>
 			<div
-				class="insert-zone empty-drop flex w-full cursor-default flex-col items-center py-2"
+				class={cx(
+					'insert-zone',
+					css({
+						display: 'flex',
+						width: '100%',
+						cursor: 'default',
+						flexDirection: 'column',
+						alignItems: 'center',
+						paddingY: '2'
+					})
+				)}
 				class:ready={canDrop}
-				class:active={hoverIndex === 0}
-				class:invalid={hoverIndex === 0 && !drag.valid}
 				role="button"
 				tabindex="0"
 				data-index="0"
@@ -262,13 +307,38 @@
 
 				{#if canDrop}
 					<div
-						class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center"
-						class:active={hoverIndex === 0}
-						class:invalid={hoverIndex === 0 && !drag.valid}
+						class={css({
+							marginY: '2',
+							display: 'flex',
+							minHeight: '1.75rem',
+							width: 'min(55%, 480px)',
+							flexShrink: '0',
+							alignItems: 'center',
+							justifyContent: 'center',
+							borderWidth: '2px',
+							borderStyle: 'dashed',
+							paddingX: '4',
+							paddingY: '2',
+							textAlign: 'center',
+							borderColor: hoverIndex === 0 && !drag.valid ? 'error.border' : 'border.primary',
+							backgroundColor:
+								hoverIndex === 0 && !drag.valid
+									? 'error.bg'
+									: hoverIndex === 0
+										? 'bg.tertiary'
+										: 'transparent',
+							_hover: { backgroundColor: 'bg.hover' }
+						})}
 					>
 						{#if hoverIndex === 0}
-							<span class="insert-label font-mono text-sm font-medium lowercase"
-								>{drag.type ?? 'step'}</span
+							<span
+								class={css({
+									fontFamily: 'var(--font-mono)',
+									fontSize: 'sm',
+									fontWeight: '500',
+									textTransform: 'lowercase',
+									color: 'fg.primary'
+								})}>{drag.type ?? 'step'}</span
 							>
 						{/if}
 					</div>
@@ -282,7 +352,17 @@
 			</div>
 		</div>
 	{:else}
-		<div class="steps-container mx-auto flex w-full max-w-full flex-col items-center" role="list">
+		<div
+			class={css({
+				marginX: 'auto',
+				display: 'flex',
+				width: '100%',
+				maxWidth: '100%',
+				flexDirection: 'column',
+				alignItems: 'center'
+			})}
+			role="list"
+		>
 			<DatasourceNode
 				{datasource}
 				{datasourceLabel}
@@ -294,10 +374,18 @@
 			/>
 			{#if shouldShowInsert(0) && (steps.length > 0 || canDrop)}
 				<div
-					class="insert-zone flex w-full cursor-default flex-col items-center py-2"
+					class={cx(
+						'insert-zone',
+						css({
+							display: 'flex',
+							width: '100%',
+							cursor: 'default',
+							flexDirection: 'column',
+							alignItems: 'center',
+							paddingY: '2'
+						})
+					)}
 					class:ready={canDrop}
-					class:active={hoverIndex === 0}
-					class:invalid={hoverIndex === 0 && !drag.valid}
 					role="button"
 					tabindex="0"
 					data-index="0"
@@ -314,13 +402,38 @@
 					/>
 					{#if canDrop}
 						<div
-							class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center"
-							class:active={hoverIndex === 0}
-							class:invalid={hoverIndex === 0 && !drag.valid}
+							class={css({
+								marginY: '2',
+								display: 'flex',
+								minHeight: '1.75rem',
+								width: 'min(55%, 480px)',
+								flexShrink: '0',
+								alignItems: 'center',
+								justifyContent: 'center',
+								borderWidth: '2px',
+								borderStyle: 'dashed',
+								paddingX: '4',
+								paddingY: '2',
+								textAlign: 'center',
+								borderColor: hoverIndex === 0 && !drag.valid ? 'error.border' : 'border.primary',
+								backgroundColor:
+									hoverIndex === 0 && !drag.valid
+										? 'error.bg'
+										: hoverIndex === 0
+											? 'bg.tertiary'
+											: 'transparent',
+								_hover: { backgroundColor: 'bg.hover' }
+							})}
 						>
 							{#if hoverIndex === 0}
-								<span class="insert-label font-mono text-sm font-medium lowercase"
-									>{drag.type ?? 'step'}</span
+								<span
+									class={css({
+										fontFamily: 'var(--font-mono)',
+										fontSize: 'sm',
+										fontWeight: '500',
+										textTransform: 'lowercase',
+										color: 'fg.primary'
+									})}>{drag.type ?? 'step'}</span
 								>
 							{/if}
 						</div>
@@ -335,7 +448,15 @@
 					{/if}
 				</div>
 			{:else if steps.length > 0}
-				<div class="insert-spacer flex items-center justify-center py-2" aria-hidden="true">
+				<div
+					class={css({
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						paddingY: '2'
+					})}
+					aria-hidden="true"
+				>
 					<ConnectionLine fromStepIndex={-1} toStepIndex={0} totalSteps={steps.length} />
 				</div>
 			{/if}
@@ -355,10 +476,18 @@
 				{#if i < steps.length - 1 || canDrop}
 					{#if shouldShowInsert(i + 1)}
 						<div
-							class="insert-zone flex w-full cursor-default flex-col items-center py-2"
+							class={cx(
+								'insert-zone',
+								css({
+									display: 'flex',
+									width: '100%',
+									cursor: 'default',
+									flexDirection: 'column',
+									alignItems: 'center',
+									paddingY: '2'
+								})
+							)}
 							class:ready={canDrop}
-							class:active={hoverIndex === i + 1}
-							class:invalid={hoverIndex === i + 1 && !drag.valid}
 							role="button"
 							tabindex="0"
 							data-index={i + 1}
@@ -377,13 +506,39 @@
 							{/if}
 							{#if canDrop}
 								<div
-									class="insert-pill my-2 flex min-h-7 w-[min(55%,480px)] shrink-0 items-center justify-center border-2 border-dashed px-4 py-2 text-center"
-									class:active={hoverIndex === i + 1}
-									class:invalid={hoverIndex === i + 1 && !drag.valid}
+									class={css({
+										marginY: '2',
+										display: 'flex',
+										minHeight: '1.75rem',
+										width: 'min(55%, 480px)',
+										flexShrink: '0',
+										alignItems: 'center',
+										justifyContent: 'center',
+										borderWidth: '2px',
+										borderStyle: 'dashed',
+										paddingX: '4',
+										paddingY: '2',
+										textAlign: 'center',
+										borderColor:
+											hoverIndex === i + 1 && !drag.valid ? 'error.border' : 'border.primary',
+										backgroundColor:
+											hoverIndex === i + 1 && !drag.valid
+												? 'error.bg'
+												: hoverIndex === i + 1
+													? 'bg.tertiary'
+													: 'transparent',
+										_hover: { backgroundColor: 'bg.hover' }
+									})}
 								>
 									{#if hoverIndex === i + 1}
-										<span class="insert-label font-mono text-sm font-medium lowercase"
-											>{drag.type ?? 'step'}</span
+										<span
+											class={css({
+												fontFamily: 'var(--font-mono)',
+												fontSize: 'sm',
+												fontWeight: '500',
+												textTransform: 'lowercase',
+												color: 'fg.primary'
+											})}>{drag.type ?? 'step'}</span
 										>
 									{/if}
 								</div>
@@ -398,14 +553,30 @@
 							{/if}
 						</div>
 					{:else if i < steps.length - 1 || !drag.isReorder || drag.stepId !== step.id}
-						<div class="insert-spacer flex items-center justify-center py-2" aria-hidden="true">
+						<div
+							class={css({
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								paddingY: '2'
+							})}
+							aria-hidden="true"
+						>
 							<ConnectionLine fromStepIndex={i} toStepIndex={i + 1} totalSteps={steps.length} />
 						</div>
 					{/if}
 				{/if}
 			{/each}
 			{#if steps.length > 0}
-				<div class="insert-spacer flex items-center justify-center py-2" aria-hidden="true">
+				<div
+					class={css({
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						paddingY: '2'
+					})}
+					aria-hidden="true"
+				>
 					<ConnectionLine
 						fromStepIndex={steps.length - 1}
 						toStepIndex={steps.length}
@@ -413,7 +584,15 @@
 					/>
 				</div>
 			{:else}
-				<div class="insert-spacer flex items-center justify-center py-2" aria-hidden="true">
+				<div
+					class={css({
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						paddingY: '2'
+					})}
+					aria-hidden="true"
+				>
 					<ConnectionLine fromStepIndex={-1} toStepIndex={0} totalSteps={1} />
 				</div>
 			{/if}

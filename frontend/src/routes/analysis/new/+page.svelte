@@ -10,6 +10,7 @@
 	import type { AnalysisCreate, PipelineStep } from '$lib/types/analysis';
 	import { buildOutputConfig } from '$lib/utils/analysis-tab';
 	import { getDefaultConfig } from '$lib/utils/step-config-defaults';
+	import { css, spinner, button } from '$lib/styles/panda';
 
 	let step = $state(1);
 	let name = $state('');
@@ -89,17 +90,50 @@
 	}
 </script>
 
-<div class="mx-auto flex max-w-180 flex-col gap-6 px-6 py-7">
-	<div class="mb-8">
-		<h1 class="m-0 mb-6 text-2xl font-semibold">New Analysis</h1>
-		<div class="flex items-center gap-2">
+<div
+	class={css({
+		marginX: 'auto',
+		display: 'flex',
+		maxWidth: '180',
+		flexDirection: 'column',
+		gap: '6',
+		paddingX: '6',
+		paddingY: '7'
+	})}
+>
+	<div class={css({ marginBottom: '8' })}>
+		<h1 class={css({ margin: '0', marginBottom: '6', fontSize: '2xl', fontWeight: 'semibold' })}>
+			New Analysis
+		</h1>
+		<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 			<div
-				class="step flex items-center gap-2 border-tertiary text-fg-muted bg-bg-primary"
-				class:active={step === 1}
-				class:completed={step > 1}
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '2',
+					borderColor: 'border.tertiary',
+					color: 'fg.muted',
+					backgroundColor: 'bg.primary'
+				})}
 			>
 				<span
-					class="step-number flex h-7 w-7 items-center justify-center border border-tertiary text-xs font-semibold text-fg-muted bg-bg-primary"
+					class={css({
+						display: 'flex',
+						height: '7',
+						width: '7',
+						alignItems: 'center',
+						justifyContent: 'center',
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: step >= 1 ? 'border.primary' : 'border.tertiary',
+						fontSize: 'xs',
+						fontWeight: 'semibold',
+						...(step === 1
+							? { backgroundColor: 'accent.secondary', color: 'bg.primary' }
+							: step > 1
+								? { backgroundColor: 'success.bg', color: 'success.fg' }
+								: { color: 'fg.muted', backgroundColor: 'bg.primary' })
+					})}
 				>
 					{#if step > 1}
 						<Check size={12} />
@@ -107,19 +141,51 @@
 						1
 					{/if}
 				</span>
-				<span class="text-sm text-fg-muted">Details</span>
+				<span
+					class={css({
+						fontSize: 'sm',
+						...(step === 1 ? { color: 'fg.primary', fontWeight: '500' } : { color: 'fg.muted' })
+					})}
+				>
+					Details
+				</span>
 			</div>
 			<div
-				class="step-line min-w-10 flex-1 h-px bg-border-primary"
-				class:completed={step > 1}
+				class={css({
+					minWidth: '10',
+					flex: '1',
+					height: 'px',
+					backgroundColor: step > 1 ? 'accent.secondary' : 'border.primary'
+				})}
 			></div>
 			<div
-				class="step flex items-center gap-2 border-tertiary text-fg-muted bg-bg-primary"
-				class:active={step === 2}
-				class:completed={step > 2}
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '2',
+					borderColor: 'border.tertiary',
+					color: 'fg.muted',
+					backgroundColor: 'bg.primary'
+				})}
 			>
 				<span
-					class="step-number flex h-7 w-7 items-center justify-center border border-tertiary text-xs font-semibold text-fg-muted bg-bg-primary"
+					class={css({
+						display: 'flex',
+						height: '7',
+						width: '7',
+						alignItems: 'center',
+						justifyContent: 'center',
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: step >= 2 ? 'border.primary' : 'border.tertiary',
+						fontSize: 'xs',
+						fontWeight: 'semibold',
+						...(step === 2
+							? { backgroundColor: 'accent.secondary', color: 'bg.primary' }
+							: step > 2
+								? { backgroundColor: 'success.bg', color: 'success.fg' }
+								: { color: 'fg.muted', backgroundColor: 'bg.primary' })
+					})}
 				>
 					{#if step > 2}
 						<Check size={12} />
@@ -127,76 +193,202 @@
 						2
 					{/if}
 				</span>
-				<span class="text-sm text-fg-muted">Data Source</span>
+				<span
+					class={css({
+						fontSize: 'sm',
+						...(step === 2 ? { color: 'fg.primary', fontWeight: '500' } : { color: 'fg.muted' })
+					})}>Data Source</span
+				>
 			</div>
 			<div
-				class="step-line min-w-10 flex-1 h-px bg-border-primary"
-				class:completed={step > 2}
+				class={css({
+					minWidth: '10',
+					flex: '1',
+					height: 'px',
+					backgroundColor: step > 2 ? 'accent.secondary' : 'border.primary'
+				})}
 			></div>
 			<div
-				class="step flex items-center gap-2 border-tertiary text-fg-muted bg-bg-primary"
-				class:active={step === 3}
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '2',
+					borderColor: 'border.tertiary',
+					color: 'fg.muted',
+					backgroundColor: 'bg.primary'
+				})}
 			>
 				<span
-					class="step-number flex h-7 w-7 items-center justify-center border border-tertiary text-xs font-semibold text-fg-muted bg-bg-primary"
+					class={css({
+						display: 'flex',
+						height: '7',
+						width: '7',
+						alignItems: 'center',
+						justifyContent: 'center',
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: step >= 3 ? 'border.primary' : 'border.tertiary',
+						fontSize: 'xs',
+						fontWeight: 'semibold',
+						...(step === 3
+							? { backgroundColor: 'accent.secondary', color: 'bg.primary' }
+							: { color: 'fg.muted', backgroundColor: 'bg.primary' })
+					})}
 				>
 					3
 				</span>
-				<span class="text-sm text-fg-muted">Review</span>
+				<span
+					class={css({
+						fontSize: 'sm',
+						...(step === 3 ? { color: 'fg.primary', fontWeight: '500' } : { color: 'fg.muted' })
+					})}>Review</span
+				>
 			</div>
 		</div>
 	</div>
 
-	<div class="mb-6 flex-1">
+	<div class={css({ marginBottom: '6', flex: '1' })}>
 		{#if step === 1}
-			<div class="card">
-				<h2 class="m-0 mb-2 text-lg font-semibold">Analysis Details</h2>
-				<p class="mb-6 text-fg-tertiary">Give your analysis a name and optional description.</p>
+			<div
+				class={css({
+					backgroundColor: 'bg.primary',
+					border: '1px solid',
+					borderColor: 'border.primary',
+					borderRadius: '0',
+					padding: '1.25rem'
+				})}
+			>
+				<h2 class={css({ margin: '0', marginBottom: '2', fontSize: 'lg', fontWeight: 'semibold' })}>
+					Analysis Details
+				</h2>
+				<p class={css({ marginBottom: '6', color: 'fg.tertiary' })}>
+					Give your analysis a name and optional description.
+				</p>
 
-				<div class="mb-5 flex flex-col gap-2">
-					<label for="name" class="block text-sm font-medium text-fg-secondary">
-						Name <span class="text-error-fg">*</span>
+				<div class={css({ marginBottom: '5', display: 'flex', flexDirection: 'column', gap: '2' })}>
+					<label
+						for="name"
+						class={css({
+							display: 'block',
+							fontSize: 'sm',
+							fontWeight: 'medium',
+							color: 'fg.secondary'
+						})}
+					>
+						Name <span class={css({ color: 'error.fg' })}>*</span>
 					</label>
 					<input
 						id="name"
 						type="text"
 						bind:value={name}
 						placeholder="My Data Analysis"
-						class="w-full border border-tertiary bg-bg-primary p-3 text-sm focus:border-accent-primary"
+						class={css({
+							width: '100%',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.tertiary',
+							backgroundColor: 'bg.primary',
+							padding: '3',
+							fontSize: 'sm'
+						})}
 					/>
 				</div>
-				<div class="mb-5 flex flex-col gap-2">
-					<label for="description" class="block text-sm font-medium text-fg-secondary"
-						>Description</label
+				<div class={css({ marginBottom: '5', display: 'flex', flexDirection: 'column', gap: '2' })}>
+					<label
+						for="description"
+						class={css({
+							display: 'block',
+							fontSize: 'sm',
+							fontWeight: 'medium',
+							color: 'fg.secondary'
+						})}
 					>
+						Description
+					</label>
 					<textarea
 						id="description"
 						bind:value={description}
 						placeholder="Describe what this analysis does..."
 						rows="4"
-						class="min-h-25 w-full resize-y border border-tertiary bg-bg-primary p-3 text-sm focus:border-accent-primary"
+						class={css({
+							minHeight: '25',
+							width: '100%',
+							resize: 'vertical',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.tertiary',
+							backgroundColor: 'bg.primary',
+							padding: '3',
+							fontSize: 'sm'
+						})}
 					></textarea>
 				</div>
 			</div>
 		{:else if step === 2}
-			<div class="card">
-				<h2 class="m-0 mb-2 text-lg font-semibold">Select Data Sources</h2>
-				<p class="mb-6 text-fg-tertiary">Choose one or more data sources for this analysis.</p>
+			<div
+				class={css({
+					backgroundColor: 'bg.primary',
+					border: '1px solid',
+					borderColor: 'border.primary',
+					borderRadius: '0',
+					padding: '1.25rem'
+				})}
+			>
+				<h2 class={css({ margin: '0', marginBottom: '2', fontSize: 'lg', fontWeight: 'semibold' })}>
+					Select Data Sources
+				</h2>
+				<p class={css({ marginBottom: '6', color: 'fg.tertiary' })}>
+					Choose one or more data sources for this analysis.
+				</p>
 
 				{#if datasourcesQuery.isLoading}
-					<div class="flex h-full items-center justify-center">
-						<div class="spinner"></div>
+					<div
+						class={css({
+							display: 'flex',
+							height: '100%',
+							alignItems: 'center',
+							justifyContent: 'center'
+						})}
+					>
+						<div class={spinner()}></div>
 					</div>
 				{:else if datasourcesQuery.error}
-					<div class="error-box">
+					<div
+						class={css({
+							padding: '0.625rem 0.75rem',
+							border: 'none',
+							borderLeft: '2px solid',
+							borderRadius: '0',
+							marginTop: '0.75rem',
+							marginBottom: '0',
+							fontSize: '0.75rem',
+							lineHeight: '1.5',
+							backgroundColor: 'transparent',
+							borderLeftColor: 'error.border',
+							color: 'error.fg'
+						})}
+					>
 						Error loading data sources: {datasourcesQuery.error.message}
 					</div>
 				{:else if datasourcesQuery.data && datasourcesQuery.data.length === 0}
-					<div class="border border-dashed border-tertiary p-8 text-center text-fg-tertiary">
+					<div
+						class={css({
+							borderWidth: '1px',
+							borderStyle: 'dashed',
+							borderColor: 'border.tertiary',
+							padding: '8',
+							textAlign: 'center',
+							color: 'fg.tertiary'
+						})}
+					>
 						<p>No data sources available.</p>
-						<a href={resolve('/datasources/new')} class="btn btn-secondary" data-sveltekit-reload
-							>Create Data Source</a
+						<a
+							href={resolve('/datasources/new')}
+							class={button({ variant: 'secondary' })}
+							data-sveltekit-reload
 						>
+							Create Data Source
+						</a>
 					</div>
 				{:else if datasourcesQuery.data}
 					<DatasourcePicker
@@ -210,38 +402,90 @@
 				{/if}
 			</div>
 		{:else if step === 3}
-			<div class="card">
-				<h2 class="m-0 mb-2 text-lg font-semibold">Review & Create</h2>
-				<p class="mb-6 text-fg-tertiary">Review your analysis configuration before creating.</p>
+			<div
+				class={css({
+					backgroundColor: 'bg.primary',
+					border: '1px solid',
+					borderColor: 'border.primary',
+					borderRadius: '0',
+					padding: '1.25rem'
+				})}
+			>
+				<h2 class={css({ margin: '0', marginBottom: '2', fontSize: 'lg', fontWeight: 'semibold' })}>
+					Review & Create
+				</h2>
+				<p class={css({ marginBottom: '6', color: 'fg.tertiary' })}>
+					Review your analysis configuration before creating.
+				</p>
 
-				<div class="mb-6 border-b border-tertiary pb-6">
-					<h3 class="m-0 mb-4 text-sm font-semibold uppercase tracking-wide text-fg-tertiary">
+				<div
+					class={css({
+						marginBottom: '6',
+						borderBottomWidth: '1px',
+						borderBottomStyle: 'solid',
+						borderBottomColor: 'border.tertiary',
+						paddingBottom: '6'
+					})}
+				>
+					<h3
+						class={css({
+							margin: '0',
+							marginBottom: '4',
+							fontSize: 'sm',
+							fontWeight: 'semibold',
+							textTransform: 'uppercase',
+							letterSpacing: 'wide',
+							color: 'fg.tertiary'
+						})}
+					>
 						Details
 					</h3>
-					<dl class="m-0">
-						<div class="mb-2 flex gap-4">
-							<dt class="w-25 shrink-0 text-fg-muted">Name</dt>
-							<dd class="m-0">{name}</dd>
+					<dl class={css({ margin: '0' })}>
+						<div class={css({ marginBottom: '2', display: 'flex', gap: '4' })}>
+							<dt class={css({ width: '25', flexShrink: '0', color: 'fg.muted' })}>Name</dt>
+							<dd class={css({ margin: '0' })}>{name}</dd>
 						</div>
 						{#if description}
-							<div class="mb-2 flex gap-4">
-								<dt class="w-25 shrink-0 text-fg-muted">Description</dt>
-								<dd class="m-0">{description}</dd>
+							<div class={css({ marginBottom: '2', display: 'flex', gap: '4' })}>
+								<dt class={css({ width: '25', flexShrink: '0', color: 'fg.muted' })}>
+									Description
+								</dt>
+								<dd class={css({ margin: '0' })}>{description}</dd>
 							</div>
 						{/if}
 					</dl>
 				</div>
 
 				<div>
-					<h3 class="m-0 mb-4 text-sm font-semibold uppercase tracking-wide text-fg-tertiary">
+					<h3
+						class={css({
+							margin: '0',
+							marginBottom: '4',
+							fontSize: 'sm',
+							fontWeight: 'semibold',
+							textTransform: 'uppercase',
+							letterSpacing: 'wide',
+							color: 'fg.tertiary'
+						})}
+					>
 						Data Sources ({selectedDatasourceIds.length})
 					</h3>
-					<ul class="m-0 list-none p-0">
+					<ul class={css({ margin: '0', listStyle: 'none', padding: '0' })}>
 						{#if datasourcesQuery.data}
 							{#each datasourcesQuery.data.filter( (ds) => selectedDatasourceIds.includes(ds.id) ) as ds (ds.id)}
-								<li class="flex items-center gap-3 border-b border-tertiary py-2">
-									<span class="text-fg-primary">{ds.name}</span>
-									<span class="text-xs text-fg-muted">
+								<li
+									class={css({
+										display: 'flex',
+										alignItems: 'center',
+										gap: '3',
+										borderBottomWidth: '1px',
+										borderBottomStyle: 'solid',
+										borderBottomColor: 'border.tertiary',
+										paddingY: '2'
+									})}
+								>
+									<span class={css({ color: 'fg.primary' })}>{ds.name}</span>
+									<span class={css({ fontSize: 'xs', color: 'fg.muted' })}>
 										{#if ds.source_type === 'file'}
 											<FileTypeBadge
 												path={(ds.config?.file_path as string) ?? ''}
@@ -263,33 +507,64 @@
 				</div>
 
 				{#if error}
-					<div class="error-box">{error}</div>
+					<div
+						class={css({
+							padding: '0.625rem 0.75rem',
+							border: 'none',
+							borderLeft: '2px solid',
+							borderRadius: '0',
+							marginTop: '0.75rem',
+							marginBottom: '0',
+							fontSize: '0.75rem',
+							lineHeight: '1.5',
+							backgroundColor: 'transparent',
+							borderLeftColor: 'error.border',
+							color: 'error.fg'
+						})}
+					>
+						{error}
+					</div>
 				{/if}
 			</div>
 		{/if}
 	</div>
 
-	<div class="flex gap-3 border-t border-tertiary pt-6">
+	<div
+		class={css({
+			display: 'flex',
+			gap: '3',
+			borderTopWidth: '1px',
+			borderTopStyle: 'solid',
+			borderTopColor: 'border.tertiary',
+			paddingTop: '6'
+		})}
+	>
 		{#if step > 1}
-			<button class="btn btn-secondary" onclick={() => (step -= 1)} disabled={creating}>
+			<button
+				class={button({ variant: 'secondary' })}
+				onclick={() => (step -= 1)}
+				disabled={creating}
+			>
 				Back
 			</button>
 		{:else}
-			<a href={resolve('/')} class="btn btn-secondary" data-sveltekit-reload>Cancel</a>
+			<a href={resolve('/')} class={button({ variant: 'secondary' })} data-sveltekit-reload
+				>Cancel</a
+			>
 		{/if}
 
-		<div class="flex-1"></div>
+		<div class={css({ flex: '1' })}></div>
 
 		{#if step < 3}
 			<button
-				class="btn btn-primary"
+				class={button({ variant: 'primary' })}
 				onclick={() => (step += 1)}
 				disabled={(step === 1 && !canProceedStep1) || (step === 2 && !canProceedStep2)}
 			>
 				Next
 			</button>
 		{:else}
-			<button class="btn btn-primary" onclick={handleCreate} disabled={creating}>
+			<button class={button({ variant: 'primary' })} onclick={handleCreate} disabled={creating}>
 				{creating ? 'Creating...' : 'Create Analysis'}
 			</button>
 		{/if}

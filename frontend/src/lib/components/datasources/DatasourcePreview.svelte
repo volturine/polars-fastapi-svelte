@@ -13,6 +13,7 @@
 		buildAnalysisPipelinePayload,
 		buildDatasourcePipelinePayload
 	} from '$lib/utils/analysis-pipeline';
+	import { css } from '$lib/styles/panda';
 
 	interface Props {
 		datasourceId: string;
@@ -128,8 +129,15 @@
 	}
 </script>
 
-<div class="relative h-full flex flex-col">
-	<div class="overflow-hidden h-full">
+<div
+	class={css({
+		position: 'relative',
+		height: 'full',
+		display: 'flex',
+		flexDirection: 'column'
+	})}
+>
+	<div class={css({ overflow: 'hidden', height: 'full' })}>
 		<DataTable
 			columns={data?.columns ?? []}
 			data={data?.data ?? []}

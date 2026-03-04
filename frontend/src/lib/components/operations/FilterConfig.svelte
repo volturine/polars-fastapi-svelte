@@ -3,6 +3,7 @@
 	import { X, Plus } from 'lucide-svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import DateTimeInput from '$lib/components/common/DateTimeInput.svelte';
+	import { css } from '$lib/styles/panda';
 
 	const uid = $props.id();
 
@@ -207,16 +208,73 @@
 	}
 </script>
 
-<div class="config-panel" role="region" aria-label="Filter configuration">
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+	role="region"
+	aria-label="Filter configuration"
+>
 	<div role="group" aria-labelledby="{uid}-conditions-heading">
-		<div class="mb-5 flex items-center justify-between">
-			<h4 id="{uid}-conditions-heading" class="mb-0">Conditions</h4>
-			<div class="flex items-center gap-2">
-				<div class="flex" role="radiogroup" aria-label="Condition logic">
+		<div
+			class={css({
+				marginBottom: '5',
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'space-between'
+			})}
+		>
+			<h4
+				id="{uid}-conditions-heading"
+				class={css({
+					marginTop: '0',
+					marginBottom: '0',
+					fontSize: '0.6875rem',
+					fontWeight: '600',
+					color: 'fg.muted',
+					textTransform: 'uppercase',
+					letterSpacing: '0.08em'
+				})}
+			>
+				Conditions
+			</h4>
+			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+				<div class={css({ display: 'flex' })} role="radiogroup" aria-label="Condition logic">
 					<button
 						type="button"
-						class="logic-btn flex cursor-pointer items-center justify-center border border-tertiary bg-transparent px-2 py-1 text-xs text-fg-muted hover:bg-hover hover:text-fg-secondary"
-						class:active={config.logic === 'AND'}
+						class={config.logic === 'AND'
+							? css({
+									display: 'flex',
+									cursor: 'pointer',
+									alignItems: 'center',
+									justifyContent: 'center',
+									borderWidth: '1px',
+									borderStyle: 'solid',
+									borderColor: 'border.primary',
+									borderRadius: 'sm 0 0 sm',
+									backgroundColor: 'accent.bg',
+									color: 'accent.primary',
+									paddingX: '2',
+									paddingY: '1',
+									fontSize: 'xs',
+									boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
+									position: 'relative',
+									zIndex: '1'
+								})
+							: css({
+									display: 'flex',
+									cursor: 'pointer',
+									alignItems: 'center',
+									justifyContent: 'center',
+									borderWidth: '1px',
+									borderStyle: 'solid',
+									borderColor: 'border.tertiary',
+									borderRadius: 'sm 0 0 sm',
+									backgroundColor: 'transparent',
+									paddingX: '2',
+									paddingY: '1',
+									fontSize: 'xs',
+									color: 'fg.muted',
+									_hover: { backgroundColor: 'bg.hover', color: 'fg.secondary' }
+								})}
 						onclick={() => (config.logic = 'AND')}
 						aria-pressed={config.logic === 'AND'}
 					>
@@ -224,8 +282,41 @@
 					</button>
 					<button
 						type="button"
-						class="logic-btn flex cursor-pointer items-center justify-center border border-tertiary bg-transparent px-2 py-1 text-xs text-fg-muted hover:bg-hover hover:text-fg-secondary"
-						class:active={config.logic === 'OR'}
+						class={config.logic === 'OR'
+							? css({
+									display: 'flex',
+									cursor: 'pointer',
+									alignItems: 'center',
+									justifyContent: 'center',
+									borderWidth: '1px',
+									borderStyle: 'solid',
+									borderColor: 'border.primary',
+									borderRadius: '0 sm sm 0',
+									backgroundColor: 'accent.bg',
+									color: 'accent.primary',
+									paddingX: '2',
+									paddingY: '1',
+									fontSize: 'xs',
+									boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
+									position: 'relative',
+									zIndex: '1'
+								})
+							: css({
+									display: 'flex',
+									cursor: 'pointer',
+									alignItems: 'center',
+									justifyContent: 'center',
+									borderWidth: '1px',
+									borderStyle: 'solid',
+									borderColor: 'border.tertiary',
+									borderRadius: '0 sm sm 0',
+									backgroundColor: 'transparent',
+									paddingX: '2',
+									paddingY: '1',
+									fontSize: 'xs',
+									color: 'fg.muted',
+									_hover: { backgroundColor: 'bg.hover', color: 'fg.secondary' }
+								})}
 						onclick={() => (config.logic = 'OR')}
 						aria-pressed={config.logic === 'OR'}
 					>
@@ -234,7 +325,21 @@
 				</div>
 				<button
 					type="button"
-					class="btn-add flex h-7 w-7 cursor-pointer items-center justify-center border border-tertiary bg-tertiary p-0 text-fg-secondary hover:bg-hover hover:text-fg-primary"
+					class={css({
+						display: 'flex',
+						height: '7',
+						width: '7',
+						cursor: 'pointer',
+						alignItems: 'center',
+						justifyContent: 'center',
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.tertiary',
+						backgroundColor: 'bg.tertiary',
+						padding: '0',
+						color: 'fg.secondary',
+						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+					})}
 					onclick={addCondition}
 					aria-label="Add filter condition"
 				>
@@ -244,12 +349,21 @@
 		</div>
 
 		{#if conditions.length === 0}
-			<p class="empty-message" role="status">
+			<p
+				class={css({
+					color: 'fg.muted',
+					fontStyle: 'italic',
+					textAlign: 'center',
+					padding: '4',
+					margin: '0'
+				})}
+				role="status"
+			>
 				No conditions configured. Click "+ Add" to create one.
 			</p>
 		{:else}
 			<div
-				class="flex flex-col gap-4"
+				class={css({ display: 'flex', flexDirection: 'column', gap: '4' })}
 				role="list"
 				aria-label="Filter conditions"
 				aria-live="polite"
@@ -263,17 +377,55 @@
 					{@const ops = getOperatorsForType(colType, isColumn)}
 
 					<div
-						class="condition-card filter-config border-l-2 border-l-tertiary pl-4 pb-2"
+						class={css({
+							borderLeftWidth: '2px',
+							borderLeftStyle: 'solid',
+							borderLeftColor: 'border.tertiary',
+							paddingLeft: '4',
+							paddingBottom: '2'
+						})}
 						role="listitem"
 					>
-						<div class="mb-3 flex items-center gap-2 pb-2">
-							<span class="text-xs font-semibold text-fg-muted">#{i + 1}</span>
+						<div
+							class={css({
+								marginBottom: '3',
+								display: 'flex',
+								alignItems: 'center',
+								gap: '2',
+								paddingBottom: '2'
+							})}
+						>
+							<span class={css({ fontSize: 'xs', fontWeight: 'semibold', color: 'fg.muted' })}
+								>#{i + 1}</span
+							>
 							{#if cond.column}
-								<span class="text-sm font-medium text-fg-primary">{cond.column}</span>
+								<span class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.primary' })}
+									>{cond.column}</span
+								>
 							{/if}
 							<button
 								type="button"
-								class="btn-remove ml-auto flex h-6 w-6 cursor-pointer items-center justify-center border border-transparent bg-transparent p-0 text-fg-muted hover:border-error hover:bg-error hover:text-error disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-transparent disabled:hover:bg-transparent disabled:hover:text-fg-muted"
+								class={css({
+									marginLeft: 'auto',
+									display: 'flex',
+									height: '6',
+									width: '6',
+									cursor: 'pointer',
+									alignItems: 'center',
+									justifyContent: 'center',
+									borderWidth: '1px',
+									borderStyle: 'solid',
+									borderColor: 'border.transparent',
+									backgroundColor: 'transparent',
+									padding: '0',
+									color: 'fg.muted',
+									_hover: {
+										borderColor: 'error.border',
+										backgroundColor: 'error.bg',
+										color: 'error.fg'
+									},
+									_disabled: { cursor: 'not-allowed', opacity: '0.3' }
+								})}
 								onclick={() => removeCondition(i)}
 								disabled={conditions.length === 1}
 								aria-label={`Remove condition ${i + 1}`}
@@ -282,20 +434,60 @@
 							</button>
 						</div>
 
-						<div class="relative flex flex-wrap items-start gap-4">
-							<div class="flex min-w-55 flex-2 flex-col gap-1">
-								<span class="mb-0 text-xs font-normal text-fg-muted">Column</span>
+						<div
+							class={css({
+								position: 'relative',
+								display: 'flex',
+								flexWrap: 'wrap',
+								alignItems: 'start',
+								gap: '4'
+							})}
+						>
+							<div
+								class={css({
+									display: 'flex',
+									flex: '2',
+									flexDirection: 'column',
+									gap: '1',
+									minWidth: '55'
+								})}
+							>
+								<span
+									class={css({
+										marginBottom: '0',
+										fontSize: 'xs',
+										fontWeight: 'normal',
+										color: 'fg.muted'
+									})}>Column</span
+								>
 								<ColumnDropdown
 									{schema}
 									value={cond.column}
 									onChange={(val) => handleColumnChange(i, val)}
 									placeholder="Select..."
+									containerClass={css({ position: 'static' })}
+									triggerClass={css({ width: '100%' })}
+									menuClass={css({ top: 'inherit', marginTop: '48px' })}
 								/>
 							</div>
 
-							<div class="flex min-w-37.5 flex-1 flex-col gap-1">
-								<label class="text-xs font-normal mb-0 text-fg-muted" for="{uid}-operator-{i}"
-									>Operator</label
+							<div
+								class={css({
+									display: 'flex',
+									flex: '1',
+									flexDirection: 'column',
+									gap: '1',
+									minWidth: '37.5'
+								})}
+							>
+								<label
+									class={css({
+										fontSize: 'xs',
+										fontWeight: 'normal',
+										marginBottom: '0',
+										color: 'fg.muted'
+									})}
+									for="{uid}-operator-{i}">Operator</label
 								>
 								<select
 									id="{uid}-operator-{i}"
@@ -310,14 +502,64 @@
 							</div>
 
 							{#if !isNull}
-								<div class="flex min-w-60 flex-2 flex-col gap-1">
-									<div class="flex items-center justify-between gap-2">
-										<span class="text-xs font-normal text-fg-muted">Compare to</span>
-										<div class="flex" role="radiogroup" aria-label="Value mode">
+								<div
+									class={css({
+										display: 'flex',
+										flex: '2',
+										flexDirection: 'column',
+										gap: '1',
+										minWidth: '60'
+									})}
+								>
+									<div
+										class={css({
+											display: 'flex',
+											alignItems: 'center',
+											justifyContent: 'space-between',
+											gap: '2'
+										})}
+									>
+										<span class={css({ fontSize: 'xs', fontWeight: 'normal', color: 'fg.muted' })}
+											>Compare to</span
+										>
+										<div class={css({ display: 'flex' })} role="radiogroup" aria-label="Value mode">
 											<button
 												type="button"
-												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer border border-tertiary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
-												class:active={!isColumn}
+												class={!isColumn
+													? css({
+															display: 'flex',
+															alignItems: 'center',
+															justifyContent: 'center',
+															paddingX: '2',
+															paddingY: '1',
+															fontSize: 'xs',
+															cursor: 'pointer',
+															borderWidth: '1px',
+															borderStyle: 'solid',
+															borderColor: 'border.primary',
+															borderRadius: 'sm 0 0 sm',
+															backgroundColor: 'accent.bg',
+															color: 'accent.primary',
+															boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
+															position: 'relative',
+															zIndex: '1'
+														})
+													: css({
+															display: 'flex',
+															alignItems: 'center',
+															justifyContent: 'center',
+															paddingX: '2',
+															paddingY: '1',
+															fontSize: 'xs',
+															cursor: 'pointer',
+															borderWidth: '1px',
+															borderStyle: 'solid',
+															borderColor: 'border.tertiary',
+															borderRadius: 'sm 0 0 sm',
+															backgroundColor: 'transparent',
+															color: 'fg.muted',
+															_hover: { backgroundColor: 'bg.hover', color: 'fg.secondary' }
+														})}
 												onclick={() => handleModeChange(i, 'value')}
 												aria-pressed={!isColumn}
 											>
@@ -325,8 +567,41 @@
 											</button>
 											<button
 												type="button"
-												class="mode-btn flex items-center justify-center px-2 py-1 text-xs cursor-pointer border border-tertiary bg-transparent text-fg-muted hover:bg-hover hover:text-fg-secondary"
-												class:active={isColumn}
+												class={isColumn
+													? css({
+															display: 'flex',
+															alignItems: 'center',
+															justifyContent: 'center',
+															paddingX: '2',
+															paddingY: '1',
+															fontSize: 'xs',
+															cursor: 'pointer',
+															borderWidth: '1px',
+															borderStyle: 'solid',
+															borderColor: 'border.primary',
+															borderRadius: '0 sm sm 0',
+															backgroundColor: 'accent.bg',
+															color: 'accent.primary',
+															boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
+															position: 'relative',
+															zIndex: '1'
+														})
+													: css({
+															display: 'flex',
+															alignItems: 'center',
+															justifyContent: 'center',
+															paddingX: '2',
+															paddingY: '1',
+															fontSize: 'xs',
+															cursor: 'pointer',
+															borderWidth: '1px',
+															borderStyle: 'solid',
+															borderColor: 'border.tertiary',
+															borderRadius: '0 sm sm 0',
+															backgroundColor: 'transparent',
+															color: 'fg.muted',
+															_hover: { backgroundColor: 'bg.hover', color: 'fg.secondary' }
+														})}
 												onclick={() => handleModeChange(i, 'column')}
 												aria-pressed={isColumn}
 											>
@@ -341,6 +616,9 @@
 											value={cond.compare_column ?? ''}
 											onChange={(val) => updateCondition(i, { compare_column: val })}
 											placeholder="Select..."
+											containerClass={css({ position: 'static' })}
+											triggerClass={css({ width: '100%' })}
+											menuClass={css({ top: 'inherit', marginTop: '48px' })}
 										/>
 									{:else if colType === 'number'}
 										<input
@@ -382,7 +660,7 @@
 										</select>
 									{:else if multiLiteral}
 										{@const tokens = getLiteralList(cond.value)}
-										<div class="filter-token-input">
+										<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
 											<input
 												id="{uid}-value-{i}"
 												data-testid={`filter-value-input-${i}`}
@@ -398,12 +676,48 @@
 												placeholder="Type value and press Enter"
 											/>
 											{#if tokens.length > 0}
-												<div class="filter-token-list" role="list" aria-label="Filter values">
+												<div
+													class={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}
+													role="list"
+													aria-label="Filter values"
+												>
 													{#each tokens as token, tokenIndex (tokenIndex)}
-														<span class="filter-token" role="listitem">
-															<span class="filter-token__label">{token}</span>
+														<span
+															class={css({
+																display: 'inline-flex',
+																alignItems: 'center',
+																gap: '1',
+																borderWidth: '1px',
+																borderStyle: 'solid',
+																borderColor: 'border.tertiary',
+																backgroundColor: 'bg.tertiary',
+																color: 'fg.primary',
+																fontSize: '0.75rem',
+																paddingY: '1',
+																paddingX: '2'
+															})}
+															role="listitem"
+														>
+															<span
+																class={css({
+																	maxWidth: '55',
+																	overflow: 'hidden',
+																	textOverflow: 'ellipsis',
+																	whiteSpace: 'nowrap'
+																})}>{token}</span
+															>
 															<button
-																class="filter-token__remove"
+																class={css({
+																	display: 'inline-flex',
+																	alignItems: 'center',
+																	justifyContent: 'center',
+																	padding: '0',
+																	border: 'none',
+																	background: 'transparent',
+																	color: 'fg.muted',
+																	cursor: 'pointer',
+																	_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+																})}
 																onclick={() => removeLiteralToken(i, tokenIndex)}
 																aria-label={`Remove ${token}`}
 																type="button"
@@ -427,9 +741,29 @@
 									{/if}
 								</div>
 							{:else}
-								<div class="flex min-w-60 flex-2 flex-col gap-1">
-									<span class="text-xs font-normal text-fg-muted">Value</span>
-									<div class="flex items-center h-9 px-3 text-xs italic text-fg-muted">
+								<div
+									class={css({
+										display: 'flex',
+										flex: '2',
+										flexDirection: 'column',
+										gap: '1',
+										minWidth: '60'
+									})}
+								>
+									<span class={css({ fontSize: 'xs', fontWeight: 'normal', color: 'fg.muted' })}
+										>Value</span
+									>
+									<div
+										class={css({
+											display: 'flex',
+											alignItems: 'center',
+											height: '9',
+											paddingX: '3',
+											fontSize: 'xs',
+											fontStyle: 'italic',
+											color: 'fg.muted'
+										})}
+									>
 										<span>No value needed</span>
 									</div>
 								</div>

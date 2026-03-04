@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { X } from 'lucide-svelte';
+	import { css } from '$lib/styles/panda';
 
 	interface Props {
 		value: string;
@@ -41,27 +42,49 @@
 	}
 </script>
 
-<div class="flex gap-1 overflow-hidden">
+<div class={css({ display: 'flex', gap: '1', overflow: 'hidden' })}>
 	<input
 		type="date"
 		id={id ? `${id}-date` : undefined}
 		value={dateValue}
 		onchange={handleDateChange}
-		class="min-w-0 flex-1 px-1.5 py-1 text-xs"
+		class={css({ minWidth: '0', flex: '1', paddingX: '1.5', paddingY: '1', fontSize: 'xs' })}
 	/>
-	<div class="relative min-w-0 flex-1">
+	<div class={css({ position: 'relative', minWidth: '0', flex: '1' })}>
 		<input
 			type="time"
 			id={id ? `${id}-time` : undefined}
 			value={timeValue}
 			onchange={handleTimeChange}
 			disabled={!dateValue}
-			class="w-full px-1.5 py-1 pr-6 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+			class={css({
+				width: '100%',
+				paddingX: '1.5',
+				paddingY: '1',
+				paddingRight: '6',
+				fontSize: 'xs',
+				_disabled: { cursor: 'not-allowed', opacity: '0.5' }
+			})}
 		/>
 		{#if timeValue}
 			<button
 				type="button"
-				class="clear-btn absolute right-1 top-1/2 -translate-y-1/2 flex h-4.5 w-4.5 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-fg-muted"
+				class={css({
+					position: 'absolute',
+					right: '1',
+					top: '50%',
+					transform: 'translateY(-50%)',
+					display: 'flex',
+					height: '4.5',
+					width: '4.5',
+					cursor: 'pointer',
+					alignItems: 'center',
+					justifyContent: 'center',
+					border: 'none',
+					background: 'transparent',
+					padding: '0',
+					color: 'fg.muted'
+				})}
 				onclick={clearTime}
 				title="Clear time"
 			>

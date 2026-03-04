@@ -37,6 +37,7 @@
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
 	import SnapshotPicker from '$lib/components/datasources/SnapshotPicker.svelte';
 	import type { SourceType } from '$lib/utils/fileTypes';
+	import { css, cx } from '$lib/styles/panda';
 
 	type ActiveTab = {
 		id: string;
@@ -239,12 +240,50 @@
 	}
 </script>
 
-<div class="datasource-node relative w-[60%]" class:drag-active={isDragActive}>
-	<div class="node-content bg-primary border-tertiary border hover:border-tertiary">
+<div
+	class={cx(
+		'datasource-node',
+		isDragActive && 'drag-active',
+		css({ position: 'relative', width: '60%' })
+	)}
+>
+	<div
+		class={cx(
+			'node-content',
+			css({
+				backgroundColor: 'bg.primary',
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'border.tertiary',
+				_hover: { borderColor: 'border.tertiary' }
+			})
+		)}
+	>
 		<!-- Header with icon and badge -->
-		<div class="flex items-center justify-between px-4 py-3 border-b border-tertiary">
-			<div class="flex items-center gap-2">
-				<div class="flex h-5 w-5 items-center justify-center bg-accent text-bg-primary">
+		<div
+			class={css({
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'space-between',
+				paddingX: '4',
+				paddingY: '3',
+				borderBottomWidth: '1px',
+				borderBottomStyle: 'solid',
+				borderBottomColor: 'border.tertiary'
+			})}
+		>
+			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+				<div
+					class={css({
+						display: 'flex',
+						height: '1.25rem',
+						width: '1.25rem',
+						alignItems: 'center',
+						justifyContent: 'center',
+						backgroundColor: 'accent.primary',
+						color: 'bg.primary'
+					})}
+				>
 					{#if sourceType === 'file'}
 						<FileText size={12} />
 					{:else if sourceType === 'database'}
@@ -257,29 +296,79 @@
 						<FileText size={12} />
 					{/if}
 				</div>
-				<span class="text-xs font-semibold uppercase tracking-wide">source</span>
+				<span
+					class={css({
+						fontSize: 'xs',
+						fontWeight: '600',
+						textTransform: 'uppercase',
+						letterSpacing: '0.05em'
+					})}
+				>
+					source
+				</span>
 			</div>
 			<span
-				class="border border-tertiary bg-tertiary text-fg-faint px-1.5 py-0.5 text-[0.5625rem] uppercase tracking-widest"
-				>root</span
+				class={css({
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.tertiary',
+					backgroundColor: 'bg.tertiary',
+					color: 'fg.faint',
+					paddingX: '1.5',
+					paddingY: '0.5',
+					fontSize: '0.5625rem',
+					textTransform: 'uppercase',
+					letterSpacing: '0.2em'
+				})}>root</span
 			>
 		</div>
 
 		<!-- Tab Section -->
 		<div
-			class="mx-4 mt-4 mb-3 flex items-center justify-between border border-tertiary bg-secondary p-2 px-3"
+			class={css({
+				marginX: '4',
+				marginTop: '4',
+				marginBottom: '3',
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'space-between',
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'border.tertiary',
+				backgroundColor: 'bg.secondary',
+				paddingY: '2',
+				paddingX: '3'
+			})}
 		>
 			<div
-				class="info-label flex items-center gap-2 text-[0.625rem] uppercase tracking-widest text-fg-faint"
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '2',
+					fontSize: '0.625rem',
+					textTransform: 'uppercase',
+					letterSpacing: '0.2em',
+					color: 'fg.faint'
+				})}
 			>
-				<PanelLeft size={11} class="opacity-50" />
+				<PanelLeft size={11} class={css({ opacity: '0.5' })} />
 				<span>Tab name</span>
 			</div>
-			<div class="flex items-center gap-2">
+			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 				{#if isEditing}
-					<div class="flex items-center gap-1">
+					<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
 						<input
-							class="min-w-25 border border-tertiary bg-primary px-2 py-0.5 text-sm outline-none"
+							class={css({
+								minWidth: '6.25rem',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.tertiary',
+								backgroundColor: 'bg.primary',
+								paddingX: '2',
+								paddingY: '0.5',
+								fontSize: 'sm',
+								outline: 'none'
+							})}
 							id="ds-node-name"
 							bind:value={draftName}
 							onkeydown={(e) => {
@@ -289,34 +378,85 @@
 							aria-label="Edit tab name"
 						/>
 						<button
-							class="icon-btn save inline-flex h-5 w-5 cursor-pointer items-center justify-center border border-accent-primary text-success bg-primary p-0 leading-none hover:bg-success hover:text-fg-primary"
+							class={css({
+								display: 'inline-flex',
+								height: '1.25rem',
+								width: '1.25rem',
+								cursor: 'pointer',
+								alignItems: 'center',
+								justifyContent: 'center',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'accent.primary',
+								color: 'success.fg',
+								backgroundColor: 'bg.primary',
+								padding: '0',
+								lineHeight: '1',
+								_hover: { backgroundColor: 'success.bg', color: 'fg.primary' }
+							})}
 							onclick={commitEdit}
 							type="button"
 							aria-label="Save"
 						>
-							<Check size={12} class="shrink-0" />
+							<Check size={12} class={css({ flexShrink: '0' })} />
 						</button>
 						<button
-							class="icon-btn cancel inline-flex h-5 w-5 cursor-pointer items-center justify-center border border-error text-error bg-primary p-0 leading-none hover:bg-error hover:text-fg-primary"
+							class={css({
+								display: 'inline-flex',
+								height: '1.25rem',
+								width: '1.25rem',
+								cursor: 'pointer',
+								alignItems: 'center',
+								justifyContent: 'center',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'error.border',
+								color: 'error.fg',
+								backgroundColor: 'bg.primary',
+								padding: '0',
+								lineHeight: '1',
+								_hover: { backgroundColor: 'error.bg', color: 'fg.primary' }
+							})}
 							onclick={cancelEdit}
 							type="button"
 							aria-label="Cancel"
 						>
-							<X size={12} class="shrink-0" />
+							<X size={12} class={css({ flexShrink: '0' })} />
 						</button>
 					</div>
 				{:else}
-					<span class="text-sm font-medium"
+					<span class={css({ fontSize: 'sm', fontWeight: '500' })}
 						>{tabName ?? datasourceLabel ?? datasource?.name ?? 'Untitled'}</span
 					>
 					{#if onRenameTab}
 						<button
-							class="icon-btn edit inline-flex h-5 w-5 cursor-pointer items-center justify-center border border-tertiary text-fg-muted bg-primary p-0 opacity-50 leading-none hover:border-tertiary hover:text-fg-primary hover:bg-tertiary hover:opacity-100"
+							class={css({
+								display: 'inline-flex',
+								height: '1.25rem',
+								width: '1.25rem',
+								cursor: 'pointer',
+								alignItems: 'center',
+								justifyContent: 'center',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.tertiary',
+								color: 'fg.muted',
+								backgroundColor: 'bg.primary',
+								padding: '0',
+								opacity: '0.5',
+								lineHeight: '1',
+								_hover: {
+									borderColor: 'border.tertiary',
+									color: 'fg.primary',
+									backgroundColor: 'bg.tertiary',
+									opacity: '1'
+								}
+							})}
 							onclick={startEdit}
 							type="button"
 							aria-label="Edit tab name"
 						>
-							<Pencil size={12} class="shrink-0" />
+							<Pencil size={12} class={css({ flexShrink: '0' })} />
 						</button>
 					{/if}
 				{/if}
@@ -324,18 +464,42 @@
 		</div>
 
 		<!-- Dataset Section -->
-		<div class="mx-4 mb-3">
+		<div class={css({ marginX: '4', marginBottom: '3' })}>
 			<div
-				class="info-label mb-2 flex items-center gap-2 text-[0.625rem] uppercase tracking-widest text-fg-faint"
+				class={css({
+					marginBottom: '2',
+					display: 'flex',
+					alignItems: 'center',
+					gap: '2',
+					fontSize: '0.625rem',
+					textTransform: 'uppercase',
+					letterSpacing: '0.2em',
+					color: 'fg.faint'
+				})}
 			>
-				<Database size={11} class="opacity-50" />
+				<Database size={11} class={css({ opacity: '0.5' })} />
 				<span>Dataset</span>
 			</div>
 			{#if datasource || datasourceLabel}
-				<div class="flex flex-col gap-2 border border-tertiary bg-tertiary p-3">
-					<div class="flex items-center justify-between">
-						<div class="text-sm font-semibold">{datasourceLabel ?? datasource?.name}</div>
-						<div class="flex items-center gap-2">
+				<div
+					class={css({
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '2',
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.tertiary',
+						backgroundColor: 'bg.tertiary',
+						padding: '3'
+					})}
+				>
+					<div
+						class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}
+					>
+						<div class={css({ fontSize: 'sm', fontWeight: '600' })}>
+							{datasourceLabel ?? datasource?.name}
+						</div>
+						<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 							{#if datasource}
 								{#if datasource.source_type === 'file'}
 									<FileTypeBadge
@@ -360,8 +524,18 @@
 						</div>
 					</div>
 					{#if isIceberg && datasource}
-						<div class="flex items-start gap-2 border-t border-tertiary pt-2">
-							<div class="min-w-0 flex-1">
+						<div
+							class={css({
+								display: 'flex',
+								alignItems: 'flex-start',
+								gap: '2',
+								borderTopWidth: '1px',
+								borderTopStyle: 'solid',
+								borderTopColor: 'border.tertiary',
+								paddingTop: '2'
+							})}
+						>
+							<div class={css({ minWidth: '0', flex: '1' })}>
 								<SnapshotPicker
 									datasourceId={datasource.id}
 									datasourceConfig={snapshotConfig}
@@ -374,7 +548,7 @@
 									onSelect={handleSnapshotSelect}
 								/>
 							</div>
-							<div class="min-w-32 shrink-0">
+							<div class={css({ minWidth: '8rem', flexShrink: '0' })}>
 								<BranchPicker
 									branches={(resolvedDatasource?.config?.branches as string[] | undefined) ?? []}
 									value={branchValue}
@@ -386,41 +560,122 @@
 					{/if}
 				</div>
 			{:else}
-				<div class="border border-dashed border-tertiary p-3 text-center">
-					<span class="text-xs text-fg-muted">No datasource connected</span>
+				<div
+					class={css({
+						borderWidth: '1px',
+						borderStyle: 'dashed',
+						borderColor: 'border.tertiary',
+						padding: '3',
+						textAlign: 'center'
+					})}
+				>
+					<span class={css({ fontSize: 'xs', color: 'fg.muted' })}> No datasource connected </span>
 				</div>
 			{/if}
 		</div>
 
 		<!-- Engine Resources Section -->
 		{#if analysisId}
-			<div class="mx-4 mb-3 overflow-hidden border border-tertiary">
+			<div
+				class={css({
+					marginX: '4',
+					marginBottom: '3',
+					overflow: 'hidden',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.tertiary'
+				})}
+			>
 				<button
-					class="engine-header flex w-full cursor-pointer items-center justify-between border-none bg-secondary p-2 px-3 hover:bg-tertiary"
+					class={cx(
+						'engine-header',
+						css({
+							display: 'flex',
+							width: '100%',
+							cursor: 'pointer',
+							alignItems: 'center',
+							justifyContent: 'space-between',
+							border: 'none',
+							backgroundColor: 'bg.secondary',
+							paddingY: '2',
+							paddingX: '3',
+							_hover: { backgroundColor: 'bg.tertiary' }
+						})
+					)}
 					onclick={() => (engineExpanded = !engineExpanded)}
 					type="button"
 				>
-					<div class="flex items-center gap-2 text-xs uppercase tracking-wide text-fg-muted">
+					<div
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							gap: '2',
+							fontSize: 'xs',
+							textTransform: 'uppercase',
+							letterSpacing: '0.05em',
+							color: 'fg.muted'
+						})}
+					>
 						<Cpu size={12} />
 						<span>Engine</span>
 					</div>
-					<div class="flex items-center gap-2">
-						<span class="font-mono text-[10px] text-fg-secondary">
+					<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+						<span
+							class={css({
+								fontFamily: 'var(--font-mono)',
+								fontSize: '10px',
+								color: 'fg.secondary'
+							})}
+						>
 							{effectiveThreads} threads, {effectiveMemoryGb}GB
 						</span>
-						<span class="chevron flex items-center text-fg-muted" class:expanded={engineExpanded}>
+						<span
+							class={cx(
+								css({ color: 'fg.muted' }),
+								css({ display: 'flex', alignItems: 'center' }),
+								engineExpanded && css({ transform: 'rotate(180deg)' })
+							)}
+						>
 							<ChevronDown size={12} />
 						</span>
 					</div>
 				</button>
 
 				{#if engineExpanded}
-					<div class="flex flex-col gap-2 border-t border-tertiary bg-primary p-3">
-						<div class="flex items-center gap-3">
-							<label for="threads-input" class="min-w-15 text-xs text-fg-secondary">Threads</label>
+					<div
+						class={css({
+							display: 'flex',
+							flexDirection: 'column',
+							gap: '2',
+							borderTopWidth: '1px',
+							borderTopStyle: 'solid',
+							borderTopColor: 'border.tertiary',
+							backgroundColor: 'bg.primary',
+							padding: '3'
+						})}
+					>
+						<div class={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+							<label
+								for="threads-input"
+								class={css({ minWidth: '3.75rem', fontSize: 'xs', color: 'fg.secondary' })}
+							>
+								Threads
+							</label>
 							<input
 								id="threads-input"
-								class="resource-input flex-1 border border-tertiary bg-secondary text-fg-primary p-1 px-2 font-mono text-xs focus:border-accent-primary focus:outline-none"
+								class={css({
+									flex: '1',
+									borderWidth: '1px',
+									borderStyle: 'solid',
+									borderColor: 'border.tertiary',
+									backgroundColor: 'bg.secondary',
+									color: 'fg.primary',
+									paddingY: '1',
+									paddingX: '2',
+									fontFamily: 'var(--font-mono)',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary', outline: 'none' }
+								})}
 								type="number"
 								min="1"
 								max="64"
@@ -428,14 +683,40 @@
 								onchange={(e) => setThreads(parseInt(e.currentTarget.value) || 0)}
 							/>
 							{#if isUsingDefaultThreads}
-								<span class="min-w-12.5 text-[9px] italic text-fg-tertiary">(default)</span>
+								<span
+									class={css({
+										minWidth: '3.125rem',
+										fontSize: '9px',
+										fontStyle: 'italic',
+										color: 'fg.tertiary'
+									})}
+								>
+									(default)
+								</span>
 							{/if}
 						</div>
-						<div class="flex items-center gap-3">
-							<label for="memory-select" class="min-w-15 text-xs text-fg-secondary">Memory</label>
+						<div class={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+							<label
+								for="memory-select"
+								class={css({ minWidth: '3.75rem', fontSize: 'xs', color: 'fg.secondary' })}
+							>
+								Memory
+							</label>
 							<select
 								id="memory-select"
-								class="resource-input flex-1 border border-tertiary bg-secondary text-fg-primary p-1 px-2 font-mono text-xs focus:border-accent-primary focus:outline-none"
+								class={css({
+									flex: '1',
+									borderWidth: '1px',
+									borderStyle: 'solid',
+									borderColor: 'border.tertiary',
+									backgroundColor: 'bg.secondary',
+									color: 'fg.primary',
+									paddingY: '1',
+									paddingX: '2',
+									fontFamily: 'var(--font-mono)',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary', outline: 'none' }
+								})}
 								value={effectiveMemoryGb}
 								onchange={(e) => setMemoryGb(parseInt(e.currentTarget.value) || 0)}
 							>
@@ -444,7 +725,16 @@
 								{/each}
 							</select>
 							{#if isUsingDefaultMemory}
-								<span class="min-w-12.5 text-[9px] italic text-fg-tertiary">(default)</span>
+								<span
+									class={css({
+										minWidth: '3.125rem',
+										fontSize: '9px',
+										fontStyle: 'italic',
+										color: 'fg.tertiary'
+									})}
+								>
+									(default)
+								</span>
 							{/if}
 						</div>
 					</div>
@@ -455,17 +745,56 @@
 		<!-- Action Button -->
 		{#if onChangeDatasource}
 			<button
-				class="change-source-btn mx-4 mb-4 flex w-[calc(100%-2rem)] cursor-pointer items-center justify-center gap-2 border border-tertiary bg-secondary text-fg-muted p-2 px-3 text-[0.6875rem] font-medium hover:bg-tertiary hover:text-fg-primary hover:border-accent-primary [&:hover_svg]:opacity-100"
+				class={cx(
+					'change-source-btn',
+					css({
+						marginX: '4',
+						marginBottom: '4',
+						display: 'flex',
+						width: 'calc(100% - 2rem)',
+						cursor: 'pointer',
+						alignItems: 'center',
+						justifyContent: 'center',
+						gap: '2',
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.tertiary',
+						backgroundColor: 'bg.secondary',
+						color: 'fg.muted',
+						paddingY: '2',
+						paddingX: '3',
+						fontSize: '0.6875rem',
+						fontWeight: '500',
+						_hover: {
+							backgroundColor: 'bg.tertiary',
+							color: 'fg.primary',
+							borderColor: 'accent.primary',
+							'& svg': { opacity: '1' }
+						}
+					})
+				)}
 				onclick={onChangeDatasource}
 				type="button"
 			>
-				<RefreshCw size={14} class="opacity-70" />
+				<RefreshCw size={14} class={css({ opacity: '0.7' })} />
 				<span>change source</span>
 			</button>
 		{/if}
 	</div>
 
 	<div
-		class="absolute -bottom-1.25 left-1/2 z-2 h-2.5 w-2.5 -translate-x-1/2 bg-primary border-2 border-accent-primary"
+		class={css({
+			position: 'absolute',
+			bottom: '-0.3125rem',
+			left: '50%',
+			zIndex: '2',
+			height: '0.625rem',
+			width: '0.625rem',
+			transform: 'translateX(-50%)',
+			backgroundColor: 'bg.primary',
+			borderWidth: '2px',
+			borderStyle: 'solid',
+			borderColor: 'accent.primary'
+		})}
 	></div>
 </div>

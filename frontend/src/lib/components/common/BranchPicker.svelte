@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ChevronDown, Plus } from 'lucide-svelte';
 	import SearchableDropdown from '$lib/components/ui/SearchableDropdown.svelte';
+	import { css, cx } from '$lib/styles/panda';
 
 	interface BranchOption {
 		id: string;
@@ -84,9 +85,11 @@
 		rect: { left: number; top: number; width: number }
 	) {
 		if (!node) return;
-		node.style.setProperty('--popover-left', `${rect.left}px`);
-		node.style.setProperty('--popover-top', `${rect.top}px`);
-		node.style.setProperty('--popover-width', `${rect.width}px`);
+		node.style.left = `${rect.left}px`;
+		node.style.top = `${rect.top}px`;
+		node.style.width = `${rect.width}px`;
+		node.style.minWidth = `${rect.width}px`;
+		node.style.maxWidth = `${rect.width}px`;
 	}
 
 	function portal(node: HTMLElement, rect: { left: number; top: number; width: number }) {
@@ -145,7 +148,7 @@
 	onChange={handleChange}
 	{placeholder}
 	searchPlaceholder="Search branches..."
-	menuClass="branch-picker__menu fixed z-popover"
+	menuClass={css({ position: 'fixed', zIndex: 'popover' })}
 	menuAction={portal}
 	menuActionValue={popoverRect}
 	bind:searchValue
@@ -169,17 +172,40 @@
 })}
 	<button
 		type="button"
-		class="branch-picker__trigger"
+		class={css({
+			display: 'inline-flex',
+			alignItems: 'center',
+			justifyContent: 'space-between',
+			gap: '2',
+			width: '100%',
+			padding: '0.4rem 0.6rem',
+			borderWidth: '1px',
+			borderStyle: 'solid',
+			borderColor: 'border.primary',
+			background: 'bg.secondary',
+			color: 'fg.primary',
+			fontSize: 'xs',
+			textTransform: 'none'
+		})}
 		onclick={payload.onOpen}
 		aria-expanded={payload.open}
 		use:payload.triggerAction={undefined}
 	>
 		{#if currentValue}
-			<span class="column-label">{currentValue}</span>
+			<span
+				class={css({
+					flex: '1',
+					textAlign: 'left',
+					minWidth: '0',
+					overflow: 'hidden',
+					textOverflow: 'ellipsis',
+					whiteSpace: 'nowrap'
+				})}>{currentValue}</span
+			>
 		{:else}
-			<span class="column-placeholder">{placeholder}</span>
+			<span class={css({ color: 'fg.muted' })}>{placeholder}</span>
 		{/if}
-		<ChevronDown size={14} class="chevron" />
+		<ChevronDown size={14} class={cx(css({ color: 'fg.muted' }), css({ opacity: '0.7' }))} />
 	</button>
 {/snippet}
 
@@ -191,8 +217,28 @@
 	{@const option = payload.option as BranchOption}
 	<button
 		type="button"
-		class="column-option"
-		class:selected={payload.selected}
+		class={cx(
+			css({
+				minWidth: '0',
+				width: '100%',
+				padding: '0.5rem 0.75rem',
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'transparent',
+				background: 'transparent',
+				textAlign: 'left',
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'flex-start',
+				gap: '2',
+				cursor: 'pointer',
+				color: 'fg.primary',
+				fontSize: 'sm',
+				'& span': { minWidth: '0', overflowWrap: 'anywhere' },
+				_hover: { backgroundColor: 'bg.hover', borderColor: 'border.primary' }
+			}),
+			payload.selected && css({ backgroundColor: 'bg.hover', borderColor: 'border.primary' })
+		)}
 		onclick={payload.onSelect}
 		role="option"
 		aria-selected={payload.selected}

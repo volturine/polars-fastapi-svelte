@@ -4,6 +4,7 @@
 	import { buildSnapshotMap } from '$lib/utils/build-snapshot-map';
 	import { Trash2, ChevronDown, Clock } from 'lucide-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
+	import { css, cx, spinner } from '$lib/styles/panda';
 
 	interface Props {
 		datasourceId: string;
@@ -455,30 +456,82 @@
 
 <div>
 	<button
-		class="engine-header flex w-full cursor-pointer items-center justify-between border border-tertiary bg-secondary p-2 px-3 hover:bg-tertiary"
+		class={cx(
+			'engine-header',
+			css({
+				display: 'flex',
+				width: '100%',
+				cursor: 'pointer',
+				alignItems: 'center',
+				justifyContent: 'space-between',
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'border.tertiary',
+				backgroundColor: 'bg.secondary',
+				padding: '2',
+				paddingX: '3',
+				_hover: { backgroundColor: 'bg.tertiary' }
+			})
+		)}
 		onclick={toggleSnapshots}
 		type="button"
 		bind:this={triggerRef}
 	>
-		<div class="flex items-center gap-2 text-xs uppercase tracking-wide text-fg-muted">
+		<div
+			class={css({
+				display: 'flex',
+				alignItems: 'center',
+				gap: '2',
+				fontSize: 'xs',
+				textTransform: 'uppercase',
+				letterSpacing: 'wide',
+				color: 'fg.muted'
+			})}
+		>
 			<Clock size={12} />
 			<span>{label}</span>
 		</div>
-		<div class="flex items-center gap-2">
+		<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 			{#if selectedSnapshotId}
 				<span
-					class="border border-tertiary bg-tertiary px-1.5 py-0.5 text-[10px] uppercase text-fg-muted"
+					class={css({
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.tertiary',
+						backgroundColor: 'bg.tertiary',
+						paddingX: '1.5',
+						paddingY: '0.5',
+						fontSize: '10px',
+						textTransform: 'uppercase',
+						color: 'fg.muted'
+					})}
 				>
 					{selectedSnapshotId}
 				</span>
 			{:else}
 				<span
-					class="border border-accent-primary bg-accent-bg px-1.5 py-0.5 text-[10px] uppercase text-accent-primary"
+					class={css({
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'accent.primary',
+						backgroundColor: 'accent.bg',
+						paddingX: '1.5',
+						paddingY: '0.5',
+						fontSize: '10px',
+						textTransform: 'uppercase',
+						color: 'accent.primary'
+					})}
 				>
 					Latest
 				</span>
 			{/if}
-			<span class="chevron flex items-center text-fg-muted" class:expanded={snapshotsOpen}>
+			<span
+				class={cx(
+					css({ color: 'fg.muted' }),
+					css({ display: 'flex', alignItems: 'center' }),
+					snapshotsOpen && css({ transform: 'rotate(180deg)' })
+				)}
+			>
 				<ChevronDown size={12} />
 			</span>
 		</div>
@@ -486,12 +539,39 @@
 
 	{#if snapshotsOpen}
 		<div
-			class="snapshot-picker__popover fixed z-overlay border border-tertiary bg-primary p-2 shadow flex flex-col gap-2"
+			class={css({
+				left: 'var(--popover-left)',
+				top: 'var(--popover-top)',
+				width: 'var(--popover-width)',
+				position: 'fixed',
+				zIndex: 'overlay',
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'border.tertiary',
+				backgroundColor: 'bg.primary',
+				padding: '2',
+				boxShadow: 'sm',
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '2'
+			})}
 			bind:this={popoverRef}
 			use:portal={popoverRect}
 		>
-			<div class="flex items-center justify-between border border-tertiary bg-secondary px-2 py-1">
-				<div class="text-xs text-fg-muted text-left">
+			<div
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'space-between',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.tertiary',
+					backgroundColor: 'bg.secondary',
+					paddingX: '2',
+					paddingY: '1'
+				})}
+			>
+				<div class={css({ fontSize: 'xs', color: 'fg.muted', textAlign: 'left' })}>
 					{#if selectedSnapshotId}
 						Current: #{selectedSnapshotId}
 						{#if selectedSnapshotLabel}
@@ -503,7 +583,17 @@
 				</div>
 				{#if selectedSnapshotId}
 					<button
-						class="border border-tertiary bg-primary px-2 py-1 text-[10px] uppercase text-fg-secondary"
+						class={css({
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.tertiary',
+							backgroundColor: 'bg.primary',
+							paddingX: '2',
+							paddingY: '1',
+							fontSize: '10px',
+							textTransform: 'uppercase',
+							color: 'fg.secondary'
+						})}
 						onclick={() => setSnapshot(null)}
 						type="button"
 					>
@@ -512,10 +602,28 @@
 				{/if}
 			</div>
 			{#if missingSnapshotId}
-				<div class="border border-warning bg-warning-bg px-2 py-1 text-[10px] text-warning-fg">
+				<div
+					class={css({
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'warning.border',
+						backgroundColor: 'warning.bg',
+						paddingX: '2',
+						paddingY: '1',
+						fontSize: '10px',
+						color: 'warning.fg'
+					})}
+				>
 					Selected snapshot #{missingSnapshotId} no longer exists.
 					<button
-						class="ml-2 border border-warning px-1.5 py-0.5"
+						class={css({
+							marginLeft: '2',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'warning.border',
+							paddingX: '1.5',
+							paddingY: '0.5'
+						})}
 						onclick={() => setSnapshot(null)}
 						type="button"
 					>
@@ -525,32 +633,62 @@
 			{/if}
 
 			{#if deleteError}
-				<div class="text-xs text-error-fg">{deleteError}</div>
+				<div class={css({ fontSize: 'xs', color: 'error.fg' })}>{deleteError}</div>
 			{/if}
 
 			{#if snapshotsLoading}
-				<div class="flex items-center gap-2 text-xs text-fg-tertiary">
-					<div class="spinner-sm"></div>
+				<div
+					class={css({
+						display: 'flex',
+						alignItems: 'center',
+						gap: '2',
+						fontSize: 'xs',
+						color: 'fg.tertiary'
+					})}
+				>
+					<div class={spinner({ size: 'sm' })}></div>
 					Loading snapshots...
 				</div>
 			{:else if snapshotsError}
-				<div class="text-xs text-error-fg">{snapshotsError}</div>
+				<div class={css({ fontSize: 'xs', color: 'error.fg' })}>{snapshotsError}</div>
 			{:else if snapshotList.length === 0}
-				<div class="text-xs text-fg-tertiary">No snapshots found.</div>
+				<div class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>No snapshots found.</div>
 			{:else}
-				<div class="flex gap-2">
-					<div class="flex flex-1 flex-col gap-2">
-						<div class="flex items-center gap-2">
+				<div class={css({ display: 'flex', gap: '2' })}>
+					<div class={css({ display: 'flex', flex: '1', flexDirection: 'column', gap: '2' })}>
+						<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 							<button
-								class="border border-tertiary bg-secondary px-2 py-1 text-xs"
+								class={css({
+									borderWidth: '1px',
+									borderStyle: 'solid',
+									borderColor: 'border.tertiary',
+									backgroundColor: 'bg.secondary',
+									paddingX: '2',
+									paddingY: '1',
+									fontSize: 'xs'
+								})}
 								onclick={() => shiftMonth(-1)}
 								type="button"
 							>
 								←
 							</button>
-							<span class="text-xs font-mono text-fg-secondary">{snapshotMonth}</span>
+							<span
+								class={css({
+									fontSize: 'xs',
+									fontFamily: 'var(--font-mono)',
+									color: 'fg.secondary'
+								})}>{snapshotMonth}</span
+							>
 							<button
-								class="border border-tertiary bg-secondary px-2 py-1 text-xs"
+								class={css({
+									borderWidth: '1px',
+									borderStyle: 'solid',
+									borderColor: 'border.tertiary',
+									backgroundColor: 'bg.secondary',
+									paddingX: '2',
+									paddingY: '1',
+									fontSize: 'xs'
+								})}
 								onclick={() => shiftMonth(1)}
 								type="button"
 							>
@@ -558,50 +696,116 @@
 							</button>
 						</div>
 
-						<div class="grid grid-cols-7 gap-1 border border-tertiary p-2">
+						<div
+							class={css({
+								display: 'grid',
+								gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+								gap: '1',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.tertiary',
+								padding: '2'
+							})}
+						>
 							{#each ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] as day (day)}
-								<div class="text-[10px] text-fg-tertiary text-center">{day}</div>
+								<div class={css({ fontSize: '10px', color: 'fg.tertiary', textAlign: 'center' })}>
+									{day}
+								</div>
 							{/each}
 							{#each calendarDays as day (day.key)}
 								{#if day.inMonth}
 									<button
-										class="relative h-9 border border-tertiary text-xs hover:bg-tertiary"
-										class:bg-tertiary={selectedDay === day.key}
+										class={cx(
+											css({
+												position: 'relative',
+												height: '9',
+												borderWidth: '1px',
+												borderStyle: 'solid',
+												borderColor: 'border.tertiary',
+												fontSize: 'xs',
+												_hover: { backgroundColor: 'bg.tertiary' }
+											}),
+											selectedDay === day.key ? css({ backgroundColor: 'bg.tertiary' }) : ''
+										)}
 										onclick={() => selectDay(day.key)}
 										type="button"
 									>
 										<span>{day.day}</span>
 										{#if day.count > 0}
 											<span
-												class="absolute right-1 top-1 bg-accent-bg px-1 text-[9px] text-accent-primary"
+												class={css({
+													position: 'absolute',
+													right: '1',
+													top: '1',
+													backgroundColor: 'accent.bg',
+													paddingX: '1',
+													fontSize: '9px',
+													color: 'accent.primary'
+												})}
 											>
 												{day.count}
 											</span>
 										{/if}
 									</button>
 								{:else}
-									<div class="h-9"></div>
+									<div class={css({ height: '9' })}></div>
 								{/if}
 							{/each}
 						</div>
 					</div>
-					<div class="w-50 max-h-56 overflow-y-auto overflow-x-hidden border border-tertiary">
+					<div
+						class={css({
+							width: '50',
+							maxHeight: '56',
+							overflowY: 'auto',
+							overflowX: 'hidden',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.tertiary'
+						})}
+					>
 						{#if selectedDay}
 							{#each filteredSnapshots as snap (snap.id)}
 								<div
-									class="flex w-full items-center justify-between gap-2 px-2 py-1 text-left text-xs hover:bg-tertiary"
-									class:bg-tertiary={selectedSnapshotId === snap.id ||
-										(!selectedSnapshotId && snap.is_current)}
+									class={cx(
+										css({
+											display: 'flex',
+											width: '100%',
+											alignItems: 'center',
+											justifyContent: 'space-between',
+											gap: '2',
+											paddingX: '2',
+											paddingY: '1',
+											textAlign: 'left',
+											fontSize: 'xs',
+											_hover: { backgroundColor: 'bg.tertiary' }
+										}),
+										selectedSnapshotId === snap.id || (!selectedSnapshotId && snap.is_current)
+											? css({ backgroundColor: 'bg.tertiary' })
+											: ''
+									)}
 								>
 									<button
-										class="flex flex-1 items-center justify-start gap-2 bg-transparent p-0 text-left"
+										class={css({
+											display: 'flex',
+											flex: '1',
+											alignItems: 'center',
+											justifyContent: 'flex-start',
+											gap: '2',
+											backgroundColor: 'transparent',
+											padding: '0',
+											textAlign: 'left'
+										})}
 										onclick={() => setSnapshot(snap.id, snap.timestamp)}
 										type="button"
 									>
 										<span
-											class="font-mono"
-											class:text-fg-secondary={selectedSnapshotId !== snap.id}
-											class:text-fg-primary={selectedSnapshotId === snap.id}
+											class={cx(
+												css({ fontFamily: 'var(--font-mono)' }),
+												selectedSnapshotId === snap.id
+													? css({ color: 'fg.primary' })
+													: css({ color: 'fg.secondary' })
+											)}
 										>
 											{formatSnapshotTime(snap.timestamp)}
 										</span>
@@ -609,7 +813,16 @@
 									{#if showDelete && !snap.is_current}
 										{#if deleteConfirmId === snap.id}
 											<button
-												class="border border-tertiary px-1.5 py-0.5 text-[10px] uppercase text-fg-secondary"
+												class={css({
+													borderWidth: '1px',
+													borderStyle: 'solid',
+													borderColor: 'border.tertiary',
+													paddingX: '1.5',
+													paddingY: '0.5',
+													fontSize: '10px',
+													textTransform: 'uppercase',
+													color: 'fg.secondary'
+												})}
 												onclick={() => deleteSnapshot(snap.id)}
 												disabled={deleteLoading}
 												type="button"
@@ -618,7 +831,17 @@
 												{:else}Confirm{/if}
 											</button>
 											<button
-												class="ml-1 border border-tertiary px-1.5 py-0.5 text-[10px] uppercase text-fg-secondary"
+												class={css({
+													marginLeft: '1',
+													borderWidth: '1px',
+													borderStyle: 'solid',
+													borderColor: 'border.tertiary',
+													paddingX: '1.5',
+													paddingY: '0.5',
+													fontSize: '10px',
+													textTransform: 'uppercase',
+													color: 'fg.secondary'
+												})}
 												onclick={() => (deleteConfirmId = null)}
 												type="button"
 											>
@@ -626,7 +849,14 @@
 											</button>
 										{:else}
 											<button
-												class="border border-tertiary p-1 text-fg-tertiary hover:text-error-fg"
+												class={css({
+													borderWidth: '1px',
+													borderStyle: 'solid',
+													borderColor: 'border.tertiary',
+													padding: '1',
+													color: 'fg.tertiary',
+													_hover: { color: 'error.fg' }
+												})}
 												onclick={() => (deleteConfirmId = snap.id)}
 												type="button"
 												aria-label="Delete snapshot"
@@ -638,7 +868,9 @@
 								</div>
 							{/each}
 						{:else}
-							<div class="p-2 text-xs text-fg-tertiary">Select a day to view builds.</div>
+							<div class={css({ padding: '2', fontSize: 'xs', color: 'fg.tertiary' })}>
+								Select a day to view builds.
+							</div>
 						{/if}
 					</div>
 				</div>

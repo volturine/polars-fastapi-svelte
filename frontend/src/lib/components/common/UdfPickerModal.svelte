@@ -3,6 +3,7 @@
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import { X } from 'lucide-svelte';
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
+	import { css, button } from '$lib/styles/panda';
 
 	interface Props {
 		show: boolean;
@@ -26,43 +27,139 @@
 	{onClose}
 	closeOnEscape={true}
 	closeOnBackdrop={true}
-	panelClass="w-full max-w-120 max-h-[90vh] overflow-y-auto border bg-dialog border-tertiary"
+	panelClass={css({
+		width: 'full',
+		maxWidth: '120',
+		maxHeight: '[90vh]',
+		overflowY: 'auto',
+		borderWidth: '1px',
+		borderStyle: 'solid',
+		borderColor: 'border.tertiary',
+		backgroundColor: 'bg.primary'
+	})}
 	ariaLabelledby="udf-modal-title"
 	{content}
 />
 
 {#snippet content()}
-	<div class="modal-header">
+	<div
+		class={css({
+			display: 'flex',
+			justifyContent: 'space-between',
+			alignItems: 'center',
+			padding: '0.75rem 1rem',
+			borderBottom: '1px solid var(--color-border-primary)',
+			'& h2': { margin: '0', fontSize: '1rem', color: 'fg.primary' }
+		})}
+	>
 		<h2 id="udf-modal-title">Select UDF</h2>
-		<button class="modal-close" onclick={onClose} aria-label="Close" type="button">
+		<button
+			class={css({
+				background: 'transparent',
+				border: 'none',
+				color: 'fg.muted',
+				cursor: 'pointer',
+				fontSize: '1.25rem',
+				padding: '0.25rem',
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'center',
+				transitionProperty: 'color, background-color',
+				transitionDuration: 'normal',
+				_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+			})}
+			onclick={onClose}
+			aria-label="Close"
+			type="button"
+		>
 			<X size={16} />
 		</button>
 	</div>
-	<div class="modal-body">
+	<div
+		class={css({
+			padding: '1rem',
+			overflowY: 'auto',
+			display: 'flex',
+			flexDirection: 'column',
+			gap: '0.75rem'
+		})}
+	>
 		<input name="search" type="text" placeholder="Search UDFs..." bind:value={search} />
-		<div class="flex flex-col gap-2 max-h-90 overflow-auto">
+		<div
+			class={css({
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '2',
+				maxHeight: '90',
+				overflow: 'auto'
+			})}
+		>
 			{#if filtered.length === 0}
-				<p class="m-0 text-fg-muted">No matching UDFs.</p>
+				<p class={css({ margin: '0', color: 'fg.muted' })}>No matching UDFs.</p>
 			{:else}
 				{#each filtered as udf (udf.id)}
-					<button class="row udf-row" type="button" onclick={() => onSelect(udf)}>
-						<div class="flex justify-between gap-3 font-medium">
+					<button
+						class={css({
+							textAlign: 'left',
+							padding: '0.75rem',
+							border: '1px solid',
+							borderColor: 'border.primary',
+							borderRadius: '0',
+							backgroundColor: 'bg.secondary',
+							color: 'fg.primary',
+							cursor: 'pointer',
+							_hover: { backgroundColor: 'bg.hover' }
+						})}
+						type="button"
+						onclick={() => onSelect(udf)}
+					>
+						<div
+							class={css({
+								display: 'flex',
+								justifyContent: 'space-between',
+								gap: '3',
+								fontWeight: 'medium'
+							})}
+						>
 							<span>{udf.name}</span>
-							<div class="flex items-center gap-1 flex-wrap">
+							<div
+								class={css({
+									display: 'flex',
+									alignItems: 'center',
+									gap: '1',
+									flexWrap: 'wrap'
+								})}
+							>
 								{#if udf.signature?.inputs?.length}
 									{#each udf.signature.inputs as input, i (i)}
 										<ColumnTypeBadge columnType={input.dtype} size="xs" showIcon={false} />
 										{#if i < udf.signature.inputs.length - 1}
-											<span class="text-xs mx-0.5 text-fg-muted">,</span>
+											<span class={css({ fontSize: 'xs', marginX: '0.5', color: 'fg.muted' })}
+												>,</span
+											>
 										{/if}
 									{/each}
 								{:else}
-									<span class="text-xs uppercase tracking-wide text-fg-muted">No inputs</span>
+									<span
+										class={css({
+											fontSize: 'xs',
+											textTransform: 'uppercase',
+											letterSpacing: 'wide',
+											color: 'fg.muted'
+										})}>No inputs</span
+									>
 								{/if}
 							</div>
 						</div>
 						{#if udf.description}
-							<p class="mt-2 mb-0 text-sm text-fg-secondary">
+							<p
+								class={css({
+									marginTop: '2',
+									marginBottom: '0',
+									fontSize: 'sm',
+									color: 'fg.secondary'
+								})}
+							>
 								{udf.description}
 							</p>
 						{/if}
@@ -71,7 +168,15 @@
 			{/if}
 		</div>
 	</div>
-	<div class="modal-footer">
-		<button class="btn-secondary" onclick={onClose} type="button">Close</button>
+	<div
+		class={css({
+			padding: '0.75rem 1rem',
+			borderTop: '1px solid var(--color-border-primary)',
+			display: 'flex',
+			justifyContent: 'flex-end',
+			gap: '0.5rem'
+		})}
+	>
+		<button class={button({ variant: 'secondary' })} onclick={onClose} type="button">Close</button>
 	</div>
 {/snippet}

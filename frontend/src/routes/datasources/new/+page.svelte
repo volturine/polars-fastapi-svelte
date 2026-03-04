@@ -14,6 +14,7 @@
 	import FileBrowser from '$lib/components/common/FileBrowser.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { Check, X } from 'lucide-svelte';
+	import { css, cx, button } from '$lib/styles/panda';
 
 	type Tab = 'file' | 'database' | 'path';
 
@@ -318,32 +319,91 @@
 	}
 </script>
 
-<div class="datasource-new-page mx-auto box-border max-w-200 p-8">
-	<header class="mb-8 flex items-center justify-between">
-		<h1 class="m-0 text-2xl font-semibold">Add Data Source</h1>
-		<a href={resolve('/datasources')} class="btn-secondary no-underline" data-sveltekit-reload
-			>Cancel</a
+<div class={css({ marginX: 'auto', boxSizing: 'border-box', maxWidth: '50rem', padding: '8' })}>
+	<header
+		class={css({
+			marginBottom: '8',
+			display: 'flex',
+			alignItems: 'center',
+			justifyContent: 'space-between'
+		})}
+	>
+		<h1 class={css({ margin: '0', fontSize: '2xl', fontWeight: 'semibold' })}>Add Data Source</h1>
+		<a
+			href={resolve('/datasources')}
+			class={cx(button({ variant: 'secondary' }), css({ textDecoration: 'none' }))}
+			data-sveltekit-reload
 		>
+			Cancel
+		</a>
 	</header>
 
-	<div class="mb-8 flex gap-2 border-b-2 border-tertiary">
+	<div
+		class={css({
+			marginBottom: '8',
+			display: 'flex',
+			gap: '2',
+			borderBottomWidth: '2px',
+			borderBottomStyle: 'solid',
+			borderBottomColor: 'border.tertiary'
+		})}
+	>
 		<button
-			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted hover:text-fg-secondary"
-			class:active={activeTab === 'file'}
+			class={css({
+				marginBottom: '-0.125rem',
+				borderBottomWidth: '2px',
+				borderBottomStyle: 'solid',
+				borderBottomColor: 'transparent',
+				paddingX: '6',
+				paddingY: '3',
+				fontSize: 'sm',
+				fontWeight: 'medium',
+				color: 'fg.muted',
+				_hover: { color: 'fg.secondary' },
+				...(activeTab === 'file'
+					? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
+					: {})
+			})}
 			onclick={() => (activeTab = 'file')}
 		>
 			File Upload
 		</button>
 		<button
-			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted hover:text-fg-secondary"
-			class:active={activeTab === 'database'}
+			class={css({
+				marginBottom: '-0.125rem',
+				borderBottomWidth: '2px',
+				borderBottomStyle: 'solid',
+				borderBottomColor: 'transparent',
+				paddingX: '6',
+				paddingY: '3',
+				fontSize: 'sm',
+				fontWeight: 'medium',
+				color: 'fg.muted',
+				_hover: { color: 'fg.secondary' },
+				...(activeTab === 'database'
+					? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
+					: {})
+			})}
 			onclick={() => (activeTab = 'database')}
 		>
 			External DB
 		</button>
 		<button
-			class="tab -mb-0.5 border-b-2 border-transparent px-6 py-3 text-sm font-medium text-fg-muted hover:text-fg-secondary"
-			class:active={activeTab === 'path'}
+			class={css({
+				marginBottom: '-0.125rem',
+				borderBottomWidth: '2px',
+				borderBottomStyle: 'solid',
+				borderBottomColor: 'transparent',
+				paddingX: '6',
+				paddingY: '3',
+				fontSize: 'sm',
+				fontWeight: 'medium',
+				color: 'fg.muted',
+				_hover: { color: 'fg.secondary' },
+				...(activeTab === 'path'
+					? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
+					: {})
+			})}
 			onclick={() => (activeTab = 'path')}
 		>
 			Iceberg Path
@@ -351,24 +411,64 @@
 	</div>
 
 	{#if error}
-		<div class="error-box">{error}</div>
+		<div
+			class={css({
+				padding: '0.625rem 0.75rem',
+				border: 'none',
+				borderLeft: '2px solid',
+				borderRadius: '0',
+				marginTop: '0.75rem',
+				marginBottom: '0',
+				fontSize: '0.75rem',
+				lineHeight: '1.5',
+				backgroundColor: 'transparent',
+				borderLeftColor: 'error.border',
+				color: 'error.fg'
+			})}
+		>
+			{error}
+		</div>
 	{/if}
 
-	<div class="card-base border p-8">
+	<div
+		class={css({
+			borderWidth: '1px',
+			borderStyle: 'solid',
+			borderColor: 'border.primary',
+			padding: '8'
+		})}
+	>
 		{#if activeTab === 'file'}
-			<div class="flex flex-col gap-6">
-				<div class="flex flex-col gap-2">
-					<span class="text-sm font-medium text-fg-secondary">Source</span>
-					<div class="flex flex-col gap-3">
-						<div class="border border-tertiary bg-secondary p-3">
-							<div class="text-sm font-medium">Upload</div>
-							<div class="text-xs text-fg-muted">Upload one or many files in one step</div>
+			<div class={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+					<span class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
+						>Source</span
+					>
+					<div class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
+						<div
+							class={css({
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.tertiary',
+								backgroundColor: 'bg.secondary',
+								padding: '3'
+							})}
+						>
+							<div class={css({ fontSize: 'sm', fontWeight: 'medium' })}>Upload</div>
+							<div class={css({ fontSize: 'xs', color: 'fg.muted' })}>
+								Upload one or many files in one step
+							</div>
 						</div>
 					</div>
 				</div>
 
-				<div class="flex flex-col gap-2">
-					<label for="file-input" class="text-sm font-medium text-fg-secondary">Files</label>
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+					<label
+						for="file-input"
+						class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
+					>
+						Files
+					</label>
 					<input
 						id="file-input"
 						type="file"
@@ -376,37 +476,99 @@
 						accept=".csv,.xlsx"
 						onchange={handleFileChange}
 						disabled={loading}
-						class="border border-input p-2"
+						class={css({
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.primary',
+							padding: '2'
+						})}
 					/>
-					<p class="m-0 text-xs leading-relaxed text-fg-muted">
+					<p class={css({ margin: '0', fontSize: 'xs', lineHeight: '1.625', color: 'fg.muted' })}>
 						Select one or more CSV or Excel files (one type per batch). Names are derived from
 						filenames.
 					</p>
 					{#if selectedFiles.length > 0}
-						<div class="mt-3 border border-tertiary bg-tertiary p-3">
+						<div
+							class={css({
+								marginTop: '3',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.tertiary',
+								backgroundColor: 'bg.tertiary',
+								padding: '3'
+							})}
+						>
 							<div
-								class="mb-2 flex items-center justify-between border-b border-tertiary pb-2 text-sm text-fg-secondary"
+								class={css({
+									marginBottom: '2',
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'space-between',
+									borderBottomWidth: '1px',
+									borderBottomStyle: 'solid',
+									borderBottomColor: 'border.tertiary',
+									paddingBottom: '2',
+									fontSize: 'sm',
+									color: 'fg.secondary'
+								})}
 							>
 								<span>{selectedFiles.length} file(s) selected</span>
 								<button
 									type="button"
-									class="btn-text border-none bg-transparent p-0 text-xs text-accent-primary hover:underline"
+									class={css({
+										border: 'none',
+										backgroundColor: 'transparent',
+										padding: '0',
+										fontSize: 'xs',
+										color: 'accent.primary',
+										_hover: { textDecoration: 'underline' }
+									})}
 									onclick={clearBulkSelection}
-									disabled={loading}>Clear all</button
+									disabled={loading}
 								>
+									Clear all
+								</button>
 							</div>
 							{#each selectedFiles as selectedFile, index (index)}
-								<div class="flex items-center justify-between border-b border-tertiary p-2">
+								<div
+									class={css({
+										display: 'flex',
+										alignItems: 'center',
+										justifyContent: 'space-between',
+										borderBottomWidth: '1px',
+										borderBottomStyle: 'solid',
+										borderBottomColor: 'border.tertiary',
+										padding: '2'
+									})}
+								>
 									<span
-										class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-sm text-fg-primary"
-										>{selectedFile.name}</span
+										class={css({
+											flex: '1',
+											overflow: 'hidden',
+											textOverflow: 'ellipsis',
+											whiteSpace: 'nowrap',
+											fontSize: 'sm',
+											color: 'fg.primary'
+										})}
 									>
+										{selectedFile.name}
+									</span>
 									<button
 										type="button"
-										class="btn-remove border-none bg-transparent p-1 text-lg leading-none text-fg-muted hover:text-error-fg"
+										class={css({
+											border: 'none',
+											backgroundColor: 'transparent',
+											padding: '1',
+											fontSize: 'lg',
+											lineHeight: 'none',
+											color: 'fg.muted',
+											_hover: { color: 'error.fg' }
+										})}
 										onclick={() => removeBulkFile(index)}
-										disabled={loading}>x</button
+										disabled={loading}
 									>
+										x
+									</button>
 								</div>
 							{/each}
 						</div>
@@ -414,35 +576,87 @@
 				</div>
 
 				{#if selectedFiles.length === 1}
-					<div class="flex flex-col gap-2">
-						<label for="file-name" class="text-sm font-medium text-fg-secondary">Name</label>
+					<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+						<label
+							for="file-name"
+							class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
+						>
+							Name
+						</label>
 						<input
 							id="file-name"
 							type="text"
 							bind:value={fileName}
 							placeholder="My Dataset"
 							disabled={loading}
-							class="input-base border px-3 py-2 text-sm"
+							class={css({
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.primary',
+								backgroundColor: 'bg.primary',
+								paddingX: '3',
+								paddingY: '2',
+								fontSize: 'sm'
+							})}
 						/>
 						{#if file}
-							<p class="m-0 text-sm text-fg-secondary">Selected: {file.name}</p>
+							<p class={css({ margin: '0', fontSize: 'sm', color: 'fg.secondary' })}>
+								Selected: {file.name}
+							</p>
 						{/if}
 					</div>
 				{/if}
 
 				{#if batchType === 'csv'}
-					<div class="flex flex-col gap-3 border border-tertiary bg-tertiary p-4">
-						<h3 class="m-0 text-sm font-semibold text-fg-secondary">CSV Options</h3>
-						<div class="grid grid-cols-2 gap-3">
-							<div class="flex flex-col gap-1.5">
-								<label for="csv-delimiter" class="text-xs font-medium text-fg-secondary"
-									>Delimiter</label
+					<div
+						class={css({
+							display: 'flex',
+							flexDirection: 'column',
+							gap: '3',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.tertiary',
+							backgroundColor: 'bg.tertiary',
+							padding: '4'
+						})}
+					>
+						<h3
+							class={css({
+								margin: '0',
+								fontSize: 'sm',
+								fontWeight: 'semibold',
+								color: 'fg.secondary'
+							})}
+						>
+							CSV Options
+						</h3>
+						<div
+							class={css({
+								display: 'grid',
+								gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+								gap: '3'
+							})}
+						>
+							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
+								<label
+									for="csv-delimiter"
+									class={css({ fontSize: 'xs', fontWeight: 'medium', color: 'fg.secondary' })}
 								>
+									Delimiter
+								</label>
 								<select
 									id="csv-delimiter"
 									bind:value={csvDelimiter}
 									disabled={loading}
-									class="input-base border px-3 py-2 text-sm"
+									class={css({
+										borderWidth: '1px',
+										borderStyle: 'solid',
+										borderColor: 'border.primary',
+										backgroundColor: 'bg.primary',
+										paddingX: '3',
+										paddingY: '2',
+										fontSize: 'sm'
+									})}
 								>
 									<option value=",">Comma (,)</option>
 									<option value=";">Semicolon (;)</option>
@@ -451,28 +665,52 @@
 									<option value=" ">Space</option>
 								</select>
 							</div>
-							<div class="flex flex-col gap-1.5">
-								<label for="csv-quote" class="text-xs font-medium text-fg-secondary">Quote</label>
+							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
+								<label
+									for="csv-quote"
+									class={css({ fontSize: 'xs', fontWeight: 'medium', color: 'fg.secondary' })}
+								>
+									Quote
+								</label>
 								<select
 									id="csv-quote"
 									bind:value={csvQuoteChar}
 									disabled={loading}
-									class="input-base border px-3 py-2 text-sm"
+									class={css({
+										borderWidth: '1px',
+										borderStyle: 'solid',
+										borderColor: 'border.primary',
+										backgroundColor: 'bg.primary',
+										paddingX: '3',
+										paddingY: '2',
+										fontSize: 'sm'
+									})}
 								>
 									<option value="&quot;">Double Quote (")</option>
 									<option value="'">Single Quote (')</option>
 									<option value="">None</option>
 								</select>
 							</div>
-							<div class="flex flex-col gap-1.5">
-								<label for="csv-encoding" class="text-xs font-medium text-fg-secondary"
-									>Encoding</label
+							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
+								<label
+									for="csv-encoding"
+									class={css({ fontSize: 'xs', fontWeight: 'medium', color: 'fg.secondary' })}
 								>
+									Encoding
+								</label>
 								<select
 									id="csv-encoding"
 									bind:value={csvEncoding}
 									disabled={loading}
-									class="input-base border px-3 py-2 text-sm"
+									class={css({
+										borderWidth: '1px',
+										borderStyle: 'solid',
+										borderColor: 'border.primary',
+										backgroundColor: 'bg.primary',
+										paddingX: '3',
+										paddingY: '2',
+										fontSize: 'sm'
+									})}
 								>
 									<option value="utf8">UTF-8</option>
 									<option value="utf8-lossy">UTF-8 (lossy)</option>
@@ -480,58 +718,114 @@
 									<option value="ascii">ASCII</option>
 								</select>
 							</div>
-							<div class="flex flex-col gap-1.5">
-								<label for="csv-skip-rows" class="text-xs font-medium text-fg-secondary"
-									>Skip Rows</label
+							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
+								<label
+									for="csv-skip-rows"
+									class={css({ fontSize: 'xs', fontWeight: 'medium', color: 'fg.secondary' })}
 								>
+									Skip Rows
+								</label>
 								<input
 									id="csv-skip-rows"
 									type="number"
 									min="0"
 									bind:value={csvSkipRows}
 									disabled={loading}
-									class="input-base border px-3 py-2 text-sm"
+									class={css({
+										borderWidth: '1px',
+										borderStyle: 'solid',
+										borderColor: 'border.primary',
+										backgroundColor: 'bg.primary',
+										paddingX: '3',
+										paddingY: '2',
+										fontSize: 'sm'
+									})}
 								/>
 							</div>
 						</div>
-						<div class="flex items-center gap-2">
+						<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 							<input
 								id="csv-header"
 								type="checkbox"
 								bind:checked={csvHasHeader}
 								disabled={loading}
-								class="h-4 w-4 cursor-pointer"
+								class={css({ width: '1rem', height: '1rem', cursor: 'pointer' })}
 							/>
-							<label for="csv-header" class="m-0 text-sm text-fg-secondary"
-								>First row is header</label
+							<label
+								for="csv-header"
+								class={css({ margin: '0', fontSize: 'sm', color: 'fg.secondary' })}
 							>
+								First row is header
+							</label>
 						</div>
 					</div>
 				{/if}
 
 				{#if showBulkResults && bulkResults.length > 0}
-					<div class="mt-4 border border-tertiary bg-tertiary p-4">
-						<h4 class="m-0 mb-3 text-sm font-semibold text-fg-secondary">Upload Results</h4>
+					<div
+						class={css({
+							marginTop: '4',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.tertiary',
+							backgroundColor: 'bg.tertiary',
+							padding: '4'
+						})}
+					>
+						<h4
+							class={css({
+								margin: '0',
+								marginBottom: '3',
+								fontSize: 'sm',
+								fontWeight: 'semibold',
+								color: 'fg.secondary'
+							})}
+						>
+							Upload Results
+						</h4>
 						{#each bulkResults as result (result.name)}
 							<div
-								class="flex items-center gap-2 border-b border-tertiary p-2 text-sm"
-								class:text-success={result.success}
-								class:text-error={!result.success}
+								class={css({
+									display: 'flex',
+									alignItems: 'center',
+									gap: '2',
+									borderBottomWidth: '1px',
+									borderBottomStyle: 'solid',
+									borderBottomColor: 'border.tertiary',
+									padding: '2',
+									fontSize: 'sm',
+									color: result.success ? 'success.fg' : 'error.fg'
+								})}
 							>
-								<span class="w-5 text-center font-bold">
+								<span class={css({ width: '1.25rem', textAlign: 'center', fontWeight: 'bold' })}>
 									{#if result.success}
 										<Check size={12} />
 									{:else}
 										<X size={12} />
 									{/if}
 								</span>
-								<span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
-									>{result.name}</span
+								<span
+									class={css({
+										flex: '1',
+										overflow: 'hidden',
+										textOverflow: 'ellipsis',
+										whiteSpace: 'nowrap'
+									})}
 								>
+									{result.name}
+								</span>
 								{#if result.error}
-									<span class="max-w-50 overflow-hidden text-ellipsis text-xs text-fg-muted"
-										>{result.error}</span
+									<span
+										class={css({
+											maxWidth: '12.5rem',
+											overflow: 'hidden',
+											textOverflow: 'ellipsis',
+											fontSize: 'xs',
+											color: 'fg.muted'
+										})}
 									>
+										{result.error}
+									</span>
 								{/if}
 							</div>
 						{/each}
@@ -550,7 +844,7 @@
 				{/if}
 
 				<button
-					class="btn-primary"
+					class={button({ variant: 'primary' })}
 					onclick={selectedFiles.length === 1 ? handleFileUpload : handleBulkUpload}
 					disabled={loading ||
 						selectedFiles.length === 0 ||
@@ -564,77 +858,150 @@
 				</button>
 			</div>
 		{:else if activeTab === 'database'}
-			<div class="flex flex-col gap-6">
-				<div class="flex flex-col gap-2">
-					<label for="db-name" class="text-sm font-medium text-fg-secondary">Name</label>
+			<div class={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+					<label
+						for="db-name"
+						class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
+					>
+						Name
+					</label>
 					<input
 						id="db-name"
 						type="text"
 						bind:value={dbName}
 						placeholder="My Database"
 						disabled={loading}
-						class="border px-3 py-2 text-sm input-base"
+						class={css({
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.primary',
+							backgroundColor: 'bg.primary',
+							paddingX: '3',
+							paddingY: '2',
+							fontSize: 'sm'
+						})}
 					/>
 				</div>
 
-				<div class="flex flex-col gap-2">
-					<label for="connection-string" class="text-sm font-medium text-fg-secondary"
-						>Connection String</label
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+					<label
+						for="connection-string"
+						class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
 					>
+						Connection String
+					</label>
 					<input
 						id="connection-string"
 						type="text"
 						bind:value={connectionString}
 						placeholder="postgresql://user:pass@localhost/db"
 						disabled={loading}
-						class="border px-3 py-2 text-sm input-base"
+						class={css({
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.primary',
+							backgroundColor: 'bg.primary',
+							paddingX: '3',
+							paddingY: '2',
+							fontSize: 'sm'
+						})}
 					/>
-					<p class="m-0 text-xs text-fg-muted">Example: postgresql://user:pass@localhost/dbname</p>
+					<p class={css({ margin: '0', fontSize: 'xs', color: 'fg.muted' })}>
+						Example: postgresql://user:pass@localhost/dbname
+					</p>
 				</div>
 
-				<div class="flex flex-col gap-2">
-					<label for="query" class="text-sm font-medium text-fg-secondary">Query</label>
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+					<label
+						for="query"
+						class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
+					>
+						Query
+					</label>
 					<textarea
 						id="query"
 						bind:value={query}
 						placeholder="SELECT * FROM table"
 						rows="5"
 						disabled={loading}
-						class="resize-y border px-3 py-2 text-sm input-base"
+						class={css({
+							resize: 'vertical',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.primary',
+							backgroundColor: 'bg.primary',
+							paddingX: '3',
+							paddingY: '2',
+							fontSize: 'sm'
+						})}
 					></textarea>
 				</div>
 
-				<button class="btn-primary" onclick={handleDatabaseConnect} disabled={loading}>
+				<button
+					class={button({ variant: 'primary' })}
+					onclick={handleDatabaseConnect}
+					disabled={loading}
+				>
 					{loading ? 'Connecting...' : 'Connect'}
 				</button>
 			</div>
 		{:else if activeTab === 'path'}
-			<div class="flex flex-col gap-6">
-				<div class="flex flex-col gap-2">
-					<label for="iceberg-path-name" class="text-sm font-medium text-fg-secondary">Name</label>
+			<div class={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+					<label
+						for="iceberg-path-name"
+						class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
+					>
+						Name
+					</label>
 					<input
 						id="iceberg-path-name"
 						type="text"
 						bind:value={pathName}
 						placeholder="Existing Iceberg"
 						disabled={loading}
-						class="border px-3 py-2 text-sm input-base"
+						class={css({
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.primary',
+							backgroundColor: 'bg.primary',
+							paddingX: '3',
+							paddingY: '2',
+							fontSize: 'sm'
+						})}
 					/>
 				</div>
-				<div class="flex flex-col gap-2">
-					<label for="iceberg-path-value" class="text-sm font-medium text-fg-secondary"
-						>Table Root Path</label
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+					<label
+						for="iceberg-path-value"
+						class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
 					>
+						Table Root Path
+					</label>
 					<input
 						id="iceberg-path-value"
 						type="text"
 						bind:value={pathValue}
 						placeholder="/data/<namespace>/clean/<uuid>"
 						disabled={loading}
-						class="border px-3 py-2 text-sm input-base"
+						class={css({
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.primary',
+							backgroundColor: 'bg.primary',
+							paddingX: '3',
+							paddingY: '2',
+							fontSize: 'sm'
+						})}
 					/>
-					<div class="flex items-center gap-2">
-						<button class="btn-secondary" type="button" onclick={openPicker} disabled={loading}>
+					<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+						<button
+							class={button({ variant: 'secondary' })}
+							type="button"
+							onclick={openPicker}
+							disabled={loading}
+						>
 							Browse
 						</button>
 					</div>
@@ -646,7 +1013,11 @@
 						onselect={(path) => handlePathSelect(path)}
 					/>
 				{/if}
-				<button class="btn-primary" onclick={handlePathConnect} disabled={loading}>
+				<button
+					class={button({ variant: 'primary' })}
+					onclick={handlePathConnect}
+					disabled={loading}
+				>
 					{loading ? 'Connecting...' : 'Connect'}
 				</button>
 			</div>

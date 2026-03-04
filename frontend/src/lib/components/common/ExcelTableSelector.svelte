@@ -2,6 +2,7 @@
 	import { onDestroy, untrack } from 'svelte';
 	import { preflightExcel, preflightExcelFromPath, previewExcel } from '$lib/api/excel';
 	import DataTable from '$lib/components/common/DataTable.svelte';
+	import { css, cx, button } from '$lib/styles/panda';
 
 	interface ExcelConfig {
 		sheet_name: string;
@@ -413,13 +414,34 @@
 	});
 </script>
 
-<div class="excel-selector flex flex-col gap-4 border border-tertiary bg-tertiary p-4">
-	<div class="flex items-center justify-between">
-		<h3 class="m-0 text-sm font-semibold text-fg-secondary">Excel Table Selection</h3>
+<div
+	class={css({
+		display: 'flex',
+		flexDirection: 'column',
+		gap: '4',
+		borderWidth: '1px',
+		borderStyle: 'solid',
+		borderColor: 'border.tertiary',
+		backgroundColor: 'bg.tertiary',
+		padding: '4'
+	})}
+>
+	<div class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
+		<h3 class={css({ margin: '0', fontSize: 'sm', fontWeight: 'semibold', color: 'fg.secondary' })}>
+			Excel Table Selection
+		</h3>
 		<button
 			type="button"
-			class="btn-secondary"
-			class:unsaved={dirty}
+			class={dirty
+				? cx(
+						button({ variant: 'secondary' }),
+						css({
+							backgroundColor: 'warning.bg',
+							color: 'warning.fg',
+							borderColor: 'warning.border'
+						})
+					)
+				: button({ variant: 'secondary' })}
 			onclick={handleRefreshClick}
 			disabled={disabled || previewLoading}
 		>
@@ -428,18 +450,51 @@
 	</div>
 
 	{#if error}
-		<div class="error-box">{error}</div>
+		<div
+			class={css({
+				padding: '0.625rem 0.75rem',
+				border: 'none',
+				borderLeft: '2px solid',
+				borderRadius: '0',
+				marginTop: '0.75rem',
+				marginBottom: '0',
+				fontSize: '0.75rem',
+				lineHeight: '1.5',
+				backgroundColor: 'transparent',
+				borderLeftColor: 'error.border',
+				color: 'error.fg'
+			})}
+		>
+			{error}
+		</div>
 	{/if}
 
-	<div class="grid grid-cols-2 gap-4">
-		<div class="flex flex-col gap-2">
-			<label class="text-sm font-medium text-fg-secondary" for="excel-sheet">Sheet</label>
+	<div
+		class={css({
+			display: 'grid',
+			gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+			gap: '4'
+		})}
+	>
+		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+			<label
+				class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
+				for="excel-sheet">Sheet</label
+			>
 			<select
 				id="excel-sheet"
 				value={selectedSheet}
 				onchange={(event) => applySheet(event.currentTarget.value)}
 				disabled={disabled || previewLoading || !sheetNames.length}
-				class="border px-3 py-2 text-sm input-base"
+				class={css({
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.primary',
+					backgroundColor: 'bg.primary',
+					paddingX: '3',
+					paddingY: '2',
+					fontSize: 'sm'
+				})}
 			>
 				<option value="">Select sheet</option>
 				{#each sheetNames as sheet (sheet)}
@@ -447,14 +502,25 @@
 				{/each}
 			</select>
 		</div>
-		<div class="flex flex-col gap-2">
-			<label class="text-sm font-medium text-fg-secondary" for="excel-table">Excel Table</label>
+		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+			<label
+				class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
+				for="excel-table">Excel Table</label
+			>
 			<select
 				id="excel-table"
 				value={selectedTable}
 				onchange={(event) => applyTable(event.currentTarget.value)}
 				disabled={disabled || previewLoading || !selectedSheet}
-				class="border px-3 py-2 text-sm input-base"
+				class={css({
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.primary',
+					backgroundColor: 'bg.primary',
+					paddingX: '3',
+					paddingY: '2',
+					fontSize: 'sm'
+				})}
 			>
 				<option value="">Manual selection</option>
 				{#each tableMap[selectedSheet] ?? [] as table (table)}
@@ -462,14 +528,25 @@
 				{/each}
 			</select>
 		</div>
-		<div class="flex flex-col gap-2">
-			<label class="text-sm font-medium text-fg-secondary" for="excel-range">Named Range</label>
+		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+			<label
+				class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
+				for="excel-range">Named Range</label
+			>
 			<select
 				id="excel-range"
 				value={selectedRange}
 				onchange={(event) => applyNamedRange(event.currentTarget.value)}
 				disabled={disabled || previewLoading}
-				class="border px-3 py-2 text-sm input-base"
+				class={css({
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.primary',
+					backgroundColor: 'bg.primary',
+					paddingX: '3',
+					paddingY: '2',
+					fontSize: 'sm'
+				})}
 			>
 				<option value="">None</option>
 				{#each namedRanges as range (range)}
@@ -477,9 +554,10 @@
 				{/each}
 			</select>
 		</div>
-		<div class="flex flex-col gap-2">
-			<label class="text-sm font-medium text-fg-secondary" for="excel-cell-range"
-				>Manual Range</label
+		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+			<label
+				class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
+				for="excel-cell-range">Manual Range</label
 			>
 			<input
 				id="excel-cell-range"
@@ -493,57 +571,108 @@
 				}}
 				disabled={disabled || previewLoading}
 				placeholder="A1:D50"
-				class="border px-3 py-2 text-sm input-base"
+				class={css({
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.primary',
+					backgroundColor: 'bg.primary',
+					paddingX: '3',
+					paddingY: '2',
+					fontSize: 'sm'
+				})}
 			/>
-			<p class="m-0 text-xs text-fg-muted">Optional A1 range (use Sheet1!A1:D50).</p>
+			<p class={css({ margin: '0', fontSize: 'xs', color: 'fg.muted' })}>
+				Optional A1 range (use Sheet1!A1:D50).
+			</p>
 		</div>
 	</div>
 
-	<div class="flex items-center gap-2">
+	<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 		<input
 			id="excel-header"
 			type="checkbox"
 			bind:checked={excelHeader}
 			onchange={handleHeaderToggle}
 			disabled={disabled || previewLoading}
-			class="h-4 w-4 cursor-pointer"
+			class={css({ height: '4', width: '4', cursor: 'pointer' })}
 		/>
-		<label for="excel-header" class="m-0 text-sm font-medium text-fg-secondary"
+		<label
+			for="excel-header"
+			class={css({ margin: '0', fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
 			>First row is header</label
 		>
 	</div>
 
 	{#if preflightId}
-		<div class="overflow-hidden border border-tertiary bg-primary">
+		<div
+			class={css({
+				overflow: 'hidden',
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'border.tertiary',
+				backgroundColor: 'bg.primary'
+			})}
+		>
 			<div
-				class="flex flex-wrap gap-x-4 gap-y-1 px-3 py-1.5 text-[11px] font-medium bg-tertiary border-b border-tertiary text-fg-muted"
+				class={css({
+					display: 'flex',
+					flexWrap: 'wrap',
+					columnGap: '4',
+					rowGap: '1',
+					paddingX: '3',
+					paddingY: '1.5',
+					fontSize: 'xs',
+					fontWeight: 'medium',
+					backgroundColor: 'bg.tertiary',
+					borderBottomWidth: '1px',
+					borderBottomStyle: 'solid',
+					borderColor: 'border.tertiary',
+					color: 'fg.muted'
+				})}
 			>
-				<span class="flex items-center gap-1"
-					><span class="text-fg-tertiary">Start row:</span>
-					<span class="text-fg-primary font-semibold">{startRow + 1}</span></span
+				<span class={css({ display: 'flex', alignItems: 'center', gap: '1' })}
+					><span class={css({ color: 'fg.tertiary' })}>Start row:</span>
+					<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}>{startRow + 1}</span
+					></span
 				>
-				<span class="flex items-center gap-1"
-					><span class="text-fg-tertiary">Start col:</span>
-					<span class="text-fg-primary font-semibold">{cellLabel(startCol)}</span></span
+				<span class={css({ display: 'flex', alignItems: 'center', gap: '1' })}
+					><span class={css({ color: 'fg.tertiary' })}>Start col:</span>
+					<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}
+						>{cellLabel(startCol)}</span
+					></span
 				>
-				<span class="flex items-center gap-1"
-					><span class="text-fg-tertiary">End col:</span>
-					<span class="text-fg-primary font-semibold">{cellLabel(endCol)}</span></span
+				<span class={css({ display: 'flex', alignItems: 'center', gap: '1' })}
+					><span class={css({ color: 'fg.tertiary' })}>End col:</span>
+					<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}
+						>{cellLabel(endCol)}</span
+					></span
 				>
 				{#if endRow !== null}
-					<span class="flex items-center gap-1"
-						><span class="text-fg-tertiary">End row:</span>
-						<span class="text-fg-primary font-semibold">{endRow + 1}</span></span
+					<span class={css({ display: 'flex', alignItems: 'center', gap: '1' })}
+						><span class={css({ color: 'fg.tertiary' })}>End row:</span>
+						<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}>{endRow + 1}</span
+						></span
 					>
 				{/if}
 				{#if detectedEndRow !== null}
-					<span class="flex items-center gap-1"
-						><span class="text-fg-tertiary">Detected end:</span>
-						<span class="text-fg-primary font-semibold">{detectedEndRow + 1}</span></span
+					<span class={css({ display: 'flex', alignItems: 'center', gap: '1' })}
+						><span class={css({ color: 'fg.tertiary' })}>Detected end:</span>
+						<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}
+							>{detectedEndRow + 1}</span
+						></span
 					>
 				{/if}
 			</div>
-			<div class="excel-grid max-h-80 overflow-auto border-t border-tertiary">
+			<div
+				class={css({
+					contain: 'content',
+					maxHeight: '80',
+					overflow: 'auto',
+					borderTopWidth: '1px',
+					borderTopStyle: 'solid',
+					borderColor: 'border.tertiary'
+				})}
+			>
 				<DataTable
 					columns={previewColumns}
 					data={previewData}

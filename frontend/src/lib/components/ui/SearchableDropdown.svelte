@@ -2,6 +2,7 @@
 	import { Debounced } from 'runed';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { ChevronDown } from 'lucide-svelte';
+	import { css, cx } from '$lib/styles/panda';
 
 	import type { Snippet } from 'svelte';
 
@@ -233,7 +234,19 @@
 	});
 </script>
 
-<div class={`column-select ${containerClass}`.trim()} bind:this={menuRef}>
+<div
+	class={cx(
+		css({
+			position: 'relative',
+			display: 'flex',
+			flexDirection: 'column',
+			gap: '2',
+			minWidth: '160px'
+		}),
+		containerClass
+	)}
+	bind:this={menuRef}
+>
 	{#if triggerType === 'input'}
 		<input
 			type="text"
@@ -252,18 +265,61 @@
 	{:else}
 		<button
 			type="button"
-			class={`column-trigger ${triggerClass}`.trim()}
+			class={cx(
+				css({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '2',
+					padding: '0.5625rem 0.875rem',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.primary',
+					backgroundColor: 'bg.secondary',
+					color: 'fg.primary',
+					cursor: 'pointer',
+					justifyContent: 'space-between',
+					fontSize: '0.8125rem',
+					_focusVisible: {
+						outline: '2px solid var(--color-accent-secondary)',
+						outlineOffset: '2px'
+					}
+				}),
+				triggerClass
+			)}
 			onclick={openMenu}
 			aria-expanded={menuOpen}
 			use:setTriggerRef={undefined}
 			{disabled}
 		>
-			<span class={selectedCount > 0 ? 'column-label' : 'column-placeholder'}>{displayLabel}</span>
+			<span
+				class={selectedCount > 0
+					? css({
+							flex: '1',
+							textAlign: 'left',
+							minWidth: '0',
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+							whiteSpace: 'nowrap'
+						})
+					: css({ color: 'fg.muted' })}>{displayLabel}</span
+			>
 			{#if clearable && selectedCount > 0}
 				<span
 					role="button"
 					tabindex="0"
-					class="trigger-clear"
+					class={css({
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						width: '16px',
+						height: '16px',
+						flexShrink: '0',
+						color: 'fg.muted',
+						fontSize: '0.625rem',
+						lineHeight: '1',
+						cursor: 'pointer',
+						_hover: { color: 'fg.primary', backgroundColor: 'bg.tertiary' }
+					})}
 					onclick={(e) => {
 						e.stopPropagation();
 						updateValue(mode === 'multi' ? [] : '');
@@ -279,13 +335,32 @@
 					aria-label="Clear selection">✕</span
 				>
 			{:else}
-				<ChevronDown size={14} class="chevron" />
+				<ChevronDown size={14} class={css({ color: 'fg.muted' })} />
 			{/if}
 		</button>
 	{/if}
 	{#if menuOpen}
 		<div
-			class={`column-menu ${menuClass}`.trim()}
+			class={cx(
+				css({
+					position: 'absolute',
+					zIndex: 'dropdown',
+					top: 'calc(100% + 6px)',
+					left: '0',
+					minWidth: '100%',
+					width: '100%',
+					maxWidth: '100%',
+					backgroundColor: 'bg.primary',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.primary',
+					padding: '2',
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '2'
+				}),
+				menuClass
+			)}
 			role="listbox"
 			aria-multiselectable={mode === 'multi'}
 			aria-label={listAriaLabel}
@@ -293,7 +368,7 @@
 			bind:this={menuContainerRef}
 		>
 			{#if triggerType === 'button'}
-				<div class="column-search">
+				<div class={css({ padding: '0 0.5rem' })}>
 					<input
 						bind:this={searchInputRef}
 						id="{uid}-menu-search"
@@ -301,15 +376,57 @@
 						bind:value={searchValue}
 						type="text"
 						placeholder={searchPlaceholder}
-						class="column-search-input"
+						class={css({
+							width: '100%',
+							padding: '0.5rem 0.75rem',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.primary',
+							backgroundColor: 'bg.secondary',
+							color: 'fg.primary',
+							fontSize: 'sm',
+							fontFamily: 'inherit',
+							_focus: {
+								outline: 'none',
+								borderColor: 'border.primary',
+								backgroundColor: 'bg.primary'
+							},
+							_placeholder: { color: 'fg.muted' }
+						})}
 					/>
 				</div>
 			{/if}
 			{#if mode === 'multi' && showSelectAll}
-				<div class="flex gap-2 border-b p-2 bg-secondary border-tertiary">
+				<div
+					class={css({
+						display: 'flex',
+						gap: '2',
+						borderBottomWidth: '1px',
+						borderBottomStyle: 'solid',
+						borderBottomColor: 'border.tertiary',
+						padding: '2',
+						backgroundColor: 'bg.secondary'
+					})}
+				>
 					<button
 						type="button"
-						class="select-action-btn flex-1 cursor-pointer border bg-transparent px-2 py-1 text-xs border-tertiary text-fg-secondary"
+						class={css({
+							flex: '1',
+							cursor: 'pointer',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.tertiary',
+							backgroundColor: 'transparent',
+							paddingX: '2',
+							paddingY: '1',
+							fontSize: 'xs',
+							color: 'fg.secondary',
+							_hover: {
+								backgroundColor: 'bg.hover',
+								borderColor: 'border.primary',
+								color: 'accent.secondary'
+							}
+						})}
 						onclick={(event) => {
 							event.stopPropagation();
 							selectAll();
@@ -319,7 +436,23 @@
 					</button>
 					<button
 						type="button"
-						class="select-action-btn flex-1 cursor-pointer border bg-transparent px-2 py-1 text-xs border-tertiary text-fg-secondary"
+						class={css({
+							flex: '1',
+							cursor: 'pointer',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.tertiary',
+							backgroundColor: 'transparent',
+							paddingX: '2',
+							paddingY: '1',
+							fontSize: 'xs',
+							color: 'fg.secondary',
+							_hover: {
+								backgroundColor: 'bg.hover',
+								borderColor: 'border.primary',
+								color: 'accent.secondary'
+							}
+						})}
 						onclick={(event) => {
 							event.stopPropagation();
 							deselectAll();
@@ -329,9 +462,25 @@
 					</button>
 				</div>
 			{/if}
-			<div class="column-options">
+			<div
+				class={css({
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '2',
+					maxHeight: '220px',
+					overflowY: 'auto',
+					overflowX: 'hidden',
+					padding: '2',
+					scrollbarWidth: 'thin',
+					scrollbarColor: 'var(--color-border-primary) transparent'
+				})}
+			>
 				{#if filteredOptions.length === 0}
-					<div class="no-results">{emptyLabel}</div>
+					<div
+						class={css({ padding: '3', textAlign: 'center', color: 'fg.muted', fontSize: 'sm' })}
+					>
+						{emptyLabel}
+					</div>
 				{:else}
 					{#each filteredOptions as option (option.id)}
 						{@render renderOption({
@@ -347,7 +496,27 @@
 </div>
 
 {#if showSelectedList && mode === 'multi' && Array.isArray(value) && value.length > 0}
-	<div class="column-selected-list mt-2 max-h-15 overflow-y-auto border p-2 text-xs select-mono">
+	<div
+		class={cx(
+			css({
+				maxWidth: '100%',
+				overflowWrap: 'anywhere',
+				wordBreak: 'break-word',
+				whiteSpace: 'normal'
+			}),
+			css({ fontFamily: 'var(--font-mono)' }),
+			css({
+				marginTop: '2',
+				maxHeight: '15',
+				overflowY: 'auto',
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'border.tertiary',
+				padding: '2',
+				fontSize: 'xs'
+			})
+		)}
+	>
 		{value.join(', ')}
 	</div>
 {/if}

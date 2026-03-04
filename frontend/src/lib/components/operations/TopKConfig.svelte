@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
+	import { css } from '$lib/styles/panda';
 
 	interface Props {
 		schema: Schema;
@@ -19,9 +20,25 @@
 	}
 </script>
 
-<div class="config-panel" role="region" aria-label="Top K configuration">
-	<div class="form-group mb-5">
-		<div class="form-label">Column to sort by</div>
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+	role="region"
+	aria-label="Top K configuration"
+>
+	<div class={css({ marginBottom: '5' })}>
+		<div
+			class={css({
+				display: 'block',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				marginBottom: '1.5',
+				textTransform: 'uppercase',
+				letterSpacing: '0.05em'
+			})}
+		>
+			Column to sort by
+		</div>
 		<ColumnDropdown
 			{schema}
 			value={config.column ?? ''}
@@ -30,7 +47,7 @@
 		/>
 	</div>
 
-	<div class="form-group mb-5">
+	<div class={css({ marginBottom: '5' })}>
 		<label for="topk-input-k">Number of rows (k)</label>
 		<input
 			id="topk-input-k"
@@ -43,8 +60,8 @@
 		/>
 	</div>
 
-	<div class="form-group mb-0">
-		<label class="flex cursor-pointer items-center gap-3">
+	<div class={css({ marginBottom: '0' })}>
+		<label class={css({ display: 'flex', cursor: 'pointer', alignItems: 'center', gap: '3' })}>
 			<input
 				id="topk-checkbox-descending"
 				data-testid="topk-descending-checkbox"
@@ -55,8 +72,19 @@
 			/>
 			<span>Descending (largest first)</span>
 		</label>
-		<span id="topk-descending-help" class="sr-only"
-			>Sort in descending order (largest values first)</span
+		<span
+			id="topk-descending-help"
+			class={css({
+				position: 'absolute',
+				width: '1px',
+				height: '1px',
+				padding: '0',
+				margin: '-1px',
+				overflow: 'hidden',
+				clip: 'rect(0, 0, 0, 0)',
+				whiteSpace: 'nowrap',
+				border: '0'
+			})}>Sort in descending order (largest values first)</span
 		>
 	</div>
 </div>

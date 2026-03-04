@@ -8,6 +8,8 @@
 		config?: DownloadConfigData;
 	}
 
+	import { css, cx } from '$lib/styles/panda';
+
 	let { config = $bindable({ format: 'csv', filename: 'download' }) }: Props = $props();
 
 	const formats = [
@@ -20,9 +22,22 @@
 	];
 </script>
 
-<div class="config-panel">
-	<div class="form-section">
-		<label for="download-filename" class="flex flex-col gap-3">
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+>
+	<div
+		class={css({
+			marginBottom: '0',
+			padding: '0 0 1.25rem 0',
+			backgroundColor: 'transparent',
+			borderRadius: '0',
+			border: 'none'
+		})}
+	>
+		<label
+			for="download-filename"
+			class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}
+		>
 			Filename
 			<input
 				id="download-filename"
@@ -31,12 +46,34 @@
 				placeholder="download"
 			/>
 		</label>
-		<p class="mt-2 mb-0 text-sm font-normal text-fg-tertiary">
+		<p
+			class={css({
+				marginTop: '2',
+				marginBottom: '0',
+				fontSize: 'sm',
+				fontWeight: 'normal',
+				color: 'fg.tertiary'
+			})}
+		>
 			Name of the downloaded file (without extension)
 		</p>
 	</div>
-	<div class="form-section">
-		<label for="download-format" class="flex flex-col gap-3">
+	<div
+		class={cx(
+			css({
+				marginBottom: '0',
+				padding: '0 0 1.25rem 0',
+				backgroundColor: 'transparent',
+				borderRadius: '0',
+				border: 'none'
+			}),
+			css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+		)}
+	>
+		<label
+			for="download-format"
+			class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}
+		>
 			Format
 			<select id="download-format" bind:value={config.format}>
 				{#each formats as fmt (fmt.value)}
@@ -44,6 +81,16 @@
 				{/each}
 			</select>
 		</label>
-		<p class="mt-2 mb-0 text-sm font-normal text-fg-tertiary">File format for download</p>
+		<p
+			class={css({
+				marginTop: '2',
+				marginBottom: '0',
+				fontSize: 'sm',
+				fontWeight: 'normal',
+				color: 'fg.tertiary'
+			})}
+		>
+			File format for download
+		</p>
 	</div>
 </div>

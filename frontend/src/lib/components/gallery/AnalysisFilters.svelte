@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Search, X, Trash2 } from 'lucide-svelte';
+	import { css } from '$lib/styles/panda';
 
 	export type SortOption = 'newest' | 'oldest' | 'name-asc' | 'name-desc';
 
@@ -26,10 +27,34 @@
 	}: Props = $props();
 </script>
 
-<div class="mb-7 flex flex-wrap items-center gap-4 max-sm:flex-col max-sm:items-stretch">
-	<div class="relative min-w-55 max-w-105 flex-1 max-sm:max-w-none">
+<div
+	class={css({
+		marginBottom: '7',
+		display: 'flex',
+		flexWrap: 'wrap',
+		alignItems: 'center',
+		gap: '4',
+		smDown: { flexDirection: 'column', alignItems: 'stretch' }
+	})}
+>
+	<div
+		class={css({
+			position: 'relative',
+			minWidth: '55',
+			maxWidth: '105',
+			flex: '1',
+			smDown: { maxWidth: 'none' }
+		})}
+	>
 		<Search
-			class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted"
+			class={css({
+				pointerEvents: 'none',
+				position: 'absolute',
+				left: '3',
+				top: '50%',
+				transform: 'translateY(-50%)',
+				color: 'fg.muted'
+			})}
 			size={16}
 		/>
 		<input
@@ -39,11 +64,36 @@
 			placeholder="Search analyses..."
 			value={searchQuery}
 			oninput={(e) => onSearch((e.target as HTMLInputElement).value)}
-			class="search-input input-styled w-full border py-3 pl-10 pr-10 font-mono text-sm"
+			class={css({
+				width: '100%',
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'border.primary',
+				paddingY: '3',
+				paddingLeft: '10',
+				paddingRight: '10',
+				fontFamily: 'mono',
+				fontSize: 'sm',
+				color: 'fg.primary',
+				backgroundColor: 'bg.primary'
+			})}
 		/>
 		{#if searchQuery}
 			<button
-				class="clear-btn absolute right-2 top-1/2 flex -translate-y-1/2 cursor-pointer items-center justify-center border-none bg-transparent p-1 text-fg-muted"
+				class={css({
+					position: 'absolute',
+					right: '2',
+					top: '50%',
+					display: 'flex',
+					transform: 'translateY(-50%)',
+					cursor: 'pointer',
+					alignItems: 'center',
+					justifyContent: 'center',
+					borderWidth: '0',
+					backgroundColor: 'transparent',
+					padding: '1',
+					color: 'fg.muted'
+				})}
 				onclick={() => onSearch('')}
 				aria-label="Clear search"
 			>
@@ -52,15 +102,39 @@
 		{/if}
 	</div>
 
-	<div class="flex items-center gap-2 max-sm:justify-between">
-		<label for="sort-select" class="whitespace-nowrap text-xs font-medium text-fg-muted">
+	<div
+		class={css({
+			display: 'flex',
+			alignItems: 'center',
+			gap: '2',
+			smDown: { justifyContent: 'space-between' }
+		})}
+	>
+		<label
+			for="sort-select"
+			class={css({ whiteSpace: 'nowrap', fontSize: 'xs', fontWeight: 'medium', color: 'fg.muted' })}
+		>
 			Sort:
 		</label>
 		<select
 			id="sort-select"
 			value={sortOption}
 			onchange={(e) => onSort((e.target as HTMLSelectElement).value as SortOption)}
-			class="sort-select input-styled cursor-pointer appearance-none border bg-no-repeat py-2 pl-3 pr-8 font-mono text-sm max-sm:flex-1"
+			class={css({
+				cursor: 'pointer',
+				appearance: 'none',
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'border.primary',
+				backgroundColor: 'bg.primary',
+				paddingY: '2',
+				paddingLeft: '3',
+				paddingRight: '8',
+				fontFamily: 'mono',
+				fontSize: 'sm',
+				color: 'fg.primary',
+				smDown: { flex: '1' }
+			})}
 		>
 			<option value="newest">Newest</option>
 			<option value="oldest">Oldest</option>
@@ -70,21 +144,57 @@
 	</div>
 
 	{#if selectionCount > 0}
-		<div class="ml-auto flex items-center gap-2">
+		<div class={css({ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '2' })}>
 			<button
-				class="btn-text flex items-center gap-1 border border-transparent bg-transparent px-3 py-2 text-sm"
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '1',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'transparent',
+					backgroundColor: 'transparent',
+					paddingX: '3',
+					paddingY: '2',
+					fontSize: 'sm'
+				})}
 				onclick={onSelectAll}
 			>
 				Select All
 			</button>
 			<button
-				class="btn-text flex items-center gap-1 border border-transparent bg-transparent px-3 py-2 text-sm"
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '1',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'transparent',
+					backgroundColor: 'transparent',
+					paddingX: '3',
+					paddingY: '2',
+					fontSize: 'sm'
+				})}
 				onclick={onClearSelection}
 			>
 				<X size={14} />
 				Clear
 			</button>
-			<button class="btn-danger flex items-center gap-1" onclick={onBulkDelete}>
+			<button
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '1',
+					backgroundColor: 'error.bg',
+					color: 'error.fg',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'error.border',
+					paddingX: '3',
+					paddingY: '2'
+				})}
+				onclick={onBulkDelete}
+			>
 				<Trash2 size={14} />
 				Delete
 			</button>

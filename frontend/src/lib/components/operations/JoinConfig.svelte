@@ -8,6 +8,7 @@
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
 	import { X } from 'lucide-svelte';
+	import { css } from '$lib/styles/panda';
 
 	const _uid = $props.id();
 
@@ -101,9 +102,36 @@
 	);
 </script>
 
-<div class="config-panel" role="region" aria-label="Join configuration">
-	<div class="form-section" role="group" aria-labelledby="right-datasource-heading">
-		<h4 id="right-datasource-heading">Right Datasource</h4>
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+	role="region"
+	aria-label="Join configuration"
+>
+	<div
+		class={css({
+			marginBottom: '0',
+			padding: '0 0 1.25rem 0',
+			backgroundColor: 'transparent',
+			borderRadius: '0',
+			border: 'none'
+		})}
+		role="group"
+		aria-labelledby="right-datasource-heading"
+	>
+		<h4
+			id="right-datasource-heading"
+			class={css({
+				marginTop: '0',
+				marginBottom: '3',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em'
+			})}
+		>
+			Right Datasource
+		</h4>
 		<DatasourcePicker
 			datasources={datasourceOptions}
 			selected={config.right_source ?? ''}
@@ -115,15 +143,57 @@
 			}}
 		/>
 		{#if rightSchema}
-			<div id="join-schema-preview" class="mt-2 text-xs text-fg-muted" aria-live="polite">
+			<div
+				id="join-schema-preview"
+				class={css({ marginTop: '2', fontSize: 'xs', color: 'fg.muted' })}
+				aria-live="polite"
+			>
 				{rightSchema.columns.length} columns available
 			</div>
 		{/if}
 	</div>
 
-	<div class="form-section" role="group" aria-labelledby="join-type-heading">
-		<h4 id="join-type-heading">Join Type</h4>
-		<label for="join-select-type" class="sr-only">Select join type</label>
+	<div
+		class={css({
+			marginBottom: '0',
+			padding: '0 0 1.25rem 0',
+			paddingTop: '1.25rem',
+			borderTop: '1px solid',
+			borderTopColor: 'border.tertiary',
+			backgroundColor: 'transparent',
+			borderRadius: '0'
+		})}
+		role="group"
+		aria-labelledby="join-type-heading"
+	>
+		<h4
+			id="join-type-heading"
+			class={css({
+				marginTop: '0',
+				marginBottom: '3',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em'
+			})}
+		>
+			Join Type
+		</h4>
+		<label
+			for="join-select-type"
+			class={css({
+				position: 'absolute',
+				width: '1px',
+				height: '1px',
+				padding: '0',
+				margin: '-1px',
+				overflow: 'hidden',
+				clip: 'rect(0, 0, 0, 0)',
+				whiteSpace: 'nowrap',
+				border: '0'
+			})}>Select join type</label
+		>
 		<select id="join-select-type" data-testid="join-type-select" bind:value={config.how}>
 			{#each joinTypes as joinType (joinType.value)}
 				<option value={joinType.value}>{joinType.label}</option>
@@ -131,7 +201,17 @@
 		</select>
 		<div
 			id="join-type-help"
-			class="help-box leading-relaxed mt-3"
+			class={css({
+				color: 'fg.tertiary',
+				backgroundColor: 'transparent',
+				border: 'none',
+				borderLeft: '2px solid',
+				borderLeftColor: 'border.tertiary',
+				fontSize: '0.75rem',
+				padding: '0.5rem 0.75rem',
+				lineHeight: 'relaxed',
+				marginTop: '3'
+			})}
 			aria-describedby="join-type-help"
 		>
 			<strong>Inner:</strong> Only matching rows from both.<br />
@@ -143,14 +223,55 @@
 	</div>
 
 	{#if !isCrossJoin}
-		<div class="form-section" role="group" aria-labelledby="join-columns-heading">
-			<div class="flex justify-between items-center mb-5">
-				<h4 id="join-columns-heading" class="mb-0">Join Columns</h4>
+		<div
+			class={css({
+				marginBottom: '0',
+				padding: '0 0 1.25rem 0',
+				paddingTop: '1.25rem',
+				borderTop: '1px solid',
+				borderTopColor: 'border.tertiary',
+				backgroundColor: 'transparent',
+				borderRadius: '0'
+			})}
+			role="group"
+			aria-labelledby="join-columns-heading"
+		>
+			<div
+				class={css({
+					display: 'flex',
+					justifyContent: 'space-between',
+					alignItems: 'center',
+					marginBottom: '5'
+				})}
+			>
+				<h4
+					id="join-columns-heading"
+					class={css({
+						marginTop: '0',
+						marginBottom: '0',
+						fontSize: '0.6875rem',
+						fontWeight: '600',
+						color: 'fg.muted',
+						textTransform: 'uppercase',
+						letterSpacing: '0.08em'
+					})}
+				>
+					Join Columns
+				</h4>
 				<button
 					id="join-btn-add-column"
 					data-testid="join-add-column-button"
 					type="button"
-					class="btn-add py-1 px-3 border-none cursor-pointer text-sm bg-accent text-bg-primary hover:bg-accent-primary"
+					class={css({
+						paddingY: '1',
+						paddingX: '3',
+						border: 'none',
+						cursor: 'pointer',
+						fontSize: 'sm',
+						backgroundColor: 'accent.bg',
+						color: 'bg.primary',
+						_hover: { backgroundColor: 'accent.primary' }
+					})}
 					onclick={addJoinColumn}
 					aria-label="Add join column pair"
 				>
@@ -159,20 +280,45 @@
 			</div>
 
 			{#if (config.join_columns ?? []).length === 0}
-				<p id="join-columns-empty" class="empty-message">
+				<p
+					id="join-columns-empty"
+					class={css({
+						color: 'fg.muted',
+						fontStyle: 'italic',
+						textAlign: 'center',
+						padding: '1rem',
+						margin: '0'
+					})}
+				>
 					No join columns configured. Click "+ Add Join Column" to add one.
 				</p>
 			{/if}
 
 			{#each config.join_columns ?? [] as joinCol, _index (joinCol.id)}
 				<div
-					class="flex gap-3 items-end mb-3 border-l-2 border-l-tertiary pl-4 pb-3"
+					class={css({
+						display: 'flex',
+						gap: '3',
+						alignItems: 'end',
+						marginBottom: '3',
+						borderLeftWidth: '2px',
+						borderLeftStyle: 'solid',
+						borderLeftColor: 'border.tertiary',
+						paddingLeft: '4',
+						paddingBottom: '3'
+					})}
 					role="group"
 					aria-label={`Join column pair ${_index + 1}`}
 				>
-					<div class="flex-1">
-						<label for={`join-left-${joinCol.id}`} class="block text-xs mb-1 text-fg-muted"
-							>Left Column</label
+					<div class={css({ flex: '1' })}>
+						<label
+							for={`join-left-${joinCol.id}`}
+							class={css({
+								display: 'block',
+								fontSize: 'xs',
+								marginBottom: '1',
+								color: 'fg.muted'
+							})}>Left Column</label
 						>
 						<ColumnDropdown
 							{schema}
@@ -181,9 +327,15 @@
 							placeholder="Select..."
 						/>
 					</div>
-					<div class="flex-1">
-						<label for={`join-right-${joinCol.id}`} class="block text-xs mb-1 text-fg-muted"
-							>Right Column</label
+					<div class={css({ flex: '1' })}>
+						<label
+							for={`join-right-${joinCol.id}`}
+							class={css({
+								display: 'block',
+								fontSize: 'xs',
+								marginBottom: '1',
+								color: 'fg.muted'
+							})}>Right Column</label
 						>
 						<ColumnDropdown
 							schema={{ columns: rightColumns, row_count: rightSchema?.row_count ?? 0 }}
@@ -196,7 +348,16 @@
 						id={`join-btn-remove-${_index}`}
 						data-testid={`join-remove-button-${_index}`}
 						type="button"
-						class="btn-remove p-2 bg-transparent cursor-pointer text-error-fg border border-error hover:bg-error"
+						class={css({
+							padding: '2',
+							backgroundColor: 'transparent',
+							cursor: 'pointer',
+							color: 'error.fg',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'error.border',
+							_hover: { backgroundColor: 'error.bg' }
+						})}
 						onclick={() => removeJoinColumn(joinCol.id)}
 						aria-label={`Remove join column pair ${_index + 1}`}
 					>
@@ -207,7 +368,23 @@
 
 			{#if (config.join_columns ?? []).length > 0}
 				{#if !(config.join_columns ?? []).some((c) => c.left_column && c.right_column)}
-					<div id="join-columns-warning" class="warning-box" role="alert">
+					<div
+						id="join-columns-warning"
+						class={css({
+							padding: '0.625rem 0.75rem',
+							border: 'none',
+							borderLeft: '2px solid',
+							borderRadius: '0',
+							marginTop: '0.75rem',
+							marginBottom: '0',
+							fontSize: '0.75rem',
+							lineHeight: '1.5',
+							backgroundColor: 'transparent',
+							borderLeftColor: 'warning.border',
+							color: 'fg.tertiary'
+						})}
+						role="alert"
+					>
 						Configure at least one join column pair
 					</div>
 				{/if}
@@ -215,11 +392,46 @@
 		</div>
 	{/if}
 
-	<div class="form-section" role="group" aria-labelledby="right-columns-heading">
-		<h4 id="right-columns-heading">Columns from Right Dataset</h4>
+	<div
+		class={css({
+			marginBottom: '0',
+			padding: '0 0 1.25rem 0',
+			paddingTop: '1.25rem',
+			borderTop: '1px solid',
+			borderTopColor: 'border.tertiary',
+			backgroundColor: 'transparent',
+			borderRadius: '0'
+		})}
+		role="group"
+		aria-labelledby="right-columns-heading"
+	>
+		<h4
+			id="right-columns-heading"
+			class={css({
+				marginTop: '0',
+				marginBottom: '3',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em'
+			})}
+		>
+			Columns from Right Dataset
+		</h4>
 
 		{#if rightColumns.length === 0}
-			<p class="empty-message">Select a right datasource first</p>
+			<p
+				class={css({
+					color: 'fg.muted',
+					fontStyle: 'italic',
+					textAlign: 'center',
+					padding: '1rem',
+					margin: '0'
+				})}
+			>
+				Select a right datasource first
+			</p>
 		{:else}
 			<MultiSelectColumnDropdown
 				schema={{ columns: rightColumns, row_count: rightSchema?.row_count ?? 0 }}
@@ -231,14 +443,68 @@
 		{/if}
 
 		{#if rightColumns.length > 0 && (config.right_columns ?? []).length === 0}
-			<div id="join-right-columns-warning" class="warning-box" role="alert">
+			<div
+				id="join-right-columns-warning"
+				class={css({
+					padding: '0.625rem 0.75rem',
+					border: 'none',
+					borderLeft: '2px solid',
+					borderRadius: '0',
+					marginTop: '0.75rem',
+					marginBottom: '0',
+					fontSize: '0.75rem',
+					lineHeight: '1.5',
+					backgroundColor: 'transparent',
+					borderLeftColor: 'warning.border',
+					color: 'fg.tertiary'
+				})}
+				role="alert"
+			>
 				Select at least one column from the right dataset
 			</div>
 		{/if}
 	</div>
-	<div class="form-section" role="group" aria-labelledby="suffix-heading">
-		<h4 id="suffix-heading">Column Suffix</h4>
-		<label for="join-input-suffix" class="sr-only">Suffix for right dataset columns</label>
+	<div
+		class={css({
+			marginBottom: '0',
+			padding: '0 0 1.25rem 0',
+			paddingTop: '1.25rem',
+			borderTop: '1px solid',
+			borderTopColor: 'border.tertiary',
+			backgroundColor: 'transparent',
+			borderRadius: '0'
+		})}
+		role="group"
+		aria-labelledby="suffix-heading"
+	>
+		<h4
+			id="suffix-heading"
+			class={css({
+				marginTop: '0',
+				marginBottom: '3',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em'
+			})}
+		>
+			Column Suffix
+		</h4>
+		<label
+			for="join-input-suffix"
+			class={css({
+				position: 'absolute',
+				width: '1px',
+				height: '1px',
+				padding: '0',
+				margin: '-1px',
+				overflow: 'hidden',
+				clip: 'rect(0, 0, 0, 0)',
+				whiteSpace: 'nowrap',
+				border: '0'
+			})}>Suffix for right dataset columns</label
+		>
 		<input
 			id="join-input-suffix"
 			data-testid="join-suffix-input"
@@ -247,7 +513,10 @@
 			placeholder="_right"
 			aria-describedby="join-suffix-hint"
 		/>
-		<span id="join-suffix-hint" class="mt-1 block text-xs text-fg-muted">
+		<span
+			id="join-suffix-hint"
+			class={css({ marginTop: '1', display: 'block', fontSize: 'xs', color: 'fg.muted' })}
+		>
 			Suffix for columns from the right dataset (when names collide)
 		</span>
 	</div>

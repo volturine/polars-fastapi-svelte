@@ -5,6 +5,7 @@
 	import { idbGet, idbSet } from '$lib/utils/indexeddb';
 	import favicon from '$lib/assets/favicon.svg';
 	import { Sun, Moon, Settings } from 'lucide-svelte';
+	import { css, cx, iconButton, navLink } from '$lib/styles/panda';
 	import EngineMonitor from '$lib/components/common/EngineMonitor.svelte';
 	import IndexedDbButton from '$lib/components/common/IndexedDbButton.svelte';
 	import SettingsPopup from '$lib/components/common/SettingsPopup.svelte';
@@ -14,7 +15,8 @@
 	import { configStore } from '$lib/stores/config.svelte';
 	import { installAuditListeners, setAuditPage, track } from '$lib/utils/audit-log';
 	import { untrack } from 'svelte';
-	import '$lib/../app.css';
+	import 'styled-system/styles.css';
+	import '$lib/styles/global.css';
 
 	let { children } = $props();
 
@@ -147,44 +149,82 @@
 </svelte:head>
 
 <QueryClientProvider client={queryClient}>
-	<div class="flex h-screen flex-col">
-		<header class="sticky top-0 z-header bg-panel">
-			<div class="mx-auto flex max-w-300 items-center gap-6 px-6 py-3">
-				<div class="flex items-center gap-2">
+	<div class={css({ display: 'flex', height: '100vh', flexDirection: 'column' })}>
+		<header
+			class={css({
+				position: 'sticky',
+				top: '0',
+				zIndex: 'header',
+				backgroundColor: 'bg.panel'
+			})}
+		>
+			<div
+				class={css({
+					marginX: 'auto',
+					maxWidth: '300',
+					display: 'flex',
+					alignItems: 'center',
+					gap: '6',
+					paddingX: '6',
+					paddingY: '3'
+				})}
+			>
+				<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 					<button
-						class="flex items-center gap-1 text-base font-semibold no-underline bg-transparent border-none p-0"
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							gap: '1',
+							fontSize: 'md',
+							fontWeight: 'semibold',
+							textDecoration: 'none',
+							backgroundColor: 'transparent',
+							borderWidth: '0',
+							padding: '0'
+						})}
 						onclick={openNamespace}
 						type="button"
 						aria-label="Select namespace"
 						bind:this={namespaceTrigger}
 					>
-						<span class="text-fg-primary">analysis</span>
-						<span class="text-fg-muted">/</span>
-						<span class="text-fg-tertiary">{namespaceDraft}</span>
+						<span class={css({ color: 'fg.primary' })}>analysis</span>
+						<span class={css({ color: 'fg.muted' })}>/</span>
+						<span class={css({ color: 'fg.tertiary' })}>{namespaceDraft}</span>
 					</button>
 				</div>
 
-				<nav class="flex items-center gap-1">
+				<nav class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
 					{#each navItems as item (item.href)}
 						<a
 							href={resolve(item.href as '/')}
-							class="nav-link border border-transparent px-3 py-1.5 text-sm text-fg-tertiary no-underline hover:text-fg-primary"
-							class:active={currentPath === item.href ||
-								(currentPath.startsWith('/analysis') && item.href === '/') ||
-								(currentPath.startsWith('/udfs') && item.href === '/udfs') ||
-								(currentPath.startsWith('/monitoring') && item.href === '/monitoring') ||
-								(currentPath.startsWith('/lineage') && item.href === '/lineage')}
+							class={cx(
+								navLink({
+									active:
+										currentPath === item.href ||
+										(currentPath.startsWith('/analysis') && item.href === '/') ||
+										(currentPath.startsWith('/udfs') && item.href === '/udfs') ||
+										(currentPath.startsWith('/monitoring') && item.href === '/monitoring') ||
+										(currentPath.startsWith('/lineage') && item.href === '/lineage')
+								})
+							)}
 						>
 							{item.label}
 						</a>
 					{/each}
 				</nav>
 
-				<div class="ml-auto flex items-center gap-2">
+				<div
+					class={css({
+						marginLeft: 'auto',
+						display: 'flex',
+						alignItems: 'center',
+						gap: '2'
+					})}
+				>
 					<EngineMonitor />
 					<IndexedDbButton />
 					<button
-						class="flex items-center justify-center border border-tertiary bg-bg-primary p-2 text-fg-secondary hover:bg-bg-hover hover:text-fg-primary"
+						class={iconButton()}
 						onclick={() => (settingsOpen = true)}
 						title="Settings"
 						aria-label="Settings"
@@ -192,7 +232,7 @@
 						<Settings size={16} />
 					</button>
 					<button
-						class="theme-toggle flex items-center justify-center border border-tertiary bg-bg-primary p-2 text-fg-secondary hover:bg-bg-hover hover:text-fg-primary"
+						class={iconButton()}
 						onclick={toggleTheme}
 						title="Toggle theme"
 						aria-label="Toggle theme"
@@ -207,7 +247,9 @@
 			</div>
 		</header>
 
-		<main class="min-h-0 flex-1 overflow-y-auto bg-bg-secondary">
+		<main
+			class={css({ minHeight: '0', flex: '1', overflowY: 'auto', backgroundColor: 'bg.secondary' })}
+		>
 			{@render children()}
 		</main>
 	</div>

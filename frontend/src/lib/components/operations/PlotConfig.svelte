@@ -18,6 +18,7 @@
 		X
 	} from 'lucide-svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
+	import { css } from '$lib/styles/panda';
 
 	type PlotConfigData = Omit<PlotConfigBase, 'aggregation' | 'chart_type' | 'stack_mode'> & {
 		chart_type:
@@ -398,40 +399,157 @@
 	}
 </script>
 
-<div class="config-panel" role="region" aria-label="Plot configuration">
-	<div class="chart-type-section" role="group" aria-labelledby={`${uid}-plot-type`}>
-		<div class="chart-type-label" id={`${uid}-plot-type`}>Chart Type</div>
-		<div class="chart-type-grid">
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+	role="region"
+	aria-label="Plot configuration"
+>
+	<div
+		class={css({
+			padding: '3 0',
+			borderBottomWidth: '1px',
+			borderBottomStyle: 'solid',
+			borderBottomColor: 'border.tertiary'
+		})}
+		role="group"
+		aria-labelledby={`${uid}-plot-type`}
+	>
+		<div
+			class={css({
+				marginBottom: '2',
+				fontSize: '0.6875rem',
+				fontFamily: 'var(--font-mono)',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em',
+				color: 'fg.muted'
+			})}
+			id={`${uid}-plot-type`}
+		>
+			Chart Type
+		</div>
+		<div class={css({ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1' })}>
 			{#each chartTypeGrid as ct (ct.value)}
 				<button
 					type="button"
-					class="chart-type-btn"
-					class:active={plotConfig.chart_type === ct.value}
+					class={plotConfig.chart_type === ct.value
+						? css({
+								display: 'flex',
+								flexDirection: 'column',
+								alignItems: 'center',
+								justifyContent: 'center',
+								gap: '1',
+								paddingY: '2',
+								paddingX: '1',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'accent.secondary',
+								backgroundColor: 'accent.bg',
+								color: 'accent.primary',
+								fontSize: '0.625rem',
+								fontFamily: 'var(--font-mono)',
+								cursor: 'pointer'
+							})
+						: css({
+								display: 'flex',
+								flexDirection: 'column',
+								alignItems: 'center',
+								justifyContent: 'center',
+								gap: '1',
+								paddingY: '2',
+								paddingX: '1',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.primary',
+								backgroundColor: 'transparent',
+								color: 'fg.muted',
+								fontSize: '0.625rem',
+								fontFamily: 'var(--font-mono)',
+								cursor: 'pointer',
+								_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+							})}
 					onclick={() => (plotConfig.chart_type = ct.value)}
 					title={ct.label}
 					aria-pressed={plotConfig.chart_type === ct.value}
 					aria-label={ct.label}
 				>
-					<ct.icon size={18} class={ct.rotate ? 'rotate-90' : ''} aria-hidden="true" />
+					<ct.icon size={18} class={ct.rotate ? css({ rotate: '90deg' }) : ''} aria-hidden="true" />
 					<span>{ct.label}</span>
 				</button>
 			{/each}
 		</div>
 	</div>
 
-	<div class="plot-tabs border-b border-tertiary flex">
+	<div
+		class={css({
+			margin: '0',
+			display: 'flex',
+			borderBottomWidth: '1px',
+			borderBottomStyle: 'solid',
+			borderBottomColor: 'border.tertiary'
+		})}
+	>
 		<button
 			type="button"
-			class="tab -mb-px bg-transparent border-b-2 border-transparent px-3 py-1.5 text-xs font-medium text-fg-muted hover:text-fg-secondary"
-			class:active={activeTab === 'data'}
+			class={activeTab === 'data'
+				? css({
+						marginBottom: '-1px',
+						backgroundColor: 'transparent',
+						borderBottomWidth: '2px',
+						borderBottomStyle: 'solid',
+						borderBottomColor: 'accent.secondary',
+						paddingX: '3',
+						paddingY: '1.5',
+						fontSize: 'xs',
+						fontWeight: '500',
+						color: 'accent.primary',
+						_hover: { color: 'fg.secondary' }
+					})
+				: css({
+						marginBottom: '-1px',
+						backgroundColor: 'transparent',
+						borderBottomWidth: '2px',
+						borderBottomStyle: 'solid',
+						borderBottomColor: 'transparent',
+						paddingX: '3',
+						paddingY: '1.5',
+						fontSize: 'xs',
+						fontWeight: '500',
+						color: 'fg.muted',
+						_hover: { color: 'fg.secondary' }
+					})}
 			onclick={() => (activeTab = 'data')}
 		>
 			Data
 		</button>
 		<button
 			type="button"
-			class="tab -mb-px bg-transparent border-b-2 border-transparent px-3 py-1.5 text-xs font-medium text-fg-muted hover:text-fg-secondary"
-			class:active={activeTab === 'look'}
+			class={activeTab === 'look'
+				? css({
+						marginBottom: '-1px',
+						backgroundColor: 'transparent',
+						borderBottomWidth: '2px',
+						borderBottomStyle: 'solid',
+						borderBottomColor: 'accent.secondary',
+						paddingX: '3',
+						paddingY: '1.5',
+						fontSize: 'xs',
+						fontWeight: '500',
+						color: 'accent.primary',
+						_hover: { color: 'fg.secondary' }
+					})
+				: css({
+						marginBottom: '-1px',
+						backgroundColor: 'transparent',
+						borderBottomWidth: '2px',
+						borderBottomStyle: 'solid',
+						borderBottomColor: 'transparent',
+						paddingX: '3',
+						paddingY: '1.5',
+						fontSize: 'xs',
+						fontWeight: '500',
+						color: 'fg.muted',
+						_hover: { color: 'fg.secondary' }
+					})}
 			onclick={() => (activeTab = 'look')}
 		>
 			Look
@@ -439,9 +557,32 @@
 	</div>
 
 	{#if activeTab === 'data'}
-		<div class="tab-content">
-			<div class="form-section" role="group" aria-labelledby={`${uid}-plot-x`}>
-				<h4 id={`${uid}-plot-x`}>X Column</h4>
+		<div class={css({ paddingTop: '5' })}>
+			<div
+				class={css({
+					marginBottom: '0',
+					padding: '0 0 1.25rem 0',
+					backgroundColor: 'transparent',
+					borderRadius: '0',
+					border: 'none'
+				})}
+				role="group"
+				aria-labelledby={`${uid}-plot-x`}
+			>
+				<h4
+					class={css({
+						marginTop: '0',
+						marginBottom: '3',
+						fontSize: '0.6875rem',
+						fontWeight: '600',
+						color: 'fg.muted',
+						textTransform: 'uppercase',
+						letterSpacing: '0.08em'
+					})}
+					id={`${uid}-plot-x`}
+				>
+					X Column
+				</h4>
 				<ColumnDropdown
 					{schema}
 					value={plotConfig.x_column}
@@ -451,8 +592,31 @@
 			</div>
 
 			{#if plotConfig.chart_type !== 'histogram' && plotConfig.chart_type !== 'heatgrid'}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-y`}>
-					<h4 id={`${uid}-plot-y`}>Y Column</h4>
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-y`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-y`}
+					>
+						Y Column
+					</h4>
 					<ColumnDropdown
 						{schema}
 						value={plotConfig.y_column}
@@ -463,8 +627,31 @@
 			{/if}
 
 			{#if needsHeatgridY}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-heat-y`}>
-					<h4 id={`${uid}-plot-heat-y`}>Heat Grid Y Column</h4>
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-heat-y`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-heat-y`}
+					>
+						Heat Grid Y Column
+					</h4>
 					<ColumnDropdown
 						{schema}
 						value={plotConfig.y_column}
@@ -475,16 +662,71 @@
 			{/if}
 
 			{#if needsBins}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-bins`}>
-					<h4 id={`${uid}-plot-bins`}>Bins</h4>
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-bins`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-bins`}
+					>
+						Bins
+					</h4>
 					<input id={`${uid}-bins`} type="number" min="2" max="100" bind:value={plotConfig.bins} />
 				</div>
 			{/if}
 
 			{#if needsAggregation}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-agg`}>
-					<h4 id={`${uid}-plot-agg`}>Aggregation</h4>
-					<select id={`${uid}-aggregation`} bind:value={plotConfig.aggregation} class="select-mono">
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-agg`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-agg`}
+					>
+						Aggregation
+					</h4>
+					<select
+						id={`${uid}-aggregation`}
+						bind:value={plotConfig.aggregation}
+						class={css({
+							backgroundColor: 'bg.secondary',
+							borderColor: 'border.primary',
+							color: 'fg.primary',
+							fontFamily: 'var(--font-mono, monospace)'
+						})}
+					>
 						{#each aggregations as agg (agg.value)}
 							<option value={agg.value}>{agg.label}</option>
 						{/each}
@@ -493,9 +735,41 @@
 			{/if}
 
 			{#if showStackMode}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-stack`}>
-					<h4 id={`${uid}-plot-stack`}>Stack Mode</h4>
-					<select id={`${uid}-stack-mode`} bind:value={plotConfig.stack_mode} class="select-mono">
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-stack`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-stack`}
+					>
+						Stack Mode
+					</h4>
+					<select
+						id={`${uid}-stack-mode`}
+						bind:value={plotConfig.stack_mode}
+						class={css({
+							backgroundColor: 'bg.secondary',
+							borderColor: 'border.primary',
+							color: 'fg.primary',
+							fontFamily: 'var(--font-mono, monospace)'
+						})}
+					>
 						<option value="grouped">Grouped</option>
 						<option value="stacked">Stacked</option>
 						<option value="100%">100%</option>
@@ -504,8 +778,31 @@
 			{/if}
 
 			{#if needsGroup}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-group`}>
-					<h4 id={`${uid}-plot-group`}>Segment By</h4>
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-group`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-group`}
+					>
+						Segment By
+					</h4>
 					<ColumnDropdown
 						{schema}
 						value={plotConfig.group_column ?? ''}
@@ -517,15 +814,54 @@
 			{/if}
 
 			{#if showGroupSort}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-group-sort`}>
-					<h4 id={`${uid}-plot-group-sort`}>Group Sorting</h4>
-					<div class="grid gap-3">
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-group-sort`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-group-sort`}
+					>
+						Group Sorting
+					</h4>
+					<div class={css({ display: 'grid', gap: '3' })}>
 						<div>
-							<label class="form-label" for={`${uid}-group-sort-by`}>Sort By</label>
+							<label
+								class={css({
+									display: 'block',
+									fontSize: '0.6875rem',
+									fontWeight: '600',
+									color: 'fg.muted',
+									marginBottom: '1.5',
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em'
+								})}
+								for={`${uid}-group-sort-by`}>Sort By</label
+							>
 							<select
 								id={`${uid}-group-sort-by`}
 								bind:value={plotConfig.group_sort_by}
-								class="select-mono"
+								class={css({
+									backgroundColor: 'bg.secondary',
+									borderColor: 'border.primary',
+									color: 'fg.primary',
+									fontFamily: 'var(--font-mono, monospace)'
+								})}
 							>
 								<option value={null}>Default</option>
 								<option value="name">Name</option>
@@ -534,11 +870,27 @@
 							</select>
 						</div>
 						<div>
-							<label class="form-label" for={`${uid}-group-sort-order`}>Order</label>
+							<label
+								class={css({
+									display: 'block',
+									fontSize: '0.6875rem',
+									fontWeight: '600',
+									color: 'fg.muted',
+									marginBottom: '1.5',
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em'
+								})}
+								for={`${uid}-group-sort-order`}>Order</label
+							>
 							<select
 								id={`${uid}-group-sort-order`}
 								bind:value={plotConfig.group_sort_order}
-								class="select-mono"
+								class={css({
+									backgroundColor: 'bg.secondary',
+									borderColor: 'border.primary',
+									color: 'fg.primary',
+									fontFamily: 'var(--font-mono, monospace)'
+								})}
 							>
 								<option value="asc">Ascending</option>
 								<option value="desc">Descending</option>
@@ -546,7 +898,19 @@
 						</div>
 						{#if plotConfig.group_sort_by === 'custom'}
 							<div>
-								<div class="form-label">Sort Column</div>
+								<div
+									class={css({
+										display: 'block',
+										fontSize: '0.6875rem',
+										fontWeight: '600',
+										color: 'fg.muted',
+										marginBottom: '1.5',
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em'
+									})}
+								>
+									Sort Column
+								</div>
 								<div>
 									<ColumnDropdown
 										{schema}
@@ -562,15 +926,54 @@
 			{/if}
 
 			{#if showDateBucket}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-date-bucket`}>
-					<h4 id={`${uid}-plot-date-bucket`}>Date Bucketing</h4>
-					<div class="grid gap-3">
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-date-bucket`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-date-bucket`}
+					>
+						Date Bucketing
+					</h4>
+					<div class={css({ display: 'grid', gap: '3' })}>
 						<div>
-							<label class="form-label" for={`${uid}-date-bucket`}>Bucket</label>
+							<label
+								class={css({
+									display: 'block',
+									fontSize: '0.6875rem',
+									fontWeight: '600',
+									color: 'fg.muted',
+									marginBottom: '1.5',
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em'
+								})}
+								for={`${uid}-date-bucket`}>Bucket</label
+							>
 							<select
 								id={`${uid}-date-bucket`}
 								bind:value={plotConfig.date_bucket}
-								class="select-mono"
+								class={css({
+									backgroundColor: 'bg.secondary',
+									borderColor: 'border.primary',
+									color: 'fg.primary',
+									fontFamily: 'var(--font-mono, monospace)'
+								})}
 							>
 								<option value={null}>None</option>
 								<option value="exact">Exact</option>
@@ -583,11 +986,27 @@
 							</select>
 						</div>
 						<div>
-							<label class="form-label" for={`${uid}-date-ordinal`}>Ordinal</label>
+							<label
+								class={css({
+									display: 'block',
+									fontSize: '0.6875rem',
+									fontWeight: '600',
+									color: 'fg.muted',
+									marginBottom: '1.5',
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em'
+								})}
+								for={`${uid}-date-ordinal`}>Ordinal</label
+							>
 							<select
 								id={`${uid}-date-ordinal`}
 								bind:value={plotConfig.date_ordinal}
-								class="select-mono"
+								class={css({
+									backgroundColor: 'bg.secondary',
+									borderColor: 'border.primary',
+									color: 'fg.primary',
+									fontFamily: 'var(--font-mono, monospace)'
+								})}
 							>
 								<option value={null}>None</option>
 								<option value="day_of_week">Day of Week</option>
@@ -596,17 +1015,69 @@
 							</select>
 						</div>
 					</div>
-					<p class="form-help">Applies when X column is a date/time field.</p>
+					<p
+						class={css({
+							marginTop: '2',
+							marginBottom: '0',
+							fontSize: '0.6875rem',
+							color: 'fg.muted'
+						})}
+					>
+						Applies when X column is a date/time field.
+					</p>
 				</div>
 			{/if}
 
 			{#if showSort}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-sort`}>
-					<h4 id={`${uid}-plot-sort`}>Sort Options</h4>
-					<div class="grid gap-3">
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-sort`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-sort`}
+					>
+						Sort Options
+					</h4>
+					<div class={css({ display: 'grid', gap: '3' })}>
 						<div>
-							<label class="form-label" for={`${uid}-sort-by`}>Sort By</label>
-							<select id={`${uid}-sort-by`} bind:value={plotConfig.sort_by} class="select-mono">
+							<label
+								class={css({
+									display: 'block',
+									fontSize: '0.6875rem',
+									fontWeight: '600',
+									color: 'fg.muted',
+									marginBottom: '1.5',
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em'
+								})}
+								for={`${uid}-sort-by`}>Sort By</label
+							>
+							<select
+								id={`${uid}-sort-by`}
+								bind:value={plotConfig.sort_by}
+								class={css({
+									backgroundColor: 'bg.secondary',
+									borderColor: 'border.primary',
+									color: 'fg.primary',
+									fontFamily: 'var(--font-mono, monospace)'
+								})}
+							>
 								<option value={null}>Default</option>
 								<option value="x">X value</option>
 								<option value="y">Y value</option>
@@ -614,11 +1085,27 @@
 							</select>
 						</div>
 						<div>
-							<label class="form-label" for={`${uid}-sort-order`}>Order</label>
+							<label
+								class={css({
+									display: 'block',
+									fontSize: '0.6875rem',
+									fontWeight: '600',
+									color: 'fg.muted',
+									marginBottom: '1.5',
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em'
+								})}
+								for={`${uid}-sort-order`}>Order</label
+							>
 							<select
 								id={`${uid}-sort-order`}
 								bind:value={plotConfig.sort_order}
-								class="select-mono"
+								class={css({
+									backgroundColor: 'bg.secondary',
+									borderColor: 'border.primary',
+									color: 'fg.primary',
+									fontFamily: 'var(--font-mono, monospace)'
+								})}
 							>
 								<option value="asc">Ascending</option>
 								<option value="desc">Descending</option>
@@ -626,7 +1113,19 @@
 						</div>
 						{#if plotConfig.sort_by === 'custom'}
 							<div>
-								<div class="form-label">Sort Column</div>
+								<div
+									class={css({
+										display: 'block',
+										fontSize: '0.6875rem',
+										fontWeight: '600',
+										color: 'fg.muted',
+										marginBottom: '1.5',
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em'
+									})}
+								>
+									Sort Column
+								</div>
 								<div>
 									<ColumnDropdown
 										{schema}
@@ -642,10 +1141,46 @@
 			{/if}
 
 			{#if showInteractivity}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-interactivity`}>
-					<h4 id={`${uid}-plot-interactivity`}>Interactivity</h4>
-					<div class="grid gap-3">
-						<label class="form-checkbox" for={`${uid}-plot-zoom`}>
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-interactivity`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-interactivity`}
+					>
+						Interactivity
+					</h4>
+					<div class={css({ display: 'grid', gap: '3' })}>
+						<label
+							class={css({
+								display: 'flex',
+								alignItems: 'center',
+								gap: '2',
+								fontSize: '0.8125rem',
+								color: 'fg.secondary',
+								marginBottom: '0',
+								fontWeight: 'normal',
+								textTransform: 'none',
+								letterSpacing: 'normal'
+							})}
+							for={`${uid}-plot-zoom`}
+						>
 							<input
 								id={`${uid}-plot-zoom`}
 								type="checkbox"
@@ -653,7 +1188,20 @@
 							/>
 							<span>Pan & Zoom</span>
 						</label>
-						<label class="form-checkbox" for={`${uid}-plot-select`}>
+						<label
+							class={css({
+								display: 'flex',
+								alignItems: 'center',
+								gap: '2',
+								fontSize: '0.8125rem',
+								color: 'fg.secondary',
+								marginBottom: '0',
+								fontWeight: 'normal',
+								textTransform: 'none',
+								letterSpacing: 'normal'
+							})}
+							for={`${uid}-plot-select`}
+						>
 							<input
 								id={`${uid}-plot-select`}
 								type="checkbox"
@@ -662,7 +1210,20 @@
 							<span>Click Selection</span>
 						</label>
 						{#if showAreaSelection}
-							<label class="form-checkbox" for={`${uid}-plot-area-select`}>
+							<label
+								class={css({
+									display: 'flex',
+									alignItems: 'center',
+									gap: '2',
+									fontSize: '0.8125rem',
+									color: 'fg.secondary',
+									marginBottom: '0',
+									fontWeight: 'normal',
+									textTransform: 'none',
+									letterSpacing: 'normal'
+								})}
+								for={`${uid}-plot-area-select`}
+							>
 								<input
 									id={`${uid}-plot-area-select`}
 									type="checkbox"
@@ -675,11 +1236,50 @@
 				</div>
 			{/if}
 
-			<div class="form-section" role="group" aria-labelledby={`${uid}-plot-overlays`}>
-				<h4 id={`${uid}-plot-overlays`}>Overlays</h4>
-				<div class="grid gap-3">
+			<div
+				class={css({
+					marginBottom: '0',
+					paddingBottom: '5',
+					paddingTop: '5',
+					backgroundColor: 'transparent',
+					borderRadius: '0',
+					border: 'none',
+					borderTopWidth: '1px',
+					borderTopStyle: 'solid',
+					borderTopColor: 'border.tertiary'
+				})}
+				role="group"
+				aria-labelledby={`${uid}-plot-overlays`}
+			>
+				<h4
+					class={css({
+						marginTop: '0',
+						marginBottom: '3',
+						fontSize: '0.6875rem',
+						fontWeight: '600',
+						color: 'fg.muted',
+						textTransform: 'uppercase',
+						letterSpacing: '0.08em'
+					})}
+					id={`${uid}-plot-overlays`}
+				>
+					Overlays
+				</h4>
+				<div class={css({ display: 'grid', gap: '3' })}>
 					<div>
-						<div class="form-label">Y Column</div>
+						<div
+							class={css({
+								display: 'block',
+								fontSize: '0.6875rem',
+								fontWeight: '600',
+								color: 'fg.muted',
+								marginBottom: '1.5',
+								textTransform: 'uppercase',
+								letterSpacing: '0.05em'
+							})}
+						>
+							Y Column
+						</div>
 						<ColumnDropdown
 							{schema}
 							value={overlayValue}
@@ -688,8 +1288,28 @@
 						/>
 					</div>
 					<div>
-						<label class="form-label" for={`${uid}-overlay-type`}>Chart Type</label>
-						<select id={`${uid}-overlay-type`} bind:value={overlayType} class="select-mono">
+						<label
+							class={css({
+								display: 'block',
+								fontSize: '0.6875rem',
+								fontWeight: '600',
+								color: 'fg.muted',
+								marginBottom: '1.5',
+								textTransform: 'uppercase',
+								letterSpacing: '0.05em'
+							})}
+							for={`${uid}-overlay-type`}>Chart Type</label
+						>
+						<select
+							id={`${uid}-overlay-type`}
+							bind:value={overlayType}
+							class={css({
+								backgroundColor: 'bg.secondary',
+								borderColor: 'border.primary',
+								color: 'fg.primary',
+								fontFamily: 'var(--font-mono, monospace)'
+							})}
+						>
 							<option value="line">Line</option>
 							<option value="area">Area</option>
 							<option value="bar">Bar</option>
@@ -697,15 +1317,55 @@
 						</select>
 					</div>
 					<div>
-						<label class="form-label" for={`${uid}-overlay-axis`}>Axis</label>
-						<select id={`${uid}-overlay-axis`} bind:value={overlayAxis} class="select-mono">
+						<label
+							class={css({
+								display: 'block',
+								fontSize: '0.6875rem',
+								fontWeight: '600',
+								color: 'fg.muted',
+								marginBottom: '1.5',
+								textTransform: 'uppercase',
+								letterSpacing: '0.05em'
+							})}
+							for={`${uid}-overlay-axis`}>Axis</label
+						>
+						<select
+							id={`${uid}-overlay-axis`}
+							bind:value={overlayAxis}
+							class={css({
+								backgroundColor: 'bg.secondary',
+								borderColor: 'border.primary',
+								color: 'fg.primary',
+								fontFamily: 'var(--font-mono, monospace)'
+							})}
+						>
 							<option value="left">Left</option>
 							<option value="right">Right</option>
 						</select>
 					</div>
 					<div>
-						<label class="form-label" for={`${uid}-overlay-agg`}>Aggregation</label>
-						<select id={`${uid}-overlay-agg`} bind:value={overlayAgg} class="select-mono">
+						<label
+							class={css({
+								display: 'block',
+								fontSize: '0.6875rem',
+								fontWeight: '600',
+								color: 'fg.muted',
+								marginBottom: '1.5',
+								textTransform: 'uppercase',
+								letterSpacing: '0.05em'
+							})}
+							for={`${uid}-overlay-agg`}>Aggregation</label
+						>
+						<select
+							id={`${uid}-overlay-agg`}
+							bind:value={overlayAgg}
+							class={css({
+								backgroundColor: 'bg.secondary',
+								borderColor: 'border.primary',
+								color: 'fg.primary',
+								fontFamily: 'var(--font-mono, monospace)'
+							})}
+						>
 							{#each aggregations as agg (agg.value)}
 								<option value={agg.value}>{agg.label}</option>
 							{/each}
@@ -713,7 +1373,23 @@
 					</div>
 					<button
 						type="button"
-						class="flex items-center gap-1 py-2 px-4 border-none cursor-pointer whitespace-nowrap bg-accent-bg text-accent-primary disabled:bg-border-tertiary disabled:cursor-not-allowed disabled:text-fg-muted"
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							gap: '1',
+							paddingY: '2',
+							paddingX: '4',
+							border: 'none',
+							cursor: 'pointer',
+							whiteSpace: 'nowrap',
+							backgroundColor: 'accent.bg',
+							color: 'accent.primary',
+							_disabled: {
+								backgroundColor: 'border.tertiary',
+								cursor: 'not-allowed',
+								color: 'fg.muted'
+							}
+						})}
 						onclick={addOverlay}
 						disabled={!overlayValue}
 						aria-label="Add overlay"
@@ -724,13 +1400,22 @@
 				</div>
 
 				{#if plotConfig.overlays.length > 0}
-					<div class="grid gap-2">
+					<div class={css({ display: 'grid', gap: '2' })}>
 						{#each plotConfig.overlays as overlay, index (index)}
 							<div
-								class="flex flex-wrap items-center gap-2 border border-tertiary p-2"
+								class={css({
+									display: 'flex',
+									flexWrap: 'wrap',
+									alignItems: 'center',
+									gap: '2',
+									borderWidth: '1px',
+									borderStyle: 'solid',
+									borderColor: 'border.tertiary',
+									padding: '2'
+								})}
 								role="group"
 							>
-								<div class="min-w-40 flex-1">
+								<div class={css({ minWidth: '10rem', flex: '1' })}>
 									<ColumnDropdown
 										{schema}
 										value={overlay.y_column}
@@ -741,7 +1426,12 @@
 								<select
 									id={`${uid}-overlay-${index}-type`}
 									aria-label="Overlay chart type"
-									class="select-mono"
+									class={css({
+										backgroundColor: 'bg.secondary',
+										borderColor: 'border.primary',
+										color: 'fg.primary',
+										fontFamily: 'var(--font-mono, monospace)'
+									})}
 									bind:value={overlay.chart_type}
 									onchange={(e) =>
 										updateOverlay(index, {
@@ -756,7 +1446,12 @@
 								<select
 									id={`${uid}-overlay-${index}-agg`}
 									aria-label="Overlay aggregation"
-									class="select-mono"
+									class={css({
+										backgroundColor: 'bg.secondary',
+										borderColor: 'border.primary',
+										color: 'fg.primary',
+										fontFamily: 'var(--font-mono, monospace)'
+									})}
 									bind:value={overlay.aggregation}
 									onchange={(e) =>
 										updateOverlay(index, {
@@ -770,7 +1465,12 @@
 								<select
 									id={`${uid}-overlay-${index}-yaxis`}
 									aria-label="Overlay Y axis position"
-									class="select-mono"
+									class={css({
+										backgroundColor: 'bg.secondary',
+										borderColor: 'border.primary',
+										color: 'fg.primary',
+										fontFamily: 'var(--font-mono, monospace)'
+									})}
 									bind:value={overlay.y_axis_position}
 									onchange={(e) =>
 										updateOverlay(index, {
@@ -782,7 +1482,25 @@
 								</select>
 								<button
 									type="button"
-									class="flex items-center justify-center w-7 h-7 p-0 bg-transparent cursor-pointer text-fg-secondary border border-transparent hover:bg-error! hover:text-error-fg! hover:border-error!"
+									class={css({
+										display: 'flex',
+										alignItems: 'center',
+										justifyContent: 'center',
+										width: '1.75rem',
+										height: '1.75rem',
+										padding: '0',
+										backgroundColor: 'transparent',
+										cursor: 'pointer',
+										color: 'fg.secondary',
+										borderWidth: '1px',
+										borderStyle: 'solid',
+										borderColor: 'transparent',
+										_hover: {
+											backgroundColor: 'error.bg',
+											color: 'error.fg',
+											borderColor: 'error.border'
+										}
+									})}
 									onclick={() => removeOverlay(index)}
 									title="Remove overlay"
 									aria-label="Remove overlay"
@@ -793,22 +1511,89 @@
 						{/each}
 					</div>
 				{:else}
-					<p class="form-help">No overlays configured.</p>
+					<p
+						class={css({
+							marginTop: '2',
+							marginBottom: '0',
+							fontSize: '0.6875rem',
+							color: 'fg.muted'
+						})}
+					>
+						No overlays configured.
+					</p>
 				{/if}
 			</div>
 
-			<div class="form-section" role="group" aria-labelledby={`${uid}-plot-reference-lines`}>
-				<h4 id={`${uid}-plot-reference-lines`}>Reference Lines</h4>
-				<div class="grid gap-3">
+			<div
+				class={css({
+					marginBottom: '0',
+					paddingBottom: '5',
+					paddingTop: '5',
+					backgroundColor: 'transparent',
+					borderRadius: '0',
+					border: 'none',
+					borderTopWidth: '1px',
+					borderTopStyle: 'solid',
+					borderTopColor: 'border.tertiary'
+				})}
+				role="group"
+				aria-labelledby={`${uid}-plot-reference-lines`}
+			>
+				<h4
+					class={css({
+						marginTop: '0',
+						marginBottom: '3',
+						fontSize: '0.6875rem',
+						fontWeight: '600',
+						color: 'fg.muted',
+						textTransform: 'uppercase',
+						letterSpacing: '0.08em'
+					})}
+					id={`${uid}-plot-reference-lines`}
+				>
+					Reference Lines
+				</h4>
+				<div class={css({ display: 'grid', gap: '3' })}>
 					<div>
-						<label class="form-label" for={`${uid}-ref-axis`}>Axis</label>
-						<select id={`${uid}-ref-axis`} bind:value={refAxis} class="select-mono">
+						<label
+							class={css({
+								display: 'block',
+								fontSize: '0.6875rem',
+								fontWeight: '600',
+								color: 'fg.muted',
+								marginBottom: '1.5',
+								textTransform: 'uppercase',
+								letterSpacing: '0.05em'
+							})}
+							for={`${uid}-ref-axis`}>Axis</label
+						>
+						<select
+							id={`${uid}-ref-axis`}
+							bind:value={refAxis}
+							class={css({
+								backgroundColor: 'bg.secondary',
+								borderColor: 'border.primary',
+								color: 'fg.primary',
+								fontFamily: 'var(--font-mono, monospace)'
+							})}
+						>
 							<option value="y">Y</option>
 							<option value="x">X</option>
 						</select>
 					</div>
 					<div>
-						<label class="form-label" for={`${uid}-ref-value`}>Value</label>
+						<label
+							class={css({
+								display: 'block',
+								fontSize: '0.6875rem',
+								fontWeight: '600',
+								color: 'fg.muted',
+								marginBottom: '1.5',
+								textTransform: 'uppercase',
+								letterSpacing: '0.05em'
+							})}
+							for={`${uid}-ref-value`}>Value</label
+						>
 						<input
 							id={`${uid}-ref-value`}
 							type="number"
@@ -818,7 +1603,18 @@
 						/>
 					</div>
 					<div>
-						<label class="form-label" for={`${uid}-ref-label`}>Label</label>
+						<label
+							class={css({
+								display: 'block',
+								fontSize: '0.6875rem',
+								fontWeight: '600',
+								color: 'fg.muted',
+								marginBottom: '1.5',
+								textTransform: 'uppercase',
+								letterSpacing: '0.05em'
+							})}
+							for={`${uid}-ref-label`}>Label</label
+						>
 						<input
 							id={`${uid}-ref-label`}
 							type="text"
@@ -828,7 +1624,18 @@
 						/>
 					</div>
 					<div>
-						<label class="form-label" for={`${uid}-ref-color`}>Color</label>
+						<label
+							class={css({
+								display: 'block',
+								fontSize: '0.6875rem',
+								fontWeight: '600',
+								color: 'fg.muted',
+								marginBottom: '1.5',
+								textTransform: 'uppercase',
+								letterSpacing: '0.05em'
+							})}
+							for={`${uid}-ref-color`}>Color</label
+						>
 						<input
 							id={`${uid}-ref-color`}
 							type="text"
@@ -839,7 +1646,23 @@
 					</div>
 					<button
 						type="button"
-						class="flex items-center gap-1 py-2 px-4 border-none cursor-pointer whitespace-nowrap bg-accent-bg text-accent-primary disabled:bg-border-tertiary disabled:cursor-not-allowed disabled:text-fg-muted"
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							gap: '1',
+							paddingY: '2',
+							paddingX: '4',
+							border: 'none',
+							cursor: 'pointer',
+							whiteSpace: 'nowrap',
+							backgroundColor: 'accent.bg',
+							color: 'accent.primary',
+							_disabled: {
+								backgroundColor: 'border.tertiary',
+								cursor: 'not-allowed',
+								color: 'fg.muted'
+							}
+						})}
 						onclick={addReferenceLine}
 						disabled={refValue.trim() === ''}
 						aria-label="Add reference line"
@@ -850,16 +1673,30 @@
 				</div>
 
 				{#if plotConfig.reference_lines.length > 0}
-					<div class="grid gap-2">
+					<div class={css({ display: 'grid', gap: '2' })}>
 						{#each plotConfig.reference_lines as line, index (index)}
 							<div
-								class="flex flex-wrap items-center gap-2 border border-tertiary p-2"
+								class={css({
+									display: 'flex',
+									flexWrap: 'wrap',
+									alignItems: 'center',
+									gap: '2',
+									borderWidth: '1px',
+									borderStyle: 'solid',
+									borderColor: 'border.tertiary',
+									padding: '2'
+								})}
 								role="group"
 							>
 								<select
 									id={`${uid}-ref-${index}-axis`}
 									aria-label="Reference line axis"
-									class="select-mono"
+									class={css({
+										backgroundColor: 'bg.secondary',
+										borderColor: 'border.primary',
+										color: 'fg.primary',
+										fontFamily: 'var(--font-mono, monospace)'
+									})}
 									bind:value={line.axis}
 									onchange={(e) =>
 										updateReferenceLine(index, {
@@ -904,7 +1741,25 @@
 								/>
 								<button
 									type="button"
-									class="flex items-center justify-center w-7 h-7 p-0 bg-transparent cursor-pointer text-fg-secondary border border-transparent hover:bg-error! hover:text-error-fg! hover:border-error!"
+									class={css({
+										display: 'flex',
+										alignItems: 'center',
+										justifyContent: 'center',
+										width: '1.75rem',
+										height: '1.75rem',
+										padding: '0',
+										backgroundColor: 'transparent',
+										cursor: 'pointer',
+										color: 'fg.secondary',
+										borderWidth: '1px',
+										borderStyle: 'solid',
+										borderColor: 'transparent',
+										_hover: {
+											backgroundColor: 'error.bg',
+											color: 'error.fg',
+											borderColor: 'error.border'
+										}
+									})}
 									onclick={() => removeReferenceLine(index)}
 									title="Remove reference line"
 									aria-label="Remove reference line"
@@ -915,16 +1770,48 @@
 						{/each}
 					</div>
 				{:else}
-					<p class="form-help">No reference lines configured.</p>
+					<p
+						class={css({
+							marginTop: '2',
+							marginBottom: '0',
+							fontSize: '0.6875rem',
+							color: 'fg.muted'
+						})}
+					>
+						No reference lines configured.
+					</p>
 				{/if}
 			</div>
 		</div>
 	{/if}
 
 	{#if activeTab === 'look'}
-		<div class="tab-content">
-			<div class="form-section" role="group" aria-labelledby={`${uid}-plot-title`}>
-				<h4 id={`${uid}-plot-title`}>Chart Title</h4>
+		<div class={css({ paddingTop: '5' })}>
+			<div
+				class={css({
+					marginBottom: '0',
+					padding: '0 0 1.25rem 0',
+					backgroundColor: 'transparent',
+					borderRadius: '0',
+					border: 'none'
+				})}
+				role="group"
+				aria-labelledby={`${uid}-plot-title`}
+			>
+				<h4
+					class={css({
+						marginTop: '0',
+						marginBottom: '3',
+						fontSize: '0.6875rem',
+						fontWeight: '600',
+						color: 'fg.muted',
+						textTransform: 'uppercase',
+						letterSpacing: '0.08em'
+					})}
+					id={`${uid}-plot-title`}
+				>
+					Chart Title
+				</h4>
 				<input
 					id={`${uid}-title`}
 					type="text"
@@ -935,12 +1822,40 @@
 			</div>
 
 			{#if showLegend}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-legend`}>
-					<h4 id={`${uid}-plot-legend`}>Legend Position</h4>
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-legend`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-legend`}
+					>
+						Legend Position
+					</h4>
 					<select
 						id={`${uid}-legend-position`}
 						bind:value={plotConfig.legend_position}
-						class="select-mono"
+						class={css({
+							backgroundColor: 'bg.secondary',
+							borderColor: 'border.primary',
+							color: 'fg.primary',
+							fontFamily: 'var(--font-mono, monospace)'
+						})}
 					>
 						<option value="right">Right</option>
 						<option value="left">Left</option>
@@ -952,11 +1867,45 @@
 			{/if}
 
 			{#if showAxisFormatting}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-axis`}>
-					<h4 id={`${uid}-plot-axis`}>Axis Formatting</h4>
-					<div class="grid gap-3">
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-axis`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-axis`}
+					>
+						Axis Formatting
+					</h4>
+					<div class={css({ display: 'grid', gap: '3' })}>
 						<div>
-							<label class="form-label" for={`${uid}-axis-x-label`}>X Axis Label</label>
+							<label
+								class={css({
+									display: 'block',
+									fontSize: '0.6875rem',
+									fontWeight: '600',
+									color: 'fg.muted',
+									marginBottom: '1.5',
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em'
+								})}
+								for={`${uid}-axis-x-label`}>X Axis Label</label
+							>
 							<input
 								id={`${uid}-axis-x-label`}
 								type="text"
@@ -966,7 +1915,18 @@
 							/>
 						</div>
 						<div>
-							<label class="form-label" for={`${uid}-axis-y-label`}>Y Axis Label</label>
+							<label
+								class={css({
+									display: 'block',
+									fontSize: '0.6875rem',
+									fontWeight: '600',
+									color: 'fg.muted',
+									marginBottom: '1.5',
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em'
+								})}
+								for={`${uid}-axis-y-label`}>Y Axis Label</label
+							>
 							<input
 								id={`${uid}-axis-y-label`}
 								type="text"
@@ -977,18 +1937,45 @@
 						</div>
 						{#if needsYAxis}
 							<div>
-								<label class="form-label" for={`${uid}-axis-y-scale`}>Y Axis Scale</label>
+								<label
+									class={css({
+										display: 'block',
+										fontSize: '0.6875rem',
+										fontWeight: '600',
+										color: 'fg.muted',
+										marginBottom: '1.5',
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em'
+									})}
+									for={`${uid}-axis-y-scale`}>Y Axis Scale</label
+								>
 								<select
 									id={`${uid}-axis-y-scale`}
 									bind:value={plotConfig.y_axis_scale}
-									class="select-mono"
+									class={css({
+										backgroundColor: 'bg.secondary',
+										borderColor: 'border.primary',
+										color: 'fg.primary',
+										fontFamily: 'var(--font-mono, monospace)'
+									})}
 								>
 									<option value="linear">Linear</option>
 									<option value="log">Log</option>
 								</select>
 							</div>
 							<div>
-								<label class="form-label" for={`${uid}-axis-y-min`}>Y Axis Min</label>
+								<label
+									class={css({
+										display: 'block',
+										fontSize: '0.6875rem',
+										fontWeight: '600',
+										color: 'fg.muted',
+										marginBottom: '1.5',
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em'
+									})}
+									for={`${uid}-axis-y-min`}>Y Axis Min</label
+								>
 								<input
 									id={`${uid}-axis-y-min`}
 									type="number"
@@ -999,7 +1986,18 @@
 								/>
 							</div>
 							<div>
-								<label class="form-label" for={`${uid}-axis-y-max`}>Y Axis Max</label>
+								<label
+									class={css({
+										display: 'block',
+										fontSize: '0.6875rem',
+										fontWeight: '600',
+										color: 'fg.muted',
+										marginBottom: '1.5',
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em'
+									})}
+									for={`${uid}-axis-y-max`}>Y Axis Max</label
+								>
 								<input
 									id={`${uid}-axis-y-max`}
 									type="number"
@@ -1011,11 +2009,27 @@
 							</div>
 						{/if}
 						<div>
-							<label class="form-label" for={`${uid}-axis-units`}>Display Units</label>
+							<label
+								class={css({
+									display: 'block',
+									fontSize: '0.6875rem',
+									fontWeight: '600',
+									color: 'fg.muted',
+									marginBottom: '1.5',
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em'
+								})}
+								for={`${uid}-axis-units`}>Display Units</label
+							>
 							<select
 								id={`${uid}-axis-units`}
 								bind:value={plotConfig.display_units}
-								class="select-mono"
+								class={css({
+									backgroundColor: 'bg.secondary',
+									borderColor: 'border.primary',
+									color: 'fg.primary',
+									fontFamily: 'var(--font-mono, monospace)'
+								})}
 							>
 								<option value="">None</option>
 								<option value="K">Thousands (K)</option>
@@ -1025,7 +2039,18 @@
 							</select>
 						</div>
 						<div>
-							<label class="form-label" for={`${uid}-axis-decimals`}>Decimal Places</label>
+							<label
+								class={css({
+									display: 'block',
+									fontSize: '0.6875rem',
+									fontWeight: '600',
+									color: 'fg.muted',
+									marginBottom: '1.5',
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em'
+								})}
+								for={`${uid}-axis-decimals`}>Decimal Places</label
+							>
 							<input
 								id={`${uid}-axis-decimals`}
 								type="number"
@@ -1041,8 +2066,31 @@
 			{/if}
 
 			{#if showAreaOpacity}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-area-opacity`}>
-					<h4 id={`${uid}-plot-area-opacity`}>Area Opacity</h4>
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-area-opacity`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-area-opacity`}
+					>
+						Area Opacity
+					</h4>
 					<input
 						id={`${uid}-area-opacity`}
 						type="number"
@@ -1053,13 +2101,45 @@
 						oninput={(e) => setAreaOpacity(e.currentTarget.value)}
 						onblur={commitAreaOpacity}
 					/>
-					<p class="form-help">Range 0–1</p>
+					<p
+						class={css({
+							marginTop: '2',
+							marginBottom: '0',
+							fontSize: '0.6875rem',
+							color: 'fg.muted'
+						})}
+					>
+						Range 0–1
+					</p>
 				</div>
 			{/if}
 
 			{#if showSeriesColors}
-				<div class="form-section" role="group" aria-labelledby={`${uid}-plot-colors`}>
-					<h4 id={`${uid}-plot-colors`}>Series Colors</h4>
+				<div
+					class={css({
+						marginBottom: '0',
+						padding: '0 0 1.25rem 0',
+						backgroundColor: 'transparent',
+						borderRadius: '0',
+						border: 'none'
+					})}
+					role="group"
+					aria-labelledby={`${uid}-plot-colors`}
+				>
+					<h4
+						class={css({
+							marginTop: '0',
+							marginBottom: '3',
+							fontSize: '0.6875rem',
+							fontWeight: '600',
+							color: 'fg.muted',
+							textTransform: 'uppercase',
+							letterSpacing: '0.08em'
+						})}
+						id={`${uid}-plot-colors`}
+					>
+						Series Colors
+					</h4>
 					<input
 						id={`${uid}-series-colors`}
 						type="text"
@@ -1067,18 +2147,84 @@
 						oninput={(e) => (plotConfig.series_colors = parseSeriesColors(e.currentTarget.value))}
 						placeholder="#4A8FE7, #50B88E, #E8A838"
 					/>
-					<p class="form-help">Comma-separated colors (hex or CSS names)</p>
+					<p
+						class={css({
+							marginTop: '2',
+							marginBottom: '0',
+							fontSize: '0.6875rem',
+							color: 'fg.muted'
+						})}
+					>
+						Comma-separated colors (hex or CSS names)
+					</p>
 				</div>
 			{/if}
 
-			<div class="form-section" role="group" aria-labelledby={`${uid}-plot-width`}>
-				<h4 id={`${uid}-plot-width`}>Chart Width</h4>
-				<div class="seg-buttons" role="group" aria-label="Chart width">
+			<div
+				class={css({
+					marginBottom: '0',
+					paddingBottom: '5',
+					paddingTop: '5',
+					backgroundColor: 'transparent',
+					borderRadius: '0',
+					border: 'none',
+					borderTopWidth: '1px',
+					borderTopStyle: 'solid',
+					borderTopColor: 'border.tertiary'
+				})}
+				role="group"
+				aria-labelledby={`${uid}-plot-width`}
+			>
+				<h4
+					class={css({
+						marginTop: '0',
+						marginBottom: '3',
+						fontSize: '0.6875rem',
+						fontWeight: '600',
+						color: 'fg.muted',
+						textTransform: 'uppercase',
+						letterSpacing: '0.08em'
+					})}
+					id={`${uid}-plot-width`}
+				>
+					Chart Width
+				</h4>
+				<div class={css({ display: 'flex', gap: '1' })} role="group" aria-label="Chart width">
 					{#each [{ value: 'normal', label: 'Normal' }, { value: 'wide', label: 'Wide' }, { value: 'full', label: 'Full' }] as opt (opt.value)}
 						<button
 							type="button"
-							class="seg-btn"
-							class:active={(plotConfig.chart_width ?? 'normal') === opt.value}
+							class={(plotConfig.chart_width ?? 'normal') === opt.value
+								? css({
+										flex: '1',
+										paddingY: '1.5',
+										paddingX: '2',
+										borderWidth: '1px',
+										borderStyle: 'solid',
+										borderColor: 'accent.secondary',
+										backgroundColor: 'accent.bg',
+										color: 'accent.primary',
+										fontSize: '0.6875rem',
+										fontFamily: 'var(--font-mono)',
+										cursor: 'pointer',
+										textAlign: 'center',
+										letterSpacing: '0.04em'
+									})
+								: css({
+										flex: '1',
+										paddingY: '1.5',
+										paddingX: '2',
+										borderWidth: '1px',
+										borderStyle: 'solid',
+										borderColor: 'border.primary',
+										backgroundColor: 'transparent',
+										color: 'fg.muted',
+										fontSize: '0.6875rem',
+										fontFamily: 'var(--font-mono)',
+										cursor: 'pointer',
+										textAlign: 'center',
+										letterSpacing: '0.04em',
+										_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+									})}
 							onclick={() => (plotConfig.chart_width = opt.value as PlotConfigData['chart_width'])}
 							aria-pressed={(plotConfig.chart_width ?? 'normal') === opt.value}
 						>
@@ -1088,14 +2234,71 @@
 				</div>
 			</div>
 
-			<div class="form-section" role="group" aria-labelledby={`${uid}-plot-height`}>
-				<h4 id={`${uid}-plot-height`}>Chart Height</h4>
-				<div class="seg-buttons" role="group" aria-label="Chart height">
+			<div
+				class={css({
+					marginBottom: '0',
+					paddingBottom: '5',
+					paddingTop: '5',
+					backgroundColor: 'transparent',
+					borderRadius: '0',
+					border: 'none',
+					borderTopWidth: '1px',
+					borderTopStyle: 'solid',
+					borderTopColor: 'border.tertiary'
+				})}
+				role="group"
+				aria-labelledby={`${uid}-plot-height`}
+			>
+				<h4
+					class={css({
+						marginTop: '0',
+						marginBottom: '3',
+						fontSize: '0.6875rem',
+						fontWeight: '600',
+						color: 'fg.muted',
+						textTransform: 'uppercase',
+						letterSpacing: '0.08em'
+					})}
+					id={`${uid}-plot-height`}
+				>
+					Chart Height
+				</h4>
+				<div class={css({ display: 'flex', gap: '1' })} role="group" aria-label="Chart height">
 					{#each [{ value: 'small', label: 'S' }, { value: 'medium', label: 'M' }, { value: 'large', label: 'L' }, { value: 'xlarge', label: 'XL' }] as opt (opt.value)}
 						<button
 							type="button"
-							class="seg-btn"
-							class:active={(plotConfig.chart_height ?? 'medium') === opt.value}
+							class={(plotConfig.chart_height ?? 'medium') === opt.value
+								? css({
+										flex: '1',
+										paddingY: '1.5',
+										paddingX: '2',
+										borderWidth: '1px',
+										borderStyle: 'solid',
+										borderColor: 'accent.secondary',
+										backgroundColor: 'accent.bg',
+										color: 'accent.primary',
+										fontSize: '0.6875rem',
+										fontFamily: 'var(--font-mono)',
+										cursor: 'pointer',
+										textAlign: 'center',
+										letterSpacing: '0.04em'
+									})
+								: css({
+										flex: '1',
+										paddingY: '1.5',
+										paddingX: '2',
+										borderWidth: '1px',
+										borderStyle: 'solid',
+										borderColor: 'border.primary',
+										backgroundColor: 'transparent',
+										color: 'fg.muted',
+										fontSize: '0.6875rem',
+										fontFamily: 'var(--font-mono)',
+										cursor: 'pointer',
+										textAlign: 'center',
+										letterSpacing: '0.04em',
+										_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+									})}
 							onclick={() =>
 								(plotConfig.chart_height = opt.value as PlotConfigData['chart_height'])}
 							aria-pressed={(plotConfig.chart_height ?? 'medium') === opt.value}
@@ -1108,96 +2311,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	.chart-type-section {
-		padding: 12px 0 12px 0;
-		border-bottom: 1px solid var(--border-tertiary);
-	}
-
-	.chart-type-label {
-		margin-bottom: 8px;
-		font-size: 0.6875rem;
-		font-family: var(--font-mono);
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--fg-muted);
-	}
-
-	.chart-type-grid {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 4px;
-	}
-
-	.chart-type-btn {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 4px;
-		padding: 8px 4px;
-		border: 1px solid var(--border-primary);
-		background: transparent;
-		color: var(--fg-muted);
-		font-size: 0.625rem;
-		font-family: var(--font-mono);
-		cursor: pointer;
-		transition:
-			background-color var(--transition),
-			color var(--transition),
-			border-color var(--transition);
-	}
-
-	.chart-type-btn:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-primary);
-	}
-
-	.chart-type-btn.active {
-		border-color: var(--accent-secondary);
-		background-color: var(--accent-bg);
-		color: var(--accent-primary);
-	}
-
-	.seg-buttons {
-		display: flex;
-		gap: 4px;
-	}
-
-	.seg-btn {
-		flex: 1;
-		padding: 5px 8px;
-		border: 1px solid var(--border-primary);
-		background: transparent;
-		color: var(--fg-muted);
-		font-size: 0.6875rem;
-		font-family: var(--font-mono);
-		cursor: pointer;
-		text-align: center;
-		letter-spacing: 0.04em;
-		transition:
-			background-color var(--transition),
-			color var(--transition),
-			border-color var(--transition);
-	}
-
-	.seg-btn:hover {
-		background-color: var(--bg-hover);
-		color: var(--fg-primary);
-	}
-
-	.seg-btn.active {
-		border-color: var(--accent-secondary);
-		background-color: var(--accent-bg);
-		color: var(--accent-primary);
-	}
-
-	.plot-tabs {
-		margin: 0;
-	}
-
-	.tab-content {
-		padding-top: 1.25rem;
-	}
-</style>

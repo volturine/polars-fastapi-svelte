@@ -39,6 +39,7 @@
 	import DragPreview from '$lib/components/pipeline/DragPreview.svelte';
 	import DatasourceSelectorModal from '$lib/components/common/DatasourceSelectorModal.svelte';
 	import { schemaStore } from '$lib/stores/schema.svelte';
+	import { css, cx, spinner, button } from '$lib/styles/panda';
 	import {
 		ChevronDown,
 		ChevronLeft,
@@ -834,41 +835,129 @@
 </script>
 
 {#if analysisQuery.isLoading}
-	<div class="flex h-full items-center justify-center">
-		<div class="spinner"></div>
+	<div
+		class={css({ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' })}
+	>
+		<div class={spinner()}></div>
 	</div>
 {:else if analysisQuery.isError}
-	<div class="error-box flex h-full flex-col items-center justify-center text-center gap-4">
+	<div
+		class={css({
+			padding: '0.625rem 0.75rem',
+			border: 'none',
+			borderLeft: '2px solid',
+			borderRadius: '0',
+			fontSize: '0.75rem',
+			lineHeight: '1.5',
+			backgroundColor: 'transparent',
+			borderLeftColor: 'error.border',
+			color: 'error.fg',
+			display: 'flex',
+			height: '100%',
+			flexDirection: 'column',
+			alignItems: 'center',
+			justifyContent: 'center',
+			textAlign: 'center',
+			gap: '4'
+		})}
+	>
 		<div
-			class="flex items-center justify-center text-xl font-bold w-13 h-13 border border-tertiary"
+			class={css({
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'center',
+				fontSize: 'xl',
+				fontWeight: 'bold',
+				width: '3.25rem',
+				height: '3.25rem',
+				borderWidth: '1px',
+				borderStyle: 'solid',
+				borderColor: 'border.tertiary'
+			})}
 		>
 			!
 		</div>
-		<h2 class="m-0">Error loading analysis</h2>
-		<p class="m-0">
+		<h2 class={css({ margin: '0' })}>Error loading analysis</h2>
+		<p class={css({ margin: '0' })}>
 			{analysisQuery.error instanceof Error ? analysisQuery.error.message : 'Unknown error'}
 		</p>
-		<button class="btn-primary mt-4" onclick={() => goto(resolve('/analysis/new'))} type="button">
+		<button
+			class={cx(button({ variant: 'primary' }), css({ marginTop: '4' }))}
+			onclick={() => goto(resolve('/analysis/new'))}
+			type="button"
+		>
 			Create analysis
 		</button>
 	</div>
 {:else if analysisQuery.data}
 	<div
-		class="analysis-page flex h-full flex-col bg-secondary"
-		class:resizing={isResizingBottomPane}
+		class={css({
+			display: 'flex',
+			height: '100%',
+			flexDirection: 'column',
+			backgroundColor: 'bg.secondary',
+			...(isResizingBottomPane ? { userSelect: 'none', cursor: 'ns-resize' } : {})
+		})}
 	>
 		<header
-			class="analysis-header flex items-stretch sticky top-0 h-11 bg-panel border-b border-tertiary"
+			class={css({
+				display: 'flex',
+				alignItems: 'stretch',
+				position: 'sticky',
+				top: '0',
+				height: '2.75rem',
+				backgroundColor: 'bg.primary',
+				borderBottomWidth: '1px',
+				borderBottomStyle: 'solid',
+				borderBottomColor: 'border.tertiary',
+				zIndex: 'sticky'
+			})}
 		>
 			<div
-				class="header-left flex items-center h-full box-border border-r border-tertiary panel-width"
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					height: '100%',
+					boxSizing: 'border-box',
+					borderRightWidth: '1px',
+					borderRightStyle: 'solid',
+					borderRightColor: 'border.tertiary',
+					width: 'var(--operations-panel-width, 280px)',
+					transitionProperty: 'width, visibility',
+					transitionDuration: 'normal'
+				})}
 			>
-				<div class="flex-1 flex flex-col min-w-0 overflow-hidden px-5">
+				<div
+					class={css({
+						flex: '1',
+						display: 'flex',
+						flexDirection: 'column',
+						minWidth: '0',
+						overflow: 'hidden',
+						paddingX: '5'
+					})}
+				>
 					<h1
 						contenteditable={isEditingMode}
-						class="editable-title m-0 text-xs font-semibold uppercase whitespace-nowrap overflow-hidden text-ellipsis outline-none text-fg-primary tracking-[0.04em]"
-						class:cursor-text={isEditingMode}
-						class:cursor-default={!isEditingMode}
+						class={css({
+							margin: '0',
+							fontSize: 'xs',
+							fontWeight: 'semibold',
+							textTransform: 'uppercase',
+							whiteSpace: 'nowrap',
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+							outline: 'none',
+							color: 'fg.primary',
+							letterSpacing: '0.04em',
+							cursor: isEditingMode ? 'text' : 'default',
+							_focus: {
+								backgroundColor: 'bg.hover',
+								borderRadius: 'var(--radius-sm)',
+								padding: '0 var(--space-1)',
+								margin: '0 calc(var(--space-1) * -1)'
+							}
+						})}
 						onblur={(e) => {
 							if (!isEditingMode) {
 								e.currentTarget.textContent = analysisQuery.data.name;
@@ -887,16 +976,43 @@
 					</h1>
 					{#if analysisQuery.data.description}
 						<span
-							class="text-[0.625rem] whitespace-nowrap overflow-hidden text-ellipsis text-fg-faint tracking-[0.02em]"
-							>{analysisQuery.data.description}</span
+							class={css({
+								fontSize: '0.625rem',
+								whiteSpace: 'nowrap',
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								color: 'fg.faint',
+								letterSpacing: '0.02em'
+							})}>{analysisQuery.data.description}</span
 						>
 					{/if}
 				</div>
 			</div>
-			<div class="flex-1 min-w-0 overflow-hidden flex items-center justify-center gap-0">
+			<div
+				class={css({
+					flex: '1',
+					minWidth: '0',
+					overflow: 'hidden',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					gap: '0'
+				})}
+			>
 				<button
-					class="collapse-arrow collapse-arrow-left h-full flex items-center justify-center px-2 bg-panel border-none cursor-pointer shrink-0 text-fg-faint hover:text-fg-primary hover:bg-hover"
-					class:collapsed={leftPaneCollapsed}
+					class={css({
+						height: '100%',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						paddingX: '2',
+						backgroundColor: 'bg.primary',
+						border: 'none',
+						cursor: 'pointer',
+						flexShrink: '0',
+						color: 'fg.faint',
+						_hover: { color: 'fg.primary', backgroundColor: 'bg.hover' }
+					})}
 					onclick={() => (leftPaneCollapsed = !leftPaneCollapsed)}
 					type="button"
 					title={leftPaneCollapsed ? 'Expand operations' : 'Collapse operations'}
@@ -907,25 +1023,57 @@
 						<ChevronLeft size={12} />
 					{/if}
 				</button>
-				<div class="flex-1 overflow-hidden flex items-center">
-					<div class="tabs flex items-center overflow-x-auto">
+				<div class={css({ flex: '1', overflow: 'hidden', display: 'flex', alignItems: 'center' })}>
+					<div class={css({ display: 'flex', alignItems: 'center', overflowX: 'auto', gap: '0' })}>
 						{#each analysisStore.tabs as tab (tab.id)}
 							<div
-								class="tab inline-flex items-center bg-transparent border-none text-xs font-medium uppercase text-fg-muted tracking-wide"
-								class:active={analysisStore.activeTab?.id === tab.id}
+								class={css({
+									display: 'inline-flex',
+									alignItems: 'center',
+									backgroundColor: 'transparent',
+									border: 'none',
+									fontSize: 'xs',
+									fontWeight: 'medium',
+									textTransform: 'uppercase',
+									color: 'fg.muted',
+									letterSpacing: '0.025em',
+									...(analysisStore.activeTab?.id === tab.id
+										? { color: 'fg.primary', backgroundColor: 'bg.secondary' }
+										: {})
+								})}
 							>
 								<button
-									class="tab-label inline-flex items-center min-w-0 bg-transparent border-none cursor-pointer"
+									class={css({
+										display: 'inline-flex',
+										alignItems: 'center',
+										minWidth: '0',
+										backgroundColor: 'transparent',
+										border: 'none',
+										cursor: 'pointer'
+									})}
 									onclick={() => handleSelectTab(tab.id)}
 									type="button"
 								>
-									<span class="whitespace-nowrap overflow-hidden text-ellipsis max-w-37.5"
-										>{tab.name}</span
+									<span
+										class={css({
+											whiteSpace: 'nowrap',
+											overflow: 'hidden',
+											textOverflow: 'ellipsis',
+											maxWidth: '9.375rem'
+										})}
 									>
+										{tab.name}
+									</span>
 								</button>
 								{#if analysisStore.tabs.length > 1}
 									<button
-										class="tab-remove text-base leading-none ml-1 opacity-40 hover:opacity-100 hover:text-error"
+										class={css({
+											fontSize: '1rem',
+											lineHeight: '1',
+											marginLeft: '0.25rem',
+											opacity: '0.4',
+											_hover: { opacity: '1', color: 'error.fg' }
+										})}
 										onclick={() => handleRemoveTab(tab.id)}
 										type="button"
 										aria-label="Remove tab"
@@ -935,9 +1083,19 @@
 								{/if}
 							</div>
 						{/each}
-						<div class="flex items-center">
+						<div class={css({ display: 'flex', alignItems: 'center' })}>
 							<button
-								class="tab add-tab inline-flex items-center bg-transparent border-none cursor-pointer text-xs uppercase text-fg-faint hover:text-fg-primary"
+								class={css({
+									display: 'inline-flex',
+									alignItems: 'center',
+									backgroundColor: 'transparent',
+									border: 'none',
+									cursor: 'pointer',
+									fontSize: 'xs',
+									textTransform: 'uppercase',
+									color: 'fg.faint',
+									_hover: { color: 'fg.primary' }
+								})}
 								onclick={() => openDatasourceModal('add')}
 								type="button"
 								title="Add datasource tab"
@@ -949,7 +1107,19 @@
 				</div>
 			</div>
 			<button
-				class="config-position-toggle shrink-0 h-full flex items-center justify-center px-2 bg-panel border-none cursor-pointer text-fg-faint hover:text-fg-primary hover:bg-hover"
+				class={css({
+					flexShrink: '0',
+					height: '100%',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					paddingX: '2',
+					backgroundColor: 'bg.primary',
+					border: 'none',
+					cursor: 'pointer',
+					color: 'fg.faint',
+					_hover: { color: 'fg.primary', backgroundColor: 'bg.hover' }
+				})}
 				onclick={toggleConfigPosition}
 				type="button"
 				title={configPosition === 'right' ? 'Move config to bottom' : 'Move config to side'}
@@ -961,8 +1131,15 @@
 				{/if}
 			</button>
 			<button
-				class="collapse-arrow collapse-arrow-right items-center px-2 bg-panel border-none text-fg-faint hover:text-fg-primary hover:bg-hover"
-				class:collapsed={rightPaneCollapsed}
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					paddingX: '2',
+					backgroundColor: 'bg.primary',
+					border: 'none',
+					color: 'fg.faint',
+					_hover: { color: 'fg.primary', backgroundColor: 'bg.hover' }
+				})}
 				onclick={() => (rightPaneCollapsed = !rightPaneCollapsed)}
 				type="button"
 				title={rightPaneCollapsed ? 'Expand configuration' : 'Collapse configuration'}
@@ -980,61 +1157,182 @@
 				{/if}
 			</button>
 			<div
-				class="panel-width header-right flex items-center justify-end h-full box-border border-l border-tertiary"
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'flex-end',
+					height: '100%',
+					boxSizing: 'border-box',
+					borderLeftWidth: '1px',
+					borderLeftStyle: 'solid',
+					borderLeftColor: 'border.tertiary',
+					width: 'var(--operations-panel-width, 280px)',
+					transitionProperty: 'width, visibility',
+					transitionDuration: 'normal'
+				})}
 			>
-				<div class="mode-toggle-container relative items-center px-2">
+				<div
+					class={css({
+						display: 'flex',
+						alignItems: 'center',
+						position: 'relative',
+						paddingX: '2'
+					})}
+				>
 					<button
-						class="mode-toggle flex items-center cursor-pointer text-xs py-1.5 px-3 bg-tertiary border border-tertiary text-fg-secondary gap-2 hover:bg-hover hover:border-tertiary"
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							cursor: 'pointer',
+							fontSize: 'xs',
+							paddingY: '1.5',
+							paddingX: '3',
+							backgroundColor: 'bg.tertiary',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.tertiary',
+							color: 'fg.secondary',
+							gap: '2',
+							_hover: { backgroundColor: 'bg.hover', borderColor: 'border.tertiary' }
+						})}
 						onclick={() => (showModeDropdown = !showModeDropdown)}
 						type="button"
 					>
 						{isEditingMode ? 'Editing' : 'Viewing'}
-						<ChevronDown size={10} class="text-fg-faint" />
+						<ChevronDown size={10} class={css({ color: 'fg.faint' })} />
 					</button>
 
 					{#if showModeDropdown}
 						<div
-							class="mode-dropdown absolute left-0 min-w-35 bg-panel border border-tertiary p-1 z-100"
+							class={css({
+								position: 'absolute',
+								left: '0',
+								top: 'calc(100% + 4px)',
+								minWidth: '8.75rem',
+								backgroundColor: 'bg.primary',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.tertiary',
+								padding: '1',
+								zIndex: '100'
+							})}
 						>
 							<button
-								class="mode-option flex items-center bg-transparent border-none cursor-pointer text-xs text-left text-fg-secondary hover:bg-hover"
+								class={css({
+									display: 'flex',
+									alignItems: 'center',
+									backgroundColor: 'transparent',
+									border: 'none',
+									cursor: 'pointer',
+									fontSize: 'xs',
+									textAlign: 'left',
+									color: 'fg.secondary',
+									_hover: { backgroundColor: 'bg.hover' }
+								})}
 								onclick={() => setMode('viewing')}
 								type="button"
 							>
 								{#if isEditingMode}
-									<div class="w-3 h-3 border border-accent-primary"></div>
+									<div
+										class={css({
+											width: '0.75rem',
+											height: '0.75rem',
+											borderWidth: '1px',
+											borderStyle: 'solid',
+											borderColor: 'accent.primary'
+										})}
+									></div>
 								{:else}
-									<div class="w-3 h-3 bg-accent-primary"></div>
+									<div
+										class={css({
+											width: '0.75rem',
+											height: '0.75rem',
+											backgroundColor: 'accent.primary'
+										})}
+									></div>
 								{/if}
 								<span>Viewing</span>
 							</button>
 							<button
-								class="mode-option flex items-center bg-transparent border-none cursor-pointer text-xs text-left text-fg-secondary hover:bg-hover"
+								class={css({
+									display: 'flex',
+									alignItems: 'center',
+									backgroundColor: 'transparent',
+									border: 'none',
+									cursor: 'pointer',
+									fontSize: 'xs',
+									textAlign: 'left',
+									color: 'fg.secondary',
+									_hover: { backgroundColor: 'bg.hover' }
+								})}
 								onclick={() => setMode('editing')}
 								type="button"
 							>
 								{#if isEditingMode}
-									<div class="w-3 h-3 bg-accent-primary"></div>
+									<div
+										class={css({
+											width: '0.75rem',
+											height: '0.75rem',
+											backgroundColor: 'accent.primary'
+										})}
+									></div>
 								{:else}
-									<div class="w-3 h-3 border border-accent-primary"></div>
+									<div
+										class={css({
+											width: '0.75rem',
+											height: '0.75rem',
+											borderWidth: '1px',
+											borderStyle: 'solid',
+											borderColor: 'accent.primary'
+										})}
+									></div>
 								{/if}
 								<span>Editing</span>
 							</button>
 							<button
-								class="mode-option flex items-center bg-transparent border-none cursor-pointer text-xs text-left text-fg-secondary hover:bg-hover"
+								class={css({
+									display: 'flex',
+									alignItems: 'center',
+									backgroundColor: 'transparent',
+									border: 'none',
+									cursor: 'pointer',
+									fontSize: 'xs',
+									textAlign: 'left',
+									color: 'fg.secondary',
+									_hover: { backgroundColor: 'bg.hover' }
+								})}
 								onclick={openVersionModal}
 								type="button"
 							>
-								<div class="w-3 h-3 border border-accent-primary"></div>
+								<div
+									class={css({
+										width: '0.75rem',
+										height: '0.75rem',
+										borderWidth: '1px',
+										borderStyle: 'solid',
+										borderColor: 'accent.primary'
+									})}
+								></div>
 								<span>Rollback</span>
 							</button>
 						</div>
 					{/if}
 				</div>
 
-				<div class="flex h-full flex-1 p-1 gap-1">
+				<div class={css({ display: 'flex', height: '100%', flex: '1', padding: '1', gap: '1' })}>
 					<button
-						class="cancel-button flex-1 h-full bg-tertiary border-none text-xs font-medium cursor-pointer text-fg-muted hover:bg-hover hover:text-fg-primary"
+						class={css({
+							flex: '1',
+							height: '100%',
+							backgroundColor: 'bg.tertiary',
+							border: 'none',
+							fontSize: 'xs',
+							fontWeight: 'medium',
+							cursor: 'pointer',
+							color: 'fg.muted',
+							_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
+							_disabled: { opacity: '0.5', cursor: 'not-allowed' }
+						})}
 						onclick={discardChanges}
 						disabled={!isEditingMode || !isDirty || isSaving || analysisStore.loading}
 						type="button"
@@ -1042,9 +1340,27 @@
 						Cancel
 					</button>
 					<button
-						class="save-button flex-1 h-full bg-transparent border-none text-xs font-medium cursor-pointer"
-						class:saved={!isDirty}
-						class:unsaved={isDirty}
+						class={css({
+							flex: '1',
+							height: '100%',
+							border: 'none',
+							fontSize: 'xs',
+							fontWeight: 'medium',
+							cursor: 'pointer',
+							_disabled: { opacity: '0.5', cursor: 'not-allowed' },
+							...(isDirty
+								? {
+										backgroundColor: 'warning.bg',
+										color: 'warning.fg',
+										borderLeft: '1px solid',
+										borderLeftColor: 'warning.border'
+									}
+								: {
+										backgroundColor: 'transparent',
+										borderColor: 'border.primary',
+										color: 'success.fg'
+									})
+						})}
 						onclick={handleSave}
 						disabled={!isEditingMode || isSaving || analysisStore.loading}
 						type="button"
@@ -1055,21 +1371,61 @@
 			</div>
 		</header>
 
-		<div class="flex flex-1 overflow-hidden select-none bg-secondary" role="application">
+		<div
+			class={css({
+				display: 'flex',
+				flex: '1',
+				overflow: 'hidden',
+				userSelect: 'none',
+				backgroundColor: 'bg.secondary'
+			})}
+			role="application"
+		>
 			{#if isEditingMode}
 				<div
-					class="left-pane shrink-0 overflow-hidden flex h-full box-border bg-panel border-r border-tertiary panel-width"
-					class:collapsed={leftPaneCollapsed}
+					class={css({
+						flexShrink: '0',
+						overflow: 'hidden',
+						display: 'flex',
+						height: '100%',
+						boxSizing: 'border-box',
+						backgroundColor: 'bg.primary',
+						borderRightWidth: '1px',
+						borderRightStyle: 'solid',
+						borderRightColor: 'border.tertiary',
+						width: 'var(--operations-panel-width, 280px)',
+						transitionProperty: 'width, visibility',
+						transitionDuration: 'normal',
+						'& > *': { width: '100%', visibility: 'visible' },
+						...(leftPaneCollapsed
+							? { width: '0', border: 'none', '& > *': { width: '100%', visibility: 'hidden' } }
+							: {})
+					})}
 				>
 					<StepLibrary onAddStep={handleAddStep} onInsertStep={handleInsertStep} />
 				</div>
 			{/if}
 
-			<div class="flex flex-1 min-w-0 flex-col overflow-hidden">
+			<div
+				class={css({
+					display: 'flex',
+					flex: '1',
+					minWidth: '0',
+					flexDirection: 'column',
+					overflow: 'hidden'
+				})}
+			>
 				<div
-					class="center-pane flex-1 min-w-50 min-h-0 flex bg-secondary"
-					class:readonly={!isEditingMode}
-					class:expanded={!isEditingMode}
+					class={css({
+						flex: '1',
+						minWidth: '12.5rem',
+						minHeight: '0',
+						display: 'flex',
+						backgroundColor: 'bg.secondary',
+						'& > *': { width: '100%' },
+						...(!isEditingMode ? { flex: '1', opacity: '0.7' } : {})
+					})}
+					data-readonly={!isEditingMode || undefined}
 				>
 					<PipelineCanvas
 						steps={analysisStore.pipeline}
@@ -1091,13 +1447,37 @@
 
 				{#if isEditingMode && configPosition === 'bottom'}
 					<div
-						class="bottom-pane shrink-0 overflow-hidden flex box-border bg-panel border-t border-tertiary"
-						class:collapsed={rightPaneCollapsed}
+						class={css({
+							flexShrink: '0',
+							overflow: 'hidden',
+							display: 'flex',
+							boxSizing: 'border-box',
+							backgroundColor: 'bg.primary',
+							borderTopWidth: '1px',
+							borderTopStyle: 'solid',
+							borderTopColor: 'border.tertiary',
+							width: '100%',
+							position: 'relative',
+							transitionProperty: 'height, visibility',
+							transitionDuration: 'normal',
+							'& > .step-config': { width: '100%', flex: '1', minHeight: '0' },
+							...(rightPaneCollapsed ? { border: 'none' } : {})
+						})}
 						style="height: {rightPaneCollapsed ? 0 : bottomPaneHeight}px;"
 					>
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div
-							class="bottom-pane-resize-handle"
+							class={css({
+								position: 'absolute',
+								top: '-3px',
+								left: '0',
+								right: '0',
+								height: '6px',
+								cursor: 'ns-resize',
+								zIndex: '5',
+								_hover: { background: 'accent.primary', opacity: '0.4' },
+								_active: { background: 'accent.primary', opacity: '0.4' }
+							})}
 							onpointerdown={handleBottomPaneResizeStart}
 						></div>
 						<StepConfig
@@ -1113,8 +1493,24 @@
 
 			{#if isEditingMode && configPosition === 'right'}
 				<div
-					class="right-pane shrink-0 overflow-hidden flex h-full box-border bg-panel border-l border-tertiary panel-width"
-					class:collapsed={rightPaneCollapsed}
+					class={css({
+						flexShrink: '0',
+						overflow: 'hidden',
+						display: 'flex',
+						height: '100%',
+						boxSizing: 'border-box',
+						backgroundColor: 'bg.primary',
+						borderLeftWidth: '1px',
+						borderLeftStyle: 'solid',
+						borderLeftColor: 'border.tertiary',
+						width: 'var(--operations-panel-width, 280px)',
+						transitionProperty: 'width, visibility',
+						transitionDuration: 'normal',
+						'& > *': { width: '100%', visibility: 'visible' },
+						...(rightPaneCollapsed
+							? { width: '0', border: 'none', '& > *': { width: '100%', visibility: 'hidden' } }
+							: {})
+					})}
 				>
 					<StepConfig
 						step={selectedStepState}
@@ -1145,45 +1541,177 @@
 />
 
 {#if showVersionModal}
-	<div class="modal-backdrop" aria-hidden="true"></div>
 	<div
-		class="modal max-h-[80vh]"
+		class={css({ position: 'fixed', inset: '0', background: 'var(--overlay-bg)', zIndex: 'modal' })}
+		aria-hidden="true"
+	></div>
+	<div
+		class={css({
+			position: 'fixed',
+			left: '50%',
+			top: '50%',
+			transform: 'translate(-50%, -50%)',
+			width: 'min(720px, 92vw)',
+			maxHeight: '80vh',
+			backgroundColor: 'bg.primary',
+			borderWidth: '1px',
+			borderStyle: 'solid',
+			borderColor: 'border.primary',
+			zIndex: 'calc(var(--z-modal) + 1)',
+			display: 'flex',
+			flexDirection: 'column',
+			_focus: { outline: 'none' }
+		})}
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="analysis-version-title"
 	>
-		<div class="modal-header">
+		<div
+			class={css({
+				display: 'flex',
+				justifyContent: 'space-between',
+				alignItems: 'center',
+				padding: '0.75rem 1rem',
+				borderBottom: '1px solid var(--color-border-primary)',
+				'& h2': { margin: '0', fontSize: '1rem', color: 'fg.primary' }
+			})}
+		>
 			<h2 id="analysis-version-title">Version history</h2>
-			<button class="modal-close" onclick={closeVersionModal} aria-label="Close">
+			<button
+				class={css({
+					background: 'transparent',
+					border: 'none',
+					color: 'fg.muted',
+					cursor: 'pointer',
+					fontSize: '1.25rem',
+					padding: '0.25rem',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					transitionProperty: 'color, background-color',
+					transitionDuration: 'normal',
+					_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+				})}
+				onclick={closeVersionModal}
+				aria-label="Close"
+			>
 				<X size={16} />
 			</button>
 		</div>
-		<div class="modal-body">
+		<div
+			class={css({
+				padding: '1rem',
+				overflowY: 'auto',
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '0.75rem'
+			})}
+		>
 			{#if versionError}
-				<div class="error-box m-0">
+				<div
+					class={css({
+						padding: '0.625rem 0.75rem',
+						border: 'none',
+						borderLeft: '2px solid',
+						borderRadius: '0',
+						marginTop: '0.75rem',
+						marginBottom: '0',
+						fontSize: '0.75rem',
+						lineHeight: '1.5',
+						backgroundColor: 'transparent',
+						borderLeftColor: 'error.border',
+						color: 'error.fg',
+						margin: '0'
+					})}
+				>
 					{versionError}
 				</div>
 			{/if}
 			{#if versionsQuery.isLoading}
-				<div class="flex items-center justify-center p-8 text-sm text-fg-muted">Loading...</div>
+				<div
+					class={css({
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						padding: '8',
+						fontSize: 'sm',
+						color: 'fg.muted'
+					})}
+				>
+					Loading...
+				</div>
 			{:else if versionsQuery.isError}
-				<div class="error-box m-0">Failed to load version history.</div>
+				<div
+					class={css({
+						padding: '0.625rem 0.75rem',
+						border: 'none',
+						borderLeft: '2px solid',
+						borderRadius: '0',
+						marginTop: '0.75rem',
+						marginBottom: '0',
+						fontSize: '0.75rem',
+						lineHeight: '1.5',
+						backgroundColor: 'transparent',
+						borderLeftColor: 'error.border',
+						color: 'error.fg',
+						margin: '0'
+					})}
+				>
+					Failed to load version history.
+				</div>
 			{:else if !versionsQuery.data?.length}
-				<p class="empty-message">No versions available.</p>
+				<p
+					class={css({
+						color: 'fg.muted',
+						fontStyle: 'italic',
+						textAlign: 'center',
+						padding: '1rem',
+						margin: '0'
+					})}
+				>
+					No versions available.
+				</p>
 			{:else}
-				<div class="flex flex-col gap-2">
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
 					{#each versionsQuery.data as version (version.id)}
 						<div
-							class="flex items-start justify-between gap-4 border border-tertiary bg-tertiary p-3"
+							class={css({
+								display: 'flex',
+								alignItems: 'flex-start',
+								justifyContent: 'space-between',
+								gap: '4',
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: 'border.tertiary',
+								backgroundColor: 'bg.tertiary',
+								padding: '3'
+							})}
 						>
-							<div class="flex min-w-0 flex-col">
-								<div class="text-[0.65rem] uppercase tracking-widest text-fg-muted">
+							<div class={css({ display: 'flex', minWidth: '0', flexDirection: 'column' })}>
+								<div
+									class={css({
+										fontSize: '0.65rem',
+										textTransform: 'uppercase',
+										letterSpacing: '0.1em',
+										color: 'fg.muted'
+									})}
+								>
 									Version {version.version} · {formatVersionDate(version.created_at)}
 								</div>
 								{#if editingVersionId === version.id}
 									<input
 										type="text"
-										class="text-sm font-semibold text-fg-primary bg-transparent border border-tertiary px-1 py-0.5"
+										class={css({
+											fontSize: 'sm',
+											fontWeight: 'semibold',
+											color: 'fg.primary',
+											backgroundColor: 'transparent',
+											borderWidth: '1px',
+											borderStyle: 'solid',
+											borderColor: 'border.tertiary',
+											paddingX: '1',
+											paddingY: '0.5'
+										})}
 										id="version-name-{version.id}"
 										aria-label="Version name"
 										bind:value={editingVersionName}
@@ -1194,12 +1722,20 @@
 										}}
 									/>
 								{:else}
-									<div class="flex items-center.5">
-										<span class="text-sm font-semibold text-fg-primary">
+									<div class={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
+										<span
+											class={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.primary' })}
+										>
 											{version.name}
 										</span>
 										<button
-											class="p-0.5 bg-transparent border-transparent text-fg-muted hover:text-fg-primary"
+											class={css({
+												padding: '0.5',
+												backgroundColor: 'transparent',
+												borderColor: 'transparent',
+												color: 'fg.muted',
+												_hover: { color: 'fg.primary' }
+											})}
 											title="Rename version"
 											onclick={() => startRenameVersion(version.id, version.name)}
 										>
@@ -1208,11 +1744,13 @@
 									</div>
 								{/if}
 								{#if version.description}
-									<div class="text-xs text-fg-muted">{version.description}</div>
+									<div class={css({ fontSize: 'xs', color: 'fg.muted' })}>
+										{version.description}
+									</div>
 								{/if}
 							</div>
 							<button
-								class="btn-secondary btn-sm shrink-0"
+								class={cx(button({ variant: 'secondary', size: 'sm' }), css({ flexShrink: '0' }))}
 								onclick={() => handleRestoreVersion(version.version)}
 								type="button"
 							>
@@ -1223,8 +1761,16 @@
 				</div>
 			{/if}
 		</div>
-		<div class="modal-footer">
-			<button class="btn-secondary" onclick={closeVersionModal}>Close</button>
+		<div
+			class={css({
+				padding: '0.75rem 1rem',
+				borderTop: '1px solid var(--color-border-primary)',
+				display: 'flex',
+				justifyContent: 'flex-end',
+				gap: '0.5rem'
+			})}
+		>
+			<button class={button({ variant: 'secondary' })} onclick={closeVersionModal}>Close</button>
 		</div>
 	</div>
 {/if}

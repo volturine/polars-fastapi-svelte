@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as d3 from 'd3';
 	import { ChevronLeft, ChevronRight } from 'lucide-svelte';
+	import { css, cx, button } from '$lib/styles/panda';
 	import { downloadBlob } from '$lib/api/compute';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
@@ -3584,22 +3585,274 @@
 
 		styleChart(svg);
 	}
+
+	const outerCss = css({ width: '100%', backgroundColor: 'bg.primary' });
+
+	const toolbarCss = css({
+		display: 'flex',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		padding: '6px 10px',
+		borderBottomWidth: '1px',
+		borderBottomStyle: 'solid',
+		borderBottomColor: 'border.tertiary'
+	});
+
+	const controlsCss = css({ display: 'flex', gap: '6px' });
+
+	const wrapperCss = css({
+		position: 'relative',
+		width: '100%',
+		overflow: 'hidden',
+		contain: 'content'
+	});
+
+	const areaCss = css({ width: '100%', height: '100%' });
+
+	const emptyCss = css({
+		display: 'flex',
+		alignItems: 'center',
+		justifyContent: 'center',
+		height: '100%',
+		color: 'fg.muted',
+		fontSize: 'xs'
+	});
+
+	const tooltipCss = css({
+		position: 'absolute',
+		pointerEvents: 'none',
+		paddingX: '3',
+		paddingY: '2',
+		backgroundColor: 'bg.primary',
+		borderWidth: '1px',
+		borderStyle: 'solid',
+		borderColor: 'border.primary',
+		fontSize: 'sm',
+		boxShadow: 'lg',
+		wordBreak: 'break-word',
+		zIndex: 'var(--z-tooltip)',
+		transitionProperty: 'opacity',
+		transitionDuration: '75ms'
+	});
+
+	const tooltipVisibleCss = css({ opacity: '1' });
+	const tooltipHiddenCss = css({ opacity: '0' });
+
+	const legendBaseCss = css({
+		display: 'flex',
+		flexWrap: 'wrap',
+		alignItems: 'center',
+		gap: '4px 8px',
+		backgroundColor: 'bg.secondary',
+		borderBottomWidth: '1px',
+		borderBottomStyle: 'solid',
+		borderBottomColor: 'border.tertiary'
+	});
+
+	const legendCollapsedCss = css({
+		background: 'transparent',
+		border: 'none',
+		justifyContent: 'flex-end'
+	});
+
+	const legendBottomCss = css({
+		borderBottom: 'none',
+		borderTopWidth: '1px',
+		borderTopStyle: 'solid',
+		borderTopColor: 'border.tertiary'
+	});
+
+	const legendBottomCollapsedCss = css({ justifyContent: 'flex-start' });
+
+	const pillCss = css({
+		display: 'flex',
+		alignItems: 'center',
+		gap: '3px',
+		padding: '4px 8px',
+		background: 'color-mix(in srgb, var(--bg-primary) 90%, transparent)',
+		borderWidth: '1px',
+		borderStyle: 'solid',
+		borderColor: 'border.tertiary',
+		borderRadius: '20px',
+		cursor: 'pointer',
+		transitionProperty: 'background, border-color',
+		transitionDuration: '120ms',
+		transitionTimingFunction: 'ease',
+		_hover: {
+			background: 'var(--bg-secondary)',
+			borderColor: 'border.primary'
+		}
+	});
+
+	const dotCss = css({
+		width: '6px',
+		height: '6px',
+		borderRadius: '50%',
+		flexShrink: '0',
+		transitionProperty: 'opacity',
+		transitionDuration: '120ms',
+		transitionTimingFunction: 'ease'
+	});
+
+	const dotFadedCss = css({ opacity: '0.3' });
+
+	const handleCss = css({
+		flexShrink: '0',
+		alignSelf: 'stretch',
+		width: '4px',
+		borderRadius: '2px',
+		marginLeft: '2px',
+		cursor: 'pointer',
+		opacity: '0',
+		background: 'var(--fg-muted)',
+		transitionProperty: 'opacity',
+		transitionDuration: '150ms',
+		transitionTimingFunction: 'ease',
+		'.group:hover &': { opacity: '0.15' },
+		_hover: { opacity: '0.5' }
+	});
+
+	const sideCss = css({
+		position: 'absolute',
+		top: '28px',
+		maxHeight: 'calc(100% - 44px)',
+		display: 'flex',
+		flexDirection: 'row',
+		alignItems: 'flex-start',
+		zIndex: '5'
+	});
+
+	const sideRightCss = css({ right: '24px' });
+	const sideLeftCss = css({ left: '64px' });
+
+	const tabCss = css({
+		flexShrink: '0',
+		alignSelf: 'center',
+		width: '18px',
+		height: '36px',
+		display: 'flex',
+		alignItems: 'center',
+		justifyContent: 'center',
+		cursor: 'pointer',
+		background: 'color-mix(in srgb, var(--bg-secondary) 95%, transparent)',
+		borderWidth: '1px',
+		borderStyle: 'solid',
+		borderColor: 'border.tertiary',
+		color: 'fg.muted',
+		transitionProperty: 'background-color, color',
+		transitionDuration: '120ms',
+		transitionTimingFunction: 'ease',
+		_hover: {
+			background: 'var(--bg-tertiary)',
+			color: 'var(--fg-primary)'
+		},
+		'& :global(svg)': { stroke: 'currentColor' }
+	});
+
+	const tabRightCss = css({
+		borderRadius: '6px 0 0 6px',
+		borderRightWidth: '0'
+	});
+
+	const tabLeftCss = css({
+		borderRadius: '0 6px 6px 0',
+		borderLeftWidth: '0'
+	});
+
+	const tabCollapsedCss = css({
+		borderRadius: '6px',
+		borderWidth: '1px',
+		borderStyle: 'solid',
+		borderColor: 'border.tertiary'
+	});
+
+	const itemsCss = css({
+		display: 'flex',
+		flexDirection: 'column',
+		gap: '1px',
+		padding: '6px 6px 8px',
+		maxHeight: 'calc(100vh - 200px)',
+		overflowY: 'auto',
+		backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 95%, transparent)',
+		borderWidth: '1px',
+		borderStyle: 'solid',
+		borderColor: 'border.tertiary'
+	});
+
+	const itemsRightCss = css({ borderRadius: '0 4px 4px 0' });
+	const itemsLeftCss = css({ borderRadius: '4px 0 0 4px' });
+
+	const legendItemCss = css({
+		display: 'flex',
+		alignItems: 'center',
+		gap: '5px',
+		background: 'none',
+		border: 'none',
+		padding: '2px 4px',
+		cursor: 'pointer',
+		fontSize: '10px',
+		fontFamily: 'var(--font-mono)',
+		color: 'fg.muted',
+		borderRadius: '3px',
+		transitionProperty: 'opacity',
+		transitionDuration: '120ms',
+		transitionTimingFunction: 'ease',
+		whiteSpace: 'nowrap',
+		_hover: {
+			color: 'var(--fg-primary)',
+			backgroundColor: 'var(--bg-tertiary)'
+		}
+	});
+
+	const legendItemDimmedCss = css({ opacity: '0.35' });
+
+	const swatchCss = css({
+		width: '8px',
+		height: '8px',
+		borderRadius: '1px',
+		flexShrink: '0'
+	});
+
+	const legendTopCss = $derived(cx(legendBaseCss, legendCollapsed ? legendCollapsedCss : ''));
+
+	const legendBottomFullCss = $derived(
+		cx(
+			legendBaseCss,
+			legendBottomCss,
+			legendCollapsed ? cx(legendCollapsedCss, legendBottomCollapsedCss) : ''
+		)
+	);
+
+	const sidePanelCss = $derived(
+		cx(sideCss, legendPosition === 'right' ? sideRightCss : sideLeftCss)
+	);
+
+	const sideTabCss = $derived(
+		cx(
+			tabCss,
+			legendPosition === 'right' ? tabRightCss : tabLeftCss,
+			legendCollapsed ? tabCollapsedCss : ''
+		)
+	);
+
+	const sideItemsCss = $derived(
+		cx(itemsCss, legendPosition === 'right' ? itemsRightCss : itemsLeftCss)
+	);
 </script>
 
-<div class="chart-outer">
+<div class={outerCss}>
 	{#if htmlLegend && legendPosition === 'top'}
-		<div class="html-legend legend-top" class:collapsed={legendCollapsed}>
+		<div class={cx('group', legendTopCss)}>
 			{#if legendCollapsed}
 				<button
 					type="button"
-					class="legend-mini-pill"
+					class={pillCss}
 					onclick={() => (legendCollapsed = false)}
 					title="Show legend"
 				>
 					{#each htmlLegend.labels.slice(0, 12) as label (label)}
 						<span
-							class="mini-dot"
-							class:faded={!isSeriesVisible(label)}
+							class={cx(dotCss, !isSeriesVisible(label) ? dotFadedCss : '')}
 							style:background={htmlLegend.getColor(label)}
 						></span>
 					{/each}
@@ -3608,18 +3861,17 @@
 				{#each htmlLegend.labels as label (label)}
 					<button
 						type="button"
-						class="html-legend-item"
-						class:dimmed={!isSeriesVisible(label)}
+						class={cx(legendItemCss, !isSeriesVisible(label) ? legendItemDimmedCss : '')}
 						onclick={(e) => htmlLegend?.onClick(label, e)}
 					>
-						<span class="legend-swatch" style:background={htmlLegend.getColor(label)}></span>
+						<span class={swatchCss} style:background={htmlLegend.getColor(label)}></span>
 						{label.length > 14 ? label.slice(0, 14) + '…' : label}
 					</button>
 				{/each}
 				<div
 					role="button"
 					tabindex="0"
-					class="legend-handle"
+					class={handleCss}
 					onclick={() => (legendCollapsed = true)}
 					onkeydown={(e) => e.key === 'Enter' && (legendCollapsed = true)}
 					title="Minimize legend"
@@ -3627,11 +3879,19 @@
 			{/if}
 		</div>
 	{/if}
-	<div class="chart-toolbar">
-		<div class="chart-controls">
+	<div class={toolbarCss}>
+		<div class={controlsCss}>
 			<button
 				type="button"
-				class="btn-ghost btn-sm border border-tertiary text-xs"
+				class={cx(
+					button({ variant: 'ghost', size: 'sm' }),
+					css({
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.tertiary',
+						fontSize: 'xs'
+					})
+				)}
 				aria-label="Export chart as PNG"
 				onclick={exportChartPng}
 			>
@@ -3639,7 +3899,15 @@
 			</button>
 			<button
 				type="button"
-				class="btn-ghost btn-sm border border-tertiary text-xs"
+				class={cx(
+					button({ variant: 'ghost', size: 'sm' }),
+					css({
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.tertiary',
+						fontSize: 'xs'
+					})
+				)}
 				aria-label="Export chart data as CSV"
 				onclick={exportChartCsv}
 			>
@@ -3649,7 +3917,15 @@
 		{#if zoomEnabled && zoomActive}
 			<button
 				type="button"
-				class="btn-ghost btn-sm border border-tertiary text-xs"
+				class={cx(
+					button({ variant: 'ghost', size: 'sm' }),
+					css({
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.tertiary',
+						fontSize: 'xs'
+					})
+				)}
 				aria-label="Reset chart zoom"
 				onclick={resetZoom}
 			>
@@ -3657,18 +3933,15 @@
 			</button>
 		{/if}
 	</div>
-	<div class="chart-wrapper" bind:this={wrapperEl} style="height: {height}px">
-		<div class="chart-area" bind:this={chartEl}>
+	<div class={wrapperCss} bind:this={wrapperEl} style="height: {height}px">
+		<div class={areaCss} bind:this={chartEl}>
 			{#if data.length === 0}
-				<div class="chart-empty">
+				<div class={emptyCss}>
 					<span>No data to display</span>
 				</div>
 			{/if}
 		</div>
-		<div
-			class="chart-tooltip absolute pointer-events-none opacity-0 px-3 py-2 bg-background border border-border text-sm shadow-lg break-words z-[var(--z-tooltip)] transition-opacity duration-75"
-			class:tip-visible={tipVisible}
-		>
+		<div class={cx(tooltipCss, tipVisible ? tooltipVisibleCss : tooltipHiddenCss)}>
 			{#if tipTitle}<strong>{tipTitle}</strong>{/if}
 			{#each tipLines as line, i (i)}
 				{#if tipTitle || tipLines.length > 1}<br />{/if}
@@ -3677,10 +3950,10 @@
 			{/each}
 		</div>
 		{#if htmlLegend && (legendPosition === 'left' || legendPosition === 'right')}
-			<div class="legend-side legend-{legendPosition}" class:collapsed={legendCollapsed}>
+			<div class={sidePanelCss}>
 				{#if legendPosition === 'right'}
 					<button
-						class="legend-tab p-0"
+						class={cx(css({ padding: '0' }), sideTabCss)}
 						onclick={() => (legendCollapsed = !legendCollapsed)}
 						title={legendCollapsed ? 'Show legend' : 'Hide legend'}
 					>
@@ -3692,15 +3965,14 @@
 					</button>
 				{/if}
 				{#if !legendCollapsed}
-					<div class="legend-items">
+					<div class={sideItemsCss}>
 						{#each htmlLegend.labels as label (label)}
 							<button
 								type="button"
-								class="html-legend-item"
-								class:dimmed={!isSeriesVisible(label)}
+								class={cx(legendItemCss, !isSeriesVisible(label) ? legendItemDimmedCss : '')}
 								onclick={(e) => htmlLegend?.onClick(label, e)}
 							>
-								<span class="legend-swatch" style:background={htmlLegend.getColor(label)}></span>
+								<span class={swatchCss} style:background={htmlLegend.getColor(label)}></span>
 								{label.length > 14 ? label.slice(0, 14) + '…' : label}
 							</button>
 						{/each}
@@ -3708,7 +3980,7 @@
 				{/if}
 				{#if legendPosition === 'left'}
 					<button
-						class="legend-tab p-0"
+						class={cx(css({ padding: '0' }), sideTabCss)}
 						onclick={() => (legendCollapsed = !legendCollapsed)}
 						title={legendCollapsed ? 'Show legend' : 'Hide legend'}
 					>
@@ -3723,18 +3995,17 @@
 		{/if}
 	</div>
 	{#if htmlLegend && legendPosition === 'bottom'}
-		<div class="html-legend legend-bottom" class:collapsed={legendCollapsed}>
+		<div class={cx('group', legendBottomFullCss)}>
 			{#if legendCollapsed}
 				<button
 					type="button"
-					class="legend-mini-pill"
+					class={pillCss}
 					onclick={() => (legendCollapsed = false)}
 					title="Show legend"
 				>
 					{#each htmlLegend.labels.slice(0, 12) as label (label)}
 						<span
-							class="mini-dot"
-							class:faded={!isSeriesVisible(label)}
+							class={cx(dotCss, !isSeriesVisible(label) ? dotFadedCss : '')}
 							style:background={htmlLegend.getColor(label)}
 						></span>
 					{/each}
@@ -3743,18 +4014,17 @@
 				{#each htmlLegend.labels as label (label)}
 					<button
 						type="button"
-						class="html-legend-item"
-						class:dimmed={!isSeriesVisible(label)}
+						class={cx(legendItemCss, !isSeriesVisible(label) ? legendItemDimmedCss : '')}
 						onclick={(e) => htmlLegend?.onClick(label, e)}
 					>
-						<span class="legend-swatch" style:background={htmlLegend.getColor(label)}></span>
+						<span class={swatchCss} style:background={htmlLegend.getColor(label)}></span>
 						{label.length > 14 ? label.slice(0, 14) + '…' : label}
 					</button>
 				{/each}
 				<div
 					role="button"
 					tabindex="0"
-					class="legend-handle"
+					class={handleCss}
 					onclick={() => (legendCollapsed = true)}
 					onkeydown={(e) => e.key === 'Enter' && (legendCollapsed = true)}
 					title="Minimize legend"
@@ -3763,240 +4033,3 @@
 		</div>
 	{/if}
 </div>
-
-<style>
-	.chart-outer {
-		width: 100%;
-		background-color: var(--bg-primary);
-	}
-
-	.chart-toolbar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 6px 10px;
-		border-bottom: 1px solid var(--border-tertiary);
-	}
-
-	.chart-controls {
-		display: flex;
-		gap: 6px;
-	}
-
-	.chart-wrapper {
-		position: relative;
-		width: 100%;
-		overflow: hidden;
-		contain: content;
-	}
-
-	.chart-area {
-		width: 100%;
-		height: 100%;
-	}
-
-	.chart-empty {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		height: 100%;
-		color: var(--fg-muted);
-		font-size: 0.75rem;
-	}
-
-	.chart-tooltip.tip-visible {
-		opacity: 1;
-	}
-
-	.html-legend {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 4px 8px;
-		background-color: var(--bg-secondary);
-		border-bottom: 1px solid var(--border-tertiary);
-	}
-
-	.html-legend.legend-top.collapsed,
-	.html-legend.legend-bottom.collapsed {
-		background: transparent;
-		border: none;
-		justify-content: flex-end;
-	}
-
-	.legend-bottom {
-		border-bottom: none;
-		border-top: 1px solid var(--border-tertiary);
-	}
-
-	.legend-bottom.collapsed {
-		justify-content: flex-start;
-	}
-
-	.legend-mini-pill {
-		display: flex;
-		align-items: center;
-		gap: 3px;
-		padding: 4px 8px;
-		background: color-mix(in srgb, var(--bg-primary) 90%, transparent);
-		border: 1px solid var(--border-tertiary);
-		border-radius: 20px;
-		cursor: pointer;
-		transition:
-			background 120ms ease,
-			border-color 120ms ease;
-	}
-
-	.legend-mini-pill:hover {
-		background: var(--bg-secondary);
-		border-color: var(--border-primary);
-	}
-
-	.mini-dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		flex-shrink: 0;
-		transition: opacity 120ms ease;
-	}
-
-	.mini-dot.faded {
-		opacity: 0.3;
-	}
-
-	.mini-more {
-		font-size: 9px;
-		color: var(--fg-muted);
-		line-height: 1;
-	}
-
-	.legend-handle {
-		flex-shrink: 0;
-		align-self: stretch;
-		width: 4px;
-		border-radius: 2px;
-		margin-left: 2px;
-		cursor: pointer;
-		opacity: 0;
-		background: var(--fg-muted);
-		transition: opacity 150ms ease;
-	}
-
-	.html-legend:hover .legend-handle {
-		opacity: 0.15;
-	}
-
-	.legend-handle:hover {
-		opacity: 0.5;
-	}
-
-	.legend-side {
-		position: absolute;
-		top: 28px;
-		max-height: calc(100% - 44px);
-		display: flex;
-		flex-direction: row;
-		align-items: flex-start;
-		z-index: 5;
-	}
-
-	.legend-right {
-		right: 24px;
-	}
-
-	.legend-left {
-		left: 64px;
-	}
-
-	.legend-tab {
-		flex-shrink: 0;
-		align-self: center;
-		width: 18px;
-		height: 36px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		cursor: pointer;
-		background: color-mix(in srgb, var(--bg-secondary) 95%, transparent);
-		border: 1px solid var(--border-secondary);
-		color: var(--fg-muted);
-		transition:
-			background-color 120ms ease,
-			color 120ms ease;
-	}
-
-	.legend-tab :global(svg) {
-		stroke: currentColor;
-	}
-
-	.legend-tab:hover {
-		background: var(--bg-tertiary);
-		color: var(--fg-primary);
-	}
-
-	.legend-right .legend-tab {
-		border-radius: 6px 0 0 6px;
-		border-right: none;
-	}
-
-	.legend-left .legend-tab {
-		border-radius: 0 6px 6px 0;
-		border-left: none;
-	}
-
-	.legend-side.collapsed .legend-tab {
-		border-radius: 6px;
-		border: 1px solid var(--border-secondary);
-	}
-
-	.legend-items {
-		display: flex;
-		flex-direction: column;
-		gap: 1px;
-		padding: 6px 6px 8px;
-		max-height: calc(100vh - 200px);
-		overflow-y: auto;
-		background-color: color-mix(in srgb, var(--bg-secondary) 95%, transparent);
-		border: 1px solid var(--border-tertiary);
-	}
-
-	.legend-right .legend-items {
-		border-radius: 0 4px 4px 0;
-	}
-
-	.legend-left .legend-items {
-		border-radius: 4px 0 0 4px;
-	}
-
-	.html-legend-item {
-		display: flex;
-		align-items: center;
-		gap: 5px;
-		background: none;
-		border: none;
-		padding: 2px 4px;
-		cursor: pointer;
-		font-size: 10px;
-		font-family: var(--font-mono);
-		color: var(--fg-muted);
-		border-radius: 3px;
-		transition: opacity 120ms ease;
-		white-space: nowrap;
-	}
-
-	.html-legend-item:hover {
-		color: var(--fg-primary);
-		background-color: var(--bg-tertiary);
-	}
-
-	.html-legend-item.dimmed {
-		opacity: 0.35;
-	}
-
-	.legend-swatch {
-		width: 8px;
-		height: 8px;
-		border-radius: 1px;
-		flex-shrink: 0;
-	}
-</style>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
+	import { css, cx } from '$lib/styles/panda';
 
 	interface TimeSeriesConfigData {
 		column: string;
@@ -65,9 +66,36 @@
 	);
 </script>
 
-<div class="config-panel" role="region" aria-label="Time series configuration">
-	<div class="form-section" role="group" aria-labelledby="ts-source-column-heading">
-		<h4 id="ts-source-column-heading">Source Column</h4>
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+	role="region"
+	aria-label="Time series configuration"
+>
+	<div
+		class={css({
+			marginBottom: '0',
+			padding: '0 0 1.25rem 0',
+			backgroundColor: 'transparent',
+			borderRadius: '0',
+			border: 'none'
+		})}
+		role="group"
+		aria-labelledby="ts-source-column-heading"
+	>
+		<h4
+			id="ts-source-column-heading"
+			class={css({
+				marginTop: '0',
+				marginBottom: '3',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em'
+			})}
+		>
+			Source Column
+		</h4>
 		<ColumnDropdown
 			{schema}
 			value={config.column ?? ''}
@@ -80,15 +108,58 @@
 				col.dtype.toLowerCase() === 'datetime'}
 		/>
 		{#if dateColumns.length === 0}
-			<p id="ts-no-columns-warning" class="text-sm mt-2 mb-0 text-error-fg" role="alert">
+			<p
+				id="ts-no-columns-warning"
+				class={css({ fontSize: 'sm', marginTop: '2', marginBottom: '0', color: 'error.fg' })}
+				role="alert"
+			>
 				No date/time columns detected in schema
 			</p>
 		{/if}
 	</div>
 
-	<div class="form-section" role="group" aria-labelledby="ts-operation-heading">
-		<h4 id="ts-operation-heading">Operation Type</h4>
-		<label for="ts-select-operation" class="sr-only">Select operation type</label>
+	<div
+		class={cx(
+			css({
+				marginBottom: '0',
+				padding: '0 0 1.25rem 0',
+				backgroundColor: 'transparent',
+				borderRadius: '0',
+				border: 'none'
+			}),
+			css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+		)}
+		role="group"
+		aria-labelledby="ts-operation-heading"
+	>
+		<h4
+			id="ts-operation-heading"
+			class={css({
+				marginTop: '0',
+				marginBottom: '3',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em'
+			})}
+		>
+			Operation Type
+		</h4>
+		<label
+			for="ts-select-operation"
+			class={css({
+				position: 'absolute',
+				width: '1px',
+				height: '1px',
+				padding: '0',
+				margin: '-1px',
+				overflow: 'hidden',
+				clip: 'rect(0, 0, 0, 0)',
+				whiteSpace: 'nowrap',
+				border: '0'
+			})}>Select operation type</label
+		>
 		<select
 			id="ts-select-operation"
 			data-testid="ts-operation-select"
@@ -101,9 +172,45 @@
 	</div>
 
 	{#if config.operation_type === 'extract'}
-		<div class="form-section" role="group" aria-labelledby="ts-component-heading">
-			<h4 id="ts-component-heading">Extract Component</h4>
-			<label for="ts-select-component" class="sr-only">Select component to extract</label>
+		<div
+			class={css({
+				marginBottom: '0',
+				padding: '0 0 1.25rem 0',
+				backgroundColor: 'transparent',
+				borderRadius: '0',
+				border: 'none'
+			})}
+			role="group"
+			aria-labelledby="ts-component-heading"
+		>
+			<h4
+				id="ts-component-heading"
+				class={css({
+					marginTop: '0',
+					marginBottom: '3',
+					fontSize: '0.6875rem',
+					fontWeight: '600',
+					color: 'fg.muted',
+					textTransform: 'uppercase',
+					letterSpacing: '0.08em'
+				})}
+			>
+				Extract Component
+			</h4>
+			<label
+				for="ts-select-component"
+				class={css({
+					position: 'absolute',
+					width: '1px',
+					height: '1px',
+					padding: '0',
+					margin: '-1px',
+					overflow: 'hidden',
+					clip: 'rect(0, 0, 0, 0)',
+					whiteSpace: 'nowrap',
+					border: '0'
+				})}>Select component to extract</label
+			>
 			<select
 				id="ts-select-component"
 				data-testid="ts-component-select"
@@ -115,9 +222,45 @@
 			</select>
 		</div>
 	{:else if config.operation_type === 'timestamp'}
-		<div class="form-section" role="group" aria-labelledby="ts-timestamp-unit-heading">
-			<h4 id="ts-timestamp-unit-heading">Timestamp Unit</h4>
-			<label for="ts-select-timestamp-unit" class="sr-only">Select timestamp time unit</label>
+		<div
+			class={css({
+				marginBottom: '0',
+				padding: '0 0 1.25rem 0',
+				backgroundColor: 'transparent',
+				borderRadius: '0',
+				border: 'none'
+			})}
+			role="group"
+			aria-labelledby="ts-timestamp-unit-heading"
+		>
+			<h4
+				id="ts-timestamp-unit-heading"
+				class={css({
+					marginTop: '0',
+					marginBottom: '3',
+					fontSize: '0.6875rem',
+					fontWeight: '600',
+					color: 'fg.muted',
+					textTransform: 'uppercase',
+					letterSpacing: '0.08em'
+				})}
+			>
+				Timestamp Unit
+			</h4>
+			<label
+				for="ts-select-timestamp-unit"
+				class={css({
+					position: 'absolute',
+					width: '1px',
+					height: '1px',
+					padding: '0',
+					margin: '-1px',
+					overflow: 'hidden',
+					clip: 'rect(0, 0, 0, 0)',
+					whiteSpace: 'nowrap',
+					border: '0'
+				})}>Select timestamp time unit</label
+			>
 			<select
 				id="ts-select-timestamp-unit"
 				data-testid="ts-timestamp-unit-select"
@@ -133,32 +276,71 @@
 					>
 				{/each}
 			</select>
-			<p class="text-sm mt-2 mb-0 text-fg-muted">
+			<p class={css({ fontSize: 'sm', marginTop: '2', marginBottom: '0', color: 'fg.muted' })}>
 				Convert datetime to integer timestamp in the specified time unit.
 			</p>
 		</div>
 	{:else if config.operation_type === 'add' || config.operation_type === 'subtract'}
-		<div class="form-section" role="group" aria-labelledby="ts-period-heading">
-			<h4 id="ts-period-heading">Time Period</h4>
-			<div class="flex gap-3">
-				<div class="flex-1">
-					<label for="ts-input-value" class="block text-sm mb-1 text-fg-secondary">Value:</label>
+		<div
+			class={css({
+				marginBottom: '0',
+				padding: '0 0 1.25rem 0',
+				backgroundColor: 'transparent',
+				borderRadius: '0',
+				border: 'none'
+			})}
+			role="group"
+			aria-labelledby="ts-period-heading"
+		>
+			<h4
+				id="ts-period-heading"
+				class={css({
+					marginTop: '0',
+					marginBottom: '3',
+					fontSize: '0.6875rem',
+					fontWeight: '600',
+					color: 'fg.muted',
+					textTransform: 'uppercase',
+					letterSpacing: '0.08em'
+				})}
+			>
+				Time Period
+			</h4>
+			<div class={css({ display: 'flex', gap: '3' })}>
+				<div class={css({ flex: '1' })}>
+					<label
+						for="ts-input-value"
+						class={css({
+							display: 'block',
+							fontSize: 'sm',
+							marginBottom: '1',
+							color: 'fg.secondary'
+						})}>Value:</label
+					>
 					<input
 						id="ts-input-value"
 						data-testid="ts-value-input"
 						type="number"
-						class="flex-1"
+						class={css({ flex: '1' })}
 						bind:value={config.value}
 						min="0"
 						aria-label="Time period value"
 					/>
 				</div>
-				<div class="flex-1">
-					<label for="ts-select-unit" class="block text-sm mb-1 text-fg-secondary">Unit:</label>
+				<div class={css({ flex: '1' })}>
+					<label
+						for="ts-select-unit"
+						class={css({
+							display: 'block',
+							fontSize: 'sm',
+							marginBottom: '1',
+							color: 'fg.secondary'
+						})}>Unit:</label
+					>
 					<select
 						id="ts-select-unit"
 						data-testid="ts-unit-select"
-						class="flex-1"
+						class={css({ flex: '1' })}
 						bind:value={config.unit}
 					>
 						{#each timeUnits as unit (unit)}
@@ -169,8 +351,31 @@
 			</div>
 		</div>
 	{:else if config.operation_type === 'diff'}
-		<div class="form-section" role="group" aria-labelledby="ts-column2-heading">
-			<h4 id="ts-column2-heading">Second Date Column</h4>
+		<div
+			class={css({
+				marginBottom: '0',
+				padding: '0 0 1.25rem 0',
+				backgroundColor: 'transparent',
+				borderRadius: '0',
+				border: 'none'
+			})}
+			role="group"
+			aria-labelledby="ts-column2-heading"
+		>
+			<h4
+				id="ts-column2-heading"
+				class={css({
+					marginTop: '0',
+					marginBottom: '3',
+					fontSize: '0.6875rem',
+					fontWeight: '600',
+					color: 'fg.muted',
+					textTransform: 'uppercase',
+					letterSpacing: '0.08em'
+				})}
+			>
+				Second Date Column
+			</h4>
 			<ColumnDropdown
 				{schema}
 				value={config.column2 ?? ''}
@@ -185,9 +390,48 @@
 		</div>
 	{/if}
 
-	<div class="form-section" role="group" aria-labelledby="ts-new-column-heading">
-		<h4 id="ts-new-column-heading">New Column Name</h4>
-		<label for="ts-input-new-column" class="sr-only">New column name</label>
+	<div
+		class={cx(
+			css({
+				marginBottom: '0',
+				padding: '0 0 1.25rem 0',
+				backgroundColor: 'transparent',
+				borderRadius: '0',
+				border: 'none'
+			}),
+			css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+		)}
+		role="group"
+		aria-labelledby="ts-new-column-heading"
+	>
+		<h4
+			id="ts-new-column-heading"
+			class={css({
+				marginTop: '0',
+				marginBottom: '3',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em'
+			})}
+		>
+			New Column Name
+		</h4>
+		<label
+			for="ts-input-new-column"
+			class={css({
+				position: 'absolute',
+				width: '1px',
+				height: '1px',
+				padding: '0',
+				margin: '-1px',
+				overflow: 'hidden',
+				clip: 'rect(0, 0, 0, 0)',
+				whiteSpace: 'nowrap',
+				border: '0'
+			})}>New column name</label
+		>
 		<input
 			id="ts-new-column"
 			type="text"

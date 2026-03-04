@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
+	import { css } from '$lib/styles/panda';
 
 	interface ExpressionConfigData {
 		expression: string;
@@ -21,56 +22,199 @@
 	}
 </script>
 
-<div class="config-panel" role="region" aria-label="Expression configuration">
-	<div class="form-section" role="group" aria-labelledby="expr-expression-heading">
-		<h4 id="expr-expression-heading">Expression</h4>
-		<label for="expr-textarea-expression" class="sr-only">Polars expression</label>
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+	role="region"
+	aria-label="Expression configuration"
+>
+	<div
+		class={css({
+			marginBottom: '0',
+			padding: '0 0 1.25rem 0',
+			backgroundColor: 'transparent',
+			borderRadius: '0',
+			border: 'none'
+		})}
+		role="group"
+		aria-labelledby="expr-expression-heading"
+	>
+		<h4
+			id="expr-expression-heading"
+			class={css({
+				marginTop: '0',
+				marginBottom: '3',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em'
+			})}
+		>
+			Expression
+		</h4>
+		<label
+			for="expr-textarea-expression"
+			class={css({
+				position: 'absolute',
+				width: '1px',
+				height: '1px',
+				padding: '0',
+				margin: '-1px',
+				overflow: 'hidden',
+				clip: 'rect(0, 0, 0, 0)',
+				whiteSpace: 'nowrap',
+				border: '0'
+			})}>Polars expression</label
+		>
 		<textarea
 			id="expr-textarea-expression"
 			data-testid="expr-expression-textarea"
-			class="w-full resize-y mb-2"
+			class={css({ width: 'full', resize: 'vertical', marginBottom: '2' })}
 			bind:value={config.expression}
 			placeholder="e.g., pl.col(&quot;price&quot;) * 1.2"
 			rows="4"
 			aria-describedby="expr-expression-help"
 		></textarea>
-		<span id="expr-expression-help" class="sr-only"
-			>Enter a Polars expression using pl.col() to reference columns</span
+		<span
+			id="expr-expression-help"
+			class={css({
+				position: 'absolute',
+				width: '1px',
+				height: '1px',
+				padding: '0',
+				margin: '-1px',
+				overflow: 'hidden',
+				clip: 'rect(0, 0, 0, 0)',
+				whiteSpace: 'nowrap',
+				border: '0'
+			})}>Enter a Polars expression using pl.col() to reference columns</span
 		>
 
-		<div id="expr-syntax-help" class="help-box leading-relaxed mt-3" aria-label="Syntax help">
+		<div
+			id="expr-syntax-help"
+			class={css({
+				color: 'fg.tertiary',
+				backgroundColor: 'transparent',
+				border: 'none',
+				borderLeft: '2px solid',
+				borderLeftColor: 'border.tertiary',
+				fontSize: '0.75rem',
+				padding: '0.5rem 0.75rem',
+				lineHeight: 'relaxed',
+				marginTop: '3'
+			})}
+			aria-label="Syntax help"
+		>
 			<strong>Polars Expression Syntax:</strong><br />
 			Use
-			<code class="rounded-[3px] bg-tertiary px-2 py-1 font-mono text-[0.85em] text-accent-primary"
-				>pl.col("column")</code
+			<code
+				class={css({
+					borderRadius: '3px',
+					backgroundColor: 'bg.tertiary',
+					paddingX: '2',
+					paddingY: '1',
+					fontFamily: 'mono',
+					fontSize: '0.85em',
+					color: 'accent.primary'
+				})}>pl.col("column")</code
 			>
 			to reference columns.<br />
 			Examples:<br />
 			-
-			<code class="rounded-[3px] bg-tertiary px-2 py-1 font-mono text-[0.85em] text-accent-primary"
-				>pl.col("price") * 1.2</code
+			<code
+				class={css({
+					borderRadius: '3px',
+					backgroundColor: 'bg.tertiary',
+					paddingX: '2',
+					paddingY: '1',
+					fontFamily: 'mono',
+					fontSize: '0.85em',
+					color: 'accent.primary'
+				})}>pl.col("price") * 1.2</code
 			>
 			- Multiply<br />
 			-
-			<code class="rounded-[3px] bg-tertiary px-2 py-1 font-mono text-[0.85em] text-accent-primary"
-				>pl.col("value").cast(pl.Float64)</code
+			<code
+				class={css({
+					borderRadius: '3px',
+					backgroundColor: 'bg.tertiary',
+					paddingX: '2',
+					paddingY: '1',
+					fontFamily: 'mono',
+					fontSize: '0.85em',
+					color: 'accent.primary'
+				})}>pl.col("value").cast(pl.Float64)</code
 			>
 			- Cast type<br />
 			-
-			<code class="rounded-[3px] bg-tertiary px-2 py-1 font-mono text-[0.85em] text-accent-primary"
-				>pl.col("name").str.to_uppercase()</code
+			<code
+				class={css({
+					borderRadius: '3px',
+					backgroundColor: 'bg.tertiary',
+					paddingX: '2',
+					paddingY: '1',
+					fontFamily: 'mono',
+					fontSize: '0.85em',
+					color: 'accent.primary'
+				})}>pl.col("name").str.to_uppercase()</code
 			>
 			- String method<br />
 			-
-			<code class="rounded-[3px] bg-tertiary px-2 py-1 font-mono text-[0.85em] text-accent-primary"
-				>pl.col("date").dt.year()</code
+			<code
+				class={css({
+					borderRadius: '3px',
+					backgroundColor: 'bg.tertiary',
+					paddingX: '2',
+					paddingY: '1',
+					fontFamily: 'mono',
+					fontSize: '0.85em',
+					color: 'accent.primary'
+				})}>pl.col("date").dt.year()</code
 			> - Date component
 		</div>
 	</div>
 
-	<div class="form-section" role="group" aria-labelledby="expr-new-column-heading">
-		<h4 id="expr-new-column-heading">New Column Name</h4>
-		<label for="expr-input-column" class="sr-only">New column name</label>
+	<div
+		class={css({
+			marginBottom: '0',
+			padding: '0 0 1.25rem 0',
+			paddingTop: '1.25rem',
+			borderTop: '1px solid',
+			borderTopColor: 'border.tertiary',
+			backgroundColor: 'transparent',
+			borderRadius: '0'
+		})}
+		role="group"
+		aria-labelledby="expr-new-column-heading"
+	>
+		<h4
+			id="expr-new-column-heading"
+			class={css({
+				marginTop: '0',
+				marginBottom: '3',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em'
+			})}
+		>
+			New Column Name
+		</h4>
+		<label
+			for="expr-input-column"
+			class={css({
+				position: 'absolute',
+				width: '1px',
+				height: '1px',
+				padding: '0',
+				margin: '-1px',
+				overflow: 'hidden',
+				clip: 'rect(0, 0, 0, 0)',
+				whiteSpace: 'nowrap',
+				border: '0'
+			})}>New column name</label
+		>
 		<input
 			id="expr-input-column"
 			data-testid="expr-column-input"
@@ -80,15 +224,40 @@
 		/>
 	</div>
 
-	<div class="form-section" role="group" aria-labelledby="expr-columns-heading">
-		<h4 id="expr-columns-heading">Insert Column</h4>
+	<div
+		class={css({
+			marginBottom: '0',
+			padding: '0 0 1.25rem 0',
+			paddingTop: '1.25rem',
+			borderTop: '1px solid',
+			borderTopColor: 'border.tertiary',
+			backgroundColor: 'transparent',
+			borderRadius: '0'
+		})}
+		role="group"
+		aria-labelledby="expr-columns-heading"
+	>
+		<h4
+			id="expr-columns-heading"
+			class={css({
+				marginTop: '0',
+				marginBottom: '3',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em'
+			})}
+		>
+			Insert Column
+		</h4>
 		<ColumnDropdown
 			{schema}
 			value=""
 			onChange={(val) => insertColumn(val)}
 			placeholder="Select column to insert..."
 		/>
-		<span class="mt-1 block text-xs text-fg-muted">
+		<span class={css({ marginTop: '1', display: 'block', fontSize: 'xs', color: 'fg.muted' })}>
 			Select a column to insert it into the expression above.
 		</span>
 	</div>

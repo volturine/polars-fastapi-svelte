@@ -2,6 +2,7 @@
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import { ArrowRight, X } from 'lucide-svelte';
+	import { css } from '$lib/styles/panda';
 
 	interface RenameConfigData {
 		column_mapping: { [oldName: string]: string };
@@ -46,11 +47,37 @@
 	}
 </script>
 
-<div class="config-panel" role="region" aria-label="Rename configuration">
-	<h3 class="m-0 mb-5 text-sm uppercase tracking-wider text-fg-muted">Rename Configuration</h3>
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+	role="region"
+	aria-label="Rename configuration"
+>
+	<h3
+		class={css({
+			margin: '0',
+			marginBottom: '5',
+			fontSize: 'sm',
+			textTransform: 'uppercase',
+			letterSpacing: 'wider',
+			color: 'fg.muted'
+		})}
+	>
+		Rename Configuration
+	</h3>
 
-	<div class="mb-5" role="group" aria-labelledby="rename-columns-heading">
-		<h4 id="rename-columns-heading" class="m-0 mb-3 text-xs uppercase tracking-wider text-fg-muted">
+	<div class={css({ marginBottom: '5' })} role="group" aria-labelledby="rename-columns-heading">
+		<h4
+			id="rename-columns-heading"
+			class={css({
+				marginTop: '0',
+				marginBottom: '3',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em'
+			})}
+		>
 			Select Column to Rename
 		</h4>
 		<ColumnDropdown
@@ -61,19 +88,51 @@
 			filter={(col) => !safeMapping[col.name]}
 		/>
 		{#if schema.columns.filter((col) => !safeMapping[col.name]).length === 0}
-			<p class="empty-dashed p-6 text-center mb-5">All columns have been renamed.</p>
+			<p
+				class={css({
+					color: 'fg.muted',
+					backgroundColor: 'transparent',
+					border: '1px dashed',
+					borderColor: 'border.tertiary',
+					padding: '6',
+					textAlign: 'center',
+					marginBottom: '5'
+				})}
+			>
+				All columns have been renamed.
+			</p>
 		{/if}
 	</div>
 
-	<div class="grid gap-3 mb-5" role="group" aria-label="Add rename mapping form">
-		<label for="rename-input-new" class="sr-only">New column name</label>
+	<div
+		class={css({ display: 'grid', gap: '3', marginBottom: '5' })}
+		role="group"
+		aria-label="Add rename mapping form"
+	>
+		<label
+			for="rename-input-new"
+			class={css({
+				position: 'absolute',
+				width: '1px',
+				height: '1px',
+				padding: '0',
+				margin: '-1px',
+				overflow: 'hidden',
+				clip: 'rect(0, 0, 0, 0)',
+				whiteSpace: 'nowrap',
+				border: '0'
+			})}>New column name</label
+		>
 		<input
 			id="rename-input-new"
 			data-testid="rename-new-name-input"
 			type="text"
-			class="w-full disabled:cursor-not-allowed"
-			class:bg-muted={!formOldName}
-			class:text-fg-muted={!formOldName}
+			class={css({
+				width: 'full',
+				backgroundColor: !formOldName ? 'bg.muted' : undefined,
+				color: !formOldName ? 'fg.muted' : undefined,
+				_disabled: { cursor: 'not-allowed' }
+			})}
 			bind:value={formNewName}
 			placeholder={formOldName ? `New name for ${formOldName}` : 'Select a column first'}
 			aria-label="Enter new column name"
@@ -84,7 +143,24 @@
 			id="rename-btn-add"
 			data-testid="rename-add-button"
 			type="button"
-			class="add-btn accent-btn py-2 px-4 cursor-pointer whitespace-nowrap font-semibold hover:opacity-90 disabled:bg-tertiary disabled:border-tertiary disabled:text-fg-muted disabled:cursor-not-allowed"
+			class={css({
+				backgroundColor: 'accent.primary',
+				color: 'bg.primary',
+				border: '1px solid',
+				borderColor: 'accent.secondary',
+				paddingY: '2',
+				paddingX: '4',
+				cursor: 'pointer',
+				whiteSpace: 'nowrap',
+				fontWeight: 'semibold',
+				_hover: { opacity: '0.9' },
+				_disabled: {
+					backgroundColor: 'bg.tertiary',
+					borderColor: 'border.tertiary',
+					color: 'fg.muted',
+					cursor: 'not-allowed'
+				}
+			})}
 			onclick={addMapping}
 			disabled={!canAdd}
 			aria-label="Add rename mapping"
@@ -96,21 +172,69 @@
 	{#if mappings.length > 0}
 		<div
 			id="rename-mappings-list"
-			class="flex flex-col"
+			class={css({ display: 'flex', flexDirection: 'column' })}
 			role="list"
 			aria-label="Configured renames"
 		>
-			<h4 class="mt-0 mb-3">Renames</h4>
+			<h4
+				class={css({
+					marginTop: '0',
+					marginBottom: '3',
+					fontSize: '0.6875rem',
+					fontWeight: '600',
+					color: 'fg.muted',
+					textTransform: 'uppercase',
+					letterSpacing: '0.08em'
+				})}
+			>
+				Renames
+			</h4>
 			{#each mappings as mapping (mapping.oldName)}
-				<div class="flex justify-between items-center py-2 item-row" role="listitem">
-					<div class="flex items-center gap-3 min-w-0 text-sm font-mono">
+				<div
+					class={css({
+						backgroundColor: 'transparent',
+						border: 'none',
+						borderBottom: '1px solid',
+						borderBottomColor: 'border.tertiary',
+						display: 'flex',
+						justifyContent: 'space-between',
+						alignItems: 'center',
+						paddingY: '2',
+						_last: { borderBottom: 'none' }
+					})}
+					role="listitem"
+				>
+					<div
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							gap: '3',
+							minWidth: '0',
+							fontSize: 'sm',
+							fontFamily: 'mono'
+						})}
+					>
 						<span
-							class="font-semibold max-w-40 overflow-hidden text-ellipsis whitespace-nowrap text-fg-primary"
+							class={css({
+								fontWeight: 'semibold',
+								maxWidth: '40',
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+								color: 'fg.primary'
+							})}
 							title={mapping.oldName}>{mapping.oldName}</span
 						>
-						<ArrowRight size={12} class="text-fg-muted" aria-hidden="true" />
+						<ArrowRight size={12} class={css({ color: 'fg.muted' })} aria-hidden="true" />
 						<span
-							class="font-semibold max-w-40 overflow-hidden text-ellipsis whitespace-nowrap text-accent-primary"
+							class={css({
+								fontWeight: 'semibold',
+								maxWidth: '40',
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+								color: 'accent.primary'
+							})}
 							title={mapping.newName}>{mapping.newName}</span
 						>
 					</div>
@@ -118,7 +242,26 @@
 						id={`rename-btn-remove-${mapping.oldName}`}
 						data-testid={`rename-remove-button-${mapping.oldName}`}
 						type="button"
-						class="remove-btn w-7 h-7 inline-flex items-center justify-center cursor-pointer text-lg leading-none bg-transparent text-fg-muted border border-transparent hover:text-fg-primary hover:bg-hover hover:border-tertiary"
+						class={css({
+							width: '7',
+							height: '7',
+							display: 'inline-flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							cursor: 'pointer',
+							fontSize: 'lg',
+							lineHeight: 'none',
+							backgroundColor: 'transparent',
+							color: 'fg.muted',
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: 'border.transparent',
+							_hover: {
+								color: 'fg.primary',
+								backgroundColor: 'bg.hover',
+								borderColor: 'border.tertiary'
+							}
+						})}
 						onclick={() => removeMapping(mapping.oldName)}
 						aria-label={`Remove rename: ${mapping.oldName} to ${mapping.newName}`}
 					>
@@ -128,7 +271,11 @@
 			{/each}
 		</div>
 	{:else}
-		<p id="rename-empty-state" class="py-8 text-center text-xs text-fg-muted" role="status">
+		<p
+			id="rename-empty-state"
+			class={css({ paddingY: '8', textAlign: 'center', fontSize: 'xs', color: 'fg.muted' })}
+			role="status"
+		>
 			No renames yet.
 		</p>
 	{/if}

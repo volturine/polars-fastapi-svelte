@@ -9,6 +9,7 @@
 	import ColumnTypeDropdown from '$lib/components/common/ColumnTypeDropdown.svelte';
 	import type { Udf, UdfInput, UdfSignature } from '$lib/types/udf';
 	import { ArrowLeft, Save } from 'lucide-svelte';
+	import { css, button } from '$lib/styles/panda';
 
 	interface Props {
 		mode: 'create' | 'edit';
@@ -131,47 +132,122 @@
 	const canSave = $derived(name.trim().length > 0 && code.trim().length > 0);
 </script>
 
-<div class="max-w-240 mx-auto p-6 h-full overflow-auto">
+<div
+	class={css({ maxWidth: '240', marginX: 'auto', padding: '6', height: 'full', overflowY: 'auto' })}
+>
 	<header
-		class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mb-6 pb-5 border-b border-tertiary"
+		class={css({
+			display: 'flex',
+			flexDirection: 'column',
+			justifyContent: 'space-between',
+			alignItems: 'stretch',
+			gap: '4',
+			marginBottom: '6',
+			paddingBottom: '5',
+			borderBottomWidth: '1px',
+			borderBottomStyle: 'solid',
+			borderBottomColor: 'border.tertiary',
+			sm: { flexDirection: 'row', alignItems: 'center' }
+		})}
 	>
-		<div class="flex items-center gap-3">
-			<button class="btn-back" onclick={handleBack} type="button">
+		<div class={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+			<button
+				class={css({
+					width: '36px',
+					height: '36px',
+					padding: '0',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					backgroundColor: 'bg.tertiary',
+					border: '1px solid',
+					borderColor: 'border.primary',
+					borderRadius: '0',
+					color: 'fg.secondary',
+					_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+				})}
+				onclick={handleBack}
+				type="button"
+			>
 				<ArrowLeft size={18} />
 			</button>
 			<div>
 				<h1>{mode === 'create' ? 'New UDF' : 'Edit UDF'}</h1>
-				<p class="m-0 text-fg-tertiary">Reusable Python transforms for your pipelines</p>
+				<p class={css({ margin: '0', color: 'fg.tertiary' })}>
+					Reusable Python transforms for your pipelines
+				</p>
 			</div>
 		</div>
-		<button class="btn-primary" onclick={() => saveMutation.mutate()} disabled={!canSave || saving}>
+		<button
+			class={button({ variant: 'primary' })}
+			onclick={() => saveMutation.mutate()}
+			disabled={!canSave || saving}
+		>
 			<Save size={16} />
 			{saving ? 'Saving...' : 'Save UDF'}
 		</button>
 	</header>
 
 	{#if query.isLoading}
-		<div class="info-box">Loading UDF...</div>
+		<div
+			class={css({
+				padding: '0.625rem 0.75rem',
+				border: 'none',
+				borderLeft: '2px solid',
+				borderRadius: '0',
+				marginTop: '0.75rem',
+				marginBottom: '0',
+				fontSize: '0.75rem',
+				lineHeight: '1.5',
+				backgroundColor: 'transparent',
+				borderLeftColor: 'accent.secondary',
+				color: 'fg.tertiary'
+			})}
+		>
+			Loading UDF...
+		</div>
 	{:else}
-		<div class="flex flex-col gap-5">
-			<div class="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
-				<div class="flex flex-col gap-2">
-					<label for="udf-name" class="text-sm text-fg-secondary">Name</label>
+		<div class={css({ display: 'flex', flexDirection: 'column', gap: '5' })}>
+			<div
+				class={css({
+					display: 'grid',
+					gridTemplateColumns: '1fr',
+					gap: '4',
+					sm: { gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }
+				})}
+			>
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+					<label for="udf-name" class={css({ fontSize: 'sm', color: 'fg.secondary' })}>Name</label>
 					<input id="udf-name" type="text" bind:value={name} placeholder="UDF name" />
 				</div>
-				<div class="flex flex-col gap-2">
-					<label for="udf-description" class="text-sm text-fg-secondary">Description</label>
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+					<label for="udf-description" class={css({ fontSize: 'sm', color: 'fg.secondary' })}
+						>Description</label
+					>
 					<textarea id="udf-description" rows="3" bind:value={description}></textarea>
 				</div>
-				<div class="flex flex-col gap-2">
-					<label for="udf-tags" class="text-sm text-fg-secondary">Tags (comma-separated)</label>
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+					<label for="udf-tags" class={css({ fontSize: 'sm', color: 'fg.secondary' })}
+						>Tags (comma-separated)</label
+					>
 					<input id="udf-tags" type="text" bind:value={tags} placeholder="math, text, date" />
 				</div>
 			</div>
 
-			<div class="flex flex-col gap-3 p-4 border bg-primary border-tertiary">
+			<div
+				class={css({
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '3',
+					padding: '4',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.tertiary',
+					backgroundColor: 'bg.primary'
+				})}
+			>
 				<UdfSignatureBuilder {inputs} onChange={updateInputs} />
-				<div class="flex flex-col gap-2">
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
 					<label for="udf-output">Output dtype</label>
 					<ColumnTypeDropdown
 						value={outputDtype}
@@ -181,16 +257,47 @@
 				</div>
 			</div>
 
-			<div class="flex flex-col gap-3 p-4 border bg-primary border-tertiary">
-				<div class="flex justify-between items-center">
-					<h4 class="m-0 text-sm text-fg-secondary">Code</h4>
-					<span class="text-xs text-fg-muted">Define a function named <code>udf</code></span>
+			<div
+				class={css({
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '3',
+					padding: '4',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.tertiary',
+					backgroundColor: 'bg.primary'
+				})}
+			>
+				<div
+					class={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' })}
+				>
+					<h4 class={css({ margin: '0', fontSize: 'sm', color: 'fg.secondary' })}>Code</h4>
+					<span class={css({ fontSize: 'xs', color: 'fg.muted' })}
+						>Define a function named <code>udf</code></span
+					>
 				</div>
 				<CodeEditor bind:value={code} height="360px" />
 			</div>
 
 			{#if error}
-				<div class="error-box">{error}</div>
+				<div
+					class={css({
+						padding: '0.625rem 0.75rem',
+						border: 'none',
+						borderLeft: '2px solid',
+						borderRadius: '0',
+						marginTop: '0.75rem',
+						marginBottom: '0',
+						fontSize: '0.75rem',
+						lineHeight: '1.5',
+						backgroundColor: 'transparent',
+						borderLeftColor: 'error.border',
+						color: 'error.fg'
+					})}
+				>
+					{error}
+				</div>
 			{/if}
 		</div>
 	{/if}

@@ -4,6 +4,7 @@
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
 	import { schemaStore } from '$lib/stores/schema.svelte';
 	import DatasourcePicker from '$lib/components/common/DatasourcePicker.svelte';
+	import { css, cx } from '$lib/styles/panda';
 
 	interface UnionByNameConfigData {
 		sources: string[];
@@ -71,28 +72,97 @@
 	}
 </script>
 
-<div class="config-panel">
-	<p class="description">Combine rows from multiple datasources using matching column names.</p>
+<div
+	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+>
+	<p
+		class={css({
+			marginTop: '0',
+			marginBottom: '3',
+			color: 'fg.tertiary',
+			fontSize: 'xs',
+			lineHeight: '1.6'
+		})}
+	>
+		Combine rows from multiple datasources using matching column names.
+	</p>
 
-	<div class="form-section">
-		<h4>Base Datasource</h4>
-		<div class="flex flex-col gap-1">
+	<div
+		class={css({
+			marginBottom: '0',
+			padding: '0 0 1.25rem 0',
+			backgroundColor: 'transparent',
+			borderRadius: '0',
+			border: 'none'
+		})}
+	>
+		<h4
+			class={css({
+				marginTop: '0',
+				marginBottom: '3',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em'
+			})}
+		>
+			Base Datasource
+		</h4>
+		<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 			{#if currentDatasource}
 				<strong>{currentDatasource.name}</strong>
-				<span class="text-xs text-fg-tertiary">{schema.columns.length} columns</span>
+				<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}
+					>{schema.columns.length} columns</span
+				>
 			{:else}
-				<span class="text-fg-muted">No active datasource selected</span>
+				<span class={css({ color: 'fg.muted' })}>No active datasource selected</span>
 			{/if}
 		</div>
 	</div>
 
-	<div class="form-section">
-		<div class="flex justify-between items-center mb-5">
-			<h4 class="mb-0">Union Sources</h4>
+	<div
+		class={cx(
+			css({
+				marginBottom: '0',
+				padding: '0 0 1.25rem 0',
+				backgroundColor: 'transparent',
+				borderRadius: '0',
+				border: 'none'
+			}),
+			css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+		)}
+	>
+		<div
+			class={css({
+				display: 'flex',
+				justifyContent: 'space-between',
+				alignItems: 'center',
+				marginBottom: '5'
+			})}
+		>
+			<h4
+				class={cx(
+					css({
+						marginTop: '0',
+						marginBottom: '3',
+						fontSize: '0.6875rem',
+						fontWeight: '600',
+						color: 'fg.muted',
+						textTransform: 'uppercase',
+						letterSpacing: '0.08em'
+					}),
+					css({ marginBottom: '0' })
+				)}
+			>
+				Union Sources
+			</h4>
 		</div>
 
 		{#if datasourceOptions.length === 0}
-			<p class="my-2 italic text-fg-muted">Add another datasource to enable unions.</p>
+			<p class={css({ marginY: '2', fontStyle: 'italic', color: 'fg.muted' })}>
+				Add another datasource to enable unions.
+			</p>
 		{:else}
 			<DatasourcePicker
 				datasources={datasourceOptions}
@@ -105,17 +175,64 @@
 		{/if}
 
 		{#if selectedSources.length === 0}
-			<div class="warning-box">Select at least one datasource to union.</div>
+			<div
+				class={css({
+					padding: '0.625rem 0.75rem',
+					border: 'none',
+					borderLeft: '2px solid',
+					borderRadius: '0',
+					marginTop: '0.75rem',
+					marginBottom: '0',
+					fontSize: '0.75rem',
+					lineHeight: '1.5',
+					backgroundColor: 'transparent',
+					borderLeftColor: 'warning.border',
+					color: 'fg.tertiary'
+				})}
+			>
+				Select at least one datasource to union.
+			</div>
 		{/if}
 	</div>
 
-	<div class="form-section">
-		<h4>Column Matching</h4>
-		<label class="flex items-center gap-3">
+	<div
+		class={cx(
+			css({
+				marginBottom: '0',
+				padding: '0 0 1.25rem 0',
+				backgroundColor: 'transparent',
+				borderRadius: '0',
+				border: 'none'
+			}),
+			css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+		)}
+	>
+		<h4
+			class={css({
+				marginTop: '0',
+				marginBottom: '3',
+				fontSize: '0.6875rem',
+				fontWeight: '600',
+				color: 'fg.muted',
+				textTransform: 'uppercase',
+				letterSpacing: '0.08em'
+			})}
+		>
+			Column Matching
+		</h4>
+		<label class={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
 			<input id="allow-missing" type="checkbox" bind:checked={config.allow_missing} />
 			<span>Allow missing columns (fill with nulls)</span>
 		</label>
-		<span class="mt-2 block text-xs text-fg-muted leading-relaxed">
+		<span
+			class={css({
+				marginTop: '2',
+				display: 'block',
+				fontSize: 'xs',
+				color: 'fg.muted',
+				lineHeight: 'relaxed'
+			})}
+		>
 			When enabled, missing columns are created with null values to keep all rows.
 		</span>
 	</div>

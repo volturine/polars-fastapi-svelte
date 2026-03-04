@@ -28,7 +28,7 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
+			paddingBottom: '5',
 			backgroundColor: 'transparent',
 			borderRadius: '0',
 			border: 'none'
@@ -62,12 +62,12 @@
 		class={cx(
 			css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
 			}),
-			css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+			css({ paddingTop: '5', borderTop: '1px solid var(--color-border-tertiary)' })
 		)}
 	>
 		<label

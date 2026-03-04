@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getColumnTypeConfig } from '$lib/utils/columnTypes';
-	import { css } from '$lib/styles/panda';
+	import { css, cx, badge } from '$lib/styles/panda';
 
 	interface Props {
 		columnType: string;
@@ -23,38 +23,33 @@
 	const labelVisible = $derived(showLabel && variant !== 'compact');
 
 	const sizes: Record<string, Record<string, string>> = {
-		xs: { padding: '2px 6px', fontSize: '0.6875rem', gap: '3px' },
-		sm: { padding: '3px 8px', fontSize: '0.75rem', gap: '4px' },
-		md: { padding: '4px 10px', fontSize: '0.875rem', gap: '5px' }
+		xs: { paddingX: '1.5', paddingY: '0.5', fontSize: 'xs', gap: '3px' },
+		sm: { paddingX: '2', paddingY: '0.5', fontSize: 'xs', gap: '4px' },
+		md: { paddingX: '2.5', paddingY: '1', fontSize: 'sm', gap: '5px' }
 	};
 
 	const variants: Record<string, Record<string, string>> = {
 		default: {},
 		subtle: { backgroundColor: 'transparent' },
-		compact: { padding: '2px 4px', gap: '0' }
+		compact: { paddingX: '1', paddingY: '0.5', gap: '0' }
 	};
 </script>
 
 <span
-	class={css({
-		display: 'inline-flex',
-		alignItems: 'center',
-		fontFamily: 'var(--font-mono, monospace)',
-		fontWeight: '600',
-		whiteSpace: 'nowrap',
-		lineHeight: '1',
-		userSelect: 'none',
-		transitionProperty: 'opacity',
-		transitionDuration: '160ms',
-		color: 'accent.primary',
-		borderWidth: '1px',
-		borderStyle: 'solid',
-		borderColor: 'accent.secondary',
-		backgroundColor: 'accent.bg',
-		_hover: { opacity: '0.9' },
-		...sizes[size],
-		...variants[variant]
-	})}
+	class={cx(
+		badge({ tone: 'type' }),
+		css({
+			fontWeight: '600',
+			whiteSpace: 'nowrap',
+			lineHeight: '1',
+			userSelect: 'none',
+			transitionProperty: 'opacity',
+			transitionDuration: '160ms',
+			_hover: { opacity: '0.9' },
+			...sizes[size],
+			...variants[variant]
+		})
+	)}
 	title={config.description}
 >
 	{#if showIcon}

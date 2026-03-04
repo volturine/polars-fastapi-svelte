@@ -36,12 +36,12 @@
 		<div
 			class={css({
 				display: 'block',
-				fontSize: '0.6875rem',
+				fontSize: 'xs',
 				fontWeight: '600',
 				color: 'fg.muted',
 				marginBottom: '1.5',
 				textTransform: 'uppercase',
-				letterSpacing: '0.05em'
+				letterSpacing: 'wider'
 			})}
 		>
 			Index columns (identifiers)
@@ -61,12 +61,12 @@
 		<div
 			class={css({
 				display: 'block',
-				fontSize: '0.6875rem',
+				fontSize: 'xs',
 				fontWeight: '600',
 				color: 'fg.muted',
 				marginBottom: '1.5',
 				textTransform: 'uppercase',
-				letterSpacing: '0.05em'
+				letterSpacing: 'wider'
 			})}
 		>
 			Columns to unpivot

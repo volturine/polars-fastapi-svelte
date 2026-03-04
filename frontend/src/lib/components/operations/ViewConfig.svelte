@@ -20,7 +20,7 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
+			paddingBottom: '5',
 			backgroundColor: 'transparent',
 			borderRadius: '0',
 			border: 'none'

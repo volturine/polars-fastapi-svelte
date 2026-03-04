@@ -3,6 +3,8 @@
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import { X } from 'lucide-svelte';
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
+	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
+	import PanelFooter from '$lib/components/ui/PanelFooter.svelte';
 	import { css, button } from '$lib/styles/panda';
 
 	interface Props {
@@ -42,46 +44,40 @@
 />
 
 {#snippet content()}
+	<PanelHeader>
+		{#snippet title()}
+			<h2 id="udf-modal-title" class={css({ margin: '0', fontSize: 'md', color: 'fg.primary' })}>
+				Select UDF
+			</h2>
+		{/snippet}
+		{#snippet actions()}
+			<button
+				class={css({
+					background: 'transparent',
+					border: 'none',
+					color: 'fg.muted',
+					cursor: 'pointer',
+					padding: '1',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+				})}
+				onclick={onClose}
+				aria-label="Close"
+				type="button"
+			>
+				<X size={16} />
+			</button>
+		{/snippet}
+	</PanelHeader>
 	<div
 		class={css({
-			display: 'flex',
-			justifyContent: 'space-between',
-			alignItems: 'center',
-			padding: '0.75rem 1rem',
-			borderBottom: '1px solid var(--color-border-primary)',
-			'& h2': { margin: '0', fontSize: '1rem', color: 'fg.primary' }
-		})}
-	>
-		<h2 id="udf-modal-title">Select UDF</h2>
-		<button
-			class={css({
-				background: 'transparent',
-				border: 'none',
-				color: 'fg.muted',
-				cursor: 'pointer',
-				fontSize: '1.25rem',
-				padding: '0.25rem',
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'center',
-				transitionProperty: 'color, background-color',
-				transitionDuration: 'normal',
-				_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
-			})}
-			onclick={onClose}
-			aria-label="Close"
-			type="button"
-		>
-			<X size={16} />
-		</button>
-	</div>
-	<div
-		class={css({
-			padding: '1rem',
+			padding: '4',
 			overflowY: 'auto',
 			display: 'flex',
 			flexDirection: 'column',
-			gap: '0.75rem'
+			gap: '3'
 		})}
 	>
 		<input name="search" type="text" placeholder="Search UDFs..." bind:value={search} />
@@ -101,7 +97,7 @@
 					<button
 						class={css({
 							textAlign: 'left',
-							padding: '0.75rem',
+							padding: '3',
 							border: '1px solid',
 							borderColor: 'border.primary',
 							borderRadius: '0',
@@ -168,15 +164,7 @@
 			{/if}
 		</div>
 	</div>
-	<div
-		class={css({
-			padding: '0.75rem 1rem',
-			borderTop: '1px solid var(--color-border-primary)',
-			display: 'flex',
-			justifyContent: 'flex-end',
-			gap: '0.5rem'
-		})}
-	>
+	<PanelFooter>
 		<button class={button({ variant: 'secondary' })} onclick={onClose} type="button">Close</button>
-	</div>
+	</PanelFooter>
 {/snippet}

@@ -4,7 +4,7 @@
 	import type { FileListItem, FileListResponse } from '$lib/api/datasource';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import { ArrowUp } from 'lucide-svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, emptyText } from '$lib/styles/panda';
 
 	let {
 		initialPath = '',
@@ -119,7 +119,7 @@
 		class={css({
 			display: 'flex',
 			width: '100%',
-			maxWidth: '45rem',
+			maxWidth: '180',
 			maxHeight: '70vh',
 			flexDirection: 'column',
 			borderWidth: '1px',
@@ -206,17 +206,13 @@
 
 		<div class={css({ flex: '1', overflow: 'auto', padding: '3' })}>
 			{#if loading}
-				<div class={css({ padding: '6', textAlign: 'center', fontSize: 'sm', color: 'fg.muted' })}>
-					Loading...
-				</div>
+				<div class={emptyText({ size: 'panel' })}>Loading...</div>
 			{:else if error}
-				<div class={css({ padding: '6', textAlign: 'center', fontSize: 'sm', color: 'fg.muted' })}>
+				<div class={emptyText({ size: 'panel' })}>
 					{error}
 				</div>
 			{:else if entries.length === 0}
-				<div class={css({ padding: '6', textAlign: 'center', fontSize: 'sm', color: 'fg.muted' })}>
-					No files found
-				</div>
+				<div class={emptyText({ size: 'panel' })}>No files found</div>
 			{:else}
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
 					{#each entries as entry (entry.path)}

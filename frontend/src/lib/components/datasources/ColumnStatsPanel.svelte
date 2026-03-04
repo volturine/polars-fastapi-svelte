@@ -3,6 +3,8 @@
 	import { BarChart3, X } from 'lucide-svelte';
 	import { getColumnStats } from '$lib/api/datasource';
 	import type { HistogramBin } from '$lib/api/datasource';
+	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
 	import { css } from '$lib/styles/panda';
 
 	interface Props {
@@ -61,94 +63,75 @@
 	<div class={css({ position: 'absolute', insetInline: '0', bottom: '0', zIndex: '40' })}>
 		<div
 			class={css({
-				borderTopWidth: '1px',
+				borderTopWidth: '1',
 				borderTopStyle: 'solid',
 				borderColor: 'border.tertiary',
 				backgroundColor: 'bg.primary',
 				animation: 'var(--animate-slide-up)'
 			})}
 		>
-			<div
-				class={css({
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'space-between',
-					paddingX: '5',
-					paddingY: '3',
-					borderBottomWidth: '1px',
-					borderBottomStyle: 'solid',
-					borderColor: 'border.tertiary'
-				})}
-			>
-				<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
-					<BarChart3 size={16} />
-					<h3 class={css({ margin: '0', fontSize: 'xs', fontWeight: 'semibold' })}>Column Stats</h3>
-					{#if columnName}
-						<span class={css({ fontSize: 'xs', color: 'fg.muted', fontFamily: 'var(--font-mono)' })}
-							>{columnName}</span
-						>
-					{/if}
-					{#if stats}
-						<span class={css({ fontSize: 'xs', color: 'fg.muted' })}>({stats.dtype})</span>
-					{/if}
-				</div>
-				<button
-					class={css({
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
-						backgroundColor: 'transparent',
-						paddingX: '2',
-						paddingY: '1',
-						fontSize: 'xs',
-						color: 'fg.secondary',
-						_hover: { backgroundColor: 'bg.hover' },
-						transitionProperty: 'color, background-color',
-						transitionDuration: '160ms'
-					})}
-					onclick={onClose}
-					type="button"
-				>
-					<X size={14} />
-				</button>
-			</div>
+			<PanelHeader>
+				{#snippet title()}
+					<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+						<BarChart3 size={16} />
+						<h3 class={css({ margin: '0', fontSize: 'xs', fontWeight: 'semibold' })}>
+							Column Stats
+						</h3>
+						{#if columnName}
+							<span class={css({ fontSize: 'xs', color: 'fg.muted', fontFamily: 'mono' })}
+								>{columnName}</span
+							>
+						{/if}
+						{#if stats}
+							<span class={css({ fontSize: 'xs', color: 'fg.muted' })}>({stats.dtype})</span>
+						{/if}
+					</div>
+				{/snippet}
+				{#snippet actions()}
+					<button
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							borderWidth: '1',
+							borderStyle: 'solid',
+							borderColor: 'border.tertiary',
+							backgroundColor: 'transparent',
+							paddingX: '2',
+							paddingY: '1',
+							fontSize: 'xs',
+							color: 'fg.secondary',
+							_hover: { backgroundColor: 'bg.hover' },
+							transitionProperty: 'color, background-color',
+							transitionDuration: '160ms'
+						})}
+						onclick={onClose}
+						type="button"
+					>
+						<X size={14} />
+					</button>
+				{/snippet}
+			</PanelHeader>
 
-			<div class={css({ height: '320px', overflowY: 'auto', padding: '5' })}>
+			<div class={css({ height: '80', overflowY: 'auto', padding: '5' })}>
 				{#if loading}
 					<div class={css({ fontSize: 'sm', color: 'fg.muted' })}>Computing stats...</div>
 				{:else if error}
-					<div
-						class={css({
-							padding: '0.625rem 0.75rem',
-							border: 'none',
-							borderLeft: '2px solid',
-							borderRadius: '0',
-							marginTop: '0.75rem',
-							marginBottom: '0',
-							lineHeight: '1.5',
-							backgroundColor: 'transparent',
-							borderLeftColor: 'error.border',
-							color: 'error.fg',
-							fontSize: 'sm'
-						})}
-					>
+					<Callout tone="error">
 						{error instanceof Error ? error.message : 'Failed to load stats'}
-					</div>
+					</Callout>
 				{:else if stats}
 					<div class={css({ display: 'flex', gap: '6' })}>
 						<!-- Left: Core metrics -->
-						<div class={css({ minWidth: '240px', flexShrink: '0' })}>
+						<div class={css({ minWidth: '240', flexShrink: '0' })}>
 							<!-- Overview section -->
 							<div class={css({ marginBottom: '4' })}>
 								<div
 									class={css({
-										fontSize: '10px',
+										fontSize: '2xs',
 										fontWeight: '600',
 										textTransform: 'uppercase',
-										letterSpacing: '0.05em',
+										letterSpacing: 'wider',
 										color: 'fg.muted',
 										marginBottom: '1.5'
 									})}
@@ -169,7 +152,7 @@
 											fontSize: 'xs',
 											fontWeight: '600',
 											color: 'fg.primary',
-											fontFamily: 'var(--font-mono)'
+											fontFamily: 'mono'
 										})}>{stats.count.toLocaleString()}</span
 									>
 								</div>
@@ -187,7 +170,7 @@
 											fontSize: 'xs',
 											fontWeight: '600',
 											color: 'fg.primary',
-											fontFamily: 'var(--font-mono)'
+											fontFamily: 'mono'
 										})}
 									>
 										{stats.null_count.toLocaleString()}
@@ -197,7 +180,7 @@
 									class={css({
 										height: '6px',
 										backgroundColor: 'bg.tertiary',
-										borderWidth: '1px',
+										borderWidth: '1',
 										borderStyle: 'solid',
 										borderColor: 'border.primary',
 										marginTop: '1',
@@ -234,7 +217,7 @@
 												fontSize: 'xs',
 												fontWeight: '600',
 												color: 'fg.primary',
-												fontFamily: 'var(--font-mono)'
+												fontFamily: 'mono'
 											})}>{stats.unique.toLocaleString()}</span
 										>
 									</div>
@@ -246,10 +229,10 @@
 								<div class={css({ marginBottom: '4' })}>
 									<div
 										class={css({
-											fontSize: '10px',
+											fontSize: '2xs',
 											fontWeight: '600',
 											textTransform: 'uppercase',
-											letterSpacing: '0.05em',
+											letterSpacing: 'wider',
 											color: 'fg.muted',
 											marginBottom: '1.5'
 										})}
@@ -270,7 +253,7 @@
 												fontSize: 'xs',
 												fontWeight: '600',
 												color: 'fg.primary',
-												fontFamily: 'var(--font-mono)'
+												fontFamily: 'mono'
 											})}>{fmt(stats.mean)}</span
 										>
 									</div>
@@ -289,7 +272,7 @@
 													fontSize: 'xs',
 													fontWeight: '600',
 													color: 'fg.primary',
-													fontFamily: 'var(--font-mono)'
+													fontFamily: 'mono'
 												})}>{fmt(stats.median)}</span
 											>
 										</div>
@@ -309,7 +292,7 @@
 													fontSize: 'xs',
 													fontWeight: '600',
 													color: 'fg.primary',
-													fontFamily: 'var(--font-mono)'
+													fontFamily: 'mono'
 												})}>{fmt(stats.std)}</span
 											>
 										</div>
@@ -328,7 +311,7 @@
 												fontSize: 'xs',
 												fontWeight: '600',
 												color: 'fg.primary',
-												fontFamily: 'var(--font-mono)'
+												fontFamily: 'mono'
 											})}>{stats.min}</span
 										>
 									</div>
@@ -347,7 +330,7 @@
 													fontSize: 'xs',
 													fontWeight: '600',
 													color: 'fg.primary',
-													fontFamily: 'var(--font-mono)'
+													fontFamily: 'mono'
 												})}>{fmt(stats.q25)}</span
 											>
 										</div>
@@ -367,7 +350,7 @@
 													fontSize: 'xs',
 													fontWeight: '600',
 													color: 'fg.primary',
-													fontFamily: 'var(--font-mono)'
+													fontFamily: 'mono'
 												})}>{fmt(stats.q75)}</span
 											>
 										</div>
@@ -386,7 +369,7 @@
 												fontSize: 'xs',
 												fontWeight: '600',
 												color: 'fg.primary',
-												fontFamily: 'var(--font-mono)'
+												fontFamily: 'mono'
 											})}>{stats.max}</span
 										>
 									</div>
@@ -398,10 +381,10 @@
 								<div class={css({ marginBottom: '4' })}>
 									<div
 										class={css({
-											fontSize: '10px',
+											fontSize: '2xs',
 											fontWeight: '600',
 											textTransform: 'uppercase',
-											letterSpacing: '0.05em',
+											letterSpacing: 'wider',
 											color: 'fg.muted',
 											marginBottom: '1.5'
 										})}
@@ -422,7 +405,7 @@
 												fontSize: 'xs',
 												fontWeight: '600',
 												color: 'fg.primary',
-												fontFamily: 'var(--font-mono)'
+												fontFamily: 'mono'
 											})}>{stats.min}</span
 										>
 									</div>
@@ -440,7 +423,7 @@
 												fontSize: 'xs',
 												fontWeight: '600',
 												color: 'fg.primary',
-												fontFamily: 'var(--font-mono)'
+												fontFamily: 'mono'
 											})}>{stats.max}</span
 										>
 									</div>
@@ -454,10 +437,10 @@
 								<div class={css({ marginBottom: '4' })}>
 									<div
 										class={css({
-											fontSize: '10px',
+											fontSize: '2xs',
 											fontWeight: '600',
 											textTransform: 'uppercase',
-											letterSpacing: '0.05em',
+											letterSpacing: 'wider',
 											color: 'fg.muted',
 											marginBottom: '1.5'
 										})}
@@ -468,7 +451,7 @@
 										class={css({
 											height: '8px',
 											backgroundColor: 'bg.tertiary',
-											borderWidth: '1px',
+											borderWidth: '1',
 											borderStyle: 'solid',
 											borderColor: 'border.primary',
 											overflow: 'hidden'
@@ -508,10 +491,10 @@
 								<div class={css({ marginBottom: '4' })}>
 									<div
 										class={css({
-											fontSize: '10px',
+											fontSize: '2xs',
 											fontWeight: '600',
 											textTransform: 'uppercase',
-											letterSpacing: '0.05em',
+											letterSpacing: 'wider',
 											color: 'fg.muted',
 											marginBottom: '1.5'
 										})}
@@ -532,7 +515,7 @@
 												fontSize: 'xs',
 												fontWeight: '600',
 												color: 'fg.primary',
-												fontFamily: 'var(--font-mono)'
+												fontFamily: 'mono'
 											})}>{stats.min_length}</span
 										>
 									</div>
@@ -550,7 +533,7 @@
 												fontSize: 'xs',
 												fontWeight: '600',
 												color: 'fg.primary',
-												fontFamily: 'var(--font-mono)'
+												fontFamily: 'mono'
 											})}>{fmt(stats.avg_length)}</span
 										>
 									</div>
@@ -568,7 +551,7 @@
 												fontSize: 'xs',
 												fontWeight: '600',
 												color: 'fg.primary',
-												fontFamily: 'var(--font-mono)'
+												fontFamily: 'mono'
 											})}>{stats.max_length}</span
 										>
 									</div>
@@ -583,10 +566,10 @@
 								<div class={css({ marginBottom: '4' })}>
 									<div
 										class={css({
-											fontSize: '10px',
+											fontSize: '2xs',
 											fontWeight: '600',
 											textTransform: 'uppercase',
-											letterSpacing: '0.05em',
+											letterSpacing: 'wider',
 											color: 'fg.muted',
 											marginBottom: '1.5'
 										})}
@@ -597,8 +580,8 @@
 										class={css({
 											display: 'flex',
 											alignItems: 'flex-end',
-											gap: '1px',
-											height: '120px'
+											gap: 'px',
+											height: '30'
 										})}
 									>
 										{#each stats.histogram as bin (bin.start)}
@@ -617,7 +600,7 @@
 														width: '100%',
 														backgroundColor: 'accent.primary',
 														opacity: '0.7',
-														minHeight: '1px',
+														minHeight: 'px',
 														transitionProperty: 'height',
 														transitionDuration: '300ms',
 														transitionTimingFunction: 'ease',
@@ -648,10 +631,10 @@
 								<div class={css({ marginBottom: '4' })}>
 									<div
 										class={css({
-											fontSize: '10px',
+											fontSize: '2xs',
 											fontWeight: '600',
 											textTransform: 'uppercase',
-											letterSpacing: '0.05em',
+											letterSpacing: 'wider',
 											color: 'fg.muted',
 											marginBottom: '1.5'
 										})}
@@ -673,12 +656,12 @@
 													<span
 														class={css({
 															fontSize: 'xs',
-															fontFamily: 'var(--font-mono)',
+															fontFamily: 'mono',
 															color: 'fg.primary',
 															overflow: 'hidden',
 															textOverflow: 'ellipsis',
 															whiteSpace: 'nowrap',
-															maxWidth: '200px'
+															maxWidth: '50'
 														})}
 														title={val}>{val}</span
 													>
@@ -690,7 +673,7 @@
 													class={css({
 														height: '6px',
 														backgroundColor: 'bg.tertiary',
-														borderWidth: '1px',
+														borderWidth: '1',
 														borderStyle: 'solid',
 														borderColor: 'border.primary',
 														overflow: 'hidden'

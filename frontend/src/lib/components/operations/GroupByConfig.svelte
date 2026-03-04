@@ -2,6 +2,7 @@
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
+	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import { css } from '$lib/styles/panda';
 
 	const uid = $props.id();
@@ -80,7 +81,7 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
+			paddingBottom: '5',
 			backgroundColor: 'transparent',
 			borderRadius: '0',
 			border: 'none'
@@ -88,20 +89,7 @@
 		role="group"
 		aria-labelledby="{uid}-columns-heading"
 	>
-		<h4
-			id="{uid}-columns-heading"
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			Group By Columns
-		</h4>
+		<span id="{uid}-columns-heading"><SectionHeader>Group By Columns</SectionHeader></span>
 		<MultiSelectColumnDropdown
 			{schema}
 			value={config.groupBy ?? []}
@@ -114,31 +102,19 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
+			paddingBottom: '5',
 			backgroundColor: 'transparent',
 			borderRadius: '0',
 			border: 'none',
-			paddingTop: '1.25rem',
-			borderTop: '1px solid',
+			paddingTop: '5',
+			borderTopWidth: '1',
+			borderTopStyle: 'solid',
 			borderTopColor: 'border.tertiary'
 		})}
 		role="group"
 		aria-labelledby="{uid}-agg-heading"
 	>
-		<h4
-			id="{uid}-agg-heading"
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			Aggregations
-		</h4>
+		<span id="{uid}-agg-heading"><SectionHeader>Aggregations</SectionHeader></span>
 
 		<div
 			class={css({ display: 'flex', flexWrap: 'wrap', gap: '2', marginBottom: '5' })}
@@ -158,8 +134,8 @@
 				for="{uid}-agg-function"
 				class={css({
 					position: 'absolute',
-					width: '1px',
-					height: '1px',
+					width: 'px',
+					height: 'px',
 					padding: '0',
 					margin: '-1px',
 					overflow: 'hidden',

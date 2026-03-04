@@ -4,7 +4,7 @@
 	import { untrack } from 'svelte';
 	import { enginesStore } from '$lib/stores/engines.svelte';
 	import { toEpochDisplay } from '$lib/utils/datetime';
-	import { css } from '$lib/styles/panda';
+	import { css, emptyText } from '$lib/styles/panda';
 
 	let expanded = $state(false);
 	let killing = $state<string | null>(null);
@@ -100,7 +100,7 @@
 				right: '0',
 				top: '100%',
 				zIndex: 'engine',
-				width: '17.5rem',
+				width: '70',
 				overflow: 'hidden',
 				borderWidth: '1px',
 				borderStyle: 'solid',
@@ -141,7 +141,7 @@
 				</button>
 			</div>
 
-			<div class={css({ maxHeight: '18.75rem', overflowY: 'auto' })}>
+			<div class={css({ maxHeight: '75', overflowY: 'auto' })}>
 				{#if enginesStore.count === 0}
 					{#if enginesStore.loading}
 						<div
@@ -160,9 +160,7 @@
 							<span>Loading...</span>
 						</div>
 					{:else}
-						<div
-							class={css({ padding: '6', textAlign: 'center', fontSize: 'sm', color: 'fg.muted' })}
-						>
+						<div class={emptyText({ size: 'panel' })}>
 							<span>No active engines</span>
 						</div>
 					{/if}
@@ -184,7 +182,7 @@
 									<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 										<span
 											class={css({
-												fontFamily: 'var(--font-mono)',
+												fontFamily: 'mono',
 												fontSize: 'xs',
 												color: 'fg.primary'
 											})}
@@ -212,7 +210,7 @@
 										{#if engine.current_job_id}
 											<span
 												class={css({
-													fontFamily: 'var(--font-mono)',
+													fontFamily: 'mono',
 													fontSize: 'xs',
 													color: 'accent.primary'
 												})}

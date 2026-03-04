@@ -96,7 +96,7 @@
 			display: 'flex',
 			maxHeight: '80vh',
 			width: '100%',
-			maxWidth: '30rem',
+			maxWidth: '120',
 			flexDirection: 'column',
 			borderWidth: '1px',
 			borderStyle: 'solid',
@@ -179,7 +179,7 @@
 						fontSize: 'xs',
 						fontWeight: 'semibold',
 						textTransform: 'uppercase',
-						letterSpacing: '0.08em',
+						letterSpacing: 'wide3',
 						color: activeSource === 'datasource' ? 'fg.primary' : 'fg.muted',
 						backgroundColor: activeSource === 'datasource' ? 'bg.primary' : 'transparent'
 					})}
@@ -197,7 +197,7 @@
 						fontSize: 'xs',
 						fontWeight: 'semibold',
 						textTransform: 'uppercase',
-						letterSpacing: '0.08em',
+						letterSpacing: 'wide3',
 						color: activeSource === 'analysis' ? 'fg.primary' : 'fg.muted',
 						backgroundColor: activeSource === 'analysis' ? 'bg.primary' : 'transparent'
 					})}
@@ -232,7 +232,7 @@
 		<div
 			class={css({
 				display: 'flex',
-				maxHeight: '18.75rem',
+				maxHeight: '75',
 				flexDirection: 'column',
 				gap: '1',
 				overflowY: 'auto'

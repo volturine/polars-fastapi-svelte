@@ -29,12 +29,12 @@
 		<div
 			class={css({
 				display: 'block',
-				fontSize: '0.6875rem',
+				fontSize: 'xs',
 				fontWeight: '600',
 				color: 'fg.muted',
 				marginBottom: '1.5',
 				textTransform: 'uppercase',
-				letterSpacing: '0.05em'
+				letterSpacing: 'wider'
 			})}
 		>
 			Column to sort by
@@ -76,8 +76,8 @@
 			id="topk-descending-help"
 			class={css({
 				position: 'absolute',
-				width: '1px',
-				height: '1px',
+				width: 'px',
+				height: 'px',
 				padding: '0',
 				margin: '-1px',
 				overflow: 'hidden',

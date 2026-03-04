@@ -2,6 +2,7 @@
 	import type { Schema } from '$lib/types/schema';
 	import { AlertTriangle } from 'lucide-svelte';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
 	import { css } from '$lib/styles/panda';
 
 	interface DropConfigData {
@@ -40,7 +41,7 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
+			paddingBottom: '5',
 			backgroundColor: 'transparent',
 			borderRadius: '0',
 			border: 'none'
@@ -49,12 +50,12 @@
 		<div
 			class={css({
 				display: 'block',
-				fontSize: '0.6875rem',
+				fontSize: 'xs',
 				fontWeight: '600',
 				color: 'fg.muted',
 				marginBottom: '1.5',
 				textTransform: 'uppercase',
-				letterSpacing: '0.05em'
+				letterSpacing: 'wider'
 			})}
 		>
 			Columns to drop
@@ -68,46 +69,16 @@
 	</div>
 
 	{#if safeColumns.length > 0}
-		<div
-			class={css({
-				padding: '0.625rem 0.75rem',
-				border: 'none',
-				borderLeft: '2px solid',
-				borderRadius: '0',
-				marginTop: '0.75rem',
-				marginBottom: '0',
-				fontSize: '0.75rem',
-				lineHeight: '1.5',
-				backgroundColor: 'transparent',
-				borderLeftColor: 'warning.border',
-				color: 'fg.tertiary'
-			})}
-			aria-live="polite"
-		>
+		<Callout tone="warn">
 			<strong class={css({ display: 'inline-flex', alignItems: 'center', gap: '2' })}>
 				<AlertTriangle size={14} />
 				Columns to Drop ({safeColumns.length}):
 			</strong>
 			<p>These columns will be removed from the dataset.</p>
-		</div>
+		</Callout>
 	{:else}
-		<div
-			class={css({
-				padding: '0.625rem 0.75rem',
-				border: 'none',
-				borderLeft: '2px solid',
-				borderRadius: '0',
-				marginTop: '0.75rem',
-				marginBottom: '0',
-				fontSize: '0.75rem',
-				lineHeight: '1.5',
-				backgroundColor: 'transparent',
-				borderLeftColor: 'warning.border',
-				color: 'fg.tertiary'
-			})}
-			role="alert"
-		>
+		<Callout tone="warn">
 			<strong>Warning:</strong> No columns selected. This operation will have no effect.
-		</div>
+		</Callout>
 	{/if}
 </div>

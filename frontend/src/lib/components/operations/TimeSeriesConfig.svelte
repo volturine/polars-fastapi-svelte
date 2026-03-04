@@ -74,7 +74,7 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
+			paddingBottom: '5',
 			backgroundColor: 'transparent',
 			borderRadius: '0',
 			border: 'none'
@@ -87,11 +87,11 @@
 			class={css({
 				marginTop: '0',
 				marginBottom: '3',
-				fontSize: '0.6875rem',
+				fontSize: 'xs',
 				fontWeight: '600',
 				color: 'fg.muted',
 				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
+				letterSpacing: 'wide3'
 			})}
 		>
 			Source Column
@@ -122,12 +122,12 @@
 		class={cx(
 			css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
 			}),
-			css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+			css({ paddingTop: '5', borderTop: '1px solid var(--color-border-tertiary)' })
 		)}
 		role="group"
 		aria-labelledby="ts-operation-heading"
@@ -137,11 +137,11 @@
 			class={css({
 				marginTop: '0',
 				marginBottom: '3',
-				fontSize: '0.6875rem',
+				fontSize: 'xs',
 				fontWeight: '600',
 				color: 'fg.muted',
 				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
+				letterSpacing: 'wide3'
 			})}
 		>
 			Operation Type
@@ -150,8 +150,8 @@
 			for="ts-select-operation"
 			class={css({
 				position: 'absolute',
-				width: '1px',
-				height: '1px',
+				width: 'px',
+				height: 'px',
 				padding: '0',
 				margin: '-1px',
 				overflow: 'hidden',
@@ -175,7 +175,7 @@
 		<div
 			class={css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
@@ -188,11 +188,11 @@
 				class={css({
 					marginTop: '0',
 					marginBottom: '3',
-					fontSize: '0.6875rem',
+					fontSize: 'xs',
 					fontWeight: '600',
 					color: 'fg.muted',
 					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
+					letterSpacing: 'wide3'
 				})}
 			>
 				Extract Component
@@ -201,8 +201,8 @@
 				for="ts-select-component"
 				class={css({
 					position: 'absolute',
-					width: '1px',
-					height: '1px',
+					width: 'px',
+					height: 'px',
 					padding: '0',
 					margin: '-1px',
 					overflow: 'hidden',
@@ -225,7 +225,7 @@
 		<div
 			class={css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
@@ -238,11 +238,11 @@
 				class={css({
 					marginTop: '0',
 					marginBottom: '3',
-					fontSize: '0.6875rem',
+					fontSize: 'xs',
 					fontWeight: '600',
 					color: 'fg.muted',
 					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
+					letterSpacing: 'wide3'
 				})}
 			>
 				Timestamp Unit
@@ -251,8 +251,8 @@
 				for="ts-select-timestamp-unit"
 				class={css({
 					position: 'absolute',
-					width: '1px',
-					height: '1px',
+					width: 'px',
+					height: 'px',
 					padding: '0',
 					margin: '-1px',
 					overflow: 'hidden',
@@ -284,7 +284,7 @@
 		<div
 			class={css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
@@ -297,11 +297,11 @@
 				class={css({
 					marginTop: '0',
 					marginBottom: '3',
-					fontSize: '0.6875rem',
+					fontSize: 'xs',
 					fontWeight: '600',
 					color: 'fg.muted',
 					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
+					letterSpacing: 'wide3'
 				})}
 			>
 				Time Period
@@ -354,7 +354,7 @@
 		<div
 			class={css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
@@ -367,11 +367,11 @@
 				class={css({
 					marginTop: '0',
 					marginBottom: '3',
-					fontSize: '0.6875rem',
+					fontSize: 'xs',
 					fontWeight: '600',
 					color: 'fg.muted',
 					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
+					letterSpacing: 'wide3'
 				})}
 			>
 				Second Date Column
@@ -394,12 +394,12 @@
 		class={cx(
 			css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
 			}),
-			css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+			css({ paddingTop: '5', borderTop: '1px solid var(--color-border-tertiary)' })
 		)}
 		role="group"
 		aria-labelledby="ts-new-column-heading"
@@ -409,11 +409,11 @@
 			class={css({
 				marginTop: '0',
 				marginBottom: '3',
-				fontSize: '0.6875rem',
+				fontSize: 'xs',
 				fontWeight: '600',
 				color: 'fg.muted',
 				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
+				letterSpacing: 'wide3'
 			})}
 		>
 			New Column Name
@@ -422,8 +422,8 @@
 			for="ts-input-new-column"
 			class={css({
 				position: 'absolute',
-				width: '1px',
-				height: '1px',
+				width: 'px',
+				height: 'px',
 				padding: '0',
 				margin: '-1px',
 				overflow: 'hidden',

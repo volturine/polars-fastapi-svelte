@@ -437,7 +437,7 @@
 					class={css({
 						marginX: '2',
 						height: '4',
-						width: '1px',
+						width: 'px',
 						backgroundColor: 'border.primary'
 					})}
 				></div>
@@ -521,14 +521,14 @@
 						class={cx(
 							'lineage-node',
 							css({
-								width: '240px',
+								width: '240',
 								background: 'canvas.lineageNode',
 								borderColor: 'canvas.lineageNodeBorder',
 								cursor: 'grab',
 								transition: 'box-shadow var(--transition), transform var(--transition)',
 								_active: {
 									cursor: 'grabbing',
-									boxShadow: '0 10px 24px rgba(0, 0, 0, 0.2)'
+									boxShadow: 'panel'
 								},
 								position: 'absolute',
 								display: 'flex',
@@ -556,7 +556,7 @@
 							class={css({
 								fontSize: 'xs',
 								textTransform: 'uppercase',
-								letterSpacing: '0.05em',
+								letterSpacing: 'wider',
 								color: 'fg.muted'
 							})}
 						>

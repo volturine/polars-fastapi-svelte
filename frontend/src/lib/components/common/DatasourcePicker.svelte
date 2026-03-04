@@ -7,7 +7,7 @@
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import type { SourceType } from '$lib/utils/fileTypes';
 	import SearchableDropdown from '$lib/components/ui/SearchableDropdown.svelte';
-	import { css, button } from '$lib/styles/panda';
+	import { css, button, menuItem, cx } from '$lib/styles/panda';
 
 	interface PickerOption {
 		id: string;
@@ -187,7 +187,7 @@
 		backgroundColor: 'bg.primary',
 		paddingX: '3',
 		paddingY: '2',
-		fontFamily: 'var(--font-mono)',
+		fontFamily: 'mono',
 		fontSize: 'sm',
 		_focus: { borderColor: 'accent.primary', outline: 'none' },
 		color: 'fg.primary'
@@ -261,28 +261,19 @@
 })}
 	{@const option = payload.option as PickerOption}
 	<button
-		class={css({
-			display: 'flex',
-			width: 'full',
-			cursor: 'pointer',
-			alignItems: 'center',
-			justifyContent: 'space-between',
-			borderBottomWidth: '1px',
-			borderBottomStyle: 'solid',
-			borderColor: 'border.tertiary',
-			paddingX: '3',
-			paddingY: '2',
-			fontFamily: 'var(--font-mono)',
-			textAlign: 'left',
-			fontSize: 'sm',
-			_last: { borderBottomWidth: '0' },
-			_hover: { backgroundColor: 'bg.hover' },
-			color: 'fg.primary',
-			...(payload.selected ? { backgroundColor: 'accent.bg' } : { backgroundColor: 'transparent' }),
-			...(option.id === highlightId
-				? { borderLeft: '3px solid', borderLeftColor: 'accent.secondary' }
-				: {})
-		})}
+		class={cx(
+			menuItem(),
+			css({
+				display: 'flex',
+				justifyContent: 'space-between',
+				fontFamily: 'mono',
+				fontSize: 'sm',
+				...(payload.selected ? { backgroundColor: 'accent.bg' } : {}),
+				...(option.id === highlightId
+					? { borderLeft: '3px solid', borderLeftColor: 'accent.secondary' }
+					: {})
+			})
+		)}
 		onclick={payload.onSelect}
 		role="option"
 		aria-selected={payload.selected}

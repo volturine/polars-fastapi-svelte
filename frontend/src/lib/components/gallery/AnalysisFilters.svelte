@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Search, X, Trash2 } from 'lucide-svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, input } from '$lib/styles/panda';
 
 	export type SortOption = 'newest' | 'oldest' | 'name-asc' | 'name-desc';
 
@@ -64,19 +64,7 @@
 			placeholder="Search analyses..."
 			value={searchQuery}
 			oninput={(e) => onSearch((e.target as HTMLInputElement).value)}
-			class={css({
-				width: '100%',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.primary',
-				paddingY: '3',
-				paddingLeft: '10',
-				paddingRight: '10',
-				fontFamily: 'mono',
-				fontSize: 'sm',
-				color: 'fg.primary',
-				backgroundColor: 'bg.primary'
-			})}
+			class={input({ variant: 'searchWide' })}
 		/>
 		{#if searchQuery}
 			<button

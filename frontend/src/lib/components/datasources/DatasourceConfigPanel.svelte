@@ -35,9 +35,10 @@
 	import ColumnStatsPanel from '$lib/components/datasources/ColumnStatsPanel.svelte';
 	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
 	import { formatDateDisplay } from '$lib/utils/datetime';
 	import { resolveColumnType } from '$lib/utils/columnTypes';
-	import { css, cx, button } from '$lib/styles/panda';
+	import { css, cx, button, tabButton, chip, emptyText } from '$lib/styles/panda';
 
 	interface Props {
 		datasource: DataSource;
@@ -484,39 +485,24 @@
 
 <div
 	class={css({
-		borderTopWidth: '1px',
+		borderTopWidth: '1',
 		borderTopStyle: 'solid',
 		borderColor: 'border.tertiary',
 		backgroundColor: 'bg.secondary'
 	})}
 >
 	{#if updateMutation.isError}
-		<div
-			class={css({
-				margin: '4',
-				marginBottom: '0',
-				display: 'flex',
-				alignItems: 'flex-start',
-				gap: '3',
-				padding: '0.625rem 0.75rem',
-				border: 'none',
-				borderLeft: '2px solid',
-				borderRadius: '0',
-				fontSize: '0.75rem',
-				lineHeight: '1.5',
-				backgroundColor: 'transparent',
-				borderLeftColor: 'error.border',
-				color: 'error.fg'
-			})}
-		>
-			<CircleAlert size={20} />
-			<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-				<p class={css({ margin: '0', fontWeight: 'semibold' })}>Error saving changes</p>
-				<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>
-					{updateMutation.error instanceof Error ? updateMutation.error.message : 'Unknown error'}
-				</p>
+		<Callout tone="error">
+			<div class={css({ display: 'flex', alignItems: 'flex-start', gap: '3' })}>
+				<CircleAlert size={20} />
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+					<p class={css({ margin: '0', fontWeight: 'semibold' })}>Error saving changes</p>
+					<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>
+						{updateMutation.error instanceof Error ? updateMutation.error.message : 'Unknown error'}
+					</p>
+				</div>
 			</div>
-		</div>
+		</Callout>
 	{/if}
 
 	{#if updateMutation.isSuccess}
@@ -527,16 +513,18 @@
 				display: 'flex',
 				alignItems: 'center',
 				gap: '2',
-				padding: '0.625rem 0.75rem',
+				paddingX: '3',
+				paddingY: '2.5',
 				border: 'none',
-				borderLeft: '2px solid',
+				borderLeftWidth: '2',
+				borderLeftStyle: 'solid',
 				borderRadius: '0',
-				fontSize: '0.75rem',
-				lineHeight: '1.5',
+				fontSize: 'xs',
+				lineHeight: 'normal',
 				backgroundColor: 'transparent',
 				borderLeftColor: 'success.fg',
 				color: 'success.fg',
-				borderWidth: '1px',
+				borderWidth: '1',
 				borderStyle: 'solid',
 				borderColor: 'success.fg'
 			})}
@@ -549,7 +537,7 @@
 		class={css({
 			display: 'flex',
 			gap: '0',
-			borderBottomWidth: '1px',
+			borderBottomWidth: '1',
 			borderBottomStyle: 'solid',
 			borderColor: 'border.tertiary',
 			paddingX: '4',
@@ -557,65 +545,20 @@
 		})}
 	>
 		<button
-			class={css({
-				marginBottom: '-1px',
-				backgroundColor: 'transparent',
-				borderBottomWidth: '2px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'transparent',
-				paddingX: '3',
-				paddingY: '1.5',
-				fontSize: 'xs',
-				fontWeight: 'medium',
-				color: 'fg.muted',
-				_hover: { color: 'fg.secondary' },
-				...(activeTab === 'general'
-					? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
-					: {})
-			})}
+			class={tabButton({ active: activeTab === 'general' })}
 			onclick={() => (activeTab = 'general')}
 		>
 			General
 		</button>
 		<button
-			class={css({
-				marginBottom: '-1px',
-				backgroundColor: 'transparent',
-				borderBottomWidth: '2px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'transparent',
-				paddingX: '3',
-				paddingY: '1.5',
-				fontSize: 'xs',
-				fontWeight: 'medium',
-				color: 'fg.muted',
-				_hover: { color: 'fg.secondary' },
-				...(activeTab === 'schema'
-					? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
-					: {})
-			})}
+			class={tabButton({ active: activeTab === 'schema' })}
 			onclick={() => (activeTab = 'schema')}
 		>
 			Schema
 		</button>
 		{#if csv}
 			<button
-				class={css({
-					marginBottom: '-1px',
-					backgroundColor: 'transparent',
-					borderBottomWidth: '2px',
-					borderBottomStyle: 'solid',
-					borderBottomColor: 'transparent',
-					paddingX: '3',
-					paddingY: '1.5',
-					fontSize: 'xs',
-					fontWeight: 'medium',
-					color: 'fg.muted',
-					_hover: { color: 'fg.secondary' },
-					...(activeTab === 'csv'
-						? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
-						: {})
-				})}
+				class={tabButton({ active: activeTab === 'csv' })}
 				onclick={() => (activeTab = 'csv')}
 			>
 				CSV
@@ -623,44 +566,14 @@
 		{/if}
 		{#if excel}
 			<button
-				class={css({
-					marginBottom: '-1px',
-					backgroundColor: 'transparent',
-					borderBottomWidth: '2px',
-					borderBottomStyle: 'solid',
-					borderBottomColor: 'transparent',
-					paddingX: '3',
-					paddingY: '1.5',
-					fontSize: 'xs',
-					fontWeight: 'medium',
-					color: 'fg.muted',
-					_hover: { color: 'fg.secondary' },
-					...(activeTab === 'excel'
-						? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
-						: {})
-				})}
+				class={tabButton({ active: activeTab === 'excel' })}
 				onclick={() => (activeTab = 'excel')}
 			>
 				Excel
 			</button>
 		{/if}
 		<button
-			class={css({
-				marginBottom: '-1px',
-				backgroundColor: 'transparent',
-				borderBottomWidth: '2px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'transparent',
-				paddingX: '3',
-				paddingY: '1.5',
-				fontSize: 'xs',
-				fontWeight: 'medium',
-				color: 'fg.muted',
-				_hover: { color: 'fg.secondary' },
-				...(activeTab === 'runs'
-					? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
-					: {})
-			})}
+			class={tabButton({ active: activeTab === 'runs' })}
 			onclick={() => (activeTab = 'runs')}
 		>
 			Runs
@@ -669,22 +582,7 @@
 			{/if}
 		</button>
 		<button
-			class={css({
-				marginBottom: '-1px',
-				backgroundColor: 'transparent',
-				borderBottomWidth: '2px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'transparent',
-				paddingX: '3',
-				paddingY: '1.5',
-				fontSize: 'xs',
-				fontWeight: 'medium',
-				color: 'fg.muted',
-				_hover: { color: 'fg.secondary' },
-				...(activeTab === 'health'
-					? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
-					: {})
-			})}
+			class={tabButton({ active: activeTab === 'health' })}
 			onclick={() => (activeTab = 'health')}
 		>
 			Health Checks
@@ -730,22 +628,7 @@
 		</button>
 		{#if scheduleAnalysisId}
 			<button
-				class={css({
-					marginBottom: '-1px',
-					backgroundColor: 'transparent',
-					borderBottomWidth: '2px',
-					borderBottomStyle: 'solid',
-					borderBottomColor: 'transparent',
-					paddingX: '3',
-					paddingY: '1.5',
-					fontSize: 'xs',
-					fontWeight: 'medium',
-					color: 'fg.muted',
-					_hover: { color: 'fg.secondary' },
-					...(activeTab === 'schedules'
-						? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
-						: {})
-				})}
+				class={tabButton({ active: activeTab === 'schedules' })}
 				onclick={() => (activeTab = 'schedules')}
 			>
 				Schedules
@@ -768,7 +651,7 @@
 						oninput={(e) => handleNameChange(e.currentTarget.value)}
 						placeholder="Data source name"
 						class={css({
-							borderWidth: '1px',
+							borderWidth: '1',
 							borderStyle: 'solid',
 							paddingX: '3',
 							paddingY: '2',
@@ -781,7 +664,7 @@
 
 				<div
 					class={css({
-						borderTopWidth: '1px',
+						borderTopWidth: '1',
 						borderTopStyle: 'solid',
 						borderColor: 'border.tertiary',
 						paddingTop: '4'
@@ -817,22 +700,7 @@
 							</div>
 							{#if ds.is_hidden}
 								<div class={css({ display: 'flex', alignItems: 'center', gap: '1.5' })}>
-									<span
-										class={css({
-											backgroundColor: 'warning.bg',
-											borderWidth: '1px',
-											borderStyle: 'solid',
-											borderColor: 'warning.fg/20',
-											paddingX: '1.5',
-											paddingY: '0.5',
-											fontSize: '10px',
-											textTransform: 'uppercase',
-											fontWeight: 'medium',
-											color: 'warning.fg'
-										})}
-									>
-										Hidden
-									</span>
+									<span class={chip({ tone: 'warning' })}> Hidden </span>
 								</div>
 							{/if}
 						</div>
@@ -863,8 +731,8 @@
 										class={css({
 											color: 'accent.primary',
 											_hover: { textDecoration: 'underline' },
-											fontFamily: 'var(--font-mono)',
-											fontSize: '10px'
+											fontFamily: 'mono',
+											fontSize: '2xs'
 										})}
 									>
 										Open Analysis
@@ -897,7 +765,7 @@
 								class={css({
 									wordBreak: 'break-all',
 									color: 'fg.secondary',
-									fontFamily: 'var(--font-mono)'
+									fontFamily: 'mono'
 								})}>{ds.id}</span
 							>
 						</div>
@@ -916,7 +784,7 @@
 									class={css({
 										wordBreak: 'break-all',
 										color: 'fg.secondary',
-										fontFamily: 'var(--font-mono)'
+										fontFamily: 'mono'
 									})}>{config.file_path}</span
 								>
 							</div>
@@ -937,7 +805,7 @@
 										class={css({
 											wordBreak: 'break-all',
 											color: 'fg.secondary',
-											fontFamily: 'var(--font-mono)'
+											fontFamily: 'mono'
 										})}>{config.connection_string}</span
 									>
 								</div>
@@ -958,7 +826,7 @@
 									class={css({
 										wordBreak: 'break-all',
 										color: 'fg.secondary',
-										fontFamily: 'var(--font-mono)'
+										fontFamily: 'mono'
 									})}>{config.metadata_path}</span
 								>
 							</div>
@@ -966,7 +834,7 @@
 								{@const fileSource = config.source as Record<string, unknown>}
 								<div
 									class={css({
-										borderTopWidth: '1px',
+										borderTopWidth: '1',
 										borderTopStyle: 'solid',
 										borderColor: 'border.tertiary',
 										paddingTop: '2',
@@ -978,7 +846,7 @@
 								>
 									<span
 										class={css({
-											fontSize: '10px',
+											fontSize: '2xs',
 											textTransform: 'uppercase',
 											letterSpacing: 'wider',
 											color: 'fg.muted',
@@ -1011,7 +879,7 @@
 												class={css({
 													wordBreak: 'break-all',
 													color: 'fg.secondary',
-													fontFamily: 'var(--font-mono)'
+													fontFamily: 'mono'
 												})}>{fileSource.file_path}</span
 											>
 										</div>
@@ -1065,7 +933,7 @@
 
 				<div
 					class={css({
-						borderTopWidth: '1px',
+						borderTopWidth: '1',
 						borderTopStyle: 'solid',
 						borderColor: 'border.tertiary',
 						paddingTop: '4',
@@ -1114,70 +982,40 @@
 		{:else if activeTab === 'schema'}
 			<div class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
 				{#if refreshError}
-					<div
-						class={css({
-							padding: '0.625rem 0.75rem',
-							border: 'none',
-							borderLeft: '2px solid',
-							borderRadius: '0',
-							marginTop: '0.75rem',
-							marginBottom: '0',
-							fontSize: '0.75rem',
-							lineHeight: '1.5',
-							backgroundColor: 'transparent',
-							borderLeftColor: 'error.border',
-							color: 'error.fg',
-							display: 'flex',
-							alignItems: 'flex-start',
-							gap: '3'
-						})}
-					>
-						<CircleAlert size={20} />
-						<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-							<p class={css({ margin: '0', fontWeight: 'semibold' })}>Refresh failed</p>
-							<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>{refreshError}</p>
+					<Callout tone="error">
+						<div class={css({ display: 'flex', alignItems: 'flex-start', gap: '3' })}>
+							<CircleAlert size={20} />
+							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+								<p class={css({ margin: '0', fontWeight: 'semibold' })}>Refresh failed</p>
+								<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>{refreshError}</p>
+							</div>
 						</div>
-					</div>
+					</Callout>
 				{/if}
 				{#if schemaChanged && schemaDiff}
-					<div
-						class={css({
-							padding: '0.625rem 0.75rem',
-							border: 'none',
-							borderLeft: '2px solid',
-							borderRadius: '0',
-							marginTop: '0.75rem',
-							marginBottom: '0',
-							fontSize: '0.75rem',
-							lineHeight: '1.5',
-							backgroundColor: 'transparent',
-							borderLeftColor: 'warning.border',
-							color: 'fg.tertiary',
-							display: 'flex',
-							alignItems: 'flex-start',
-							gap: '3'
-						})}
-					>
-						<CircleAlert size={20} />
-						<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-							<p class={css({ margin: '0', fontWeight: 'semibold' })}>Schema changed in source</p>
-							{#if schemaDiff.added.length > 0}
-								<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>
-									Added: {schemaDiff.added.join(', ')}
-								</p>
-							{/if}
-							{#if schemaDiff.removed.length > 0}
-								<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>
-									Removed: {schemaDiff.removed.join(', ')}
-								</p>
-							{/if}
-							{#if schemaDiff.types.length > 0}
-								<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>
-									Type changes: {schemaDiff.types.join(', ')}
-								</p>
-							{/if}
+					<Callout tone="warn">
+						<div class={css({ display: 'flex', alignItems: 'flex-start', gap: '3' })}>
+							<CircleAlert size={20} />
+							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+								<p class={css({ margin: '0', fontWeight: 'semibold' })}>Schema changed in source</p>
+								{#if schemaDiff.added.length > 0}
+									<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>
+										Added: {schemaDiff.added.join(', ')}
+									</p>
+								{/if}
+								{#if schemaDiff.removed.length > 0}
+									<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>
+										Removed: {schemaDiff.removed.join(', ')}
+									</p>
+								{/if}
+								{#if schemaDiff.types.length > 0}
+									<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>
+										Type changes: {schemaDiff.types.join(', ')}
+									</p>
+								{/if}
+							</div>
 						</div>
-					</div>
+					</Callout>
 				{/if}
 				{#if schemaQuery.isLoading}
 					<div
@@ -1197,7 +1035,7 @@
 				{:else if columns.length > 0}
 					<div
 						class={css({
-							borderWidth: '1px',
+							borderWidth: '1',
 							borderStyle: 'solid',
 							borderColor: 'border.tertiary'
 						})}
@@ -1216,7 +1054,7 @@
 								textTransform: 'uppercase',
 								letterSpacing: 'wide',
 								color: 'fg.muted',
-								borderBottomWidth: '1px',
+								borderBottomWidth: '1',
 								borderBottomStyle: 'solid',
 								borderColor: 'border.tertiary'
 							})}
@@ -1240,7 +1078,7 @@
 									}),
 									index > 0
 										? css({
-												borderTopWidth: '1px',
+												borderTopWidth: '1',
 												borderTopStyle: 'solid',
 												borderColor: 'border.tertiary'
 											})
@@ -1266,9 +1104,7 @@
 						{/each}
 					</div>
 				{:else}
-					<div
-						class={css({ paddingY: '6', textAlign: 'center', color: 'fg.muted', fontSize: 'sm' })}
-					>
+					<div class={emptyText({ size: 'panel' })}>
 						<p class={css({ margin: '0' })}>No schema information available.</p>
 					</div>
 				{/if}
@@ -1295,7 +1131,7 @@
 							value={csvConfig.delimiter}
 							onchange={(e) => handleCsvConfigChange('delimiter', e.currentTarget.value)}
 							class={css({
-								borderWidth: '1px',
+								borderWidth: '1',
 								borderStyle: 'solid',
 								paddingX: '3',
 								paddingY: '2',
@@ -1323,7 +1159,7 @@
 							value={csvConfig.quote_char}
 							onchange={(e) => handleCsvConfigChange('quote_char', e.currentTarget.value)}
 							class={css({
-								borderWidth: '1px',
+								borderWidth: '1',
 								borderStyle: 'solid',
 								paddingX: '3',
 								paddingY: '2',
@@ -1349,7 +1185,7 @@
 							value={csvConfig.encoding}
 							onchange={(e) => handleCsvConfigChange('encoding', e.currentTarget.value)}
 							class={css({
-								borderWidth: '1px',
+								borderWidth: '1',
 								borderStyle: 'solid',
 								paddingX: '3',
 								paddingY: '2',
@@ -1379,7 +1215,7 @@
 							oninput={(e) =>
 								handleCsvConfigChange('skip_rows', parseInt(e.currentTarget.value) || 0)}
 							class={css({
-								borderWidth: '1px',
+								borderWidth: '1',
 								borderStyle: 'solid',
 								paddingX: '3',
 								paddingY: '2',
@@ -1477,7 +1313,7 @@
 					class={cx(
 						button({ variant: 'ghost', size: 'sm' }),
 						css({
-							borderWidth: '1px',
+							borderWidth: '1',
 							borderStyle: 'solid',
 							borderColor: 'border.tertiary',
 							fontSize: 'xs',
@@ -1511,36 +1347,19 @@
 						<p class={css({ fontSize: 'sm' })}>Loading runs...</p>
 					</div>
 				{:else if runsQuery.isError}
-					<div
-						class={css({
-							padding: '0.625rem 0.75rem',
-							border: 'none',
-							borderLeft: '2px solid',
-							borderRadius: '0',
-							marginTop: '0.75rem',
-							marginBottom: '0',
-							fontSize: '0.75rem',
-							lineHeight: '1.5',
-							backgroundColor: 'transparent',
-							borderLeftColor: 'error.border',
-							color: 'error.fg',
-							display: 'flex',
-							alignItems: 'flex-start',
-							gap: '3'
-						})}
-					>
-						<CircleAlert size={20} />
-						<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-							<p class={css({ margin: '0', fontWeight: 'semibold' })}>Failed to load runs</p>
-							<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>
-								{runsQuery.error instanceof Error ? runsQuery.error.message : 'Unknown error'}
-							</p>
+					<Callout tone="error">
+						<div class={css({ display: 'flex', alignItems: 'flex-start', gap: '3' })}>
+							<CircleAlert size={20} />
+							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+								<p class={css({ margin: '0', fontWeight: 'semibold' })}>Failed to load runs</p>
+								<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>
+									{runsQuery.error instanceof Error ? runsQuery.error.message : 'Unknown error'}
+								</p>
+							</div>
 						</div>
-					</div>
+					</Callout>
 				{:else if filteredRuns.length === 0}
-					<div
-						class={css({ paddingY: '6', textAlign: 'center', color: 'fg.muted', fontSize: 'sm' })}
-					>
+					<div class={emptyText({ size: 'panel' })}>
 						<p class={css({ margin: '0' })}>No engine runs associated with this datasource.</p>
 						<p class={css({ margin: '0', marginTop: '1', color: 'fg.tertiary' })}>
 							Runs will appear here when this datasource is used in analyses.
@@ -1549,7 +1368,7 @@
 				{:else}
 					<div
 						class={css({
-							borderWidth: '1px',
+							borderWidth: '1',
 							borderStyle: 'solid',
 							borderColor: 'border.tertiary'
 						})}
@@ -1568,7 +1387,7 @@
 								textTransform: 'uppercase',
 								letterSpacing: 'wide',
 								color: 'fg.muted',
-								borderBottomWidth: '1px',
+								borderBottomWidth: '1',
 								borderBottomStyle: 'solid',
 								borderColor: 'border.tertiary'
 							})}
@@ -1592,7 +1411,7 @@
 									}),
 									index > 0
 										? css({
-												borderTopWidth: '1px',
+												borderTopWidth: '1',
 												borderTopStyle: 'solid',
 												borderColor: 'border.tertiary'
 											})
@@ -1617,26 +1436,14 @@
 									{/if}
 									{#if dsTag === 'created'}
 										<span
-											class={css({
-												fontSize: '10px',
-												paddingX: '1.5',
-												paddingY: '0.5',
-												backgroundColor: 'accent.bg',
-												color: 'accent.primary'
-											})}
+											class={chip({ tone: 'accent' })}
 											title="This datasource was created from this export"
 										>
 											CREATED
 										</span>
 									{:else if dsTag === 'updated'}
 										<span
-											class={css({
-												fontSize: '10px',
-												paddingX: '1.5',
-												paddingY: '0.5',
-												backgroundColor: 'warning.bg',
-												color: 'warning.fg'
-											})}
+											class={chip({ tone: 'warning' })}
 											title="This datasource was updated in this run"
 										>
 											UPDATED
@@ -1657,7 +1464,7 @@
 								<span
 									class={css({
 										fontSize: 'xs',
-										fontFamily: 'var(--font-mono)',
+										fontFamily: 'mono',
 										color: 'fg.secondary'
 									})}
 								>

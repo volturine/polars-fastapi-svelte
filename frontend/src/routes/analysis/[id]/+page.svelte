@@ -843,11 +843,12 @@
 {:else if analysisQuery.isError}
 	<div
 		class={css({
-			padding: '0.625rem 0.75rem',
+			paddingX: '2.5',
+			paddingY: '3',
 			border: 'none',
 			borderLeft: '2px solid',
 			borderRadius: '0',
-			fontSize: '0.75rem',
+			fontSize: 'xs',
 			lineHeight: '1.5',
 			backgroundColor: 'transparent',
 			borderLeftColor: 'error.border',
@@ -868,8 +869,8 @@
 				justifyContent: 'center',
 				fontSize: 'xl',
 				fontWeight: 'bold',
-				width: '3.25rem',
-				height: '3.25rem',
+				width: '13',
+				height: '13',
 				borderWidth: '1px',
 				borderStyle: 'solid',
 				borderColor: 'border.tertiary'
@@ -905,7 +906,7 @@
 				alignItems: 'stretch',
 				position: 'sticky',
 				top: '0',
-				height: '2.75rem',
+				height: '11',
 				backgroundColor: 'bg.primary',
 				borderBottomWidth: '1px',
 				borderBottomStyle: 'solid',
@@ -949,7 +950,7 @@
 							textOverflow: 'ellipsis',
 							outline: 'none',
 							color: 'fg.primary',
-							letterSpacing: '0.04em',
+							letterSpacing: 'wide2',
 							cursor: isEditingMode ? 'text' : 'default',
 							_focus: {
 								backgroundColor: 'bg.hover',
@@ -977,12 +978,12 @@
 					{#if analysisQuery.data.description}
 						<span
 							class={css({
-								fontSize: '0.625rem',
+								fontSize: '2xs',
 								whiteSpace: 'nowrap',
 								overflow: 'hidden',
 								textOverflow: 'ellipsis',
 								color: 'fg.faint',
-								letterSpacing: '0.02em'
+								letterSpacing: 'tight2'
 							})}>{analysisQuery.data.description}</span
 						>
 					{/if}
@@ -1036,7 +1037,7 @@
 									fontWeight: 'medium',
 									textTransform: 'uppercase',
 									color: 'fg.muted',
-									letterSpacing: '0.025em',
+									letterSpacing: 'wide',
 									...(analysisStore.activeTab?.id === tab.id
 										? { color: 'fg.primary', backgroundColor: 'bg.secondary' }
 										: {})
@@ -1059,7 +1060,7 @@
 											whiteSpace: 'nowrap',
 											overflow: 'hidden',
 											textOverflow: 'ellipsis',
-											maxWidth: '9.375rem'
+											maxWidth: '37.5'
 										})}
 									>
 										{tab.name}
@@ -1068,9 +1069,9 @@
 								{#if analysisStore.tabs.length > 1}
 									<button
 										class={css({
-											fontSize: '1rem',
+											fontSize: 'md',
 											lineHeight: '1',
-											marginLeft: '0.25rem',
+											marginLeft: '1',
 											opacity: '0.4',
 											_hover: { opacity: '1', color: 'error.fg' }
 										})}
@@ -1208,7 +1209,7 @@
 								position: 'absolute',
 								left: '0',
 								top: 'calc(100% + 4px)',
-								minWidth: '8.75rem',
+								minWidth: '35',
 								backgroundColor: 'bg.primary',
 								borderWidth: '1px',
 								borderStyle: 'solid',
@@ -1235,8 +1236,8 @@
 								{#if isEditingMode}
 									<div
 										class={css({
-											width: '0.75rem',
-											height: '0.75rem',
+											width: '3',
+											height: '3',
 											borderWidth: '1px',
 											borderStyle: 'solid',
 											borderColor: 'accent.primary'
@@ -1245,8 +1246,8 @@
 								{:else}
 									<div
 										class={css({
-											width: '0.75rem',
-											height: '0.75rem',
+											width: '3',
+											height: '3',
 											backgroundColor: 'accent.primary'
 										})}
 									></div>
@@ -1271,16 +1272,16 @@
 								{#if isEditingMode}
 									<div
 										class={css({
-											width: '0.75rem',
-											height: '0.75rem',
+											width: '3',
+											height: '3',
 											backgroundColor: 'accent.primary'
 										})}
 									></div>
 								{:else}
 									<div
 										class={css({
-											width: '0.75rem',
-											height: '0.75rem',
+											width: '3',
+											height: '3',
 											borderWidth: '1px',
 											borderStyle: 'solid',
 											borderColor: 'accent.primary'
@@ -1306,8 +1307,8 @@
 							>
 								<div
 									class={css({
-										width: '0.75rem',
-										height: '0.75rem',
+										width: '3',
+										height: '3',
 										borderWidth: '1px',
 										borderStyle: 'solid',
 										borderColor: 'accent.primary'
@@ -1418,7 +1419,7 @@
 				<div
 					class={css({
 						flex: '1',
-						minWidth: '12.5rem',
+						minWidth: '50',
 						minHeight: '0',
 						display: 'flex',
 						backgroundColor: 'bg.secondary',
@@ -1542,7 +1543,7 @@
 
 {#if showVersionModal}
 	<div
-		class={css({ position: 'fixed', inset: '0', background: 'var(--overlay-bg)', zIndex: 'modal' })}
+		class={css({ position: 'fixed', inset: '0', background: 'bg.overlay', zIndex: 'modal' })}
 		aria-hidden="true"
 	></div>
 	<div
@@ -1571,9 +1572,10 @@
 				display: 'flex',
 				justifyContent: 'space-between',
 				alignItems: 'center',
-				padding: '0.75rem 1rem',
+				paddingX: '4',
+				paddingY: '3',
 				borderBottom: '1px solid var(--color-border-primary)',
-				'& h2': { margin: '0', fontSize: '1rem', color: 'fg.primary' }
+				'& h2': { margin: '0', fontSize: 'md', color: 'fg.primary' }
 			})}
 		>
 			<h2 id="analysis-version-title">Version history</h2>
@@ -1583,8 +1585,8 @@
 					border: 'none',
 					color: 'fg.muted',
 					cursor: 'pointer',
-					fontSize: '1.25rem',
-					padding: '0.25rem',
+					fontSize: 'xl',
+					padding: '1',
 					display: 'flex',
 					alignItems: 'center',
 					justifyContent: 'center',
@@ -1600,23 +1602,24 @@
 		</div>
 		<div
 			class={css({
-				padding: '1rem',
+				padding: '4',
 				overflowY: 'auto',
 				display: 'flex',
 				flexDirection: 'column',
-				gap: '0.75rem'
+				gap: '3'
 			})}
 		>
 			{#if versionError}
 				<div
 					class={css({
-						padding: '0.625rem 0.75rem',
+						paddingX: '2.5',
+						paddingY: '3',
 						border: 'none',
 						borderLeft: '2px solid',
 						borderRadius: '0',
-						marginTop: '0.75rem',
+						marginTop: '3',
 						marginBottom: '0',
-						fontSize: '0.75rem',
+						fontSize: 'xs',
 						lineHeight: '1.5',
 						backgroundColor: 'transparent',
 						borderLeftColor: 'error.border',
@@ -1643,13 +1646,14 @@
 			{:else if versionsQuery.isError}
 				<div
 					class={css({
-						padding: '0.625rem 0.75rem',
+						paddingX: '2.5',
+						paddingY: '3',
 						border: 'none',
 						borderLeft: '2px solid',
 						borderRadius: '0',
-						marginTop: '0.75rem',
+						marginTop: '3',
 						marginBottom: '0',
-						fontSize: '0.75rem',
+						fontSize: 'xs',
 						lineHeight: '1.5',
 						backgroundColor: 'transparent',
 						borderLeftColor: 'error.border',
@@ -1665,7 +1669,7 @@
 						color: 'fg.muted',
 						fontStyle: 'italic',
 						textAlign: 'center',
-						padding: '1rem',
+						padding: '4',
 						margin: '0'
 					})}
 				>
@@ -1690,9 +1694,9 @@
 							<div class={css({ display: 'flex', minWidth: '0', flexDirection: 'column' })}>
 								<div
 									class={css({
-										fontSize: '0.65rem',
+										fontSize: '2xs2',
 										textTransform: 'uppercase',
-										letterSpacing: '0.1em',
+										letterSpacing: 'widest',
 										color: 'fg.muted'
 									})}
 								>
@@ -1722,7 +1726,7 @@
 										}}
 									/>
 								{:else}
-									<div class={css({ display: 'flex', alignItems: 'center', gap: '0.5rem' })}>
+									<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 										<span
 											class={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.primary' })}
 										>
@@ -1763,11 +1767,12 @@
 		</div>
 		<div
 			class={css({
-				padding: '0.75rem 1rem',
+				paddingX: '4',
+				paddingY: '3',
 				borderTop: '1px solid var(--color-border-primary)',
 				display: 'flex',
 				justifyContent: 'flex-end',
-				gap: '0.5rem'
+				gap: '2'
 			})}
 		>
 			<button class={button({ variant: 'secondary' })} onclick={closeVersionModal}>Close</button>

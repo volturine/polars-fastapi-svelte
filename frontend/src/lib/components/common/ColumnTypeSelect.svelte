@@ -81,14 +81,14 @@
 				backgroundColor: 'bg.secondary',
 				borderColor: 'border.primary',
 				color: 'fg.primary',
-				fontFamily: 'var(--font-mono, monospace)',
+				fontFamily: 'mono',
 				_disabled: { cursor: 'not-allowed', opacity: '0.6' },
 				smDown: { width: '100%' }
 			}),
 			size === 'sm'
 				? css({ paddingX: '2', paddingY: '1', fontSize: 'xs', minWidth: '140px' })
 				: size === 'lg'
-					? css({ paddingX: '3', paddingY: '2', fontSize: '0.9375rem', minWidth: '200px' })
+					? css({ paddingX: '3', paddingY: '2', fontSize: 'sm', minWidth: '200px' })
 					: css({ paddingX: '2.5', paddingY: '1.5', fontSize: 'sm', minWidth: '160px' })
 		)}
 	>

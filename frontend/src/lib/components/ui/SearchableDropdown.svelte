@@ -2,7 +2,7 @@
 	import { Debounced } from 'runed';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { ChevronDown } from 'lucide-svelte';
-	import { css, cx } from '$lib/styles/panda';
+	import { css, cx, emptyText, input } from '$lib/styles/panda';
 
 	import type { Snippet } from 'svelte';
 
@@ -241,7 +241,7 @@
 			display: 'flex',
 			flexDirection: 'column',
 			gap: '2',
-			minWidth: '160px'
+			minWidth: '40'
 		}),
 		containerClass
 	)}
@@ -270,15 +270,16 @@
 					display: 'flex',
 					alignItems: 'center',
 					gap: '2',
-					padding: '0.5625rem 0.875rem',
-					borderWidth: '1px',
+					paddingX: '3',
+					paddingY: '2.5',
+					borderWidth: '1',
 					borderStyle: 'solid',
 					borderColor: 'border.primary',
 					backgroundColor: 'bg.secondary',
 					color: 'fg.primary',
 					cursor: 'pointer',
 					justifyContent: 'space-between',
-					fontSize: '0.8125rem',
+					fontSize: 'sm',
 					_focusVisible: {
 						outline: '2px solid var(--color-accent-secondary)',
 						outlineOffset: '2px'
@@ -315,8 +316,8 @@
 						height: '16px',
 						flexShrink: '0',
 						color: 'fg.muted',
-						fontSize: '0.625rem',
-						lineHeight: '1',
+						fontSize: '2xs',
+						lineHeight: 'none',
 						cursor: 'pointer',
 						_hover: { color: 'fg.primary', backgroundColor: 'bg.tertiary' }
 					})}
@@ -351,7 +352,7 @@
 					width: '100%',
 					maxWidth: '100%',
 					backgroundColor: 'bg.primary',
-					borderWidth: '1px',
+					borderWidth: '1',
 					borderStyle: 'solid',
 					borderColor: 'border.primary',
 					padding: '2',
@@ -368,7 +369,7 @@
 			bind:this={menuContainerRef}
 		>
 			{#if triggerType === 'button'}
-				<div class={css({ padding: '0 0.5rem' })}>
+				<div class={css({ paddingX: '2', paddingY: '0' })}>
 					<input
 						bind:this={searchInputRef}
 						id="{uid}-menu-search"
@@ -376,23 +377,7 @@
 						bind:value={searchValue}
 						type="text"
 						placeholder={searchPlaceholder}
-						class={css({
-							width: '100%',
-							padding: '0.5rem 0.75rem',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.primary',
-							backgroundColor: 'bg.secondary',
-							color: 'fg.primary',
-							fontSize: 'sm',
-							fontFamily: 'inherit',
-							_focus: {
-								outline: 'none',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary'
-							},
-							_placeholder: { color: 'fg.muted' }
-						})}
+						class={input({ variant: 'menu' })}
 					/>
 				</div>
 			{/if}
@@ -401,7 +386,7 @@
 					class={css({
 						display: 'flex',
 						gap: '2',
-						borderBottomWidth: '1px',
+						borderBottomWidth: '1',
 						borderBottomStyle: 'solid',
 						borderBottomColor: 'border.tertiary',
 						padding: '2',
@@ -413,7 +398,7 @@
 						class={css({
 							flex: '1',
 							cursor: 'pointer',
-							borderWidth: '1px',
+							borderWidth: '1',
 							borderStyle: 'solid',
 							borderColor: 'border.tertiary',
 							backgroundColor: 'transparent',
@@ -439,7 +424,7 @@
 						class={css({
 							flex: '1',
 							cursor: 'pointer',
-							borderWidth: '1px',
+							borderWidth: '1',
 							borderStyle: 'solid',
 							borderColor: 'border.tertiary',
 							backgroundColor: 'transparent',
@@ -467,7 +452,7 @@
 					display: 'flex',
 					flexDirection: 'column',
 					gap: '2',
-					maxHeight: '220px',
+					maxHeight: '55',
 					overflowY: 'auto',
 					overflowX: 'hidden',
 					padding: '2',
@@ -476,9 +461,7 @@
 				})}
 			>
 				{#if filteredOptions.length === 0}
-					<div
-						class={css({ padding: '3', textAlign: 'center', color: 'fg.muted', fontSize: 'sm' })}
-					>
+					<div class={emptyText({ size: 'panel' })}>
 						{emptyLabel}
 					</div>
 				{:else}
@@ -504,12 +487,12 @@
 				wordBreak: 'break-word',
 				whiteSpace: 'normal'
 			}),
-			css({ fontFamily: 'var(--font-mono)' }),
+			css({ fontFamily: 'mono' }),
 			css({
 				marginTop: '2',
 				maxHeight: '15',
 				overflowY: 'auto',
-				borderWidth: '1px',
+				borderWidth: '1',
 				borderStyle: 'solid',
 				borderColor: 'border.tertiary',
 				padding: '2',

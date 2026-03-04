@@ -146,8 +146,9 @@
 				gridRow: '1',
 				display: 'flex',
 				alignItems: 'center',
-				gap: '0.25rem',
-				padding: '0.375rem 0.75rem',
+				gap: '1',
+				paddingX: '3',
+				paddingY: '1.5',
 				borderBottomWidth: '1px',
 				borderBottomStyle: 'solid',
 				borderBottomColor: 'border.tertiary',
@@ -233,7 +234,7 @@
 			</button>
 
 			<div
-				class={css({ marginX: '2', height: '4', width: '1px', backgroundColor: 'border.primary' })}
+				class={css({ marginX: '2', height: '4', width: 'px', backgroundColor: 'border.primary' })}
 			></div>
 
 			<button class={button({ variant: 'ghost', size: 'sm' })} onclick={zoomIn} title="Zoom in">
@@ -264,7 +265,7 @@
 				borderRightStyle: 'solid',
 				borderRightColor: 'border.tertiary',
 				background: 'bg.primary',
-				boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
+				boxShadow: 'popover',
 				display: 'flex',
 				flexDirection: 'column',
 				zIndex: '10'
@@ -296,7 +297,7 @@
 						class={css({
 							fontSize: 'xs',
 							textTransform: 'uppercase',
-							letterSpacing: '0.025em',
+							letterSpacing: 'wide',
 							color: 'fg.muted'
 						})}
 					>

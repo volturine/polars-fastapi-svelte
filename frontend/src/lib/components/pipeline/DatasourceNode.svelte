@@ -276,8 +276,8 @@
 				<div
 					class={css({
 						display: 'flex',
-						height: '1.25rem',
-						width: '1.25rem',
+						height: '5',
+						width: '5',
 						alignItems: 'center',
 						justifyContent: 'center',
 						backgroundColor: 'accent.primary',
@@ -301,7 +301,7 @@
 						fontSize: 'xs',
 						fontWeight: '600',
 						textTransform: 'uppercase',
-						letterSpacing: '0.05em'
+						letterSpacing: 'wider'
 					})}
 				>
 					source
@@ -316,9 +316,9 @@
 					color: 'fg.faint',
 					paddingX: '1.5',
 					paddingY: '0.5',
-					fontSize: '0.5625rem',
+					fontSize: '3xs',
 					textTransform: 'uppercase',
-					letterSpacing: '0.2em'
+					letterSpacing: 'max'
 				})}>root</span
 			>
 		</div>
@@ -345,9 +345,9 @@
 					display: 'flex',
 					alignItems: 'center',
 					gap: '2',
-					fontSize: '0.625rem',
+					fontSize: '2xs',
 					textTransform: 'uppercase',
-					letterSpacing: '0.2em',
+					letterSpacing: 'max',
 					color: 'fg.faint'
 				})}
 			>
@@ -359,7 +359,7 @@
 					<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
 						<input
 							class={css({
-								minWidth: '6.25rem',
+								minWidth: '25',
 								borderWidth: '1px',
 								borderStyle: 'solid',
 								borderColor: 'border.tertiary',
@@ -380,8 +380,8 @@
 						<button
 							class={css({
 								display: 'inline-flex',
-								height: '1.25rem',
-								width: '1.25rem',
+								height: '5',
+								width: '5',
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'center',
@@ -403,8 +403,8 @@
 						<button
 							class={css({
 								display: 'inline-flex',
-								height: '1.25rem',
-								width: '1.25rem',
+								height: '5',
+								width: '5',
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'center',
@@ -432,8 +432,8 @@
 						<button
 							class={css({
 								display: 'inline-flex',
-								height: '1.25rem',
-								width: '1.25rem',
+								height: '5',
+								width: '5',
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'center',
@@ -471,9 +471,9 @@
 					display: 'flex',
 					alignItems: 'center',
 					gap: '2',
-					fontSize: '0.625rem',
+					fontSize: '2xs',
 					textTransform: 'uppercase',
-					letterSpacing: '0.2em',
+					letterSpacing: 'max',
 					color: 'fg.faint'
 				})}
 			>
@@ -548,7 +548,7 @@
 									onSelect={handleSnapshotSelect}
 								/>
 							</div>
-							<div class={css({ minWidth: '8rem', flexShrink: '0' })}>
+							<div class={css({ minWidth: '32', flexShrink: '0' })}>
 								<BranchPicker
 									branches={(resolvedDatasource?.config?.branches as string[] | undefined) ?? []}
 									value={branchValue}
@@ -612,7 +612,7 @@
 							gap: '2',
 							fontSize: 'xs',
 							textTransform: 'uppercase',
-							letterSpacing: '0.05em',
+							letterSpacing: 'wider',
 							color: 'fg.muted'
 						})}
 					>
@@ -657,7 +657,7 @@
 						<div class={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
 							<label
 								for="threads-input"
-								class={css({ minWidth: '3.75rem', fontSize: 'xs', color: 'fg.secondary' })}
+								class={css({ minWidth: '15', fontSize: 'xs', color: 'fg.secondary' })}
 							>
 								Threads
 							</label>
@@ -685,7 +685,7 @@
 							{#if isUsingDefaultThreads}
 								<span
 									class={css({
-										minWidth: '3.125rem',
+										minWidth: '12.5',
 										fontSize: '9px',
 										fontStyle: 'italic',
 										color: 'fg.tertiary'
@@ -698,7 +698,7 @@
 						<div class={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
 							<label
 								for="memory-select"
-								class={css({ minWidth: '3.75rem', fontSize: 'xs', color: 'fg.secondary' })}
+								class={css({ minWidth: '15', fontSize: 'xs', color: 'fg.secondary' })}
 							>
 								Memory
 							</label>
@@ -727,7 +727,7 @@
 							{#if isUsingDefaultMemory}
 								<span
 									class={css({
-										minWidth: '3.125rem',
+										minWidth: '12.5',
 										fontSize: '9px',
 										fontStyle: 'italic',
 										color: 'fg.tertiary'
@@ -763,7 +763,7 @@
 						color: 'fg.muted',
 						paddingY: '2',
 						paddingX: '3',
-						fontSize: '0.6875rem',
+						fontSize: 'xs2',
 						fontWeight: '500',
 						_hover: {
 							backgroundColor: 'bg.tertiary',
@@ -785,11 +785,11 @@
 	<div
 		class={css({
 			position: 'absolute',
-			bottom: '-0.3125rem',
+			bottom: '-5px',
 			left: '50%',
 			zIndex: '2',
-			height: '0.625rem',
-			width: '0.625rem',
+			height: '2.5',
+			width: '2.5',
 			transform: 'translateX(-50%)',
 			backgroundColor: 'bg.primary',
 			borderWidth: '2px',

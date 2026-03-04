@@ -48,12 +48,12 @@
 		<div
 			class={css({
 				display: 'block',
-				fontSize: '0.6875rem',
+				fontSize: 'xs',
 				fontWeight: '600',
 				color: 'fg.muted',
 				marginBottom: '1.5',
 				textTransform: 'uppercase',
-				letterSpacing: '0.05em'
+				letterSpacing: 'wider'
 			})}
 		>
 			Pivot Column <span class={css({ fontSize: 'xs', color: 'fg.muted' })}
@@ -76,12 +76,12 @@
 			id="index-columns-label"
 			class={css({
 				display: 'block',
-				fontSize: '0.6875rem',
+				fontSize: 'xs',
 				fontWeight: '600',
 				color: 'fg.muted',
 				marginBottom: '1.5',
 				textTransform: 'uppercase',
-				letterSpacing: '0.05em'
+				letterSpacing: 'wider'
 			})}>Index Columns <span class={css({ fontSize: 'xs', color: 'fg.muted' })}>(rows)</span></span
 		>
 		<div
@@ -92,7 +92,7 @@
 				display: 'grid',
 				gap: '3',
 				padding: '2',
-				maxHeight: '9.375rem',
+				maxHeight: '37.5',
 				overflowY: 'auto'
 			})}
 		>
@@ -138,12 +138,12 @@
 		<div
 			class={css({
 				display: 'block',
-				fontSize: '0.6875rem',
+				fontSize: 'xs',
 				fontWeight: '600',
 				color: 'fg.muted',
 				marginBottom: '1.5',
 				textTransform: 'uppercase',
-				letterSpacing: '0.05em'
+				letterSpacing: 'wider'
 			})}
 		>
 			Values Column

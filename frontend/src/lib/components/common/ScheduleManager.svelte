@@ -23,7 +23,7 @@
 		Search
 	} from 'lucide-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
-	import { css, cx, spinner } from '$lib/styles/panda';
+	import { css, cx, spinner, emptyText } from '$lib/styles/panda';
 
 	interface Props {
 		datasourceId?: string;
@@ -439,14 +439,12 @@
 						gap: '3'
 					})}
 				>
-					<div
-						class={css({ position: 'relative', minWidth: '15rem', maxWidth: '25rem', flex: '1' })}
-					>
+					<div class={css({ position: 'relative', minWidth: '60', maxWidth: '100', flex: '1' })}>
 						<Search
 							size={14}
 							class={css({
 								position: 'absolute',
-								left: '0.625rem',
+								left: '2.5',
 								top: '50%',
 								transform: 'translateY(-50%)',
 								color: 'fg.muted'
@@ -465,7 +463,7 @@
 								backgroundColor: 'transparent',
 								paddingX: '3',
 								paddingY: '1.5',
-								paddingLeft: '2rem',
+								paddingLeft: '8',
 								fontSize: 'sm'
 							})}
 							bind:value={searchQuery}
@@ -488,7 +486,7 @@
 					fontSize: 'xs',
 					fontWeight: '600',
 					textTransform: 'uppercase',
-					letterSpacing: '0.05em',
+					letterSpacing: 'wider',
 					color: 'fg.muted'
 				})}
 			>
@@ -526,7 +524,7 @@
 						justifyContent: 'center',
 						border: 'none',
 						backgroundColor: 'transparent',
-						padding: '0.125rem',
+						padding: '0.5',
 						color: 'fg.muted',
 						_hover: { color: 'fg.primary' }
 					})}
@@ -669,7 +667,7 @@
 						<div
 							class={css({
 								display: 'flex',
-								minWidth: '16rem',
+								minWidth: '64',
 								flex: '1',
 								flexDirection: 'column',
 								gap: '1.5'
@@ -773,7 +771,7 @@
 							name="triggerType"
 							value="cron"
 							bind:group={triggerType}
-							class={css({ marginTop: '0.125rem' })}
+							class={css({ marginTop: '0.5' })}
 							disabled={scheduleBlocked}
 						/>
 						<div class={css({ flex: '1' })}>
@@ -790,14 +788,14 @@
 									<input
 										type="text"
 										class={css({
-											width: '8rem',
+											width: '32',
 											borderWidth: '1px',
 											borderStyle: 'solid',
 											borderColor: 'border.tertiary',
 											backgroundColor: 'transparent',
 											paddingX: '2',
 											paddingY: '1',
-											fontFamily: 'var(--font-mono)',
+											fontFamily: 'mono',
 											fontSize: 'xs'
 										})}
 										name="cron"
@@ -833,7 +831,7 @@
 							name="triggerType"
 							value="depends"
 							bind:group={triggerType}
-							class={css({ marginTop: '0.125rem' })}
+							class={css({ marginTop: '0.5' })}
 							disabled={scheduleBlocked}
 						/>
 						<div class={css({ flex: '1' })}>
@@ -900,7 +898,7 @@
 							name="triggerType"
 							value="event"
 							bind:group={triggerType}
-							class={css({ marginTop: '0.125rem' })}
+							class={css({ marginTop: '0.5' })}
 							disabled={scheduleBlocked}
 						/>
 						<div class={css({ flex: '1' })}>
@@ -1022,13 +1020,14 @@
 	{:else if schedulesQuery.isError}
 		<div
 			class={css({
-				padding: '0.625rem 0.75rem',
+				paddingX: '3',
+				paddingY: '2.5',
 				border: 'none',
 				borderLeft: '2px solid',
 				borderRadius: '0',
-				marginTop: '0.75rem',
+				marginTop: '3',
 				marginBottom: '0',
-				fontSize: '0.75rem',
+				fontSize: 'xs',
 				lineHeight: '1.5',
 				backgroundColor: 'transparent',
 				borderLeftColor: 'error.border',
@@ -1056,7 +1055,7 @@
 				class={css({ marginX: 'auto', marginBottom: '2', color: 'fg.muted' })}
 				size={compact ? 20 : 32}
 			/>
-			<p class={css({ fontSize: 'sm', color: 'fg.muted' })}>No schedules configured.</p>
+			<p class={emptyText({ size: 'panel' })}>No schedules configured.</p>
 			{#if !compact}
 				<p class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>
 					Create a schedule to automatically rebuild datasets on a trigger.
@@ -1074,7 +1073,7 @@
 				textAlign: 'center'
 			})}
 		>
-			<p class={css({ fontSize: 'sm', color: 'fg.tertiary' })}>No schedules match your search.</p>
+			<p class={emptyText({ size: 'panel' })}>No schedules match your search.</p>
 		</div>
 	{:else if visibleSchedules.length > 0}
 		{#if compact}
@@ -1146,11 +1145,11 @@
 									display: 'inline-flex',
 									flexShrink: '0',
 									alignItems: 'center',
-									gap: '0.125rem',
+									gap: '0.5',
 									border: 'none',
 									backgroundColor: 'transparent',
 									padding: '0',
-									fontSize: '10px'
+									fontSize: '2xs'
 								})}
 								onclick={(e) => {
 									e.stopPropagation();
@@ -1199,7 +1198,7 @@
 								<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
 									{#if triggerTypeValue === 'cron'}
 										<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-											<span class={css({ fontSize: '10px', color: 'fg.muted' })}>
+											<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>
 												Cron Expression
 											</span>
 											{#if editingCron === schedule.id}
@@ -1214,8 +1213,8 @@
 															backgroundColor: 'transparent',
 															paddingX: '1.5',
 															paddingY: '0.5',
-															fontFamily: 'var(--font-mono)',
-															fontSize: '10px'
+															fontFamily: 'mono',
+															fontSize: '2xs'
 														})}
 														id="sched-{schedule.id}-cron"
 														aria-label="Cron expression"
@@ -1231,7 +1230,7 @@
 															flexShrink: '0',
 															border: 'none',
 															backgroundColor: 'transparent',
-															padding: '0.125rem',
+															padding: '0.5',
 															color: 'success.fg'
 														})}
 														onclick={() => saveCron(schedule.id)}
@@ -1245,7 +1244,7 @@
 															flexShrink: '0',
 															border: 'none',
 															backgroundColor: 'transparent',
-															padding: '0.125rem',
+															padding: '0.5',
 															color: 'fg.muted',
 															_hover: { color: 'fg.primary' }
 														})}
@@ -1262,7 +1261,7 @@
 															backgroundColor: 'bg.tertiary',
 															paddingX: '1',
 															paddingY: '0.5',
-															fontSize: '10px'
+															fontSize: '2xs'
 														})}
 													>
 														{schedule.cron_expression}
@@ -1271,7 +1270,7 @@
 														class={css({
 															border: 'none',
 															backgroundColor: 'transparent',
-															padding: '0.125rem',
+															padding: '0.5',
 															color: 'fg.muted',
 															_hover: { color: 'fg.primary' }
 														})}
@@ -1286,7 +1285,7 @@
 										</div>
 									{:else if triggerTypeValue === 'depends'}
 										<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-											<span class={css({ fontSize: '10px', color: 'fg.muted' })}>Depends On</span>
+											<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>Depends On</span>
 											<select
 												class={css({
 													width: '100%',
@@ -1296,7 +1295,7 @@
 													backgroundColor: 'transparent',
 													paddingX: '1.5',
 													paddingY: '0.5',
-													fontSize: '10px'
+													fontSize: '2xs'
 												})}
 												id="sched-{schedule.id}-depends"
 												aria-label="Depends on schedule"
@@ -1313,7 +1312,7 @@
 										</div>
 									{:else}
 										<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-											<span class={css({ fontSize: '10px', color: 'fg.muted' })}
+											<span class={css({ fontSize: '2xs', color: 'fg.muted' })}
 												>On Datasource Update</span
 											>
 											<select
@@ -1325,7 +1324,7 @@
 													backgroundColor: 'transparent',
 													paddingX: '1.5',
 													paddingY: '0.5',
-													fontSize: '10px'
+													fontSize: '2xs'
 												})}
 												id="sched-{schedule.id}-trigger"
 												aria-label="Trigger datasource"
@@ -1342,7 +1341,7 @@
 										</div>
 									{/if}
 									{#if schedule.next_run}
-										<div class={css({ fontSize: '10px', color: 'fg.muted' })}>
+										<div class={css({ fontSize: '2xs', color: 'fg.muted' })}>
 											Next: {formatDate(schedule.next_run)}
 										</div>
 									{/if}
@@ -1367,7 +1366,7 @@
 						<tr class={css({ backgroundColor: 'bg.tertiary' })}>
 							<th
 								class={css({
-									width: '1.5rem',
+									width: '6',
 									borderBottomWidth: '1px',
 									borderBottomStyle: 'solid',
 									borderBottomColor: 'border.tertiary',
@@ -1459,7 +1458,7 @@
 							</th>
 							<th
 								class={css({
-									width: '4rem',
+									width: '16',
 									borderBottomWidth: '1px',
 									borderBottomStyle: 'solid',
 									borderBottomColor: 'border.tertiary',
@@ -1514,7 +1513,7 @@
 										<span
 											class={css({
 												display: 'inline-flex',
-												maxWidth: '10rem',
+												maxWidth: '40',
 												alignItems: 'center',
 												gap: '1',
 												overflow: 'hidden',
@@ -1541,7 +1540,7 @@
 									<span
 										class={css({
 											display: 'block',
-											maxWidth: '12rem',
+											maxWidth: '48',
 											overflow: 'hidden',
 											textOverflow: 'ellipsis',
 											whiteSpace: 'nowrap',
@@ -1657,7 +1656,7 @@
 											justifyContent: 'center',
 											border: 'none',
 											backgroundColor: 'transparent',
-											padding: '0.125rem',
+											padding: '0.5',
 											color: 'fg.muted',
 											_hover: { color: 'error.fg' }
 										})}
@@ -1695,26 +1694,25 @@
 											})}
 										>
 											<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-												<span class={css({ fontSize: '10px', color: 'fg.muted' })}
+												<span class={css({ fontSize: '2xs', color: 'fg.muted' })}
 													>Target Datasource</span
 												>
 												<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
 													<BarChart3 size={10} class={css({ color: 'fg.muted' })} />
-													<span class={css({ fontSize: '10px', color: 'fg.secondary' })}>
+													<span class={css({ fontSize: '2xs', color: 'fg.secondary' })}>
 														{resolveDatasource(schedule.datasource_id)}
 													</span>
 												</div>
 											</div>
 											<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-												<span class={css({ fontSize: '10px', color: 'fg.muted' })}>Produced By</span
-												>
-												<span class={css({ fontSize: '10px', color: 'fg.secondary' })}>
+												<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>Produced By</span>
+												<span class={css({ fontSize: '2xs', color: 'fg.secondary' })}>
 													{provenanceDisplay}
 												</span>
 											</div>
 											{#if triggerTypeValue === 'cron'}
 												<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-													<span class={css({ fontSize: '10px', color: 'fg.muted' })}
+													<span class={css({ fontSize: '2xs', color: 'fg.muted' })}
 														>Cron Expression</span
 													>
 													{#if editingCron === schedule.id}
@@ -1722,15 +1720,15 @@
 															<input
 																type="text"
 																class={css({
-																	width: '8rem',
+																	width: '32',
 																	borderWidth: '1px',
 																	borderStyle: 'solid',
 																	borderColor: 'border.tertiary',
 																	backgroundColor: 'transparent',
 																	paddingX: '1.5',
 																	paddingY: '0.5',
-																	fontFamily: 'var(--font-mono)',
-																	fontSize: '10px'
+																	fontFamily: 'mono',
+																	fontSize: '2xs'
 																})}
 																id="sched-{schedule.id}-cron"
 																aria-label="Cron expression"
@@ -1782,7 +1780,7 @@
 																	backgroundColor: 'bg.tertiary',
 																	paddingX: '1',
 																	paddingY: '0.5',
-																	fontSize: '10px'
+																	fontSize: '2xs'
 																})}
 															>
 																{schedule.cron_expression}
@@ -1809,8 +1807,7 @@
 												</div>
 											{:else if triggerTypeValue === 'depends'}
 												<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-													<span class={css({ fontSize: '10px', color: 'fg.muted' })}
-														>Depends On</span
+													<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>Depends On</span
 													>
 													<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
 														<select
@@ -1821,7 +1818,7 @@
 																backgroundColor: 'transparent',
 																paddingX: '1.5',
 																paddingY: '0.5',
-																fontSize: '10px'
+																fontSize: '2xs'
 															})}
 															id="sched-{schedule.id}-depends"
 															aria-label="Depends on schedule"
@@ -1842,7 +1839,7 @@
 												</div>
 											{:else}
 												<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-													<span class={css({ fontSize: '10px', color: 'fg.muted' })}
+													<span class={css({ fontSize: '2xs', color: 'fg.muted' })}
 														>On Datasource Update</span
 													>
 													<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
@@ -1854,7 +1851,7 @@
 																backgroundColor: 'transparent',
 																paddingX: '1.5',
 																paddingY: '0.5',
-																fontSize: '10px'
+																fontSize: '2xs'
 															})}
 															id="sched-{schedule.id}-trigger"
 															aria-label="Trigger datasource"
@@ -1876,18 +1873,17 @@
 												</div>
 											{/if}
 											<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-												<span class={css({ fontSize: '10px', color: 'fg.muted' })}>Created</span>
-												<span class={css({ fontSize: '10px', color: 'fg.secondary' })}>
+												<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>Created</span>
+												<span class={css({ fontSize: '2xs', color: 'fg.secondary' })}>
 													{formatDate(schedule.created_at)}
 												</span>
 											</div>
 											<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-												<span class={css({ fontSize: '10px', color: 'fg.muted' })}>Schedule ID</span
-												>
+												<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>Schedule ID</span>
 												<span
 													class={css({
-														fontFamily: 'var(--font-mono)',
-														fontSize: '10px',
+														fontFamily: 'mono',
+														fontSize: '2xs',
 														color: 'fg.secondary'
 													})}
 												>

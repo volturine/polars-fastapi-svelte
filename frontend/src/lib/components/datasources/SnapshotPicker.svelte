@@ -501,7 +501,7 @@
 						backgroundColor: 'bg.tertiary',
 						paddingX: '1.5',
 						paddingY: '0.5',
-						fontSize: '10px',
+						fontSize: '2xs',
 						textTransform: 'uppercase',
 						color: 'fg.muted'
 					})}
@@ -517,7 +517,7 @@
 						backgroundColor: 'accent.bg',
 						paddingX: '1.5',
 						paddingY: '0.5',
-						fontSize: '10px',
+						fontSize: '2xs',
 						textTransform: 'uppercase',
 						color: 'accent.primary'
 					})}
@@ -590,7 +590,7 @@
 							backgroundColor: 'bg.primary',
 							paddingX: '2',
 							paddingY: '1',
-							fontSize: '10px',
+							fontSize: '2xs',
 							textTransform: 'uppercase',
 							color: 'fg.secondary'
 						})}
@@ -610,7 +610,7 @@
 						backgroundColor: 'warning.bg',
 						paddingX: '2',
 						paddingY: '1',
-						fontSize: '10px',
+						fontSize: '2xs',
 						color: 'warning.fg'
 					})}
 				>
@@ -675,7 +675,7 @@
 							<span
 								class={css({
 									fontSize: 'xs',
-									fontFamily: 'var(--font-mono)',
+									fontFamily: 'mono',
 									color: 'fg.secondary'
 								})}>{snapshotMonth}</span
 							>
@@ -708,7 +708,7 @@
 							})}
 						>
 							{#each ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] as day (day)}
-								<div class={css({ fontSize: '10px', color: 'fg.tertiary', textAlign: 'center' })}>
+								<div class={css({ fontSize: '2xs', color: 'fg.tertiary', textAlign: 'center' })}>
 									{day}
 								</div>
 							{/each}
@@ -739,7 +739,7 @@
 													top: '1',
 													backgroundColor: 'accent.bg',
 													paddingX: '1',
-													fontSize: '9px',
+													fontSize: '2xs',
 													color: 'accent.primary'
 												})}
 											>
@@ -801,7 +801,7 @@
 									>
 										<span
 											class={cx(
-												css({ fontFamily: 'var(--font-mono)' }),
+												css({ fontFamily: 'mono' }),
 												selectedSnapshotId === snap.id
 													? css({ color: 'fg.primary' })
 													: css({ color: 'fg.secondary' })
@@ -819,7 +819,7 @@
 													borderColor: 'border.tertiary',
 													paddingX: '1.5',
 													paddingY: '0.5',
-													fontSize: '10px',
+													fontSize: '2xs',
 													textTransform: 'uppercase',
 													color: 'fg.secondary'
 												})}
@@ -838,7 +838,7 @@
 													borderColor: 'border.tertiary',
 													paddingX: '1.5',
 													paddingY: '0.5',
-													fontSize: '10px',
+													fontSize: '2xs',
 													textTransform: 'uppercase',
 													color: 'fg.secondary'
 												})}

@@ -3,7 +3,7 @@
 	import { onClickOutside } from 'runed';
 	import { configStore } from '$lib/stores/config.svelte';
 	import { idbEntries, idbDelete, idbClear } from '$lib/utils/indexeddb';
-	import { css } from '$lib/styles/panda';
+	import { css, emptyText } from '$lib/styles/panda';
 
 	let open = $state(false);
 	let entries = $state<Array<{ key: string; value: unknown }>>([]);
@@ -109,7 +109,7 @@
 					top: '100%',
 					marginTop: '2',
 					zIndex: 'engine',
-					width: '22.5rem',
+					width: '90',
 					overflow: 'hidden',
 					borderWidth: '1px',
 					borderStyle: 'solid',
@@ -195,7 +195,7 @@
 					</div>
 				</div>
 
-				<div class={css({ maxHeight: '18.75rem', overflowY: 'auto' })}>
+				<div class={css({ maxHeight: '75', overflowY: 'auto' })}>
 					{#if loading}
 						<div
 							class={css({
@@ -213,9 +213,7 @@
 							<span>Loading...</span>
 						</div>
 					{:else if entries.length === 0}
-						<div
-							class={css({ padding: '6', textAlign: 'center', fontSize: 'sm', color: 'fg.muted' })}
-						>
+						<div class={emptyText({ size: 'panel' })}>
 							<span>No entries</span>
 						</div>
 					{:else}
@@ -241,7 +239,7 @@
 											>
 												<span
 													class={css({
-														fontFamily: 'var(--font-mono)',
+														fontFamily: 'mono',
 														fontSize: 'xs',
 														color: 'fg.primary'
 													})}
@@ -259,7 +257,7 @@
 														backgroundColor: 'transparent',
 														paddingX: '2',
 														paddingY: '0.5',
-														fontSize: '11px',
+														fontSize: 'xs',
 														color: 'fg.secondary',
 														_hover: { backgroundColor: 'bg.hover' }
 													})}

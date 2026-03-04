@@ -2,6 +2,8 @@
 	import type { Schema } from '$lib/types/schema';
 	import ColumnTypeDropdown from '$lib/components/common/ColumnTypeDropdown.svelte';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
+	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
 	import { css, cx } from '$lib/styles/panda';
 
 	interface FillNullConfigData {
@@ -41,7 +43,7 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
+			paddingBottom: '5',
 			backgroundColor: 'transparent',
 			borderRadius: '0',
 			border: 'none'
@@ -49,26 +51,13 @@
 		role="group"
 		aria-labelledby="fill-strategy-heading"
 	>
-		<h4
-			id="fill-strategy-heading"
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			Fill Strategy
-		</h4>
+		<span id="fill-strategy-heading"><SectionHeader>Fill Strategy</SectionHeader></span>
 		<label
 			for="fill-select-strategy"
 			class={css({
 				position: 'absolute',
-				width: '1px',
-				height: '1px',
+				width: 'px',
+				height: 'px',
 				padding: '0',
 				margin: '-1px',
 				overflow: 'hidden',
@@ -94,36 +83,23 @@
 			class={cx(
 				css({
 					marginBottom: '0',
-					padding: '0 0 1.25rem 0',
+					paddingBottom: '5',
 					backgroundColor: 'transparent',
 					borderRadius: '0',
 					border: 'none'
 				}),
-				css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+				css({ paddingTop: '5', borderTop: '1px solid var(--color-border-tertiary)' })
 			)}
 			role="group"
 			aria-labelledby="fill-value-heading"
 		>
-			<h4
-				id="fill-value-heading"
-				class={css({
-					marginTop: '0',
-					marginBottom: '3',
-					fontSize: '0.6875rem',
-					fontWeight: '600',
-					color: 'fg.muted',
-					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
-				})}
-			>
-				Fill Value
-			</h4>
+			<span id="fill-value-heading"><SectionHeader>Fill Value</SectionHeader></span>
 			<label
 				for="fill-input-value"
 				class={css({
 					position: 'absolute',
-					width: '1px',
-					height: '1px',
+					width: 'px',
+					height: 'px',
 					padding: '0',
 					margin: '-1px',
 					overflow: 'hidden',
@@ -151,30 +127,17 @@
 		class={cx(
 			css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
 			}),
-			css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+			css({ paddingTop: '5', borderTop: '1px solid var(--color-border-tertiary)' })
 		)}
 		role="group"
 		aria-labelledby="target-columns-heading"
 	>
-		<h4
-			id="target-columns-heading"
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			Target Columns
-		</h4>
+		<span id="target-columns-heading"><SectionHeader>Target Columns</SectionHeader></span>
 		<MultiSelectColumnDropdown
 			{schema}
 			value={config.columns ?? []}
@@ -184,24 +147,7 @@
 		/>
 
 		{#if !config.columns || config.columns.length === 0}
-			<div
-				id="fill-no-columns-info"
-				class={css({
-					padding: '0.625rem 0.75rem',
-					border: 'none',
-					borderLeft: '2px solid',
-					borderRadius: '0',
-					marginTop: '0.75rem',
-					marginBottom: '0',
-					fontSize: '0.75rem',
-					lineHeight: '1.5',
-					backgroundColor: 'transparent',
-					borderLeftColor: 'accent.secondary',
-					color: 'fg.tertiary'
-				})}
-			>
-				No columns selected - will apply to all columns
-			</div>
+			<Callout>No columns selected - will apply to all columns</Callout>
 		{/if}
 	</div>
 </div>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { ChevronDown, Plus } from 'lucide-svelte';
 	import SearchableDropdown from '$lib/components/ui/SearchableDropdown.svelte';
-	import { css, cx } from '$lib/styles/panda';
+	import { css, cx, menuItem } from '$lib/styles/panda';
 
 	interface BranchOption {
 		id: string;
@@ -178,7 +178,8 @@
 			justifyContent: 'space-between',
 			gap: '2',
 			width: '100%',
-			padding: '0.4rem 0.6rem',
+			paddingY: '1.5',
+			paddingX: '2',
 			borderWidth: '1px',
 			borderStyle: 'solid',
 			borderColor: 'border.primary',
@@ -218,26 +219,15 @@
 	<button
 		type="button"
 		class={cx(
+			menuItem(),
 			css({
-				minWidth: '0',
-				width: '100%',
-				padding: '0.5rem 0.75rem',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'transparent',
-				background: 'transparent',
-				textAlign: 'left',
 				display: 'flex',
 				alignItems: 'center',
-				justifyContent: 'flex-start',
 				gap: '2',
-				cursor: 'pointer',
-				color: 'fg.primary',
 				fontSize: 'sm',
 				'& span': { minWidth: '0', overflowWrap: 'anywhere' },
-				_hover: { backgroundColor: 'bg.hover', borderColor: 'border.primary' }
-			}),
-			payload.selected && css({ backgroundColor: 'bg.hover', borderColor: 'border.primary' })
+				...(payload.selected ? { backgroundColor: 'bg.hover', borderColor: 'border.primary' } : {})
+			})
 		)}
 		onclick={payload.onSelect}
 		role="option"

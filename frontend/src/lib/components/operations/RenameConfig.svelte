@@ -2,7 +2,8 @@
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import { ArrowRight, X } from 'lucide-svelte';
-	import { css } from '$lib/styles/panda';
+	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+	import { css, emptyText } from '$lib/styles/panda';
 
 	interface RenameConfigData {
 		column_mapping: { [oldName: string]: string };
@@ -66,20 +67,7 @@
 	</h3>
 
 	<div class={css({ marginBottom: '5' })} role="group" aria-labelledby="rename-columns-heading">
-		<h4
-			id="rename-columns-heading"
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			Select Column to Rename
-		</h4>
+		<span id="rename-columns-heading"><SectionHeader>Select Column to Rename</SectionHeader></span>
 		<ColumnDropdown
 			{schema}
 			value={formOldName}
@@ -113,8 +101,8 @@
 			for="rename-input-new"
 			class={css({
 				position: 'absolute',
-				width: '1px',
-				height: '1px',
+				width: 'px',
+				height: 'px',
 				padding: '0',
 				margin: '-1px',
 				overflow: 'hidden',
@@ -176,19 +164,7 @@
 			role="list"
 			aria-label="Configured renames"
 		>
-			<h4
-				class={css({
-					marginTop: '0',
-					marginBottom: '3',
-					fontSize: '0.6875rem',
-					fontWeight: '600',
-					color: 'fg.muted',
-					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
-				})}
-			>
-				Renames
-			</h4>
+			<SectionHeader>Renames</SectionHeader>
 			{#each mappings as mapping (mapping.oldName)}
 				<div
 					class={css({
@@ -271,12 +247,6 @@
 			{/each}
 		</div>
 	{:else}
-		<p
-			id="rename-empty-state"
-			class={css({ paddingY: '8', textAlign: 'center', fontSize: 'xs', color: 'fg.muted' })}
-			role="status"
-		>
-			No renames yet.
-		</p>
+		<p id="rename-empty-state" class={emptyText()} role="status">No renames yet.</p>
 	{/if}
 </div>

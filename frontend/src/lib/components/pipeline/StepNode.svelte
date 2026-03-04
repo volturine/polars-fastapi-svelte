@@ -344,10 +344,10 @@
 			css({
 				position: 'absolute',
 				left: '50%',
-				top: '-0.25rem',
+				top: '-1',
 				zIndex: '2',
-				height: '0.5rem',
-				width: '0.5rem',
+				height: '2',
+				width: '2',
 				borderWidth: '2px',
 				borderStyle: 'solid',
 				transform: 'translateX(-50%)',
@@ -393,7 +393,7 @@
 						justifyContent: 'center',
 						border: 'none',
 						backgroundColor: 'transparent',
-						padding: '0.125rem',
+						padding: '0.5',
 						opacity: '0.3',
 						userSelect: 'none',
 						color: 'fg.muted',
@@ -427,12 +427,12 @@
 					fontSize: 'xs',
 					fontWeight: '600',
 					textTransform: 'uppercase',
-					letterSpacing: '0.05em'
+					letterSpacing: 'wider'
 				})}
 			>
 				{label}
 			</span>
-			<span class={css({ flexShrink: '0', fontSize: '0.625rem', color: 'fg.faint' })}>
+			<span class={css({ flexShrink: '0', fontSize: '2xs', color: 'fg.faint' })}>
 				#{index + 1}
 			</span>
 		</div>
@@ -444,7 +444,7 @@
 					css({
 						paddingX: '3',
 						paddingY: '2',
-						fontSize: '0.6875rem',
+						fontSize: 'xs',
 						backgroundColor: 'bg.secondary',
 						color: 'fg.tertiary',
 						lineHeight: 'relaxed',
@@ -483,8 +483,8 @@
 						paddingY: '2.5',
 						fontWeight: '500',
 						textTransform: 'uppercase',
-						letterSpacing: '0.2em',
-						fontSize: '0.5625rem',
+						letterSpacing: 'max',
+						fontSize: '2xs',
 						color: 'fg.muted',
 						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
 						...(!isApplied
@@ -505,7 +505,7 @@
 			>
 				{isApplied ? 'disable' : 'enable'}
 			</button>
-			<div class={css({ width: '1px', backgroundColor: 'border.primary', flexShrink: '0' })}></div>
+			<div class={css({ width: 'px', backgroundColor: 'border.primary', flexShrink: '0' })}></div>
 			<button
 				class={cx(
 					'action-btn',
@@ -515,10 +515,10 @@
 						border: 'none',
 						backgroundColor: 'transparent',
 						paddingY: '2.5',
-						fontSize: '0.5625rem',
+						fontSize: '2xs',
 						fontWeight: '500',
 						textTransform: 'uppercase',
-						letterSpacing: '0.2em',
+						letterSpacing: 'max',
 						color: 'fg.muted',
 						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
 					})
@@ -528,7 +528,7 @@
 			>
 				edit
 			</button>
-			<div class={css({ width: '1px', backgroundColor: 'border.primary', flexShrink: '0' })}></div>
+			<div class={css({ width: 'px', backgroundColor: 'border.primary', flexShrink: '0' })}></div>
 			<button
 				class={cx(
 					'action-btn',
@@ -538,10 +538,10 @@
 						border: 'none',
 						backgroundColor: 'transparent',
 						paddingY: '2.5',
-						fontSize: '0.5625rem',
+						fontSize: '2xs',
 						fontWeight: '500',
 						textTransform: 'uppercase',
-						letterSpacing: '0.2em',
+						letterSpacing: 'max',
 						color: 'fg.muted',
 						_hover: { backgroundColor: 'error.bg', color: 'error.fg' }
 					})
@@ -604,7 +604,7 @@
 							display: 'flex',
 							alignItems: 'center',
 							justifyContent: 'center',
-							fontSize: '0.6875rem',
+							fontSize: 'xs',
 							color: 'fg.muted',
 							border: '1px dashed',
 							borderColor: 'border.primary',
@@ -627,7 +627,7 @@
 							justifyContent: 'center',
 							gap: '2',
 							paddingY: '5',
-							fontSize: '0.6875rem',
+							fontSize: 'xs',
 							color: 'fg.muted'
 						})}
 					>
@@ -687,7 +687,7 @@
 							display: 'flex',
 							alignItems: 'center',
 							gap: '1',
-							fontSize: '0.625rem',
+							fontSize: '2xs',
 							color: 'fg.faint'
 						})}
 					>
@@ -709,7 +709,7 @@
 						color: 'fg.muted',
 						paddingX: '2',
 						paddingY: '0.5',
-						fontSize: '0.5625rem',
+						fontSize: '2xs',
 						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
 						_disabled: { cursor: 'not-allowed', opacity: '0.7' }
 					})}
@@ -750,10 +750,10 @@
 		class={css({
 			position: 'absolute',
 			left: '50%',
-			bottom: '-0.25rem',
+			bottom: '-1',
 			zIndex: '2',
-			height: '0.5rem',
-			width: '0.5rem',
+			height: '2',
+			width: '2',
 			borderWidth: '2px',
 			borderStyle: 'solid',
 			transform: 'translateX(-50%)',

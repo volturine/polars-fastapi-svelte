@@ -7,10 +7,11 @@
 	import { createAnalysis } from '$lib/api/analysis';
 	import DatasourcePicker from '$lib/components/common/DatasourcePicker.svelte';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
 	import type { AnalysisCreate, PipelineStep } from '$lib/types/analysis';
 	import { buildOutputConfig } from '$lib/utils/analysis-tab';
 	import { getDefaultConfig } from '$lib/utils/step-config-defaults';
-	import { css, spinner, button } from '$lib/styles/panda';
+	import { css, cx, spinner, button, input } from '$lib/styles/panda';
 
 	let step = $state(1);
 	let name = $state('');
@@ -255,7 +256,7 @@
 					border: '1px solid',
 					borderColor: 'border.primary',
 					borderRadius: '0',
-					padding: '1.25rem'
+					padding: '5'
 				})}
 			>
 				<h2 class={css({ margin: '0', marginBottom: '2', fontSize: 'lg', fontWeight: 'semibold' })}>
@@ -282,15 +283,10 @@
 						type="text"
 						bind:value={name}
 						placeholder="My Data Analysis"
-						class={css({
-							width: '100%',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
-							backgroundColor: 'bg.primary',
-							padding: '3',
-							fontSize: 'sm'
-						})}
+						class={cx(
+							input(),
+							css({ padding: '3', backgroundColor: 'bg.primary', fontSize: 'sm' })
+						)}
 					/>
 				</div>
 				<div class={css({ marginBottom: '5', display: 'flex', flexDirection: 'column', gap: '2' })}>
@@ -331,7 +327,7 @@
 					border: '1px solid',
 					borderColor: 'border.primary',
 					borderRadius: '0',
-					padding: '1.25rem'
+					padding: '5'
 				})}
 			>
 				<h2 class={css({ margin: '0', marginBottom: '2', fontSize: 'lg', fontWeight: 'semibold' })}>
@@ -353,23 +349,9 @@
 						<div class={spinner()}></div>
 					</div>
 				{:else if datasourcesQuery.error}
-					<div
-						class={css({
-							padding: '0.625rem 0.75rem',
-							border: 'none',
-							borderLeft: '2px solid',
-							borderRadius: '0',
-							marginTop: '0.75rem',
-							marginBottom: '0',
-							fontSize: '0.75rem',
-							lineHeight: '1.5',
-							backgroundColor: 'transparent',
-							borderLeftColor: 'error.border',
-							color: 'error.fg'
-						})}
-					>
+					<Callout tone="error">
 						Error loading data sources: {datasourcesQuery.error.message}
-					</div>
+					</Callout>
 				{:else if datasourcesQuery.data && datasourcesQuery.data.length === 0}
 					<div
 						class={css({
@@ -408,7 +390,7 @@
 					border: '1px solid',
 					borderColor: 'border.primary',
 					borderRadius: '0',
-					padding: '1.25rem'
+					padding: '5'
 				})}
 			>
 				<h2 class={css({ margin: '0', marginBottom: '2', fontSize: 'lg', fontWeight: 'semibold' })}>
@@ -507,23 +489,9 @@
 				</div>
 
 				{#if error}
-					<div
-						class={css({
-							padding: '0.625rem 0.75rem',
-							border: 'none',
-							borderLeft: '2px solid',
-							borderRadius: '0',
-							marginTop: '0.75rem',
-							marginBottom: '0',
-							fontSize: '0.75rem',
-							lineHeight: '1.5',
-							backgroundColor: 'transparent',
-							borderLeftColor: 'error.border',
-							color: 'error.fg'
-						})}
-					>
+					<Callout tone="error">
 						{error}
-					</div>
+					</Callout>
 				{/if}
 			</div>
 		{/if}

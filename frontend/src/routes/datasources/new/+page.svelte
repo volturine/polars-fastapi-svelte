@@ -14,7 +14,7 @@
 	import FileBrowser from '$lib/components/common/FileBrowser.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { Check, X } from 'lucide-svelte';
-	import { css, cx, button } from '$lib/styles/panda';
+	import { css, cx, button, tabButton } from '$lib/styles/panda';
 
 	type Tab = 'file' | 'database' | 'path';
 
@@ -319,7 +319,7 @@
 	}
 </script>
 
-<div class={css({ marginX: 'auto', boxSizing: 'border-box', maxWidth: '50rem', padding: '8' })}>
+<div class={css({ marginX: 'auto', boxSizing: 'border-box', maxWidth: '200', padding: '8' })}>
 	<header
 		class={css({
 			marginBottom: '8',
@@ -349,61 +349,19 @@
 		})}
 	>
 		<button
-			class={css({
-				marginBottom: '-0.125rem',
-				borderBottomWidth: '2px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'transparent',
-				paddingX: '6',
-				paddingY: '3',
-				fontSize: 'sm',
-				fontWeight: 'medium',
-				color: 'fg.muted',
-				_hover: { color: 'fg.secondary' },
-				...(activeTab === 'file'
-					? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
-					: {})
-			})}
+			class={tabButton({ active: activeTab === 'file', size: 'lg' })}
 			onclick={() => (activeTab = 'file')}
 		>
 			File Upload
 		</button>
 		<button
-			class={css({
-				marginBottom: '-0.125rem',
-				borderBottomWidth: '2px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'transparent',
-				paddingX: '6',
-				paddingY: '3',
-				fontSize: 'sm',
-				fontWeight: 'medium',
-				color: 'fg.muted',
-				_hover: { color: 'fg.secondary' },
-				...(activeTab === 'database'
-					? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
-					: {})
-			})}
+			class={tabButton({ active: activeTab === 'database', size: 'lg' })}
 			onclick={() => (activeTab = 'database')}
 		>
 			External DB
 		</button>
 		<button
-			class={css({
-				marginBottom: '-0.125rem',
-				borderBottomWidth: '2px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'transparent',
-				paddingX: '6',
-				paddingY: '3',
-				fontSize: 'sm',
-				fontWeight: 'medium',
-				color: 'fg.muted',
-				_hover: { color: 'fg.secondary' },
-				...(activeTab === 'path'
-					? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
-					: {})
-			})}
+			class={tabButton({ active: activeTab === 'path', size: 'lg' })}
 			onclick={() => (activeTab = 'path')}
 		>
 			Iceberg Path
@@ -413,13 +371,14 @@
 	{#if error}
 		<div
 			class={css({
-				padding: '0.625rem 0.75rem',
+				paddingX: '2.5',
+				paddingY: '3',
 				border: 'none',
 				borderLeft: '2px solid',
 				borderRadius: '0',
-				marginTop: '0.75rem',
+				marginTop: '3',
 				marginBottom: '0',
-				fontSize: '0.75rem',
+				fontSize: 'xs',
 				lineHeight: '1.5',
 				backgroundColor: 'transparent',
 				borderLeftColor: 'error.border',
@@ -749,7 +708,7 @@
 								type="checkbox"
 								bind:checked={csvHasHeader}
 								disabled={loading}
-								class={css({ width: '1rem', height: '1rem', cursor: 'pointer' })}
+								class={css({ width: '4', height: '4', cursor: 'pointer' })}
 							/>
 							<label
 								for="csv-header"
@@ -797,7 +756,7 @@
 									color: result.success ? 'success.fg' : 'error.fg'
 								})}
 							>
-								<span class={css({ width: '1.25rem', textAlign: 'center', fontWeight: 'bold' })}>
+								<span class={css({ width: '5', textAlign: 'center', fontWeight: 'bold' })}>
 									{#if result.success}
 										<Check size={12} />
 									{:else}
@@ -817,7 +776,7 @@
 								{#if result.error}
 									<span
 										class={css({
-											maxWidth: '12.5rem',
+											maxWidth: '50',
 											overflow: 'hidden',
 											textOverflow: 'ellipsis',
 											fontSize: 'xs',

@@ -170,7 +170,7 @@
 			borderStyle: 'solid',
 			borderColor: 'border.tertiary',
 			backgroundColor: 'bg.primary',
-			boxShadow: 'var(--shadow-drag)',
+			boxShadow: 'drag',
 			outline: 'none',
 			maxHeight: '60vh'
 		})}
@@ -209,7 +209,7 @@
 			<div
 				class={css({
 					display: 'flex',
-					maxHeight: '15rem',
+					maxHeight: '60',
 					flexDirection: 'column',
 					overflowY: 'auto'
 				})}
@@ -248,7 +248,7 @@
 							<span class={css({ fontSize: 'xs' })}>Create "{normalizedCandidate}"</span>
 							<span
 								class={css({
-									fontSize: '10px',
+									fontSize: '2xs',
 									color: 'fg.muted',
 									textTransform: 'uppercase',
 									letterSpacing: 'wider'

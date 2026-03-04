@@ -9,8 +9,11 @@
 	import UdfPickerModal from '$lib/components/common/UdfPickerModal.svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
+	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
+	import PanelFooter from '$lib/components/ui/PanelFooter.svelte';
 	import { Pencil, X } from 'lucide-svelte';
-	import { css, button } from '$lib/styles/panda';
+	import { css, button, emptyText } from '$lib/styles/panda';
 
 	interface WithColumnsExpr {
 		name: string;
@@ -382,7 +385,7 @@
 								gap: '3',
 								marginTop: '3',
 								paddingTop: '3',
-								borderTopWidth: '1px',
+								borderTopWidth: '1',
 								borderTopStyle: 'solid',
 								borderTopColor: 'border.tertiary'
 							})}
@@ -441,20 +444,7 @@
 
 	{#if (config.expressions ?? []).length > 0}
 		<div class={css({ display: 'flex', flexDirection: 'column' })} role="list">
-			<h4
-				class={css({
-					marginTop: '0',
-					marginBottom: '3',
-					margin: '0',
-					fontSize: '0.6875rem',
-					fontWeight: '600',
-					color: 'fg.muted',
-					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
-				})}
-			>
-				Columns
-			</h4>
+			<SectionHeader>Columns</SectionHeader>
 			{#each config.expressions ?? [] as expr, index (index)}
 				<div
 					class={editIndex === index
@@ -463,10 +453,10 @@
 								justifyContent: 'space-between',
 								alignItems: 'center',
 								paddingY: '2',
-								borderBottomWidth: '1px',
+								borderBottomWidth: '1',
 								borderBottomStyle: 'solid',
 								borderBottomColor: 'border.tertiary',
-								borderLeftWidth: '2px',
+								borderLeftWidth: '2',
 								borderLeftStyle: 'solid',
 								borderLeftColor: 'accent.primary',
 								backgroundColor: 'bg.hover',
@@ -477,7 +467,7 @@
 								justifyContent: 'space-between',
 								alignItems: 'center',
 								paddingY: '2',
-								borderBottomWidth: '1px',
+								borderBottomWidth: '1',
 								borderBottomStyle: 'solid',
 								borderBottomColor: 'border.tertiary',
 								backgroundColor: 'transparent',
@@ -521,7 +511,7 @@
 								fontSize: 'md',
 								lineHeight: 'none',
 								color: 'fg.muted',
-								borderWidth: '1px',
+								borderWidth: '1',
 								borderStyle: 'solid',
 								borderColor: 'border.transparent'
 							})}
@@ -544,7 +534,7 @@
 								fontSize: 'md',
 								lineHeight: 'none',
 								color: 'fg.muted',
-								borderWidth: '1px',
+								borderWidth: '1',
 								borderStyle: 'solid',
 								borderColor: 'border.transparent',
 								_hover: {
@@ -563,15 +553,13 @@
 			{/each}
 		</div>
 	{:else}
-		<p class={css({ paddingY: '8', textAlign: 'center', fontSize: 'xs', color: 'fg.muted' })}>
-			No columns configured yet.
-		</p>
+		<p class={emptyText()}>No columns configured yet.</p>
 	{/if}
 </div>
 
 {#if showEditor}
 	<div
-		class={css({ position: 'fixed', inset: '0', background: 'var(--overlay-bg)', zIndex: 'modal' })}
+		class={css({ position: 'fixed', inset: '0', background: 'bg.overlay', zIndex: 'modal' })}
 		aria-hidden="true"
 	></div>
 	<div
@@ -582,7 +570,7 @@
 			transform: 'translate(-50%, -50%)',
 			width: 'min(720px, 92vw)',
 			backgroundColor: 'bg.primary',
-			borderWidth: '1px',
+			borderWidth: '1',
 			borderStyle: 'solid',
 			borderColor: 'border.primary',
 			zIndex: 'calc(var(--z-modal) + 1)',
@@ -594,45 +582,38 @@
 		aria-modal="true"
 		bind:this={modalRef}
 	>
+		<PanelHeader>
+			{#snippet title()}UDF Editor{/snippet}
+			{#snippet actions()}
+				<button
+					class={css({
+						background: 'transparent',
+						border: 'none',
+						color: 'fg.muted',
+						cursor: 'pointer',
+						fontSize: 'xl',
+						padding: '1',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						transitionProperty: 'color, background-color',
+						transitionDuration: 'normal',
+						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+					})}
+					onclick={() => (showEditor = false)}
+					aria-label="Close"
+				>
+					<X size={16} />
+				</button>
+			{/snippet}
+		</PanelHeader>
 		<div
 			class={css({
-				display: 'flex',
-				justifyContent: 'space-between',
-				alignItems: 'center',
-				padding: '0.75rem 1rem',
-				borderBottom: '1px solid var(--color-border-primary)',
-				'& h2': { margin: '0', fontSize: '1rem', color: 'fg.primary' }
-			})}
-		>
-			<h2>UDF Editor</h2>
-			<button
-				class={css({
-					background: 'transparent',
-					border: 'none',
-					color: 'fg.muted',
-					cursor: 'pointer',
-					fontSize: '1.25rem',
-					padding: '0.25rem',
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					transitionProperty: 'color, background-color',
-					transitionDuration: 'normal',
-					_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
-				})}
-				onclick={() => (showEditor = false)}
-				aria-label="Close"
-			>
-				<X size={16} />
-			</button>
-		</div>
-		<div
-			class={css({
-				padding: '1rem',
+				padding: '4',
 				overflowY: 'auto',
 				display: 'flex',
 				flexDirection: 'column',
-				gap: '0.75rem'
+				gap: '3'
 			})}
 		>
 			<CodeEditor bind:value={exprCode} height="400px" onEdit={() => (codeEdited = true)} />
@@ -640,21 +621,13 @@
 				Define a function named <code>udf</code> that returns a value per row.
 			</p>
 		</div>
-		<div
-			class={css({
-				padding: '0.75rem 1rem',
-				borderTop: '1px solid var(--color-border-primary)',
-				display: 'flex',
-				justifyContent: 'flex-end',
-				gap: '0.5rem'
-			})}
-		>
+		<PanelFooter>
 			<button
 				class={button({ variant: 'secondary' })}
 				onclick={() => (showEditor = false)}
 				type="button">Done</button
 			>
-		</div>
+		</PanelFooter>
 	</div>
 {/if}
 

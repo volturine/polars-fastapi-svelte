@@ -19,7 +19,8 @@
 	import BuildComparisonPanel from '$lib/components/datasources/BuildComparisonPanel.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { css, cx, spinner, button } from '$lib/styles/panda';
+	import Callout from '$lib/components/ui/Callout.svelte';
+	import { css, cx, spinner, button, chip, input } from '$lib/styles/panda';
 
 	const queryClient = useQueryClient();
 
@@ -152,7 +153,7 @@
 				borderBottomWidth: '1px',
 				borderBottomStyle: 'solid',
 				borderBottomColor: 'border.tertiary',
-				height: '6.25rem',
+				height: '25',
 				boxSizing: 'border-box'
 			})}
 		>
@@ -214,7 +215,7 @@
 					size={14}
 					class={css({
 						position: 'absolute',
-						left: '0.625rem',
+						left: '2.5',
 						top: '50%',
 						transform: 'translateY(-50%)',
 						color: 'fg.muted'
@@ -225,17 +226,7 @@
 					id="ds-search"
 					aria-label="Search datasources"
 					placeholder="Search datasources..."
-					class={css({
-						width: '100%',
-						backgroundColor: 'transparent',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
-						paddingX: '3',
-						paddingY: '1',
-						paddingLeft: '8',
-						fontSize: 'sm'
-					})}
+					class={cx(input({ variant: 'search' }), css({ paddingY: '1' }))}
 					bind:value={searchQuery}
 				/>
 			</div>
@@ -255,24 +246,9 @@
 					<div class={spinner()}></div>
 				</div>
 			{:else if query.isError}
-				<div
-					class={css({
-						padding: '0.625rem 0.75rem',
-						border: 'none',
-						borderLeft: '2px solid',
-						borderRadius: '0',
-						marginTop: '0.75rem',
-						marginBottom: '0',
-						lineHeight: '1.5',
-						backgroundColor: 'transparent',
-						borderLeftColor: 'error.border',
-						color: 'error.fg',
-						margin: '4',
-						fontSize: 'sm'
-					})}
-				>
+				<Callout tone="error">
 					Error: {query.error instanceof Error ? query.error.message : 'Unknown error'}
-				</div>
+				</Callout>
 			{:else if datasources.length === 0}
 				<div class={css({ padding: '8', textAlign: 'center' })}>
 					<p class={css({ fontSize: 'sm', color: 'fg.muted', marginBottom: '4' })}>
@@ -358,19 +334,7 @@
 								</span>
 								{#if datasource.created_by === 'analysis'}
 									<span
-										class={css({
-											display: 'inline-flex',
-											alignItems: 'center',
-											gap: '0.125rem',
-											flexShrink: '0',
-											backgroundColor: 'accent.bg',
-											paddingX: '1.5',
-											paddingY: '0.5',
-											fontSize: '0.625rem',
-											textTransform: 'uppercase',
-											fontWeight: 'medium',
-											color: 'accent.primary'
-										})}
+										class={cx(chip({ tone: 'accent' }), css({ gap: '0.5', flexShrink: '0' }))}
 										title="Created by analysis"
 									>
 										<GitBranch size={10} />
@@ -378,19 +342,7 @@
 									</span>
 								{:else}
 									<span
-										class={css({
-											display: 'inline-flex',
-											alignItems: 'center',
-											gap: '0.125rem',
-											flexShrink: '0',
-											backgroundColor: 'bg.tertiary',
-											paddingX: '1.5',
-											paddingY: '0.5',
-											fontSize: '0.625rem',
-											textTransform: 'uppercase',
-											fontWeight: 'medium',
-											color: 'fg.muted'
-										})}
+										class={cx(chip({ tone: 'neutral' }), css({ gap: '0.5', flexShrink: '0' }))}
 										title="Imported datasource"
 									>
 										<Upload size={10} />

@@ -28,7 +28,7 @@
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
 	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
-	import { css, cx } from '$lib/styles/panda';
+	import { css, cx, chip } from '$lib/styles/panda';
 	import {
 		Bell,
 		CalendarClock,
@@ -425,8 +425,8 @@
 				<div
 					class={css({
 						display: 'flex',
-						height: '1.25rem',
-						width: '1.25rem',
+						height: '5',
+						width: '5',
 						alignItems: 'center',
 						justifyContent: 'center',
 						backgroundColor: 'accent.primary',
@@ -440,25 +440,23 @@
 						fontSize: 'xs',
 						fontWeight: '600',
 						textTransform: 'uppercase',
-						letterSpacing: '0.05em'
+						letterSpacing: 'wider'
 					})}
 				>
 					output
 				</span>
 			</div>
 			<span
-				class={css({
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
-					backgroundColor: 'bg.tertiary',
-					paddingX: '1.5',
-					paddingY: '0.5',
-					fontSize: '0.5625rem',
-					textTransform: 'uppercase',
-					letterSpacing: '0.2em',
-					color: 'fg.faint'
-				})}>sink</span
+				class={cx(
+					chip({ tone: 'neutral' }),
+					css({
+						borderWidth: '1px',
+						borderStyle: 'solid',
+						borderColor: 'border.tertiary',
+						letterSpacing: 'max',
+						color: 'fg.faint'
+					})
+				)}>sink</span
 			>
 		</div>
 
@@ -484,9 +482,9 @@
 					display: 'flex',
 					alignItems: 'center',
 					gap: '2',
-					fontSize: '0.625rem',
+					fontSize: '2xs',
 					textTransform: 'uppercase',
-					letterSpacing: '0.2em',
+					letterSpacing: 'max',
 					color: 'fg.faint'
 				})}
 			>
@@ -498,7 +496,7 @@
 					<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
 						<input
 							class={css({
-								minWidth: '6.25rem',
+								minWidth: '25',
 								borderWidth: '1px',
 								borderStyle: 'solid',
 								borderColor: 'border.tertiary',
@@ -519,8 +517,8 @@
 						<button
 							class={css({
 								display: 'inline-flex',
-								height: '1.25rem',
-								width: '1.25rem',
+								height: '5',
+								width: '5',
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'center',
@@ -542,8 +540,8 @@
 						<button
 							class={css({
 								display: 'inline-flex',
-								height: '1.25rem',
-								width: '1.25rem',
+								height: '5',
+								width: '5',
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'center',
@@ -570,8 +568,8 @@
 					<button
 						class={css({
 							display: 'inline-flex',
-							height: '1.25rem',
-							width: '1.25rem',
+							height: '5',
+							width: '5',
 							cursor: 'pointer',
 							alignItems: 'center',
 							justifyContent: 'center',
@@ -610,7 +608,7 @@
 					gap: '2',
 					fontSize: 'xs',
 					textTransform: 'uppercase',
-					letterSpacing: '0.05em',
+					letterSpacing: 'wider',
 					color: 'fg.muted'
 				})}
 			>
@@ -647,7 +645,7 @@
 							backgroundColor: 'bg.secondary',
 							paddingX: '2',
 							paddingY: '0.5',
-							fontSize: '10px',
+							fontSize: '2xs',
 							color: hidden ? 'fg.muted' : 'success.fg',
 							_hover: { color: 'fg.primary' }
 						})}
@@ -697,7 +695,8 @@
 									display: 'flex',
 									alignItems: 'center',
 									gap: '2',
-									padding: '0.5625rem 0.875rem',
+									paddingX: '3',
+									paddingY: '2.5',
 									borderWidth: '1px',
 									borderStyle: 'solid',
 									borderColor: 'border.primary',
@@ -705,7 +704,7 @@
 									color: 'fg.primary',
 									cursor: 'pointer',
 									justifyContent: 'space-between',
-									fontSize: '0.8125rem',
+									fontSize: 'sm',
 									_focusVisible: {
 										outline: '2px solid var(--color-accent-secondary)',
 										outlineOffset: '2px'
@@ -770,7 +769,8 @@
 												css({
 													minWidth: '0',
 													width: '100%',
-													padding: '0.5rem 0.75rem',
+													paddingX: '3',
+													paddingY: '2',
 													borderWidth: '1px',
 													borderStyle: 'solid',
 													borderColor: 'transparent',
@@ -876,7 +876,7 @@
 					type="button"
 					class={css({
 						display: 'flex',
-						height: '1.5rem',
+						height: '6',
 						width: '100%',
 						cursor: 'pointer',
 						alignItems: 'center',
@@ -900,15 +900,7 @@
 						<span>Build Notification</span>
 					</span>
 					{#if notifyConfig.enabled}
-						<span
-							class={css({
-								backgroundColor: 'accent.bg',
-								paddingX: '1.5',
-								paddingY: '0.5',
-								fontSize: '10px',
-								color: 'accent.primary'
-							})}
-						>
+						<span class={chip({ tone: 'accent' })}>
 							{selectedCount}/{activeSubscribers.length}
 						</span>
 					{/if}
@@ -952,7 +944,7 @@
 											borderColor: 'warning.border',
 											backgroundColor: 'warning.bg',
 											padding: '2',
-											fontSize: '10px',
+											fontSize: '2xs',
 											color: 'warning.fg'
 										})}
 									>
@@ -962,7 +954,7 @@
 									<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 										<span
 											class={css({
-												fontSize: '10px',
+												fontSize: '2xs',
 												textTransform: 'uppercase',
 												color: 'fg.muted'
 											})}
@@ -971,7 +963,7 @@
 										</span>
 										<div
 											class={css({
-												maxHeight: '8rem',
+												maxHeight: '32',
 												overflowY: 'auto',
 												borderWidth: '1px',
 												borderStyle: 'solid',
@@ -984,7 +976,7 @@
 													class={css({
 														padding: '2',
 														textAlign: 'center',
-														fontSize: '10px',
+														fontSize: '2xs',
 														color: 'fg.muted'
 													})}
 												>
@@ -995,7 +987,7 @@
 													class={css({
 														padding: '2',
 														textAlign: 'center',
-														fontSize: '10px',
+														fontSize: '2xs',
 														color: 'error.fg'
 													})}
 												>
@@ -1006,7 +998,7 @@
 													class={css({
 														padding: '2',
 														textAlign: 'center',
-														fontSize: '10px',
+														fontSize: '2xs',
 														color: 'fg.muted'
 													})}
 												>
@@ -1042,7 +1034,7 @@
 															class={css({
 																marginLeft: 'auto',
 																flexShrink: '0',
-																fontSize: '10px',
+																fontSize: '2xs',
 																color: 'fg.muted'
 															})}
 														>
@@ -1052,7 +1044,7 @@
 												{/each}
 											{/if}
 										</div>
-										<span class={css({ fontSize: '10px', color: 'fg.muted' })}>
+										<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>
 											All active subscribers receive build notifications.
 										</span>
 									</div>
@@ -1060,7 +1052,7 @@
 
 								<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 									<label
-										class={css({ fontSize: '10px', textTransform: 'uppercase', color: 'fg.muted' })}
+										class={css({ fontSize: '2xs', textTransform: 'uppercase', color: 'fg.muted' })}
 										for={`${idPrefix}-notify-body`}
 									>
 										Message Template
@@ -1084,7 +1076,7 @@
 												body_template: e.currentTarget.value
 											})}
 									></textarea>
-									<span class={css({ fontSize: '10px', color: 'fg.muted' })}>
+									<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>
 										&#123;&#123;analysis_name&#125;&#125;, &#123;&#123;status&#125;&#125;,
 										&#123;&#123;duration_ms&#125;&#125;, &#123;&#123;row_count&#125;&#125;
 									</span>
@@ -1101,7 +1093,7 @@
 					type="button"
 					class={css({
 						display: 'flex',
-						height: '1.5rem',
+						height: '6',
 						width: '100%',
 						cursor: 'pointer',
 						alignItems: 'center',
@@ -1127,7 +1119,7 @@
 					{#if healthCount > 0}
 						<span
 							class={cx(
-								css({ paddingX: '1.5', paddingY: '0.5', fontSize: '10px' }),
+								css({ paddingX: '1.5', paddingY: '0.5', fontSize: '2xs' }),
 								healthPassed === true &&
 									css({ backgroundColor: 'success.bg', color: 'success.fg' }),
 								healthPassed === false && css({ backgroundColor: 'error.bg', color: 'error.fg' }),
@@ -1180,7 +1172,7 @@
 					type="button"
 					class={css({
 						display: 'flex',
-						height: '1.5rem',
+						height: '6',
 						width: '100%',
 						cursor: 'pointer',
 						alignItems: 'center',
@@ -1204,15 +1196,7 @@
 						<span>Schedules</span>
 					</span>
 					{#if scheduleCount > 0}
-						<span
-							class={css({
-								backgroundColor: 'accent.bg',
-								paddingX: '1.5',
-								paddingY: '0.5',
-								fontSize: '10px',
-								color: 'accent.primary'
-							})}
-						>
+						<span class={chip({ tone: 'accent' })}>
 							{enabledSchedules}/{scheduleCount}
 						</span>
 					{/if}

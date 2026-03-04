@@ -45,7 +45,7 @@
 		{/if}
 	</div>
 
-	<div class={css({ maxHeight: '31.25rem', overflowY: 'auto' })}>
+	<div class={css({ maxHeight: '125', overflowY: 'auto' })}>
 		<div
 			class={css({
 				display: 'grid',
@@ -92,7 +92,7 @@
 						color: 'fg.primary'
 					})}
 				>
-					<span class={css({ fontFamily: 'var(--font-mono)', fontSize: 'sm' })}>{column.name}</span>
+					<span class={css({ fontFamily: 'mono', fontSize: 'sm' })}>{column.name}</span>
 				</div>
 				<div class={css({ display: 'flex', alignItems: 'center' })}>
 					<ColumnTypeBadge columnType={column.dtype} size="sm" showIcon={true} />

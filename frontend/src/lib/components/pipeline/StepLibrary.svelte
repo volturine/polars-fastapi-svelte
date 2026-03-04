@@ -244,8 +244,8 @@
 			position: 'fixed',
 			left: '-2500px',
 			top: '-2500px',
-			height: '1px',
-			width: '1px',
+			height: 'px',
+			width: 'px',
 			opacity: '0'
 		})}
 		alt=""
@@ -330,7 +330,7 @@
 							overflow: 'hidden',
 							textOverflow: 'ellipsis',
 							whiteSpace: 'nowrap',
-							fontSize: '0.625rem',
+							fontSize: '2xs',
 							color: 'fg.faint'
 						})}>{stepType.description}</span
 					>
@@ -353,7 +353,7 @@
 			class={css({
 				margin: '0',
 				marginBottom: '2',
-				fontSize: '0.625rem',
+				fontSize: '2xs',
 				textTransform: 'uppercase',
 				letterSpacing: 'widest',
 				color: 'fg.faint'

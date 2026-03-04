@@ -239,7 +239,7 @@
 			overflowY: 'auto',
 			padding: '8',
 			backgroundColor: 'bg.secondary',
-			minHeight: '25rem'
+			minHeight: '100'
 		})
 	)}
 >
@@ -247,7 +247,7 @@
 		<div
 			class={css({
 				display: 'flex',
-				minHeight: '25rem',
+				minHeight: '100',
 				height: '100%',
 				flexDirection: 'column',
 				alignItems: 'center',
@@ -310,7 +310,7 @@
 						class={css({
 							marginY: '2',
 							display: 'flex',
-							minHeight: '1.75rem',
+							minHeight: '7',
 							width: 'min(55%, 480px)',
 							flexShrink: '0',
 							alignItems: 'center',
@@ -333,7 +333,7 @@
 						{#if hoverIndex === 0}
 							<span
 								class={css({
-									fontFamily: 'var(--font-mono)',
+									fontFamily: 'mono',
 									fontSize: 'sm',
 									fontWeight: '500',
 									textTransform: 'lowercase',
@@ -405,7 +405,7 @@
 							class={css({
 								marginY: '2',
 								display: 'flex',
-								minHeight: '1.75rem',
+								minHeight: '7',
 								width: 'min(55%, 480px)',
 								flexShrink: '0',
 								alignItems: 'center',
@@ -428,7 +428,7 @@
 							{#if hoverIndex === 0}
 								<span
 									class={css({
-										fontFamily: 'var(--font-mono)',
+										fontFamily: 'mono',
 										fontSize: 'sm',
 										fontWeight: '500',
 										textTransform: 'lowercase',
@@ -509,7 +509,7 @@
 									class={css({
 										marginY: '2',
 										display: 'flex',
-										minHeight: '1.75rem',
+										minHeight: '7',
 										width: 'min(55%, 480px)',
 										flexShrink: '0',
 										alignItems: 'center',
@@ -533,7 +533,7 @@
 									{#if hoverIndex === i + 1}
 										<span
 											class={css({
-												fontFamily: 'var(--font-mono)',
+												fontFamily: 'mono',
 												fontSize: 'sm',
 												fontWeight: '500',
 												textTransform: 'lowercase',

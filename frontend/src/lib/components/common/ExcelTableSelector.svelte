@@ -452,13 +452,14 @@
 	{#if error}
 		<div
 			class={css({
-				padding: '0.625rem 0.75rem',
+				paddingX: '3',
+				paddingY: '2.5',
 				border: 'none',
 				borderLeft: '2px solid',
 				borderRadius: '0',
-				marginTop: '0.75rem',
+				marginTop: '3',
 				marginBottom: '0',
-				fontSize: '0.75rem',
+				fontSize: 'xs',
 				lineHeight: '1.5',
 				backgroundColor: 'transparent',
 				borderLeftColor: 'error.border',

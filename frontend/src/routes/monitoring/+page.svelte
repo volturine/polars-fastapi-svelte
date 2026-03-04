@@ -3,7 +3,7 @@
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
 	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 	import { Search } from 'lucide-svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, tabButton, input } from '$lib/styles/panda';
 
 	const tabs = [
 		{ key: 'builds', label: 'Builds' },
@@ -50,7 +50,7 @@
 				size={14}
 				class={css({
 					position: 'absolute',
-					left: '0.625rem',
+					left: '2.5',
 					top: '50%',
 					transform: 'translateY(-50%)',
 					color: 'fg.muted'
@@ -61,17 +61,7 @@
 				id="monitor-search"
 				aria-label="Search builds, schedules, or health checks"
 				placeholder="Search builds, schedules, or health checks..."
-				class={css({
-					width: '100%',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
-					backgroundColor: 'transparent',
-					paddingX: '3',
-					paddingY: '1.5',
-					paddingLeft: '8',
-					fontSize: 'sm'
-				})}
+				class={input({ variant: 'search' })}
 				bind:value={search}
 			/>
 		</div>
@@ -86,22 +76,7 @@
 		>
 			{#each tabs as tab (tab.key)}
 				<button
-					class={css({
-						marginBottom: '-1px',
-						backgroundColor: 'transparent',
-						borderBottomWidth: '2px',
-						borderBottomStyle: 'solid',
-						borderBottomColor: 'transparent',
-						paddingX: '3',
-						paddingY: '1.5',
-						fontSize: 'xs',
-						fontWeight: 'medium',
-						color: 'fg.muted',
-						_hover: { color: 'fg.secondary' },
-						...(activeTab === tab.key
-							? { color: 'accent.primary', borderBottomColor: 'accent.secondary' }
-							: {})
-					})}
+					class={tabButton({ active: activeTab === tab.key })}
 					onclick={() => (activeTab = tab.key)}
 				>
 					{tab.label}

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
+	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
 	import { css } from '$lib/styles/panda';
 
 	interface ExplodeConfigData {
@@ -45,38 +47,12 @@
 	</p>
 
 	<div class={css({ marginBottom: '5' })}>
-		<h4
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			Columns to Explode
-		</h4>
+		<SectionHeader>Columns to Explode</SectionHeader>
 
 		{#if !hasListColumns}
-			<div
-				class={css({
-					padding: '0.625rem 0.75rem',
-					border: 'none',
-					borderLeft: '2px solid',
-					borderRadius: '0',
-					marginTop: '0.75rem',
-					marginBottom: '0',
-					fontSize: '0.75rem',
-					lineHeight: '1.5',
-					backgroundColor: 'transparent',
-					borderLeftColor: 'warning.border',
-					color: 'fg.tertiary'
-				})}
-			>
+			<Callout tone="warn">
 				No list/array columns detected. This operation requires columns with list or array types.
-			</div>
+			</Callout>
 		{:else}
 			<MultiSelectColumnDropdown
 				{schema}

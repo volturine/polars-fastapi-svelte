@@ -6,7 +6,7 @@
 		type FileType,
 		type SourceType
 	} from '$lib/utils/fileTypes';
-	import { css } from '$lib/styles/panda';
+	import { css, cx, badge } from '$lib/styles/panda';
 
 	interface Props {
 		fileType?: FileType;
@@ -39,10 +39,13 @@
 	});
 	const Icon = $derived(config.icon);
 
-	const sizes: Record<string, { iconSize: number; fontSize: string; padding: string }> = {
-		sm: { iconSize: 12, fontSize: '10px', padding: '2px 6px' },
-		md: { iconSize: 14, fontSize: '11px', padding: '2px 8px' },
-		lg: { iconSize: 16, fontSize: '12px', padding: '3px 10px' }
+	const sizes: Record<
+		string,
+		{ iconSize: number; fontSize: string; paddingX: string; paddingY: string }
+	> = {
+		sm: { iconSize: 12, fontSize: '2xs', paddingX: '1.5', paddingY: '0.5' },
+		md: { iconSize: 14, fontSize: 'xs', paddingX: '2', paddingY: '0.5' },
+		lg: { iconSize: 16, fontSize: 'xs', paddingX: '2.5', paddingY: '0.5' }
 	};
 
 	const variants: Record<string, Record<string, string>> = {
@@ -53,27 +56,21 @@
 </script>
 
 <span
-	class={css({
-		display: 'inline-flex',
-		flexShrink: '0',
-		alignItems: 'center',
-		gap: '0.25rem',
-		whiteSpace: 'nowrap',
-		borderWidth: '1px',
-		borderStyle: 'solid',
-		fontWeight: '600',
-		textTransform: 'uppercase',
-		letterSpacing: '0.08em',
-		transitionProperty: 'color, background-color, border-color',
-		transitionDuration: '150ms',
-		fontFamily: 'var(--font-mono, monospace)',
-		color: 'accent.primary',
-		borderColor: 'border.primary',
-		backgroundColor: 'accent.bg',
-		fontSize: sizes[size].fontSize,
-		padding: sizes[size].padding,
-		...variants[variant]
-	})}
+	class={cx(
+		badge({ tone: 'file' }),
+		css({
+			flexShrink: '0',
+			gap: '1',
+			whiteSpace: 'nowrap',
+			fontWeight: '600',
+			transitionProperty: 'color, background-color, border-color',
+			transitionDuration: '150ms',
+			fontSize: sizes[size].fontSize,
+			paddingX: sizes[size].paddingX,
+			paddingY: sizes[size].paddingY,
+			...variants[variant]
+		})
+	)}
 	role="img"
 	aria-label="{config.label} file type"
 	title={config.description}

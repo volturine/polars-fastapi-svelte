@@ -3,6 +3,8 @@
 	import { X, Plus } from 'lucide-svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import DateTimeInput from '$lib/components/common/DateTimeInput.svelte';
+	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+	import ToggleButton from '$lib/components/ui/ToggleButton.svelte';
 	import { css } from '$lib/styles/panda';
 
 	const uid = $props.id();
@@ -222,106 +224,23 @@
 				justifyContent: 'space-between'
 			})}
 		>
-			<h4
-				id="{uid}-conditions-heading"
-				class={css({
-					marginTop: '0',
-					marginBottom: '0',
-					fontSize: '0.6875rem',
-					fontWeight: '600',
-					color: 'fg.muted',
-					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
-				})}
-			>
-				Conditions
-			</h4>
+			<SectionHeader>
+				<span id="{uid}-conditions-heading">Conditions</span>
+			</SectionHeader>
 			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 				<div class={css({ display: 'flex' })} role="radiogroup" aria-label="Condition logic">
-					<button
-						type="button"
-						class={config.logic === 'AND'
-							? css({
-									display: 'flex',
-									cursor: 'pointer',
-									alignItems: 'center',
-									justifyContent: 'center',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.primary',
-									borderRadius: 'sm 0 0 sm',
-									backgroundColor: 'accent.bg',
-									color: 'accent.primary',
-									paddingX: '2',
-									paddingY: '1',
-									fontSize: 'xs',
-									boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
-									position: 'relative',
-									zIndex: '1'
-								})
-							: css({
-									display: 'flex',
-									cursor: 'pointer',
-									alignItems: 'center',
-									justifyContent: 'center',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.tertiary',
-									borderRadius: 'sm 0 0 sm',
-									backgroundColor: 'transparent',
-									paddingX: '2',
-									paddingY: '1',
-									fontSize: 'xs',
-									color: 'fg.muted',
-									_hover: { backgroundColor: 'bg.hover', color: 'fg.secondary' }
-								})}
+					<ToggleButton
+						active={config.logic === 'AND'}
+						radius="left"
 						onclick={() => (config.logic = 'AND')}
-						aria-pressed={config.logic === 'AND'}
+						ariaPressed={config.logic === 'AND'}>AND</ToggleButton
 					>
-						AND
-					</button>
-					<button
-						type="button"
-						class={config.logic === 'OR'
-							? css({
-									display: 'flex',
-									cursor: 'pointer',
-									alignItems: 'center',
-									justifyContent: 'center',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.primary',
-									borderRadius: '0 sm sm 0',
-									backgroundColor: 'accent.bg',
-									color: 'accent.primary',
-									paddingX: '2',
-									paddingY: '1',
-									fontSize: 'xs',
-									boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
-									position: 'relative',
-									zIndex: '1'
-								})
-							: css({
-									display: 'flex',
-									cursor: 'pointer',
-									alignItems: 'center',
-									justifyContent: 'center',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.tertiary',
-									borderRadius: '0 sm sm 0',
-									backgroundColor: 'transparent',
-									paddingX: '2',
-									paddingY: '1',
-									fontSize: 'xs',
-									color: 'fg.muted',
-									_hover: { backgroundColor: 'bg.hover', color: 'fg.secondary' }
-								})}
+					<ToggleButton
+						active={config.logic === 'OR'}
+						radius="right"
 						onclick={() => (config.logic = 'OR')}
-						aria-pressed={config.logic === 'OR'}
+						ariaPressed={config.logic === 'OR'}>OR</ToggleButton
 					>
-						OR
-					</button>
 				</div>
 				<button
 					type="button"
@@ -523,90 +442,18 @@
 											>Compare to</span
 										>
 										<div class={css({ display: 'flex' })} role="radiogroup" aria-label="Value mode">
-											<button
-												type="button"
-												class={!isColumn
-													? css({
-															display: 'flex',
-															alignItems: 'center',
-															justifyContent: 'center',
-															paddingX: '2',
-															paddingY: '1',
-															fontSize: 'xs',
-															cursor: 'pointer',
-															borderWidth: '1px',
-															borderStyle: 'solid',
-															borderColor: 'border.primary',
-															borderRadius: 'sm 0 0 sm',
-															backgroundColor: 'accent.bg',
-															color: 'accent.primary',
-															boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
-															position: 'relative',
-															zIndex: '1'
-														})
-													: css({
-															display: 'flex',
-															alignItems: 'center',
-															justifyContent: 'center',
-															paddingX: '2',
-															paddingY: '1',
-															fontSize: 'xs',
-															cursor: 'pointer',
-															borderWidth: '1px',
-															borderStyle: 'solid',
-															borderColor: 'border.tertiary',
-															borderRadius: 'sm 0 0 sm',
-															backgroundColor: 'transparent',
-															color: 'fg.muted',
-															_hover: { backgroundColor: 'bg.hover', color: 'fg.secondary' }
-														})}
+											<ToggleButton
+												active={!isColumn}
+												radius="left"
 												onclick={() => handleModeChange(i, 'value')}
-												aria-pressed={!isColumn}
+												ariaPressed={!isColumn}>Value</ToggleButton
 											>
-												Value
-											</button>
-											<button
-												type="button"
-												class={isColumn
-													? css({
-															display: 'flex',
-															alignItems: 'center',
-															justifyContent: 'center',
-															paddingX: '2',
-															paddingY: '1',
-															fontSize: 'xs',
-															cursor: 'pointer',
-															borderWidth: '1px',
-															borderStyle: 'solid',
-															borderColor: 'border.primary',
-															borderRadius: '0 sm sm 0',
-															backgroundColor: 'accent.bg',
-															color: 'accent.primary',
-															boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
-															position: 'relative',
-															zIndex: '1'
-														})
-													: css({
-															display: 'flex',
-															alignItems: 'center',
-															justifyContent: 'center',
-															paddingX: '2',
-															paddingY: '1',
-															fontSize: 'xs',
-															cursor: 'pointer',
-															borderWidth: '1px',
-															borderStyle: 'solid',
-															borderColor: 'border.tertiary',
-															borderRadius: '0 sm sm 0',
-															backgroundColor: 'transparent',
-															color: 'fg.muted',
-															_hover: { backgroundColor: 'bg.hover', color: 'fg.secondary' }
-														})}
+											<ToggleButton
+												active={isColumn}
+												radius="right"
 												onclick={() => handleModeChange(i, 'column')}
-												aria-pressed={isColumn}
+												ariaPressed={isColumn}>Column</ToggleButton
 											>
-												Column
-											</button>
 										</div>
 									</div>
 
@@ -692,7 +539,7 @@
 																borderColor: 'border.tertiary',
 																backgroundColor: 'bg.tertiary',
 																color: 'fg.primary',
-																fontSize: '0.75rem',
+																fontSize: 'xs',
 																paddingY: '1',
 																paddingX: '2'
 															})}

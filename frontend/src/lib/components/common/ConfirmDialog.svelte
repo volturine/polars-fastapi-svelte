@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { X } from 'lucide-svelte';
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
-	import { css } from '$lib/styles/panda';
+	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
+	import PanelFooter from '$lib/components/ui/PanelFooter.svelte';
+	import { css, cx, button } from '$lib/styles/panda';
 
 	interface Props {
 		show: boolean;
-		title: string;
+		heading: string;
 		message: string;
 		confirmText?: string;
 		cancelText?: string;
@@ -15,7 +17,7 @@
 
 	let {
 		show,
-		title,
+		heading,
 		message,
 		confirmText = 'Confirm',
 		cancelText = 'Cancel',
@@ -57,42 +59,36 @@
 />
 
 {#snippet content()}
-	<div
-		class={css({
-			display: 'flex',
-			alignItems: 'center',
-			justifyContent: 'space-between',
-			borderBottomWidth: '1px',
-			borderBottomStyle: 'solid',
-			borderColor: 'border.tertiary',
-			padding: '4'
-		})}
-	>
-		<h2
-			id="dialog-title"
-			class={css({ margin: '0', fontSize: 'md', fontWeight: 'semibold', color: 'fg.primary' })}
-		>
-			{title}
-		</h2>
-		<button
-			class={css({
-				display: 'flex',
-				cursor: 'pointer',
-				alignItems: 'center',
-				justifyContent: 'center',
-				borderStyle: 'none',
-				backgroundColor: 'transparent',
-				padding: '1',
-				color: 'fg.muted',
-				_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
-			})}
-			onclick={onCancel}
-			aria-label="Close dialog"
-			type="button"
-		>
-			<X size={16} />
-		</button>
-	</div>
+	<PanelHeader>
+		{#snippet title()}
+			<h2
+				id="dialog-title"
+				class={css({ margin: '0', fontSize: 'md', fontWeight: 'semibold', color: 'fg.primary' })}
+			>
+				{heading}
+			</h2>
+		{/snippet}
+		{#snippet actions()}
+			<button
+				class={css({
+					display: 'flex',
+					cursor: 'pointer',
+					alignItems: 'center',
+					justifyContent: 'center',
+					borderStyle: 'none',
+					backgroundColor: 'transparent',
+					padding: '1',
+					color: 'fg.muted',
+					_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+				})}
+				onclick={onCancel}
+				aria-label="Close dialog"
+				type="button"
+			>
+				<X size={16} />
+			</button>
+		{/snippet}
+	</PanelHeader>
 
 	<div class={css({ padding: '6' })}>
 		<p
@@ -103,59 +99,20 @@
 		</p>
 	</div>
 
-	<div
-		class={css({
-			display: 'flex',
-			justifyContent: 'flex-end',
-			gap: '3',
-			borderTopWidth: '1px',
-			borderTopStyle: 'solid',
-			borderColor: 'border.tertiary',
-			padding: '4',
-			smDown: { flexDirection: 'column-reverse' }
-		})}
-	>
+	<PanelFooter>
 		<button
-			class={css({
-				cursor: 'pointer',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary',
-				backgroundColor: 'transparent',
-				paddingX: '4',
-				paddingY: '2',
-				fontFamily: 'var(--font-mono)',
-				fontSize: 'sm',
-				fontWeight: 'medium',
-				_hover: { backgroundColor: 'bg.hover' },
-				smDown: { width: 'full' },
-				color: 'fg.primary'
-			})}
+			class={cx(button({ variant: 'secondary' }), css({ smDown: { width: 'full' } }))}
 			onclick={onCancel}
 			type="button"
 		>
 			{cancelText}
 		</button>
 		<button
-			class={css({
-				cursor: 'pointer',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'error.border',
-				backgroundColor: 'error.bg',
-				paddingX: '4',
-				paddingY: '2',
-				fontFamily: 'var(--font-mono)',
-				fontSize: 'sm',
-				fontWeight: 'medium',
-				_hover: { opacity: '0.85' },
-				smDown: { width: 'full' },
-				color: 'error.fg'
-			})}
+			class={cx(button({ variant: 'danger' }), css({ smDown: { width: 'full' } }))}
 			onclick={onConfirm}
 			type="button"
 		>
 			{confirmText}
 		</button>
-	</div>
+	</PanelFooter>
 {/snippet}

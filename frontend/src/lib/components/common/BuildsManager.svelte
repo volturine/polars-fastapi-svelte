@@ -24,7 +24,7 @@
 	} from 'lucide-svelte';
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
-	import { css, cx, spinner, button } from '$lib/styles/panda';
+	import { css, cx, spinner, button, tabButton, emptyText, input } from '$lib/styles/panda';
 
 	interface Props {
 		compact?: boolean;
@@ -345,7 +345,7 @@
 						size={14}
 						class={css({
 							position: 'absolute',
-							left: '0.625rem',
+							left: '2.5',
 							top: '50%',
 							transform: 'translateY(-50%)',
 							color: 'fg.muted'
@@ -356,17 +356,7 @@
 						id="builds-search"
 						aria-label="Search builds"
 						placeholder="Search builds..."
-						class={css({
-							width: '100%',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
-							backgroundColor: 'transparent',
-							paddingX: '3',
-							paddingY: '1.5',
-							paddingLeft: '8',
-							fontSize: 'sm'
-						})}
+						class={input({ variant: 'search' })}
 						bind:value={search}
 					/>
 				</div>
@@ -410,7 +400,7 @@
 						size={14}
 						class={css({
 							position: 'absolute',
-							left: '0.625rem',
+							left: '2.5',
 							top: '50%',
 							transform: 'translateY(-50%)',
 							color: 'fg.muted'
@@ -421,17 +411,7 @@
 						id="builds-search-full"
 						aria-label="Search builds"
 						placeholder="Search by name, ID, datasource, or analysis..."
-						class={css({
-							width: '100%',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
-							backgroundColor: 'transparent',
-							paddingX: '3',
-							paddingY: '1.5',
-							paddingLeft: '8',
-							fontSize: 'sm'
-						})}
+						class={input({ variant: 'search' })}
 						bind:value={search}
 					/>
 				</div>
@@ -485,15 +465,7 @@
 				<span class={css({ color: 'fg.muted' })}>From</span>
 				<input
 					type="date"
-					class={css({
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
-						backgroundColor: 'transparent',
-						paddingX: '2',
-						paddingY: '1',
-						fontSize: 'sm'
-					})}
+					class={cx(input(), css({ paddingY: '1', fontSize: 'sm' }))}
 					id="builds-date-from"
 					aria-label="From date"
 					bind:value={dateFrom}
@@ -501,15 +473,7 @@
 				<span class={css({ color: 'fg.muted' })}>To</span>
 				<input
 					type="date"
-					class={css({
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
-						backgroundColor: 'transparent',
-						paddingX: '2',
-						paddingY: '1',
-						fontSize: 'sm'
-					})}
+					class={cx(input(), css({ paddingY: '1', fontSize: 'sm' }))}
 					id="builds-date-to"
 					aria-label="To date"
 					bind:value={dateTo}
@@ -532,13 +496,14 @@
 	{:else if query.isError}
 		<div
 			class={css({
-				padding: '0.625rem 0.75rem',
+				paddingX: '3',
+				paddingY: '2.5',
 				border: 'none',
 				borderLeft: '2px solid',
 				borderRadius: '0',
-				marginTop: '0.75rem',
+				marginTop: '3',
 				marginBottom: '0',
-				fontSize: '0.75rem',
+				fontSize: 'xs',
 				lineHeight: '1.5',
 				backgroundColor: 'transparent',
 				borderLeftColor: 'error.border',
@@ -557,7 +522,7 @@
 				textAlign: 'center'
 			})}
 		>
-			<p class={css({ color: 'fg.muted' })}>No engine runs yet.</p>
+			<p class={emptyText({ size: 'panel' })}>No engine runs yet.</p>
 			<p class={css({ fontSize: 'sm', color: 'fg.tertiary' })}>
 				Runs will appear here when you preview or export data in analyses. Compare builds from the
 				Datasources tab.
@@ -577,7 +542,7 @@
 					<tr class={css({ backgroundColor: 'bg.tertiary' })}>
 						<th
 							class={css({
-								width: '2rem',
+								width: '8',
 								borderBottomWidth: '1px',
 								borderBottomStyle: 'solid',
 								borderBottomColor: 'border.tertiary',
@@ -778,7 +743,7 @@
 									borderBottomColor: 'border.tertiary',
 									paddingX: '3',
 									paddingY: '2',
-									fontFamily: 'var(--font-mono)',
+									fontFamily: 'mono',
 									fontSize: 'xs'
 								})}
 							>
@@ -821,21 +786,7 @@
 											})}
 										>
 											<button
-												class={cx(
-													css({
-														borderBottomWidth: '2px',
-														paddingX: '3',
-														paddingY: '1.5',
-														fontSize: 'sm',
-														marginBottom: '-1px',
-														borderBottomStyle: 'solid',
-														borderBottomColor: 'transparent',
-														color: 'fg.tertiary',
-														_hover: { color: 'fg.secondary' }
-													}),
-													activeTab === 'request' &&
-														css({ borderBottomColor: 'accent.primary', color: 'fg.primary' })
-												)}
+												class={tabButton({ active: activeTab === 'request' })}
 												onclick={(e) => {
 													e.stopPropagation();
 													activeTab = 'request';
@@ -844,21 +795,7 @@
 												Request Config
 											</button>
 											<button
-												class={cx(
-													css({
-														borderBottomWidth: '2px',
-														paddingX: '3',
-														paddingY: '1.5',
-														fontSize: 'sm',
-														marginBottom: '-1px',
-														borderBottomStyle: 'solid',
-														borderBottomColor: 'transparent',
-														color: 'fg.tertiary',
-														_hover: { color: 'fg.secondary' }
-													}),
-													activeTab === 'result' &&
-														css({ borderBottomColor: 'accent.primary', color: 'fg.primary' })
-												)}
+												class={tabButton({ active: activeTab === 'result' })}
 												onclick={(e) => {
 													e.stopPropagation();
 													activeTab = 'result';
@@ -868,21 +805,7 @@
 											</button>
 											{#if hasTimings(run)}
 												<button
-													class={cx(
-														css({
-															borderBottomWidth: '2px',
-															paddingX: '3',
-															paddingY: '1.5',
-															fontSize: 'sm',
-															marginBottom: '-1px',
-															borderBottomStyle: 'solid',
-															borderBottomColor: 'transparent',
-															color: 'fg.tertiary',
-															_hover: { color: 'fg.secondary' }
-														}),
-														activeTab === 'timings' &&
-															css({ borderBottomColor: 'accent.primary', color: 'fg.primary' })
-													)}
+													class={tabButton({ active: activeTab === 'timings' })}
 													onclick={(e) => {
 														e.stopPropagation();
 														activeTab = 'timings';
@@ -898,21 +821,7 @@
 											{/if}
 											{#if hasPlans(run)}
 												<button
-													class={cx(
-														css({
-															borderBottomWidth: '2px',
-															paddingX: '3',
-															paddingY: '1.5',
-															fontSize: 'sm',
-															marginBottom: '-1px',
-															borderBottomStyle: 'solid',
-															borderBottomColor: 'transparent',
-															color: 'fg.tertiary',
-															_hover: { color: 'fg.secondary' }
-														}),
-														activeTab === 'plans' &&
-															css({ borderBottomColor: 'accent.primary', color: 'fg.primary' })
-													)}
+													class={tabButton({ active: activeTab === 'plans' })}
 													onclick={(e) => {
 														e.stopPropagation();
 														activeTab = 'plans';
@@ -939,7 +848,7 @@
 														<span
 															class={css({
 																marginLeft: '2',
-																fontFamily: 'var(--font-mono)',
+																fontFamily: 'mono',
 																fontSize: 'xs'
 															})}
 														>
@@ -999,7 +908,7 @@
 															borderColor: 'border.tertiary',
 															backgroundColor: 'bg.tertiary',
 															padding: '3',
-															fontFamily: 'var(--font-mono)',
+															fontFamily: 'mono',
 															fontSize: 'xs'
 														})}>{JSON.stringify(run.request_json, null, 2)}</pre>
 												</div>
@@ -1009,13 +918,14 @@
 												{#if run.status === 'failed' && run.error_message}
 													<div
 														class={css({
-															padding: '0.625rem 0.75rem',
+															paddingX: '3',
+															paddingY: '2.5',
 															border: 'none',
 															borderLeft: '2px solid',
 															borderRadius: '0',
-															marginTop: '0.75rem',
+															marginTop: '3',
 															marginBottom: '0',
-															fontSize: '0.75rem',
+															fontSize: 'xs',
 															lineHeight: '1.5',
 															backgroundColor: 'transparent',
 															borderLeftColor: 'error.border',
@@ -1059,9 +969,7 @@
 															{#if 'row_count' in result}
 																<div>
 																	<span class={css({ color: 'fg.muted' })}>Rows:</span>
-																	<span
-																		class={css({ marginLeft: '2', fontFamily: 'var(--font-mono)' })}
-																	>
+																	<span class={css({ marginLeft: '2', fontFamily: 'mono' })}>
 																		{result.row_count}
 																	</span>
 																</div>
@@ -1069,9 +977,7 @@
 															{#if 'page' in result}
 																<div>
 																	<span class={css({ color: 'fg.muted' })}>Page:</span>
-																	<span
-																		class={css({ marginLeft: '2', fontFamily: 'var(--font-mono)' })}
-																	>
+																	<span class={css({ marginLeft: '2', fontFamily: 'mono' })}>
 																		{result.page}
 																	</span>
 																</div>
@@ -1079,9 +985,7 @@
 															{#if 'page_size' in result}
 																<div>
 																	<span class={css({ color: 'fg.muted' })}>Page Size:</span>
-																	<span
-																		class={css({ marginLeft: '2', fontFamily: 'var(--font-mono)' })}
-																	>
+																	<span class={css({ marginLeft: '2', fontFamily: 'mono' })}>
 																		{result.page_size}
 																	</span>
 																</div>
@@ -1089,9 +993,7 @@
 															{#if 'export_format' in result}
 																<div>
 																	<span class={css({ color: 'fg.muted' })}>Format:</span>
-																	<span
-																		class={css({ marginLeft: '2', fontFamily: 'var(--font-mono)' })}
-																	>
+																	<span class={css({ marginLeft: '2', fontFamily: 'mono' })}>
 																		{result.export_format}
 																	</span>
 																</div>
@@ -1099,9 +1001,7 @@
 															{#if 'file_size_bytes' in result}
 																<div>
 																	<span class={css({ color: 'fg.muted' })}>File Size:</span>
-																	<span
-																		class={css({ marginLeft: '2', fontFamily: 'var(--font-mono)' })}
-																	>
+																	<span class={css({ marginLeft: '2', fontFamily: 'mono' })}>
 																		{(Number(result.file_size_bytes) / 1024).toFixed(1)} KB
 																	</span>
 																</div>
@@ -1128,7 +1028,7 @@
 																		borderColor: 'border.tertiary',
 																		backgroundColor: 'bg.tertiary',
 																		padding: '3',
-																		fontFamily: 'var(--font-mono)',
+																		fontFamily: 'mono',
 																		fontSize: 'xs'
 																	})}
 																>
@@ -1177,7 +1077,7 @@
 																overflow: 'hidden',
 																textOverflow: 'ellipsis',
 																whiteSpace: 'nowrap',
-																fontFamily: 'var(--font-mono)',
+																fontFamily: 'mono',
 																color: 'fg.secondary'
 															})}
 															title={entry.name}
@@ -1208,7 +1108,7 @@
 																width: '16',
 																flexShrink: '0',
 																textAlign: 'right',
-																fontFamily: 'var(--font-mono)',
+																fontFamily: 'mono',
 																color: 'fg.muted'
 															})}
 														>
@@ -1225,7 +1125,7 @@
 															borderTopColor: 'border.tertiary',
 															paddingTop: '2',
 															textAlign: 'right',
-															fontFamily: 'var(--font-mono)',
+															fontFamily: 'mono',
 															fontSize: 'xs',
 															color: 'fg.muted'
 														})}
@@ -1259,7 +1159,7 @@
 																borderColor: 'border.tertiary',
 																backgroundColor: 'bg.tertiary',
 																padding: '3',
-																fontFamily: 'var(--font-mono)',
+																fontFamily: 'mono',
 																fontSize: 'xs'
 															})}>{plans.optimized || 'N/A'}</pre>
 													</div>
@@ -1284,7 +1184,7 @@
 																borderColor: 'border.tertiary',
 																backgroundColor: 'bg.tertiary',
 																padding: '3',
-																fontFamily: 'var(--font-mono)',
+																fontFamily: 'mono',
 																fontSize: 'xs'
 															})}>{plans.unoptimized || 'N/A'}</pre>
 													</div>

@@ -3592,8 +3592,9 @@
 		display: 'flex',
 		alignItems: 'center',
 		justifyContent: 'space-between',
-		padding: '6px 10px',
-		borderBottomWidth: '1px',
+		paddingY: '1.5',
+		paddingX: '2.5',
+		borderBottomWidth: '1',
 		borderBottomStyle: 'solid',
 		borderBottomColor: 'border.tertiary'
 	});
@@ -3624,7 +3625,7 @@
 		paddingX: '3',
 		paddingY: '2',
 		backgroundColor: 'bg.primary',
-		borderWidth: '1px',
+		borderWidth: '1',
 		borderStyle: 'solid',
 		borderColor: 'border.primary',
 		fontSize: 'sm',
@@ -3642,9 +3643,10 @@
 		display: 'flex',
 		flexWrap: 'wrap',
 		alignItems: 'center',
-		gap: '4px 8px',
+		rowGap: '4px',
+		columnGap: '8px',
 		backgroundColor: 'bg.secondary',
-		borderBottomWidth: '1px',
+		borderBottomWidth: '1',
 		borderBottomStyle: 'solid',
 		borderBottomColor: 'border.tertiary'
 	});
@@ -3657,7 +3659,7 @@
 
 	const legendBottomCss = css({
 		borderBottom: 'none',
-		borderTopWidth: '1px',
+		borderTopWidth: '1',
 		borderTopStyle: 'solid',
 		borderTopColor: 'border.tertiary'
 	});
@@ -3668,12 +3670,13 @@
 		display: 'flex',
 		alignItems: 'center',
 		gap: '3px',
-		padding: '4px 8px',
+		paddingY: '1',
+		paddingX: '2',
 		background: 'color-mix(in srgb, var(--bg-primary) 90%, transparent)',
-		borderWidth: '1px',
+		borderWidth: '1',
 		borderStyle: 'solid',
 		borderColor: 'border.tertiary',
-		borderRadius: '20px',
+		borderRadius: 'pill',
 		cursor: 'pointer',
 		transitionProperty: 'background, border-color',
 		transitionDuration: '120ms',
@@ -3700,7 +3703,7 @@
 		flexShrink: '0',
 		alignSelf: 'stretch',
 		width: '4px',
-		borderRadius: '2px',
+		borderRadius: 'xs',
 		marginLeft: '2px',
 		cursor: 'pointer',
 		opacity: '0',
@@ -3735,7 +3738,7 @@
 		justifyContent: 'center',
 		cursor: 'pointer',
 		background: 'color-mix(in srgb, var(--bg-secondary) 95%, transparent)',
-		borderWidth: '1px',
+		borderWidth: '1',
 		borderStyle: 'solid',
 		borderColor: 'border.tertiary',
 		color: 'fg.muted',
@@ -3760,8 +3763,8 @@
 	});
 
 	const tabCollapsedCss = css({
-		borderRadius: '6px',
-		borderWidth: '1px',
+		borderRadius: 'sm2',
+		borderWidth: '1',
 		borderStyle: 'solid',
 		borderColor: 'border.tertiary'
 	});
@@ -3769,12 +3772,14 @@
 	const itemsCss = css({
 		display: 'flex',
 		flexDirection: 'column',
-		gap: '1px',
-		padding: '6px 6px 8px',
+		gap: 'px',
+		paddingX: '6px',
+		paddingTop: '6px',
+		paddingBottom: '8px',
 		maxHeight: 'calc(100vh - 200px)',
 		overflowY: 'auto',
 		backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 95%, transparent)',
-		borderWidth: '1px',
+		borderWidth: '1',
 		borderStyle: 'solid',
 		borderColor: 'border.tertiary'
 	});
@@ -3788,12 +3793,13 @@
 		gap: '5px',
 		background: 'none',
 		border: 'none',
-		padding: '2px 4px',
+		paddingY: '0.5',
+		paddingX: '1',
 		cursor: 'pointer',
-		fontSize: '10px',
-		fontFamily: 'var(--font-mono)',
+		fontSize: '2xs',
+		fontFamily: 'mono',
 		color: 'fg.muted',
-		borderRadius: '3px',
+		borderRadius: 'md',
 		transitionProperty: 'opacity',
 		transitionDuration: '120ms',
 		transitionTimingFunction: 'ease',
@@ -3809,7 +3815,7 @@
 	const swatchCss = css({
 		width: '8px',
 		height: '8px',
-		borderRadius: '1px',
+		borderRadius: 'xxs',
 		flexShrink: '0'
 	});
 
@@ -3886,7 +3892,7 @@
 				class={cx(
 					button({ variant: 'ghost', size: 'sm' }),
 					css({
-						borderWidth: '1px',
+						borderWidth: '1',
 						borderStyle: 'solid',
 						borderColor: 'border.tertiary',
 						fontSize: 'xs'
@@ -3902,7 +3908,7 @@
 				class={cx(
 					button({ variant: 'ghost', size: 'sm' }),
 					css({
-						borderWidth: '1px',
+						borderWidth: '1',
 						borderStyle: 'solid',
 						borderColor: 'border.tertiary',
 						fontSize: 'xs'
@@ -3920,7 +3926,7 @@
 				class={cx(
 					button({ variant: 'ghost', size: 'sm' }),
 					css({
-						borderWidth: '1px',
+						borderWidth: '1',
 						borderStyle: 'solid',
 						borderColor: 'border.tertiary',
 						fontSize: 'xs'

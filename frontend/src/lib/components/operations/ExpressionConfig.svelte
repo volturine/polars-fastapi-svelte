@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
+	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import { css } from '$lib/styles/panda';
 
 	interface ExpressionConfigData {
@@ -30,7 +31,7 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
+			paddingBottom: '5',
 			backgroundColor: 'transparent',
 			borderRadius: '0',
 			border: 'none'
@@ -38,26 +39,13 @@
 		role="group"
 		aria-labelledby="expr-expression-heading"
 	>
-		<h4
-			id="expr-expression-heading"
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			Expression
-		</h4>
+		<span id="expr-expression-heading"><SectionHeader>Expression</SectionHeader></span>
 		<label
 			for="expr-textarea-expression"
 			class={css({
 				position: 'absolute',
-				width: '1px',
-				height: '1px',
+				width: 'px',
+				height: 'px',
 				padding: '0',
 				margin: '-1px',
 				overflow: 'hidden',
@@ -79,8 +67,8 @@
 			id="expr-expression-help"
 			class={css({
 				position: 'absolute',
-				width: '1px',
-				height: '1px',
+				width: 'px',
+				height: 'px',
 				padding: '0',
 				margin: '-1px',
 				overflow: 'hidden',
@@ -98,8 +86,9 @@
 				border: 'none',
 				borderLeft: '2px solid',
 				borderLeftColor: 'border.tertiary',
-				fontSize: '0.75rem',
-				padding: '0.5rem 0.75rem',
+				fontSize: 'xs',
+				paddingX: '3',
+				paddingY: '2',
 				lineHeight: 'relaxed',
 				marginTop: '3'
 			})}
@@ -114,7 +103,7 @@
 					paddingX: '2',
 					paddingY: '1',
 					fontFamily: 'mono',
-					fontSize: '0.85em',
+					fontSize: 'xs',
 					color: 'accent.primary'
 				})}>pl.col("column")</code
 			>
@@ -128,7 +117,7 @@
 					paddingX: '2',
 					paddingY: '1',
 					fontFamily: 'mono',
-					fontSize: '0.85em',
+					fontSize: 'xs',
 					color: 'accent.primary'
 				})}>pl.col("price") * 1.2</code
 			>
@@ -141,7 +130,7 @@
 					paddingX: '2',
 					paddingY: '1',
 					fontFamily: 'mono',
-					fontSize: '0.85em',
+					fontSize: 'xs',
 					color: 'accent.primary'
 				})}>pl.col("value").cast(pl.Float64)</code
 			>
@@ -154,7 +143,7 @@
 					paddingX: '2',
 					paddingY: '1',
 					fontFamily: 'mono',
-					fontSize: '0.85em',
+					fontSize: 'xs',
 					color: 'accent.primary'
 				})}>pl.col("name").str.to_uppercase()</code
 			>
@@ -167,7 +156,7 @@
 					paddingX: '2',
 					paddingY: '1',
 					fontFamily: 'mono',
-					fontSize: '0.85em',
+					fontSize: 'xs',
 					color: 'accent.primary'
 				})}>pl.col("date").dt.year()</code
 			> - Date component
@@ -177,9 +166,10 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
-			paddingTop: '1.25rem',
-			borderTop: '1px solid',
+			paddingBottom: '5',
+			paddingTop: '5',
+			borderTopWidth: '1',
+			borderTopStyle: 'solid',
 			borderTopColor: 'border.tertiary',
 			backgroundColor: 'transparent',
 			borderRadius: '0'
@@ -187,26 +177,13 @@
 		role="group"
 		aria-labelledby="expr-new-column-heading"
 	>
-		<h4
-			id="expr-new-column-heading"
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			New Column Name
-		</h4>
+		<span id="expr-new-column-heading"><SectionHeader>New Column Name</SectionHeader></span>
 		<label
 			for="expr-input-column"
 			class={css({
 				position: 'absolute',
-				width: '1px',
-				height: '1px',
+				width: 'px',
+				height: 'px',
 				padding: '0',
 				margin: '-1px',
 				overflow: 'hidden',
@@ -227,9 +204,10 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
-			paddingTop: '1.25rem',
-			borderTop: '1px solid',
+			paddingBottom: '5',
+			paddingTop: '5',
+			borderTopWidth: '1',
+			borderTopStyle: 'solid',
 			borderTopColor: 'border.tertiary',
 			backgroundColor: 'transparent',
 			borderRadius: '0'
@@ -237,20 +215,7 @@
 		role="group"
 		aria-labelledby="expr-columns-heading"
 	>
-		<h4
-			id="expr-columns-heading"
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			Insert Column
-		</h4>
+		<span id="expr-columns-heading"><SectionHeader>Insert Column</SectionHeader></span>
 		<ColumnDropdown
 			{schema}
 			value=""

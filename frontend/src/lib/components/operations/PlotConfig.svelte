@@ -18,6 +18,7 @@
 		X
 	} from 'lucide-svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
+	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import { css } from '$lib/styles/panda';
 
 	type PlotConfigData = Omit<PlotConfigBase, 'aggregation' | 'chart_type' | 'stack_mode'> & {
@@ -417,10 +418,10 @@
 		<div
 			class={css({
 				marginBottom: '2',
-				fontSize: '0.6875rem',
-				fontFamily: 'var(--font-mono)',
+				fontSize: 'xs',
+				fontFamily: 'mono',
 				textTransform: 'uppercase',
-				letterSpacing: '0.08em',
+				letterSpacing: 'wide3',
 				color: 'fg.muted'
 			})}
 			id={`${uid}-plot-type`}
@@ -445,8 +446,8 @@
 								borderColor: 'accent.secondary',
 								backgroundColor: 'accent.bg',
 								color: 'accent.primary',
-								fontSize: '0.625rem',
-								fontFamily: 'var(--font-mono)',
+								fontSize: '2xs',
+								fontFamily: 'mono',
 								cursor: 'pointer'
 							})
 						: css({
@@ -462,8 +463,8 @@
 								borderColor: 'border.primary',
 								backgroundColor: 'transparent',
 								color: 'fg.muted',
-								fontSize: '0.625rem',
-								fontFamily: 'var(--font-mono)',
+								fontSize: '2xs',
+								fontFamily: 'mono',
 								cursor: 'pointer',
 								_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
 							})}
@@ -561,7 +562,7 @@
 			<div
 				class={css({
 					marginBottom: '0',
-					padding: '0 0 1.25rem 0',
+					paddingBottom: '5',
 					backgroundColor: 'transparent',
 					borderRadius: '0',
 					border: 'none'
@@ -569,20 +570,7 @@
 				role="group"
 				aria-labelledby={`${uid}-plot-x`}
 			>
-				<h4
-					class={css({
-						marginTop: '0',
-						marginBottom: '3',
-						fontSize: '0.6875rem',
-						fontWeight: '600',
-						color: 'fg.muted',
-						textTransform: 'uppercase',
-						letterSpacing: '0.08em'
-					})}
-					id={`${uid}-plot-x`}
-				>
-					X Column
-				</h4>
+				<span id={`${uid}-plot-x`}><SectionHeader>X Column</SectionHeader></span>
 				<ColumnDropdown
 					{schema}
 					value={plotConfig.x_column}
@@ -595,7 +583,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -603,20 +591,7 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-y`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-y`}
-					>
-						Y Column
-					</h4>
+					<span id={`${uid}-plot-y`}><SectionHeader>Y Column</SectionHeader></span>
 					<ColumnDropdown
 						{schema}
 						value={plotConfig.y_column}
@@ -630,7 +605,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -638,20 +613,7 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-heat-y`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-heat-y`}
-					>
-						Heat Grid Y Column
-					</h4>
+					<span id={`${uid}-plot-heat-y`}><SectionHeader>Heat Grid Y Column</SectionHeader></span>
 					<ColumnDropdown
 						{schema}
 						value={plotConfig.y_column}
@@ -665,7 +627,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -673,20 +635,7 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-bins`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-bins`}
-					>
-						Bins
-					</h4>
+					<span id={`${uid}-plot-bins`}><SectionHeader>Bins</SectionHeader></span>
 					<input id={`${uid}-bins`} type="number" min="2" max="100" bind:value={plotConfig.bins} />
 				</div>
 			{/if}
@@ -695,7 +644,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -703,20 +652,7 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-agg`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-agg`}
-					>
-						Aggregation
-					</h4>
+					<span id={`${uid}-plot-agg`}><SectionHeader>Aggregation</SectionHeader></span>
 					<select
 						id={`${uid}-aggregation`}
 						bind:value={plotConfig.aggregation}
@@ -724,7 +660,7 @@
 							backgroundColor: 'bg.secondary',
 							borderColor: 'border.primary',
 							color: 'fg.primary',
-							fontFamily: 'var(--font-mono, monospace)'
+							fontFamily: 'mono'
 						})}
 					>
 						{#each aggregations as agg (agg.value)}
@@ -738,7 +674,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -746,20 +682,7 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-stack`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-stack`}
-					>
-						Stack Mode
-					</h4>
+					<span id={`${uid}-plot-stack`}><SectionHeader>Stack Mode</SectionHeader></span>
 					<select
 						id={`${uid}-stack-mode`}
 						bind:value={plotConfig.stack_mode}
@@ -767,7 +690,7 @@
 							backgroundColor: 'bg.secondary',
 							borderColor: 'border.primary',
 							color: 'fg.primary',
-							fontFamily: 'var(--font-mono, monospace)'
+							fontFamily: 'mono'
 						})}
 					>
 						<option value="grouped">Grouped</option>
@@ -781,7 +704,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -789,20 +712,7 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-group`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-group`}
-					>
-						Segment By
-					</h4>
+					<span id={`${uid}-plot-group`}><SectionHeader>Segment By</SectionHeader></span>
 					<ColumnDropdown
 						{schema}
 						value={plotConfig.group_column ?? ''}
@@ -817,7 +727,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -825,31 +735,18 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-group-sort`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-group-sort`}
-					>
-						Group Sorting
-					</h4>
+					<span id={`${uid}-plot-group-sort`}><SectionHeader>Group Sorting</SectionHeader></span>
 					<div class={css({ display: 'grid', gap: '3' })}>
 						<div>
 							<label
 								class={css({
 									display: 'block',
-									fontSize: '0.6875rem',
+									fontSize: 'xs',
 									fontWeight: '600',
 									color: 'fg.muted',
 									marginBottom: '1.5',
 									textTransform: 'uppercase',
-									letterSpacing: '0.05em'
+									letterSpacing: 'wider'
 								})}
 								for={`${uid}-group-sort-by`}>Sort By</label
 							>
@@ -860,7 +757,7 @@
 									backgroundColor: 'bg.secondary',
 									borderColor: 'border.primary',
 									color: 'fg.primary',
-									fontFamily: 'var(--font-mono, monospace)'
+									fontFamily: 'mono'
 								})}
 							>
 								<option value={null}>Default</option>
@@ -873,12 +770,12 @@
 							<label
 								class={css({
 									display: 'block',
-									fontSize: '0.6875rem',
+									fontSize: 'xs',
 									fontWeight: '600',
 									color: 'fg.muted',
 									marginBottom: '1.5',
 									textTransform: 'uppercase',
-									letterSpacing: '0.05em'
+									letterSpacing: 'wider'
 								})}
 								for={`${uid}-group-sort-order`}>Order</label
 							>
@@ -889,7 +786,7 @@
 									backgroundColor: 'bg.secondary',
 									borderColor: 'border.primary',
 									color: 'fg.primary',
-									fontFamily: 'var(--font-mono, monospace)'
+									fontFamily: 'mono'
 								})}
 							>
 								<option value="asc">Ascending</option>
@@ -901,12 +798,12 @@
 								<div
 									class={css({
 										display: 'block',
-										fontSize: '0.6875rem',
+										fontSize: 'xs',
 										fontWeight: '600',
 										color: 'fg.muted',
 										marginBottom: '1.5',
 										textTransform: 'uppercase',
-										letterSpacing: '0.05em'
+										letterSpacing: 'wider'
 									})}
 								>
 									Sort Column
@@ -929,7 +826,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -937,31 +834,18 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-date-bucket`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-date-bucket`}
-					>
-						Date Bucketing
-					</h4>
+					<span id={`${uid}-plot-date-bucket`}><SectionHeader>Date Bucketing</SectionHeader></span>
 					<div class={css({ display: 'grid', gap: '3' })}>
 						<div>
 							<label
 								class={css({
 									display: 'block',
-									fontSize: '0.6875rem',
+									fontSize: 'xs',
 									fontWeight: '600',
 									color: 'fg.muted',
 									marginBottom: '1.5',
 									textTransform: 'uppercase',
-									letterSpacing: '0.05em'
+									letterSpacing: 'wider'
 								})}
 								for={`${uid}-date-bucket`}>Bucket</label
 							>
@@ -972,7 +856,7 @@
 									backgroundColor: 'bg.secondary',
 									borderColor: 'border.primary',
 									color: 'fg.primary',
-									fontFamily: 'var(--font-mono, monospace)'
+									fontFamily: 'mono'
 								})}
 							>
 								<option value={null}>None</option>
@@ -989,12 +873,12 @@
 							<label
 								class={css({
 									display: 'block',
-									fontSize: '0.6875rem',
+									fontSize: 'xs',
 									fontWeight: '600',
 									color: 'fg.muted',
 									marginBottom: '1.5',
 									textTransform: 'uppercase',
-									letterSpacing: '0.05em'
+									letterSpacing: 'wider'
 								})}
 								for={`${uid}-date-ordinal`}>Ordinal</label
 							>
@@ -1005,7 +889,7 @@
 									backgroundColor: 'bg.secondary',
 									borderColor: 'border.primary',
 									color: 'fg.primary',
-									fontFamily: 'var(--font-mono, monospace)'
+									fontFamily: 'mono'
 								})}
 							>
 								<option value={null}>None</option>
@@ -1019,7 +903,7 @@
 						class={css({
 							marginTop: '2',
 							marginBottom: '0',
-							fontSize: '0.6875rem',
+							fontSize: 'xs',
 							color: 'fg.muted'
 						})}
 					>
@@ -1032,7 +916,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -1040,31 +924,18 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-sort`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-sort`}
-					>
-						Sort Options
-					</h4>
+					<span id={`${uid}-plot-sort`}><SectionHeader>Sort Options</SectionHeader></span>
 					<div class={css({ display: 'grid', gap: '3' })}>
 						<div>
 							<label
 								class={css({
 									display: 'block',
-									fontSize: '0.6875rem',
+									fontSize: 'xs',
 									fontWeight: '600',
 									color: 'fg.muted',
 									marginBottom: '1.5',
 									textTransform: 'uppercase',
-									letterSpacing: '0.05em'
+									letterSpacing: 'wider'
 								})}
 								for={`${uid}-sort-by`}>Sort By</label
 							>
@@ -1075,7 +946,7 @@
 									backgroundColor: 'bg.secondary',
 									borderColor: 'border.primary',
 									color: 'fg.primary',
-									fontFamily: 'var(--font-mono, monospace)'
+									fontFamily: 'mono'
 								})}
 							>
 								<option value={null}>Default</option>
@@ -1088,12 +959,12 @@
 							<label
 								class={css({
 									display: 'block',
-									fontSize: '0.6875rem',
+									fontSize: 'xs',
 									fontWeight: '600',
 									color: 'fg.muted',
 									marginBottom: '1.5',
 									textTransform: 'uppercase',
-									letterSpacing: '0.05em'
+									letterSpacing: 'wider'
 								})}
 								for={`${uid}-sort-order`}>Order</label
 							>
@@ -1104,7 +975,7 @@
 									backgroundColor: 'bg.secondary',
 									borderColor: 'border.primary',
 									color: 'fg.primary',
-									fontFamily: 'var(--font-mono, monospace)'
+									fontFamily: 'mono'
 								})}
 							>
 								<option value="asc">Ascending</option>
@@ -1116,12 +987,12 @@
 								<div
 									class={css({
 										display: 'block',
-										fontSize: '0.6875rem',
+										fontSize: 'xs',
 										fontWeight: '600',
 										color: 'fg.muted',
 										marginBottom: '1.5',
 										textTransform: 'uppercase',
-										letterSpacing: '0.05em'
+										letterSpacing: 'wider'
 									})}
 								>
 									Sort Column
@@ -1144,7 +1015,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -1152,27 +1023,14 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-interactivity`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-interactivity`}
-					>
-						Interactivity
-					</h4>
+					<span id={`${uid}-plot-interactivity`}><SectionHeader>Interactivity</SectionHeader></span>
 					<div class={css({ display: 'grid', gap: '3' })}>
 						<label
 							class={css({
 								display: 'flex',
 								alignItems: 'center',
 								gap: '2',
-								fontSize: '0.8125rem',
+								fontSize: 'sm',
 								color: 'fg.secondary',
 								marginBottom: '0',
 								fontWeight: 'normal',
@@ -1193,7 +1051,7 @@
 								display: 'flex',
 								alignItems: 'center',
 								gap: '2',
-								fontSize: '0.8125rem',
+								fontSize: 'sm',
 								color: 'fg.secondary',
 								marginBottom: '0',
 								fontWeight: 'normal',
@@ -1215,7 +1073,7 @@
 									display: 'flex',
 									alignItems: 'center',
 									gap: '2',
-									fontSize: '0.8125rem',
+									fontSize: 'sm',
 									color: 'fg.secondary',
 									marginBottom: '0',
 									fontWeight: 'normal',
@@ -1251,31 +1109,18 @@
 				role="group"
 				aria-labelledby={`${uid}-plot-overlays`}
 			>
-				<h4
-					class={css({
-						marginTop: '0',
-						marginBottom: '3',
-						fontSize: '0.6875rem',
-						fontWeight: '600',
-						color: 'fg.muted',
-						textTransform: 'uppercase',
-						letterSpacing: '0.08em'
-					})}
-					id={`${uid}-plot-overlays`}
-				>
-					Overlays
-				</h4>
+				<span id={`${uid}-plot-overlays`}><SectionHeader>Overlays</SectionHeader></span>
 				<div class={css({ display: 'grid', gap: '3' })}>
 					<div>
 						<div
 							class={css({
 								display: 'block',
-								fontSize: '0.6875rem',
+								fontSize: 'xs',
 								fontWeight: '600',
 								color: 'fg.muted',
 								marginBottom: '1.5',
 								textTransform: 'uppercase',
-								letterSpacing: '0.05em'
+								letterSpacing: 'wider'
 							})}
 						>
 							Y Column
@@ -1291,12 +1136,12 @@
 						<label
 							class={css({
 								display: 'block',
-								fontSize: '0.6875rem',
+								fontSize: 'xs',
 								fontWeight: '600',
 								color: 'fg.muted',
 								marginBottom: '1.5',
 								textTransform: 'uppercase',
-								letterSpacing: '0.05em'
+								letterSpacing: 'wider'
 							})}
 							for={`${uid}-overlay-type`}>Chart Type</label
 						>
@@ -1307,7 +1152,7 @@
 								backgroundColor: 'bg.secondary',
 								borderColor: 'border.primary',
 								color: 'fg.primary',
-								fontFamily: 'var(--font-mono, monospace)'
+								fontFamily: 'mono'
 							})}
 						>
 							<option value="line">Line</option>
@@ -1320,12 +1165,12 @@
 						<label
 							class={css({
 								display: 'block',
-								fontSize: '0.6875rem',
+								fontSize: 'xs',
 								fontWeight: '600',
 								color: 'fg.muted',
 								marginBottom: '1.5',
 								textTransform: 'uppercase',
-								letterSpacing: '0.05em'
+								letterSpacing: 'wider'
 							})}
 							for={`${uid}-overlay-axis`}>Axis</label
 						>
@@ -1336,7 +1181,7 @@
 								backgroundColor: 'bg.secondary',
 								borderColor: 'border.primary',
 								color: 'fg.primary',
-								fontFamily: 'var(--font-mono, monospace)'
+								fontFamily: 'mono'
 							})}
 						>
 							<option value="left">Left</option>
@@ -1347,12 +1192,12 @@
 						<label
 							class={css({
 								display: 'block',
-								fontSize: '0.6875rem',
+								fontSize: 'xs',
 								fontWeight: '600',
 								color: 'fg.muted',
 								marginBottom: '1.5',
 								textTransform: 'uppercase',
-								letterSpacing: '0.05em'
+								letterSpacing: 'wider'
 							})}
 							for={`${uid}-overlay-agg`}>Aggregation</label
 						>
@@ -1363,7 +1208,7 @@
 								backgroundColor: 'bg.secondary',
 								borderColor: 'border.primary',
 								color: 'fg.primary',
-								fontFamily: 'var(--font-mono, monospace)'
+								fontFamily: 'mono'
 							})}
 						>
 							{#each aggregations as agg (agg.value)}
@@ -1415,7 +1260,7 @@
 								})}
 								role="group"
 							>
-								<div class={css({ minWidth: '10rem', flex: '1' })}>
+								<div class={css({ minWidth: '40', flex: '1' })}>
 									<ColumnDropdown
 										{schema}
 										value={overlay.y_column}
@@ -1430,7 +1275,7 @@
 										backgroundColor: 'bg.secondary',
 										borderColor: 'border.primary',
 										color: 'fg.primary',
-										fontFamily: 'var(--font-mono, monospace)'
+										fontFamily: 'mono'
 									})}
 									bind:value={overlay.chart_type}
 									onchange={(e) =>
@@ -1450,7 +1295,7 @@
 										backgroundColor: 'bg.secondary',
 										borderColor: 'border.primary',
 										color: 'fg.primary',
-										fontFamily: 'var(--font-mono, monospace)'
+										fontFamily: 'mono'
 									})}
 									bind:value={overlay.aggregation}
 									onchange={(e) =>
@@ -1469,7 +1314,7 @@
 										backgroundColor: 'bg.secondary',
 										borderColor: 'border.primary',
 										color: 'fg.primary',
-										fontFamily: 'var(--font-mono, monospace)'
+										fontFamily: 'mono'
 									})}
 									bind:value={overlay.y_axis_position}
 									onchange={(e) =>
@@ -1486,8 +1331,8 @@
 										display: 'flex',
 										alignItems: 'center',
 										justifyContent: 'center',
-										width: '1.75rem',
-										height: '1.75rem',
+										width: '7',
+										height: '7',
 										padding: '0',
 										backgroundColor: 'transparent',
 										cursor: 'pointer',
@@ -1515,7 +1360,7 @@
 						class={css({
 							marginTop: '2',
 							marginBottom: '0',
-							fontSize: '0.6875rem',
+							fontSize: 'xs',
 							color: 'fg.muted'
 						})}
 					>
@@ -1539,31 +1384,20 @@
 				role="group"
 				aria-labelledby={`${uid}-plot-reference-lines`}
 			>
-				<h4
-					class={css({
-						marginTop: '0',
-						marginBottom: '3',
-						fontSize: '0.6875rem',
-						fontWeight: '600',
-						color: 'fg.muted',
-						textTransform: 'uppercase',
-						letterSpacing: '0.08em'
-					})}
-					id={`${uid}-plot-reference-lines`}
+				<span id={`${uid}-plot-reference-lines`}
+					><SectionHeader>Reference Lines</SectionHeader></span
 				>
-					Reference Lines
-				</h4>
 				<div class={css({ display: 'grid', gap: '3' })}>
 					<div>
 						<label
 							class={css({
 								display: 'block',
-								fontSize: '0.6875rem',
+								fontSize: 'xs',
 								fontWeight: '600',
 								color: 'fg.muted',
 								marginBottom: '1.5',
 								textTransform: 'uppercase',
-								letterSpacing: '0.05em'
+								letterSpacing: 'wider'
 							})}
 							for={`${uid}-ref-axis`}>Axis</label
 						>
@@ -1574,7 +1408,7 @@
 								backgroundColor: 'bg.secondary',
 								borderColor: 'border.primary',
 								color: 'fg.primary',
-								fontFamily: 'var(--font-mono, monospace)'
+								fontFamily: 'mono'
 							})}
 						>
 							<option value="y">Y</option>
@@ -1585,12 +1419,12 @@
 						<label
 							class={css({
 								display: 'block',
-								fontSize: '0.6875rem',
+								fontSize: 'xs',
 								fontWeight: '600',
 								color: 'fg.muted',
 								marginBottom: '1.5',
 								textTransform: 'uppercase',
-								letterSpacing: '0.05em'
+								letterSpacing: 'wider'
 							})}
 							for={`${uid}-ref-value`}>Value</label
 						>
@@ -1606,12 +1440,12 @@
 						<label
 							class={css({
 								display: 'block',
-								fontSize: '0.6875rem',
+								fontSize: 'xs',
 								fontWeight: '600',
 								color: 'fg.muted',
 								marginBottom: '1.5',
 								textTransform: 'uppercase',
-								letterSpacing: '0.05em'
+								letterSpacing: 'wider'
 							})}
 							for={`${uid}-ref-label`}>Label</label
 						>
@@ -1627,12 +1461,12 @@
 						<label
 							class={css({
 								display: 'block',
-								fontSize: '0.6875rem',
+								fontSize: 'xs',
 								fontWeight: '600',
 								color: 'fg.muted',
 								marginBottom: '1.5',
 								textTransform: 'uppercase',
-								letterSpacing: '0.05em'
+								letterSpacing: 'wider'
 							})}
 							for={`${uid}-ref-color`}>Color</label
 						>
@@ -1695,7 +1529,7 @@
 										backgroundColor: 'bg.secondary',
 										borderColor: 'border.primary',
 										color: 'fg.primary',
-										fontFamily: 'var(--font-mono, monospace)'
+										fontFamily: 'mono'
 									})}
 									bind:value={line.axis}
 									onchange={(e) =>
@@ -1745,8 +1579,8 @@
 										display: 'flex',
 										alignItems: 'center',
 										justifyContent: 'center',
-										width: '1.75rem',
-										height: '1.75rem',
+										width: '7',
+										height: '7',
 										padding: '0',
 										backgroundColor: 'transparent',
 										cursor: 'pointer',
@@ -1774,7 +1608,7 @@
 						class={css({
 							marginTop: '2',
 							marginBottom: '0',
-							fontSize: '0.6875rem',
+							fontSize: 'xs',
 							color: 'fg.muted'
 						})}
 					>
@@ -1790,7 +1624,7 @@
 			<div
 				class={css({
 					marginBottom: '0',
-					padding: '0 0 1.25rem 0',
+					paddingBottom: '5',
 					backgroundColor: 'transparent',
 					borderRadius: '0',
 					border: 'none'
@@ -1798,20 +1632,7 @@
 				role="group"
 				aria-labelledby={`${uid}-plot-title`}
 			>
-				<h4
-					class={css({
-						marginTop: '0',
-						marginBottom: '3',
-						fontSize: '0.6875rem',
-						fontWeight: '600',
-						color: 'fg.muted',
-						textTransform: 'uppercase',
-						letterSpacing: '0.08em'
-					})}
-					id={`${uid}-plot-title`}
-				>
-					Chart Title
-				</h4>
+				<span id={`${uid}-plot-title`}><SectionHeader>Chart Title</SectionHeader></span>
 				<input
 					id={`${uid}-title`}
 					type="text"
@@ -1825,7 +1646,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -1833,20 +1654,7 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-legend`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-legend`}
-					>
-						Legend Position
-					</h4>
+					<span id={`${uid}-plot-legend`}><SectionHeader>Legend Position</SectionHeader></span>
 					<select
 						id={`${uid}-legend-position`}
 						bind:value={plotConfig.legend_position}
@@ -1854,7 +1662,7 @@
 							backgroundColor: 'bg.secondary',
 							borderColor: 'border.primary',
 							color: 'fg.primary',
-							fontFamily: 'var(--font-mono, monospace)'
+							fontFamily: 'mono'
 						})}
 					>
 						<option value="right">Right</option>
@@ -1870,7 +1678,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -1878,31 +1686,18 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-axis`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-axis`}
-					>
-						Axis Formatting
-					</h4>
+					<span id={`${uid}-plot-axis`}><SectionHeader>Axis Formatting</SectionHeader></span>
 					<div class={css({ display: 'grid', gap: '3' })}>
 						<div>
 							<label
 								class={css({
 									display: 'block',
-									fontSize: '0.6875rem',
+									fontSize: 'xs',
 									fontWeight: '600',
 									color: 'fg.muted',
 									marginBottom: '1.5',
 									textTransform: 'uppercase',
-									letterSpacing: '0.05em'
+									letterSpacing: 'wider'
 								})}
 								for={`${uid}-axis-x-label`}>X Axis Label</label
 							>
@@ -1918,12 +1713,12 @@
 							<label
 								class={css({
 									display: 'block',
-									fontSize: '0.6875rem',
+									fontSize: 'xs',
 									fontWeight: '600',
 									color: 'fg.muted',
 									marginBottom: '1.5',
 									textTransform: 'uppercase',
-									letterSpacing: '0.05em'
+									letterSpacing: 'wider'
 								})}
 								for={`${uid}-axis-y-label`}>Y Axis Label</label
 							>
@@ -1940,12 +1735,12 @@
 								<label
 									class={css({
 										display: 'block',
-										fontSize: '0.6875rem',
+										fontSize: 'xs',
 										fontWeight: '600',
 										color: 'fg.muted',
 										marginBottom: '1.5',
 										textTransform: 'uppercase',
-										letterSpacing: '0.05em'
+										letterSpacing: 'wider'
 									})}
 									for={`${uid}-axis-y-scale`}>Y Axis Scale</label
 								>
@@ -1956,7 +1751,7 @@
 										backgroundColor: 'bg.secondary',
 										borderColor: 'border.primary',
 										color: 'fg.primary',
-										fontFamily: 'var(--font-mono, monospace)'
+										fontFamily: 'mono'
 									})}
 								>
 									<option value="linear">Linear</option>
@@ -1967,12 +1762,12 @@
 								<label
 									class={css({
 										display: 'block',
-										fontSize: '0.6875rem',
+										fontSize: 'xs',
 										fontWeight: '600',
 										color: 'fg.muted',
 										marginBottom: '1.5',
 										textTransform: 'uppercase',
-										letterSpacing: '0.05em'
+										letterSpacing: 'wider'
 									})}
 									for={`${uid}-axis-y-min`}>Y Axis Min</label
 								>
@@ -1989,12 +1784,12 @@
 								<label
 									class={css({
 										display: 'block',
-										fontSize: '0.6875rem',
+										fontSize: 'xs',
 										fontWeight: '600',
 										color: 'fg.muted',
 										marginBottom: '1.5',
 										textTransform: 'uppercase',
-										letterSpacing: '0.05em'
+										letterSpacing: 'wider'
 									})}
 									for={`${uid}-axis-y-max`}>Y Axis Max</label
 								>
@@ -2012,12 +1807,12 @@
 							<label
 								class={css({
 									display: 'block',
-									fontSize: '0.6875rem',
+									fontSize: 'xs',
 									fontWeight: '600',
 									color: 'fg.muted',
 									marginBottom: '1.5',
 									textTransform: 'uppercase',
-									letterSpacing: '0.05em'
+									letterSpacing: 'wider'
 								})}
 								for={`${uid}-axis-units`}>Display Units</label
 							>
@@ -2028,7 +1823,7 @@
 									backgroundColor: 'bg.secondary',
 									borderColor: 'border.primary',
 									color: 'fg.primary',
-									fontFamily: 'var(--font-mono, monospace)'
+									fontFamily: 'mono'
 								})}
 							>
 								<option value="">None</option>
@@ -2042,12 +1837,12 @@
 							<label
 								class={css({
 									display: 'block',
-									fontSize: '0.6875rem',
+									fontSize: 'xs',
 									fontWeight: '600',
 									color: 'fg.muted',
 									marginBottom: '1.5',
 									textTransform: 'uppercase',
-									letterSpacing: '0.05em'
+									letterSpacing: 'wider'
 								})}
 								for={`${uid}-axis-decimals`}>Decimal Places</label
 							>
@@ -2069,7 +1864,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -2077,20 +1872,7 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-area-opacity`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-area-opacity`}
-					>
-						Area Opacity
-					</h4>
+					<span id={`${uid}-plot-area-opacity`}><SectionHeader>Area Opacity</SectionHeader></span>
 					<input
 						id={`${uid}-area-opacity`}
 						type="number"
@@ -2105,7 +1887,7 @@
 						class={css({
 							marginTop: '2',
 							marginBottom: '0',
-							fontSize: '0.6875rem',
+							fontSize: 'xs',
 							color: 'fg.muted'
 						})}
 					>
@@ -2118,7 +1900,7 @@
 				<div
 					class={css({
 						marginBottom: '0',
-						padding: '0 0 1.25rem 0',
+						paddingBottom: '5',
 						backgroundColor: 'transparent',
 						borderRadius: '0',
 						border: 'none'
@@ -2126,20 +1908,7 @@
 					role="group"
 					aria-labelledby={`${uid}-plot-colors`}
 				>
-					<h4
-						class={css({
-							marginTop: '0',
-							marginBottom: '3',
-							fontSize: '0.6875rem',
-							fontWeight: '600',
-							color: 'fg.muted',
-							textTransform: 'uppercase',
-							letterSpacing: '0.08em'
-						})}
-						id={`${uid}-plot-colors`}
-					>
-						Series Colors
-					</h4>
+					<span id={`${uid}-plot-colors`}><SectionHeader>Series Colors</SectionHeader></span>
 					<input
 						id={`${uid}-series-colors`}
 						type="text"
@@ -2151,7 +1920,7 @@
 						class={css({
 							marginTop: '2',
 							marginBottom: '0',
-							fontSize: '0.6875rem',
+							fontSize: 'xs',
 							color: 'fg.muted'
 						})}
 					>
@@ -2175,20 +1944,7 @@
 				role="group"
 				aria-labelledby={`${uid}-plot-width`}
 			>
-				<h4
-					class={css({
-						marginTop: '0',
-						marginBottom: '3',
-						fontSize: '0.6875rem',
-						fontWeight: '600',
-						color: 'fg.muted',
-						textTransform: 'uppercase',
-						letterSpacing: '0.08em'
-					})}
-					id={`${uid}-plot-width`}
-				>
-					Chart Width
-				</h4>
+				<span id={`${uid}-plot-width`}><SectionHeader>Chart Width</SectionHeader></span>
 				<div class={css({ display: 'flex', gap: '1' })} role="group" aria-label="Chart width">
 					{#each [{ value: 'normal', label: 'Normal' }, { value: 'wide', label: 'Wide' }, { value: 'full', label: 'Full' }] as opt (opt.value)}
 						<button
@@ -2203,11 +1959,11 @@
 										borderColor: 'accent.secondary',
 										backgroundColor: 'accent.bg',
 										color: 'accent.primary',
-										fontSize: '0.6875rem',
-										fontFamily: 'var(--font-mono)',
+										fontSize: 'xs',
+										fontFamily: 'mono',
 										cursor: 'pointer',
 										textAlign: 'center',
-										letterSpacing: '0.04em'
+										letterSpacing: 'wide2'
 									})
 								: css({
 										flex: '1',
@@ -2218,11 +1974,11 @@
 										borderColor: 'border.primary',
 										backgroundColor: 'transparent',
 										color: 'fg.muted',
-										fontSize: '0.6875rem',
-										fontFamily: 'var(--font-mono)',
+										fontSize: 'xs',
+										fontFamily: 'mono',
 										cursor: 'pointer',
 										textAlign: 'center',
-										letterSpacing: '0.04em',
+										letterSpacing: 'wide2',
 										_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
 									})}
 							onclick={() => (plotConfig.chart_width = opt.value as PlotConfigData['chart_width'])}
@@ -2249,20 +2005,7 @@
 				role="group"
 				aria-labelledby={`${uid}-plot-height`}
 			>
-				<h4
-					class={css({
-						marginTop: '0',
-						marginBottom: '3',
-						fontSize: '0.6875rem',
-						fontWeight: '600',
-						color: 'fg.muted',
-						textTransform: 'uppercase',
-						letterSpacing: '0.08em'
-					})}
-					id={`${uid}-plot-height`}
-				>
-					Chart Height
-				</h4>
+				<span id={`${uid}-plot-height`}><SectionHeader>Chart Height</SectionHeader></span>
 				<div class={css({ display: 'flex', gap: '1' })} role="group" aria-label="Chart height">
 					{#each [{ value: 'small', label: 'S' }, { value: 'medium', label: 'M' }, { value: 'large', label: 'L' }, { value: 'xlarge', label: 'XL' }] as opt (opt.value)}
 						<button
@@ -2277,11 +2020,11 @@
 										borderColor: 'accent.secondary',
 										backgroundColor: 'accent.bg',
 										color: 'accent.primary',
-										fontSize: '0.6875rem',
-										fontFamily: 'var(--font-mono)',
+										fontSize: 'xs',
+										fontFamily: 'mono',
 										cursor: 'pointer',
 										textAlign: 'center',
-										letterSpacing: '0.04em'
+										letterSpacing: 'wide2'
 									})
 								: css({
 										flex: '1',
@@ -2292,11 +2035,11 @@
 										borderColor: 'border.primary',
 										backgroundColor: 'transparent',
 										color: 'fg.muted',
-										fontSize: '0.6875rem',
-										fontFamily: 'var(--font-mono)',
+										fontSize: 'xs',
+										fontFamily: 'mono',
 										cursor: 'pointer',
 										textAlign: 'center',
-										letterSpacing: '0.04em',
+										letterSpacing: 'wide2',
 										_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
 									})}
 							onclick={() =>

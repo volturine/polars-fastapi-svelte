@@ -7,6 +7,8 @@
 	import DatasourcePicker from '$lib/components/common/DatasourcePicker.svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
+	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
 	import { X } from 'lucide-svelte';
 	import { css } from '$lib/styles/panda';
 
@@ -110,7 +112,7 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
+			paddingBottom: '5',
 			backgroundColor: 'transparent',
 			borderRadius: '0',
 			border: 'none'
@@ -118,20 +120,7 @@
 		role="group"
 		aria-labelledby="right-datasource-heading"
 	>
-		<h4
-			id="right-datasource-heading"
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			Right Datasource
-		</h4>
+		<span id="right-datasource-heading"><SectionHeader>Right Datasource</SectionHeader></span>
 		<DatasourcePicker
 			datasources={datasourceOptions}
 			selected={config.right_source ?? ''}
@@ -156,9 +145,10 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
-			paddingTop: '1.25rem',
-			borderTop: '1px solid',
+			paddingBottom: '5',
+			paddingTop: '5',
+			borderTopWidth: '1',
+			borderTopStyle: 'solid',
 			borderTopColor: 'border.tertiary',
 			backgroundColor: 'transparent',
 			borderRadius: '0'
@@ -166,26 +156,13 @@
 		role="group"
 		aria-labelledby="join-type-heading"
 	>
-		<h4
-			id="join-type-heading"
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			Join Type
-		</h4>
+		<span id="join-type-heading"><SectionHeader>Join Type</SectionHeader></span>
 		<label
 			for="join-select-type"
 			class={css({
 				position: 'absolute',
-				width: '1px',
-				height: '1px',
+				width: 'px',
+				height: 'px',
 				padding: '0',
 				margin: '-1px',
 				overflow: 'hidden',
@@ -207,8 +184,9 @@
 				border: 'none',
 				borderLeft: '2px solid',
 				borderLeftColor: 'border.tertiary',
-				fontSize: '0.75rem',
-				padding: '0.5rem 0.75rem',
+				fontSize: 'xs',
+				paddingX: '3',
+				paddingY: '2',
 				lineHeight: 'relaxed',
 				marginTop: '3'
 			})}
@@ -226,9 +204,10 @@
 		<div
 			class={css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
-				paddingTop: '1.25rem',
-				borderTop: '1px solid',
+				paddingBottom: '5',
+				paddingTop: '5',
+				borderTopWidth: '1',
+				borderTopStyle: 'solid',
 				borderTopColor: 'border.tertiary',
 				backgroundColor: 'transparent',
 				borderRadius: '0'
@@ -244,20 +223,7 @@
 					marginBottom: '5'
 				})}
 			>
-				<h4
-					id="join-columns-heading"
-					class={css({
-						marginTop: '0',
-						marginBottom: '0',
-						fontSize: '0.6875rem',
-						fontWeight: '600',
-						color: 'fg.muted',
-						textTransform: 'uppercase',
-						letterSpacing: '0.08em'
-					})}
-				>
-					Join Columns
-				</h4>
+				<span id="join-columns-heading"><SectionHeader>Join Columns</SectionHeader></span>
 				<button
 					id="join-btn-add-column"
 					data-testid="join-add-column-button"
@@ -286,7 +252,7 @@
 						color: 'fg.muted',
 						fontStyle: 'italic',
 						textAlign: 'center',
-						padding: '1rem',
+						padding: '4',
 						margin: '0'
 					})}
 				>
@@ -368,25 +334,7 @@
 
 			{#if (config.join_columns ?? []).length > 0}
 				{#if !(config.join_columns ?? []).some((c) => c.left_column && c.right_column)}
-					<div
-						id="join-columns-warning"
-						class={css({
-							padding: '0.625rem 0.75rem',
-							border: 'none',
-							borderLeft: '2px solid',
-							borderRadius: '0',
-							marginTop: '0.75rem',
-							marginBottom: '0',
-							fontSize: '0.75rem',
-							lineHeight: '1.5',
-							backgroundColor: 'transparent',
-							borderLeftColor: 'warning.border',
-							color: 'fg.tertiary'
-						})}
-						role="alert"
-					>
-						Configure at least one join column pair
-					</div>
+					<Callout tone="warn">Configure at least one join column pair</Callout>
 				{/if}
 			{/if}
 		</div>
@@ -395,9 +343,10 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
-			paddingTop: '1.25rem',
-			borderTop: '1px solid',
+			paddingBottom: '5',
+			paddingTop: '5',
+			borderTopWidth: '1',
+			borderTopStyle: 'solid',
 			borderTopColor: 'border.tertiary',
 			backgroundColor: 'transparent',
 			borderRadius: '0'
@@ -405,20 +354,8 @@
 		role="group"
 		aria-labelledby="right-columns-heading"
 	>
-		<h4
-			id="right-columns-heading"
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
+		<span id="right-columns-heading"><SectionHeader>Columns from Right Dataset</SectionHeader></span
 		>
-			Columns from Right Dataset
-		</h4>
 
 		{#if rightColumns.length === 0}
 			<p
@@ -426,7 +363,7 @@
 					color: 'fg.muted',
 					fontStyle: 'italic',
 					textAlign: 'center',
-					padding: '1rem',
+					padding: '4',
 					margin: '0'
 				})}
 			>
@@ -443,33 +380,16 @@
 		{/if}
 
 		{#if rightColumns.length > 0 && (config.right_columns ?? []).length === 0}
-			<div
-				id="join-right-columns-warning"
-				class={css({
-					padding: '0.625rem 0.75rem',
-					border: 'none',
-					borderLeft: '2px solid',
-					borderRadius: '0',
-					marginTop: '0.75rem',
-					marginBottom: '0',
-					fontSize: '0.75rem',
-					lineHeight: '1.5',
-					backgroundColor: 'transparent',
-					borderLeftColor: 'warning.border',
-					color: 'fg.tertiary'
-				})}
-				role="alert"
-			>
-				Select at least one column from the right dataset
-			</div>
+			<Callout tone="warn">Select at least one column from the right dataset</Callout>
 		{/if}
 	</div>
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
-			paddingTop: '1.25rem',
-			borderTop: '1px solid',
+			paddingBottom: '5',
+			paddingTop: '5',
+			borderTopWidth: '1',
+			borderTopStyle: 'solid',
 			borderTopColor: 'border.tertiary',
 			backgroundColor: 'transparent',
 			borderRadius: '0'
@@ -477,26 +397,13 @@
 		role="group"
 		aria-labelledby="suffix-heading"
 	>
-		<h4
-			id="suffix-heading"
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			Column Suffix
-		</h4>
+		<span id="suffix-heading"><SectionHeader>Column Suffix</SectionHeader></span>
 		<label
 			for="join-input-suffix"
 			class={css({
 				position: 'absolute',
-				width: '1px',
-				height: '1px',
+				width: 'px',
+				height: 'px',
 				padding: '0',
 				margin: '-1px',
 				overflow: 'hidden',

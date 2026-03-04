@@ -327,7 +327,7 @@
 
 <ConfirmDialog
 	show={deleteConfirmId !== null}
-	title="Delete Analysis"
+	heading="Delete Analysis"
 	message={deleteConfirmName
 		? `Are you sure you want to delete "${deleteConfirmName}"? This action cannot be undone.`
 		: 'Are you sure you want to delete this analysis? This action cannot be undone.'}
@@ -339,7 +339,7 @@
 
 <ConfirmDialog
 	show={bulkDeleteConfirm}
-	title="Delete Analyses"
+	heading="Delete Analyses"
 	message={`Are you sure you want to delete ${selectionCount} analysis${selectionCount > 1 ? 'es' : ''}? This action cannot be undone.`}
 	confirmText="Delete"
 	cancelText="Cancel"

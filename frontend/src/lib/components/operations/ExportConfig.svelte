@@ -59,7 +59,7 @@
 					backgroundColor: 'bg.tertiary',
 					paddingX: '2',
 					paddingY: '1',
-					fontSize: '10px',
+					fontSize: '2xs',
 					textTransform: 'uppercase',
 					color: 'fg.muted'
 				})}

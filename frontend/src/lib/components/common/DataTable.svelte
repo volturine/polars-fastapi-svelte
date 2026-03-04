@@ -24,7 +24,7 @@
 	import { onClickOutside } from 'runed';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
-	import { css, cx } from '$lib/styles/panda';
+	import { css, cx, menuItem } from '$lib/styles/panda';
 	import type { TableCellValue } from '$lib/types/api-responses';
 	import { resolveColumnType } from '$lib/utils/columnTypes';
 	import { formatDateTimeDisplay, formatDateDisplay } from '$lib/utils/datetime';
@@ -489,7 +489,7 @@
 				gap: '3',
 				paddingX: '4',
 				paddingY: '2',
-				borderBottomWidth: '1px',
+				borderBottomWidth: '1',
 				borderBottomStyle: 'solid',
 				borderBottomColor: 'border.tertiary',
 				backgroundColor: 'bg.tertiary'
@@ -500,7 +500,7 @@
 					class={css({
 						paddingY: '1',
 						paddingX: '2.5',
-						borderWidth: '1px',
+						borderWidth: '1',
 						borderStyle: 'solid',
 						borderColor: 'border.tertiary',
 						backgroundColor: 'bg.primary',
@@ -518,7 +518,7 @@
 					class={css({
 						paddingY: '1',
 						paddingX: '2.5',
-						borderWidth: '1px',
+						borderWidth: '1',
 						borderStyle: 'solid',
 						borderColor: 'border.tertiary',
 						backgroundColor: 'bg.primary',
@@ -537,13 +537,13 @@
 				class={css({
 					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary',
-					borderWidth: '1px',
+					borderWidth: '1',
 					borderStyle: 'solid',
 					paddingX: '2',
 					paddingY: '1',
 					fontSize: 'xs',
 					marginLeft: 'auto',
-					width: '15rem'
+					width: '60'
 				})}
 				id="dt-col-search"
 				aria-label="Filter columns"
@@ -651,18 +651,23 @@
 									class={cx(
 										css({
 											position: 'relative',
-											borderRight: '1px solid',
+											borderRightWidth: '1',
+											borderRightStyle: 'solid',
 											borderRightColor: 'bg.tertiary',
 											_last: { borderRight: 'none' },
 											padding: '0',
 											textAlign: 'left',
 											fontWeight: 'semibold',
-											borderBottomWidth: '1px',
+											borderBottomWidth: '1',
 											borderBottomStyle: 'solid',
 											borderBottomColor: 'border.tertiary'
 										}),
 										dragOver === header.id &&
-											css({ outline: '2px dashed', outlineColor: 'border.primary' }),
+											css({
+												outlineWidth: '2',
+												outlineStyle: 'dashed',
+												outlineColor: 'border.primary'
+											}),
 										dragColumn === header.id && css({ opacity: '0.6' })
 									)}
 									data-column-header
@@ -672,7 +677,7 @@
 									<div
 										class={css({
 											minHeight: '32px',
-											gap: '0.5rem',
+											gap: '2',
 											display: 'flex',
 											alignItems: 'flex-start',
 											justifyContent: 'space-between',
@@ -684,7 +689,7 @@
 										<div
 											class={css({
 												display: 'flex',
-												gap: '0.5rem',
+												gap: '2',
 												alignItems: 'center',
 												flex: '1',
 												minWidth: '0'
@@ -693,13 +698,13 @@
 											<div
 												class={css({
 													display: 'inline-flex',
-													gap: '0.25rem'
+													gap: '1'
 												})}
 											>
 												<div
 													class={css({
-														width: '1rem',
-														height: '1rem',
+														width: '4',
+														height: '4',
 														display: 'inline-flex',
 														alignItems: 'center',
 														justifyContent: 'center'
@@ -741,7 +746,7 @@
 												class={css({
 													display: 'flex',
 													flexDirection: 'column',
-													gap: '0.15rem',
+													gap: 'tight',
 													alignItems: 'flex-start',
 													alignSelf: 'flex-start',
 													minWidth: '0'
@@ -754,7 +759,7 @@
 														overflow: 'hidden',
 														textOverflow: 'ellipsis',
 														whiteSpace: 'nowrap',
-														fontFamily: 'var(--font-mono)',
+														fontFamily: 'mono',
 														fontSize: 'sm',
 														fontWeight: 'semibold',
 														color: 'fg.primary'
@@ -768,7 +773,7 @@
 													{#if getColumnType(header.id)}
 														<ColumnTypeBadge columnType={getColumnType(header.id)} size="xs" />
 													{:else}
-														<span class={css({ fontSize: '0.7rem', color: 'fg.muted' })}>-</span>
+														<span class={css({ fontSize: 'xs', color: 'fg.muted' })}>-</span>
 													{/if}
 												{/if}
 											</div>
@@ -776,7 +781,7 @@
 										<div
 											class={css({
 												display: 'inline-flex',
-												gap: '0.25rem',
+												gap: '1',
 												alignSelf: 'center',
 												flexShrink: '0'
 											})}
@@ -816,7 +821,7 @@
 														content: "''",
 														position: 'absolute',
 														opacity: '0',
-														width: '1px',
+														width: 'px',
 														height: '100%',
 														background: 'accent.primary'
 													},
@@ -833,126 +838,46 @@
 										<div
 											class={css({
 												position: 'absolute',
-												right: '0.25rem',
-												top: '2.4rem',
+												right: '1',
+												top: '24p',
 												background: 'bg.primary',
-												border: '1px solid',
+												borderWidth: '1',
+												borderStyle: 'solid',
 												borderColor: 'border.primary',
 												zIndex: 'var(--z-tooltip)',
-												padding: '0.5rem',
-												minWidth: '160px',
-												boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)',
+												padding: '2',
+												minWidth: '40',
+												boxShadow: 'menu',
 												display: 'flex',
 												flexDirection: 'column',
-												gap: '0.25rem'
+												gap: '1'
 											})}
 											bind:this={columnMenuRef}
 										>
-											<button
-												class={css({
-													border: 'none',
-													background: 'transparent',
-													color: 'fg.primary',
-													padding: '0.25rem 0.5rem',
-													fontSize: 'xs',
-													textAlign: 'left',
-													cursor: 'pointer',
-													_hover: { backgroundColor: 'bg.hover' }
-												})}
-												onclick={() => setSort(header.id, 'asc')}>Sort A-Z</button
+											<button class={menuItem()} onclick={() => setSort(header.id, 'asc')}
+												>Sort A-Z</button
 											>
-											<button
-												class={css({
-													border: 'none',
-													background: 'transparent',
-													color: 'fg.primary',
-													padding: '0.25rem 0.5rem',
-													fontSize: 'xs',
-													textAlign: 'left',
-													cursor: 'pointer',
-													_hover: { backgroundColor: 'bg.hover' }
-												})}
-												onclick={() => setSort(header.id, 'desc')}>Sort Z-A</button
+											<button class={menuItem()} onclick={() => setSort(header.id, 'desc')}
+												>Sort Z-A</button
 											>
-											<button
-												class={css({
-													border: 'none',
-													background: 'transparent',
-													color: 'fg.primary',
-													padding: '0.25rem 0.5rem',
-													fontSize: 'xs',
-													textAlign: 'left',
-													cursor: 'pointer',
-													_hover: { backgroundColor: 'bg.hover' }
-												})}
-												onclick={() => setSort(header.id, 'none')}>Clear sort</button
+											<button class={menuItem()} onclick={() => setSort(header.id, 'none')}
+												>Clear sort</button
 											>
-											<button
-												class={css({
-													border: 'none',
-													background: 'transparent',
-													color: 'fg.primary',
-													padding: '0.25rem 0.5rem',
-													fontSize: 'xs',
-													textAlign: 'left',
-													cursor: 'pointer',
-													_hover: { backgroundColor: 'bg.hover' }
-												})}
-												onclick={() => pinColumn(header.id, 'left')}>Pin left</button
+											<button class={menuItem()} onclick={() => pinColumn(header.id, 'left')}
+												>Pin left</button
 											>
-											<button
-												class={css({
-													border: 'none',
-													background: 'transparent',
-													color: 'fg.primary',
-													padding: '0.25rem 0.5rem',
-													fontSize: 'xs',
-													textAlign: 'left',
-													cursor: 'pointer',
-													_hover: { backgroundColor: 'bg.hover' }
-												})}
-												onclick={() => pinColumn(header.id, 'right')}>Pin right</button
+											<button class={menuItem()} onclick={() => pinColumn(header.id, 'right')}
+												>Pin right</button
 											>
-											<button
-												class={css({
-													border: 'none',
-													background: 'transparent',
-													color: 'fg.primary',
-													padding: '0.25rem 0.5rem',
-													fontSize: 'xs',
-													textAlign: 'left',
-													cursor: 'pointer',
-													_hover: { backgroundColor: 'bg.hover' }
-												})}
-												onclick={() => pinColumn(header.id, 'none')}>Unpin</button
+											<button class={menuItem()} onclick={() => pinColumn(header.id, 'none')}
+												>Unpin</button
 											>
-											<button
-												class={css({
-													border: 'none',
-													background: 'transparent',
-													color: 'fg.primary',
-													padding: '0.25rem 0.5rem',
-													fontSize: 'xs',
-													textAlign: 'left',
-													cursor: 'pointer',
-													_hover: { backgroundColor: 'bg.hover' }
-												})}
-												onclick={() => toggleColumnVisibility(header.id)}
-											>
+											<button class={menuItem()} onclick={() => toggleColumnVisibility(header.id)}>
 												{(columnVisibility[header.id] ?? true) ? 'Hide column' : 'Show column'}
 											</button>
 											{#if onColumnStats}
 												<button
-													class={css({
-														border: 'none',
-														background: 'transparent',
-														color: 'fg.primary',
-														padding: '0.25rem 0.5rem',
-														fontSize: 'xs',
-														textAlign: 'left',
-														cursor: 'pointer',
-														_hover: { backgroundColor: 'bg.hover' }
-													})}
+													class={menuItem()}
 													onclick={() => {
 														onColumnStats(header.id);
 														activeColumn = null;
@@ -980,9 +905,11 @@
 								<td
 									class={css({
 										padding: '0',
-										borderRight: '1px solid',
+										borderRightWidth: '1',
+										borderRightStyle: 'solid',
 										borderRightColor: 'bg.tertiary',
-										borderBottom: '1px solid',
+										borderBottomWidth: '1',
+										borderBottomStyle: 'solid',
 										borderBottomColor: 'bg.tertiary',
 										_last: { borderRight: 'none' }
 									})}
@@ -992,7 +919,7 @@
 											'group',
 											css({
 												position: 'relative',
-												paddingRight: '2.25rem',
+												paddingRight: '9',
 												whiteSpace: 'nowrap',
 												overflow: 'hidden',
 												textOverflow: 'ellipsis',
@@ -1006,8 +933,8 @@
 											}),
 											compact &&
 												css({
-													paddingTop: '0.5rem',
-													paddingBottom: '0.5rem'
+													paddingTop: '2',
+													paddingBottom: '2'
 												}),
 											isListType(getColumnType(cell.column.id)) && css({ fontSize: 'xs' })
 										)}
@@ -1030,7 +957,7 @@
 												class={css({
 													position: 'absolute',
 													top: '50%',
-													right: '0.5rem',
+													right: '2',
 													transform: 'translateY(-50%)',
 													opacity: '0',
 													color: 'fg.muted',
@@ -1046,7 +973,7 @@
 													'@media (hover: hover)': {
 														transition: 'opacity var(--transition), color var(--transition)'
 													},
-													smDown: { opacity: '1', width: '1.75rem', height: '1.75rem' }
+													smDown: { opacity: '1', width: '7', height: '7' }
 												})}
 												aria-label="Copy cell value"
 												onclick={(event) => copyValue(event, cell.id, display)}
@@ -1078,7 +1005,7 @@
 			class={css({
 				paddingX: '4',
 				paddingY: '3',
-				borderTopWidth: '1px',
+				borderTopWidth: '1',
 				borderTopStyle: 'solid',
 				borderTopColor: 'border.tertiary',
 				backgroundColor: 'bg.tertiary'
@@ -1096,13 +1023,15 @@
 			left: 'var(--tip-left, -9999px)',
 			top: 'var(--tip-top, -9999px)',
 			maxWidth: 'min(420px, 80vw)',
-			padding: '0.5rem 0.75rem',
-			border: '1px solid',
+			paddingX: '3',
+			paddingY: '2',
+			borderWidth: '1',
+			borderStyle: 'solid',
 			borderColor: 'border.primary',
 			background: 'bg.primary',
 			color: 'fg.primary',
-			fontSize: '0.8125rem',
-			boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)',
+			fontSize: 'sm',
+			boxShadow: 'menu',
 			zIndex: 'var(--z-tooltip)',
 			whiteSpace: 'normal',
 			wordBreak: 'break-word',
@@ -1124,7 +1053,7 @@
 			alignItems: 'center',
 			gap: '2',
 			whiteSpace: 'nowrap',
-			borderWidth: '1px',
+			borderWidth: '1',
 			borderStyle: 'solid',
 			borderColor: 'border.tertiary',
 			paddingX: '3',
@@ -1133,11 +1062,11 @@
 			fontWeight: 'semibold',
 			backgroundColor: 'bg.primary',
 			color: 'fg.primary',
-			boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
+			boxShadow: 'popup'
 		})}
 		style="left: {dragPointerX + 12}px; top: {dragPointerY + 12}px;"
 	>
 		<GripVertical size={12} class={css({ color: 'fg.muted' })} />
-		<span class={css({ fontFamily: 'var(--font-mono)' })}>{dragLabel}</span>
+		<span class={css({ fontFamily: 'mono' })}>{dragLabel}</span>
 	</div>
 {/if}

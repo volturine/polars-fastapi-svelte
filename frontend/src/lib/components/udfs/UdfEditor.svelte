@@ -144,7 +144,7 @@
 			gap: '4',
 			marginBottom: '6',
 			paddingBottom: '5',
-			borderBottomWidth: '1px',
+			borderBottomWidth: '1',
 			borderBottomStyle: 'solid',
 			borderBottomColor: 'border.tertiary',
 			sm: { flexDirection: 'row', alignItems: 'center' }
@@ -160,7 +160,8 @@
 					alignItems: 'center',
 					justifyContent: 'center',
 					backgroundColor: 'bg.tertiary',
-					border: '1px solid',
+					borderWidth: '1',
+					borderStyle: 'solid',
 					borderColor: 'border.primary',
 					borderRadius: '0',
 					color: 'fg.secondary',
@@ -191,14 +192,16 @@
 	{#if query.isLoading}
 		<div
 			class={css({
-				padding: '0.625rem 0.75rem',
+				paddingX: '3',
+				paddingY: '2.5',
 				border: 'none',
-				borderLeft: '2px solid',
+				borderLeftWidth: '2',
+				borderLeftStyle: 'solid',
 				borderRadius: '0',
-				marginTop: '0.75rem',
+				marginTop: '3',
 				marginBottom: '0',
-				fontSize: '0.75rem',
-				lineHeight: '1.5',
+				fontSize: 'xs',
+				lineHeight: 'normal',
 				backgroundColor: 'transparent',
 				borderLeftColor: 'accent.secondary',
 				color: 'fg.tertiary'
@@ -240,7 +243,7 @@
 					flexDirection: 'column',
 					gap: '3',
 					padding: '4',
-					borderWidth: '1px',
+					borderWidth: '1',
 					borderStyle: 'solid',
 					borderColor: 'border.tertiary',
 					backgroundColor: 'bg.primary'
@@ -263,7 +266,7 @@
 					flexDirection: 'column',
 					gap: '3',
 					padding: '4',
-					borderWidth: '1px',
+					borderWidth: '1',
 					borderStyle: 'solid',
 					borderColor: 'border.tertiary',
 					backgroundColor: 'bg.primary'
@@ -283,14 +286,16 @@
 			{#if error}
 				<div
 					class={css({
-						padding: '0.625rem 0.75rem',
+						paddingX: '3',
+						paddingY: '2.5',
 						border: 'none',
-						borderLeft: '2px solid',
+						borderLeftWidth: '2',
+						borderLeftStyle: 'solid',
 						borderRadius: '0',
-						marginTop: '0.75rem',
+						marginTop: '3',
 						marginBottom: '0',
-						fontSize: '0.75rem',
-						lineHeight: '1.5',
+						fontSize: 'xs',
+						lineHeight: 'normal',
 						backgroundColor: 'transparent',
 						borderLeftColor: 'error.border',
 						color: 'error.fg'

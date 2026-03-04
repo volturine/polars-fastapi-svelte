@@ -22,7 +22,9 @@
 	} from '$lib/api/settings';
 	import { configStore } from '$lib/stores/config.svelte';
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
-	import { css } from '$lib/styles/panda';
+	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
+	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+	import { css, input } from '$lib/styles/panda';
 
 	interface Props {
 		open: boolean;
@@ -179,7 +181,7 @@
 	closeOnBackdrop={true}
 	panelClass={css({
 		width: '100%',
-		maxWidth: '30rem',
+		maxWidth: '120',
 		maxHeight: '90vh',
 		overflowY: 'auto',
 		borderWidth: '1px',
@@ -194,42 +196,36 @@
 />
 
 {#snippet content()}
-	<div
-		class={css({
-			display: 'flex',
-			alignItems: 'center',
-			justifyContent: 'space-between',
-			borderBottomWidth: '1px',
-			borderBottomStyle: 'solid',
-			borderBottomColor: 'border.tertiary',
-			padding: '4'
-		})}
-	>
-		<h2
-			id="settings-title"
-			class={css({ margin: '0', fontSize: 'sm', fontWeight: 'semibold', color: 'fg.primary' })}
-		>
-			Settings
-		</h2>
-		<button
-			class={css({
-				display: 'flex',
-				cursor: 'pointer',
-				alignItems: 'center',
-				justifyContent: 'center',
-				border: 'none',
-				backgroundColor: 'transparent',
-				padding: '1',
-				color: 'fg.muted',
-				_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
-			})}
-			onclick={() => (open = false)}
-			aria-label="Close settings"
-			type="button"
-		>
-			<X size={16} />
-		</button>
-	</div>
+	<PanelHeader>
+		{#snippet title()}
+			<h2
+				id="settings-title"
+				class={css({ margin: '0', fontSize: 'sm', fontWeight: 'semibold', color: 'fg.primary' })}
+			>
+				Settings
+			</h2>
+		{/snippet}
+		{#snippet actions()}
+			<button
+				class={css({
+					display: 'flex',
+					cursor: 'pointer',
+					alignItems: 'center',
+					justifyContent: 'center',
+					border: 'none',
+					backgroundColor: 'transparent',
+					padding: '1',
+					color: 'fg.muted',
+					_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+				})}
+				onclick={() => (open = false)}
+				aria-label="Close settings"
+				type="button"
+			>
+				<X size={16} />
+			</button>
+		{/snippet}
+	</PanelHeader>
 
 	{#if loading}
 		<div
@@ -272,18 +268,10 @@
 				</div>
 			{/if}
 
-			<span
-				class={css({
-					fontSize: 'xs',
-					fontWeight: 'semibold',
-					textTransform: 'uppercase',
-					letterSpacing: 'wider',
-					color: 'fg.tertiary'
-				})}
-			>
+			<SectionHeader>
 				<Mail size={12} class={css({ marginRight: '1', display: 'inline' })} />
 				SMTP
-			</span>
+			</SectionHeader>
 
 			<div
 				class={css({ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '2' })}
@@ -292,18 +280,7 @@
 					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Host</span>
 					<input
 						type="text"
-						class={css({
-							width: '100%',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
-							backgroundColor: 'transparent',
-							paddingX: '2',
-							paddingY: '1.5',
-							fontSize: 'xs',
-							color: 'fg.primary',
-							_focus: { borderColor: 'accent.primary', outline: 'none' }
-						})}
+						class={input()}
 						id="smtp-host"
 						bind:value={smtp_host}
 						placeholder="smtp.example.com"
@@ -311,23 +288,7 @@
 				</label>
 				<label class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Port</span>
-					<input
-						type="number"
-						class={css({
-							width: '100%',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
-							backgroundColor: 'transparent',
-							paddingX: '2',
-							paddingY: '1.5',
-							fontSize: 'xs',
-							color: 'fg.primary',
-							_focus: { borderColor: 'accent.primary', outline: 'none' }
-						})}
-						id="smtp-port"
-						bind:value={smtp_port}
-					/>
+					<input type="number" class={input()} id="smtp-port" bind:value={smtp_port} />
 				</label>
 			</div>
 
@@ -338,18 +299,7 @@
 					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>User</span>
 					<input
 						type="text"
-						class={css({
-							width: '100%',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
-							backgroundColor: 'transparent',
-							paddingX: '2',
-							paddingY: '1.5',
-							fontSize: 'xs',
-							color: 'fg.primary',
-							_focus: { borderColor: 'accent.primary', outline: 'none' }
-						})}
+						class={input()}
 						id="smtp-user"
 						bind:value={smtp_user}
 						placeholder="user@example.com"
@@ -359,18 +309,7 @@
 					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Password</span>
 					<input
 						type="password"
-						class={css({
-							width: '100%',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
-							backgroundColor: 'transparent',
-							paddingX: '2',
-							paddingY: '1.5',
-							fontSize: 'xs',
-							color: 'fg.primary',
-							_focus: { borderColor: 'accent.primary', outline: 'none' }
-						})}
+						class={input()}
 						id="smtp-password"
 						bind:value={smtp_password}
 						placeholder="••••••••"
@@ -383,18 +322,7 @@
 					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Test recipient</span>
 					<input
 						type="email"
-						class={css({
-							width: '100%',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
-							backgroundColor: 'transparent',
-							paddingX: '2',
-							paddingY: '1.5',
-							fontSize: 'xs',
-							color: 'fg.primary',
-							_focus: { borderColor: 'accent.primary', outline: 'none' }
-						})}
+						class={input()}
 						id="smtp-test-to"
 						bind:value={smtpTestTo}
 						placeholder="test@example.com"
@@ -441,18 +369,10 @@
 			></div>
 
 			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
-				<span
-					class={css({
-						fontSize: 'xs',
-						fontWeight: 'semibold',
-						textTransform: 'uppercase',
-						letterSpacing: 'wider',
-						color: 'fg.tertiary'
-					})}
-				>
+				<SectionHeader>
 					<MessageCircle size={12} class={css({ marginRight: '1', display: 'inline' })} />
 					Telegram
-				</span>
+				</SectionHeader>
 				{#if statusQuery.data}
 					<span
 						class={css({
@@ -471,18 +391,7 @@
 				<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Bot token</span>
 				<input
 					type="password"
-					class={css({
-						width: '100%',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
-						backgroundColor: 'transparent',
-						paddingX: '2',
-						paddingY: '1.5',
-						fontSize: 'xs',
-						color: 'fg.primary',
-						_focus: { borderColor: 'accent.primary', outline: 'none' }
-					})}
+					class={input()}
 					id="telegram-bot-token"
 					bind:value={telegram_bot_token}
 					placeholder="123456:ABC-DEF..."
@@ -643,18 +552,10 @@
 				})}
 			></div>
 
-			<span
-				class={css({
-					fontSize: 'xs',
-					fontWeight: 'semibold',
-					textTransform: 'uppercase',
-					letterSpacing: 'wider',
-					color: 'fg.tertiary'
-				})}
-			>
+			<SectionHeader>
 				<Database size={12} class={css({ marginRight: '1', display: 'inline' })} />
 				Debug
-			</span>
+			</SectionHeader>
 
 			<div class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '0.5' })}>

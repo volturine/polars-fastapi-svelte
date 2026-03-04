@@ -63,6 +63,9 @@
 	import AIConfig from '$lib/components/operations/AIConfig.svelte';
 	import UnionByNameConfig from '$lib/components/operations/UnionByNameConfig.svelte';
 	import { getStepTypeConfig } from '$lib/components/pipeline/utils';
+	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
+	import PanelFooter from '$lib/components/ui/PanelFooter.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
 	import { Settings2, X } from 'lucide-svelte';
 	import { css, cx, spinner } from '$lib/styles/panda';
 
@@ -260,55 +263,33 @@
 			})
 		)}
 	>
-		<div
-			class={css({
-				position: 'relative',
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'space-between',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'border.tertiary',
-				backgroundColor: 'bg.primary',
-				paddingX: '5',
-				paddingY: '3'
-			})}
-		>
-			<h3
-				class={css({
-					margin: '0',
-					fontSize: 'xs',
-					fontWeight: '600',
-					textTransform: 'uppercase',
-					letterSpacing: 'widest',
-					color: 'fg.muted'
-				})}
-			>
-				{stepLabel}
-			</h3>
-			<button
-				class={css({
-					display: 'flex',
-					height: '7',
-					width: '7',
-					cursor: 'pointer',
-					alignItems: 'center',
-					justifyContent: 'center',
-					borderWidth: '0',
-					borderStyle: 'solid',
-					backgroundColor: 'transparent',
-					padding: '0',
-					lineHeight: 'none',
-					color: 'fg.muted',
-					_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
-				})}
-				onclick={() => onClose?.()}
-				type="button"
-				title="Close"
-			>
-				<X size={14} />
-			</button>
-		</div>
+		<PanelHeader>
+			{#snippet title()}{stepLabel}{/snippet}
+			{#snippet actions()}
+				<button
+					class={css({
+						display: 'flex',
+						height: '7',
+						width: '7',
+						cursor: 'pointer',
+						alignItems: 'center',
+						justifyContent: 'center',
+						borderWidth: '0',
+						borderStyle: 'solid',
+						backgroundColor: 'transparent',
+						padding: '0',
+						lineHeight: 'none',
+						color: 'fg.muted',
+						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+					})}
+					onclick={() => onClose?.()}
+					type="button"
+					title="Close"
+				>
+					<X size={14} />
+				</button>
+			{/snippet}
+		</PanelHeader>
 
 		<div
 			class={css({
@@ -336,25 +317,10 @@
 					<p class={css({ margin: '0', fontSize: 'xs' })}>Initializing config...</p>
 				</div>
 			{:else if !schema && !isLoadingSchema}
-				<div
-					class={css({
-						padding: '0.625rem 0.75rem',
-						border: 'none',
-						borderLeftWidth: '2px',
-						borderLeftStyle: 'solid',
-						borderRadius: '0',
-						marginTop: '0.75rem',
-						marginBottom: '0',
-						fontSize: '0.75rem',
-						lineHeight: '1.5',
-						backgroundColor: 'transparent',
-						borderLeftColor: 'warning.border',
-						color: 'fg.tertiary'
-					})}
-				>
+				<Callout tone="warn">
 					<p>Schema not available. Please ensure the data source is loaded.</p>
 					<button onclick={() => onClose?.()} type="button">Close</button>
-				</div>
+				</Callout>
 			{:else if isLoadingSchema}
 				<div
 					class={css({
@@ -493,7 +459,7 @@
 					<button
 						class={css({
 							cursor: 'pointer',
-							borderWidth: '1px',
+							borderWidth: '1',
 							borderStyle: 'solid',
 							borderColor: 'border.tertiary',
 							backgroundColor: 'transparent',
@@ -510,23 +476,12 @@
 				</div>
 			{/if}
 		</div>
-		<div
-			class={css({
-				display: 'flex',
-				gap: '3',
-				borderTopWidth: '1px',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.tertiary',
-				backgroundColor: 'bg.primary',
-				paddingX: '5',
-				paddingY: '4'
-			})}
-		>
+		<PanelFooter>
 			<button
 				class={css({
 					flex: '1',
 					cursor: 'pointer',
-					borderWidth: '1px',
+					borderWidth: '1',
 					borderStyle: 'solid',
 					borderColor: 'border.tertiary',
 					backgroundColor: 'transparent',
@@ -551,7 +506,7 @@
 				class={css({
 					flex: '1',
 					cursor: 'pointer',
-					borderWidth: '1px',
+					borderWidth: '1',
 					borderStyle: 'solid',
 					borderColor: 'border.tertiary',
 					backgroundColor: 'accent.bg',
@@ -572,6 +527,6 @@
 			>
 				Apply
 			</button>
-		</div>
+		</PanelFooter>
 	</div>
 {/if}

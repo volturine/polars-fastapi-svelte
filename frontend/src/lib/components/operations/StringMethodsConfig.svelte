@@ -76,7 +76,7 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
+			paddingBottom: '5',
 			backgroundColor: 'transparent',
 			borderRadius: '0',
 			border: 'none'
@@ -89,11 +89,11 @@
 			class={css({
 				marginTop: '0',
 				marginBottom: '3',
-				fontSize: '0.6875rem',
+				fontSize: 'xs',
 				fontWeight: '600',
 				color: 'fg.muted',
 				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
+				letterSpacing: 'wide3'
 			})}
 		>
 			Source Column
@@ -112,13 +112,14 @@
 			<p
 				id="str-no-columns-warning"
 				class={css({
-					padding: '0.625rem 0.75rem',
+					paddingX: '3',
+					paddingY: '2.5',
 					border: 'none',
 					borderLeft: '2px solid',
 					borderRadius: '0',
-					marginTop: '0.75rem',
+					marginTop: '3',
 					marginBottom: '0',
-					fontSize: '0.75rem',
+					fontSize: 'xs',
 					lineHeight: '1.5',
 					backgroundColor: 'transparent',
 					borderLeftColor: 'warning.border',
@@ -135,12 +136,12 @@
 		class={cx(
 			css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
 			}),
-			css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+			css({ paddingTop: '5', borderTop: '1px solid var(--color-border-tertiary)' })
 		)}
 		role="group"
 		aria-labelledby="str-method-heading"
@@ -150,11 +151,11 @@
 			class={css({
 				marginTop: '0',
 				marginBottom: '3',
-				fontSize: '0.6875rem',
+				fontSize: 'xs',
 				fontWeight: '600',
 				color: 'fg.muted',
 				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
+				letterSpacing: 'wide3'
 			})}
 		>
 			String Method
@@ -163,8 +164,8 @@
 			for="str-select-method"
 			class={css({
 				position: 'absolute',
-				width: '1px',
-				height: '1px',
+				width: 'px',
+				height: 'px',
 				padding: '0',
 				margin: '-1px',
 				overflow: 'hidden',
@@ -184,7 +185,7 @@
 		<div
 			class={css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
@@ -197,11 +198,11 @@
 				class={css({
 					marginTop: '0',
 					marginBottom: '3',
-					fontSize: '0.6875rem',
+					fontSize: 'xs',
 					fontWeight: '600',
 					color: 'fg.muted',
 					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
+					letterSpacing: 'wide3'
 				})}
 			>
 				Slice Parameters
@@ -229,8 +230,8 @@
 						id="str-start-help"
 						class={css({
 							position: 'absolute',
-							width: '1px',
-							height: '1px',
+							width: 'px',
+							height: 'px',
 							padding: '0',
 							margin: '-1px',
 							overflow: 'hidden',
@@ -263,8 +264,8 @@
 						id="str-end-help"
 						class={css({
 							position: 'absolute',
-							width: '1px',
-							height: '1px',
+							width: 'px',
+							height: 'px',
 							padding: '0',
 							margin: '-1px',
 							overflow: 'hidden',
@@ -282,7 +283,7 @@
 		<div
 			class={css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
@@ -295,11 +296,11 @@
 				class={css({
 					marginTop: '0',
 					marginBottom: '3',
-					fontSize: '0.6875rem',
+					fontSize: 'xs',
 					fontWeight: '600',
 					color: 'fg.muted',
 					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
+					letterSpacing: 'wide3'
 				})}
 			>
 				Replace Parameters
@@ -327,8 +328,8 @@
 					id="str-pattern-help"
 					class={css({
 						position: 'absolute',
-						width: '1px',
-						height: '1px',
+						width: 'px',
+						height: 'px',
 						padding: '0',
 						margin: '-1px',
 						overflow: 'hidden',
@@ -361,8 +362,8 @@
 					id="str-replacement-help"
 					class={css({
 						position: 'absolute',
-						width: '1px',
-						height: '1px',
+						width: 'px',
+						height: 'px',
 						padding: '0',
 						margin: '-1px',
 						overflow: 'hidden',
@@ -379,7 +380,7 @@
 		<div
 			class={css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
@@ -392,11 +393,11 @@
 				class={css({
 					marginTop: '0',
 					marginBottom: '3',
-					fontSize: '0.6875rem',
+					fontSize: 'xs',
 					fontWeight: '600',
 					color: 'fg.muted',
 					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
+					letterSpacing: 'wide3'
 				})}
 			>
 				Extract Parameters
@@ -424,8 +425,8 @@
 					id="str-extract-pattern-help"
 					class={css({
 						position: 'absolute',
-						width: '1px',
-						height: '1px',
+						width: 'px',
+						height: 'px',
 						padding: '0',
 						margin: '-1px',
 						overflow: 'hidden',
@@ -458,8 +459,8 @@
 					id="str-group-index-help"
 					class={css({
 						position: 'absolute',
-						width: '1px',
-						height: '1px',
+						width: 'px',
+						height: 'px',
 						padding: '0',
 						margin: '-1px',
 						overflow: 'hidden',
@@ -476,7 +477,7 @@
 		<div
 			class={css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
@@ -489,11 +490,11 @@
 				class={css({
 					marginTop: '0',
 					marginBottom: '3',
-					fontSize: '0.6875rem',
+					fontSize: 'xs',
 					fontWeight: '600',
 					color: 'fg.muted',
 					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
+					letterSpacing: 'wide3'
 				})}
 			>
 				Split Delimiter
@@ -521,8 +522,8 @@
 					id="str-delimiter-only-help"
 					class={css({
 						position: 'absolute',
-						width: '1px',
-						height: '1px',
+						width: 'px',
+						height: 'px',
 						padding: '0',
 						margin: '-1px',
 						overflow: 'hidden',
@@ -539,7 +540,7 @@
 		<div
 			class={css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
@@ -552,11 +553,11 @@
 				class={css({
 					marginTop: '0',
 					marginBottom: '3',
-					fontSize: '0.6875rem',
+					fontSize: 'xs',
 					fontWeight: '600',
 					color: 'fg.muted',
 					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
+					letterSpacing: 'wide3'
 				})}
 			>
 				Split & Take Parameters
@@ -584,8 +585,8 @@
 					id="str-delimiter-help"
 					class={css({
 						position: 'absolute',
-						width: '1px',
-						height: '1px',
+						width: 'px',
+						height: 'px',
 						padding: '0',
 						margin: '-1px',
 						overflow: 'hidden',
@@ -618,8 +619,8 @@
 					id="str-part-index-help"
 					class={css({
 						position: 'absolute',
-						width: '1px',
-						height: '1px',
+						width: 'px',
+						height: 'px',
 						padding: '0',
 						margin: '-1px',
 						overflow: 'hidden',
@@ -636,12 +637,12 @@
 		class={cx(
 			css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
 			}),
-			css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+			css({ paddingTop: '5', borderTop: '1px solid var(--color-border-tertiary)' })
 		)}
 		role="group"
 		aria-labelledby="new-column-heading"
@@ -651,11 +652,11 @@
 			class={css({
 				marginTop: '0',
 				marginBottom: '3',
-				fontSize: '0.6875rem',
+				fontSize: 'xs',
 				fontWeight: '600',
 				color: 'fg.muted',
 				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
+				letterSpacing: 'wide3'
 			})}
 		>
 			New Column Name
@@ -664,8 +665,8 @@
 			for="str-input-new-column"
 			class={css({
 				position: 'absolute',
-				width: '1px',
-				height: '1px',
+				width: 'px',
+				height: 'px',
 				padding: '0',
 				margin: '-1px',
 				overflow: 'hidden',
@@ -686,8 +687,8 @@
 			id="str-new-column-help"
 			class={css({
 				position: 'absolute',
-				width: '1px',
-				height: '1px',
+				width: 'px',
+				height: 'px',
 				padding: '0',
 				margin: '-1px',
 				overflow: 'hidden',

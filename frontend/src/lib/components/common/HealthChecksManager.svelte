@@ -27,7 +27,7 @@
 		PowerOff
 	} from 'lucide-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
-	import { css, cx } from '$lib/styles/panda';
+	import { css, cx, emptyText, input } from '$lib/styles/panda';
 
 	interface Props {
 		datasourceId?: string;
@@ -328,7 +328,7 @@
 				<label
 					for="hc-target"
 					class={css({
-						fontSize: '10px',
+						fontSize: '2xs',
 						fontWeight: 'medium',
 						color: 'fg.secondary',
 						textTransform: 'uppercase'
@@ -371,7 +371,7 @@
 				<label
 					for="hc-name"
 					class={css({
-						fontSize: '10px',
+						fontSize: '2xs',
 						fontWeight: 'medium',
 						color: 'fg.secondary',
 						textTransform: 'uppercase'
@@ -401,7 +401,7 @@
 				<label
 					for="hc-type"
 					class={css({
-						fontSize: '10px',
+						fontSize: '2xs',
 						fontWeight: 'medium',
 						color: 'fg.secondary',
 						textTransform: 'uppercase'
@@ -448,7 +448,7 @@
 					/>
 				</div>
 				{#if rowCountExists && checkType === 'row_count'}
-					<p class={css({ marginTop: '0.5', fontSize: '10px', color: 'error.fg' })}>
+					<p class={css({ marginTop: '0.5', fontSize: '2xs', color: 'error.fg' })}>
 						Row count check already exists.
 					</p>
 				{/if}
@@ -471,7 +471,7 @@
 						<label
 							for="hc-min-rows"
 							class={css({
-								fontSize: '10px',
+								fontSize: '2xs',
 								fontWeight: 'medium',
 								color: 'fg.secondary',
 								textTransform: 'uppercase'
@@ -498,7 +498,7 @@
 						<label
 							for="hc-max-rows"
 							class={css({
-								fontSize: '10px',
+								fontSize: '2xs',
 								fontWeight: 'medium',
 								color: 'fg.secondary',
 								textTransform: 'uppercase'
@@ -539,7 +539,7 @@
 						<label
 							for="hc-min-cols"
 							class={css({
-								fontSize: '10px',
+								fontSize: '2xs',
 								fontWeight: 'medium',
 								color: 'fg.secondary',
 								textTransform: 'uppercase'
@@ -566,7 +566,7 @@
 						<label
 							for="hc-max-cols"
 							class={css({
-								fontSize: '10px',
+								fontSize: '2xs',
 								fontWeight: 'medium',
 								color: 'fg.secondary',
 								textTransform: 'uppercase'
@@ -602,7 +602,7 @@
 					<label
 						for="hc-null-threshold"
 						class={css({
-							fontSize: '10px',
+							fontSize: '2xs',
 							fontWeight: 'medium',
 							color: 'fg.secondary',
 							textTransform: 'uppercase'
@@ -642,7 +642,7 @@
 						<label
 							for="hc-dup-threshold"
 							class={css({
-								fontSize: '10px',
+								fontSize: '2xs',
 								fontWeight: 'medium',
 								color: 'fg.secondary',
 								textTransform: 'uppercase'
@@ -669,7 +669,7 @@
 						<label
 							for="hc-dup-cols"
 							class={css({
-								fontSize: '10px',
+								fontSize: '2xs',
 								fontWeight: 'medium',
 								color: 'fg.secondary',
 								textTransform: 'uppercase'
@@ -713,7 +713,7 @@
 						<label
 							for="hc-column"
 							class={css({
-								fontSize: '10px',
+								fontSize: '2xs',
 								fontWeight: 'medium',
 								color: 'fg.secondary',
 								textTransform: 'uppercase'
@@ -740,7 +740,7 @@
 						<label
 							for="hc-threshold"
 							class={css({
-								fontSize: '10px',
+								fontSize: '2xs',
 								fontWeight: 'medium',
 								color: 'fg.secondary',
 								textTransform: 'uppercase'
@@ -781,7 +781,7 @@
 						<label
 							for="hc-unique-column"
 							class={css({
-								fontSize: '10px',
+								fontSize: '2xs',
 								fontWeight: 'medium',
 								color: 'fg.secondary',
 								textTransform: 'uppercase'
@@ -808,7 +808,7 @@
 						<label
 							for="hc-expected"
 							class={css({
-								fontSize: '10px',
+								fontSize: '2xs',
 								fontWeight: 'medium',
 								color: 'fg.secondary',
 								textTransform: 'uppercase'
@@ -849,7 +849,7 @@
 						<label
 							for="hc-range-column"
 							class={css({
-								fontSize: '10px',
+								fontSize: '2xs',
 								fontWeight: 'medium',
 								color: 'fg.secondary',
 								textTransform: 'uppercase'
@@ -876,7 +876,7 @@
 						<label
 							for="hc-min"
 							class={css({
-								fontSize: '10px',
+								fontSize: '2xs',
 								fontWeight: 'medium',
 								color: 'fg.secondary',
 								textTransform: 'uppercase'
@@ -903,7 +903,7 @@
 						<label
 							for="hc-max"
 							class={css({
-								fontSize: '10px',
+								fontSize: '2xs',
 								fontWeight: 'medium',
 								color: 'fg.secondary',
 								textTransform: 'uppercase'
@@ -1086,17 +1086,7 @@
 							id="hc-search"
 							aria-label="Search health checks"
 							placeholder="Search by check, datasource, or ID..."
-							class={css({
-								width: '100%',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
-								backgroundColor: 'transparent',
-								paddingX: '3',
-								paddingY: '1.5',
-								paddingLeft: '8',
-								fontSize: 'sm'
-							})}
+							class={input({ variant: 'search' })}
 							bind:value={search}
 						/>
 					</div>
@@ -1141,7 +1131,7 @@
 						backgroundColor: 'accent.bg',
 						paddingX: '2',
 						paddingY: '1',
-						fontSize: '10px',
+						fontSize: '2xs',
 						fontWeight: 'medium',
 						color: 'accent.primary',
 						_hover: { backgroundColor: 'accent.bg/80' },
@@ -1222,9 +1212,9 @@
 			)}
 		>
 			<HeartPulse class={css({ marginBottom: '2', color: 'fg.muted' })} size={compact ? 16 : 24} />
-			<p class={css({ fontSize: 'xs', color: 'fg.muted' })}>No health checks configured.</p>
+			<p class={emptyText({ size: 'compact' })}>No health checks configured.</p>
 			{#if !compact}
-				<p class={css({ marginTop: '1', fontSize: '10px', color: 'fg.tertiary', maxWidth: 'xs' })}>
+				<p class={css({ marginTop: '1', fontSize: '2xs', color: 'fg.tertiary', maxWidth: 'xs' })}>
 					Add checks to validate row counts, null values, uniqueness, and data quality.
 				</p>
 			{/if}
@@ -1240,9 +1230,7 @@
 				textAlign: 'center'
 			})}
 		>
-			<p class={css({ fontSize: 'sm', color: 'fg.tertiary' })}>
-				No health checks match your search.
-			</p>
+			<p class={emptyText({ size: 'panel' })}>No health checks match your search.</p>
 		</div>
 	{:else if visibleChecks.length > 0}
 		{#if !compact}
@@ -1502,7 +1490,7 @@
 												backgroundColor: 'accent.bg',
 												paddingX: '1.5',
 												paddingY: '0.5',
-												fontSize: '10px',
+												fontSize: '2xs',
 												fontWeight: 'bold',
 												textTransform: 'uppercase',
 												letterSpacing: 'wide',
@@ -1512,7 +1500,7 @@
 											Critical
 										</span>
 									{:else}
-										<span class={css({ fontSize: '10px', color: 'fg.tertiary' })}>-</span>
+										<span class={css({ fontSize: '2xs', color: 'fg.tertiary' })}>-</span>
 									{/if}
 								</td>
 								<td
@@ -1603,66 +1591,64 @@
 											})}
 										>
 											<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-												<span class={css({ fontSize: '10px', color: 'fg.muted' })}>Check Type</span>
-												<span class={css({ fontSize: '10px', color: 'fg.secondary' })}>
+												<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>Check Type</span>
+												<span class={css({ fontSize: '2xs', color: 'fg.secondary' })}>
 													{getTypeLabel(check.check_type)}
 												</span>
 											</div>
 											{#if !datasourceId}
 												<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-													<span class={css({ fontSize: '10px', color: 'fg.muted' })}
-														>Datasource</span
+													<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>Datasource</span
 													>
-													<span class={css({ fontSize: '10px', color: 'fg.secondary' })}>
+													<span class={css({ fontSize: '2xs', color: 'fg.secondary' })}>
 														{resolveDatasource(check.datasource_id)}
 													</span>
 												</div>
 											{/if}
 											<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-												<span class={css({ fontSize: '10px', color: 'fg.muted' })}
+												<span class={css({ fontSize: '2xs', color: 'fg.muted' })}
 													>Configuration</span
 												>
-												<span class={css({ fontSize: '10px', color: 'fg.secondary' })}>
+												<span class={css({ fontSize: '2xs', color: 'fg.secondary' })}>
 													{formatConfig(check.config)}
 												</span>
 											</div>
 											{#if latest}
 												<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-													<span class={css({ fontSize: '10px', color: 'fg.muted' })}
+													<span class={css({ fontSize: '2xs', color: 'fg.muted' })}
 														>Latest Result</span
 													>
 													<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
 														{#if latest.passed}
 															<Check size={10} class={css({ color: 'success.fg' })} />
-															<span class={css({ fontSize: '10px', color: 'success.fg' })}
+															<span class={css({ fontSize: '2xs', color: 'success.fg' })}
 																>Passed</span
 															>
 														{:else}
 															<X size={10} class={css({ color: 'error.fg' })} />
-															<span class={css({ fontSize: '10px', color: 'error.fg' })}
-																>Failed</span
+															<span class={css({ fontSize: '2xs', color: 'error.fg' })}>Failed</span
 															>
 														{/if}
 													</div>
 													{#if latest.message}
-														<span class={css({ fontSize: '10px', color: 'fg.muted' })}
+														<span class={css({ fontSize: '2xs', color: 'fg.muted' })}
 															>{latest.message}</span
 														>
 													{/if}
 												</div>
 											{/if}
 											<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-												<span class={css({ fontSize: '10px', color: 'fg.muted' })}>Created</span>
-												<span class={css({ fontSize: '10px', color: 'fg.secondary' })}>
+												<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>Created</span>
+												<span class={css({ fontSize: '2xs', color: 'fg.secondary' })}>
 													{new Date(check.created_at).toLocaleString()}
 												</span>
 											</div>
 											<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-												<span class={css({ fontSize: '10px', color: 'fg.muted' })}>Check ID</span>
+												<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>Check ID</span>
 												<span
 													class={css({
-														fontFamily: 'var(--font-mono)',
-														fontSize: '10px',
+														fontFamily: 'mono',
+														fontSize: '2xs',
 														color: 'fg.secondary'
 													})}
 												>
@@ -1739,7 +1725,7 @@
 										overflow: 'hidden',
 										textOverflow: 'ellipsis',
 										whiteSpace: 'nowrap',
-										fontSize: '10px',
+										fontSize: '2xs',
 										color: 'fg.tertiary'
 									})}
 									title={check.datasource_id}
@@ -1754,7 +1740,7 @@
 										backgroundColor: 'accent.bg',
 										paddingX: '1',
 										paddingY: '0.5',
-										fontSize: '9px',
+										fontSize: '2xs',
 										fontWeight: 'bold',
 										textTransform: 'uppercase',
 										lineHeight: 'none',

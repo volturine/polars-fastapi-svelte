@@ -4,6 +4,8 @@
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
 	import { schemaStore } from '$lib/stores/schema.svelte';
 	import DatasourcePicker from '$lib/components/common/DatasourcePicker.svelte';
+	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
 	import { css, cx } from '$lib/styles/panda';
 
 	interface UnionByNameConfigData {
@@ -81,7 +83,7 @@
 			marginBottom: '3',
 			color: 'fg.tertiary',
 			fontSize: 'xs',
-			lineHeight: '1.6'
+			lineHeight: 'base'
 		})}
 	>
 		Combine rows from multiple datasources using matching column names.
@@ -90,25 +92,13 @@
 	<div
 		class={css({
 			marginBottom: '0',
-			padding: '0 0 1.25rem 0',
+			paddingBottom: '5',
 			backgroundColor: 'transparent',
 			borderRadius: '0',
 			border: 'none'
 		})}
 	>
-		<h4
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			Base Datasource
-		</h4>
+		<SectionHeader>Base Datasource</SectionHeader>
 		<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 			{#if currentDatasource}
 				<strong>{currentDatasource.name}</strong>
@@ -125,12 +115,17 @@
 		class={cx(
 			css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
 			}),
-			css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+			css({
+				paddingTop: '5',
+				borderTopWidth: '1',
+				borderTopStyle: 'solid',
+				borderTopColor: 'border.tertiary'
+			})
 		)}
 	>
 		<div
@@ -141,22 +136,7 @@
 				marginBottom: '5'
 			})}
 		>
-			<h4
-				class={cx(
-					css({
-						marginTop: '0',
-						marginBottom: '3',
-						fontSize: '0.6875rem',
-						fontWeight: '600',
-						color: 'fg.muted',
-						textTransform: 'uppercase',
-						letterSpacing: '0.08em'
-					}),
-					css({ marginBottom: '0' })
-				)}
-			>
-				Union Sources
-			</h4>
+			<SectionHeader>Union Sources</SectionHeader>
 		</div>
 
 		{#if datasourceOptions.length === 0}
@@ -175,23 +155,7 @@
 		{/if}
 
 		{#if selectedSources.length === 0}
-			<div
-				class={css({
-					padding: '0.625rem 0.75rem',
-					border: 'none',
-					borderLeft: '2px solid',
-					borderRadius: '0',
-					marginTop: '0.75rem',
-					marginBottom: '0',
-					fontSize: '0.75rem',
-					lineHeight: '1.5',
-					backgroundColor: 'transparent',
-					borderLeftColor: 'warning.border',
-					color: 'fg.tertiary'
-				})}
-			>
-				Select at least one datasource to union.
-			</div>
+			<Callout tone="warn">Select at least one datasource to union.</Callout>
 		{/if}
 	</div>
 
@@ -199,27 +163,20 @@
 		class={cx(
 			css({
 				marginBottom: '0',
-				padding: '0 0 1.25rem 0',
+				paddingBottom: '5',
 				backgroundColor: 'transparent',
 				borderRadius: '0',
 				border: 'none'
 			}),
-			css({ paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' })
+			css({
+				paddingTop: '5',
+				borderTopWidth: '1',
+				borderTopStyle: 'solid',
+				borderTopColor: 'border.tertiary'
+			})
 		)}
 	>
-		<h4
-			class={css({
-				marginTop: '0',
-				marginBottom: '3',
-				fontSize: '0.6875rem',
-				fontWeight: '600',
-				color: 'fg.muted',
-				textTransform: 'uppercase',
-				letterSpacing: '0.08em'
-			})}
-		>
-			Column Matching
-		</h4>
+		<SectionHeader>Column Matching</SectionHeader>
 		<label class={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
 			<input id="allow-missing" type="checkbox" bind:checked={config.allow_missing} />
 			<span>Allow missing columns (fill with nulls)</span>

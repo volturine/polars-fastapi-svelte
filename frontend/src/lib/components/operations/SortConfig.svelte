@@ -2,7 +2,9 @@
 	import type { Schema } from '$lib/types/schema';
 	import { X, Plus, ArrowUp, ArrowDown } from 'lucide-svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
-	import { css } from '$lib/styles/panda';
+	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+	import ToggleButton from '$lib/components/ui/ToggleButton.svelte';
+	import { css, emptyText } from '$lib/styles/panda';
 
 	const uid = $props.id();
 
@@ -71,8 +73,8 @@
 			<span
 				class={css({
 					position: 'absolute',
-					width: '1px',
-					height: '1px',
+					width: 'px',
+					height: 'px',
 					padding: '0',
 					margin: '-1px',
 					overflow: 'hidden',
@@ -100,98 +102,24 @@
 			role="group"
 			aria-label="Sort direction"
 		>
-			<button
-				id="{uid}-ascending"
-				data-testid="sort-ascending-button"
-				type="button"
-				class={!newDescending
-					? css({
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							width: '8',
-							height: '8',
-							padding: '0',
-							cursor: 'pointer',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.primary',
-							borderRadius: 'sm 0 0 sm',
-							backgroundColor: 'accent.bg',
-							color: 'accent.primary',
-							boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
-							position: 'relative',
-							zIndex: '1'
-						})
-					: css({
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							width: '8',
-							height: '8',
-							padding: '0',
-							cursor: 'pointer',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.primary',
-							borderRadius: 'sm 0 0 sm',
-							backgroundColor: 'bg.tertiary',
-							color: 'fg.secondary',
-							_hover: { backgroundColor: 'bg.secondary', color: 'fg.primary' }
-						})}
+			<ToggleButton
+				active={!newDescending}
+				radius="left"
 				onclick={() => (newDescending = false)}
-				title="Ascending"
-				aria-pressed={!newDescending}
-				aria-label="Sort ascending"
+				ariaLabel="Sort ascending"
+				ariaPressed={!newDescending}
 			>
 				<ArrowUp size={14} aria-hidden="true" />
-			</button>
-			<button
-				id="{uid}-descending"
-				data-testid="sort-descending-button"
-				type="button"
-				class={newDescending
-					? css({
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							width: '8',
-							height: '8',
-							padding: '0',
-							cursor: 'pointer',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.primary',
-							borderRadius: '0 sm sm 0',
-							backgroundColor: 'accent.bg',
-							color: 'accent.primary',
-							boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
-							position: 'relative',
-							zIndex: '1'
-						})
-					: css({
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							width: '8',
-							height: '8',
-							padding: '0',
-							cursor: 'pointer',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.primary',
-							borderRadius: '0 sm sm 0',
-							backgroundColor: 'bg.tertiary',
-							color: 'fg.secondary',
-							_hover: { backgroundColor: 'bg.secondary', color: 'fg.primary' }
-						})}
+			</ToggleButton>
+			<ToggleButton
+				active={newDescending}
+				radius="right"
 				onclick={() => (newDescending = true)}
-				title="Descending"
-				aria-pressed={newDescending}
-				aria-label="Sort descending"
+				ariaLabel="Sort descending"
+				ariaPressed={newDescending}
 			>
 				<ArrowDown size={14} aria-hidden="true" />
-			</button>
+			</ToggleButton>
 		</div>
 
 		<button
@@ -222,20 +150,7 @@
 
 	{#if safeConfig.columns.length > 0}
 		<div id="sort-rules-list" role="region" aria-labelledby="sort-order-heading">
-			<h4
-				id="sort-order-heading"
-				class={css({
-					marginTop: '0',
-					marginBottom: '3',
-					fontSize: '0.6875rem',
-					fontWeight: '600',
-					color: 'fg.muted',
-					textTransform: 'uppercase',
-					letterSpacing: '0.08em'
-				})}
-			>
-				Sort Order
-			</h4>
+			<span id="sort-order-heading"><SectionHeader>Sort Order</SectionHeader></span>
 			{#each safeConfig.columns as column, i (column)}
 				<div
 					class={css({
@@ -264,98 +179,24 @@
 						role="group"
 						aria-label={`Sort direction for ${column}`}
 					>
-						<button
-							id={`sort-btn-asc-${i}`}
-							data-testid={`sort-ascending-rule-${i}`}
-							type="button"
-							class={!safeConfig.descending[i]
-								? css({
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										width: '7',
-										height: '7',
-										padding: '0',
-										cursor: 'pointer',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'border.primary',
-										borderRadius: 'sm 0 0 sm',
-										backgroundColor: 'accent.bg',
-										color: 'accent.primary',
-										boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
-										position: 'relative',
-										zIndex: '1'
-									})
-								: css({
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										width: '7',
-										height: '7',
-										padding: '0',
-										cursor: 'pointer',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'border.primary',
-										borderRadius: 'sm 0 0 sm',
-										backgroundColor: 'bg.tertiary',
-										color: 'fg.secondary',
-										_hover: { backgroundColor: 'bg.tertiary', color: 'fg.primary' }
-									})}
+						<ToggleButton
+							active={!safeConfig.descending[i]}
+							radius="left"
 							onclick={() => setDirection(i, false)}
-							title="Ascending"
-							aria-pressed={!safeConfig.descending[i]}
-							aria-label={`Sort ${column} ascending`}
+							ariaLabel={`Sort ${column} ascending`}
+							ariaPressed={!safeConfig.descending[i]}
 						>
 							<ArrowUp size={12} aria-hidden="true" />
-						</button>
-						<button
-							id={`sort-btn-desc-${i}`}
-							data-testid={`sort-descending-rule-${i}`}
-							type="button"
-							class={safeConfig.descending[i]
-								? css({
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										width: '7',
-										height: '7',
-										padding: '0',
-										cursor: 'pointer',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'border.primary',
-										borderRadius: '0 sm sm 0',
-										backgroundColor: 'accent.bg',
-										color: 'accent.primary',
-										boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
-										position: 'relative',
-										zIndex: '1'
-									})
-								: css({
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										width: '7',
-										height: '7',
-										padding: '0',
-										cursor: 'pointer',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'border.primary',
-										borderRadius: '0 sm sm 0',
-										backgroundColor: 'bg.tertiary',
-										color: 'fg.secondary',
-										_hover: { backgroundColor: 'bg.tertiary', color: 'fg.primary' }
-									})}
+						</ToggleButton>
+						<ToggleButton
+							active={safeConfig.descending[i]}
+							radius="right"
 							onclick={() => setDirection(i, true)}
-							title="Descending"
-							aria-pressed={safeConfig.descending[i]}
-							aria-label={`Sort ${column} descending`}
+							ariaLabel={`Sort ${column} descending`}
+							ariaPressed={safeConfig.descending[i]}
 						>
 							<ArrowDown size={12} aria-hidden="true" />
-						</button>
+						</ToggleButton>
 						<button
 							id={`sort-btn-remove-${i}`}
 							data-testid={`sort-remove-rule-${i}`}
@@ -390,11 +231,7 @@
 			{/each}
 		</div>
 	{:else}
-		<p
-			id="sort-empty-state"
-			class={css({ paddingY: '8', textAlign: 'center', fontSize: 'xs', color: 'fg.muted' })}
-			role="status"
-		>
+		<p id="sort-empty-state" class={emptyText()} role="status">
 			No sort rules configured. Add a column to sort by.
 		</p>
 	{/if}

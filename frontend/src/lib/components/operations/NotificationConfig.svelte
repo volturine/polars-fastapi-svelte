@@ -6,8 +6,10 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
+	import ToggleButton from '$lib/components/ui/ToggleButton.svelte';
 	import { Search } from 'lucide-svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, cx, input } from '$lib/styles/panda';
 
 	interface Props {
 		config?: NotificationConfigData;
@@ -142,23 +144,7 @@
 	aria-label="Notification configuration"
 >
 	{#if !isReady}
-		<div
-			class={css({
-				padding: '0.625rem 0.75rem',
-				border: 'none',
-				borderLeft: '2px solid',
-				borderRadius: '0',
-				marginTop: '0.75rem',
-				marginBottom: '5',
-				fontSize: '0.75rem',
-				lineHeight: '1.5',
-				backgroundColor: 'transparent',
-				borderLeftColor: 'warning.border',
-				color: 'fg.tertiary'
-			})}
-		>
-			Configure SMTP or Telegram in global settings first.
-		</div>
+		<Callout tone="warn">Configure SMTP or Telegram in global settings first.</Callout>
 	{/if}
 
 	<div class={css({ marginBottom: '5' })}>
@@ -192,98 +178,30 @@
 						gap: '3'
 					})}
 				>
-					<span class={css({ fontSize: '10px', textTransform: 'uppercase', color: 'fg.muted' })}>
+					<span class={css({ fontSize: '2xs', textTransform: 'uppercase', color: 'fg.muted' })}>
 						Recipient Source
 					</span>
 					<div class={css({ display: 'flex' })} role="radiogroup" aria-label="Recipient source">
-						<button
-							type="button"
-							class={recipientSource === 'manual'
-								? css({
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										paddingX: '2',
-										paddingY: '1',
-										fontSize: '10px',
-										cursor: 'pointer',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'border.primary',
-										borderRadius: 'sm 0 0 sm',
-										backgroundColor: 'accent.bg',
-										color: 'accent.primary',
-										boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
-										position: 'relative',
-										zIndex: '1'
-									})
-								: css({
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										paddingX: '2',
-										paddingY: '1',
-										fontSize: '10px',
-										cursor: 'pointer',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'border.tertiary',
-										borderRadius: 'sm 0 0 sm',
-										backgroundColor: 'transparent',
-										color: 'fg.muted',
-										_hover: { backgroundColor: 'bg.hover', color: 'fg.secondary' }
-									})}
+						<ToggleButton
+							active={recipientSource === 'manual'}
+							radius="left"
 							onclick={() => handleRecipientSourceChange('manual')}
-							aria-pressed={recipientSource === 'manual'}
+							ariaPressed={recipientSource === 'manual'}
 						>
 							Subscribers
-						</button>
-						<button
-							type="button"
-							class={recipientSource === 'column'
-								? css({
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										paddingX: '2',
-										paddingY: '1',
-										fontSize: '10px',
-										cursor: 'pointer',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'border.primary',
-										borderRadius: '0 sm sm 0',
-										backgroundColor: 'accent.bg',
-										color: 'accent.primary',
-										boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
-										position: 'relative',
-										zIndex: '1'
-									})
-								: css({
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										paddingX: '2',
-										paddingY: '1',
-										fontSize: '10px',
-										cursor: 'pointer',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'border.tertiary',
-										borderRadius: '0 sm sm 0',
-										backgroundColor: 'transparent',
-										color: 'fg.muted',
-										_hover: { backgroundColor: 'bg.hover', color: 'fg.secondary' }
-									})}
+						</ToggleButton>
+						<ToggleButton
+							active={recipientSource === 'column'}
+							radius="right"
 							onclick={() => handleRecipientSourceChange('column')}
-							aria-pressed={recipientSource === 'column'}
+							ariaPressed={recipientSource === 'column'}
 						>
 							Column
-						</button>
+						</ToggleButton>
 					</div>
 				</div>
 				{#if recipientSource === 'column'}
-					<span class={css({ fontSize: '10px', textTransform: 'uppercase', color: 'fg.muted' })}>
+					<span class={css({ fontSize: '2xs', textTransform: 'uppercase', color: 'fg.muted' })}>
 						Recipient Column
 					</span>
 					<ColumnDropdown
@@ -295,11 +213,11 @@
 							col.dtype.toLowerCase().includes('string') ||
 							col.dtype.toLowerCase().includes('list')}
 					/>
-					<span class={css({ fontSize: '10px', color: 'fg.muted' })}>
+					<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>
 						Use string or list[string] columns. Comma-separated strings are supported.
 					</span>
 				{:else}
-					<span class={css({ fontSize: '10px', textTransform: 'uppercase', color: 'fg.muted' })}>
+					<span class={css({ fontSize: '2xs', textTransform: 'uppercase', color: 'fg.muted' })}>
 						Recipients
 					</span>
 					<div class={css({ position: 'relative' })}>
@@ -308,7 +226,7 @@
 							class={css({
 								pointerEvents: 'none',
 								position: 'absolute',
-								left: '0.5rem',
+								left: '2',
 								top: '50%',
 								transform: 'translateY(-50%)',
 								color: 'fg.muted'
@@ -317,18 +235,10 @@
 						<input
 							id="notif-search"
 							aria-label="Search subscribers"
-							class={css({
-								width: '100%',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
-								backgroundColor: 'bg.secondary',
-								paddingY: '1',
-								paddingLeft: '1.75rem',
-								paddingRight: '2',
-								fontSize: 'xs',
-								color: 'fg.primary'
-							})}
+							class={cx(
+								input({ variant: 'searchCompact' }),
+								css({ paddingLeft: '7', paddingRight: '2' })
+							)}
 							placeholder="Search subscribers..."
 							value={search}
 							oninput={(e) => (search = e.currentTarget.value)}
@@ -336,7 +246,7 @@
 					</div>
 					<div
 						class={css({
-							maxHeight: '8rem',
+							maxHeight: '32',
 							overflowY: 'auto',
 							borderWidth: '1px',
 							borderStyle: 'solid',
@@ -349,7 +259,7 @@
 								class={css({
 									padding: '2',
 									textAlign: 'center',
-									fontSize: '10px',
+									fontSize: '2xs',
 									color: 'fg.muted'
 								})}
 							>
@@ -360,7 +270,7 @@
 								class={css({
 									padding: '2',
 									textAlign: 'center',
-									fontSize: '10px',
+									fontSize: '2xs',
 									color: 'error.fg'
 								})}
 							>
@@ -371,7 +281,7 @@
 								class={css({
 									padding: '2',
 									textAlign: 'center',
-									fontSize: '10px',
+									fontSize: '2xs',
 									color: 'fg.muted'
 								})}
 							>
@@ -382,7 +292,7 @@
 								class={css({
 									padding: '2',
 									textAlign: 'center',
-									fontSize: '10px',
+									fontSize: '2xs',
 									color: 'fg.muted'
 								})}
 							>
@@ -426,7 +336,7 @@
 										class={css({
 											marginLeft: 'auto',
 											flexShrink: '0',
-											fontSize: '10px',
+											fontSize: '2xs',
 											color: 'fg.muted'
 										})}
 									>

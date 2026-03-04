@@ -6,7 +6,10 @@
 	import type { UdfExport } from '$lib/types/udf';
 	import { Plus, Upload, Download, Copy, Trash2, Pencil } from 'lucide-svelte';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
-	import { css, spinner, button } from '$lib/styles/panda';
+	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
+	import PanelFooter from '$lib/components/ui/PanelFooter.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
+	import { css, spinner, button, chip } from '$lib/styles/panda';
 
 	const queryClient = useQueryClient();
 
@@ -178,23 +181,9 @@
 			<div class={spinner()}></div>
 		</div>
 	{:else if query.isError}
-		<div
-			class={css({
-				padding: '0.625rem 0.75rem',
-				border: 'none',
-				borderLeft: '2px solid',
-				borderRadius: '0',
-				marginTop: '0.75rem',
-				marginBottom: '0',
-				fontSize: '0.75rem',
-				lineHeight: '1.5',
-				backgroundColor: 'transparent',
-				borderLeftColor: 'error.border',
-				color: 'error.fg'
-			})}
-		>
+		<Callout tone="error">
 			{query.error instanceof Error ? query.error.message : 'Error loading UDFs.'}
-		</div>
+		</Callout>
 	{:else if query.data}
 		{#if query.data.length === 0}
 			<div
@@ -248,7 +237,7 @@
 											class={css({
 												fontSize: 'xs',
 												textTransform: 'uppercase',
-												letterSpacing: '0.05em',
+												letterSpacing: 'wider',
 												color: 'fg.muted'
 											})}
 										>
@@ -263,15 +252,7 @@
 							{#if udf.tags?.length}
 								<div class={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}>
 									{#each udf.tags as tag (tag)}
-										<span
-											class={css({
-												backgroundColor: 'bg.tertiary',
-												paddingX: '1.5',
-												paddingY: '0.5',
-												fontSize: 'xs',
-												color: 'fg.muted'
-											})}
-										>
+										<span class={chip({ tone: 'neutral' })}>
 											{tag}
 										</span>
 									{/each}
@@ -323,7 +304,7 @@
 			class={css({
 				position: 'fixed',
 				inset: '0',
-				background: 'var(--overlay-bg)',
+				background: 'bg.overlay',
 				zIndex: 'modal'
 			})}
 		></div>
@@ -344,42 +325,37 @@
 				_focus: { outline: 'none' }
 			})}
 		>
+			<PanelHeader>
+				{#snippet title()}<h2 class={css({ margin: '0', fontSize: 'md', color: 'fg.primary' })}>
+						Import UDFs
+					</h2>{/snippet}
+				{#snippet actions()}
+					<button
+						class={css({
+							background: 'transparent',
+							border: 'none',
+							color: 'fg.muted',
+							cursor: 'pointer',
+							fontSize: 'xl',
+							padding: '1',
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							transitionProperty: 'color, background-color',
+							transitionDuration: 'normal',
+							_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+						})}
+						onclick={() => (importOpen = false)}>x</button
+					>
+				{/snippet}
+			</PanelHeader>
 			<div
 				class={css({
-					display: 'flex',
-					justifyContent: 'space-between',
-					alignItems: 'center',
-					padding: '0.75rem 1rem',
-					borderBottom: '1px solid var(--color-border-primary)',
-					'& h2': { margin: '0', fontSize: '1rem', color: 'fg.primary' }
-				})}
-			>
-				<h2>Import UDFs</h2>
-				<button
-					class={css({
-						background: 'transparent',
-						border: 'none',
-						color: 'fg.muted',
-						cursor: 'pointer',
-						fontSize: '1.25rem',
-						padding: '0.25rem',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						transitionProperty: 'color, background-color',
-						transitionDuration: 'normal',
-						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
-					})}
-					onclick={() => (importOpen = false)}>x</button
-				>
-			</div>
-			<div
-				class={css({
-					padding: '1rem',
+					padding: '4',
 					overflowY: 'auto',
 					display: 'flex',
 					flexDirection: 'column',
-					gap: '0.75rem'
+					gap: '3'
 				})}
 			>
 				<label for="udf-import-json">Import JSON</label>
@@ -388,7 +364,7 @@
 					id="udf-import-json"
 					placeholder="Paste exported JSON here..."
 					bind:value={importText}
-					class={css({ fontFamily: 'var(--font-mono)' })}
+					class={css({ fontFamily: 'mono' })}
 				></textarea>
 				<label
 					class={css({ display: 'flex', alignItems: 'center', gap: '2', color: 'fg.secondary' })}
@@ -397,39 +373,17 @@
 					Overwrite existing by name
 				</label>
 				{#if importError}
-					<div
-						class={css({
-							padding: '0.625rem 0.75rem',
-							border: 'none',
-							borderLeft: '2px solid',
-							borderRadius: '0',
-							marginTop: '0.75rem',
-							marginBottom: '0',
-							fontSize: '0.75rem',
-							lineHeight: '1.5',
-							backgroundColor: 'transparent',
-							borderLeftColor: 'error.border',
-							color: 'error.fg'
-						})}
-					>
+					<Callout tone="error">
 						{importError}
-					</div>
+					</Callout>
 				{/if}
 			</div>
-			<div
-				class={css({
-					padding: '0.75rem 1rem',
-					borderTop: '1px solid var(--color-border-primary)',
-					display: 'flex',
-					justifyContent: 'flex-end',
-					gap: '0.5rem'
-				})}
-			>
+			<PanelFooter>
 				<button class={button({ variant: 'secondary' })} onclick={() => (importOpen = false)}
 					>Cancel</button
 				>
 				<button class={button({ variant: 'primary' })} onclick={handleImport}>Import</button>
-			</div>
+			</PanelFooter>
 		</div>
 	{/if}
 </div>

@@ -14,5 +14,20 @@ export {
 	chip,
 	emptyText,
 	badge,
-	input
+	input,
+	stepConfig
 } from '../../../styled-system/recipes';
+
+import { css } from '../../../styled-system/css';
+
+export const muted = css({ color: 'fg.muted' });
+export const row = css({ display: 'flex', alignItems: 'center' });
+export const rowBetween = css({
+	display: 'flex',
+	alignItems: 'center',
+	justifyContent: 'space-between'
+});
+export const divider = css({
+	borderTopWidth: '1',
+	borderTopColor: 'border.primary'
+});

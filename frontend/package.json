@@ -4,7 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"predev": "panda codegen && panda cssgen",
+		"predev": "svelte-kit sync && panda codegen && panda cssgen",
 		"dev": "vite dev",
 		"build": "panda cssgen && vite build",
 		"preview": "vite preview",

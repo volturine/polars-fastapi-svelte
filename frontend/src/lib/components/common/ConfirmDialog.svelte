@@ -43,15 +43,13 @@
 	closeOnBackdrop={true}
 	panelClass={css({
 		width: 'full',
-		maxWidth: '100',
+		maxWidth: 'panel',
 		overflow: 'hidden',
-		borderWidth: '1px',
-		borderStyle: 'solid',
-		borderColor: 'border.tertiary',
+		borderWidth: '1',
+		borderColor: 'border.primary',
 		_focus: { outline: 'none' },
 		smDown: { maxWidth: 'full' },
-		backgroundColor: 'bg.primary',
-		animation: 'var(--animate-slide-up)'
+		backgroundColor: 'bg.primary'
 	})}
 	ariaLabelledby="dialog-title"
 	ariaDescribedby="dialog-message"

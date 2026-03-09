@@ -8,7 +8,7 @@
 		config?: DownloadConfigData;
 	}
 
-	import { css, cx } from '$lib/styles/panda';
+	import { css, cx, stepConfig, divider } from '$lib/styles/panda';
 
 	let { config = $bindable({ format: 'csv', filename: 'download' }) }: Props = $props();
 
@@ -22,15 +22,13 @@
 	];
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
->
+<div class={stepConfig()}>
 	<div
 		class={css({
 			marginBottom: '0',
 			paddingBottom: '5',
 			backgroundColor: 'transparent',
-			borderRadius: '0',
+
 			border: 'none'
 		})}
 	>
@@ -64,10 +62,15 @@
 				marginBottom: '0',
 				paddingBottom: '5',
 				backgroundColor: 'transparent',
-				borderRadius: '0',
+
 				border: 'none'
 			}),
-			css({ paddingTop: '5', borderTop: '1px solid var(--color-border-tertiary)' })
+			cx(
+				divider,
+				css({
+					paddingTop: '5'
+				})
+			)
 		)}
 	>
 		<label

@@ -171,7 +171,7 @@
 	class={css({
 		marginX: 'auto',
 		boxSizing: 'border-box',
-		maxWidth: '300',
+		maxWidth: 'page',
 		paddingX: '8',
 		paddingY: '8',
 		md: { paddingX: '4', paddingY: '4' }
@@ -185,9 +185,8 @@
 			alignItems: 'stretch',
 			justifyContent: 'space-between',
 			gap: '6',
-			borderBottomWidth: '1px',
-			borderBottomStyle: 'solid',
-			borderBottomColor: 'border.tertiary',
+			borderBottomWidth: '1',
+			borderBottomColor: 'border.primary',
 			paddingBottom: '6',
 			md: { flexDirection: 'row', alignItems: 'flex-start' }
 		})}
@@ -205,9 +204,8 @@
 				width: '100%',
 				justifyContent: 'center',
 				backgroundColor: 'accent.primary',
-				color: 'bg.primary',
-				borderWidth: '1px',
-				borderStyle: 'solid',
+				color: 'fg.inverse',
+				borderWidth: '1',
 				borderColor: 'border.primary',
 				paddingX: '4',
 				paddingY: '2',
@@ -239,7 +237,7 @@
 			<div
 				class={css({
 					display: 'flex',
-					minHeight: '100',
+					minHeight: 'listLg',
 					flexDirection: 'column',
 					alignItems: 'center',
 					justifyContent: 'center',
@@ -252,8 +250,8 @@
 					class={css({
 						marginBottom: '6',
 						display: 'flex',
-						height: '12',
-						width: '12',
+						height: 'logo',
+						width: 'logo',
 						alignItems: 'center',
 						justifyContent: 'center',
 						fontSize: 'xl',
@@ -265,15 +263,14 @@
 				<h2 class={css({ margin: '0', marginBottom: '2', fontSize: 'lg', fontWeight: 'semibold' })}>
 					Failed to load analyses
 				</h2>
-				<p class={css({ margin: '0', marginBottom: '6', maxWidth: '100', fontSize: 'sm' })}>
+				<p class={css({ margin: '0', marginBottom: '6', maxWidth: 'panel', fontSize: 'sm' })}>
 					{query.error.message}
 				</p>
 				<button
 					class={css({
 						backgroundColor: 'accent.primary',
-						color: 'bg.primary',
-						borderWidth: '1px',
-						borderStyle: 'solid',
+						color: 'fg.inverse',
+						borderWidth: '1',
 						borderColor: 'border.primary',
 						paddingX: '4',
 						paddingY: '2'
@@ -300,9 +297,9 @@
 				{#if filteredAndSortedAnalyses.length === 0}
 					<div
 						class={css({
-							borderWidth: '1px',
+							borderWidth: '1',
 							borderStyle: 'dashed',
-							borderColor: 'border.tertiary',
+							borderColor: 'border.primary',
 							paddingX: '6',
 							paddingY: '12',
 							textAlign: 'center'

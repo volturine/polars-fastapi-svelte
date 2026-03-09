@@ -24,7 +24,7 @@
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
 	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
-	import { css, input } from '$lib/styles/panda';
+	import { css, input, cx, row, rowBetween, divider } from '$lib/styles/panda';
 
 	interface Props {
 		open: boolean;
@@ -181,15 +181,13 @@
 	closeOnBackdrop={true}
 	panelClass={css({
 		width: '100%',
-		maxWidth: '120',
+		maxWidth: 'modalSm',
 		maxHeight: '90vh',
 		overflowY: 'auto',
-		borderWidth: '1px',
-		borderStyle: 'solid',
-		borderColor: 'border.tertiary',
+		borderWidth: '1',
+		borderColor: 'border.primary',
 		backgroundColor: 'bg.primary',
-		outline: 'none',
-		animation: 'var(--animate-slide-up)'
+		outline: 'none'
 	})}
 	ariaLabelledby="settings-title"
 	{content}
@@ -250,12 +248,15 @@
 						display: 'flex',
 						alignItems: 'center',
 						gap: '2',
-						borderWidth: '1px',
-						borderStyle: 'solid',
+						borderWidth: '1',
 						padding: '2',
 						fontSize: 'xs',
 						...(feedback.type === 'success'
-							? { borderColor: 'success.fg', backgroundColor: 'success.bg', color: 'success.fg' }
+							? {
+									borderColor: 'success.border',
+									backgroundColor: 'success.bg',
+									color: 'success.fg'
+								}
 							: { borderColor: 'error.border', backgroundColor: 'error.bg', color: 'error.fg' })
 					})}
 				>
@@ -335,9 +336,8 @@
 						cursor: 'pointer',
 						alignItems: 'center',
 						gap: '1',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						paddingX: '3',
 						paddingY: '1.5',
 						fontSize: 'xs',
@@ -362,13 +362,12 @@
 
 			<div
 				class={css({
-					borderBottomWidth: '1px',
-					borderBottomStyle: 'solid',
-					borderBottomColor: 'border.tertiary'
+					borderBottomWidth: '1',
+					borderBottomColor: 'border.primary'
 				})}
 			></div>
 
-			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+			<div class={cx(row, css({ gap: '2' }))}>
 				<SectionHeader>
 					<MessageCircle size={12} class={css({ marginRight: '1', display: 'inline' })} />
 					Telegram
@@ -377,8 +376,8 @@
 					<span
 						class={css({
 							display: 'inline-block',
-							height: '2',
-							width: '2',
+							height: 'dot',
+							width: 'dot',
 							flexShrink: '0',
 							backgroundColor: botRunning ? 'success.fg' : 'error.fg'
 						})}
@@ -398,7 +397,7 @@
 				/>
 			</label>
 
-			<div class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
+			<div class={rowBetween}>
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '0.5' })}>
 					<span class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.primary' })}
 						>Enable Bot</span
@@ -410,12 +409,11 @@
 				<button
 					class={css({
 						position: 'relative',
-						height: '5',
-						width: '9',
+						height: 'iconMd',
+						width: 'rowXl',
 						cursor: 'pointer',
 						border: 'none',
-						transitionProperty: 'background-color',
-						transitionDuration: '150ms',
+						transition: 'background-color 150ms',
 						backgroundColor: telegram_bot_enabled ? 'accent.primary' : 'bg.tertiary'
 					})}
 					onclick={() => (telegram_bot_enabled = !telegram_bot_enabled)}
@@ -429,11 +427,10 @@
 							position: 'absolute',
 							top: '0.5',
 							left: '0.5',
-							height: '4',
-							width: '4',
-							backgroundColor: 'fg.primary',
-							transitionProperty: 'transform',
-							transitionDuration: '150ms',
+							height: 'iconSm',
+							width: 'iconSm',
+							backgroundColor: 'accent.primary',
+							transition: 'transform 150ms',
 							...(telegram_bot_enabled ? { transform: 'translateX(1rem)' } : {})
 						})}
 					></span>
@@ -446,21 +443,20 @@
 						display: 'flex',
 						alignItems: 'center',
 						justifyContent: 'space-between',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						paddingX: '3',
 						paddingY: '2',
 						fontSize: 'xs',
 						backgroundColor: 'bg.tertiary'
 					})}
 				>
-					<span class={css({ display: 'flex', alignItems: 'center', gap: '1.5' })}>
+					<span class={cx(row, css({ gap: '1.5' }))}>
 						<span
 							class={css({
 								display: 'inline-block',
-								height: '1.5',
-								width: '1.5',
+								height: 'barTall',
+								width: 'barTall',
 								flexShrink: '0',
 								backgroundColor: botRunning ? 'success.fg' : 'error.fg'
 							})}
@@ -481,9 +477,8 @@
 					class={css({
 						display: 'flex',
 						flexDirection: 'column',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary'
+						borderWidth: '1',
+						borderColor: 'border.primary'
 					})}
 				>
 					{#each subscribers as sub (sub.id)}
@@ -492,20 +487,19 @@
 								display: 'flex',
 								alignItems: 'center',
 								justifyContent: 'space-between',
-								borderBottomWidth: '1px',
-								borderBottomStyle: 'solid',
-								borderBottomColor: 'border.tertiary',
+								borderBottomWidth: '1',
+								borderBottomColor: 'border.primary',
 								paddingX: '3',
 								paddingY: '2',
 								fontSize: 'xs'
 							})}
 						>
-							<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+							<div class={cx(row, css({ gap: '2' }))}>
 								<span
 									class={css({
 										display: 'inline-block',
-										height: '1.5',
-										width: '1.5',
+										height: 'barTall',
+										width: 'barTall',
 										flexShrink: '0',
 										backgroundColor: sub.is_active ? 'success.fg' : 'bg.tertiary'
 									})}
@@ -524,8 +518,7 @@
 									backgroundColor: 'transparent',
 									padding: '1',
 									color: 'fg.tertiary',
-									transitionProperty: 'color',
-									transitionDuration: '150ms',
+									transition: 'color 150ms',
 									_hover: { color: 'error' }
 								})}
 								onclick={() => deleteMut.mutate(sub.id)}
@@ -546,9 +539,8 @@
 
 			<div
 				class={css({
-					borderBottomWidth: '1px',
-					borderBottomStyle: 'solid',
-					borderBottomColor: 'border.tertiary'
+					borderBottomWidth: '1',
+					borderBottomColor: 'border.primary'
 				})}
 			></div>
 
@@ -557,7 +549,7 @@
 				Debug
 			</SectionHeader>
 
-			<div class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
+			<div class={rowBetween}>
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '0.5' })}>
 					<span class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.primary' })}>
 						IndexedDB Inspector
@@ -569,12 +561,11 @@
 				<button
 					class={css({
 						position: 'relative',
-						height: '5',
-						width: '9',
+						height: 'iconMd',
+						width: 'rowXl',
 						cursor: 'pointer',
 						border: 'none',
-						transitionProperty: 'background-color',
-						transitionDuration: '150ms',
+						transition: 'background-color 150ms',
 						backgroundColor: idb ? 'accent.primary' : 'bg.tertiary'
 					})}
 					onclick={() => (idb = !idb)}
@@ -588,11 +579,10 @@
 							position: 'absolute',
 							top: '0.5',
 							left: '0.5',
-							height: '4',
-							width: '4',
-							backgroundColor: 'fg.primary',
-							transitionProperty: 'transform',
-							transitionDuration: '150ms',
+							height: 'iconSm',
+							width: 'iconSm',
+							backgroundColor: 'accent.primary',
+							transition: 'transform 150ms',
 							...(idb ? { transform: 'translateX(1rem)' } : {})
 						})}
 					></span>
@@ -601,15 +591,15 @@
 		</div>
 
 		<div
-			class={css({
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'space-between',
-				borderTopWidth: '1px',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.tertiary',
-				padding: '4'
-			})}
+			class={cx(
+				divider,
+				css({
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'space-between',
+					padding: '4'
+				})
+			)}
 		>
 			<p class={css({ margin: '0', fontSize: 'xs', color: 'fg.tertiary' })}>
 				Settings are stored in the database.
@@ -626,7 +616,7 @@
 					fontSize: 'xs',
 					fontWeight: 'medium',
 					backgroundColor: 'accent.primary',
-					color: 'bg.primary',
+					color: 'fg.inverse',
 					_hover: { opacity: 0.9 },
 					_disabled: { cursor: 'not-allowed', opacity: 0.5 }
 				})}

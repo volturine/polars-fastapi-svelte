@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Search, X, Trash2 } from 'lucide-svelte';
-	import { css, input } from '$lib/styles/panda';
+	import { css, input, cx, row } from '$lib/styles/panda';
 
 	export type SortOption = 'newest' | 'oldest' | 'name-asc' | 'name-desc';
 
@@ -40,8 +40,8 @@
 	<div
 		class={css({
 			position: 'relative',
-			minWidth: '55',
-			maxWidth: '105',
+			minWidth: 'dropdown',
+			maxWidth: 'panel',
 			flex: '1',
 			smDown: { maxWidth: 'none' }
 		})}
@@ -68,20 +68,21 @@
 		/>
 		{#if searchQuery}
 			<button
-				class={css({
-					position: 'absolute',
-					right: '2',
-					top: '50%',
-					display: 'flex',
-					transform: 'translateY(-50%)',
-					cursor: 'pointer',
-					alignItems: 'center',
-					justifyContent: 'center',
-					borderWidth: '0',
-					backgroundColor: 'transparent',
-					padding: '1',
-					color: 'fg.muted'
-				})}
+				class={cx(
+					row,
+					css({
+						position: 'absolute',
+						right: '2',
+						top: '50%',
+						transform: 'translateY(-50%)',
+						cursor: 'pointer',
+						justifyContent: 'center',
+						borderWidth: '0',
+						backgroundColor: 'transparent',
+						padding: '1',
+						color: 'fg.muted'
+					})
+				)}
 				onclick={() => onSearch('')}
 				aria-label="Clear search"
 			>
@@ -111,8 +112,7 @@
 			class={css({
 				cursor: 'pointer',
 				appearance: 'none',
-				borderWidth: '1px',
-				borderStyle: 'solid',
+				borderWidth: '1',
 				borderColor: 'border.primary',
 				backgroundColor: 'bg.primary',
 				paddingY: '2',
@@ -132,55 +132,55 @@
 	</div>
 
 	{#if selectionCount > 0}
-		<div class={css({ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '2' })}>
+		<div class={cx(row, css({ marginLeft: 'auto', gap: '2' }))}>
 			<button
-				class={css({
-					display: 'flex',
-					alignItems: 'center',
-					gap: '1',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'transparent',
-					backgroundColor: 'transparent',
-					paddingX: '3',
-					paddingY: '2',
-					fontSize: 'sm'
-				})}
+				class={cx(
+					row,
+					css({
+						gap: '1',
+						borderWidth: '1',
+						borderColor: 'transparent',
+						backgroundColor: 'transparent',
+						paddingX: '3',
+						paddingY: '2',
+						fontSize: 'sm'
+					})
+				)}
 				onclick={onSelectAll}
 			>
 				Select All
 			</button>
 			<button
-				class={css({
-					display: 'flex',
-					alignItems: 'center',
-					gap: '1',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'transparent',
-					backgroundColor: 'transparent',
-					paddingX: '3',
-					paddingY: '2',
-					fontSize: 'sm'
-				})}
+				class={cx(
+					row,
+					css({
+						gap: '1',
+						borderWidth: '1',
+						borderColor: 'transparent',
+						backgroundColor: 'transparent',
+						paddingX: '3',
+						paddingY: '2',
+						fontSize: 'sm'
+					})
+				)}
 				onclick={onClearSelection}
 			>
 				<X size={14} />
 				Clear
 			</button>
 			<button
-				class={css({
-					display: 'flex',
-					alignItems: 'center',
-					gap: '1',
-					backgroundColor: 'error.bg',
-					color: 'error.fg',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'error.border',
-					paddingX: '3',
-					paddingY: '2'
-				})}
+				class={cx(
+					row,
+					css({
+						gap: '1',
+						backgroundColor: 'error.bg',
+						color: 'error.fg',
+						borderWidth: '1',
+						borderColor: 'error.border',
+						paddingX: '3',
+						paddingY: '2'
+					})
+				)}
 				onclick={onBulkDelete}
 			>
 				<Trash2 size={14} />

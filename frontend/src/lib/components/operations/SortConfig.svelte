@@ -4,7 +4,7 @@
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import ToggleButton from '$lib/components/ui/ToggleButton.svelte';
-	import { css, emptyText } from '$lib/styles/panda';
+	import { css, emptyText, stepConfig } from '$lib/styles/panda';
 
 	const uid = $props.id();
 
@@ -53,11 +53,7 @@
 	);
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Sort configuration"
->
+<div class={stepConfig()} role="region" aria-label="Sort configuration">
 	<div
 		class={css({
 			display: 'flex',
@@ -69,7 +65,7 @@
 		role="group"
 		aria-label="Add sort rule form"
 	>
-		<div class={css({ flex: '2', minWidth: '50' })}>
+		<div class={css({ flex: '2', minWidth: 'listSm' })}>
 			<span
 				class={css({
 					position: 'absolute',
@@ -95,9 +91,9 @@
 		<div
 			class={css({
 				display: 'flex',
-				gap: '1px',
-				backgroundColor: 'border.primary',
-				padding: '1px'
+				gap: 'px',
+				backgroundColor: 'bg.muted',
+				padding: 'px'
 			})}
 			role="group"
 			aria-label="Sort direction"
@@ -137,7 +133,7 @@
 				whiteSpace: 'nowrap',
 				backgroundColor: 'accent.bg',
 				color: 'accent.primary',
-				_disabled: { backgroundColor: 'border.tertiary', cursor: 'not-allowed', color: 'fg.muted' }
+				_disabled: { backgroundColor: 'bg.muted', cursor: 'not-allowed', color: 'fg.muted' }
 			})}
 			onclick={addSortRule}
 			disabled={!newColumn}
@@ -158,9 +154,8 @@
 						justifyContent: 'space-between',
 						alignItems: 'center',
 						paddingY: '2',
-						borderBottomWidth: '1px',
-						borderBottomStyle: 'solid',
-						borderBottomColor: 'border.tertiary',
+						borderBottomWidth: '1',
+						borderBottomColor: 'border.primary',
 						'&:last-child': { borderBottomWidth: '0' }
 					})}
 					role="group"
@@ -172,9 +167,9 @@
 						class={css({
 							display: 'flex',
 							alignItems: 'center',
-							gap: '1px',
-							backgroundColor: 'border.primary',
-							padding: '1px'
+							gap: 'px',
+							backgroundColor: 'bg.muted',
+							padding: 'px'
 						})}
 						role="group"
 						aria-label={`Sort direction for ${column}`}
@@ -205,14 +200,13 @@
 								display: 'flex',
 								alignItems: 'center',
 								justifyContent: 'center',
-								width: '7',
-								height: '7',
+								width: 'row',
+								height: 'row',
 								padding: '0',
 								backgroundColor: 'transparent',
 								cursor: 'pointer',
 								color: 'fg.secondary',
-								borderWidth: '1px',
-								borderStyle: 'solid',
+								borderWidth: '1',
 								borderColor: 'border.transparent',
 								_hover: {
 									backgroundColor: 'error.bg!',

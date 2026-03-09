@@ -2,7 +2,7 @@
 	import { Debounced } from 'runed';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { ChevronDown } from 'lucide-svelte';
-	import { css, cx, emptyText, input } from '$lib/styles/panda';
+	import { css, cx, emptyText, input, muted } from '$lib/styles/panda';
 
 	import type { Snippet } from 'svelte';
 
@@ -241,7 +241,7 @@
 			display: 'flex',
 			flexDirection: 'column',
 			gap: '2',
-			minWidth: '40'
+			minWidth: 'inputSm'
 		}),
 		containerClass
 	)}
@@ -273,7 +273,6 @@
 					paddingX: '3',
 					paddingY: '2.5',
 					borderWidth: '1',
-					borderStyle: 'solid',
 					borderColor: 'border.primary',
 					backgroundColor: 'bg.secondary',
 					color: 'fg.primary',
@@ -281,8 +280,8 @@
 					justifyContent: 'space-between',
 					fontSize: 'sm',
 					_focusVisible: {
-						outline: '2px solid var(--color-accent-secondary)',
-						outlineOffset: '2px'
+						outline: '2px solid {colors.accent.secondary}',
+						outlineOffset: 'px'
 					}
 				}),
 				triggerClass
@@ -302,7 +301,7 @@
 							textOverflow: 'ellipsis',
 							whiteSpace: 'nowrap'
 						})
-					: css({ color: 'fg.muted' })}>{displayLabel}</span
+					: muted}>{displayLabel}</span
 			>
 			{#if clearable && selectedCount > 0}
 				<span
@@ -312,8 +311,8 @@
 						display: 'flex',
 						alignItems: 'center',
 						justifyContent: 'center',
-						width: '16px',
-						height: '16px',
+						width: 'iconSm',
+						height: 'iconSm',
 						flexShrink: '0',
 						color: 'fg.muted',
 						fontSize: '2xs',
@@ -336,7 +335,7 @@
 					aria-label="Clear selection">✕</span
 				>
 			{:else}
-				<ChevronDown size={14} class={css({ color: 'fg.muted' })} />
+				<ChevronDown size={14} class={muted} />
 			{/if}
 		</button>
 	{/if}
@@ -346,14 +345,12 @@
 				css({
 					position: 'absolute',
 					zIndex: 'dropdown',
-					top: 'calc(100% + 6px)',
 					left: '0',
 					minWidth: '100%',
 					width: '100%',
 					maxWidth: '100%',
 					backgroundColor: 'bg.primary',
 					borderWidth: '1',
-					borderStyle: 'solid',
 					borderColor: 'border.primary',
 					padding: '2',
 					display: 'flex',
@@ -387,8 +384,7 @@
 						display: 'flex',
 						gap: '2',
 						borderBottomWidth: '1',
-						borderBottomStyle: 'solid',
-						borderBottomColor: 'border.tertiary',
+						borderBottomColor: 'border.primary',
 						padding: '2',
 						backgroundColor: 'bg.secondary'
 					})}
@@ -399,8 +395,7 @@
 							flex: '1',
 							cursor: 'pointer',
 							borderWidth: '1',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderColor: 'border.primary',
 							backgroundColor: 'transparent',
 							paddingX: '2',
 							paddingY: '1',
@@ -425,8 +420,7 @@
 							flex: '1',
 							cursor: 'pointer',
 							borderWidth: '1',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderColor: 'border.primary',
 							backgroundColor: 'transparent',
 							paddingX: '2',
 							paddingY: '1',
@@ -452,12 +446,12 @@
 					display: 'flex',
 					flexDirection: 'column',
 					gap: '2',
-					maxHeight: '55',
+					maxHeight: 'dropdown',
 					overflowY: 'auto',
 					overflowX: 'hidden',
 					padding: '2',
 					scrollbarWidth: 'thin',
-					scrollbarColor: 'var(--color-border-primary) transparent'
+					scrollbarColor: '{colors.border.primary} transparent'
 				})}
 			>
 				{#if filteredOptions.length === 0}
@@ -490,11 +484,10 @@
 			css({ fontFamily: 'mono' }),
 			css({
 				marginTop: '2',
-				maxHeight: '15',
+				maxHeight: 'labelSm',
 				overflowY: 'auto',
 				borderWidth: '1',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary',
+				borderColor: 'border.primary',
 				padding: '2',
 				fontSize: 'xs'
 			})

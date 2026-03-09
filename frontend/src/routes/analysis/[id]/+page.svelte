@@ -39,7 +39,7 @@
 	import DragPreview from '$lib/components/pipeline/DragPreview.svelte';
 	import DatasourceSelectorModal from '$lib/components/common/DatasourceSelectorModal.svelte';
 	import { schemaStore } from '$lib/stores/schema.svelte';
-	import { css, cx, spinner, button } from '$lib/styles/panda';
+	import { css, cx, spinner, button, row } from '$lib/styles/panda';
 	import {
 		ChevronDown,
 		ChevronLeft,
@@ -835,46 +835,45 @@
 </script>
 
 {#if analysisQuery.isLoading}
-	<div
-		class={css({ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' })}
-	>
+	<div class={cx(row, css({ height: '100%', justifyContent: 'center' }))}>
 		<div class={spinner()}></div>
 	</div>
 {:else if analysisQuery.isError}
 	<div
-		class={css({
-			paddingX: '2.5',
-			paddingY: '3',
-			border: 'none',
-			borderLeft: '2px solid',
-			borderRadius: '0',
-			fontSize: 'xs',
-			lineHeight: '1.5',
-			backgroundColor: 'transparent',
-			borderLeftColor: 'error.border',
-			color: 'error.fg',
-			display: 'flex',
-			height: '100%',
-			flexDirection: 'column',
-			alignItems: 'center',
-			justifyContent: 'center',
-			textAlign: 'center',
-			gap: '4'
-		})}
+		class={cx(
+			row,
+			css({
+				paddingX: '2.5',
+				paddingY: '3',
+				border: 'none',
+				borderLeft: '2px solid',
+
+				fontSize: 'xs',
+				lineHeight: '1.5',
+				backgroundColor: 'transparent',
+				borderLeftColor: 'error.border',
+				color: 'error.fg',
+				height: '100%',
+				flexDirection: 'column',
+				justifyContent: 'center',
+				textAlign: 'center',
+				gap: '4'
+			})
+		)}
 	>
 		<div
-			class={css({
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'center',
-				fontSize: 'xl',
-				fontWeight: 'bold',
-				width: '13',
-				height: '13',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary'
-			})}
+			class={cx(
+				row,
+				css({
+					justifyContent: 'center',
+					fontSize: 'xl',
+					fontWeight: 'bold',
+					width: 'logoLg',
+					height: 'logoLg',
+					borderWidth: '1',
+					borderColor: 'border.primary'
+				})
+			)}
 		>
 			!
 		</div>
@@ -906,27 +905,26 @@
 				alignItems: 'stretch',
 				position: 'sticky',
 				top: '0',
-				height: '11',
+				height: 'headerSm',
 				backgroundColor: 'bg.primary',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'border.tertiary',
-				zIndex: 'sticky'
+				borderBottomWidth: '1',
+				borderBottomColor: 'border.primary',
+				zIndex: 'header'
 			})}
 		>
 			<div
-				class={css({
-					display: 'flex',
-					alignItems: 'center',
-					height: '100%',
-					boxSizing: 'border-box',
-					borderRightWidth: '1px',
-					borderRightStyle: 'solid',
-					borderRightColor: 'border.tertiary',
-					width: 'var(--operations-panel-width, 280px)',
-					transitionProperty: 'width, visibility',
-					transitionDuration: 'normal'
-				})}
+				class={cx(
+					row,
+					css({
+						height: '100%',
+						boxSizing: 'border-box',
+						borderRightWidth: '1',
+						borderRightColor: 'border.primary',
+						width: 'operationsPanel',
+						transitionProperty: 'width, visibility',
+						transitionDuration: 'normal'
+					})
+				)}
 			>
 				<div
 					class={css({
@@ -954,9 +952,9 @@
 							cursor: isEditingMode ? 'text' : 'default',
 							_focus: {
 								backgroundColor: 'bg.hover',
-								borderRadius: 'var(--radius-sm)',
-								padding: '0 var(--space-1)',
-								margin: '0 calc(var(--space-1) * -1)'
+
+								paddingX: '1',
+								marginX: 'calc({spacing.1} * -1)'
 							}
 						})}
 						onblur={(e) => {
@@ -990,15 +988,10 @@
 				</div>
 			</div>
 			<div
-				class={css({
-					flex: '1',
-					minWidth: '0',
-					overflow: 'hidden',
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					gap: '0'
-				})}
+				class={cx(
+					row,
+					css({ flex: '1', minWidth: '0', overflow: 'hidden', justifyContent: 'center', gap: '0' })
+				)}
 			>
 				<button
 					class={css({
@@ -1024,8 +1017,8 @@
 						<ChevronLeft size={12} />
 					{/if}
 				</button>
-				<div class={css({ flex: '1', overflow: 'hidden', display: 'flex', alignItems: 'center' })}>
-					<div class={css({ display: 'flex', alignItems: 'center', overflowX: 'auto', gap: '0' })}>
+				<div class={cx(row, css({ flex: '1', overflow: 'hidden' }))}>
+					<div class={cx(row, css({ overflowX: 'auto', gap: '0' }))}>
 						{#each analysisStore.tabs as tab (tab.id)}
 							<div
 								class={css({
@@ -1060,7 +1053,7 @@
 											whiteSpace: 'nowrap',
 											overflow: 'hidden',
 											textOverflow: 'ellipsis',
-											maxWidth: '37.5'
+											maxWidth: 'inputSm'
 										})}
 									>
 										{tab.name}
@@ -1084,7 +1077,7 @@
 								{/if}
 							</div>
 						{/each}
-						<div class={css({ display: 'flex', alignItems: 'center' })}>
+						<div class={row}>
 							<button
 								class={css({
 									display: 'inline-flex',
@@ -1158,28 +1151,21 @@
 				{/if}
 			</button>
 			<div
-				class={css({
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'flex-end',
-					height: '100%',
-					boxSizing: 'border-box',
-					borderLeftWidth: '1px',
-					borderLeftStyle: 'solid',
-					borderLeftColor: 'border.tertiary',
-					width: 'var(--operations-panel-width, 280px)',
-					transitionProperty: 'width, visibility',
-					transitionDuration: 'normal'
-				})}
+				class={cx(
+					row,
+					css({
+						justifyContent: 'flex-end',
+						height: '100%',
+						boxSizing: 'border-box',
+						borderLeftWidth: '1',
+						borderLeftColor: 'border.primary',
+						width: 'operationsPanel',
+						transitionProperty: 'width, visibility',
+						transitionDuration: 'normal'
+					})
+				)}
 			>
-				<div
-					class={css({
-						display: 'flex',
-						alignItems: 'center',
-						position: 'relative',
-						paddingX: '2'
-					})}
-				>
+				<div class={cx(row, css({ position: 'relative', paddingX: '2' }))}>
 					<button
 						class={css({
 							display: 'flex',
@@ -1189,12 +1175,11 @@
 							paddingY: '1.5',
 							paddingX: '3',
 							backgroundColor: 'bg.tertiary',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							color: 'fg.secondary',
 							gap: '2',
-							_hover: { backgroundColor: 'bg.hover', borderColor: 'border.tertiary' }
+							_hover: { backgroundColor: 'bg.hover', borderColor: 'border.primary' }
 						})}
 						onclick={() => (showModeDropdown = !showModeDropdown)}
 						type="button"
@@ -1209,11 +1194,10 @@
 								position: 'absolute',
 								left: '0',
 								top: 'calc(100% + 4px)',
-								minWidth: '35',
+								minWidth: 'inputSm',
 								backgroundColor: 'bg.primary',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								padding: '1',
 								zIndex: '100'
 							})}
@@ -1236,18 +1220,17 @@
 								{#if isEditingMode}
 									<div
 										class={css({
-											width: '3',
-											height: '3',
-											borderWidth: '1px',
-											borderStyle: 'solid',
+											width: 'iconTiny',
+											height: 'iconTiny',
+											borderWidth: '1',
 											borderColor: 'accent.primary'
 										})}
 									></div>
 								{:else}
 									<div
 										class={css({
-											width: '3',
-											height: '3',
+											width: 'iconTiny',
+											height: 'iconTiny',
 											backgroundColor: 'accent.primary'
 										})}
 									></div>
@@ -1272,18 +1255,17 @@
 								{#if isEditingMode}
 									<div
 										class={css({
-											width: '3',
-											height: '3',
+											width: 'iconTiny',
+											height: 'iconTiny',
 											backgroundColor: 'accent.primary'
 										})}
 									></div>
 								{:else}
 									<div
 										class={css({
-											width: '3',
-											height: '3',
-											borderWidth: '1px',
-											borderStyle: 'solid',
+											width: 'iconTiny',
+											height: 'iconTiny',
+											borderWidth: '1',
 											borderColor: 'accent.primary'
 										})}
 									></div>
@@ -1307,10 +1289,9 @@
 							>
 								<div
 									class={css({
-										width: '3',
-										height: '3',
-										borderWidth: '1px',
-										borderStyle: 'solid',
+										width: 'iconTiny',
+										height: 'iconTiny',
+										borderWidth: '1',
 										borderColor: 'accent.primary'
 									})}
 								></div>
@@ -1391,10 +1372,9 @@
 						height: '100%',
 						boxSizing: 'border-box',
 						backgroundColor: 'bg.primary',
-						borderRightWidth: '1px',
-						borderRightStyle: 'solid',
-						borderRightColor: 'border.tertiary',
-						width: 'var(--operations-panel-width, 280px)',
+						borderRightWidth: '1',
+						borderRightColor: 'border.primary',
+						width: 'operationsPanel',
 						transitionProperty: 'width, visibility',
 						transitionDuration: 'normal',
 						'& > *': { width: '100%', visibility: 'visible' },
@@ -1419,7 +1399,7 @@
 				<div
 					class={css({
 						flex: '1',
-						minWidth: '50',
+						minWidth: 'listSm',
 						minHeight: '0',
 						display: 'flex',
 						backgroundColor: 'bg.secondary',
@@ -1454,9 +1434,8 @@
 							display: 'flex',
 							boxSizing: 'border-box',
 							backgroundColor: 'bg.primary',
-							borderTopWidth: '1px',
-							borderTopStyle: 'solid',
-							borderTopColor: 'border.tertiary',
+							borderTopWidth: '1',
+							borderTopColor: 'border.primary',
 							width: '100%',
 							position: 'relative',
 							transitionProperty: 'height, visibility',
@@ -1473,7 +1452,7 @@
 								top: '-3px',
 								left: '0',
 								right: '0',
-								height: '6px',
+								height: 'barTall',
 								cursor: 'ns-resize',
 								zIndex: '5',
 								_hover: { background: 'accent.primary', opacity: '0.4' },
@@ -1501,10 +1480,9 @@
 						height: '100%',
 						boxSizing: 'border-box',
 						backgroundColor: 'bg.primary',
-						borderLeftWidth: '1px',
-						borderLeftStyle: 'solid',
-						borderLeftColor: 'border.tertiary',
-						width: 'var(--operations-panel-width, 280px)',
+						borderLeftWidth: '1',
+						borderLeftColor: 'border.primary',
+						width: 'operationsPanel',
 						transitionProperty: 'width, visibility',
 						transitionDuration: 'normal',
 						'& > *': { width: '100%', visibility: 'visible' },
@@ -1555,10 +1533,9 @@
 			width: 'min(720px, 92vw)',
 			maxHeight: '80vh',
 			backgroundColor: 'bg.primary',
-			borderWidth: '1px',
-			borderStyle: 'solid',
+			borderWidth: '1',
 			borderColor: 'border.primary',
-			zIndex: 'calc(var(--z-modal) + 1)',
+			zIndex: '1001',
 			display: 'flex',
 			flexDirection: 'column',
 			_focus: { outline: 'none' }
@@ -1574,7 +1551,8 @@
 				alignItems: 'center',
 				paddingX: '4',
 				paddingY: '3',
-				borderBottom: '1px solid var(--color-border-primary)',
+				borderBottomWidth: '1',
+				borderBottomColor: 'border.primary',
 				'& h2': { margin: '0', fontSize: 'md', color: 'fg.primary' }
 			})}
 		>
@@ -1616,7 +1594,7 @@
 						paddingY: '3',
 						border: 'none',
 						borderLeft: '2px solid',
-						borderRadius: '0',
+
 						marginTop: '3',
 						marginBottom: '0',
 						fontSize: 'xs',
@@ -1632,14 +1610,10 @@
 			{/if}
 			{#if versionsQuery.isLoading}
 				<div
-					class={css({
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						padding: '8',
-						fontSize: 'sm',
-						color: 'fg.muted'
-					})}
+					class={cx(
+						row,
+						css({ justifyContent: 'center', padding: '8', fontSize: 'sm', color: 'fg.muted' })
+					)}
 				>
 					Loading...
 				</div>
@@ -1650,7 +1624,7 @@
 						paddingY: '3',
 						border: 'none',
 						borderLeft: '2px solid',
-						borderRadius: '0',
+
 						marginTop: '3',
 						marginBottom: '0',
 						fontSize: 'xs',
@@ -1684,9 +1658,8 @@
 								alignItems: 'flex-start',
 								justifyContent: 'space-between',
 								gap: '4',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.tertiary',
 								padding: '3'
 							})}
@@ -1710,9 +1683,8 @@
 											fontWeight: 'semibold',
 											color: 'fg.primary',
 											backgroundColor: 'transparent',
-											borderWidth: '1px',
-											borderStyle: 'solid',
-											borderColor: 'border.tertiary',
+											borderWidth: '1',
+											borderColor: 'border.primary',
 											paddingX: '1',
 											paddingY: '0.5'
 										})}
@@ -1726,7 +1698,7 @@
 										}}
 									/>
 								{:else}
-									<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+									<div class={cx(row, css({ gap: '2' }))}>
 										<span
 											class={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.primary' })}
 										>
@@ -1769,7 +1741,8 @@
 			class={css({
 				paddingX: '4',
 				paddingY: '3',
-				borderTop: '1px solid var(--color-border-primary)',
+				borderTopWidth: '1',
+				borderTopColor: 'border.primary',
 				display: 'flex',
 				justifyContent: 'flex-end',
 				gap: '2'

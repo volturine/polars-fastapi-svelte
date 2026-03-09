@@ -65,7 +65,13 @@
 	>
 		<input
 			type="checkbox"
-			class={css({ position: 'absolute', left: '5', top: '5', height: '4.5', width: '4.5' })}
+			class={css({
+				position: 'absolute',
+				left: '5',
+				top: '5',
+				height: 'icon',
+				width: 'icon'
+			})}
 			id="analysis-{analysis.id}-select"
 			checked={selected}
 			onchange={(e) => {

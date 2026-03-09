@@ -28,7 +28,7 @@
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
 	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
-	import { css, cx, chip } from '$lib/styles/panda';
+	import { css, cx, chip, row, rowBetween, muted } from '$lib/styles/panda';
 	import {
 		Bell,
 		CalendarClock,
@@ -402,9 +402,8 @@
 >
 	<div
 		class={css({
-			borderWidth: '1px',
-			borderStyle: 'solid',
-			borderColor: 'border.tertiary',
+			borderWidth: '1',
+			borderColor: 'border.primary',
 			backgroundColor: 'bg.primary'
 		})}
 	>
@@ -416,21 +415,20 @@
 				justifyContent: 'space-between',
 				paddingX: '4',
 				paddingY: '3',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'border.tertiary'
+				borderBottom: '1px solid',
+				borderBottomColor: 'border.primary'
 			})}
 		>
-			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+			<div class={cx(row, css({ gap: '2' }))}>
 				<div
 					class={css({
 						display: 'flex',
-						height: '5',
-						width: '5',
+						height: 'iconMd',
+						width: 'iconMd',
 						alignItems: 'center',
 						justifyContent: 'center',
 						backgroundColor: 'accent.primary',
-						color: 'bg.primary'
+						color: 'fg.inverse'
 					})}
 				>
 					<Database size={12} />
@@ -440,7 +438,7 @@
 						fontSize: 'xs',
 						fontWeight: '600',
 						textTransform: 'uppercase',
-						letterSpacing: 'wider'
+						letterSpacing: 'wide'
 					})}
 				>
 					output
@@ -450,10 +448,9 @@
 				class={cx(
 					chip({ tone: 'neutral' }),
 					css({
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
-						letterSpacing: 'max',
+						borderWidth: '1',
+						borderColor: 'border.primary',
+						letterSpacing: 'widest',
 						color: 'fg.faint'
 					})
 				)}>sink</span
@@ -469,9 +466,8 @@
 				display: 'flex',
 				alignItems: 'center',
 				justifyContent: 'space-between',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary',
+				borderWidth: '1',
+				borderColor: 'border.primary',
 				backgroundColor: 'bg.secondary',
 				paddingY: '2',
 				paddingX: '3'
@@ -484,22 +480,21 @@
 					gap: '2',
 					fontSize: '2xs',
 					textTransform: 'uppercase',
-					letterSpacing: 'max',
+					letterSpacing: 'widest',
 					color: 'fg.faint'
 				})}
 			>
 				<Pencil size={11} class={css({ opacity: '0.5' })} />
 				<span>Table name</span>
 			</div>
-			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+			<div class={cx(row, css({ gap: '2' }))}>
 				{#if editingName}
-					<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+					<div class={cx(row, css({ gap: '1' }))}>
 						<input
 							class={css({
-								minWidth: '25',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								minWidth: 'fieldSm',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '0.5',
@@ -517,14 +512,13 @@
 						<button
 							class={css({
 								display: 'inline-flex',
-								height: '5',
-								width: '5',
+								height: 'iconMd',
+								width: 'iconMd',
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'center',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'accent.primary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								color: 'success.fg',
 								backgroundColor: 'bg.primary',
 								padding: '0',
@@ -540,13 +534,12 @@
 						<button
 							class={css({
 								display: 'inline-flex',
-								height: '5',
-								width: '5',
+								height: 'iconMd',
+								width: 'iconMd',
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'center',
-								borderWidth: '1px',
-								borderStyle: 'solid',
+								borderWidth: '1',
 								borderColor: 'error.border',
 								color: 'error.fg',
 								backgroundColor: 'bg.primary',
@@ -568,21 +561,20 @@
 					<button
 						class={css({
 							display: 'inline-flex',
-							height: '5',
-							width: '5',
+							height: 'iconMd',
+							width: 'iconMd',
 							cursor: 'pointer',
 							alignItems: 'center',
 							justifyContent: 'center',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							color: 'fg.muted',
 							backgroundColor: 'bg.primary',
 							padding: '0',
 							opacity: '0.5',
 							lineHeight: '1',
 							_hover: {
-								borderColor: 'border.tertiary',
+								borderColor: 'border.primary',
 								color: 'fg.primary',
 								backgroundColor: 'bg.tertiary',
 								opacity: '1'
@@ -608,7 +600,7 @@
 					gap: '2',
 					fontSize: 'xs',
 					textTransform: 'uppercase',
-					letterSpacing: 'wider',
+					letterSpacing: 'wide',
 					color: 'fg.muted'
 				})}
 			>
@@ -620,16 +612,13 @@
 					display: 'flex',
 					flexDirection: 'column',
 					gap: '2',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderWidth: '1',
+					borderColor: 'border.primary',
 					backgroundColor: 'bg.tertiary',
 					padding: '3'
 				})}
 			>
-				<div
-					class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}
-				>
+				<div class={rowBetween}>
 					<span class={css({ fontSize: 'sm', fontWeight: '600' })}>
 						{outputConfig.iceberg.table_name}
 					</span>
@@ -639,9 +628,8 @@
 							display: 'flex',
 							alignItems: 'center',
 							gap: '1',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.secondary',
 							paddingX: '2',
 							paddingY: '0.5',
@@ -669,9 +657,8 @@
 						display: 'grid',
 						gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
 						gap: '2',
-						borderTopWidth: '1px',
-						borderTopStyle: 'solid',
-						borderTopColor: 'border.tertiary',
+						borderTop: '1px solid',
+						borderTopColor: 'border.primary',
 						paddingTop: '2'
 					})}
 				>
@@ -682,7 +669,7 @@
 								display: 'flex',
 								flexDirection: 'column',
 								gap: '2',
-								minWidth: '160px'
+								minWidth: 'inputSm'
 							}),
 							css({ position: 'relative' })
 						)}
@@ -696,9 +683,8 @@
 									alignItems: 'center',
 									gap: '2',
 									paddingX: '3',
-									paddingY: '2.5',
-									borderWidth: '1px',
-									borderStyle: 'solid',
+									paddingY: '2',
+									borderWidth: '1',
 									borderColor: 'border.primary',
 									backgroundColor: 'bg.secondary',
 									color: 'fg.primary',
@@ -706,7 +692,7 @@
 									justifyContent: 'space-between',
 									fontSize: 'sm',
 									_focusVisible: {
-										outline: '2px solid var(--color-accent-secondary)',
+										outline: '2px solid {colors.accent.secondary}',
 										outlineOffset: '2px'
 									}
 								}),
@@ -726,7 +712,7 @@
 									whiteSpace: 'nowrap'
 								})}>{outputConfig.build_mode}</span
 							>
-							<ChevronDown size={14} class={css({ color: 'fg.muted' })} />
+							<ChevronDown size={14} class={muted} />
 						</button>
 						{#if modeMenuOpen}
 							<div
@@ -739,8 +725,7 @@
 									width: '100%',
 									maxWidth: '100%',
 									backgroundColor: 'bg.primary',
-									borderWidth: '1px',
-									borderStyle: 'solid',
+									borderWidth: '1',
 									borderColor: 'border.primary',
 									padding: '2',
 									display: 'flex',
@@ -754,12 +739,12 @@
 										display: 'flex',
 										flexDirection: 'column',
 										gap: '2',
-										maxHeight: '220px',
+										maxHeight: 'dropdown',
 										overflowY: 'auto',
 										overflowX: 'hidden',
 										padding: '2',
 										scrollbarWidth: 'thin',
-										scrollbarColor: 'var(--color-border-primary) transparent'
+										scrollbarColor: '{colors.border.primary} transparent'
 									})}
 								>
 									{#each ['full', 'incremental', 'recreate'] as mode (mode)}
@@ -771,8 +756,7 @@
 													width: '100%',
 													paddingX: '3',
 													paddingY: '2',
-													borderWidth: '1px',
-													borderStyle: 'solid',
+													borderWidth: '1',
 													borderColor: 'transparent',
 													background: 'transparent',
 													textAlign: 'left',
@@ -824,9 +808,8 @@
 					alignItems: 'center',
 					justifyContent: 'center',
 					gap: '2',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderWidth: '1',
+					borderColor: 'border.primary',
 					backgroundColor: 'bg.secondary',
 					paddingY: '2',
 					paddingX: '3',
@@ -834,7 +817,7 @@
 					fontWeight: '500',
 					color: 'fg.secondary',
 					_hover: {
-						borderColor: 'accent.primary',
+						borderColor: 'border.primary',
 						backgroundColor: 'bg.tertiary',
 						color: 'fg.primary',
 						'& svg': { opacity: '1' }
@@ -862,9 +845,8 @@
 				display: 'flex',
 				flexDirection: 'column',
 				gap: '3',
-				borderTopWidth: '1px',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.tertiary',
+				borderTop: '1px solid',
+				borderTopColor: 'border.primary',
 				paddingTop: '3',
 				marginX: '4',
 				marginBottom: '3'
@@ -876,7 +858,7 @@
 					type="button"
 					class={css({
 						display: 'flex',
-						height: '6',
+						height: 'iconLg',
 						width: '100%',
 						cursor: 'pointer',
 						alignItems: 'center',
@@ -890,7 +872,7 @@
 					})}
 					onclick={() => (notifyOpen = !notifyOpen)}
 				>
-					<span class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+					<span class={cx(row, css({ gap: '2' }))}>
 						{#if notifyOpen}
 							<ChevronDown size={12} />
 						{:else}
@@ -939,8 +921,7 @@
 								{#if !canTelegram}
 									<div
 										class={css({
-											borderWidth: '1px',
-											borderStyle: 'solid',
+											borderWidth: '1',
 											borderColor: 'warning.border',
 											backgroundColor: 'warning.bg',
 											padding: '2',
@@ -963,11 +944,10 @@
 										</span>
 										<div
 											class={css({
-												maxHeight: '32',
+												maxHeight: 'colMd',
 												overflowY: 'auto',
-												borderWidth: '1px',
-												borderStyle: 'solid',
-												borderColor: 'border.tertiary',
+												borderWidth: '1',
+												borderColor: 'border.primary',
 												backgroundColor: 'bg.secondary'
 											})}
 										>
@@ -1011,9 +991,8 @@
 															display: 'flex',
 															alignItems: 'center',
 															gap: '2',
-															borderBottomWidth: '1px',
-															borderBottomStyle: 'solid',
-															borderBottomColor: 'border.tertiary',
+															borderBottom: '1px solid',
+															borderBottomColor: 'border.primary',
 															paddingX: '2',
 															paddingY: '1.5',
 															'&:last-child': { borderBottomWidth: '0' }
@@ -1059,9 +1038,8 @@
 									</label>
 									<textarea
 										class={css({
-											borderWidth: '1px',
-											borderStyle: 'solid',
-											borderColor: 'border.tertiary',
+											borderWidth: '1',
+											borderColor: 'border.primary',
 											backgroundColor: 'bg.secondary',
 											paddingY: '1',
 											paddingX: '2',
@@ -1093,7 +1071,7 @@
 					type="button"
 					class={css({
 						display: 'flex',
-						height: '6',
+						height: 'iconLg',
 						width: '100%',
 						cursor: 'pointer',
 						alignItems: 'center',
@@ -1107,7 +1085,7 @@
 					})}
 					onclick={() => (healthOpen = !healthOpen)}
 				>
-					<span class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+					<span class={cx(row, css({ gap: '2' }))}>
 						{#if healthOpen}
 							<ChevronDown size={12} />
 						{:else}
@@ -1138,9 +1116,8 @@
 						<div
 							class={css({
 								marginTop: '2',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								padding: '2'
 							})}
@@ -1151,9 +1128,9 @@
 						<div
 							class={css({
 								marginTop: '2',
-								borderWidth: '1px',
+								borderWidth: '1',
 								borderStyle: 'dashed',
-								borderColor: 'border.tertiary',
+								borderColor: 'border.primary',
 								padding: '3',
 								textAlign: 'center',
 								fontSize: 'xs',
@@ -1172,7 +1149,7 @@
 					type="button"
 					class={css({
 						display: 'flex',
-						height: '6',
+						height: 'iconLg',
 						width: '100%',
 						cursor: 'pointer',
 						alignItems: 'center',
@@ -1186,7 +1163,7 @@
 					})}
 					onclick={() => (scheduleOpen = !scheduleOpen)}
 				>
-					<span class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+					<span class={cx(row, css({ gap: '2' }))}>
 						{#if scheduleOpen}
 							<ChevronDown size={12} />
 						{:else}
@@ -1206,9 +1183,8 @@
 					<div
 						class={css({
 							marginTop: '2',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							padding: '2'
 						})}
@@ -1223,8 +1199,7 @@
 			<div
 				class={css({
 					marginTop: '3',
-					borderWidth: '1px',
-					borderStyle: 'solid',
+					borderWidth: '1',
 					borderColor: 'error.border',
 					backgroundColor: 'error.bg',
 					padding: '2',

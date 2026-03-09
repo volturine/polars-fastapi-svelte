@@ -155,7 +155,7 @@
 	}
 </script>
 
-<div class={css({ contain: 'content', width: 'full', height: '100', overflow: 'hidden' })}>
+<div class={css({ contain: 'content', width: 'full', height: 'panel', overflow: 'hidden' })}>
 	<DataTable
 		columns={data?.columns ?? []}
 		data={data?.data ?? []}

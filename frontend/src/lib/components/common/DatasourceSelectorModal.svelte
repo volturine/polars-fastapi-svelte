@@ -5,7 +5,7 @@
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import type { SourceType } from '$lib/utils/fileTypes';
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
-	import { css, cx } from '$lib/styles/panda';
+	import { css, cx, row } from '$lib/styles/panda';
 
 	interface Props {
 		show: boolean;
@@ -96,14 +96,12 @@
 			display: 'flex',
 			maxHeight: '80vh',
 			width: '100%',
-			maxWidth: '120',
+			maxWidth: 'modalSm',
 			flexDirection: 'column',
-			borderWidth: '1px',
-			borderStyle: 'solid',
-			borderColor: 'border.tertiary',
+			borderWidth: '1',
+			borderColor: 'border.primary',
 			backgroundColor: 'bg.primary',
-			outline: 'none',
-			animation: 'var(--animate-slide-up)'
+			outline: 'none'
 		})
 	)}
 	ariaLabelledby="modal-title"
@@ -113,15 +111,13 @@
 
 {#snippet content()}
 	<div
-		class={css({
-			display: 'flex',
-			alignItems: 'center',
-			justifyContent: 'space-between',
-			borderBottomWidth: '1px',
-			borderBottomStyle: 'solid',
-			borderBottomColor: 'border.tertiary',
-			padding: '4'
-		})}
+		class={cx(
+			row,
+			css({
+				justifyContent: 'space-between',
+				padding: '4'
+			})
+		)}
 	>
 		<h2
 			id="modal-title"
@@ -159,16 +155,16 @@
 	>
 		{#if allowAnalysis}
 			<div
-				class={css({
-					display: 'flex',
-					alignItems: 'center',
-					gap: '1',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
-					backgroundColor: 'bg.tertiary',
-					padding: '1'
-				})}
+				class={cx(
+					row,
+					css({
+						gap: '1',
+						borderWidth: '1',
+						borderColor: 'border.primary',
+						backgroundColor: 'bg.tertiary',
+						padding: '1'
+					})
+				)}
 			>
 				<button
 					class={css({
@@ -211,9 +207,8 @@
 		<input
 			class={css({
 				width: '100%',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary',
+				borderWidth: '1',
+				borderColor: 'border.primary',
 				paddingX: '3',
 				paddingY: '3',
 				fontSize: 'sm',
@@ -232,7 +227,7 @@
 		<div
 			class={css({
 				display: 'flex',
-				maxHeight: '75',
+				maxHeight: 'dropdownTall',
 				flexDirection: 'column',
 				gap: '1',
 				overflowY: 'auto'
@@ -240,40 +235,28 @@
 		>
 			{#if isLoading}
 				<div
-					class={css({
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						padding: '8',
-						fontSize: 'sm',
-						color: 'fg.muted'
-					})}
+					class={cx(
+						row,
+						css({ justifyContent: 'center', padding: '8', fontSize: 'sm', color: 'fg.muted' })
+					)}
 				>
 					Loading...
 				</div>
 			{:else if activeSource === 'analysis' && allowAnalysis && filteredTabs.length === 0}
 				<div
-					class={css({
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						padding: '8',
-						fontSize: 'sm',
-						color: 'fg.muted'
-					})}
+					class={cx(
+						row,
+						css({ justifyContent: 'center', padding: '8', fontSize: 'sm', color: 'fg.muted' })
+					)}
 				>
 					{searchQuery ? 'No matching analysis tabs' : 'No analysis tabs available'}
 				</div>
 			{:else if activeSource === 'datasource' && filteredDatasources.length === 0}
 				<div
-					class={css({
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						padding: '8',
-						fontSize: 'sm',
-						color: 'fg.muted'
-					})}
+					class={cx(
+						row,
+						css({ justifyContent: 'center', padding: '8', fontSize: 'sm', color: 'fg.muted' })
+					)}
 				>
 					{searchQuery ? 'No matching datasources' : 'No datasources available'}
 				</div>
@@ -285,13 +268,12 @@
 							cursor: 'pointer',
 							alignItems: 'center',
 							justifyContent: 'space-between',
-							borderWidth: '1px',
-							borderStyle: 'solid',
+							borderWidth: '1',
 							borderColor: 'transparent',
 							backgroundColor: 'transparent',
 							padding: '3',
 							textAlign: 'left',
-							_hover: { backgroundColor: 'bg.hover', borderColor: 'border.tertiary' }
+							_hover: { backgroundColor: 'bg.hover' }
 						})}
 						onclick={() => handleAnalysisTabSelect(entry)}
 						type="button"
@@ -310,13 +292,12 @@
 							cursor: 'pointer',
 							alignItems: 'center',
 							justifyContent: 'space-between',
-							borderWidth: '1px',
-							borderStyle: 'solid',
+							borderWidth: '1',
 							borderColor: 'transparent',
 							backgroundColor: 'transparent',
 							padding: '3',
 							textAlign: 'left',
-							_hover: { backgroundColor: 'bg.hover', borderColor: 'border.tertiary' }
+							_hover: { backgroundColor: 'bg.hover' }
 						})}
 						onclick={() => handleSelect(ds.id, ds.name)}
 						type="button"
@@ -324,9 +305,7 @@
 						<span class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.primary' })}>
 							{ds.name}
 						</span>
-						<span
-							class={css({ display: 'flex', alignItems: 'center', gap: '1', color: 'fg.muted' })}
-						>
+						<span class={cx(row, css({ gap: '1', color: 'fg.muted' }))}>
 							{#if ds.source_type === 'file'}
 								<FileTypeBadge path={ds.config.file_path as string} size="sm" showIcon={true} />
 							{:else}

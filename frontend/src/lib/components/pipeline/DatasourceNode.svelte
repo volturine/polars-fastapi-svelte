@@ -37,7 +37,7 @@
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
 	import SnapshotPicker from '$lib/components/datasources/SnapshotPicker.svelte';
 	import type { SourceType } from '$lib/utils/fileTypes';
-	import { css, cx } from '$lib/styles/panda';
+	import { css, cx, row, rowBetween, divider, muted } from '$lib/styles/panda';
 
 	type ActiveTab = {
 		id: string;
@@ -252,10 +252,9 @@
 			'node-content',
 			css({
 				backgroundColor: 'bg.primary',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary',
-				_hover: { borderColor: 'border.tertiary' }
+				borderWidth: '1',
+				borderColor: 'border.primary',
+				_hover: { borderColor: 'border.primary' }
 			})
 		)}
 	>
@@ -267,21 +266,20 @@
 				justifyContent: 'space-between',
 				paddingX: '4',
 				paddingY: '3',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'border.tertiary'
+				borderBottomWidth: '1',
+				borderBottomColor: 'border.primary'
 			})}
 		>
-			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+			<div class={cx(row, css({ gap: '2' }))}>
 				<div
 					class={css({
 						display: 'flex',
-						height: '5',
-						width: '5',
+						height: 'iconMd',
+						width: 'iconMd',
 						alignItems: 'center',
 						justifyContent: 'center',
 						backgroundColor: 'accent.primary',
-						color: 'bg.primary'
+						color: 'fg.inverse'
 					})}
 				>
 					{#if sourceType === 'file'}
@@ -301,7 +299,7 @@
 						fontSize: 'xs',
 						fontWeight: '600',
 						textTransform: 'uppercase',
-						letterSpacing: 'wider'
+						letterSpacing: 'wide'
 					})}
 				>
 					source
@@ -309,16 +307,15 @@
 			</div>
 			<span
 				class={css({
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderWidth: '1',
+					borderColor: 'border.primary',
 					backgroundColor: 'bg.tertiary',
 					color: 'fg.faint',
 					paddingX: '1.5',
 					paddingY: '0.5',
 					fontSize: '3xs',
 					textTransform: 'uppercase',
-					letterSpacing: 'max'
+					letterSpacing: 'widest'
 				})}>root</span
 			>
 		</div>
@@ -332,9 +329,8 @@
 				display: 'flex',
 				alignItems: 'center',
 				justifyContent: 'space-between',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary',
+				borderWidth: '1',
+				borderColor: 'border.primary',
 				backgroundColor: 'bg.secondary',
 				paddingY: '2',
 				paddingX: '3'
@@ -347,22 +343,21 @@
 					gap: '2',
 					fontSize: '2xs',
 					textTransform: 'uppercase',
-					letterSpacing: 'max',
+					letterSpacing: 'widest',
 					color: 'fg.faint'
 				})}
 			>
 				<PanelLeft size={11} class={css({ opacity: '0.5' })} />
 				<span>Tab name</span>
 			</div>
-			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+			<div class={cx(row, css({ gap: '2' }))}>
 				{#if isEditing}
-					<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+					<div class={cx(row, css({ gap: '1' }))}>
 						<input
 							class={css({
-								minWidth: '25',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								minWidth: 'fieldSm',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '0.5',
@@ -380,13 +375,12 @@
 						<button
 							class={css({
 								display: 'inline-flex',
-								height: '5',
-								width: '5',
+								height: 'iconMd',
+								width: 'iconMd',
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'center',
-								borderWidth: '1px',
-								borderStyle: 'solid',
+								borderWidth: '1',
 								borderColor: 'accent.primary',
 								color: 'success.fg',
 								backgroundColor: 'bg.primary',
@@ -403,13 +397,12 @@
 						<button
 							class={css({
 								display: 'inline-flex',
-								height: '5',
-								width: '5',
+								height: 'iconMd',
+								width: 'iconMd',
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'center',
-								borderWidth: '1px',
-								borderStyle: 'solid',
+								borderWidth: '1',
 								borderColor: 'error.border',
 								color: 'error.fg',
 								backgroundColor: 'bg.primary',
@@ -432,21 +425,20 @@
 						<button
 							class={css({
 								display: 'inline-flex',
-								height: '5',
-								width: '5',
+								height: 'iconMd',
+								width: 'iconMd',
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'center',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								color: 'fg.muted',
 								backgroundColor: 'bg.primary',
 								padding: '0',
 								opacity: '0.5',
 								lineHeight: '1',
 								_hover: {
-									borderColor: 'border.tertiary',
+									borderColor: 'border.primary',
 									color: 'fg.primary',
 									backgroundColor: 'bg.tertiary',
 									opacity: '1'
@@ -473,7 +465,7 @@
 					gap: '2',
 					fontSize: '2xs',
 					textTransform: 'uppercase',
-					letterSpacing: 'max',
+					letterSpacing: 'widest',
 					color: 'fg.faint'
 				})}
 			>
@@ -486,20 +478,17 @@
 						display: 'flex',
 						flexDirection: 'column',
 						gap: '2',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'bg.tertiary',
 						padding: '3'
 					})}
 				>
-					<div
-						class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}
-					>
+					<div class={rowBetween}>
 						<div class={css({ fontSize: 'sm', fontWeight: '600' })}>
 							{datasourceLabel ?? datasource?.name}
 						</div>
-						<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+						<div class={cx(row, css({ gap: '2' }))}>
 							{#if datasource}
 								{#if datasource.source_type === 'file'}
 									<FileTypeBadge
@@ -525,15 +514,15 @@
 					</div>
 					{#if isIceberg && datasource}
 						<div
-							class={css({
-								display: 'flex',
-								alignItems: 'flex-start',
-								gap: '2',
-								borderTopWidth: '1px',
-								borderTopStyle: 'solid',
-								borderTopColor: 'border.tertiary',
-								paddingTop: '2'
-							})}
+							class={cx(
+								divider,
+								css({
+									display: 'flex',
+									alignItems: 'flex-start',
+									gap: '2',
+									paddingTop: '2'
+								})
+							)}
 						>
 							<div class={css({ minWidth: '0', flex: '1' })}>
 								<SnapshotPicker
@@ -548,7 +537,7 @@
 									onSelect={handleSnapshotSelect}
 								/>
 							</div>
-							<div class={css({ minWidth: '32', flexShrink: '0' })}>
+							<div class={css({ minWidth: 'colMd', flexShrink: '0' })}>
 								<BranchPicker
 									branches={(resolvedDatasource?.config?.branches as string[] | undefined) ?? []}
 									value={branchValue}
@@ -562,9 +551,9 @@
 			{:else}
 				<div
 					class={css({
-						borderWidth: '1px',
+						borderWidth: '1',
 						borderStyle: 'dashed',
-						borderColor: 'border.tertiary',
+						borderColor: 'border.primary',
 						padding: '3',
 						textAlign: 'center'
 					})}
@@ -581,9 +570,8 @@
 					marginX: '4',
 					marginBottom: '3',
 					overflow: 'hidden',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary'
+					borderWidth: '1',
+					borderColor: 'border.primary'
 				})}
 			>
 				<button
@@ -612,30 +600,23 @@
 							gap: '2',
 							fontSize: 'xs',
 							textTransform: 'uppercase',
-							letterSpacing: 'wider',
+							letterSpacing: 'wide',
 							color: 'fg.muted'
 						})}
 					>
 						<Cpu size={12} />
 						<span>Engine</span>
 					</div>
-					<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+					<div class={cx(row, css({ gap: '2' }))}>
 						<span
 							class={css({
-								fontFamily: 'var(--font-mono)',
-								fontSize: '10px',
+								fontSize: '2xs',
 								color: 'fg.secondary'
 							})}
 						>
 							{effectiveThreads} threads, {effectiveMemoryGb}GB
 						</span>
-						<span
-							class={cx(
-								css({ color: 'fg.muted' }),
-								css({ display: 'flex', alignItems: 'center' }),
-								engineExpanded && css({ transform: 'rotate(180deg)' })
-							)}
-						>
+						<span class={cx(muted, row, engineExpanded && css({ transform: 'rotate(180deg)' }))}>
 							<ChevronDown size={12} />
 						</span>
 					</div>
@@ -643,21 +624,21 @@
 
 				{#if engineExpanded}
 					<div
-						class={css({
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '2',
-							borderTopWidth: '1px',
-							borderTopStyle: 'solid',
-							borderTopColor: 'border.tertiary',
-							backgroundColor: 'bg.primary',
-							padding: '3'
-						})}
+						class={cx(
+							divider,
+							css({
+								display: 'flex',
+								flexDirection: 'column',
+								gap: '2',
+								backgroundColor: 'bg.primary',
+								padding: '3'
+							})
+						)}
 					>
-						<div class={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+						<div class={cx(row, css({ gap: '3' }))}>
 							<label
 								for="threads-input"
-								class={css({ minWidth: '15', fontSize: 'xs', color: 'fg.secondary' })}
+								class={css({ minWidth: 'labelSm', fontSize: 'xs', color: 'fg.secondary' })}
 							>
 								Threads
 							</label>
@@ -665,14 +646,13 @@
 								id="threads-input"
 								class={css({
 									flex: '1',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.tertiary',
+									borderWidth: '1',
+									borderColor: 'border.primary',
 									backgroundColor: 'bg.secondary',
 									color: 'fg.primary',
 									paddingY: '1',
 									paddingX: '2',
-									fontFamily: 'var(--font-mono)',
+
 									fontSize: 'xs',
 									_focus: { borderColor: 'accent.primary', outline: 'none' }
 								})}
@@ -685,8 +665,8 @@
 							{#if isUsingDefaultThreads}
 								<span
 									class={css({
-										minWidth: '12.5',
-										fontSize: '9px',
+										minWidth: 'labelXs',
+										fontSize: '3xs',
 										fontStyle: 'italic',
 										color: 'fg.tertiary'
 									})}
@@ -695,10 +675,10 @@
 								</span>
 							{/if}
 						</div>
-						<div class={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+						<div class={cx(row, css({ gap: '3' }))}>
 							<label
 								for="memory-select"
-								class={css({ minWidth: '15', fontSize: 'xs', color: 'fg.secondary' })}
+								class={css({ minWidth: 'labelSm', fontSize: 'xs', color: 'fg.secondary' })}
 							>
 								Memory
 							</label>
@@ -706,14 +686,13 @@
 								id="memory-select"
 								class={css({
 									flex: '1',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.tertiary',
+									borderWidth: '1',
+									borderColor: 'border.primary',
 									backgroundColor: 'bg.secondary',
 									color: 'fg.primary',
 									paddingY: '1',
 									paddingX: '2',
-									fontFamily: 'var(--font-mono)',
+
 									fontSize: 'xs',
 									_focus: { borderColor: 'accent.primary', outline: 'none' }
 								})}
@@ -727,8 +706,8 @@
 							{#if isUsingDefaultMemory}
 								<span
 									class={css({
-										minWidth: '12.5',
-										fontSize: '9px',
+										minWidth: 'labelXs',
+										fontSize: '3xs',
 										fontStyle: 'italic',
 										color: 'fg.tertiary'
 									})}
@@ -756,9 +735,8 @@
 						alignItems: 'center',
 						justifyContent: 'center',
 						gap: '2',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'bg.secondary',
 						color: 'fg.muted',
 						paddingY: '2',
@@ -788,12 +766,11 @@
 			bottom: '-5px',
 			left: '50%',
 			zIndex: '2',
-			height: '2.5',
-			width: '2.5',
+			height: 'dotLg',
+			width: 'dotLg',
 			transform: 'translateX(-50%)',
 			backgroundColor: 'bg.primary',
-			borderWidth: '2px',
-			borderStyle: 'solid',
+			borderWidth: '2',
 			borderColor: 'accent.primary'
 		})}
 	></div>

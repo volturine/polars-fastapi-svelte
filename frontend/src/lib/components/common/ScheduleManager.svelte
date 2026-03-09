@@ -23,7 +23,7 @@
 		Search
 	} from 'lucide-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
-	import { css, cx, spinner, emptyText } from '$lib/styles/panda';
+	import { css, cx, spinner, emptyText, row, rowBetween, divider, muted } from '$lib/styles/panda';
 
 	interface Props {
 		datasourceId?: string;
@@ -393,13 +393,12 @@
 		<header
 			class={css({
 				marginBottom: '6',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'border.tertiary',
+				borderBottomWidth: '1',
+				borderBottomColor: 'border.primary',
 				paddingBottom: '5'
 			})}
 		>
-			<div class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
+			<div class={rowBetween}>
 				<div>
 					<h1 class={css({ margin: '0', marginBottom: '2', fontSize: '2xl' })}>Schedules</h1>
 					<p class={css({ margin: '0', color: 'fg.tertiary' })}>
@@ -412,9 +411,8 @@
 						display: 'inline-flex',
 						alignItems: 'center',
 						gap: '1.5',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'accent.bg',
 						paddingX: '3',
 						paddingY: '1.5',
@@ -430,16 +428,15 @@
 				</button>
 			</div>
 			{#if externalSearch === undefined}
-				<div
-					class={css({
-						marginTop: '4',
-						display: 'flex',
-						flexWrap: 'wrap',
-						alignItems: 'center',
-						gap: '3'
-					})}
-				>
-					<div class={css({ position: 'relative', minWidth: '60', maxWidth: '100', flex: '1' })}>
+				<div class={cx(row, css({ marginTop: '4', flexWrap: 'wrap', gap: '3' }))}>
+					<div
+						class={css({
+							position: 'relative',
+							minWidth: 'list',
+							maxWidth: 'panel',
+							flex: '1'
+						})}
+					>
 						<Search
 							size={14}
 							class={css({
@@ -457,9 +454,8 @@
 							placeholder="Search schedules, datasources, or IDs..."
 							class={css({
 								width: '100%',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'transparent',
 								paddingX: '3',
 								paddingY: '1.5',
@@ -473,20 +469,13 @@
 			{/if}
 		</header>
 	{:else}
-		<div
-			class={css({
-				marginBottom: '3',
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'space-between'
-			})}
-		>
+		<div class={cx(row, css({ marginBottom: '3', justifyContent: 'space-between' }))}>
 			<span
 				class={css({
 					fontSize: 'xs',
 					fontWeight: '600',
 					textTransform: 'uppercase',
-					letterSpacing: 'wider',
+					letterSpacing: 'wide',
 					color: 'fg.muted'
 				})}
 			>
@@ -495,15 +484,14 @@
 					<span class={css({ color: 'fg.tertiary' })}>({schedules.length})</span>
 				{/if}
 			</span>
-			<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+			<div class={cx(row, css({ gap: '1' }))}>
 				<button
 					class={css({
 						display: 'inline-flex',
 						alignItems: 'center',
 						gap: '1',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'accent.bg',
 						paddingX: '2',
 						paddingY: '1',
@@ -539,9 +527,8 @@
 			<div
 				class={css({
 					marginBottom: '3',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderWidth: '1',
+					borderColor: 'border.primary',
 					backgroundColor: 'bg.secondary',
 					padding: '2',
 					fontSize: 'xs',
@@ -559,16 +546,15 @@
 						gap: '1'
 					})}
 				>
-					<li class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
-						<Clock size={10} class={css({ color: 'fg.muted' })} /> <strong>On a Schedule</strong> — runs
-						on a cron interval
+					<li class={cx(row, css({ gap: '1' }))}>
+						<Clock size={10} class={muted} /> <strong>On a Schedule</strong> — runs on a cron interval
 					</li>
-					<li class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
-						<Link size={10} class={css({ color: 'fg.muted' })} />
+					<li class={cx(row, css({ gap: '1' }))}>
+						<Link size={10} class={muted} />
 						<strong>After Another Schedule</strong> — runs when a dependency completes
 					</li>
-					<li class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
-						<Database size={10} class={css({ color: 'fg.muted' })} />
+					<li class={cx(row, css({ gap: '1' }))}>
+						<Database size={10} class={muted} />
 						<strong>When Dataset Updates</strong> — runs on datasource change
 					</li>
 				</ul>
@@ -580,9 +566,8 @@
 		<div
 			class={css({
 				marginBottom: '3',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary',
+				borderWidth: '1',
+				borderColor: 'border.primary',
 				backgroundColor: 'bg.secondary',
 				padding: '2',
 				fontSize: 'xs',
@@ -599,9 +584,8 @@
 			class={cx(
 				css({
 					marginBottom: '4',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderWidth: '1',
+					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary',
 					padding: '4'
 				}),
@@ -615,16 +599,16 @@
 			<!-- Target Section -->
 			<div class={css({ marginBottom: '5' })}>
 				<div
-					class={css({
-						marginBottom: '3',
-						display: 'flex',
-						alignItems: 'center',
-						gap: '2',
-						borderBottomWidth: '1px',
-						borderBottomStyle: 'solid',
-						borderBottomColor: 'border.tertiary',
-						paddingBottom: '2'
-					})}
+					class={cx(
+						row,
+						css({
+							marginBottom: '3',
+							gap: '2',
+							borderBottomWidth: '1',
+							borderBottomColor: 'border.primary',
+							paddingBottom: '2'
+						})
+					)}
 				>
 					<Database size={14} class={css({ color: 'accent.primary' })} />
 					<span class={css({ fontSize: 'xs', fontWeight: '500' })}>
@@ -634,21 +618,14 @@
 
 				{#if currentTarget}
 					<div class={css({ backgroundColor: 'bg.secondary', padding: '3', fontSize: 'sm' })}>
-						<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+						<div class={cx(row, css({ gap: '2' }))}>
 							<BarChart3 size={14} class={css({ color: 'accent.primary' })} />
 							<span class={css({ fontWeight: '500' })}>
 								{currentTarget.datasourceName}
 							</span>
 						</div>
 						<div
-							class={css({
-								marginTop: '1',
-								display: 'flex',
-								alignItems: 'center',
-								gap: '1',
-								fontSize: 'xs',
-								color: 'fg.muted'
-							})}
+							class={cx(row, css({ marginTop: '1', gap: '1', fontSize: 'xs', color: 'fg.muted' }))}
 						>
 							<span>└─ Produced by:</span>
 							<span class={css({ color: 'fg.secondary' })}>
@@ -667,7 +644,7 @@
 						<div
 							class={css({
 								display: 'flex',
-								minWidth: '64',
+								minWidth: 'previewLg',
 								flex: '1',
 								flexDirection: 'column',
 								gap: '1.5'
@@ -679,9 +656,8 @@
 							<select
 								id="schedule-datasource"
 								class={css({
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.tertiary',
+									borderWidth: '1',
+									borderColor: 'border.primary',
 									backgroundColor: 'transparent',
 									paddingX: '2',
 									paddingY: '1.5',
@@ -699,19 +675,15 @@
 
 						{#if selectedDatasource}
 							<div class={css({ backgroundColor: 'bg.secondary', padding: '3', fontSize: 'sm' })}>
-								<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+								<div class={cx(row, css({ gap: '2' }))}>
 									<BarChart3 size={14} class={css({ color: 'accent.primary' })} />
 									<span class={css({ fontWeight: '500' })}>{selectedDatasource.name}</span>
 								</div>
 								<div
-									class={css({
-										marginTop: '1',
-										display: 'flex',
-										alignItems: 'center',
-										gap: '1',
-										fontSize: 'xs',
-										color: 'fg.muted'
-									})}
+									class={cx(
+										row,
+										css({ marginTop: '1', gap: '1', fontSize: 'xs', color: 'fg.muted' })
+									)}
 								>
 									<span>└─ Produced by:</span>
 									{#if selectedDatasource.created_by_analysis_id}
@@ -733,16 +705,16 @@
 			<!-- Trigger Section -->
 			<div>
 				<div
-					class={css({
-						marginBottom: '3',
-						display: 'flex',
-						alignItems: 'center',
-						gap: '2',
-						borderBottomWidth: '1px',
-						borderBottomStyle: 'solid',
-						borderBottomColor: 'border.tertiary',
-						paddingBottom: '2'
-					})}
+					class={cx(
+						row,
+						css({
+							marginBottom: '3',
+							gap: '2',
+							borderBottomWidth: '1',
+							borderBottomColor: 'border.primary',
+							paddingBottom: '2'
+						})
+					)}
 				>
 					<Clock size={14} class={css({ color: 'accent.primary' })} />
 					<span class={css({ fontSize: 'xs', fontWeight: '500' })}>
@@ -758,9 +730,8 @@
 							cursor: 'pointer',
 							alignItems: 'flex-start',
 							gap: '3',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.secondary',
 							padding: '3',
 							_hover: { backgroundColor: 'bg.hover' }
@@ -782,16 +753,13 @@
 								Run on a recurring cron interval
 							</p>
 							{#if triggerType === 'cron'}
-								<div
-									class={css({ marginTop: '2', display: 'flex', alignItems: 'center', gap: '2' })}
-								>
+								<div class={cx(row, css({ marginTop: '2', gap: '2' }))}>
 									<input
 										type="text"
 										class={css({
-											width: '32',
-											borderWidth: '1px',
-											borderStyle: 'solid',
-											borderColor: 'border.tertiary',
+											width: 'colMd',
+											borderWidth: '1',
+											borderColor: 'border.primary',
 											backgroundColor: 'transparent',
 											paddingX: '2',
 											paddingY: '1',
@@ -818,9 +786,8 @@
 							cursor: 'pointer',
 							alignItems: 'flex-start',
 							gap: '3',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.secondary',
 							padding: '3',
 							_hover: { backgroundColor: 'bg.hover' }
@@ -836,16 +803,12 @@
 						/>
 						<div class={css({ flex: '1' })}>
 							<div
-								class={css({
-									marginBottom: '1',
-									display: 'flex',
-									alignItems: 'center',
-									gap: '1',
-									fontSize: 'xs',
-									fontWeight: '500'
-								})}
+								class={cx(
+									row,
+									css({ marginBottom: '1', gap: '1', fontSize: 'xs', fontWeight: '500' })
+								)}
 							>
-								<Link size={12} class={css({ color: 'fg.muted' })} />
+								<Link size={12} class={muted} />
 								After Another Schedule
 							</div>
 							<p class={css({ margin: '0', fontSize: 'xs', color: 'fg.tertiary' })}>
@@ -856,9 +819,8 @@
 									<select
 										class={css({
 											width: '100%',
-											borderWidth: '1px',
-											borderStyle: 'solid',
-											borderColor: 'border.tertiary',
+											borderWidth: '1',
+											borderColor: 'border.primary',
 											backgroundColor: 'transparent',
 											paddingX: '2',
 											paddingY: '1',
@@ -885,9 +847,8 @@
 							cursor: 'pointer',
 							alignItems: 'flex-start',
 							gap: '3',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.secondary',
 							padding: '3',
 							_hover: { backgroundColor: 'bg.hover' }
@@ -903,16 +864,12 @@
 						/>
 						<div class={css({ flex: '1' })}>
 							<div
-								class={css({
-									marginBottom: '1',
-									display: 'flex',
-									alignItems: 'center',
-									gap: '1',
-									fontSize: 'xs',
-									fontWeight: '500'
-								})}
+								class={cx(
+									row,
+									css({ marginBottom: '1', gap: '1', fontSize: 'xs', fontWeight: '500' })
+								)}
 							>
-								<Database size={12} class={css({ color: 'fg.muted' })} />
+								<Database size={12} class={muted} />
 								When Dataset Updates
 							</div>
 							<p class={css({ margin: '0', fontSize: 'xs', color: 'fg.tertiary' })}>
@@ -923,9 +880,8 @@
 									<select
 										class={css({
 											width: '100%',
-											borderWidth: '1px',
-											borderStyle: 'solid',
-											borderColor: 'border.tertiary',
+											borderWidth: '1',
+											borderColor: 'border.primary',
 											backgroundColor: 'transparent',
 											paddingX: '2',
 											paddingY: '1',
@@ -948,21 +904,20 @@
 			</div>
 
 			<div
-				class={css({
-					marginTop: '4',
-					display: 'flex',
-					gap: '2',
-					borderTopWidth: '1px',
-					borderTopStyle: 'solid',
-					borderTopColor: 'border.tertiary',
-					paddingTop: '4'
-				})}
+				class={cx(
+					divider,
+					css({
+						marginTop: '4',
+						display: 'flex',
+						gap: '2',
+						paddingTop: '4'
+					})
+				)}
 			>
 				<button
 					class={css({
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'accent.bg',
 						paddingX: '3',
 						paddingY: '1.5',
@@ -982,9 +937,8 @@
 				</button>
 				<button
 					class={css({
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'transparent',
 						paddingX: '3',
 						paddingY: '1.5',
@@ -1007,14 +961,7 @@
 	{/if}
 
 	{#if schedulesQuery.isLoading}
-		<div
-			class={css({
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'center',
-				paddingY: '6'
-			})}
-		>
+		<div class={cx(row, css({ justifyContent: 'center', paddingY: '6' }))}>
 			<div class={spinner()}></div>
 		</div>
 	{:else if schedulesQuery.isError}
@@ -1024,7 +971,7 @@
 				paddingY: '2.5',
 				border: 'none',
 				borderLeft: '2px solid',
-				borderRadius: '0',
+
 				marginTop: '3',
 				marginBottom: '0',
 				fontSize: 'xs',
@@ -1042,9 +989,9 @@
 		<div
 			class={cx(
 				css({
-					borderWidth: '1px',
+					borderWidth: '1',
 					borderStyle: 'dashed',
-					borderColor: 'border.tertiary',
+					borderColor: 'border.primary',
 					padding: '6',
 					textAlign: 'center'
 				}),
@@ -1065,9 +1012,9 @@
 	{:else if visibleSchedules.length === 0 && hasSearch}
 		<div
 			class={css({
-				borderWidth: '1px',
+				borderWidth: '1',
 				borderStyle: 'dashed',
-				borderColor: 'border.tertiary',
+				borderColor: 'border.primary',
 				paddingX: '6',
 				paddingY: '8',
 				textAlign: 'center'
@@ -1086,9 +1033,8 @@
 						class={cx(
 							'group',
 							css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary'
 							})
 						)}
@@ -1161,7 +1107,7 @@
 								{#if schedule.enabled}
 									<Power size={10} class={css({ color: 'success.fg' })} />
 								{:else}
-									<PowerOff size={10} class={css({ color: 'fg.muted' })} />
+									<PowerOff size={10} class={muted} />
 								{/if}
 							</button>
 							<button
@@ -1187,13 +1133,13 @@
 						</div>
 						{#if expandedId === schedule.id}
 							<div
-								class={css({
-									borderTopWidth: '1px',
-									borderTopStyle: 'solid',
-									borderTopColor: 'border.tertiary',
-									paddingX: '3',
-									paddingY: '2'
-								})}
+								class={cx(
+									divider,
+									css({
+										paddingX: '3',
+										paddingY: '2'
+									})
+								)}
 							>
 								<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
 									{#if triggerTypeValue === 'cron'}
@@ -1202,14 +1148,13 @@
 												Cron Expression
 											</span>
 											{#if editingCron === schedule.id}
-												<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+												<div class={cx(row, css({ gap: '1' }))}>
 													<input
 														type="text"
 														class={css({
 															width: '100%',
-															borderWidth: '1px',
-															borderStyle: 'solid',
-															borderColor: 'border.tertiary',
+															borderWidth: '1',
+															borderColor: 'border.primary',
 															backgroundColor: 'transparent',
 															paddingX: '1.5',
 															paddingY: '0.5',
@@ -1255,7 +1200,7 @@
 													</button>
 												</div>
 											{:else}
-												<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+												<div class={cx(row, css({ gap: '1' }))}>
 													<code
 														class={css({
 															backgroundColor: 'bg.tertiary',
@@ -1289,9 +1234,8 @@
 											<select
 												class={css({
 													width: '100%',
-													borderWidth: '1px',
-													borderStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderWidth: '1',
+													borderColor: 'border.primary',
 													backgroundColor: 'transparent',
 													paddingX: '1.5',
 													paddingY: '0.5',
@@ -1318,9 +1262,8 @@
 											<select
 												class={css({
 													width: '100%',
-													borderWidth: '1px',
-													borderStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderWidth: '1',
+													borderColor: 'border.primary',
 													backgroundColor: 'transparent',
 													paddingX: '1.5',
 													paddingY: '0.5',
@@ -1356,9 +1299,8 @@
 			<div
 				class={css({
 					overflowX: 'auto',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary'
+					borderWidth: '1',
+					borderColor: 'border.primary'
 				})}
 			>
 				<table class={css({ width: '100%', borderCollapse: 'collapse', fontSize: 'xs' })}>
@@ -1366,10 +1308,9 @@
 						<tr class={css({ backgroundColor: 'bg.tertiary' })}>
 							<th
 								class={css({
-									width: '6',
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									width: 'iconLg',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1379,9 +1320,8 @@
 							{#if !datasourceId}
 								<th
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5',
 										textAlign: 'left',
@@ -1393,9 +1333,8 @@
 							{/if}
 							<th
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1406,9 +1345,8 @@
 							</th>
 							<th
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1419,9 +1357,8 @@
 							</th>
 							<th
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1432,9 +1369,8 @@
 							</th>
 							<th
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1445,9 +1381,8 @@
 							</th>
 							<th
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1458,10 +1393,9 @@
 							</th>
 							<th
 								class={css({
-									width: '16',
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									width: 'logoXl',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1485,9 +1419,8 @@
 							>
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1495,7 +1428,7 @@
 									<ChevronDown
 										size={12}
 										class={cx(
-											css({ transitionProperty: 'transform', transitionDuration: '160ms' }),
+											css({ transition: 'transform 160ms' }),
 											expandedId === schedule.id ? '' : css({ transform: 'rotate(-90deg)' })
 										)}
 									/>
@@ -1503,9 +1436,8 @@
 								{#if !datasourceId}
 									<td
 										class={css({
-											borderBottomWidth: '1px',
-											borderBottomStyle: 'solid',
-											borderBottomColor: 'border.tertiary',
+											borderBottomWidth: '1',
+											borderBottomColor: 'border.primary',
 											paddingX: '2',
 											paddingY: '1.5'
 										})}
@@ -1513,7 +1445,7 @@
 										<span
 											class={css({
 												display: 'inline-flex',
-												maxWidth: '40',
+												maxWidth: 'inputSm',
 												alignItems: 'center',
 												gap: '1',
 												overflow: 'hidden',
@@ -1530,9 +1462,8 @@
 								{/if}
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1540,7 +1471,7 @@
 									<span
 										class={css({
 											display: 'block',
-											maxWidth: '48',
+											maxWidth: 'colXl',
 											overflow: 'hidden',
 											textOverflow: 'ellipsis',
 											whiteSpace: 'nowrap',
@@ -1553,9 +1484,8 @@
 								</td>
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1566,14 +1496,13 @@
 								</td>
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
 								>
-									<div class={css({ display: 'flex', alignItems: 'center', gap: '1.5' })}>
+									<div class={cx(row, css({ gap: '1.5' }))}>
 										{#if triggerTypeValue === 'cron'}
 											<Clock size={12} class={css({ flexShrink: '0', color: 'fg.muted' })} />
 										{:else if triggerTypeValue === 'depends'}
@@ -1595,9 +1524,8 @@
 								</td>
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1623,16 +1551,15 @@
 											<Power size={12} class={css({ color: 'success.fg' })} />
 											<span class={css({ color: 'success.fg' })}>On</span>
 										{:else}
-											<PowerOff size={12} class={css({ color: 'fg.muted' })} />
-											<span class={css({ color: 'fg.muted' })}>Off</span>
+											<PowerOff size={12} class={muted} />
+											<span class={muted}>Off</span>
 										{/if}
 									</button>
 								</td>
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5',
 										color: 'fg.secondary'
@@ -1642,9 +1569,8 @@
 								</td>
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1676,9 +1602,8 @@
 									<td
 										colspan={colCount}
 										class={css({
-											borderBottomWidth: '1px',
-											borderBottomStyle: 'solid',
-											borderBottomColor: 'border.tertiary',
+											borderBottomWidth: '1',
+											borderBottomColor: 'border.primary',
 											backgroundColor: 'bg.primary',
 											padding: '0'
 										})}
@@ -1697,8 +1622,8 @@
 												<span class={css({ fontSize: '2xs', color: 'fg.muted' })}
 													>Target Datasource</span
 												>
-												<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
-													<BarChart3 size={10} class={css({ color: 'fg.muted' })} />
+												<div class={cx(row, css({ gap: '1' }))}>
+													<BarChart3 size={10} class={muted} />
 													<span class={css({ fontSize: '2xs', color: 'fg.secondary' })}>
 														{resolveDatasource(schedule.datasource_id)}
 													</span>
@@ -1716,14 +1641,13 @@
 														>Cron Expression</span
 													>
 													{#if editingCron === schedule.id}
-														<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+														<div class={cx(row, css({ gap: '1' }))}>
 															<input
 																type="text"
 																class={css({
-																	width: '32',
-																	borderWidth: '1px',
-																	borderStyle: 'solid',
-																	borderColor: 'border.tertiary',
+																	width: 'colMd',
+																	borderWidth: '1',
+																	borderColor: 'border.primary',
 																	backgroundColor: 'transparent',
 																	paddingX: '1.5',
 																	paddingY: '0.5',
@@ -1774,7 +1698,7 @@
 															</button>
 														</div>
 													{:else}
-														<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+														<div class={cx(row, css({ gap: '1' }))}>
 															<code
 																class={css({
 																	backgroundColor: 'bg.tertiary',
@@ -1809,12 +1733,11 @@
 												<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 													<span class={css({ fontSize: '2xs', color: 'fg.muted' })}>Depends On</span
 													>
-													<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+													<div class={cx(row, css({ gap: '1' }))}>
 														<select
 															class={css({
-																borderWidth: '1px',
-																borderStyle: 'solid',
-																borderColor: 'border.tertiary',
+																borderWidth: '1',
+																borderColor: 'border.primary',
 																backgroundColor: 'transparent',
 																paddingX: '1.5',
 																paddingY: '0.5',
@@ -1833,7 +1756,7 @@
 															{/each}
 														</select>
 														{#if schedule.depends_on}
-															<Link size={10} class={css({ color: 'fg.muted' })} />
+															<Link size={10} class={muted} />
 														{/if}
 													</div>
 												</div>
@@ -1842,12 +1765,11 @@
 													<span class={css({ fontSize: '2xs', color: 'fg.muted' })}
 														>On Datasource Update</span
 													>
-													<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+													<div class={cx(row, css({ gap: '1' }))}>
 														<select
 															class={css({
-																borderWidth: '1px',
-																borderStyle: 'solid',
-																borderColor: 'border.tertiary',
+																borderWidth: '1',
+																borderColor: 'border.primary',
 																backgroundColor: 'transparent',
 																paddingX: '1.5',
 																paddingY: '0.5',
@@ -1867,7 +1789,7 @@
 															{/each}
 														</select>
 														{#if schedule.trigger_on_datasource_id}
-															<Database size={10} class={css({ color: 'fg.muted' })} />
+															<Database size={10} class={muted} />
 														{/if}
 													</div>
 												</div>

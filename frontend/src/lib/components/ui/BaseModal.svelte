@@ -42,7 +42,7 @@
 		overlayClass = css({
 			position: 'fixed',
 			inset: '0',
-			zIndex: '1000',
+			zIndex: 'modal',
 			display: 'flex',
 			alignItems: 'center',
 			justifyContent: 'center',
@@ -52,8 +52,7 @@
 			width: '100%',
 			maxHeight: '90vh',
 			overflowY: 'auto',
-			borderWidth: '1px',
-			borderStyle: 'solid'
+			borderWidth: '1'
 		}),
 		panelAction = noopAction,
 		panelActionValue,

@@ -239,7 +239,7 @@
 			overflowY: 'auto',
 			padding: '8',
 			backgroundColor: 'bg.secondary',
-			minHeight: '100'
+			minHeight: 'panel'
 		})
 	)}
 >
@@ -247,7 +247,7 @@
 		<div
 			class={css({
 				display: 'flex',
-				minHeight: '100',
+				minHeight: 'panel',
 				height: '100%',
 				flexDirection: 'column',
 				alignItems: 'center',
@@ -310,12 +310,12 @@
 						class={css({
 							marginY: '2',
 							display: 'flex',
-							minHeight: '7',
+							minHeight: 'row',
 							width: 'min(55%, 480px)',
 							flexShrink: '0',
 							alignItems: 'center',
 							justifyContent: 'center',
-							borderWidth: '2px',
+							borderWidth: '2',
 							borderStyle: 'dashed',
 							paddingX: '4',
 							paddingY: '2',
@@ -405,12 +405,12 @@
 							class={css({
 								marginY: '2',
 								display: 'flex',
-								minHeight: '7',
+								minHeight: 'row',
 								width: 'min(55%, 480px)',
 								flexShrink: '0',
 								alignItems: 'center',
 								justifyContent: 'center',
-								borderWidth: '2px',
+								borderWidth: '2',
 								borderStyle: 'dashed',
 								paddingX: '4',
 								paddingY: '2',
@@ -509,12 +509,12 @@
 									class={css({
 										marginY: '2',
 										display: 'flex',
-										minHeight: '7',
+										minHeight: 'row',
 										width: 'min(55%, 480px)',
 										flexShrink: '0',
 										alignItems: 'center',
 										justifyContent: 'center',
-										borderWidth: '2px',
+										borderWidth: '2',
 										borderStyle: 'dashed',
 										paddingX: '4',
 										paddingY: '2',

@@ -3,7 +3,7 @@
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import { ArrowRight, X } from 'lucide-svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
-	import { css, emptyText } from '$lib/styles/panda';
+	import { css, emptyText, stepConfig, muted } from '$lib/styles/panda';
 
 	interface RenameConfigData {
 		column_mapping: { [oldName: string]: string };
@@ -48,11 +48,7 @@
 	}
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Rename configuration"
->
+<div class={stepConfig()} role="region" aria-label="Rename configuration">
 	<h3
 		class={css({
 			margin: '0',
@@ -81,7 +77,7 @@
 					color: 'fg.muted',
 					backgroundColor: 'transparent',
 					border: '1px dashed',
-					borderColor: 'border.tertiary',
+					borderColor: 'border.primary',
 					padding: '6',
 					textAlign: 'center',
 					marginBottom: '5'
@@ -133,9 +129,9 @@
 			type="button"
 			class={css({
 				backgroundColor: 'accent.primary',
-				color: 'bg.primary',
+				color: 'fg.inverse',
 				border: '1px solid',
-				borderColor: 'accent.secondary',
+				borderColor: 'border.primary',
 				paddingY: '2',
 				paddingX: '4',
 				cursor: 'pointer',
@@ -144,7 +140,7 @@
 				_hover: { opacity: '0.9' },
 				_disabled: {
 					backgroundColor: 'bg.tertiary',
-					borderColor: 'border.tertiary',
+					borderColor: 'border.primary',
 					color: 'fg.muted',
 					cursor: 'not-allowed'
 				}
@@ -171,7 +167,7 @@
 						backgroundColor: 'transparent',
 						border: 'none',
 						borderBottom: '1px solid',
-						borderBottomColor: 'border.tertiary',
+						borderBottomColor: 'border.primary',
 						display: 'flex',
 						justifyContent: 'space-between',
 						alignItems: 'center',
@@ -193,7 +189,7 @@
 						<span
 							class={css({
 								fontWeight: 'semibold',
-								maxWidth: '40',
+								maxWidth: 'inputSm',
 								overflow: 'hidden',
 								textOverflow: 'ellipsis',
 								whiteSpace: 'nowrap',
@@ -201,11 +197,11 @@
 							})}
 							title={mapping.oldName}>{mapping.oldName}</span
 						>
-						<ArrowRight size={12} class={css({ color: 'fg.muted' })} aria-hidden="true" />
+						<ArrowRight size={12} class={muted} aria-hidden="true" />
 						<span
 							class={css({
 								fontWeight: 'semibold',
-								maxWidth: '40',
+								maxWidth: 'inputSm',
 								overflow: 'hidden',
 								textOverflow: 'ellipsis',
 								whiteSpace: 'nowrap',
@@ -219,8 +215,8 @@
 						data-testid={`rename-remove-button-${mapping.oldName}`}
 						type="button"
 						class={css({
-							width: '7',
-							height: '7',
+							width: 'row',
+							height: 'row',
 							display: 'inline-flex',
 							alignItems: 'center',
 							justifyContent: 'center',
@@ -229,13 +225,12 @@
 							lineHeight: 'none',
 							backgroundColor: 'transparent',
 							color: 'fg.muted',
-							borderWidth: '1px',
-							borderStyle: 'solid',
+							borderWidth: '1',
 							borderColor: 'border.transparent',
 							_hover: {
 								color: 'fg.primary',
 								backgroundColor: 'bg.hover',
-								borderColor: 'border.tertiary'
+								borderColor: 'border.primary'
 							}
 						})}
 						onclick={() => removeMapping(mapping.oldName)}

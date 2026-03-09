@@ -3,7 +3,7 @@
 	import { onClickOutside } from 'runed';
 	import { configStore } from '$lib/stores/config.svelte';
 	import { idbEntries, idbDelete, idbClear } from '$lib/utils/indexeddb';
-	import { css, emptyText } from '$lib/styles/panda';
+	import { css, emptyText, cx, row } from '$lib/styles/panda';
 
 	let open = $state(false);
 	let entries = $state<Array<{ key: string; value: unknown }>>([]);
@@ -84,8 +84,7 @@
 				cursor: 'pointer',
 				alignItems: 'center',
 				gap: '2',
-				borderWidth: '1px',
-				borderStyle: 'solid',
+				borderWidth: '1',
 				borderColor: 'transparent',
 				paddingX: '3',
 				paddingY: '2',
@@ -109,11 +108,10 @@
 					top: '100%',
 					marginTop: '2',
 					zIndex: 'engine',
-					width: '90',
+					width: 'popover',
 					overflow: 'hidden',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderWidth: '1',
+					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary'
 				})}
 			>
@@ -122,9 +120,8 @@
 						display: 'flex',
 						alignItems: 'center',
 						justifyContent: 'space-between',
-						borderBottomWidth: '1px',
-						borderBottomStyle: 'solid',
-						borderBottomColor: 'border.tertiary',
+						borderBottomWidth: '1',
+						borderBottomColor: 'border.primary',
 						padding: '3',
 						backgroundColor: 'bg.secondary'
 					})}
@@ -132,16 +129,15 @@
 					<span class={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.primary' })}>
 						IndexedDB
 					</span>
-					<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+					<div class={cx(row, css({ gap: '2' }))}>
 						<button
 							class={css({
 								display: 'flex',
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'center',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'transparent',
 								paddingX: '2',
 								paddingY: '1',
@@ -160,15 +156,14 @@
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'center',
-								borderWidth: '1px',
-								borderStyle: 'solid',
+								borderWidth: '1',
 								borderColor: 'border.error',
 								backgroundColor: 'transparent',
 								paddingX: '2',
 								paddingY: '1',
 								fontSize: 'xs',
 								color: 'error.fg',
-								_hover: { backgroundColor: 'error' }
+								_hover: { backgroundColor: 'error.bg' }
 							})}
 							onclick={clearAll}
 							type="button"
@@ -195,7 +190,7 @@
 					</div>
 				</div>
 
-				<div class={css({ maxHeight: '75', overflowY: 'auto' })}>
+				<div class={css({ maxHeight: 'dropdownTall', overflowY: 'auto' })}>
 					{#if loading}
 						<div
 							class={css({
@@ -221,9 +216,8 @@
 							{#each entries as entry (entry.key)}
 								<li
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
 										padding: '3'
 									})}
 								>
@@ -251,9 +245,8 @@
 														display: 'flex',
 														alignItems: 'center',
 														gap: '1',
-														borderWidth: '1px',
-														borderStyle: 'solid',
-														borderColor: 'border.tertiary',
+														borderWidth: '1',
+														borderColor: 'border.primary',
 														backgroundColor: 'transparent',
 														paddingX: '2',
 														paddingY: '0.5',
@@ -305,15 +298,14 @@
 												cursor: 'pointer',
 												alignItems: 'center',
 												justifyContent: 'center',
-												borderWidth: '1px',
-												borderStyle: 'solid',
+												borderWidth: '1',
 												borderColor: 'border.error',
 												backgroundColor: 'transparent',
 												paddingX: '2',
 												paddingY: '1',
 												fontSize: 'xs',
 												color: 'error.fg',
-												_hover: { backgroundColor: 'error' }
+												_hover: { backgroundColor: 'error.bg' }
 											})}
 											onclick={() => removeKey(entry.key)}
 											type="button"

@@ -76,8 +76,7 @@
 		class={cx(
 			css({
 				cursor: 'pointer',
-				borderWidth: '1px',
-				borderStyle: 'solid',
+				borderWidth: '1',
 				backgroundColor: 'bg.secondary',
 				borderColor: 'border.primary',
 				color: 'fg.primary',
@@ -86,10 +85,10 @@
 				smDown: { width: '100%' }
 			}),
 			size === 'sm'
-				? css({ paddingX: '2', paddingY: '1', fontSize: 'xs', minWidth: '140px' })
+				? css({ paddingX: '2', paddingY: '1', fontSize: 'xs', minWidth: 'inputSm' })
 				: size === 'lg'
-					? css({ paddingX: '3', paddingY: '2', fontSize: 'sm', minWidth: '200px' })
-					: css({ paddingX: '2.5', paddingY: '1.5', fontSize: 'sm', minWidth: '160px' })
+					? css({ paddingX: '3', paddingY: '2', fontSize: 'sm', minWidth: 'listSm' })
+					: css({ paddingX: '2.5', paddingY: '1.5', fontSize: 'sm', minWidth: 'inputSm' })
 		)}
 	>
 		{#if placeholder}

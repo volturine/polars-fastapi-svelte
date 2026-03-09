@@ -211,7 +211,7 @@
 </script>
 
 <div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
+	class={css({ padding: '0', border: 'none', backgroundColor: 'bg.primary' })}
 	role="region"
 	aria-label="Filter configuration"
 >
@@ -246,14 +246,13 @@
 					type="button"
 					class={css({
 						display: 'flex',
-						height: '7',
-						width: '7',
+						height: 'row',
+						width: 'row',
 						cursor: 'pointer',
 						alignItems: 'center',
 						justifyContent: 'center',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'bg.tertiary',
 						padding: '0',
 						color: 'fg.secondary',
@@ -297,9 +296,8 @@
 
 					<div
 						class={css({
-							borderLeftWidth: '2px',
-							borderLeftStyle: 'solid',
-							borderLeftColor: 'border.tertiary',
+							borderLeftWidth: '2',
+							borderLeftColor: 'border.primary',
 							paddingLeft: '4',
 							paddingBottom: '2'
 						})}
@@ -327,13 +325,12 @@
 								class={css({
 									marginLeft: 'auto',
 									display: 'flex',
-									height: '6',
-									width: '6',
+									height: 'iconLg',
+									width: 'iconLg',
 									cursor: 'pointer',
 									alignItems: 'center',
 									justifyContent: 'center',
-									borderWidth: '1px',
-									borderStyle: 'solid',
+									borderWidth: '1',
 									borderColor: 'border.transparent',
 									backgroundColor: 'transparent',
 									padding: '0',
@@ -368,7 +365,7 @@
 									flex: '2',
 									flexDirection: 'column',
 									gap: '1',
-									minWidth: '55'
+									minWidth: 'dropdown'
 								})}
 							>
 								<span
@@ -386,7 +383,7 @@
 									placeholder="Select..."
 									containerClass={css({ position: 'static' })}
 									triggerClass={css({ width: '100%' })}
-									menuClass={css({ top: 'inherit', marginTop: '48px' })}
+									menuClass={css({ top: 'inherit', marginTop: '12' })}
 								/>
 							</div>
 
@@ -396,7 +393,7 @@
 									flex: '1',
 									flexDirection: 'column',
 									gap: '1',
-									minWidth: '37.5'
+									minWidth: 'inputSm'
 								})}
 							>
 								<label
@@ -427,7 +424,7 @@
 										flex: '2',
 										flexDirection: 'column',
 										gap: '1',
-										minWidth: '60'
+										minWidth: 'list'
 									})}
 								>
 									<div
@@ -465,7 +462,7 @@
 											placeholder="Select..."
 											containerClass={css({ position: 'static' })}
 											triggerClass={css({ width: '100%' })}
-											menuClass={css({ top: 'inherit', marginTop: '48px' })}
+											menuClass={css({ top: 'inherit', marginTop: '12' })}
 										/>
 									{:else if colType === 'number'}
 										<input
@@ -534,9 +531,8 @@
 																display: 'inline-flex',
 																alignItems: 'center',
 																gap: '1',
-																borderWidth: '1px',
-																borderStyle: 'solid',
-																borderColor: 'border.tertiary',
+																borderWidth: '1',
+																borderColor: 'border.primary',
 																backgroundColor: 'bg.tertiary',
 																color: 'fg.primary',
 																fontSize: 'xs',
@@ -547,7 +543,7 @@
 														>
 															<span
 																class={css({
-																	maxWidth: '55',
+																	maxWidth: 'dropdown',
 																	overflow: 'hidden',
 																	textOverflow: 'ellipsis',
 																	whiteSpace: 'nowrap'
@@ -594,7 +590,7 @@
 										flex: '2',
 										flexDirection: 'column',
 										gap: '1',
-										minWidth: '60'
+										minWidth: 'list'
 									})}
 								>
 									<span class={css({ fontSize: 'xs', fontWeight: 'normal', color: 'fg.muted' })}
@@ -604,7 +600,7 @@
 										class={css({
 											display: 'flex',
 											alignItems: 'center',
-											height: '9',
+											height: 'rowXl',
 											paddingX: '3',
 											fontSize: 'xs',
 											fontStyle: 'italic',

@@ -166,9 +166,8 @@
 			zIndex: 'overlay',
 			display: 'flex',
 			flexDirection: 'column',
-			borderWidth: '1px',
-			borderStyle: 'solid',
-			borderColor: 'border.tertiary',
+			borderWidth: '1',
+			borderColor: 'border.primary',
 			backgroundColor: 'bg.primary',
 			boxShadow: 'drag',
 			outline: 'none',
@@ -187,9 +186,8 @@
 				id="namespace-picker-search"
 				class={css({
 					width: '100%',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderWidth: '1',
+					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary',
 					paddingX: '2',
 					paddingY: '1.5',
@@ -209,7 +207,7 @@
 			<div
 				class={css({
 					display: 'flex',
-					maxHeight: '60',
+					maxHeight: 'list',
 					flexDirection: 'column',
 					overflowY: 'auto'
 				})}
@@ -231,9 +229,8 @@
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'space-between',
-								borderBottomWidth: '1px',
-								borderBottomStyle: 'solid',
-								borderBottomColor: 'border.tertiary',
+								borderBottomWidth: '1',
+								borderBottomColor: 'border.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								textAlign: 'left',
@@ -267,8 +264,7 @@
 								cursor: 'pointer',
 								alignItems: 'center',
 								justifyContent: 'space-between',
-								borderLeftWidth: '2px',
-								borderLeftStyle: 'solid',
+								borderLeftWidth: '2',
 								borderLeftColor: name === selected ? 'accent.primary' : 'transparent',
 								backgroundColor: name === selected ? 'accent.bg' : 'transparent',
 								color: name === selected ? 'fg.primary' : 'fg.secondary',

@@ -4,7 +4,7 @@
 	import { untrack } from 'svelte';
 	import { enginesStore } from '$lib/stores/engines.svelte';
 	import { toEpochDisplay } from '$lib/utils/datetime';
-	import { css, emptyText } from '$lib/styles/panda';
+	import { css, emptyText, cx, row } from '$lib/styles/panda';
 
 	let expanded = $state(false);
 	let killing = $state<string | null>(null);
@@ -59,8 +59,7 @@
 			cursor: 'pointer',
 			alignItems: 'center',
 			gap: '2',
-			borderWidth: '1px',
-			borderStyle: 'solid',
+			borderWidth: '1',
 			borderColor: 'transparent',
 			paddingX: '3',
 			paddingY: '2',
@@ -76,13 +75,13 @@
 		{#if enginesStore.count > 0}
 			<span
 				class={css({
-					minWidth: '4.5',
+					minWidth: 'icon',
 					paddingX: '2',
 					textAlign: 'center',
 					fontSize: 'xs',
 					fontWeight: 'semibold',
 					backgroundColor: 'accent.primary',
-					color: 'bg.primary'
+					color: 'fg.inverse'
 				})}
 			>
 				{enginesStore.count}
@@ -100,25 +99,24 @@
 				right: '0',
 				top: '100%',
 				zIndex: 'engine',
-				width: '70',
+				width: 'listLg',
 				overflow: 'hidden',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary',
+				borderWidth: '1',
+				borderColor: 'border.primary',
 				backgroundColor: 'bg.primary'
 			})}
 		>
 			<div
-				class={css({
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'space-between',
-					borderBottomWidth: '1px',
-					borderBottomStyle: 'solid',
-					borderBottomColor: 'border.tertiary',
-					padding: '3',
-					backgroundColor: 'bg.secondary'
-				})}
+				class={cx(
+					row,
+					css({
+						justifyContent: 'space-between',
+						borderBottomWidth: '1',
+						borderBottomColor: 'border.primary',
+						padding: '3',
+						backgroundColor: 'bg.secondary'
+					})
+				)}
 			>
 				<span class={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.primary' })}>
 					Active Engines
@@ -141,20 +139,21 @@
 				</button>
 			</div>
 
-			<div class={css({ maxHeight: '75', overflowY: 'auto' })}>
+			<div class={css({ maxHeight: 'dropdownTall', overflowY: 'auto' })}>
 				{#if enginesStore.count === 0}
 					{#if enginesStore.loading}
 						<div
-							class={css({
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								gap: '2',
-								padding: '6',
-								textAlign: 'center',
-								fontSize: 'sm',
-								color: 'fg.muted'
-							})}
+							class={cx(
+								row,
+								css({
+									justifyContent: 'center',
+									gap: '2',
+									padding: '6',
+									textAlign: 'center',
+									fontSize: 'sm',
+									color: 'fg.muted'
+								})
+							)}
 						>
 							<LoaderCircle size={16} class={css({ animation: 'spin 1s linear infinite' })} />
 							<span>Loading...</span>
@@ -168,18 +167,18 @@
 					<ul class={css({ margin: '0', listStyle: 'none', padding: '0' })}>
 						{#each enginesStore.engines as engine (engine.analysis_id)}
 							<li
-								class={css({
-									display: 'flex',
-									alignItems: 'center',
-									gap: '3',
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
-									padding: '3'
-								})}
+								class={cx(
+									row,
+									css({
+										gap: '3',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
+										padding: '3'
+									})
+								)}
 							>
 								<div class={css({ minWidth: '0', flex: '1' })}>
-									<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+									<div class={cx(row, css({ gap: '2' }))}>
 										<span
 											class={css({
 												fontFamily: 'mono',
@@ -204,9 +203,7 @@
 											{engine.status}
 										</span>
 									</div>
-									<div
-										class={css({ marginTop: '1', display: 'flex', alignItems: 'center', gap: '2' })}
-									>
+									<div class={cx(row, css({ marginTop: '1', gap: '2' }))}>
 										{#if engine.current_job_id}
 											<span
 												class={css({
@@ -229,14 +226,13 @@
 										cursor: 'pointer',
 										alignItems: 'center',
 										justifyContent: 'center',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'border.tertiary',
+										borderWidth: '1',
+										borderColor: 'border.primary',
 										padding: '1',
 										backgroundColor: 'transparent',
 										color: 'fg.muted',
 										_hover: {
-											backgroundColor: 'error',
+											backgroundColor: 'error.bg',
 											borderColor: 'border.error',
 											color: 'error.fg'
 										},
@@ -261,12 +257,11 @@
 			{#if enginesStore.error}
 				<div
 					class={css({
-						borderTopWidth: '1px',
-						borderTopStyle: 'solid',
+						borderTopWidth: '1',
 						borderTopColor: 'border.error',
 						padding: '2',
 						fontSize: 'xs',
-						backgroundColor: 'error',
+						backgroundColor: 'error.bg',
 						color: 'error.fg'
 					})}
 				>

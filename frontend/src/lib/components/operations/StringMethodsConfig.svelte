@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
-	import { css, cx } from '$lib/styles/panda';
+	import { css, cx, stepConfig, divider } from '$lib/styles/panda';
 
 	interface StringMethodsConfigData {
 		column: string;
@@ -68,17 +68,13 @@
 	}
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="String methods configuration"
->
+<div class={stepConfig()} role="region" aria-label="String methods configuration">
 	<div
 		class={css({
 			marginBottom: '0',
 			paddingBottom: '5',
 			backgroundColor: 'transparent',
-			borderRadius: '0',
+
 			border: 'none'
 		})}
 		role="group"
@@ -116,7 +112,7 @@
 					paddingY: '2.5',
 					border: 'none',
 					borderLeft: '2px solid',
-					borderRadius: '0',
+
 					marginTop: '3',
 					marginBottom: '0',
 					fontSize: 'xs',
@@ -138,10 +134,15 @@
 				marginBottom: '0',
 				paddingBottom: '5',
 				backgroundColor: 'transparent',
-				borderRadius: '0',
+
 				border: 'none'
 			}),
-			css({ paddingTop: '5', borderTop: '1px solid var(--color-border-tertiary)' })
+			cx(
+				divider,
+				css({
+					paddingTop: '5'
+				})
+			)
 		)}
 		role="group"
 		aria-labelledby="str-method-heading"
@@ -187,7 +188,7 @@
 				marginBottom: '0',
 				paddingBottom: '5',
 				backgroundColor: 'transparent',
-				borderRadius: '0',
+
 				border: 'none'
 			})}
 			role="group"
@@ -285,7 +286,7 @@
 				marginBottom: '0',
 				paddingBottom: '5',
 				backgroundColor: 'transparent',
-				borderRadius: '0',
+
 				border: 'none'
 			})}
 			role="group"
@@ -382,7 +383,7 @@
 				marginBottom: '0',
 				paddingBottom: '5',
 				backgroundColor: 'transparent',
-				borderRadius: '0',
+
 				border: 'none'
 			})}
 			role="group"
@@ -479,7 +480,7 @@
 				marginBottom: '0',
 				paddingBottom: '5',
 				backgroundColor: 'transparent',
-				borderRadius: '0',
+
 				border: 'none'
 			})}
 			role="group"
@@ -542,7 +543,7 @@
 				marginBottom: '0',
 				paddingBottom: '5',
 				backgroundColor: 'transparent',
-				borderRadius: '0',
+
 				border: 'none'
 			})}
 			role="group"
@@ -639,10 +640,15 @@
 				marginBottom: '0',
 				paddingBottom: '5',
 				backgroundColor: 'transparent',
-				borderRadius: '0',
+
 				border: 'none'
 			}),
-			css({ paddingTop: '5', borderTop: '1px solid var(--color-border-tertiary)' })
+			cx(
+				divider,
+				css({
+					paddingTop: '5'
+				})
+			)
 		)}
 		role="group"
 		aria-labelledby="new-column-heading"

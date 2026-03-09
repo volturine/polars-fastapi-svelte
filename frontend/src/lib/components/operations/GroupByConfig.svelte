@@ -3,7 +3,7 @@
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig, cx, divider } from '$lib/styles/panda';
 
 	const uid = $props.id();
 
@@ -73,17 +73,13 @@
 	}
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Group by configuration"
->
+<div class={stepConfig()} role="region" aria-label="Group by configuration">
 	<div
 		class={css({
 			marginBottom: '0',
 			paddingBottom: '5',
 			backgroundColor: 'transparent',
-			borderRadius: '0',
+
 			border: 'none'
 		})}
 		role="group"
@@ -100,17 +96,17 @@
 	</div>
 
 	<div
-		class={css({
-			marginBottom: '0',
-			paddingBottom: '5',
-			backgroundColor: 'transparent',
-			borderRadius: '0',
-			border: 'none',
-			paddingTop: '5',
-			borderTopWidth: '1',
-			borderTopStyle: 'solid',
-			borderTopColor: 'border.tertiary'
-		})}
+		class={cx(
+			divider,
+			css({
+				marginBottom: '0',
+				paddingBottom: '5',
+				backgroundColor: 'transparent',
+
+				border: 'none',
+				paddingTop: '5'
+			})
+		)}
 		role="group"
 		aria-labelledby="{uid}-agg-heading"
 	>
@@ -121,7 +117,7 @@
 			role="group"
 			aria-label="Add aggregation form"
 		>
-			<div class={css({ flex: '2', minWidth: '40' })}>
+			<div class={css({ flex: '2', minWidth: 'inputSm' })}>
 				<ColumnDropdown
 					{schema}
 					value={newAggregation.column}
@@ -147,7 +143,7 @@
 			<select
 				id="{uid}-agg-function"
 				data-testid="agg-function-select"
-				class={css({ flex: '1', minWidth: '30' })}
+				class={css({ flex: '1', minWidth: 'fieldMd' })}
 				bind:value={newAggregation.function}
 			>
 				{#each aggregationFunctions as func (func)}
@@ -158,7 +154,7 @@
 			<input
 				id="{uid}-agg-alias"
 				type="text"
-				class={css({ flex: '2', minWidth: '40' })}
+				class={css({ flex: '2', minWidth: 'inputSm' })}
 				bind:value={newAggregation.alias}
 				placeholder="Alias (optional)"
 			/>
@@ -169,9 +165,9 @@
 				type="button"
 				class={css({
 					backgroundColor: 'accent.primary',
-					color: 'bg.primary',
+					color: 'fg.inverse',
 					border: '1px solid',
-					borderColor: 'accent.secondary',
+					borderColor: 'border.primary',
 					paddingX: '4',
 					paddingY: '2',
 					cursor: 'pointer',
@@ -179,7 +175,7 @@
 					_disabled: {
 						backgroundColor: 'bg.muted',
 						color: 'fg.muted',
-						borderColor: 'border.tertiary',
+						borderColor: 'border.primary',
 						cursor: 'not-allowed'
 					}
 				})}
@@ -204,7 +200,7 @@
 							backgroundColor: 'transparent',
 							border: 'none',
 							borderBottom: '1px solid',
-							borderBottomColor: 'border.tertiary',
+							borderBottomColor: 'border.primary',
 							display: 'flex',
 							justifyContent: 'space-between',
 							alignItems: 'center',

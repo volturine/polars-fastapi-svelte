@@ -3,7 +3,7 @@
 	import { AlertTriangle } from 'lucide-svelte';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig } from '$lib/styles/panda';
 
 	interface DropConfigData {
 		columns: string[];
@@ -19,11 +19,7 @@
 	const safeColumns = $derived(Array.isArray(config.columns) ? config.columns : []);
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Drop columns configuration"
->
+<div class={stepConfig()} role="region" aria-label="Drop columns configuration">
 	<h3 class={css({ marginBottom: '2' })}>Drop Columns</h3>
 
 	<p
@@ -43,7 +39,7 @@
 			marginBottom: '0',
 			paddingBottom: '5',
 			backgroundColor: 'transparent',
-			borderRadius: '0',
+
 			border: 'none'
 		})}
 	>

@@ -9,7 +9,7 @@
 	import ColumnTypeDropdown from '$lib/components/common/ColumnTypeDropdown.svelte';
 	import type { Udf, UdfInput, UdfSignature } from '$lib/types/udf';
 	import { ArrowLeft, Save } from 'lucide-svelte';
-	import { css, button } from '$lib/styles/panda';
+	import { css, button, cx, row, rowBetween } from '$lib/styles/panda';
 
 	interface Props {
 		mode: 'create' | 'edit';
@@ -133,7 +133,13 @@
 </script>
 
 <div
-	class={css({ maxWidth: '240', marginX: 'auto', padding: '6', height: 'full', overflowY: 'auto' })}
+	class={css({
+		maxWidth: 'modalLg',
+		marginX: 'auto',
+		padding: '6',
+		height: 'full',
+		overflowY: 'auto'
+	})}
 >
 	<header
 		class={css({
@@ -145,25 +151,23 @@
 			marginBottom: '6',
 			paddingBottom: '5',
 			borderBottomWidth: '1',
-			borderBottomStyle: 'solid',
-			borderBottomColor: 'border.tertiary',
+			borderBottomColor: 'border.primary',
 			sm: { flexDirection: 'row', alignItems: 'center' }
 		})}
 	>
-		<div class={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+		<div class={cx(row, css({ gap: '3' }))}>
 			<button
 				class={css({
-					width: '36px',
-					height: '36px',
+					width: 'rowXl',
+					height: 'rowXl',
 					padding: '0',
 					display: 'flex',
 					alignItems: 'center',
 					justifyContent: 'center',
 					backgroundColor: 'bg.tertiary',
 					borderWidth: '1',
-					borderStyle: 'solid',
 					borderColor: 'border.primary',
-					borderRadius: '0',
+
 					color: 'fg.secondary',
 					_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
 				})}
@@ -196,8 +200,7 @@
 				paddingY: '2.5',
 				border: 'none',
 				borderLeftWidth: '2',
-				borderLeftStyle: 'solid',
-				borderRadius: '0',
+
 				marginTop: '3',
 				marginBottom: '0',
 				fontSize: 'xs',
@@ -244,8 +247,7 @@
 					gap: '3',
 					padding: '4',
 					borderWidth: '1',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary'
 				})}
 			>
@@ -267,14 +269,11 @@
 					gap: '3',
 					padding: '4',
 					borderWidth: '1',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary'
 				})}
 			>
-				<div
-					class={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' })}
-				>
+				<div class={rowBetween}>
 					<h4 class={css({ margin: '0', fontSize: 'sm', color: 'fg.secondary' })}>Code</h4>
 					<span class={css({ fontSize: 'xs', color: 'fg.muted' })}
 						>Define a function named <code>udf</code></span
@@ -290,8 +289,7 @@
 						paddingY: '2.5',
 						border: 'none',
 						borderLeftWidth: '2',
-						borderLeftStyle: 'solid',
-						borderRadius: '0',
+
 						marginTop: '3',
 						marginBottom: '0',
 						fontSize: 'xs',

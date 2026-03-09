@@ -181,9 +181,8 @@
 	triggerType="input"
 	inputClass={css({
 		width: 'full',
-		borderWidth: '1px',
-		borderStyle: 'solid',
-		borderColor: 'border.tertiary',
+		borderWidth: '1',
+		borderColor: 'border.primary',
 		backgroundColor: 'bg.primary',
 		paddingX: '3',
 		paddingY: '2',
@@ -206,9 +205,8 @@
 					display: 'inline-flex',
 					alignItems: 'center',
 					gap: '1',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: ds.id === highlightId ? 'border.primary' : 'border.tertiary',
+					borderWidth: '1',
+					borderColor: ds.id === highlightId ? 'accent.primary' : 'border.primary',
 					paddingX: '2',
 					paddingY: '1',
 					fontSize: 'xs',
@@ -221,8 +219,8 @@
 				<button
 					class={css({
 						display: 'inline-flex',
-						height: '4',
-						width: '4',
+						height: 'iconSm',
+						width: 'iconSm',
 						cursor: 'pointer',
 						alignItems: 'center',
 						justifyContent: 'center',
@@ -289,8 +287,7 @@
 				<span
 					class={css({
 						marginLeft: '2',
-						borderWidth: '1px',
-						borderStyle: 'solid',
+						borderWidth: '1',
 						borderColor: 'accent.primary',
 						backgroundColor: 'accent.bg',
 						paddingX: '2',
@@ -309,9 +306,8 @@
 			<span
 				class={css({
 					marginLeft: '2',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderWidth: '1',
+					borderColor: 'border.primary',
 					backgroundColor: 'bg.tertiary',
 					paddingX: '2',
 					paddingY: '1',

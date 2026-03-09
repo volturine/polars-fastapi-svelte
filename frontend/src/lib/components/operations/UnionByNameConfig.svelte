@@ -6,7 +6,7 @@
 	import DatasourcePicker from '$lib/components/common/DatasourcePicker.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
-	import { css, cx } from '$lib/styles/panda';
+	import { css, cx, stepConfig, row, divider, muted } from '$lib/styles/panda';
 
 	interface UnionByNameConfigData {
 		sources: string[];
@@ -74,9 +74,7 @@
 	}
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
->
+<div class={stepConfig()}>
 	<p
 		class={css({
 			marginTop: '0',
@@ -94,7 +92,7 @@
 			marginBottom: '0',
 			paddingBottom: '5',
 			backgroundColor: 'transparent',
-			borderRadius: '0',
+
 			border: 'none'
 		})}
 	>
@@ -106,7 +104,7 @@
 					>{schema.columns.length} columns</span
 				>
 			{:else}
-				<span class={css({ color: 'fg.muted' })}>No active datasource selected</span>
+				<span class={muted}>No active datasource selected</span>
 			{/if}
 		</div>
 	</div>
@@ -117,15 +115,15 @@
 				marginBottom: '0',
 				paddingBottom: '5',
 				backgroundColor: 'transparent',
-				borderRadius: '0',
+
 				border: 'none'
 			}),
-			css({
-				paddingTop: '5',
-				borderTopWidth: '1',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.tertiary'
-			})
+			cx(
+				divider,
+				css({
+					paddingTop: '5'
+				})
+			)
 		)}
 	>
 		<div
@@ -165,19 +163,19 @@
 				marginBottom: '0',
 				paddingBottom: '5',
 				backgroundColor: 'transparent',
-				borderRadius: '0',
+
 				border: 'none'
 			}),
-			css({
-				paddingTop: '5',
-				borderTopWidth: '1',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.tertiary'
-			})
+			cx(
+				divider,
+				css({
+					paddingTop: '5'
+				})
+			)
 		)}
 	>
 		<SectionHeader>Column Matching</SectionHeader>
-		<label class={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+		<label class={cx(row, css({ gap: '3' }))}>
 			<input id="allow-missing" type="checkbox" bind:checked={config.allow_missing} />
 			<span>Allow missing columns (fill with nulls)</span>
 		</label>

@@ -2,7 +2,7 @@
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig, cx, divider } from '$lib/styles/panda';
 
 	interface ExpressionConfigData {
 		expression: string;
@@ -23,17 +23,13 @@
 	}
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Expression configuration"
->
+<div class={stepConfig()} role="region" aria-label="Expression configuration">
 	<div
 		class={css({
 			marginBottom: '0',
 			paddingBottom: '5',
 			backgroundColor: 'transparent',
-			borderRadius: '0',
+
 			border: 'none'
 		})}
 		role="group"
@@ -83,9 +79,11 @@
 			class={css({
 				color: 'fg.tertiary',
 				backgroundColor: 'transparent',
-				border: 'none',
-				borderLeft: '2px solid',
-				borderLeftColor: 'border.tertiary',
+				borderTopWidth: '0',
+				borderRightWidth: '0',
+				borderBottomWidth: '0',
+				borderLeftWidth: '2',
+				borderLeftColor: 'border.primary',
 				fontSize: 'xs',
 				paddingX: '3',
 				paddingY: '2',
@@ -98,7 +96,6 @@
 			Use
 			<code
 				class={css({
-					borderRadius: '3px',
 					backgroundColor: 'bg.tertiary',
 					paddingX: '2',
 					paddingY: '1',
@@ -112,7 +109,6 @@
 			-
 			<code
 				class={css({
-					borderRadius: '3px',
 					backgroundColor: 'bg.tertiary',
 					paddingX: '2',
 					paddingY: '1',
@@ -125,7 +121,6 @@
 			-
 			<code
 				class={css({
-					borderRadius: '3px',
 					backgroundColor: 'bg.tertiary',
 					paddingX: '2',
 					paddingY: '1',
@@ -138,7 +133,6 @@
 			-
 			<code
 				class={css({
-					borderRadius: '3px',
 					backgroundColor: 'bg.tertiary',
 					paddingX: '2',
 					paddingY: '1',
@@ -151,7 +145,6 @@
 			-
 			<code
 				class={css({
-					borderRadius: '3px',
 					backgroundColor: 'bg.tertiary',
 					paddingX: '2',
 					paddingY: '1',
@@ -164,16 +157,15 @@
 	</div>
 
 	<div
-		class={css({
-			marginBottom: '0',
-			paddingBottom: '5',
-			paddingTop: '5',
-			borderTopWidth: '1',
-			borderTopStyle: 'solid',
-			borderTopColor: 'border.tertiary',
-			backgroundColor: 'transparent',
-			borderRadius: '0'
-		})}
+		class={cx(
+			divider,
+			css({
+				marginBottom: '0',
+				paddingBottom: '5',
+				paddingTop: '5',
+				backgroundColor: 'transparent'
+			})
+		)}
 		role="group"
 		aria-labelledby="expr-new-column-heading"
 	>
@@ -202,16 +194,15 @@
 	</div>
 
 	<div
-		class={css({
-			marginBottom: '0',
-			paddingBottom: '5',
-			paddingTop: '5',
-			borderTopWidth: '1',
-			borderTopStyle: 'solid',
-			borderTopColor: 'border.tertiary',
-			backgroundColor: 'transparent',
-			borderRadius: '0'
-		})}
+		class={cx(
+			divider,
+			css({
+				marginBottom: '0',
+				paddingBottom: '5',
+				paddingTop: '5',
+				backgroundColor: 'transparent'
+			})
+		)}
 		role="group"
 		aria-labelledby="expr-columns-heading"
 	>

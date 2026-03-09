@@ -19,7 +19,7 @@
 	} from 'lucide-svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig, cx, divider } from '$lib/styles/panda';
 
 	type PlotConfigData = Omit<PlotConfigBase, 'aggregation' | 'chart_type' | 'stack_mode'> & {
 		chart_type:
@@ -400,17 +400,12 @@
 	}
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Plot configuration"
->
+<div class={stepConfig()} role="region" aria-label="Plot configuration">
 	<div
 		class={css({
 			padding: '3 0',
-			borderBottomWidth: '1px',
-			borderBottomStyle: 'solid',
-			borderBottomColor: 'border.tertiary'
+			borderBottomWidth: '1',
+			borderBottomColor: 'border.primary'
 		})}
 		role="group"
 		aria-labelledby={`${uid}-plot-type`}
@@ -441,9 +436,8 @@
 								gap: '1',
 								paddingY: '2',
 								paddingX: '1',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'accent.secondary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'accent.bg',
 								color: 'accent.primary',
 								fontSize: '2xs',
@@ -458,8 +452,7 @@
 								gap: '1',
 								paddingY: '2',
 								paddingX: '1',
-								borderWidth: '1px',
-								borderStyle: 'solid',
+								borderWidth: '1',
 								borderColor: 'border.primary',
 								backgroundColor: 'transparent',
 								color: 'fg.muted',
@@ -484,9 +477,8 @@
 		class={css({
 			margin: '0',
 			display: 'flex',
-			borderBottomWidth: '1px',
-			borderBottomStyle: 'solid',
-			borderBottomColor: 'border.tertiary'
+			borderBottomWidth: '1',
+			borderBottomColor: 'border.primary'
 		})}
 	>
 		<button
@@ -495,8 +487,7 @@
 				? css({
 						marginBottom: '-1px',
 						backgroundColor: 'transparent',
-						borderBottomWidth: '2px',
-						borderBottomStyle: 'solid',
+						borderBottomWidth: '2',
 						borderBottomColor: 'accent.secondary',
 						paddingX: '3',
 						paddingY: '1.5',
@@ -508,8 +499,7 @@
 				: css({
 						marginBottom: '-1px',
 						backgroundColor: 'transparent',
-						borderBottomWidth: '2px',
-						borderBottomStyle: 'solid',
+						borderBottomWidth: '2',
 						borderBottomColor: 'transparent',
 						paddingX: '3',
 						paddingY: '1.5',
@@ -528,8 +518,7 @@
 				? css({
 						marginBottom: '-1px',
 						backgroundColor: 'transparent',
-						borderBottomWidth: '2px',
-						borderBottomStyle: 'solid',
+						borderBottomWidth: '2',
 						borderBottomColor: 'accent.secondary',
 						paddingX: '3',
 						paddingY: '1.5',
@@ -541,8 +530,7 @@
 				: css({
 						marginBottom: '-1px',
 						backgroundColor: 'transparent',
-						borderBottomWidth: '2px',
-						borderBottomStyle: 'solid',
+						borderBottomWidth: '2',
 						borderBottomColor: 'transparent',
 						paddingX: '3',
 						paddingY: '1.5',
@@ -564,7 +552,7 @@
 					marginBottom: '0',
 					paddingBottom: '5',
 					backgroundColor: 'transparent',
-					borderRadius: '0',
+
 					border: 'none'
 				})}
 				role="group"
@@ -585,7 +573,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -607,7 +595,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -629,7 +617,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -646,7 +634,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -676,7 +664,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -706,7 +694,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -729,7 +717,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -828,7 +816,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -918,7 +906,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -1017,7 +1005,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -1095,17 +1083,17 @@
 			{/if}
 
 			<div
-				class={css({
-					marginBottom: '0',
-					paddingBottom: '5',
-					paddingTop: '5',
-					backgroundColor: 'transparent',
-					borderRadius: '0',
-					border: 'none',
-					borderTopWidth: '1px',
-					borderTopStyle: 'solid',
-					borderTopColor: 'border.tertiary'
-				})}
+				class={cx(
+					divider,
+					css({
+						marginBottom: '0',
+						paddingBottom: '5',
+						paddingTop: '5',
+						backgroundColor: 'transparent',
+
+						border: 'none'
+					})
+				)}
 				role="group"
 				aria-labelledby={`${uid}-plot-overlays`}
 			>
@@ -1230,7 +1218,7 @@
 							backgroundColor: 'accent.bg',
 							color: 'accent.primary',
 							_disabled: {
-								backgroundColor: 'border.tertiary',
+								backgroundColor: 'bg.muted',
 								cursor: 'not-allowed',
 								color: 'fg.muted'
 							}
@@ -1253,14 +1241,13 @@
 									flexWrap: 'wrap',
 									alignItems: 'center',
 									gap: '2',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.tertiary',
+									borderWidth: '1',
+									borderColor: 'border.primary',
 									padding: '2'
 								})}
 								role="group"
 							>
-								<div class={css({ minWidth: '40', flex: '1' })}>
+								<div class={css({ minWidth: 'inputSm', flex: '1' })}>
 									<ColumnDropdown
 										{schema}
 										value={overlay.y_column}
@@ -1331,14 +1318,13 @@
 										display: 'flex',
 										alignItems: 'center',
 										justifyContent: 'center',
-										width: '7',
-										height: '7',
+										width: 'row',
+										height: 'row',
 										padding: '0',
 										backgroundColor: 'transparent',
 										cursor: 'pointer',
 										color: 'fg.secondary',
-										borderWidth: '1px',
-										borderStyle: 'solid',
+										borderWidth: '1',
 										borderColor: 'transparent',
 										_hover: {
 											backgroundColor: 'error.bg',
@@ -1370,17 +1356,17 @@
 			</div>
 
 			<div
-				class={css({
-					marginBottom: '0',
-					paddingBottom: '5',
-					paddingTop: '5',
-					backgroundColor: 'transparent',
-					borderRadius: '0',
-					border: 'none',
-					borderTopWidth: '1px',
-					borderTopStyle: 'solid',
-					borderTopColor: 'border.tertiary'
-				})}
+				class={cx(
+					divider,
+					css({
+						marginBottom: '0',
+						paddingBottom: '5',
+						paddingTop: '5',
+						backgroundColor: 'transparent',
+
+						border: 'none'
+					})
+				)}
 				role="group"
 				aria-labelledby={`${uid}-plot-reference-lines`}
 			>
@@ -1492,7 +1478,7 @@
 							backgroundColor: 'accent.bg',
 							color: 'accent.primary',
 							_disabled: {
-								backgroundColor: 'border.tertiary',
+								backgroundColor: 'bg.muted',
 								cursor: 'not-allowed',
 								color: 'fg.muted'
 							}
@@ -1515,9 +1501,8 @@
 									flexWrap: 'wrap',
 									alignItems: 'center',
 									gap: '2',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.tertiary',
+									borderWidth: '1',
+									borderColor: 'border.primary',
 									padding: '2'
 								})}
 								role="group"
@@ -1579,14 +1564,13 @@
 										display: 'flex',
 										alignItems: 'center',
 										justifyContent: 'center',
-										width: '7',
-										height: '7',
+										width: 'row',
+										height: 'row',
 										padding: '0',
 										backgroundColor: 'transparent',
 										cursor: 'pointer',
 										color: 'fg.secondary',
-										borderWidth: '1px',
-										borderStyle: 'solid',
+										borderWidth: '1',
 										borderColor: 'transparent',
 										_hover: {
 											backgroundColor: 'error.bg',
@@ -1626,7 +1610,7 @@
 					marginBottom: '0',
 					paddingBottom: '5',
 					backgroundColor: 'transparent',
-					borderRadius: '0',
+
 					border: 'none'
 				})}
 				role="group"
@@ -1648,7 +1632,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -1680,7 +1664,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -1866,7 +1850,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -1902,7 +1886,7 @@
 						marginBottom: '0',
 						paddingBottom: '5',
 						backgroundColor: 'transparent',
-						borderRadius: '0',
+
 						border: 'none'
 					})}
 					role="group"
@@ -1930,17 +1914,17 @@
 			{/if}
 
 			<div
-				class={css({
-					marginBottom: '0',
-					paddingBottom: '5',
-					paddingTop: '5',
-					backgroundColor: 'transparent',
-					borderRadius: '0',
-					border: 'none',
-					borderTopWidth: '1px',
-					borderTopStyle: 'solid',
-					borderTopColor: 'border.tertiary'
-				})}
+				class={cx(
+					divider,
+					css({
+						marginBottom: '0',
+						paddingBottom: '5',
+						paddingTop: '5',
+						backgroundColor: 'transparent',
+
+						border: 'none'
+					})
+				)}
 				role="group"
 				aria-labelledby={`${uid}-plot-width`}
 			>
@@ -1954,9 +1938,8 @@
 										flex: '1',
 										paddingY: '1.5',
 										paddingX: '2',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'accent.secondary',
+										borderWidth: '1',
+										borderColor: 'border.primary',
 										backgroundColor: 'accent.bg',
 										color: 'accent.primary',
 										fontSize: 'xs',
@@ -1969,8 +1952,7 @@
 										flex: '1',
 										paddingY: '1.5',
 										paddingX: '2',
-										borderWidth: '1px',
-										borderStyle: 'solid',
+										borderWidth: '1',
 										borderColor: 'border.primary',
 										backgroundColor: 'transparent',
 										color: 'fg.muted',
@@ -1991,17 +1973,17 @@
 			</div>
 
 			<div
-				class={css({
-					marginBottom: '0',
-					paddingBottom: '5',
-					paddingTop: '5',
-					backgroundColor: 'transparent',
-					borderRadius: '0',
-					border: 'none',
-					borderTopWidth: '1px',
-					borderTopStyle: 'solid',
-					borderTopColor: 'border.tertiary'
-				})}
+				class={cx(
+					divider,
+					css({
+						marginBottom: '0',
+						paddingBottom: '5',
+						paddingTop: '5',
+						backgroundColor: 'transparent',
+
+						border: 'none'
+					})
+				)}
 				role="group"
 				aria-labelledby={`${uid}-plot-height`}
 			>
@@ -2015,9 +1997,8 @@
 										flex: '1',
 										paddingY: '1.5',
 										paddingX: '2',
-										borderWidth: '1px',
-										borderStyle: 'solid',
-										borderColor: 'accent.secondary',
+										borderWidth: '1',
+										borderColor: 'border.primary',
 										backgroundColor: 'accent.bg',
 										color: 'accent.primary',
 										fontSize: 'xs',
@@ -2030,8 +2011,7 @@
 										flex: '1',
 										paddingY: '1.5',
 										paddingX: '2',
-										borderWidth: '1px',
-										borderStyle: 'solid',
+										borderWidth: '1',
 										borderColor: 'border.primary',
 										backgroundColor: 'transparent',
 										color: 'fg.muted',

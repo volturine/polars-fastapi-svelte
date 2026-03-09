@@ -24,7 +24,18 @@
 	} from 'lucide-svelte';
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
-	import { css, cx, spinner, button, tabButton, emptyText, input } from '$lib/styles/panda';
+	import {
+		css,
+		cx,
+		spinner,
+		button,
+		tabButton,
+		emptyText,
+		input,
+		row,
+		divider,
+		muted
+	} from '$lib/styles/panda';
 
 	interface Props {
 		compact?: boolean;
@@ -324,9 +335,8 @@
 		<header
 			class={css({
 				marginBottom: '6',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'border.tertiary',
+				borderBottomWidth: '1',
+				borderBottomColor: 'border.primary',
 				paddingBottom: '5'
 			})}
 		>
@@ -339,8 +349,8 @@
 
 	{#if compact}
 		{#if searchQuery === undefined}
-			<div class={css({ marginBottom: '3', display: 'flex', alignItems: 'center', gap: '2' })}>
-				<div class={css({ position: 'relative', minWidth: '60', flex: '1' })}>
+			<div class={cx(row, css({ marginBottom: '3', gap: '2' }))}>
+				<div class={css({ position: 'relative', minWidth: 'list', flex: '1' })}>
 					<Search
 						size={14}
 						class={css({
@@ -365,9 +375,8 @@
 				class={cx(
 					button({ variant: 'ghost', size: 'sm' }),
 					css({
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						fontSize: 'xs',
 						width: 'fit-content'
 					})
@@ -385,17 +394,9 @@
 			</button>
 		{/if}
 	{:else}
-		<div
-			class={css({
-				marginBottom: '4',
-				display: 'flex',
-				flexWrap: 'wrap',
-				alignItems: 'center',
-				gap: '3'
-			})}
-		>
+		<div class={cx(row, css({ marginBottom: '4', flexWrap: 'wrap', gap: '3' }))}>
 			{#if searchQuery === undefined}
-				<div class={css({ position: 'relative', minWidth: '60', maxWidth: '100', flex: '1' })}>
+				<div class={css({ position: 'relative', minWidth: 'list', maxWidth: 'panel', flex: '1' })}>
 					<Search
 						size={14}
 						class={css({
@@ -418,9 +419,8 @@
 			{/if}
 			<select
 				class={css({
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderWidth: '1',
+					borderColor: 'border.primary',
 					backgroundColor: 'transparent',
 					paddingX: '3',
 					paddingY: '1.5',
@@ -439,9 +439,8 @@
 			</select>
 			<select
 				class={css({
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderWidth: '1',
+					borderColor: 'border.primary',
 					backgroundColor: 'transparent',
 					paddingX: '3',
 					paddingY: '1.5',
@@ -461,8 +460,8 @@
 				placeholder="Branch"
 				onChange={(value: string) => (branchFilter = value)}
 			/>
-			<div class={css({ display: 'flex', alignItems: 'center', gap: '1.5', fontSize: 'sm' })}>
-				<span class={css({ color: 'fg.muted' })}>From</span>
+			<div class={cx(row, css({ gap: '1.5', fontSize: 'sm' }))}>
+				<span class={muted}>From</span>
 				<input
 					type="date"
 					class={cx(input(), css({ paddingY: '1', fontSize: 'sm' }))}
@@ -470,7 +469,7 @@
 					aria-label="From date"
 					bind:value={dateFrom}
 				/>
-				<span class={css({ color: 'fg.muted' })}>To</span>
+				<span class={muted}>To</span>
 				<input
 					type="date"
 					class={cx(input(), css({ paddingY: '1', fontSize: 'sm' }))}
@@ -483,14 +482,7 @@
 	{/if}
 
 	{#if query.isLoading}
-		<div
-			class={css({
-				display: 'flex',
-				height: '100%',
-				alignItems: 'center',
-				justifyContent: 'center'
-			})}
-		>
+		<div class={cx(row, css({ height: '100%', justifyContent: 'center' }))}>
 			<div class={spinner()}></div>
 		</div>
 	{:else if query.isError}
@@ -500,7 +492,7 @@
 				paddingY: '2.5',
 				border: 'none',
 				borderLeft: '2px solid',
-				borderRadius: '0',
+
 				marginTop: '3',
 				marginBottom: '0',
 				fontSize: 'xs',
@@ -515,9 +507,9 @@
 	{:else if runs.length === 0}
 		<div
 			class={css({
-				borderWidth: '1px',
+				borderWidth: '1',
 				borderStyle: 'dashed',
-				borderColor: 'border.tertiary',
+				borderColor: 'border.primary',
 				padding: '8',
 				textAlign: 'center'
 			})}
@@ -532,9 +524,8 @@
 		<div
 			class={css({
 				overflowX: 'auto',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary'
+				borderWidth: '1',
+				borderColor: 'border.primary'
 			})}
 		>
 			<table class={css({ width: '100%', borderCollapse: 'collapse', fontSize: 'sm' })}>
@@ -542,10 +533,9 @@
 					<tr class={css({ backgroundColor: 'bg.tertiary' })}>
 						<th
 							class={css({
-								width: '8',
-								borderBottomWidth: '1px',
-								borderBottomStyle: 'solid',
-								borderBottomColor: 'border.tertiary',
+								width: 'rowLg',
+								borderBottomWidth: '1',
+								borderBottomColor: 'border.primary',
 								paddingX: '3',
 								paddingY: '2',
 								textAlign: 'left',
@@ -556,16 +546,13 @@
 							<th
 								class={css({
 									cursor: 'pointer',
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2',
 									textAlign: 'left',
 									fontWeight: 'medium',
-									transitionProperty: 'background-color',
-									transitionDuration: '160ms',
-									transitionTimingFunction: 'ease',
+									transition: 'background-color 160ms ease',
 									_hover: {
 										backgroundColor: 'bg.hover'
 									}
@@ -600,9 +587,8 @@
 						>
 							<td
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2'
 								})}
@@ -614,9 +600,8 @@
 							</td>
 							<td
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2'
 								})}
@@ -635,10 +620,10 @@
 										<Download size={14} class={css({ color: 'success.fg' })} />
 										<span>{getKindLabel(run.kind)}</span>
 									{:else if run.kind === 'row_count'}
-										<Hash size={14} class={css({ color: 'fg.muted' })} />
+										<Hash size={14} class={muted} />
 										<span>{getKindLabel(run.kind)}</span>
 									{:else}
-										<Database size={14} class={css({ color: 'fg.muted' })} />
+										<Database size={14} class={muted} />
 										<span>{getKindLabel(run.kind)}</span>
 									{/if}
 									{#if run.triggered_by === 'schedule'}
@@ -663,9 +648,8 @@
 							</td>
 							<td
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2'
 								})}
@@ -682,9 +666,8 @@
 							</td>
 							<td
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2'
 								})}
@@ -698,9 +681,8 @@
 							</td>
 							<td
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2'
 								})}
@@ -713,14 +695,13 @@
 										{resolveName(run.analysis_id, analysisNames)}
 									</span>
 								{:else}
-									<span class={css({ color: 'fg.muted' })}>-</span>
+									<span class={muted}>-</span>
 								{/if}
 							</td>
 							<td
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2'
 								})}
@@ -733,14 +714,13 @@
 										{getOutputName(run)}
 									</span>
 								{:else}
-									<span class={css({ color: 'fg.muted' })}>-</span>
+									<span class={muted}>-</span>
 								{/if}
 							</td>
 							<td
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2',
 									fontFamily: 'mono',
@@ -751,9 +731,8 @@
 							</td>
 							<td
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2',
 									color: 'fg.secondary'
@@ -767,9 +746,8 @@
 								<td
 									colspan="8"
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
 										backgroundColor: 'bg.primary',
 										padding: '0'
 									})}
@@ -780,9 +758,8 @@
 												marginBottom: '4',
 												display: 'flex',
 												gap: '1',
-												borderBottomWidth: '1px',
-												borderBottomStyle: 'solid',
-												borderBottomColor: 'border.tertiary'
+												borderBottomWidth: '1',
+												borderBottomColor: 'border.primary'
 											})}
 										>
 											<button
@@ -844,7 +821,7 @@
 													})}
 												>
 													<div>
-														<span class={css({ color: 'fg.muted' })}>Run ID:</span>
+														<span class={muted}>Run ID:</span>
 														<span
 															class={css({
 																marginLeft: '2',
@@ -856,14 +833,14 @@
 														</span>
 													</div>
 													<div>
-														<span class={css({ color: 'fg.muted' })}>Datasource:</span>
+														<span class={muted}>Datasource:</span>
 														<span class={css({ marginLeft: '2', fontSize: 'xs' })}>
 															{resolveName(run.datasource_id, dsNames)}
 														</span>
 													</div>
 													{#if run.analysis_id}
 														<div>
-															<span class={css({ color: 'fg.muted' })}>Analysis:</span>
+															<span class={muted}>Analysis:</span>
 															<span class={css({ marginLeft: '2', fontSize: 'xs' })}>
 																{resolveName(run.analysis_id, analysisNames)}
 															</span>
@@ -871,7 +848,7 @@
 													{/if}
 													{#if run.triggered_by}
 														<div>
-															<span class={css({ color: 'fg.muted' })}>Triggered by:</span>
+															<span class={muted}>Triggered by:</span>
 															<span
 																class={css({
 																	marginLeft: '2',
@@ -901,11 +878,10 @@
 													</h4>
 													<pre
 														class={css({
-															maxHeight: '80',
+															maxHeight: 'listLg',
 															overflowX: 'auto',
-															borderWidth: '1px',
-															borderStyle: 'solid',
-															borderColor: 'border.tertiary',
+															borderWidth: '1',
+															borderColor: 'border.primary',
 															backgroundColor: 'bg.tertiary',
 															padding: '3',
 															fontFamily: 'mono',
@@ -922,7 +898,7 @@
 															paddingY: '2.5',
 															border: 'none',
 															borderLeft: '2px solid',
-															borderRadius: '0',
+
 															marginTop: '3',
 															marginBottom: '0',
 															fontSize: 'xs',
@@ -968,7 +944,7 @@
 														>
 															{#if 'row_count' in result}
 																<div>
-																	<span class={css({ color: 'fg.muted' })}>Rows:</span>
+																	<span class={muted}>Rows:</span>
 																	<span class={css({ marginLeft: '2', fontFamily: 'mono' })}>
 																		{result.row_count}
 																	</span>
@@ -976,7 +952,7 @@
 															{/if}
 															{#if 'page' in result}
 																<div>
-																	<span class={css({ color: 'fg.muted' })}>Page:</span>
+																	<span class={muted}>Page:</span>
 																	<span class={css({ marginLeft: '2', fontFamily: 'mono' })}>
 																		{result.page}
 																	</span>
@@ -984,7 +960,7 @@
 															{/if}
 															{#if 'page_size' in result}
 																<div>
-																	<span class={css({ color: 'fg.muted' })}>Page Size:</span>
+																	<span class={muted}>Page Size:</span>
 																	<span class={css({ marginLeft: '2', fontFamily: 'mono' })}>
 																		{result.page_size}
 																	</span>
@@ -992,7 +968,7 @@
 															{/if}
 															{#if 'export_format' in result}
 																<div>
-																	<span class={css({ color: 'fg.muted' })}>Format:</span>
+																	<span class={muted}>Format:</span>
 																	<span class={css({ marginLeft: '2', fontFamily: 'mono' })}>
 																		{result.export_format}
 																	</span>
@@ -1000,7 +976,7 @@
 															{/if}
 															{#if 'file_size_bytes' in result}
 																<div>
-																	<span class={css({ color: 'fg.muted' })}>File Size:</span>
+																	<span class={muted}>File Size:</span>
 																	<span class={css({ marginLeft: '2', fontFamily: 'mono' })}>
 																		{(Number(result.file_size_bytes) / 1024).toFixed(1)} KB
 																	</span>
@@ -1021,11 +997,10 @@
 																</h4>
 																<div
 																	class={css({
-																		maxHeight: '40',
+																		maxHeight: 'inputSm',
 																		overflowX: 'auto',
-																		borderWidth: '1px',
-																		borderStyle: 'solid',
-																		borderColor: 'border.tertiary',
+																		borderWidth: '1',
+																		borderColor: 'border.primary',
 																		backgroundColor: 'bg.tertiary',
 																		padding: '3',
 																		fontFamily: 'mono',
@@ -1035,7 +1010,7 @@
 																	{#each Object.entries(result.schema as Record<string, string>) as [col, dtype] (col)}
 																		<div>
 																			<span class={css({ color: 'accent.primary' })}>{col}</span>:
-																			<span class={css({ color: 'fg.muted' })}>{dtype}</span>
+																			<span class={muted}>{dtype}</span>
 																		</div>
 																	{/each}
 																</div>
@@ -1062,17 +1037,10 @@
 													Step Execution Timeline
 												</h4>
 												{#each entries as entry (entry.name)}
-													<div
-														class={css({
-															display: 'flex',
-															alignItems: 'center',
-															gap: '3',
-															fontSize: 'xs'
-														})}
-													>
+													<div class={cx(row, css({ gap: '3', fontSize: 'xs' }))}>
 														<span
 															class={css({
-																width: '36',
+																width: 'colWide',
 																flexShrink: '0',
 																overflow: 'hidden',
 																textOverflow: 'ellipsis',
@@ -1087,7 +1055,7 @@
 														<div
 															class={css({
 																position: 'relative',
-																height: '5',
+																height: 'iconMd',
 																flex: '1',
 																backgroundColor: 'bg.tertiary'
 															})}
@@ -1105,7 +1073,7 @@
 														</div>
 														<span
 															class={css({
-																width: '16',
+																width: 'logoXl',
 																flexShrink: '0',
 																textAlign: 'right',
 																fontFamily: 'mono',
@@ -1118,17 +1086,17 @@
 												{/each}
 												{#if entries.length > 0}
 													<div
-														class={css({
-															marginTop: '3',
-															borderTopWidth: '1px',
-															borderTopStyle: 'solid',
-															borderTopColor: 'border.tertiary',
-															paddingTop: '2',
-															textAlign: 'right',
-															fontFamily: 'mono',
-															fontSize: 'xs',
-															color: 'fg.muted'
-														})}
+														class={cx(
+															divider,
+															css({
+																marginTop: '3',
+																paddingTop: '2',
+																textAlign: 'right',
+																fontFamily: 'mono',
+																fontSize: 'xs',
+																color: 'fg.muted'
+															})
+														)}
 													>
 														Total: {formatDuration(run.duration_ms)}
 													</div>
@@ -1151,12 +1119,11 @@
 														</h4>
 														<pre
 															class={css({
-																maxHeight: '60',
+																maxHeight: 'list',
 																overflowX: 'auto',
 																whiteSpace: 'pre-wrap',
-																borderWidth: '1px',
-																borderStyle: 'solid',
-																borderColor: 'border.tertiary',
+																borderWidth: '1',
+																borderColor: 'border.primary',
 																backgroundColor: 'bg.tertiary',
 																padding: '3',
 																fontFamily: 'mono',
@@ -1176,12 +1143,11 @@
 														</h4>
 														<pre
 															class={css({
-																maxHeight: '60',
+																maxHeight: 'list',
 																overflowX: 'auto',
 																whiteSpace: 'pre-wrap',
-																borderWidth: '1px',
-																borderStyle: 'solid',
-																borderColor: 'border.tertiary',
+																borderWidth: '1',
+																borderColor: 'border.primary',
 																backgroundColor: 'bg.tertiary',
 																padding: '3',
 																fontFamily: 'mono',
@@ -1204,21 +1170,14 @@
 			</table>
 		</div>
 
-		<div
-			class={css({
-				marginTop: '4',
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'space-between'
-			})}
-		>
+		<div class={cx(row, css({ marginTop: '4', justifyContent: 'space-between' }))}>
 			<span class={css({ fontSize: 'sm', color: 'fg.tertiary' })}>
 				Page {page}
 				{#if filteredRuns.length < runs.length}
 					({filteredRuns.length} of {runs.length} shown)
 				{/if}
 			</span>
-			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+			<div class={cx(row, css({ gap: '2' }))}>
 				<button
 					class={button({ variant: 'ghost', size: 'sm' })}
 					onclick={prevPage}

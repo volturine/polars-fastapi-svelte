@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
-	import { css, cx } from '$lib/styles/panda';
+	import { css, cx, row, muted } from '$lib/styles/panda';
 
 	interface Props {
 		schema: Schema;
@@ -15,25 +15,24 @@
 		'schema-viewer',
 		css({
 			overflow: 'hidden',
-			borderWidth: '1px',
-			borderStyle: 'solid',
-			borderColor: 'border.tertiary',
+			borderWidth: '1',
+			borderColor: 'border.primary',
 			backgroundColor: 'bg.primary'
 		})
 	)}
 >
 	<div
-		class={css({
-			display: 'flex',
-			justifyContent: 'space-between',
-			alignItems: 'center',
-			paddingX: '5',
-			paddingY: '4',
-			borderBottomWidth: '1px',
-			borderBottomStyle: 'solid',
-			borderBottomColor: 'border.tertiary',
-			backgroundColor: 'bg.tertiary'
-		})}
+		class={cx(
+			row,
+			css({
+				justifyContent: 'space-between',
+				paddingX: '5',
+				paddingY: '4',
+				borderBottomWidth: '1',
+				borderBottomColor: 'border.primary',
+				backgroundColor: 'bg.tertiary'
+			})
+		)}
 	>
 		<h3 class={css({ margin: '0', fontSize: 'lg', fontWeight: 'semibold', color: 'fg.primary' })}>
 			Schema
@@ -45,7 +44,7 @@
 		{/if}
 	</div>
 
-	<div class={css({ maxHeight: '125', overflowY: 'auto' })}>
+	<div class={css({ maxHeight: 'listTall', overflowY: 'auto' })}>
 		<div
 			class={css({
 				display: 'grid',
@@ -53,9 +52,8 @@
 				gap: '4',
 				paddingX: '5',
 				paddingY: '3',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'border.tertiary',
+				borderBottomWidth: '1',
+				borderBottomColor: 'border.primary',
 				fontSize: 'xs',
 				fontWeight: 'semibold',
 				textTransform: 'uppercase',
@@ -77,29 +75,20 @@
 					gap: '4',
 					paddingX: '5',
 					paddingY: '3.5',
-					borderBottomWidth: '1px',
-					borderBottomStyle: 'solid',
-					borderBottomColor: 'border.tertiary',
+					borderBottomWidth: '1',
+					borderBottomColor: 'border.primary',
 					_hover: { backgroundColor: 'bg.hover' }
 				})}
 			>
-				<div
-					class={css({
-						display: 'flex',
-						alignItems: 'center',
-						gap: '2',
-						fontWeight: 'medium',
-						color: 'fg.primary'
-					})}
-				>
+				<div class={cx(row, css({ gap: '2', fontWeight: 'medium', color: 'fg.primary' }))}>
 					<span class={css({ fontFamily: 'mono', fontSize: 'sm' })}>{column.name}</span>
 				</div>
-				<div class={css({ display: 'flex', alignItems: 'center' })}>
+				<div class={row}>
 					<ColumnTypeBadge columnType={column.dtype} size="sm" showIcon={true} />
 				</div>
-				<div class={css({ display: 'flex', alignItems: 'center', fontSize: 'sm' })}>
+				<div class={cx(row, css({ fontSize: 'sm' }))}>
 					{#if column.nullable}
-						<span class={css({ color: 'fg.muted' })}>Yes</span>
+						<span class={muted}>Yes</span>
 					{:else}
 						<span class={css({ fontWeight: 'medium', color: 'fg.secondary' })}>No</span>
 					{/if}

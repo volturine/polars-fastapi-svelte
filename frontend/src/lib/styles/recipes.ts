@@ -1,5 +1,30 @@
 import { defineRecipe } from '@pandacss/dev';
 
+export const stepConfig = defineRecipe({
+	className: 'step-config-panel',
+	base: {
+		padding: '0',
+		border: 'none',
+		backgroundColor: 'bg.primary',
+		'& .description': {
+			marginTop: '0',
+			marginBottom: '3',
+			color: 'fg.tertiary',
+			fontSize: 'xs',
+			lineHeight: 'base'
+		},
+		'& h4': {
+			marginTop: '0',
+			marginBottom: '3',
+			fontSize: 'xs2',
+			fontWeight: 'semibold',
+			color: 'fg.muted',
+			textTransform: 'uppercase',
+			letterSpacing: 'wide3'
+		}
+	}
+});
+
 export const sectionHeader = defineRecipe({
 	className: 'section-header',
 	base: {
@@ -18,9 +43,8 @@ export const panelHeader = defineRecipe({
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
-		borderBottomWidth: '1px',
-		borderBottomStyle: 'solid',
-		borderBottomColor: 'border.tertiary',
+		borderBottomWidth: '1',
+		borderBottomColor: 'border.primary',
 		padding: '4'
 	}
 });
@@ -31,9 +55,8 @@ export const panelFooter = defineRecipe({
 		display: 'flex',
 		justifyContent: 'flex-end',
 		gap: '3',
-		borderTopWidth: '1px',
-		borderTopStyle: 'solid',
-		borderTopColor: 'border.tertiary',
+		borderTopWidth: '1',
+		borderTopColor: 'border.primary',
 		padding: '4'
 	}
 });
@@ -50,9 +73,8 @@ export const menuItem = defineRecipe({
 		fontSize: 'xs',
 		textAlign: 'left',
 		cursor: 'pointer',
-		borderBottomWidth: '1px',
-		borderBottomStyle: 'solid',
-		borderBottomColor: 'border.tertiary',
+		borderBottomWidth: '1',
+		borderBottomColor: 'border.primary',
 		_last: { borderBottomWidth: '0' },
 		_hover: { backgroundColor: 'bg.hover' }
 	}
@@ -65,8 +87,7 @@ export const toggleButton = defineRecipe({
 		alignItems: 'center',
 		justifyContent: 'center',
 		cursor: 'pointer',
-		borderWidth: '1px',
-		borderStyle: 'solid',
+		borderWidth: '1',
 		paddingX: '2',
 		paddingY: '1',
 		fontSize: 'xs'
@@ -77,24 +98,35 @@ export const toggleButton = defineRecipe({
 				borderColor: 'border.primary',
 				backgroundColor: 'accent.bg',
 				color: 'accent.primary',
-				boxShadow: 'inset 0 0 0 1px var(--accent-primary)',
+				boxShadow: 'inset 0 0 0 1px {colors.accent.primary}',
 				position: 'relative',
 				zIndex: '1'
 			},
 			false: {
-				borderColor: 'border.tertiary',
+				borderColor: 'border.primary',
 				backgroundColor: 'transparent',
 				color: 'fg.muted',
 				_hover: { backgroundColor: 'bg.hover', color: 'fg.secondary' }
 			}
 		},
 		radius: {
-			left: { borderRadius: 'sm 0 0 sm' },
-			right: { borderRadius: '0 sm sm 0' },
-			none: { borderRadius: '0' }
+			left: {
+				borderTopLeftRadius: 'sm',
+				borderBottomLeftRadius: 'sm',
+				borderTopRightRadius: '0',
+				borderBottomRightRadius: '0',
+				borderColor: 'border.primary'
+			},
+			right: {
+				borderTopLeftRadius: '0',
+				borderBottomLeftRadius: '0',
+				borderTopRightRadius: 'sm',
+				borderBottomRightRadius: 'sm',
+				borderColor: 'border.primary'
+			}
 		}
 	},
-	defaultVariants: { active: false, radius: 'none' }
+	defaultVariants: { active: false }
 });
 
 export const callout = defineRecipe({
@@ -102,7 +134,7 @@ export const callout = defineRecipe({
 	base: {
 		paddingX: '3',
 		paddingY: '2.5',
-		borderLeft: '2px solid',
+		borderLeftWidth: '2',
 		fontSize: 'xs',
 		lineHeight: '1.5',
 		color: 'fg.tertiary'
@@ -122,7 +154,6 @@ export const button = defineRecipe({
 	base: {
 		cursor: 'pointer',
 		borderWidth: '1',
-		borderStyle: 'solid',
 		fontFamily: 'mono',
 		fontSize: 'sm',
 		fontWeight: 'medium',
@@ -135,7 +166,7 @@ export const button = defineRecipe({
 		variant: {
 			primary: {
 				backgroundColor: 'accent.primary',
-				color: 'bg.primary',
+				color: 'fg.inverse',
 				borderColor: 'border.primary',
 				_hover: { _notDisabled: { opacity: '0.9' } }
 			},
@@ -169,18 +200,17 @@ export const button = defineRecipe({
 export const spinner = defineRecipe({
 	className: 'spinner',
 	base: {
-		borderStyle: 'solid',
+		borderRadius: 'full',
 		borderColor: 'border.primary',
 		borderTopColor: 'accent.secondary',
-		borderRadius: 'full',
 		animation: 'spin 0.8s linear infinite',
 		flexShrink: '0'
 	},
 	variants: {
 		size: {
-			default: { width: '40px', height: '40px', borderWidth: '4' },
-			sm: { width: '14px', height: '14px', borderWidth: '2' },
-			md: { width: '24px', height: '24px', borderWidth: '3' }
+			default: { width: 'spinner', height: 'spinner', borderWidth: '4' },
+			sm: { width: 'iconXs', height: 'iconXs', borderWidth: '2' },
+			md: { width: 'iconLg', height: 'iconLg', borderWidth: '3' }
 		}
 	},
 	defaultVariants: { size: 'default' }
@@ -190,7 +220,6 @@ export const navLink = defineRecipe({
 	className: 'nav-link',
 	base: {
 		borderWidth: '1',
-		borderStyle: 'solid',
 		borderColor: 'transparent',
 		paddingX: '3',
 		paddingY: '1.5',
@@ -219,8 +248,7 @@ export const iconButton = defineRecipe({
 		alignItems: 'center',
 		justifyContent: 'center',
 		borderWidth: '1',
-		borderStyle: 'solid',
-		borderColor: 'border.tertiary',
+		borderColor: 'border.primary',
 		backgroundColor: 'bg.primary',
 		padding: '2',
 		color: 'fg.secondary',
@@ -239,7 +267,6 @@ export const tabButton = defineRecipe({
 	base: {
 		backgroundColor: 'transparent',
 		borderBottomWidth: '2',
-		borderBottomStyle: 'solid',
 		borderBottomColor: 'transparent',
 		marginBottom: '-1px',
 		fontWeight: 'medium',
@@ -303,14 +330,13 @@ export const input = defineRecipe({
 	base: {
 		width: 'full',
 		borderWidth: '1',
-		borderStyle: 'solid',
-		borderColor: 'border.tertiary',
+		borderColor: 'border.primary',
 		backgroundColor: 'transparent',
 		paddingX: '2',
 		paddingY: '1.5',
 		fontSize: 'xs',
 		color: 'fg.primary',
-		_focus: { borderColor: 'accent.primary', outline: 'none' }
+		_focus: { borderColor: 'border.primary', outline: 'none' }
 	},
 	variants: {
 		variant: {
@@ -320,14 +346,14 @@ export const input = defineRecipe({
 				paddingY: '1.5',
 				fontSize: 'sm',
 				backgroundColor: 'transparent',
-				borderColor: 'border.tertiary'
+				borderColor: 'border.primary'
 			},
 			searchCompact: {
 				paddingLeft: '8',
 				paddingY: '1',
 				fontSize: 'xs',
 				backgroundColor: 'bg.secondary',
-				borderColor: 'border.tertiary'
+				borderColor: 'border.primary'
 			},
 			menu: {
 				borderColor: 'border.primary',
@@ -358,14 +384,13 @@ export const badge = defineRecipe({
 		display: 'inline-flex',
 		alignItems: 'center',
 		fontFamily: 'mono',
-		borderWidth: '1px',
-		borderStyle: 'solid',
+		borderWidth: '1',
 		backgroundColor: 'accent.bg',
 		color: 'accent.primary'
 	},
 	variants: {
 		tone: {
-			type: { borderColor: 'accent.secondary' },
+			type: { borderColor: 'border.primary' },
 			file: { borderColor: 'border.primary', textTransform: 'uppercase', letterSpacing: 'wider' }
 		},
 		size: {

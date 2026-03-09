@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig } from '$lib/styles/panda';
 
 	interface Props {
 		schema: Schema;
@@ -20,11 +20,7 @@
 	}
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Top K configuration"
->
+<div class={stepConfig()} role="region" aria-label="Top K configuration">
 	<div class={css({ marginBottom: '5' })}>
 		<div
 			class={css({

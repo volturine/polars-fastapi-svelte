@@ -24,7 +24,7 @@
 		buildTabPipelinePayload
 	} from '$lib/utils/analysis-pipeline';
 	import { SvelteMap } from 'svelte/reactivity';
-	import { css, cx, spinner, button } from '$lib/styles/panda';
+	import { css, cx, spinner, button, divider } from '$lib/styles/panda';
 
 	interface Props {
 		step: PipelineStep;
@@ -333,7 +333,7 @@
 			position: 'relative',
 			contentVisibility: 'auto',
 			containIntrinsicSize: isChart || step.type === 'view' ? 'auto 500px' : 'auto 200px',
-			...(step.type === 'view' ? { width: '85%', minWidth: '320px' } : {})
+			...(step.type === 'view' ? { width: '85%', minWidth: 'listLg' } : {})
 		})
 	)}
 	data-step-id={step.id}
@@ -346,12 +346,11 @@
 				left: '50%',
 				top: '-1',
 				zIndex: '2',
-				height: '2',
-				width: '2',
-				borderWidth: '2px',
-				borderStyle: 'solid',
+				height: 'dot',
+				width: 'dot',
+				borderWidth: '2',
 				transform: 'translateX(-50%)',
-				backgroundColor: 'fg.muted',
+				backgroundColor: 'bg.indicator',
 				borderColor: 'border.primary'
 			})
 		)}
@@ -361,11 +360,10 @@
 		class={cx(
 			'step-content',
 			css({
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary',
+				borderWidth: '1',
+				borderColor: 'border.primary',
 				backgroundColor: 'bg.primary',
-				_hover: { borderColor: 'border.tertiary' }
+				_hover: { borderColor: 'border.primary' }
 			})
 		)}
 		role="listitem"
@@ -377,9 +375,8 @@
 				gap: '2',
 				paddingX: '4',
 				paddingY: '3',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'border.tertiary'
+				borderBottomWidth: '1',
+				borderBottomColor: 'border.primary'
 			})}
 		>
 			<button
@@ -427,7 +424,7 @@
 					fontSize: 'xs',
 					fontWeight: '600',
 					textTransform: 'uppercase',
-					letterSpacing: 'wider'
+					letterSpacing: 'wide'
 				})}
 			>
 				{label}
@@ -444,7 +441,7 @@
 					css({
 						paddingX: '3',
 						paddingY: '2',
-						fontSize: 'xs',
+						fontSize: 'xs2',
 						backgroundColor: 'bg.secondary',
 						color: 'fg.tertiary',
 						lineHeight: 'relaxed',
@@ -464,13 +461,13 @@
 		</div>
 
 		<div
-			class={css({
-				display: 'flex',
-				gap: '0',
-				borderTopWidth: '1px',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.tertiary'
-			})}
+			class={cx(
+				divider,
+				css({
+					display: 'flex',
+					gap: '0'
+				})
+			)}
 		>
 			<button
 				class={cx(
@@ -483,8 +480,8 @@
 						paddingY: '2.5',
 						fontWeight: '500',
 						textTransform: 'uppercase',
-						letterSpacing: 'max',
-						fontSize: '2xs',
+						letterSpacing: 'widest',
+						fontSize: '3xs',
 						color: 'fg.muted',
 						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
 						...(!isApplied
@@ -505,7 +502,7 @@
 			>
 				{isApplied ? 'disable' : 'enable'}
 			</button>
-			<div class={css({ width: 'px', backgroundColor: 'border.primary', flexShrink: '0' })}></div>
+			<div class={css({ width: 'px', backgroundColor: 'bg.muted', flexShrink: '0' })}></div>
 			<button
 				class={cx(
 					'action-btn',
@@ -515,10 +512,10 @@
 						border: 'none',
 						backgroundColor: 'transparent',
 						paddingY: '2.5',
-						fontSize: '2xs',
+						fontSize: '3xs',
 						fontWeight: '500',
 						textTransform: 'uppercase',
-						letterSpacing: 'max',
+						letterSpacing: 'widest',
 						color: 'fg.muted',
 						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
 					})
@@ -528,7 +525,7 @@
 			>
 				edit
 			</button>
-			<div class={css({ width: 'px', backgroundColor: 'border.primary', flexShrink: '0' })}></div>
+			<div class={css({ width: 'px', backgroundColor: 'bg.muted', flexShrink: '0' })}></div>
 			<button
 				class={cx(
 					'action-btn',
@@ -538,10 +535,10 @@
 						border: 'none',
 						backgroundColor: 'transparent',
 						paddingY: '2.5',
-						fontSize: '2xs',
+						fontSize: '3xs',
 						fontWeight: '500',
 						textTransform: 'uppercase',
-						letterSpacing: 'max',
+						letterSpacing: 'widest',
 						color: 'fg.muted',
 						_hover: { backgroundColor: 'error.bg', color: 'error.fg' }
 					})
@@ -554,13 +551,7 @@
 		</div>
 
 		{#if step.type === 'view' && datasourceId && analysisId}
-			<div
-				class={css({
-					borderTopWidth: '1px',
-					borderTopStyle: 'solid',
-					borderTopColor: 'border.tertiary'
-				})}
-			>
+			<div class={divider}>
 				<InlineDataTable
 					{analysisId}
 					{datasourceId}
@@ -573,12 +564,12 @@
 
 		{#if step.type === 'download' && datasourceId && analysisId}
 			<div
-				class={css({
-					borderTopWidth: '1px',
-					borderTopStyle: 'solid',
-					borderTopColor: 'border.tertiary',
-					padding: '3'
-				})}
+				class={cx(
+					divider,
+					css({
+						padding: '3'
+					})
+				)}
 			>
 				<button
 					class={cx(button({ variant: 'primary' }), css({ width: '100%' }))}
@@ -591,20 +582,14 @@
 		{/if}
 
 		{#if isChart && datasourceId && analysisId}
-			<div
-				class={css({
-					borderTopWidth: '1px',
-					borderTopStyle: 'solid',
-					borderTopColor: 'border.tertiary'
-				})}
-			>
+			<div class={divider}>
 				{#if !isApplied}
 					<div
 						class={css({
 							display: 'flex',
 							alignItems: 'center',
 							justifyContent: 'center',
-							fontSize: 'xs',
+							fontSize: 'xs2',
 							color: 'fg.muted',
 							border: '1px dashed',
 							borderColor: 'border.primary',
@@ -627,7 +612,7 @@
 							justifyContent: 'center',
 							gap: '2',
 							paddingY: '5',
-							fontSize: 'xs',
+							fontSize: 'xs2',
 							color: 'fg.muted'
 						})}
 					>
@@ -637,8 +622,7 @@
 				{:else if chartQuery.error}
 					<div
 						class={css({
-							borderTopWidth: '1px',
-							borderTopStyle: 'solid',
+							borderTopWidth: '1',
 							borderTopColor: 'error.border',
 							backgroundColor: 'error.bg',
 							padding: '3',
@@ -670,15 +654,15 @@
 		{/if}
 
 		<div
-			class={css({
-				display: 'flex',
-				alignItems: 'center',
-				paddingX: '4',
-				paddingY: '2.5',
-				borderTopWidth: '1px',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.tertiary'
-			})}
+			class={cx(
+				divider,
+				css({
+					display: 'flex',
+					alignItems: 'center',
+					paddingX: '4',
+					paddingY: '2.5'
+				})
+			)}
 		>
 			{#if rowCount !== null}
 				{#key `${rowCountKey}:${rowCount}`}
@@ -702,14 +686,13 @@
 						cursor: 'pointer',
 						alignItems: 'center',
 						gap: '1',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'transparent',
 						color: 'fg.muted',
 						paddingX: '2',
 						paddingY: '0.5',
-						fontSize: '2xs',
+						fontSize: '3xs',
 						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
 						_disabled: { cursor: 'not-allowed', opacity: '0.7' }
 					})}
@@ -731,8 +714,7 @@
 		{#if rowCountError}
 			<div
 				class={css({
-					borderTopWidth: '1px',
-					borderTopStyle: 'solid',
+					borderTopWidth: '1',
 					borderTopColor: 'error.border',
 					backgroundColor: 'error.bg',
 					paddingX: '4',
@@ -752,12 +734,11 @@
 			left: '50%',
 			bottom: '-1',
 			zIndex: '2',
-			height: '2',
-			width: '2',
-			borderWidth: '2px',
-			borderStyle: 'solid',
+			height: 'dot',
+			width: 'dot',
+			borderWidth: '2',
 			transform: 'translateX(-50%)',
-			backgroundColor: 'fg.muted',
+			backgroundColor: 'bg.indicator',
 			borderColor: 'border.primary'
 		})}
 	></div>

@@ -31,12 +31,11 @@
 	closeOnBackdrop={true}
 	panelClass={css({
 		width: 'full',
-		maxWidth: '120',
-		maxHeight: '[90vh]',
+		maxWidth: 'modalSm',
+		maxHeight: 'screenTall',
 		overflowY: 'auto',
-		borderWidth: '1px',
-		borderStyle: 'solid',
-		borderColor: 'border.tertiary',
+		borderWidth: '1',
+		borderColor: 'border.primary',
 		backgroundColor: 'bg.primary'
 	})}
 	ariaLabelledby="udf-modal-title"
@@ -86,7 +85,7 @@
 				display: 'flex',
 				flexDirection: 'column',
 				gap: '2',
-				maxHeight: '90',
+				maxHeight: 'popover',
 				overflow: 'auto'
 			})}
 		>
@@ -100,7 +99,7 @@
 							padding: '3',
 							border: '1px solid',
 							borderColor: 'border.primary',
-							borderRadius: '0',
+
 							backgroundColor: 'bg.secondary',
 							color: 'fg.primary',
 							cursor: 'pointer',

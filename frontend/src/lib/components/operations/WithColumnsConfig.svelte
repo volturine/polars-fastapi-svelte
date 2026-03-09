@@ -13,7 +13,16 @@
 	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
 	import PanelFooter from '$lib/components/ui/PanelFooter.svelte';
 	import { Pencil, X } from 'lucide-svelte';
-	import { css, button, emptyText } from '$lib/styles/panda';
+	import {
+		css,
+		button,
+		emptyText,
+		stepConfig,
+		cx,
+		row,
+		rowBetween,
+		divider
+	} from '$lib/styles/panda';
 
 	interface WithColumnsExpr {
 		name: string;
@@ -222,11 +231,7 @@
 	);
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="With columns configuration"
->
+<div class={stepConfig()} role="region" aria-label="With columns configuration">
 	<h3
 		class={css({
 			margin: '0',
@@ -263,7 +268,7 @@
 			<input id="wc-expr-value" type="text" bind:value={exprValue} placeholder="Literal value" />
 		{:else}
 			<div class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
-				<div class={css({ display: 'flex', gap: '3', alignItems: 'center' })}>
+				<div class={cx(row, css({ gap: '3' }))}>
 					<label
 						class={css({
 							display: 'inline-flex',
@@ -291,7 +296,7 @@
 				</div>
 
 				{#if useLibrary}
-					<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+					<div class={cx(row, css({ gap: '2' }))}>
 						<button
 							type="button"
 							class={button({ variant: 'secondary', size: 'sm' })}
@@ -338,9 +343,7 @@
 						placeholder="Select input columns..."
 					/>
 
-					<div
-						class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}
-					>
+					<div class={rowBetween}>
 						<label
 							for="wc-expr-code"
 							class={css({
@@ -358,7 +361,12 @@
 					</div>
 					<textarea
 						id="wc-expr-code"
-						class={css({ resize: 'vertical', minHeight: '25', fontSize: 'sm', fontFamily: 'mono' })}
+						class={css({
+							resize: 'vertical',
+							minHeight: 'fieldSm',
+							fontSize: 'sm',
+							fontFamily: 'mono'
+						})}
 						rows="5"
 						placeholder="def udf(*args):&#10;    return ..."
 						bind:value={exprCode}
@@ -379,16 +387,16 @@
 					</label>
 					{#if saveToLibrary}
 						<div
-							class={css({
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '3',
-								marginTop: '3',
-								paddingTop: '3',
-								borderTopWidth: '1',
-								borderTopStyle: 'solid',
-								borderTopColor: 'border.tertiary'
-							})}
+							class={cx(
+								divider,
+								css({
+									display: 'flex',
+									flexDirection: 'column',
+									gap: '3',
+									marginTop: '3',
+									paddingTop: '3'
+								})
+							)}
 						>
 							<label for="wc-save-name">Name</label>
 							<input id="wc-save-name" type="text" placeholder="UDF name" bind:value={saveName} />
@@ -454,10 +462,8 @@
 								alignItems: 'center',
 								paddingY: '2',
 								borderBottomWidth: '1',
-								borderBottomStyle: 'solid',
-								borderBottomColor: 'border.tertiary',
+								borderBottomColor: 'border.primary',
 								borderLeftWidth: '2',
-								borderLeftStyle: 'solid',
 								borderLeftColor: 'accent.primary',
 								backgroundColor: 'bg.hover',
 								'&:last-child': { borderBottomWidth: '0' }
@@ -468,19 +474,17 @@
 								alignItems: 'center',
 								paddingY: '2',
 								borderBottomWidth: '1',
-								borderBottomStyle: 'solid',
-								borderBottomColor: 'border.tertiary',
+								borderBottomColor: 'border.primary',
 								backgroundColor: 'transparent',
-								border: 'none',
 								'&:last-child': { borderBottomWidth: '0' }
 							})}
 					role="listitem"
 				>
-					<div class={css({ display: 'flex', alignItems: 'center', gap: '3', minWidth: '0' })}>
+					<div class={cx(row, css({ gap: '3', minWidth: '0' }))}>
 						<span
 							class={css({
 								fontWeight: 'semibold',
-								maxWidth: '30',
+								maxWidth: 'fieldMd',
 								overflow: 'hidden',
 								textOverflow: 'ellipsis',
 								whiteSpace: 'nowrap',
@@ -500,8 +504,8 @@
 						<button
 							type="button"
 							class={css({
-								width: '6',
-								height: '6',
+								width: 'iconLg',
+								height: 'iconLg',
 								padding: '0',
 								display: 'inline-flex',
 								alignItems: 'center',
@@ -512,7 +516,6 @@
 								lineHeight: 'none',
 								color: 'fg.muted',
 								borderWidth: '1',
-								borderStyle: 'solid',
 								borderColor: 'border.transparent'
 							})}
 							onclick={() => editExpression(index)}
@@ -523,8 +526,8 @@
 						<button
 							type="button"
 							class={css({
-								width: '6',
-								height: '6',
+								width: 'iconLg',
+								height: 'iconLg',
 								padding: '0',
 								display: 'inline-flex',
 								alignItems: 'center',
@@ -535,7 +538,6 @@
 								lineHeight: 'none',
 								color: 'fg.muted',
 								borderWidth: '1',
-								borderStyle: 'solid',
 								borderColor: 'border.transparent',
 								_hover: {
 									color: 'error.fg',
@@ -571,9 +573,8 @@
 			width: 'min(720px, 92vw)',
 			backgroundColor: 'bg.primary',
 			borderWidth: '1',
-			borderStyle: 'solid',
 			borderColor: 'border.primary',
-			zIndex: 'calc(var(--z-modal) + 1)',
+			zIndex: '1001',
 			display: 'flex',
 			flexDirection: 'column',
 			_focus: { outline: 'none' }
@@ -596,8 +597,7 @@
 						display: 'flex',
 						alignItems: 'center',
 						justifyContent: 'center',
-						transitionProperty: 'color, background-color',
-						transitionDuration: 'normal',
+						transition: 'color 160ms ease, background-color 160ms ease',
 						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
 					})}
 					onclick={() => (showEditor = false)}

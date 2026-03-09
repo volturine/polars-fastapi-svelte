@@ -4,21 +4,14 @@
 
 	interface Props {
 		active?: boolean;
-		radius?: 'left' | 'right' | 'none';
+		radius?: 'left' | 'right';
 		onclick: () => void;
 		children: Snippet;
 		ariaPressed?: boolean;
 		ariaLabel?: string;
 	}
 
-	let {
-		active = false,
-		radius = 'none',
-		onclick,
-		children,
-		ariaPressed,
-		ariaLabel
-	}: Props = $props();
+	let { active = false, radius, onclick, children, ariaPressed, ariaLabel }: Props = $props();
 </script>
 
 <button

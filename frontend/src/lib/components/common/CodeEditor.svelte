@@ -81,9 +81,8 @@
 <div
 	class={css({
 		overflow: 'hidden',
-		borderWidth: '1px',
-		borderStyle: 'solid',
-		borderColor: 'border.tertiary',
+		borderWidth: '1',
+		borderColor: 'border.primary',
 		backgroundColor: 'bg.tertiary'
 	})}
 	style:height

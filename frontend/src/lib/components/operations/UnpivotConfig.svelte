@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig } from '$lib/styles/panda';
 
 	interface Props {
 		schema: Schema;
@@ -15,11 +15,7 @@
 		(config[key] as T) ?? defaultValue;
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Unpivot configuration"
->
+<div class={stepConfig()} role="region" aria-label="Unpivot configuration">
 	<p
 		class={css({
 			marginTop: '0',

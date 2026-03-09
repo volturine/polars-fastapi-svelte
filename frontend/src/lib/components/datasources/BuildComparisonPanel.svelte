@@ -8,7 +8,7 @@
 	import { GitCompareArrows, RefreshCw, X, Plus, Minus, Search } from 'lucide-svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { buildSnapshotMap } from '$lib/utils/build-snapshot-map';
-	import { css, cx, button, input } from '$lib/styles/panda';
+	import { css, cx, button, input, row, muted } from '$lib/styles/panda';
 
 	interface Props {
 		datasource: DataSource;
@@ -127,17 +127,17 @@
 	}
 
 	function rowDeltaClass(val: number): string {
-		if (val === 0) return css({ color: 'fg.muted' });
+		if (val === 0) return muted;
 		return val > 0 ? css({ color: 'success.fg' }) : css({ color: 'error.fg' });
 	}
 
 	function nullDeltaClass(val: number): string {
-		if (val === 0) return css({ color: 'fg.muted' });
+		if (val === 0) return muted;
 		return val > 0 ? css({ color: 'error.fg' }) : css({ color: 'success.fg' });
 	}
 
 	function uniqueDeltaClass(val: number): string {
-		if (val === 0) return css({ color: 'fg.muted' });
+		if (val === 0) return muted;
 		return val > 0 ? css({ color: 'success.fg' }) : css({ color: 'error.fg' });
 	}
 
@@ -201,8 +201,7 @@
 <div
 	class={css({
 		borderWidth: '1',
-		borderStyle: 'solid',
-		borderColor: 'border.tertiary',
+		borderColor: 'border.primary',
 		backgroundColor: 'bg.primary',
 		display: 'flex',
 		flexDirection: 'column',
@@ -214,9 +213,8 @@
 			display: 'flex',
 			alignItems: 'center',
 			justifyContent: 'space-between',
-			borderBottomWidth: '1',
-			borderBottomStyle: 'solid',
-			borderColor: 'border.tertiary',
+			borderBottom: '1px solid',
+			borderBottomColor: 'border.primary',
 			backgroundColor: 'bg.tertiary',
 			paddingX: '4',
 			paddingY: '3'
@@ -272,8 +270,7 @@
 				<div
 					class={css({
 						borderWidth: '1',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderColor: 'border.primary',
 						padding: '3'
 					})}
 				>
@@ -327,7 +324,7 @@
 								<div
 									class={cx(
 										css({
-											maxHeight: '72',
+											maxHeight: 'previewXl',
 											display: 'flex',
 											flexDirection: 'column',
 											gap: '2',
@@ -346,8 +343,7 @@
 													alignItems: 'flex-start',
 													justifyContent: 'space-between',
 													borderWidth: '1',
-													borderStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderColor: 'border.primary',
 													backgroundColor: 'transparent',
 													paddingX: '3',
 													paddingY: '2',
@@ -362,7 +358,7 @@
 											onclick={() => toggleSelect(run.id)}
 										>
 											<div class={css({ minWidth: '0' })}>
-												<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+												<div class={cx(row, css({ gap: '2' }))}>
 													<span class={css({ fontFamily: 'mono', fontSize: 'xs' })}
 														>{run.id.slice(0, 8)}...</span
 													>
@@ -387,8 +383,7 @@
 				<div
 					class={css({
 						borderWidth: '1',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderColor: 'border.primary',
 						padding: '3'
 					})}
 				>
@@ -410,8 +405,8 @@
 							fontSize: 'sm'
 						})}
 					>
-						<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
-							<GitCompareArrows size={14} class={css({ color: 'fg.muted' })} />
+						<div class={cx(row, css({ gap: '2' }))}>
+							<GitCompareArrows size={14} class={muted} />
 							<span>{selected.size}/2 builds selected</span>
 						</div>
 						{#if selectedRuns.length === 0}
@@ -427,15 +422,14 @@
 											alignItems: 'center',
 											justifyContent: 'space-between',
 											borderWidth: '1',
-											borderStyle: 'solid',
-											borderColor: 'border.tertiary',
+											borderColor: 'border.primary',
 											backgroundColor: 'bg.secondary',
 											paddingX: '3',
 											paddingY: '2',
 											fontSize: 'xs'
 										})}
 									>
-										<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+										<div class={cx(row, css({ gap: '2' }))}>
 											<span class={css({ fontFamily: 'mono' })}>{run.id.slice(0, 8)}...</span>
 											<span class={css({ color: 'fg.tertiary' })}>{run.kind}</span>
 										</div>
@@ -483,16 +477,13 @@
 			</div>
 
 			{#if comparison}
-				<div
-					class={css({ borderWidth: '1', borderStyle: 'solid', borderColor: 'border.tertiary' })}
-				>
+				<div class={css({ borderWidth: '1', borderColor: 'border.primary' })}>
 					<div
 						class={css({
 							display: 'grid',
 							gap: '4',
-							borderBottomWidth: '1',
-							borderBottomStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderBottom: '1px solid',
+							borderBottomColor: 'border.primary',
 							padding: '4',
 							md: { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }
 						})}
@@ -500,8 +491,7 @@
 						<div
 							class={css({
 								borderWidth: '1',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderColor: 'border.primary',
 								padding: '3',
 								textAlign: 'center'
 							})}
@@ -514,8 +504,7 @@
 						<div
 							class={css({
 								borderWidth: '1',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderColor: 'border.primary',
 								padding: '3',
 								textAlign: 'center'
 							})}
@@ -528,8 +517,7 @@
 						<div
 							class={css({
 								borderWidth: '1',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderColor: 'border.primary',
 								padding: '3',
 								textAlign: 'center'
 							})}
@@ -560,8 +548,7 @@
 							<div
 								class={css({
 									borderWidth: '1',
-									borderStyle: 'solid',
-									borderColor: 'border.tertiary'
+									borderColor: 'border.primary'
 								})}
 							>
 								<table class={css({ width: '100%', borderCollapse: 'collapse', fontSize: 'sm' })}>
@@ -569,9 +556,8 @@
 										<tr class={css({ backgroundColor: 'bg.tertiary' })}>
 											<th
 												class={css({
-													borderBottomWidth: '1',
-													borderBottomStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderBottom: '1px solid',
+													borderBottomColor: 'border.primary',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -580,9 +566,8 @@
 											>
 											<th
 												class={css({
-													borderBottomWidth: '1',
-													borderBottomStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderBottom: '1px solid',
+													borderBottomColor: 'border.primary',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -591,9 +576,8 @@
 											>
 											<th
 												class={css({
-													borderBottomWidth: '1',
-													borderBottomStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderBottom: '1px solid',
+													borderBottomColor: 'border.primary',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -602,9 +586,8 @@
 											>
 											<th
 												class={css({
-													borderBottomWidth: '1',
-													borderBottomStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderBottom: '1px solid',
+													borderBottomColor: 'border.primary',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -618,9 +601,8 @@
 											<tr>
 												<td
 													class={css({
-														borderBottomWidth: '1',
-														borderBottomStyle: 'solid',
-														borderColor: 'border.tertiary',
+														borderBottom: '1px solid',
+														borderBottomColor: 'border.primary',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -629,9 +611,8 @@
 												>
 												<td
 													class={css({
-														borderBottomWidth: '1',
-														borderBottomStyle: 'solid',
-														borderColor: 'border.tertiary',
+														borderBottom: '1px solid',
+														borderBottomColor: 'border.primary',
 														paddingX: '3',
 														paddingY: '1.5'
 													})}
@@ -676,9 +657,8 @@
 												</td>
 												<td
 													class={css({
-														borderBottomWidth: '1',
-														borderBottomStyle: 'solid',
-														borderColor: 'border.tertiary',
+														borderBottom: '1px solid',
+														borderBottomColor: 'border.primary',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -690,9 +670,8 @@
 												</td>
 												<td
 													class={css({
-														borderBottomWidth: '1',
-														borderBottomStyle: 'solid',
-														borderColor: 'border.tertiary',
+														borderBottom: '1px solid',
+														borderBottomColor: 'border.primary',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -711,8 +690,7 @@
 							<div
 								class={css({
 									borderWidth: '1',
-									borderStyle: 'solid',
-									borderColor: 'border.tertiary',
+									borderColor: 'border.primary',
 									backgroundColor: 'bg.tertiary',
 									padding: '4',
 									textAlign: 'center',
@@ -739,13 +717,12 @@
 						<div
 							class={css({
 								borderWidth: '1',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary'
+								borderColor: 'border.primary'
 							})}
 						>
 							<div
 								class={cx(
-									css({ maxHeight: '125', overflow: 'auto', contain: 'content' }),
+									css({ maxHeight: 'listTall', overflow: 'auto', contain: 'content' }),
 									'datasource-comparison-scroll'
 								)}
 							>
@@ -761,9 +738,8 @@
 										<tr>
 											<th
 												class={css({
-													borderBottomWidth: '1',
-													borderBottomStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderBottom: '1px solid',
+													borderBottomColor: 'border.primary',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -772,9 +748,8 @@
 											>
 											<th
 												class={css({
-													borderBottomWidth: '1',
-													borderBottomStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderBottom: '1px solid',
+													borderBottomColor: 'border.primary',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -783,9 +758,8 @@
 											>
 											<th
 												class={css({
-													borderBottomWidth: '1',
-													borderBottomStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderBottom: '1px solid',
+													borderBottomColor: 'border.primary',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -794,9 +768,8 @@
 											>
 											<th
 												class={css({
-													borderBottomWidth: '1',
-													borderBottomStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderBottom: '1px solid',
+													borderBottomColor: 'border.primary',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -805,9 +778,8 @@
 											>
 											<th
 												class={css({
-													borderBottomWidth: '1',
-													borderBottomStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderBottom: '1px solid',
+													borderBottomColor: 'border.primary',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -816,9 +788,8 @@
 											>
 											<th
 												class={css({
-													borderBottomWidth: '1',
-													borderBottomStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderBottom: '1px solid',
+													borderBottomColor: 'border.primary',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -832,9 +803,8 @@
 											<tr>
 												<td
 													class={css({
-														borderBottomWidth: '1',
-														borderBottomStyle: 'solid',
-														borderColor: 'border.tertiary',
+														borderBottom: '1px solid',
+														borderBottomColor: 'border.primary',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -846,9 +816,8 @@
 												</td>
 												<td
 													class={css({
-														borderBottomWidth: '1',
-														borderBottomStyle: 'solid',
-														borderColor: 'border.tertiary',
+														borderBottom: '1px solid',
+														borderBottomColor: 'border.primary',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -860,9 +829,8 @@
 												</td>
 												<td
 													class={css({
-														borderBottomWidth: '1',
-														borderBottomStyle: 'solid',
-														borderColor: 'border.tertiary',
+														borderBottom: '1px solid',
+														borderBottomColor: 'border.primary',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -870,7 +838,7 @@
 													})}
 												>
 													<div class={css({ display: 'flex', alignItems: 'baseline', gap: '2' })}>
-														<span class={css({ color: 'fg.muted' })}>{stat.null_a}</span>
+														<span class={muted}>{stat.null_a}</span>
 														<span class={css({ color: 'fg.tertiary' })}>→</span>
 														<span>{stat.null_b}</span>
 														{#if stat.null_delta !== null}
@@ -887,9 +855,8 @@
 												</td>
 												<td
 													class={css({
-														borderBottomWidth: '1',
-														borderBottomStyle: 'solid',
-														borderColor: 'border.tertiary',
+														borderBottom: '1px solid',
+														borderBottomColor: 'border.primary',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -897,7 +864,7 @@
 													})}
 												>
 													<div class={css({ display: 'flex', alignItems: 'baseline', gap: '2' })}>
-														<span class={css({ color: 'fg.muted' })}>{stat.unique_a}</span>
+														<span class={muted}>{stat.unique_a}</span>
 														<span class={css({ color: 'fg.tertiary' })}>→</span>
 														<span>{stat.unique_b}</span>
 														{#if stat.unique_delta !== null}
@@ -914,9 +881,8 @@
 												</td>
 												<td
 													class={css({
-														borderBottomWidth: '1',
-														borderBottomStyle: 'solid',
-														borderColor: 'border.tertiary',
+														borderBottom: '1px solid',
+														borderBottomColor: 'border.primary',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -934,9 +900,8 @@
 												</td>
 												<td
 													class={css({
-														borderBottomWidth: '1',
-														borderBottomStyle: 'solid',
-														borderColor: 'border.tertiary',
+														borderBottom: '1px solid',
+														borderBottomColor: 'border.primary',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -970,15 +935,13 @@
 						<div
 							class={css({
 								borderWidth: '1',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary'
+								borderColor: 'border.primary'
 							})}
 						>
 							<div
 								class={css({
-									borderBottomWidth: '1',
-									borderBottomStyle: 'solid',
-									borderColor: 'border.tertiary',
+									borderBottom: '1px solid',
+									borderBottomColor: 'border.primary',
 									backgroundColor: 'bg.tertiary',
 									paddingX: '3',
 									paddingY: '2',
@@ -991,7 +954,7 @@
 							</div>
 							<div
 								class={cx(
-									css({ height: '80', contain: 'content' }),
+									css({ height: 'listLg', contain: 'content' }),
 									'datasource-comparison-scroll'
 								)}
 							>
@@ -1007,15 +970,13 @@
 						<div
 							class={css({
 								borderWidth: '1',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary'
+								borderColor: 'border.primary'
 							})}
 						>
 							<div
 								class={css({
-									borderBottomWidth: '1',
-									borderBottomStyle: 'solid',
-									borderColor: 'border.tertiary',
+									borderBottom: '1px solid',
+									borderBottomColor: 'border.primary',
 									backgroundColor: 'bg.tertiary',
 									paddingX: '3',
 									paddingY: '2',
@@ -1028,7 +989,7 @@
 							</div>
 							<div
 								class={cx(
-									css({ height: '80', contain: 'content' }),
+									css({ height: 'listLg', contain: 'content' }),
 									'datasource-comparison-scroll'
 								)}
 							>
@@ -1047,8 +1008,7 @@
 				<div
 					class={css({
 						borderWidth: '1',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderColor: 'border.primary',
 						padding: '4',
 						fontSize: 'sm',
 						color: 'fg.tertiary'

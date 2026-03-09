@@ -9,7 +9,7 @@
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import ToggleButton from '$lib/components/ui/ToggleButton.svelte';
 	import { Search } from 'lucide-svelte';
-	import { css, cx, input } from '$lib/styles/panda';
+	import { css, cx, input, stepConfig } from '$lib/styles/panda';
 
 	interface Props {
 		config?: NotificationConfigData;
@@ -138,11 +138,7 @@
 	});
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Notification configuration"
->
+<div class={stepConfig()} role="region" aria-label="Notification configuration">
 	{#if !isReady}
 		<Callout tone="warn">Configure SMTP or Telegram in global settings first.</Callout>
 	{/if}
@@ -246,11 +242,10 @@
 					</div>
 					<div
 						class={css({
-							maxHeight: '32',
+							maxHeight: 'colMd',
 							overflowY: 'auto',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.secondary'
 						})}
 					>
@@ -306,9 +301,8 @@
 										cursor: 'pointer',
 										alignItems: 'center',
 										gap: '3',
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5',
 										_hover: { backgroundColor: 'bg.tertiary' },

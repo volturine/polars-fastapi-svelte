@@ -2,7 +2,7 @@
 	import { onDestroy, untrack } from 'svelte';
 	import { preflightExcel, preflightExcelFromPath, previewExcel } from '$lib/api/excel';
 	import DataTable from '$lib/components/common/DataTable.svelte';
-	import { css, cx, button } from '$lib/styles/panda';
+	import { css, cx, button, row, rowBetween } from '$lib/styles/panda';
 
 	interface ExcelConfig {
 		sheet_name: string;
@@ -419,14 +419,13 @@
 		display: 'flex',
 		flexDirection: 'column',
 		gap: '4',
-		borderWidth: '1px',
-		borderStyle: 'solid',
-		borderColor: 'border.tertiary',
+		borderWidth: '1',
+		borderColor: 'border.primary',
 		backgroundColor: 'bg.tertiary',
 		padding: '4'
 	})}
 >
-	<div class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
+	<div class={rowBetween}>
 		<h3 class={css({ margin: '0', fontSize: 'sm', fontWeight: 'semibold', color: 'fg.secondary' })}>
 			Excel Table Selection
 		</h3>
@@ -456,7 +455,7 @@
 				paddingY: '2.5',
 				border: 'none',
 				borderLeft: '2px solid',
-				borderRadius: '0',
+
 				marginTop: '3',
 				marginBottom: '0',
 				fontSize: 'xs',
@@ -488,8 +487,7 @@
 				onchange={(event) => applySheet(event.currentTarget.value)}
 				disabled={disabled || previewLoading || !sheetNames.length}
 				class={css({
-					borderWidth: '1px',
-					borderStyle: 'solid',
+					borderWidth: '1',
 					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary',
 					paddingX: '3',
@@ -514,8 +512,7 @@
 				onchange={(event) => applyTable(event.currentTarget.value)}
 				disabled={disabled || previewLoading || !selectedSheet}
 				class={css({
-					borderWidth: '1px',
-					borderStyle: 'solid',
+					borderWidth: '1',
 					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary',
 					paddingX: '3',
@@ -540,8 +537,7 @@
 				onchange={(event) => applyNamedRange(event.currentTarget.value)}
 				disabled={disabled || previewLoading}
 				class={css({
-					borderWidth: '1px',
-					borderStyle: 'solid',
+					borderWidth: '1',
 					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary',
 					paddingX: '3',
@@ -573,8 +569,7 @@
 				disabled={disabled || previewLoading}
 				placeholder="A1:D50"
 				class={css({
-					borderWidth: '1px',
-					borderStyle: 'solid',
+					borderWidth: '1',
 					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary',
 					paddingX: '3',
@@ -588,14 +583,14 @@
 		</div>
 	</div>
 
-	<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+	<div class={cx(row, css({ gap: '2' }))}>
 		<input
 			id="excel-header"
 			type="checkbox"
 			bind:checked={excelHeader}
 			onchange={handleHeaderToggle}
 			disabled={disabled || previewLoading}
-			class={css({ height: '4', width: '4', cursor: 'pointer' })}
+			class={css({ height: 'iconSm', width: 'iconSm', cursor: 'pointer' })}
 		/>
 		<label
 			for="excel-header"
@@ -608,9 +603,8 @@
 		<div
 			class={css({
 				overflow: 'hidden',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary',
+				borderWidth: '1',
+				borderColor: 'border.primary',
 				backgroundColor: 'bg.primary'
 			})}
 		>
@@ -625,38 +619,37 @@
 					fontSize: 'xs',
 					fontWeight: 'medium',
 					backgroundColor: 'bg.tertiary',
-					borderBottomWidth: '1px',
-					borderBottomStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderBottomWidth: '1',
+					borderColor: 'border.primary',
 					color: 'fg.muted'
 				})}
 			>
-				<span class={css({ display: 'flex', alignItems: 'center', gap: '1' })}
+				<span class={cx(row, css({ gap: '1' }))}
 					><span class={css({ color: 'fg.tertiary' })}>Start row:</span>
 					<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}>{startRow + 1}</span
 					></span
 				>
-				<span class={css({ display: 'flex', alignItems: 'center', gap: '1' })}
+				<span class={cx(row, css({ gap: '1' }))}
 					><span class={css({ color: 'fg.tertiary' })}>Start col:</span>
 					<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}
 						>{cellLabel(startCol)}</span
 					></span
 				>
-				<span class={css({ display: 'flex', alignItems: 'center', gap: '1' })}
+				<span class={cx(row, css({ gap: '1' }))}
 					><span class={css({ color: 'fg.tertiary' })}>End col:</span>
 					<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}
 						>{cellLabel(endCol)}</span
 					></span
 				>
 				{#if endRow !== null}
-					<span class={css({ display: 'flex', alignItems: 'center', gap: '1' })}
+					<span class={cx(row, css({ gap: '1' }))}
 						><span class={css({ color: 'fg.tertiary' })}>End row:</span>
 						<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}>{endRow + 1}</span
 						></span
 					>
 				{/if}
 				{#if detectedEndRow !== null}
-					<span class={css({ display: 'flex', alignItems: 'center', gap: '1' })}
+					<span class={cx(row, css({ gap: '1' }))}
 						><span class={css({ color: 'fg.tertiary' })}>Detected end:</span>
 						<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}
 							>{detectedEndRow + 1}</span
@@ -667,11 +660,10 @@
 			<div
 				class={css({
 					contain: 'content',
-					maxHeight: '80',
+					maxHeight: 'listLg',
 					overflow: 'auto',
-					borderTopWidth: '1px',
-					borderTopStyle: 'solid',
-					borderColor: 'border.tertiary'
+					borderTopWidth: '1',
+					borderColor: 'border.primary'
 				})}
 			>
 				<DataTable

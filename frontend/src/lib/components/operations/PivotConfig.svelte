@@ -2,7 +2,7 @@
 	import type { Schema } from '$lib/types/schema';
 	import type { PivotConfigData } from '$lib/types/operation-config';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig } from '$lib/styles/panda';
 
 	interface Props {
 		schema: Schema;
@@ -39,11 +39,7 @@
 	}
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Pivot configuration"
->
+<div class={stepConfig()} role="region" aria-label="Pivot configuration">
 	<div class={css({ marginBottom: '5' })}>
 		<div
 			class={css({
@@ -92,7 +88,7 @@
 				display: 'grid',
 				gap: '3',
 				padding: '2',
-				maxHeight: '37.5',
+				maxHeight: 'inputSm',
 				overflowY: 'auto'
 			})}
 		>
@@ -176,9 +172,9 @@
 				data-testid="pivot-refresh-button"
 				class={css({
 					backgroundColor: 'accent.primary',
-					color: 'bg.primary',
+					color: 'fg.inverse',
 					border: '1px solid',
-					borderColor: 'accent.secondary',
+					borderColor: 'border.primary',
 					width: 'full',
 					paddingY: '2',
 					paddingX: '3',
@@ -200,13 +196,11 @@
 				{#if isRefreshing}
 					<span
 						class={css({
-							width: '3.5',
-							height: '3.5',
-							borderWidth: '2px',
-							borderStyle: 'solid',
+							width: 'iconXs',
+							height: 'iconXs',
+							borderWidth: '2',
 							borderColor: 'currentColor',
 							borderTopColor: 'transparent',
-							borderRadius: '50%',
 							animation: 'spin 0.8s linear infinite'
 						})}
 						aria-hidden="true"

@@ -3,7 +3,7 @@
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig } from '$lib/styles/panda';
 
 	interface ExplodeConfigData {
 		columns: string[];
@@ -31,9 +31,7 @@
 	}
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
->
+<div class={stepConfig()}>
 	<p
 		class={css({
 			marginTop: '0',

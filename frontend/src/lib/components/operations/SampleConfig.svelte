@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig } from '$lib/styles/panda';
 
 	interface Props {
 		config?: {
@@ -11,11 +11,7 @@
 	let { config = $bindable({ fraction: 0.5, seed: 42 }) }: Props = $props();
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Sample configuration"
->
+<div class={stepConfig()} role="region" aria-label="Sample configuration">
 	<div class={css({ marginBottom: '5' })}>
 		<label for="sample-input-fraction">Fraction</label>
 		<input

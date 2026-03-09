@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig } from '$lib/styles/panda';
 
 	interface Props {
 		config?: { n?: number };
@@ -8,11 +8,7 @@
 	let { config = $bindable({ n: 10 }) }: Props = $props();
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Limit configuration"
->
+<div class={stepConfig()} role="region" aria-label="Limit configuration">
 	<div class={css({ marginBottom: '0' })}>
 		<label for="limit-input-n">Number of rows to keep</label>
 		<input

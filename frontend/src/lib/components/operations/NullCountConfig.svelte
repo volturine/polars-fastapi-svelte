@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig } from '$lib/styles/panda';
 
 	interface Props {
 		config?: Record<string, never>;
@@ -9,9 +9,7 @@
 	void config;
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
->
+<div class={stepConfig()}>
 	<h3 class={css({ marginBottom: '2' })}>Null Count</h3>
 	<p
 		class={css({
@@ -31,7 +29,7 @@
 			border: 'none',
 			borderLeft: '2px solid',
 			borderLeftColor: 'accent.secondary',
-			borderRadius: '0',
+
 			marginTop: '3',
 			marginBottom: '0',
 			fontSize: 'xs',

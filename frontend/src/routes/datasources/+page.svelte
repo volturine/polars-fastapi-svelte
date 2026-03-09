@@ -20,7 +20,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import Callout from '$lib/components/ui/Callout.svelte';
-	import { css, cx, spinner, button, chip, input } from '$lib/styles/panda';
+	import { css, cx, spinner, button, chip, input, row, rowBetween } from '$lib/styles/panda';
 
 	const queryClient = useQueryClient();
 
@@ -128,14 +128,20 @@
 	});
 </script>
 
-<div class={css({ display: 'flex', height: '100%' })}>
+<div
+	class={css({
+		borderTop: '1px solid',
+		borderTopColor: 'border.primary',
+		display: 'flex',
+		height: '100%'
+	})}
+>
 	<!-- Left Pane -->
 	<aside
 		class={css({
-			width: 'var(--datasource-panel-width)',
-			borderRightWidth: '1px',
-			borderRightStyle: 'solid',
-			borderRightColor: 'border.tertiary',
+			width: 'datasourcePanel',
+			borderRightWidth: '1',
+			borderRightColor: 'border.primary',
 			display: 'flex',
 			flexDirection: 'column',
 			backgroundColor: 'bg.primary',
@@ -150,16 +156,15 @@
 				gap: '2',
 				paddingX: '4',
 				paddingY: '3',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'border.tertiary',
-				height: '25',
+				borderBottomWidth: '1',
+				borderBottomColor: 'border.primary',
+				height: 'fieldSm',
 				boxSizing: 'border-box'
 			})}
 		>
-			<div class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
+			<div class={rowBetween}>
 				<h1 class={css({ fontSize: 'sm', fontWeight: 'semibold' })}>Data Sources</h1>
-				<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+				<div class={cx(row, css({ gap: '1' }))}>
 					<button
 						class={css({
 							display: 'inline-flex',
@@ -170,9 +175,8 @@
 							paddingX: '2',
 							paddingY: '1',
 							backgroundColor: 'transparent',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							color: showHidden ? 'accent.primary' : undefined
 						})}
 						title={showHidden
@@ -198,9 +202,8 @@
 							paddingY: '1',
 							textDecoration: 'none',
 							backgroundColor: 'accent.primary',
-							color: 'bg.primary',
-							borderWidth: '1px',
-							borderStyle: 'solid',
+							color: 'fg.inverse',
+							borderWidth: '1',
 							borderColor: 'accent.primary'
 						})}
 						data-sveltekit-reload
@@ -235,14 +238,7 @@
 		<!-- Datasource List -->
 		<div class={css({ flex: '1', overflowY: 'auto' })}>
 			{#if query.isLoading}
-				<div
-					class={css({
-						display: 'flex',
-						height: '100%',
-						alignItems: 'center',
-						justifyContent: 'center'
-					})}
-				>
+				<div class={cx(row, css({ height: '100%', justifyContent: 'center' }))}>
 					<div class={spinner()}></div>
 				</div>
 			{:else if query.isError}
@@ -266,10 +262,9 @@
 							paddingY: '2',
 							textDecoration: 'none',
 							backgroundColor: 'accent.primary',
-							color: 'bg.primary',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'accent.primary'
+							color: 'fg.inverse',
+							borderWidth: '1',
+							borderColor: 'border.primary'
 						})}
 						data-sveltekit-reload
 					>
@@ -284,40 +279,37 @@
 				{#each filteredDatasources as datasource (datasource.id)}
 					<div
 						class={css({
-							borderBottomWidth: '1px',
-							borderBottomStyle: 'solid',
-							borderBottomColor: 'border.tertiary',
+							borderBottomWidth: '1',
+							borderBottomColor: 'border.primary',
 							...(selectedId === datasource.id
 								? {
 										backgroundColor: 'accent.bg',
 										borderLeft: '2px solid',
-										borderLeftColor: 'accent.primary'
+										borderLeftColor: 'border.primary'
 									}
 								: {})
 						})}
 					>
 						<!-- Row -->
 						<div
-							class={css({
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'space-between',
-								paddingX: '3',
-								paddingY: '2.5'
-							})}
+							class={cx(
+								row,
+								css({ justifyContent: 'space-between', paddingX: '3', paddingY: '2.5' })
+							)}
 						>
 							<button
-								class={css({
-									display: 'flex',
-									alignItems: 'center',
-									gap: '2',
-									minWidth: '0',
-									flex: '1',
-									textAlign: 'left',
-									backgroundColor: 'transparent',
-									padding: '0',
-									borderColor: 'transparent'
-								})}
+								class={cx(
+									row,
+									css({
+										gap: '2',
+										minWidth: '0',
+										flex: '1',
+										textAlign: 'left',
+										backgroundColor: 'transparent',
+										padding: '0',
+										borderColor: 'transparent'
+									})
+								)}
 								onclick={() => selectDatasource(datasource.id)}
 							>
 								<span
@@ -350,13 +342,12 @@
 									</span>
 								{/if}
 							</button>
-							<div class={css({ display: 'flex', alignItems: 'center', flexShrink: '0' })}>
+							<div class={cx(row, css({ flexShrink: '0' }))}>
 								<button
 									class={css({
 										padding: '1.5',
 										backgroundColor: 'transparent',
 										borderColor: 'transparent',
-										borderRadius: 'sm',
 										transitionProperty: 'color, background-color',
 										transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
 										transitionDuration: '150ms',
@@ -391,21 +382,21 @@
 		{#if selectedDatasource}
 			<div class={css({ height: '100%', display: 'flex', flexDirection: 'column' })}>
 				<div
-					class={css({
-						borderBottomWidth: '1px',
-						borderBottomStyle: 'solid',
-						borderBottomColor: 'border.tertiary',
-						backgroundColor: 'bg.secondary',
-						padding: '3',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						gap: '3'
-					})}
+					class={cx(
+						row,
+						css({
+							borderBottomWidth: '1',
+							borderBottomColor: 'border.primary',
+							backgroundColor: 'bg.secondary',
+							padding: '3',
+							justifyContent: 'space-between',
+							gap: '3'
+						})
+					)}
 				>
 					<div class={css({ flex: '1', minWidth: '0' })}>
 						{#if selectedDatasource.source_type === 'iceberg'}
-							<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+							<div class={cx(row, css({ gap: '2' }))}>
 								<div class={css({ flex: '1', minWidth: '0' })}>
 									<SnapshotPicker
 										datasourceId={selectedDatasource.id}
@@ -417,7 +408,7 @@
 										onConfigChange={handleSnapshotConfigChange}
 									/>
 								</div>
-								<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+								<div class={cx(row, css({ gap: '2' }))}>
 									<GitBranch size={14} class={css({ color: 'fg.tertiary' })} />
 									<BranchPicker
 										branches={branchOptions}
@@ -436,9 +427,8 @@
 									class={cx(
 										button({ variant: 'ghost', size: 'sm' }),
 										css({
-											borderWidth: '1px',
-											borderStyle: 'solid',
-											borderColor: 'border.tertiary',
+											borderWidth: '1',
+											borderColor: 'border.primary',
 											fontSize: 'xs'
 										})
 									)}
@@ -473,14 +463,15 @@
 			</div>
 		{:else}
 			<div
-				class={css({
-					height: '100%',
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					color: 'fg.muted',
-					backgroundColor: 'bg.secondary'
-				})}
+				class={cx(
+					row,
+					css({
+						height: '100%',
+						justifyContent: 'center',
+						color: 'fg.muted',
+						backgroundColor: 'bg.secondary'
+					})
+				)}
 			>
 				<div class={css({ textAlign: 'center' })}>
 					<p class={css({ fontSize: 'lg', fontWeight: 'medium', marginBottom: '2' })}>

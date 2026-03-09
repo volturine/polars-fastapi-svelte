@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig } from '$lib/styles/panda';
 
 	interface ViewConfigData {
 		rowLimit: number;
@@ -14,15 +14,13 @@
 	let { schema: _schema, config = $bindable({ rowLimit: 100 }) }: Props = $props();
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
->
+<div class={stepConfig()}>
 	<div
 		class={css({
 			marginBottom: '0',
 			paddingBottom: '5',
 			backgroundColor: 'transparent',
-			borderRadius: '0',
+
 			border: 'none'
 		})}
 	>

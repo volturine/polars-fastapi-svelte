@@ -10,7 +10,7 @@
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import { X } from 'lucide-svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig, cx, divider } from '$lib/styles/panda';
 
 	const _uid = $props.id();
 
@@ -104,17 +104,13 @@
 	);
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Join configuration"
->
+<div class={stepConfig()} role="region" aria-label="Join configuration">
 	<div
 		class={css({
 			marginBottom: '0',
 			paddingBottom: '5',
 			backgroundColor: 'transparent',
-			borderRadius: '0',
+
 			border: 'none'
 		})}
 		role="group"
@@ -143,16 +139,15 @@
 	</div>
 
 	<div
-		class={css({
-			marginBottom: '0',
-			paddingBottom: '5',
-			paddingTop: '5',
-			borderTopWidth: '1',
-			borderTopStyle: 'solid',
-			borderTopColor: 'border.tertiary',
-			backgroundColor: 'transparent',
-			borderRadius: '0'
-		})}
+		class={cx(
+			divider,
+			css({
+				marginBottom: '0',
+				paddingBottom: '5',
+				paddingTop: '5',
+				backgroundColor: 'transparent'
+			})
+		)}
 		role="group"
 		aria-labelledby="join-type-heading"
 	>
@@ -183,7 +178,7 @@
 				backgroundColor: 'transparent',
 				border: 'none',
 				borderLeft: '2px solid',
-				borderLeftColor: 'border.tertiary',
+				borderLeftColor: 'border.primary',
 				fontSize: 'xs',
 				paddingX: '3',
 				paddingY: '2',
@@ -202,16 +197,15 @@
 
 	{#if !isCrossJoin}
 		<div
-			class={css({
-				marginBottom: '0',
-				paddingBottom: '5',
-				paddingTop: '5',
-				borderTopWidth: '1',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.tertiary',
-				backgroundColor: 'transparent',
-				borderRadius: '0'
-			})}
+			class={cx(
+				divider,
+				css({
+					marginBottom: '0',
+					paddingBottom: '5',
+					paddingTop: '5',
+					backgroundColor: 'transparent'
+				})
+			)}
 			role="group"
 			aria-labelledby="join-columns-heading"
 		>
@@ -235,7 +229,7 @@
 						cursor: 'pointer',
 						fontSize: 'sm',
 						backgroundColor: 'accent.bg',
-						color: 'bg.primary',
+						color: 'fg.inverse',
 						_hover: { backgroundColor: 'accent.primary' }
 					})}
 					onclick={addJoinColumn}
@@ -267,9 +261,8 @@
 						gap: '3',
 						alignItems: 'end',
 						marginBottom: '3',
-						borderLeftWidth: '2px',
-						borderLeftStyle: 'solid',
-						borderLeftColor: 'border.tertiary',
+						borderLeftWidth: '2',
+						borderLeftColor: 'border.primary',
 						paddingLeft: '4',
 						paddingBottom: '3'
 					})}
@@ -319,8 +312,7 @@
 							backgroundColor: 'transparent',
 							cursor: 'pointer',
 							color: 'error.fg',
-							borderWidth: '1px',
-							borderStyle: 'solid',
+							borderWidth: '1',
 							borderColor: 'error.border',
 							_hover: { backgroundColor: 'error.bg' }
 						})}
@@ -341,16 +333,15 @@
 	{/if}
 
 	<div
-		class={css({
-			marginBottom: '0',
-			paddingBottom: '5',
-			paddingTop: '5',
-			borderTopWidth: '1',
-			borderTopStyle: 'solid',
-			borderTopColor: 'border.tertiary',
-			backgroundColor: 'transparent',
-			borderRadius: '0'
-		})}
+		class={cx(
+			divider,
+			css({
+				marginBottom: '0',
+				paddingBottom: '5',
+				paddingTop: '5',
+				backgroundColor: 'transparent'
+			})
+		)}
 		role="group"
 		aria-labelledby="right-columns-heading"
 	>
@@ -384,16 +375,15 @@
 		{/if}
 	</div>
 	<div
-		class={css({
-			marginBottom: '0',
-			paddingBottom: '5',
-			paddingTop: '5',
-			borderTopWidth: '1',
-			borderTopStyle: 'solid',
-			borderTopColor: 'border.tertiary',
-			backgroundColor: 'transparent',
-			borderRadius: '0'
-		})}
+		class={cx(
+			divider,
+			css({
+				marginBottom: '0',
+				paddingBottom: '5',
+				paddingTop: '5',
+				backgroundColor: 'transparent'
+			})
+		)}
 		role="group"
 		aria-labelledby="suffix-heading"
 	>

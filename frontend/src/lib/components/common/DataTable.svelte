@@ -24,7 +24,7 @@
 	import { onClickOutside } from 'runed';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
-	import { css, cx, menuItem } from '$lib/styles/panda';
+	import { css, cx, menuItem, divider, muted } from '$lib/styles/panda';
 	import type { TableCellValue } from '$lib/types/api-responses';
 	import { resolveColumnType } from '$lib/utils/columnTypes';
 	import { formatDateTimeDisplay, formatDateDisplay } from '$lib/utils/datetime';
@@ -490,8 +490,7 @@
 				paddingX: '4',
 				paddingY: '2',
 				borderBottomWidth: '1',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'border.tertiary',
+				borderBottomColor: 'border.primary',
 				backgroundColor: 'bg.tertiary'
 			})}
 		>
@@ -501,8 +500,7 @@
 						paddingY: '1',
 						paddingX: '2.5',
 						borderWidth: '1',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderColor: 'border.primary',
 						backgroundColor: 'bg.primary',
 						color: 'fg.primary',
 						fontSize: 'xs',
@@ -519,8 +517,7 @@
 						paddingY: '1',
 						paddingX: '2.5',
 						borderWidth: '1',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderColor: 'border.primary',
 						backgroundColor: 'bg.primary',
 						color: 'fg.primary',
 						fontSize: 'xs',
@@ -538,12 +535,11 @@
 					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary',
 					borderWidth: '1',
-					borderStyle: 'solid',
 					paddingX: '2',
 					paddingY: '1',
 					fontSize: 'xs',
 					marginLeft: 'auto',
-					width: '60'
+					width: 'list'
 				})}
 				id="dt-col-search"
 				aria-label="Filter columns"
@@ -652,15 +648,13 @@
 										css({
 											position: 'relative',
 											borderRightWidth: '1',
-											borderRightStyle: 'solid',
 											borderRightColor: 'bg.tertiary',
 											_last: { borderRight: 'none' },
 											padding: '0',
 											textAlign: 'left',
 											fontWeight: 'semibold',
 											borderBottomWidth: '1',
-											borderBottomStyle: 'solid',
-											borderBottomColor: 'border.tertiary'
+											borderBottomColor: 'border.primary'
 										}),
 										dragOver === header.id &&
 											css({
@@ -676,7 +670,7 @@
 								>
 									<div
 										class={css({
-											minHeight: '32px',
+											minHeight: 'rowLg',
 											gap: '2',
 											display: 'flex',
 											alignItems: 'flex-start',
@@ -703,8 +697,8 @@
 											>
 												<div
 													class={css({
-														width: '4',
-														height: '4',
+														width: 'iconSm',
+														height: 'iconSm',
 														display: 'inline-flex',
 														alignItems: 'center',
 														justifyContent: 'center'
@@ -811,12 +805,12 @@
 													position: 'absolute',
 													top: '0',
 													right: '-3px',
-													width: '5px',
+													width: 'bar',
 													height: '100%',
 													cursor: 'col-resize',
 													background: 'transparent',
 													padding: '0',
-													smDown: { width: '8px' },
+													smDown: { width: 'dot' },
 													_after: {
 														content: "''",
 														position: 'absolute',
@@ -839,14 +833,13 @@
 											class={css({
 												position: 'absolute',
 												right: '1',
-												top: '24p',
+												top: '10',
 												background: 'bg.primary',
 												borderWidth: '1',
-												borderStyle: 'solid',
 												borderColor: 'border.primary',
-												zIndex: 'var(--z-tooltip)',
+												zIndex: 'tooltip',
 												padding: '2',
-												minWidth: '40',
+												minWidth: 'inputSm',
 												boxShadow: 'menu',
 												display: 'flex',
 												flexDirection: 'column',
@@ -906,10 +899,8 @@
 									class={css({
 										padding: '0',
 										borderRightWidth: '1',
-										borderRightStyle: 'solid',
 										borderRightColor: 'bg.tertiary',
 										borderBottomWidth: '1',
-										borderBottomStyle: 'solid',
 										borderBottomColor: 'bg.tertiary',
 										_last: { borderRight: 'none' }
 									})}
@@ -923,7 +914,7 @@
 												whiteSpace: 'nowrap',
 												overflow: 'hidden',
 												textOverflow: 'ellipsis',
-												minHeight: '30px',
+												minHeight: 'row',
 												display: 'flex',
 												alignItems: 'center',
 												minWidth: '0',
@@ -969,11 +960,7 @@
 													transition: 'none',
 													_icon: { stroke: 'currentColor', fill: 'none' },
 													_groupHover: { opacity: '1' },
-													_hover: { color: 'fg.primary' },
-													'@media (hover: hover)': {
-														transition: 'opacity var(--transition), color var(--transition)'
-													},
-													smDown: { opacity: '1', width: '7', height: '7' }
+													smDown: { opacity: '1', width: 'row', height: 'row' }
 												})}
 												aria-label="Copy cell value"
 												onclick={(event) => copyValue(event, cell.id, display)}
@@ -1002,14 +989,14 @@
 
 	{#if showFooter && !loading && data.length > 0}
 		<div
-			class={css({
-				paddingX: '4',
-				paddingY: '3',
-				borderTopWidth: '1',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.tertiary',
-				backgroundColor: 'bg.tertiary'
-			})}
+			class={cx(
+				divider,
+				css({
+					paddingX: '4',
+					paddingY: '3',
+					backgroundColor: 'bg.tertiary'
+				})
+			)}
 		>
 			<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>
 				Showing {data.length.toLocaleString()} row{data.length !== 1 ? 's' : ''}
@@ -1020,19 +1007,16 @@
 	<div
 		class={css({
 			position: 'fixed',
-			left: 'var(--tip-left, -9999px)',
-			top: 'var(--tip-top, -9999px)',
 			maxWidth: 'min(420px, 80vw)',
 			paddingX: '3',
 			paddingY: '2',
 			borderWidth: '1',
-			borderStyle: 'solid',
 			borderColor: 'border.primary',
 			background: 'bg.primary',
 			color: 'fg.primary',
 			fontSize: 'sm',
 			boxShadow: 'menu',
-			zIndex: 'var(--z-tooltip)',
+			zIndex: 'tooltip',
 			whiteSpace: 'normal',
 			wordBreak: 'break-word',
 			opacity: '0',
@@ -1054,8 +1038,7 @@
 			gap: '2',
 			whiteSpace: 'nowrap',
 			borderWidth: '1',
-			borderStyle: 'solid',
-			borderColor: 'border.tertiary',
+			borderColor: 'border.primary',
 			paddingX: '3',
 			paddingY: '1.5',
 			fontSize: 'sm',
@@ -1066,7 +1049,7 @@
 		})}
 		style="left: {dragPointerX + 12}px; top: {dragPointerY + 12}px;"
 	>
-		<GripVertical size={12} class={css({ color: 'fg.muted' })} />
+		<GripVertical size={12} class={muted} />
 		<span class={css({ fontFamily: 'mono' })}>{dragLabel}</span>
 	</div>
 {/if}

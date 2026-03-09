@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as d3 from 'd3';
 	import { ChevronLeft, ChevronRight } from 'lucide-svelte';
-	import { css, cx, button } from '$lib/styles/panda';
+	import { css, cx, button, divider } from '$lib/styles/panda';
 	import { downloadBlob } from '$lib/api/compute';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
@@ -527,7 +527,7 @@
 			);
 		grid
 			.selectAll('line')
-			.attr('stroke', 'var(--border-primary)')
+			.attr('stroke', 'var(--colors-border-primary)')
 			.attr('stroke-opacity', 0.15)
 			.attr('stroke-dasharray', '3,3');
 		grid.select('.domain').remove();
@@ -548,7 +548,7 @@
 		grid.attr('transform', `translate(0,${h})`);
 		grid
 			.selectAll('line')
-			.attr('stroke', 'var(--border-primary)')
+			.attr('stroke', 'var(--colors-border-primary)')
 			.attr('stroke-opacity', 0.15)
 			.attr('stroke-dasharray', '3,3');
 		grid.select('.domain').remove();
@@ -561,9 +561,9 @@
 			.attr('x', w / 2)
 			.attr('y', h + 44)
 			.attr('text-anchor', 'middle')
-			.attr('fill', 'var(--fg-muted)')
+			.attr('fill', 'var(--colors-fg-muted)')
 			.style('font-size', '11px')
-			.style('font-family', 'var(--font-mono)')
+			.style('font-family', 'var(--fonts-mono)')
 			.text(xLabel);
 		svg
 			.append('text')
@@ -571,9 +571,9 @@
 			.attr('x', -h / 2)
 			.attr('y', -48)
 			.attr('text-anchor', 'middle')
-			.attr('fill', 'var(--fg-muted)')
+			.attr('fill', 'var(--colors-fg-muted)')
 			.style('font-size', '11px')
-			.style('font-family', 'var(--font-mono)')
+			.style('font-family', 'var(--fonts-mono)')
 			.text(yLabel);
 	}
 
@@ -585,9 +585,9 @@
 			.attr('x', width / 2)
 			.attr('y', 18)
 			.attr('text-anchor', 'middle')
-			.attr('fill', 'var(--fg-primary)')
+			.attr('fill', 'var(--colors-fg-primary)')
 			.style('font-size', '12px')
-			.style('font-family', 'var(--font-mono)')
+			.style('font-family', 'var(--fonts-mono)')
 			.text(label);
 	}
 
@@ -627,11 +627,11 @@
 			);
 		axis
 			.selectAll('.tick text')
-			.attr('fill', 'var(--fg-tertiary)')
+			.attr('fill', 'var(--colors-fg-tertiary)')
 			.style('font-size', '10px')
-			.style('font-family', 'var(--font-mono)');
-		axis.selectAll('.domain').attr('stroke', 'var(--border-primary)');
-		axis.selectAll('.tick line').attr('stroke', 'var(--border-primary)');
+			.style('font-family', 'var(--fonts-mono)');
+		axis.selectAll('.domain').attr('stroke', 'var(--colors-border-primary)');
+		axis.selectAll('.tick line').attr('stroke', 'var(--colors-border-primary)');
 		return axis;
 	}
 
@@ -653,7 +653,7 @@
 			const axis = referenceLineAxisValue(line);
 			const value = getOptionalNumber(line.value);
 			if (value == null) continue;
-			const color = str(line.color) || 'var(--border-primary)';
+			const color = str(line.color) || 'var(--colors-border-primary)';
 			const label = str(line.label);
 			if (axis === 'x') {
 				let xPos: number | null = null;
@@ -688,7 +688,7 @@
 						.attr('y', 12)
 						.attr('fill', color)
 						.style('font-size', '10px')
-						.style('font-family', 'var(--font-mono)')
+						.style('font-family', 'var(--fonts-mono)')
 						.text(label);
 				}
 				continue;
@@ -729,7 +729,7 @@
 					.attr('text-anchor', 'end')
 					.attr('fill', color)
 					.style('font-size', '10px')
-					.style('font-family', 'var(--font-mono)')
+					.style('font-family', 'var(--fonts-mono)')
 					.text(label);
 			}
 		}
@@ -754,13 +754,13 @@
 	}
 
 	function styleChart(svg: Svg) {
-		svg.selectAll('.domain').attr('stroke', 'var(--border-primary)');
-		svg.selectAll('.tick line:not(.grid line)').attr('stroke', 'var(--border-primary)');
+		svg.selectAll('.domain').attr('stroke', 'var(--colors-border-primary)');
+		svg.selectAll('.tick line:not(.grid line)').attr('stroke', 'var(--colors-border-primary)');
 		svg
 			.selectAll('.tick text')
-			.attr('fill', 'var(--fg-tertiary)')
+			.attr('fill', 'var(--colors-fg-tertiary)')
 			.style('font-size', '10px')
-			.style('font-family', 'var(--font-mono)');
+			.style('font-family', 'var(--fonts-mono)');
 	}
 
 	function makeXAxis(
@@ -1364,9 +1364,9 @@
 						.attr('x', (r) => (x0(str(r.x)) ?? 0) + (x1(group) ?? 0) + x1.bandwidth() / 2)
 						.attr('y', (r) => y(num(r.y)) - 5)
 						.attr('text-anchor', 'middle')
-						.attr('fill', 'var(--fg-tertiary)')
+						.attr('fill', 'var(--colors-fg-tertiary)')
 						.style('font-size', '9px')
-						.style('font-family', 'var(--font-mono)')
+						.style('font-family', 'var(--fonts-mono)')
 						.style('pointer-events', 'none')
 						.text((r) => fmtFull(num(r.y)));
 				}
@@ -1502,9 +1502,9 @@
 				.attr('x', (r) => (x(str(r.x)) ?? 0) + x.bandwidth() / 2)
 				.attr('y', (r) => y(num(r.y)) - 6)
 				.attr('text-anchor', 'middle')
-				.attr('fill', 'var(--fg-secondary)')
+				.attr('fill', 'var(--colors-fg-secondary)')
 				.style('font-size', '10px')
-				.style('font-family', 'var(--font-mono)')
+				.style('font-family', 'var(--fonts-mono)')
 				.style('pointer-events', 'none')
 				.text((r) => fmtFull(num(r.y)));
 
@@ -2377,7 +2377,7 @@
 			.attr('height', y.bandwidth())
 			.attr('rx', 2)
 			.attr('fill', (r) => color(num(r.value)))
-			.attr('stroke', 'var(--border-primary)')
+			.attr('stroke', 'var(--colors-border-primary)')
 			.attr('stroke-opacity', 0.3)
 			.style('cursor', 'pointer')
 			.on('mouseover', function (event: MouseEvent, r: Row) {
@@ -2583,7 +2583,7 @@
 					.attr('cy', (r) => y(num(r.y)))
 					.attr('r', 3.5)
 					.attr('fill', color(group))
-					.attr('stroke', 'var(--bg-primary)')
+					.attr('stroke', 'var(--colors-bg-primary)')
 					.attr('stroke-width', 1.5)
 					.style('cursor', 'pointer')
 					.on('mouseover', function (event: MouseEvent, r: Row) {
@@ -2647,7 +2647,7 @@
 				.attr('cy', (r) => y(num(r.y)))
 				.attr('r', 3.5)
 				.attr('fill', getPrimaryColor())
-				.attr('stroke', 'var(--bg-primary)')
+				.attr('stroke', 'var(--colors-bg-primary)')
 				.attr('stroke-width', 1.5)
 				.style('cursor', 'pointer')
 				.on('mouseover', function (event: MouseEvent, r: Row) {
@@ -2780,7 +2780,7 @@
 					);
 					grid
 						.selectAll('line')
-						.attr('stroke', 'var(--border-primary)')
+						.attr('stroke', 'var(--colors-border-primary)')
 						.attr('stroke-opacity', 0.15)
 						.attr('stroke-dasharray', '3,3');
 					grid.select('.domain').remove();
@@ -2920,9 +2920,9 @@
 					.attr('x', cx)
 					.attr('y', margin + 8)
 					.attr('text-anchor', 'middle')
-					.attr('fill', 'var(--fg-muted)')
+					.attr('fill', 'var(--colors-fg-muted)')
 					.style('font-size', '10px')
-					.style('font-family', 'var(--font-mono)')
+					.style('font-family', 'var(--fonts-mono)')
 					.text(groupName || 'Group');
 			}
 
@@ -2932,7 +2932,7 @@
 				.append('path')
 				.attr('d', groupArc)
 				.attr('fill', (_, i) => color(labels[i] ?? ''))
-				.attr('stroke', 'var(--bg-primary)')
+				.attr('stroke', 'var(--colors-bg-primary)')
 				.attr('stroke-width', 2)
 				.style('cursor', 'pointer')
 				.on('mouseover', function (event: MouseEvent, d) {
@@ -2955,9 +2955,9 @@
 				.attr('transform', (d) => `translate(${groupLabelArc.centroid(d)})`)
 				.attr('text-anchor', 'middle')
 				.attr('dominant-baseline', 'central')
-				.attr('fill', 'var(--fg-primary)')
+				.attr('fill', 'var(--colors-fg-primary)')
 				.style('font-size', '10px')
-				.style('font-family', 'var(--font-mono)')
+				.style('font-family', 'var(--fonts-mono)')
 				.style('pointer-events', 'none')
 				.text((_, i) => {
 					const pct = total ? ((values[i] / total) * 100).toFixed(0) : '0';
@@ -3114,7 +3114,7 @@
 		vGrid.attr('transform', `translate(0,${h})`);
 		vGrid
 			.selectAll('line')
-			.attr('stroke', 'var(--border-primary)')
+			.attr('stroke', 'var(--colors-border-primary)')
 			.attr('stroke-opacity', 0.15)
 			.attr('stroke-dasharray', '3,3');
 		vGrid.select('.domain').remove();
@@ -3345,7 +3345,7 @@
 					);
 					grid
 						.selectAll('line')
-						.attr('stroke', 'var(--border-primary)')
+						.attr('stroke', 'var(--colors-border-primary)')
 						.attr('stroke-opacity', 0.15)
 						.attr('stroke-dasharray', '3,3');
 					grid.select('.domain').remove();
@@ -3481,7 +3481,7 @@
 		vGrid.attr('transform', `translate(0,${h})`);
 		vGrid
 			.selectAll('line')
-			.attr('stroke', 'var(--border-primary)')
+			.attr('stroke', 'var(--colors-border-primary)')
 			.attr('stroke-opacity', 0.15)
 			.attr('stroke-dasharray', '3,3');
 		vGrid.select('.domain').remove();
@@ -3595,11 +3595,10 @@
 		paddingY: '1.5',
 		paddingX: '2.5',
 		borderBottomWidth: '1',
-		borderBottomStyle: 'solid',
-		borderBottomColor: 'border.tertiary'
+		borderBottomColor: 'border.primary'
 	});
 
-	const controlsCss = css({ display: 'flex', gap: '6px' });
+	const controlsCss = css({ display: 'flex', gap: '1.5' });
 
 	const wrapperCss = css({
 		position: 'relative',
@@ -3626,14 +3625,12 @@
 		paddingY: '2',
 		backgroundColor: 'bg.primary',
 		borderWidth: '1',
-		borderStyle: 'solid',
 		borderColor: 'border.primary',
 		fontSize: 'sm',
 		boxShadow: 'lg',
 		wordBreak: 'break-word',
-		zIndex: 'var(--z-tooltip)',
-		transitionProperty: 'opacity',
-		transitionDuration: '75ms'
+		zIndex: 'tooltip',
+		transition: 'opacity 75ms'
 	});
 
 	const tooltipVisibleCss = css({ opacity: '1' });
@@ -3643,12 +3640,11 @@
 		display: 'flex',
 		flexWrap: 'wrap',
 		alignItems: 'center',
-		rowGap: '4px',
-		columnGap: '8px',
+		rowGap: '1',
+		columnGap: '2',
 		backgroundColor: 'bg.secondary',
 		borderBottomWidth: '1',
-		borderBottomStyle: 'solid',
-		borderBottomColor: 'border.tertiary'
+		borderBottomColor: 'border.primary'
 	});
 
 	const legendCollapsedCss = css({
@@ -3657,44 +3653,39 @@
 		justifyContent: 'flex-end'
 	});
 
-	const legendBottomCss = css({
-		borderBottom: 'none',
-		borderTopWidth: '1',
-		borderTopStyle: 'solid',
-		borderTopColor: 'border.tertiary'
-	});
+	const legendBottomCss = cx(
+		divider,
+		css({
+			borderBottom: 'none'
+		})
+	);
 
 	const legendBottomCollapsedCss = css({ justifyContent: 'flex-start' });
 
 	const pillCss = css({
 		display: 'flex',
 		alignItems: 'center',
-		gap: '3px',
+		gap: 'px',
 		paddingY: '1',
 		paddingX: '2',
-		background: 'color-mix(in srgb, var(--bg-primary) 90%, transparent)',
+		background: 'color-mix(in srgb, {colors.bg.primary} 90%, transparent)',
 		borderWidth: '1',
-		borderStyle: 'solid',
-		borderColor: 'border.tertiary',
+		borderColor: 'border.primary',
 		borderRadius: 'pill',
 		cursor: 'pointer',
-		transitionProperty: 'background, border-color',
-		transitionDuration: '120ms',
-		transitionTimingFunction: 'ease',
+		transition: 'background 120ms ease, border-color 120ms ease',
 		_hover: {
-			background: 'var(--bg-secondary)',
+			background: 'bg.secondary',
 			borderColor: 'border.primary'
 		}
 	});
 
 	const dotCss = css({
-		width: '6px',
-		height: '6px',
+		width: 'barTall',
+		height: 'barTall',
 		borderRadius: '50%',
 		flexShrink: '0',
-		transitionProperty: 'opacity',
-		transitionDuration: '120ms',
-		transitionTimingFunction: 'ease'
+		transition: 'opacity 120ms ease'
 	});
 
 	const dotFadedCss = css({ opacity: '0.3' });
@@ -3702,22 +3693,20 @@
 	const handleCss = css({
 		flexShrink: '0',
 		alignSelf: 'stretch',
-		width: '4px',
+		width: 'bar',
 		borderRadius: 'xs',
-		marginLeft: '2px',
+		marginLeft: 'px',
 		cursor: 'pointer',
 		opacity: '0',
-		background: 'var(--fg-muted)',
-		transitionProperty: 'opacity',
-		transitionDuration: '150ms',
-		transitionTimingFunction: 'ease',
+		backgroundColor: 'bg.indicator',
+		transition: 'opacity 150ms ease',
 		'.group:hover &': { opacity: '0.15' },
 		_hover: { opacity: '0.5' }
 	});
 
 	const sideCss = css({
 		position: 'absolute',
-		top: '28px',
+		top: '7',
 		maxHeight: 'calc(100% - 44px)',
 		display: 'flex',
 		flexDirection: 'row',
@@ -3725,29 +3714,26 @@
 		zIndex: '5'
 	});
 
-	const sideRightCss = css({ right: '24px' });
-	const sideLeftCss = css({ left: '64px' });
+	const sideRightCss = css({ right: '6' });
+	const sideLeftCss = css({ left: '16' });
 
 	const tabCss = css({
 		flexShrink: '0',
 		alignSelf: 'center',
-		width: '18px',
-		height: '36px',
+		width: 'icon',
+		height: 'rowXl',
 		display: 'flex',
 		alignItems: 'center',
 		justifyContent: 'center',
 		cursor: 'pointer',
-		background: 'color-mix(in srgb, var(--bg-secondary) 95%, transparent)',
+		background: 'color-mix(in srgb, {colors.bg.secondary} 95%, transparent)',
 		borderWidth: '1',
-		borderStyle: 'solid',
-		borderColor: 'border.tertiary',
+		borderColor: 'border.primary',
 		color: 'fg.muted',
-		transitionProperty: 'background-color, color',
-		transitionDuration: '120ms',
-		transitionTimingFunction: 'ease',
+		transition: 'background-color 120ms ease, color 120ms ease',
 		_hover: {
-			background: 'var(--bg-tertiary)',
-			color: 'var(--fg-primary)'
+			background: 'bg.tertiary',
+			color: 'fg.primary'
 		},
 		'& :global(svg)': { stroke: 'currentColor' }
 	});
@@ -3765,23 +3751,21 @@
 	const tabCollapsedCss = css({
 		borderRadius: 'sm2',
 		borderWidth: '1',
-		borderStyle: 'solid',
-		borderColor: 'border.tertiary'
+		borderColor: 'border.primary'
 	});
 
 	const itemsCss = css({
 		display: 'flex',
 		flexDirection: 'column',
 		gap: 'px',
-		paddingX: '6px',
-		paddingTop: '6px',
-		paddingBottom: '8px',
+		paddingX: '1.5',
+		paddingTop: '1.5',
+		paddingBottom: '2',
 		maxHeight: 'calc(100vh - 200px)',
 		overflowY: 'auto',
-		backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 95%, transparent)',
+		backgroundColor: 'color-mix(in srgb, {colors.bg.secondary} 95%, transparent)',
 		borderWidth: '1',
-		borderStyle: 'solid',
-		borderColor: 'border.tertiary'
+		borderColor: 'border.primary'
 	});
 
 	const itemsRightCss = css({ borderRadius: '0 4px 4px 0' });
@@ -3790,7 +3774,7 @@
 	const legendItemCss = css({
 		display: 'flex',
 		alignItems: 'center',
-		gap: '5px',
+		gap: '1',
 		background: 'none',
 		border: 'none',
 		paddingY: '0.5',
@@ -3799,22 +3783,20 @@
 		fontSize: '2xs',
 		fontFamily: 'mono',
 		color: 'fg.muted',
-		borderRadius: 'md',
-		transitionProperty: 'opacity',
-		transitionDuration: '120ms',
-		transitionTimingFunction: 'ease',
+
+		transition: 'opacity 120ms ease',
 		whiteSpace: 'nowrap',
 		_hover: {
-			color: 'var(--fg-primary)',
-			backgroundColor: 'var(--bg-tertiary)'
+			color: 'fg.primary',
+			backgroundColor: 'bg.tertiary'
 		}
 	});
 
 	const legendItemDimmedCss = css({ opacity: '0.35' });
 
 	const swatchCss = css({
-		width: '8px',
-		height: '8px',
+		width: 'dot',
+		height: 'dot',
 		borderRadius: 'xxs',
 		flexShrink: '0'
 	});
@@ -3893,8 +3875,7 @@
 					button({ variant: 'ghost', size: 'sm' }),
 					css({
 						borderWidth: '1',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderColor: 'border.primary',
 						fontSize: 'xs'
 					})
 				)}
@@ -3909,8 +3890,7 @@
 					button({ variant: 'ghost', size: 'sm' }),
 					css({
 						borderWidth: '1',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderColor: 'border.primary',
 						fontSize: 'xs'
 					})
 				)}
@@ -3927,8 +3907,7 @@
 					button({ variant: 'ghost', size: 'sm' }),
 					css({
 						borderWidth: '1',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderColor: 'border.primary',
 						fontSize: 'xs'
 					})
 				)}

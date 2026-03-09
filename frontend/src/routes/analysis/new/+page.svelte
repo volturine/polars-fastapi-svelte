@@ -11,7 +11,7 @@
 	import type { AnalysisCreate, PipelineStep } from '$lib/types/analysis';
 	import { buildOutputConfig } from '$lib/utils/analysis-tab';
 	import { getDefaultConfig } from '$lib/utils/step-config-defaults';
-	import { css, cx, spinner, button, input } from '$lib/styles/panda';
+	import { css, cx, spinner, button, input, row, divider } from '$lib/styles/panda';
 
 	let step = $state(1);
 	let name = $state('');
@@ -95,7 +95,7 @@
 	class={css({
 		marginX: 'auto',
 		display: 'flex',
-		maxWidth: '180',
+		maxWidth: 'modal',
 		flexDirection: 'column',
 		gap: '6',
 		paddingX: '6',
@@ -106,13 +106,13 @@
 		<h1 class={css({ margin: '0', marginBottom: '6', fontSize: '2xl', fontWeight: 'semibold' })}>
 			New Analysis
 		</h1>
-		<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+		<div class={cx(row, css({ gap: '2' }))}>
 			<div
 				class={css({
 					display: 'flex',
 					alignItems: 'center',
 					gap: '2',
-					borderColor: 'border.tertiary',
+					borderColor: 'border.primary',
 					color: 'fg.muted',
 					backgroundColor: 'bg.primary'
 				})}
@@ -120,17 +120,16 @@
 				<span
 					class={css({
 						display: 'flex',
-						height: '7',
-						width: '7',
+						height: 'row',
+						width: 'row',
 						alignItems: 'center',
 						justifyContent: 'center',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: step >= 1 ? 'border.primary' : 'border.tertiary',
+						borderWidth: '1',
+						borderColor: step >= 1 ? 'border.primary' : 'border.primary',
 						fontSize: 'xs',
 						fontWeight: 'semibold',
 						...(step === 1
-							? { backgroundColor: 'accent.secondary', color: 'bg.primary' }
+							? { backgroundColor: 'accent.secondary', color: 'fg.inverse' }
 							: step > 1
 								? { backgroundColor: 'success.bg', color: 'success.fg' }
 								: { color: 'fg.muted', backgroundColor: 'bg.primary' })
@@ -153,7 +152,7 @@
 			</div>
 			<div
 				class={css({
-					minWidth: '10',
+					minWidth: 'spinner',
 					flex: '1',
 					height: 'px',
 					backgroundColor: step > 1 ? 'accent.secondary' : 'border.primary'
@@ -164,7 +163,7 @@
 					display: 'flex',
 					alignItems: 'center',
 					gap: '2',
-					borderColor: 'border.tertiary',
+					borderColor: 'border.primary',
 					color: 'fg.muted',
 					backgroundColor: 'bg.primary'
 				})}
@@ -172,17 +171,16 @@
 				<span
 					class={css({
 						display: 'flex',
-						height: '7',
-						width: '7',
+						height: 'row',
+						width: 'row',
 						alignItems: 'center',
 						justifyContent: 'center',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: step >= 2 ? 'border.primary' : 'border.tertiary',
+						borderWidth: '1',
+						borderColor: step >= 2 ? 'border.primary' : 'border.primary',
 						fontSize: 'xs',
 						fontWeight: 'semibold',
 						...(step === 2
-							? { backgroundColor: 'accent.secondary', color: 'bg.primary' }
+							? { backgroundColor: 'accent.secondary', color: 'fg.inverse' }
 							: step > 2
 								? { backgroundColor: 'success.bg', color: 'success.fg' }
 								: { color: 'fg.muted', backgroundColor: 'bg.primary' })
@@ -203,7 +201,7 @@
 			</div>
 			<div
 				class={css({
-					minWidth: '10',
+					minWidth: 'spinner',
 					flex: '1',
 					height: 'px',
 					backgroundColor: step > 2 ? 'accent.secondary' : 'border.primary'
@@ -214,7 +212,7 @@
 					display: 'flex',
 					alignItems: 'center',
 					gap: '2',
-					borderColor: 'border.tertiary',
+					borderColor: 'border.primary',
 					color: 'fg.muted',
 					backgroundColor: 'bg.primary'
 				})}
@@ -222,17 +220,16 @@
 				<span
 					class={css({
 						display: 'flex',
-						height: '7',
-						width: '7',
+						height: 'row',
+						width: 'row',
 						alignItems: 'center',
 						justifyContent: 'center',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: step >= 3 ? 'border.primary' : 'border.tertiary',
+						borderWidth: '1',
+						borderColor: step >= 3 ? 'border.primary' : 'border.primary',
 						fontSize: 'xs',
 						fontWeight: 'semibold',
 						...(step === 3
-							? { backgroundColor: 'accent.secondary', color: 'bg.primary' }
+							? { backgroundColor: 'accent.secondary', color: 'fg.inverse' }
 							: { color: 'fg.muted', backgroundColor: 'bg.primary' })
 					})}
 				>
@@ -255,7 +252,7 @@
 					backgroundColor: 'bg.primary',
 					border: '1px solid',
 					borderColor: 'border.primary',
-					borderRadius: '0',
+
 					padding: '5'
 				})}
 			>
@@ -307,12 +304,11 @@
 						placeholder="Describe what this analysis does..."
 						rows="4"
 						class={css({
-							minHeight: '25',
+							minHeight: 'fieldSm',
 							width: '100%',
 							resize: 'vertical',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							padding: '3',
 							fontSize: 'sm'
@@ -326,7 +322,7 @@
 					backgroundColor: 'bg.primary',
 					border: '1px solid',
 					borderColor: 'border.primary',
-					borderRadius: '0',
+
 					padding: '5'
 				})}
 			>
@@ -355,9 +351,9 @@
 				{:else if datasourcesQuery.data && datasourcesQuery.data.length === 0}
 					<div
 						class={css({
-							borderWidth: '1px',
+							borderWidth: '1',
 							borderStyle: 'dashed',
-							borderColor: 'border.tertiary',
+							borderColor: 'border.primary',
 							padding: '8',
 							textAlign: 'center',
 							color: 'fg.tertiary'
@@ -389,7 +385,7 @@
 					backgroundColor: 'bg.primary',
 					border: '1px solid',
 					borderColor: 'border.primary',
-					borderRadius: '0',
+
 					padding: '5'
 				})}
 			>
@@ -403,9 +399,8 @@
 				<div
 					class={css({
 						marginBottom: '6',
-						borderBottomWidth: '1px',
-						borderBottomStyle: 'solid',
-						borderBottomColor: 'border.tertiary',
+						borderBottomWidth: '1',
+						borderBottomColor: 'border.primary',
 						paddingBottom: '6'
 					})}
 				>
@@ -424,12 +419,12 @@
 					</h3>
 					<dl class={css({ margin: '0' })}>
 						<div class={css({ marginBottom: '2', display: 'flex', gap: '4' })}>
-							<dt class={css({ width: '25', flexShrink: '0', color: 'fg.muted' })}>Name</dt>
+							<dt class={css({ width: 'fieldSm', flexShrink: '0', color: 'fg.muted' })}>Name</dt>
 							<dd class={css({ margin: '0' })}>{name}</dd>
 						</div>
 						{#if description}
 							<div class={css({ marginBottom: '2', display: 'flex', gap: '4' })}>
-								<dt class={css({ width: '25', flexShrink: '0', color: 'fg.muted' })}>
+								<dt class={css({ width: 'fieldSm', flexShrink: '0', color: 'fg.muted' })}>
 									Description
 								</dt>
 								<dd class={css({ margin: '0' })}>{description}</dd>
@@ -460,9 +455,8 @@
 										display: 'flex',
 										alignItems: 'center',
 										gap: '3',
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
 										paddingY: '2'
 									})}
 								>
@@ -498,14 +492,14 @@
 	</div>
 
 	<div
-		class={css({
-			display: 'flex',
-			gap: '3',
-			borderTopWidth: '1px',
-			borderTopStyle: 'solid',
-			borderTopColor: 'border.tertiary',
-			paddingTop: '6'
-		})}
+		class={cx(
+			divider,
+			css({
+				display: 'flex',
+				gap: '3',
+				paddingTop: '6'
+			})
+		)}
 	>
 		{#if step > 1}
 			<button

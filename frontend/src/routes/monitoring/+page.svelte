@@ -18,13 +18,12 @@
 	let showPreviews = $state(true);
 </script>
 
-<div class={css({ marginX: 'auto', maxWidth: '300', paddingX: '6', paddingY: '7' })}>
+<div class={css({ marginX: 'auto', maxWidth: 'page', paddingX: '6', paddingY: '7' })}>
 	<header
 		class={css({
 			marginBottom: '6',
-			borderBottomWidth: '1px',
-			borderBottomStyle: 'solid',
-			borderBottomColor: 'border.tertiary',
+			borderBottomWidth: '1',
+			borderBottomColor: 'border.primary',
 			paddingBottom: '5'
 		})}
 	>
@@ -39,13 +38,12 @@
 			display: 'flex',
 			flexDirection: 'column',
 			gap: '3',
-			borderBottomWidth: '1px',
-			borderBottomStyle: 'solid',
-			borderBottomColor: 'border.tertiary',
+			borderBottomWidth: '1',
+			borderBottomColor: 'border.primary',
 			paddingBottom: '3'
 		})}
 	>
-		<div class={css({ position: 'relative', maxWidth: '120' })}>
+		<div class={css({ position: 'relative', maxWidth: 'modalSm' })}>
 			<Search
 				size={14}
 				class={css({
@@ -69,9 +67,8 @@
 			class={css({
 				display: 'flex',
 				gap: '0',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'border.tertiary'
+				borderBottomWidth: '1',
+				borderBottomColor: 'border.primary'
 			})}
 		>
 			{#each tabs as tab (tab.key)}

@@ -393,9 +393,8 @@
 					display: 'flex',
 					alignItems: 'center',
 					gap: '1',
-					borderBottomWidth: '1px',
-					borderBottomStyle: 'solid',
-					borderBottomColor: 'border.tertiary',
+					borderBottomWidth: '1',
+					borderBottomColor: 'border.primary',
 					backgroundColor: 'bg.primary',
 					paddingX: '3',
 					paddingY: '1.5'
@@ -436,9 +435,9 @@
 				<div
 					class={css({
 						marginX: '2',
-						height: '4',
+						height: 'iconSm',
 						width: 'px',
-						backgroundColor: 'border.primary'
+						backgroundColor: 'bg.muted'
 					})}
 				></div>
 
@@ -496,7 +495,7 @@
 						refY="5"
 						orient="auto"
 					>
-						<path d="M0,0 L10,5 L0,10 Z" fill="var(--lineage-edge)" />
+						<path d="M0,0 L10,5 L0,10 Z" fill="var(--colors-fg-primary)" />
 					</marker>
 				</defs>
 				{#each edges as edge (edge.from + edge.to)}
@@ -506,7 +505,7 @@
 						<path
 							d={`M ${from.x + nodeWidth} ${from.y + nodeHeight / 2} C ${from.x + nodeWidth + 60} ${from.y + nodeHeight / 2} ${to.x - 60} ${to.y + nodeHeight / 2} ${to.x} ${to.y + nodeHeight / 2}`}
 							fill="none"
-							stroke="var(--lineage-edge)"
+							stroke="var(--colors-fg-primary)"
 							stroke-width="1.5"
 							marker-end="url(#lineage-arrow)"
 						/>
@@ -521,11 +520,11 @@
 						class={cx(
 							'lineage-node',
 							css({
-								width: '240',
+								width: '240px',
 								background: 'canvas.lineageNode',
 								borderColor: 'canvas.lineageNodeBorder',
 								cursor: 'grab',
-								transition: 'box-shadow var(--transition), transform var(--transition)',
+								transition: 'box-shadow 160ms ease, transform 160ms ease',
 								_active: {
 									cursor: 'grabbing',
 									boxShadow: 'panel'
@@ -534,8 +533,7 @@
 								display: 'flex',
 								flexDirection: 'column',
 								gap: '1',
-								borderWidth: '1px',
-								borderStyle: 'solid',
+								borderWidth: '1',
 								paddingX: '4',
 								paddingY: '3',
 								boxShadow: 'sm'
@@ -556,7 +554,7 @@
 							class={css({
 								fontSize: 'xs',
 								textTransform: 'uppercase',
-								letterSpacing: 'wider',
+								letterSpacing: 'wide',
 								color: 'fg.muted'
 							})}
 						>

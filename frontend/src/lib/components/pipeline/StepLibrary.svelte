@@ -288,8 +288,7 @@
 					alignItems: 'center',
 					justifyContent: 'flex-start',
 					gap: '3',
-					borderWidth: '1px',
-					borderStyle: 'solid',
+					borderWidth: '1',
 					borderColor: 'transparent',
 					backgroundColor: 'transparent',
 					paddingX: '3',
@@ -342,8 +341,7 @@
 	<div
 		class={css({
 			flexShrink: '0',
-			borderTopWidth: '1px',
-			borderTopStyle: 'solid',
+			borderTopWidth: '1',
 			borderTopColor: 'border.primary',
 			paddingX: '4',
 			paddingY: '3'
@@ -364,8 +362,7 @@
 		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
 			<select
 				class={css({
-					borderWidth: '1px',
-					borderStyle: 'solid',
+					borderWidth: '1',
 					borderColor: 'border.primary',
 					backgroundColor: 'bg.secondary',
 					paddingX: '3',
@@ -387,8 +384,7 @@
 				<button
 					class={css({
 						cursor: 'pointer',
-						borderWidth: '1px',
-						borderStyle: 'solid',
+						borderWidth: '1',
 						borderColor: 'border.primary',
 						backgroundColor: 'transparent',
 						paddingX: '3',
@@ -412,8 +408,7 @@
 				<button
 					class={css({
 						cursor: 'pointer',
-						borderWidth: '1px',
-						borderStyle: 'solid',
+						borderWidth: '1',
 						borderColor: 'border.primary',
 						backgroundColor: 'transparent',
 						paddingX: '3',

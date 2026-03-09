@@ -2,7 +2,7 @@
 	import type { Schema } from '$lib/types/schema';
 	import type { AIConfigData } from '$lib/utils/step-config-defaults';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig } from '$lib/styles/panda';
 
 	interface Props {
 		config?: AIConfigData;
@@ -37,11 +37,7 @@
 	});
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="AI configuration"
->
+<div class={stepConfig()} role="region" aria-label="AI configuration">
 	<div class={css({ marginBottom: '5' })}>
 		<label for="ai-provider">Provider</label>
 		<select id="ai-provider" bind:value={config.provider}>

@@ -4,7 +4,7 @@
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
-	import { css, cx } from '$lib/styles/panda';
+	import { css, cx, stepConfig, divider } from '$lib/styles/panda';
 
 	interface FillNullConfigData {
 		strategy: string;
@@ -35,17 +35,13 @@
 	const currentStrategy = $derived(strategies.find((s) => s.value === config.strategy));
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Fill null configuration"
->
+<div class={stepConfig()} role="region" aria-label="Fill null configuration">
 	<div
 		class={css({
 			marginBottom: '0',
 			paddingBottom: '5',
 			backgroundColor: 'transparent',
-			borderRadius: '0',
+
 			border: 'none'
 		})}
 		role="group"
@@ -85,10 +81,15 @@
 					marginBottom: '0',
 					paddingBottom: '5',
 					backgroundColor: 'transparent',
-					borderRadius: '0',
+
 					border: 'none'
 				}),
-				css({ paddingTop: '5', borderTop: '1px solid var(--color-border-tertiary)' })
+				cx(
+					divider,
+					css({
+						paddingTop: '5'
+					})
+				)
 			)}
 			role="group"
 			aria-labelledby="fill-value-heading"
@@ -129,10 +130,15 @@
 				marginBottom: '0',
 				paddingBottom: '5',
 				backgroundColor: 'transparent',
-				borderRadius: '0',
+
 				border: 'none'
 			}),
-			css({ paddingTop: '5', borderTop: '1px solid var(--color-border-tertiary)' })
+			cx(
+				divider,
+				css({
+					paddingTop: '5'
+				})
+			)
 		)}
 		role="group"
 		aria-labelledby="target-columns-heading"

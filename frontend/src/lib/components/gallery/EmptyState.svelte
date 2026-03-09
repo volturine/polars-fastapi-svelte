@@ -12,13 +12,13 @@
 <div
 	class={css({
 		display: 'flex',
-		minHeight: '100',
+		minHeight: 'panel',
 		flexDirection: 'column',
 		alignItems: 'center',
 		justifyContent: 'center',
-		borderWidth: '1px',
+		borderWidth: '1',
 		borderStyle: 'dashed',
-		borderColor: 'border.tertiary',
+		borderColor: 'border.primary',
 		paddingX: '6',
 		paddingY: '12',
 		textAlign: 'center'
@@ -28,8 +28,8 @@
 		class={css({
 			marginBottom: '6',
 			display: 'flex',
-			height: '16',
-			width: '16',
+			height: 'logoXl',
+			width: 'logoXl',
 			alignItems: 'center',
 			justifyContent: 'center',
 			color: 'fg.faint'
@@ -43,7 +43,7 @@
 		class={css({
 			margin: '0',
 			marginBottom: '6',
-			maxWidth: '75',
+			maxWidth: 'dropdownTall',
 			fontSize: 'sm',
 			color: 'fg.tertiary'
 		})}
@@ -54,9 +54,8 @@
 	<button
 		class={css({
 			backgroundColor: 'accent.primary',
-			color: 'bg.primary',
-			borderWidth: '1px',
-			borderStyle: 'solid',
+			color: 'fg.inverse',
+			borderWidth: '1',
 			borderColor: 'border.primary',
 			paddingX: '4',
 			paddingY: '2',

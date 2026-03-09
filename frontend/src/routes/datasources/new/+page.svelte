@@ -14,7 +14,7 @@
 	import FileBrowser from '$lib/components/common/FileBrowser.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { Check, X } from 'lucide-svelte';
-	import { css, cx, button, tabButton } from '$lib/styles/panda';
+	import { css, cx, button, tabButton, row } from '$lib/styles/panda';
 
 	type Tab = 'file' | 'database' | 'path';
 
@@ -319,7 +319,9 @@
 	}
 </script>
 
-<div class={css({ marginX: 'auto', boxSizing: 'border-box', maxWidth: '200', padding: '8' })}>
+<div
+	class={css({ marginX: 'auto', boxSizing: 'border-box', maxWidth: 'pageNarrow', padding: '8' })}
+>
 	<header
 		class={css({
 			marginBottom: '8',
@@ -343,9 +345,8 @@
 			marginBottom: '8',
 			display: 'flex',
 			gap: '2',
-			borderBottomWidth: '2px',
-			borderBottomStyle: 'solid',
-			borderBottomColor: 'border.tertiary'
+			borderBottomWidth: '2',
+			borderBottomColor: 'border.primary'
 		})}
 	>
 		<button
@@ -375,7 +376,7 @@
 				paddingY: '3',
 				border: 'none',
 				borderLeft: '2px solid',
-				borderRadius: '0',
+
 				marginTop: '3',
 				marginBottom: '0',
 				fontSize: 'xs',
@@ -391,8 +392,7 @@
 
 	<div
 		class={css({
-			borderWidth: '1px',
-			borderStyle: 'solid',
+			borderWidth: '1',
 			borderColor: 'border.primary',
 			padding: '8'
 		})}
@@ -406,9 +406,8 @@
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
 						<div
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.secondary',
 								padding: '3'
 							})}
@@ -436,8 +435,7 @@
 						onchange={handleFileChange}
 						disabled={loading}
 						class={css({
-							borderWidth: '1px',
-							borderStyle: 'solid',
+							borderWidth: '1',
 							borderColor: 'border.primary',
 							padding: '2'
 						})}
@@ -450,9 +448,8 @@
 						<div
 							class={css({
 								marginTop: '3',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.tertiary',
 								padding: '3'
 							})}
@@ -463,9 +460,8 @@
 									display: 'flex',
 									alignItems: 'center',
 									justifyContent: 'space-between',
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									paddingBottom: '2',
 									fontSize: 'sm',
 									color: 'fg.secondary'
@@ -494,9 +490,8 @@
 										display: 'flex',
 										alignItems: 'center',
 										justifyContent: 'space-between',
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderBottomColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderBottomColor: 'border.primary',
 										padding: '2'
 									})}
 								>
@@ -549,8 +544,7 @@
 							placeholder="My Dataset"
 							disabled={loading}
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
+								borderWidth: '1',
 								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '3',
@@ -572,9 +566,8 @@
 							display: 'flex',
 							flexDirection: 'column',
 							gap: '3',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.tertiary',
 							padding: '4'
 						})}
@@ -608,8 +601,7 @@
 									bind:value={csvDelimiter}
 									disabled={loading}
 									class={css({
-										borderWidth: '1px',
-										borderStyle: 'solid',
+										borderWidth: '1',
 										borderColor: 'border.primary',
 										backgroundColor: 'bg.primary',
 										paddingX: '3',
@@ -636,8 +628,7 @@
 									bind:value={csvQuoteChar}
 									disabled={loading}
 									class={css({
-										borderWidth: '1px',
-										borderStyle: 'solid',
+										borderWidth: '1',
 										borderColor: 'border.primary',
 										backgroundColor: 'bg.primary',
 										paddingX: '3',
@@ -662,8 +653,7 @@
 									bind:value={csvEncoding}
 									disabled={loading}
 									class={css({
-										borderWidth: '1px',
-										borderStyle: 'solid',
+										borderWidth: '1',
 										borderColor: 'border.primary',
 										backgroundColor: 'bg.primary',
 										paddingX: '3',
@@ -691,8 +681,7 @@
 									bind:value={csvSkipRows}
 									disabled={loading}
 									class={css({
-										borderWidth: '1px',
-										borderStyle: 'solid',
+										borderWidth: '1',
 										borderColor: 'border.primary',
 										backgroundColor: 'bg.primary',
 										paddingX: '3',
@@ -702,13 +691,13 @@
 								/>
 							</div>
 						</div>
-						<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+						<div class={cx(row, css({ gap: '2' }))}>
 							<input
 								id="csv-header"
 								type="checkbox"
 								bind:checked={csvHasHeader}
 								disabled={loading}
-								class={css({ width: '4', height: '4', cursor: 'pointer' })}
+								class={css({ width: 'iconSm', height: 'iconSm', cursor: 'pointer' })}
 							/>
 							<label
 								for="csv-header"
@@ -724,9 +713,8 @@
 					<div
 						class={css({
 							marginTop: '4',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.tertiary',
 							padding: '4'
 						})}
@@ -748,15 +736,14 @@
 									display: 'flex',
 									alignItems: 'center',
 									gap: '2',
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderBottomColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderBottomColor: 'border.primary',
 									padding: '2',
 									fontSize: 'sm',
 									color: result.success ? 'success.fg' : 'error.fg'
 								})}
 							>
-								<span class={css({ width: '5', textAlign: 'center', fontWeight: 'bold' })}>
+								<span class={css({ width: 'iconMd', textAlign: 'center', fontWeight: 'bold' })}>
 									{#if result.success}
 										<Check size={12} />
 									{:else}
@@ -776,7 +763,7 @@
 								{#if result.error}
 									<span
 										class={css({
-											maxWidth: '50',
+											maxWidth: 'listSm',
 											overflow: 'hidden',
 											textOverflow: 'ellipsis',
 											fontSize: 'xs',
@@ -832,8 +819,7 @@
 						placeholder="My Database"
 						disabled={loading}
 						class={css({
-							borderWidth: '1px',
-							borderStyle: 'solid',
+							borderWidth: '1',
 							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							paddingX: '3',
@@ -857,8 +843,7 @@
 						placeholder="postgresql://user:pass@localhost/db"
 						disabled={loading}
 						class={css({
-							borderWidth: '1px',
-							borderStyle: 'solid',
+							borderWidth: '1',
 							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							paddingX: '3',
@@ -886,8 +871,7 @@
 						disabled={loading}
 						class={css({
 							resize: 'vertical',
-							borderWidth: '1px',
-							borderStyle: 'solid',
+							borderWidth: '1',
 							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							paddingX: '3',
@@ -921,8 +905,7 @@
 						placeholder="Existing Iceberg"
 						disabled={loading}
 						class={css({
-							borderWidth: '1px',
-							borderStyle: 'solid',
+							borderWidth: '1',
 							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							paddingX: '3',
@@ -945,8 +928,7 @@
 						placeholder="/data/<namespace>/clean/<uuid>"
 						disabled={loading}
 						class={css({
-							borderWidth: '1px',
-							borderStyle: 'solid',
+							borderWidth: '1',
 							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							paddingX: '3',
@@ -954,7 +936,7 @@
 							fontSize: 'sm'
 						})}
 					/>
-					<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+					<div class={cx(row, css({ gap: '2' }))}>
 						<button
 							class={button({ variant: 'secondary' })}
 							type="button"

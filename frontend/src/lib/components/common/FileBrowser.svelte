@@ -4,7 +4,7 @@
 	import type { FileListItem, FileListResponse } from '$lib/api/datasource';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import { ArrowUp } from 'lucide-svelte';
-	import { css, emptyText } from '$lib/styles/panda';
+	import { css, emptyText, cx, row, divider } from '$lib/styles/panda';
 
 	let {
 		initialPath = '',
@@ -99,16 +99,17 @@
 </script>
 
 <div
-	class={css({
-		position: 'fixed',
-		inset: '0',
-		zIndex: '1000',
-		display: 'flex',
-		alignItems: 'center',
-		justifyContent: 'center',
-		padding: '4',
-		backgroundColor: 'bg.overlaySoft'
-	})}
+	class={cx(
+		row,
+		css({
+			position: 'fixed',
+			inset: '0',
+			zIndex: 'modal',
+			justifyContent: 'center',
+			padding: '4',
+			backgroundColor: 'bg.overlaySoft'
+		})
+	)}
 	role="button"
 	tabindex="0"
 	aria-label="Close file picker"
@@ -119,12 +120,11 @@
 		class={css({
 			display: 'flex',
 			width: '100%',
-			maxWidth: '180',
+			maxWidth: 'modal',
 			maxHeight: '70vh',
 			flexDirection: 'column',
-			borderWidth: '1px',
-			borderStyle: 'solid',
-			borderColor: 'border.tertiary',
+			borderWidth: '1',
+			borderColor: 'border.primary',
 			backgroundColor: 'bg.primary'
 		})}
 		role="dialog"
@@ -138,9 +138,8 @@
 				display: 'grid',
 				gridTemplateColumns: '1fr auto',
 				gap: '2',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'border.tertiary',
+				borderBottomWidth: '1',
+				borderBottomColor: 'border.primary',
 				padding: '4'
 			})}
 		>
@@ -151,7 +150,7 @@
 					Data directory
 				</h4>
 				<div
-					class={css({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1' })}
+					class={cx(row, css({ flexWrap: 'wrap', gap: '1' }))}
 					role="navigation"
 					aria-label="Path breadcrumb"
 				>
@@ -185,9 +184,7 @@
 					Select files or choose a folder for parquet datasets.
 				</span>
 			</div>
-			<div
-				class={css({ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '2' })}
-			>
+			<div class={cx(row, css({ justifyContent: 'flex-end', gap: '2' }))}>
 				<button
 					class={css({
 						cursor: 'pointer',
@@ -225,9 +222,8 @@
 								alignItems: 'center',
 								justifyContent: 'space-between',
 								gap: '2',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								padding: '2',
 								paddingX: '3',
 								textAlign: 'left',
@@ -249,28 +245,27 @@
 		</div>
 
 		<div
-			class={css({
-				display: 'flex',
-				justifyContent: 'space-between',
-				gap: '2',
-				borderTopWidth: '1px',
-				borderTopStyle: 'solid',
-				borderTopColor: 'border.tertiary',
-				padding: '3'
-			})}
+			class={cx(
+				divider,
+				css({
+					display: 'flex',
+					justifyContent: 'space-between',
+					gap: '2',
+					padding: '3'
+				})
+			)}
 		>
-			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+			<div class={cx(row, css({ gap: '2' }))}>
 				<button
 					class={css({
 						display: 'inline-flex',
-						height: '8',
-						width: '8',
+						height: 'rowLg',
+						width: 'rowLg',
 						cursor: 'pointer',
 						alignItems: 'center',
 						justifyContent: 'center',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'bg.primary',
 						color: 'fg.secondary',
 						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
@@ -285,16 +280,15 @@
 				<button
 					class={css({
 						cursor: 'pointer',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						paddingX: '4',
 						paddingY: '2',
 						fontSize: 'sm',
 						fontWeight: 'medium',
 						backgroundColor: 'bg.secondary',
 						color: 'fg.primary',
-						_hover: { backgroundColor: 'bg.hover', borderColor: 'border.tertiary' },
+						_hover: { backgroundColor: 'bg.hover', borderColor: 'border.primary' },
 						_disabled: { cursor: 'not-allowed', opacity: 0.5 }
 					})}
 					onclick={() => onselect(path, true)}
@@ -306,16 +300,15 @@
 			<button
 				class={css({
 					cursor: 'pointer',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderWidth: '1',
+					borderColor: 'border.primary',
 					paddingX: '4',
 					paddingY: '2',
 					fontSize: 'sm',
 					fontWeight: 'medium',
 					backgroundColor: 'bg.secondary',
 					color: 'fg.primary',
-					_hover: { backgroundColor: 'bg.hover', borderColor: 'border.tertiary' },
+					_hover: { backgroundColor: 'bg.hover', borderColor: 'border.primary' },
 					_disabled: { cursor: 'not-allowed', opacity: 0.5 }
 				})}
 				onclick={() => load(path)}

@@ -5,7 +5,7 @@
 	import { idbGet, idbSet } from '$lib/utils/indexeddb';
 	import favicon from '$lib/assets/favicon.svg';
 	import { Sun, Moon, Settings } from 'lucide-svelte';
-	import { css, cx, iconButton, navLink } from '$lib/styles/panda';
+	import { css, cx, iconButton, navLink, row, muted } from '$lib/styles/panda';
 	import EngineMonitor from '$lib/components/common/EngineMonitor.svelte';
 	import IndexedDbButton from '$lib/components/common/IndexedDbButton.svelte';
 	import SettingsPopup from '$lib/components/common/SettingsPopup.svelte';
@@ -16,7 +16,6 @@
 	import { installAuditListeners, setAuditPage, track } from '$lib/utils/audit-log';
 	import { untrack } from 'svelte';
 	import 'styled-system/styles.css';
-	import '$lib/styles/global.css';
 
 	let { children } = $props();
 
@@ -34,6 +33,7 @@
 	// DOM: $derived can't sync theme to DOM/storage.
 	$effect(() => {
 		document.documentElement.setAttribute('data-theme', theme);
+		document.body.setAttribute('data-theme', theme);
 		void idbSet('theme', theme);
 	});
 
@@ -161,7 +161,7 @@
 			<div
 				class={css({
 					marginX: 'auto',
-					maxWidth: '300',
+					maxWidth: 'page',
 					display: 'flex',
 					alignItems: 'center',
 					gap: '6',
@@ -169,7 +169,7 @@
 					paddingY: '3'
 				})}
 			>
-				<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+				<div class={cx(row, css({ gap: '2' }))}>
 					<button
 						class={css({
 							display: 'flex',
@@ -188,12 +188,12 @@
 						bind:this={namespaceTrigger}
 					>
 						<span class={css({ color: 'fg.primary' })}>analysis</span>
-						<span class={css({ color: 'fg.muted' })}>/</span>
+						<span class={muted}>/</span>
 						<span class={css({ color: 'fg.tertiary' })}>{namespaceDraft}</span>
 					</button>
 				</div>
 
-				<nav class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+				<nav class={cx(row, css({ gap: '1' }))}>
 					{#each navItems as item (item.href)}
 						<a
 							href={resolve(item.href as '/')}

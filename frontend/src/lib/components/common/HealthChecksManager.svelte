@@ -27,7 +27,7 @@
 		PowerOff
 	} from 'lucide-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
-	import { css, cx, emptyText, input } from '$lib/styles/panda';
+	import { css, cx, emptyText, input, row, rowBetween, muted } from '$lib/styles/panda';
 
 	interface Props {
 		datasourceId?: string;
@@ -287,14 +287,12 @@
 	<div
 		class={css({
 			marginBottom: '4',
-			borderWidth: '1px',
-			borderStyle: 'solid',
-			borderColor: 'border.tertiary',
+			borderWidth: '1',
+			borderColor: 'border.primary',
 			backgroundColor: 'bg.secondary',
 			padding: '3',
 			boxShadow: 'sm',
-			transitionProperty: 'opacity',
-			transitionDuration: '160ms'
+			transition: 'opacity 160ms'
 		})}
 	>
 		<div
@@ -303,9 +301,8 @@
 				display: 'flex',
 				alignItems: 'center',
 				justifyContent: 'space-between',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderColor: 'border.tertiary',
+				borderBottomWidth: '1',
+				borderColor: 'border.primary',
 				paddingBottom: '2'
 			})}
 		>
@@ -339,15 +336,14 @@
 					class={css({
 						width: '100%',
 						appearance: 'none',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'bg.primary',
 						paddingX: '2',
 						paddingY: '1.5',
 						fontSize: 'xs',
 						color: 'fg.primary',
-						_focus: { borderColor: 'info', outline: 'none' }
+						_focus: { borderColor: 'accent.primary', outline: 'none' }
 					})}
 					bind:value={targetDatasourceId}
 				>
@@ -381,16 +377,15 @@
 					id="hc-name"
 					type="text"
 					class={css({
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'bg.primary',
 						paddingX: '2',
 						paddingY: '1.5',
 						fontSize: 'xs',
 						color: 'fg.primary',
 						_placeholder: { color: 'fg.muted' },
-						_focus: { borderColor: 'info', outline: 'none' }
+						_focus: { borderColor: 'accent.primary', outline: 'none' }
 					})}
 					bind:value={name}
 					placeholder="e.g. Row count guard"
@@ -413,15 +408,14 @@
 						class={css({
 							width: '100%',
 							appearance: 'none',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							paddingX: '2',
 							paddingY: '1.5',
 							fontSize: 'xs',
 							color: 'fg.primary',
-							_focus: { borderColor: 'info', outline: 'none' }
+							_focus: { borderColor: 'accent.primary', outline: 'none' }
 						})}
 						bind:value={checkType}
 						onchange={() => {
@@ -481,15 +475,14 @@
 							id="hc-min-rows"
 							type="number"
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								fontSize: 'xs',
 								color: 'fg.primary',
-								_focus: { borderColor: 'info', outline: 'none' }
+								_focus: { borderColor: 'accent.primary', outline: 'none' }
 							})}
 							oninput={(e) => updateConfig('min_rows', parseInt(e.currentTarget.value) || 0)}
 						/>
@@ -508,15 +501,14 @@
 							id="hc-max-rows"
 							type="number"
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								fontSize: 'xs',
 								color: 'fg.primary',
-								_focus: { borderColor: 'info', outline: 'none' }
+								_focus: { borderColor: 'accent.primary', outline: 'none' }
 							})}
 							oninput={(e) => updateConfig('max_rows', parseInt(e.currentTarget.value) || 0)}
 						/>
@@ -549,15 +541,14 @@
 							id="hc-min-cols"
 							type="number"
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								fontSize: 'xs',
 								color: 'fg.primary',
-								_focus: { borderColor: 'info', outline: 'none' }
+								_focus: { borderColor: 'accent.primary', outline: 'none' }
 							})}
 							oninput={(e) => updateConfig('min_columns', parseInt(e.currentTarget.value) || 0)}
 						/>
@@ -576,15 +567,14 @@
 							id="hc-max-cols"
 							type="number"
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								fontSize: 'xs',
 								color: 'fg.primary',
-								_focus: { borderColor: 'info', outline: 'none' }
+								_focus: { borderColor: 'accent.primary', outline: 'none' }
 							})}
 							oninput={(e) => updateConfig('max_columns', parseInt(e.currentTarget.value) || 0)}
 						/>
@@ -612,15 +602,14 @@
 						id="hc-null-threshold"
 						type="number"
 						class={css({
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							paddingX: '2',
 							paddingY: '1.5',
 							fontSize: 'xs',
 							color: 'fg.primary',
-							_focus: { borderColor: 'info', outline: 'none' }
+							_focus: { borderColor: 'accent.primary', outline: 'none' }
 						})}
 						oninput={(e) => updateConfig('threshold', parseFloat(e.currentTarget.value) || 0)}
 					/>
@@ -652,15 +641,14 @@
 							id="hc-dup-threshold"
 							type="number"
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								fontSize: 'xs',
 								color: 'fg.primary',
-								_focus: { borderColor: 'info', outline: 'none' }
+								_focus: { borderColor: 'accent.primary', outline: 'none' }
 							})}
 							oninput={(e) => updateConfig('threshold', parseFloat(e.currentTarget.value) || 0)}
 						/>
@@ -679,16 +667,15 @@
 							id="hc-dup-cols"
 							type="text"
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								fontSize: 'xs',
 								color: 'fg.primary',
 								_placeholder: { color: 'fg.muted' },
-								_focus: { borderColor: 'info', outline: 'none' }
+								_focus: { borderColor: 'accent.primary', outline: 'none' }
 							})}
 							value={duplicateColumns}
 							placeholder="col_a, col_b"
@@ -723,15 +710,14 @@
 							id="hc-column"
 							type="text"
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								fontSize: 'xs',
 								color: 'fg.primary',
-								_focus: { borderColor: 'info', outline: 'none' }
+								_focus: { borderColor: 'accent.primary', outline: 'none' }
 							})}
 							oninput={(e) => updateConfig('column', e.currentTarget.value)}
 						/>
@@ -750,15 +736,14 @@
 							id="hc-threshold"
 							type="number"
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								fontSize: 'xs',
 								color: 'fg.primary',
-								_focus: { borderColor: 'info', outline: 'none' }
+								_focus: { borderColor: 'accent.primary', outline: 'none' }
 							})}
 							oninput={(e) => updateConfig('threshold', parseFloat(e.currentTarget.value) || 0)}
 						/>
@@ -791,15 +776,14 @@
 							id="hc-unique-column"
 							type="text"
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								fontSize: 'xs',
 								color: 'fg.primary',
-								_focus: { borderColor: 'info', outline: 'none' }
+								_focus: { borderColor: 'accent.primary', outline: 'none' }
 							})}
 							oninput={(e) => updateConfig('column', e.currentTarget.value)}
 						/>
@@ -818,15 +802,14 @@
 							id="hc-expected"
 							type="number"
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								fontSize: 'xs',
 								color: 'fg.primary',
-								_focus: { borderColor: 'info', outline: 'none' }
+								_focus: { borderColor: 'accent.primary', outline: 'none' }
 							})}
 							oninput={(e) => updateConfig('expected_unique', parseInt(e.currentTarget.value) || 0)}
 						/>
@@ -859,15 +842,14 @@
 							id="hc-range-column"
 							type="text"
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								fontSize: 'xs',
 								color: 'fg.primary',
-								_focus: { borderColor: 'info', outline: 'none' }
+								_focus: { borderColor: 'accent.primary', outline: 'none' }
 							})}
 							oninput={(e) => updateConfig('column', e.currentTarget.value)}
 						/>
@@ -886,15 +868,14 @@
 							id="hc-min"
 							type="number"
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								fontSize: 'xs',
 								color: 'fg.primary',
-								_focus: { borderColor: 'info', outline: 'none' }
+								_focus: { borderColor: 'accent.primary', outline: 'none' }
 							})}
 							oninput={(e) => updateConfig('min', parseFloat(e.currentTarget.value) || 0)}
 						/>
@@ -913,15 +894,14 @@
 							id="hc-max"
 							type="number"
 							class={css({
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								paddingX: '2',
 								paddingY: '1.5',
 								fontSize: 'xs',
 								color: 'fg.primary',
-								_focus: { borderColor: 'info', outline: 'none' }
+								_focus: { borderColor: 'accent.primary', outline: 'none' }
 							})}
 							oninput={(e) => updateConfig('max', parseFloat(e.currentTarget.value) || 0)}
 						/>
@@ -936,9 +916,8 @@
 				display: 'flex',
 				alignItems: 'center',
 				justifyContent: 'space-between',
-				borderTopWidth: '1px',
-				borderTopStyle: 'solid',
-				borderColor: 'border.tertiary',
+				borderTopWidth: '1',
+				borderColor: 'border.primary',
 				paddingTop: '3'
 			})}
 		>
@@ -955,7 +934,7 @@
 			>
 				<input
 					type="checkbox"
-					class={css({ borderColor: 'border.tertiary', color: 'accent.primary' })}
+					class={css({ borderColor: 'border.primary', color: 'accent.primary' })}
 					id="hc-critical"
 					checked={critical}
 					onchange={(e) => (critical = e.currentTarget.checked)}
@@ -963,20 +942,18 @@
 				<span class={css({ fontWeight: 'medium' })}>Critical Check (fails pipeline)</span>
 			</label>
 
-			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+			<div class={cx(row, css({ gap: '2' }))}>
 				<button
 					class={css({
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'transparent',
 						paddingX: '3',
 						paddingY: '1.5',
 						fontSize: 'xs',
 						color: 'fg.tertiary',
 						_hover: { backgroundColor: 'bg.tertiary' },
-						transitionProperty: 'color, background-color',
-						transitionDuration: '160ms'
+						transition: 'color 160ms, background-color 160ms'
 					})}
 					onclick={() => {
 						creating = false;
@@ -992,11 +969,10 @@
 						paddingY: '1.5',
 						fontSize: 'xs',
 						fontWeight: 'semibold',
-						color: 'white',
+						color: 'fg.inverse',
 						boxShadow: 'sm',
 						_hover: { backgroundColor: 'accent.primary/90' },
-						transitionProperty: 'color, background-color',
-						transitionDuration: '160ms',
+						transition: 'color 160ms, background-color 160ms',
 						_disabled: { opacity: '0.5', cursor: 'not-allowed' }
 					})}
 					disabled={!name ||
@@ -1006,7 +982,7 @@
 					onclick={addHealthCheck}
 				>
 					{#if createCheckMutation.isPending}
-						<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+						<div class={cx(row, css({ gap: '1' }))}>
 							<Loader size={12} class={css({ animation: 'spin 1s linear infinite' })} />
 							<span>Saving...</span>
 						</div>
@@ -1024,13 +1000,12 @@
 		<header
 			class={css({
 				marginBottom: '6',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderColor: 'border.tertiary',
+				borderBottomWidth: '1',
+				borderColor: 'border.primary',
 				paddingBottom: '5'
 			})}
 		>
-			<div class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
+			<div class={rowBetween}>
 				<div>
 					<h1 class={css({ margin: '0', marginBottom: '2', fontSize: '2xl' })}>Health Checks</h1>
 					<p class={css({ margin: '0', color: 'fg.tertiary' })}>
@@ -1043,9 +1018,8 @@
 							display: 'inline-flex',
 							alignItems: 'center',
 							gap: '1.5',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'accent.bg',
 							paddingX: '3',
 							paddingY: '1.5',
@@ -1070,7 +1044,14 @@
 				})}
 			>
 				{#if searchQuery === undefined}
-					<div class={css({ position: 'relative', minWidth: '60', maxWidth: '100', flex: '1' })}>
+					<div
+						class={css({
+							position: 'relative',
+							minWidth: 'list',
+							maxWidth: 'panel',
+							flex: '1'
+						})}
+					>
 						<Search
 							size={14}
 							class={css({
@@ -1102,8 +1083,8 @@
 				justifyContent: 'space-between'
 			})}
 		>
-			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
-				<HeartPulse size={14} class={css({ color: 'fg.muted' })} />
+			<div class={cx(row, css({ gap: '2' }))}>
+				<HeartPulse size={14} class={muted} />
 				<span
 					class={css({
 						fontSize: 'xs',
@@ -1125,9 +1106,8 @@
 						display: 'inline-flex',
 						alignItems: 'center',
 						gap: '1',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'accent.bg',
 						paddingX: '2',
 						paddingY: '1',
@@ -1135,8 +1115,7 @@
 						fontWeight: 'medium',
 						color: 'accent.primary',
 						_hover: { backgroundColor: 'accent.bg/80' },
-						transitionProperty: 'color, background-color',
-						transitionDuration: '160ms'
+						transition: 'color 160ms, background-color 160ms'
 					})}
 					onclick={() => (creating = true)}
 				>
@@ -1152,10 +1131,9 @@
 			<div
 				class={css({
 					marginBottom: '4',
-					borderWidth: '1px',
-					borderStyle: 'solid',
+					borderWidth: '1',
 					borderColor: 'border.primary',
-					backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 50%, transparent)',
+					backgroundColor: 'color-mix(in srgb, {colors.bg.secondary} 50%, transparent)',
 					padding: '2',
 					fontSize: 'xs',
 					color: 'fg.secondary'
@@ -1182,10 +1160,9 @@
 	{:else if listQuery.isError}
 		<div
 			class={css({
-				borderWidth: '1px',
-				borderStyle: 'solid',
+				borderWidth: '1',
 				borderColor: 'error.border',
-				backgroundColor: 'color-mix(in srgb, var(--error-bg) 10%, transparent)',
+				backgroundColor: 'color-mix(in srgb, {colors.error.bg} 10%, transparent)',
 				padding: '4',
 				textAlign: 'center',
 				fontSize: 'sm',
@@ -1202,9 +1179,9 @@
 					flexDirection: 'column',
 					alignItems: 'center',
 					justifyContent: 'center',
-					borderWidth: '1px',
+					borderWidth: '1',
 					borderStyle: 'dashed',
-					borderColor: 'border.tertiary',
+					borderColor: 'border.primary',
 					backgroundColor: 'bg.secondary/50',
 					paddingY: compact ? '4' : '8',
 					textAlign: 'center'
@@ -1222,9 +1199,9 @@
 	{:else if visibleChecks.length === 0 && hasSearch}
 		<div
 			class={css({
-				borderWidth: '1px',
+				borderWidth: '1',
 				borderStyle: 'dashed',
-				borderColor: 'border.tertiary',
+				borderColor: 'border.primary',
 				paddingX: '6',
 				paddingY: '8',
 				textAlign: 'center'
@@ -1237,9 +1214,8 @@
 			<div
 				class={css({
 					overflowX: 'auto',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary'
+					borderWidth: '1',
+					borderColor: 'border.primary'
 				})}
 			>
 				<table class={css({ width: '100%', borderCollapse: 'collapse', fontSize: 'xs' })}>
@@ -1247,10 +1223,9 @@
 						<tr class={css({ backgroundColor: 'bg.tertiary' })}>
 							<th
 								class={css({
-									width: '6',
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderColor: 'border.tertiary',
+									width: 'iconLg',
+									borderBottomWidth: '1',
+									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1259,10 +1234,9 @@
 							></th>
 							<th
 								class={css({
-									width: '8',
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderColor: 'border.tertiary',
+									width: 'rowLg',
+									borderBottomWidth: '1',
+									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1271,9 +1245,8 @@
 							>
 							<th
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1283,9 +1256,8 @@
 							{#if !datasourceId}
 								<th
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5',
 										textAlign: 'left',
@@ -1295,9 +1267,8 @@
 							{/if}
 							<th
 								class={css({
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderColor: 'border.tertiary',
+									borderBottomWidth: '1',
+									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1306,10 +1277,9 @@
 							>
 							<th
 								class={css({
-									width: '24',
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderColor: 'border.tertiary',
+									width: 'colNarrow',
+									borderBottomWidth: '1',
+									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1318,10 +1288,9 @@
 							>
 							<th
 								class={css({
-									width: '24',
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderColor: 'border.tertiary',
+									width: 'colNarrow',
+									borderBottomWidth: '1',
+									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1330,10 +1299,9 @@
 							>
 							<th
 								class={css({
-									width: '16',
-									borderBottomWidth: '1px',
-									borderBottomStyle: 'solid',
-									borderColor: 'border.tertiary',
+									width: 'logoXl',
+									borderBottomWidth: '1',
+									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1354,9 +1322,8 @@
 							>
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1364,17 +1331,15 @@
 									<ChevronDown
 										size={12}
 										class={css({
-											transitionProperty: 'transform',
-											transitionDuration: '160ms',
+											transition: 'transform 160ms',
 											transform: expandedId === check.id ? 'rotate(0deg)' : 'rotate(-90deg)'
 										})}
 									/>
 								</td>
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1384,8 +1349,8 @@
 											<div
 												class={css({
 													display: 'flex',
-													height: '5',
-													width: '5',
+													height: 'iconMd',
+													width: 'iconMd',
 													alignItems: 'center',
 													justifyContent: 'center',
 													backgroundColor: 'success.bg/20'
@@ -1397,8 +1362,8 @@
 											<div
 												class={css({
 													display: 'flex',
-													height: '5',
-													width: '5',
+													height: 'iconMd',
+													width: 'iconMd',
 													alignItems: 'center',
 													justifyContent: 'center',
 													backgroundColor: 'error.bg/20'
@@ -1411,22 +1376,21 @@
 										<div
 											class={css({
 												display: 'flex',
-												height: '5',
-												width: '5',
+												height: 'iconMd',
+												width: 'iconMd',
 												alignItems: 'center',
 												justifyContent: 'center',
 												backgroundColor: 'bg.tertiary'
 											})}
 										>
-											<AlertTriangle size={12} class={css({ color: 'fg.muted' })} />
+											<AlertTriangle size={12} class={muted} />
 										</div>
 									{/if}
 								</td>
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1438,9 +1402,8 @@
 								{#if !datasourceId}
 									<td
 										class={css({
-											borderBottomWidth: '1px',
-											borderBottomStyle: 'solid',
-											borderColor: 'border.tertiary',
+											borderBottomWidth: '1',
+											borderColor: 'border.primary',
 											paddingX: '2',
 											paddingY: '1.5'
 										})}
@@ -1454,16 +1417,15 @@
 											})}
 											title={check.datasource_id}
 										>
-											<Database size={10} class={css({ color: 'fg.muted' })} />
+											<Database size={10} class={muted} />
 											{resolveDatasource(check.datasource_id)}
 										</span>
 									</td>
 								{/if}
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5',
 										color: 'fg.secondary'
@@ -1473,9 +1435,8 @@
 								</td>
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1484,9 +1445,8 @@
 										<span
 											class={css({
 												display: 'inline-flex',
-												borderWidth: '1px',
-												borderStyle: 'solid',
-												borderColor: 'info',
+												borderWidth: '1',
+												borderColor: 'accent.primary',
 												backgroundColor: 'accent.bg',
 												paddingX: '1.5',
 												paddingY: '0.5',
@@ -1505,9 +1465,8 @@
 								</td>
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1532,16 +1491,15 @@
 											<Power size={12} class={css({ color: 'success.fg' })} />
 											<span class={css({ color: 'success.fg' })}>On</span>
 										{:else}
-											<PowerOff size={12} class={css({ color: 'fg.muted' })} />
-											<span class={css({ color: 'fg.muted' })}>Off</span>
+											<PowerOff size={12} class={muted} />
+											<span class={muted}>Off</span>
 										{/if}
 									</button>
 								</td>
 								<td
 									class={css({
-										borderBottomWidth: '1px',
-										borderBottomStyle: 'solid',
-										borderColor: 'border.tertiary',
+										borderBottomWidth: '1',
+										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1573,9 +1531,8 @@
 									<td
 										colspan={colCount}
 										class={css({
-											borderBottomWidth: '1px',
-											borderBottomStyle: 'solid',
-											borderColor: 'border.tertiary',
+											borderBottomWidth: '1',
+											borderColor: 'border.primary',
 											backgroundColor: 'bg.primary',
 											padding: '0'
 										})}
@@ -1618,7 +1575,7 @@
 													<span class={css({ fontSize: '2xs', color: 'fg.muted' })}
 														>Latest Result</span
 													>
-													<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
+													<div class={cx(row, css({ gap: '1' }))}>
 														{#if latest.passed}
 															<Check size={10} class={css({ color: 'success.fg' })} />
 															<span class={css({ fontSize: '2xs', color: 'success.fg' })}
@@ -1672,14 +1629,12 @@
 							display: 'flex',
 							alignItems: 'center',
 							gap: '2',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							padding: '2',
-							_hover: { borderColor: 'fg.tertiary' },
-							transitionProperty: 'color, background-color, border-color',
-							transitionDuration: '160ms',
+							_hover: { borderColor: 'border.primary' },
+							transition: 'color 160ms, background-color 160ms, border-color 160ms',
 							'&:hover .group-hover-show': { opacity: '1' }
 						})}
 					>
@@ -1687,13 +1642,17 @@
 							{#if latest}
 								{#if latest.passed}
 									<div
-										class={css({ height: '2', width: '2', backgroundColor: 'success.fg' })}
+										class={css({ height: 'dot', width: 'dot', backgroundColor: 'success.fg' })}
 									></div>
 								{:else}
-									<div class={css({ height: '2', width: '2', backgroundColor: 'error.fg' })}></div>
+									<div
+										class={css({ height: 'dot', width: 'dot', backgroundColor: 'error.fg' })}
+									></div>
 								{/if}
 							{:else}
-								<div class={css({ height: '2', width: '2', backgroundColor: 'fg.muted' })}></div>
+								<div
+									class={css({ height: 'dot', width: 'dot', backgroundColor: 'bg.indicator' })}
+								></div>
 							{/if}
 						</div>
 
@@ -1765,9 +1724,9 @@
 								<input
 									type="checkbox"
 									class={css({
-										height: '3',
-										width: '3',
-										borderColor: 'border.tertiary',
+										height: 'iconTiny',
+										width: 'iconTiny',
+										borderColor: 'border.primary',
 										color: 'success.fg'
 									})}
 									id="check-{check.id}-enabled"

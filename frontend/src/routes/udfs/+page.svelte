@@ -9,7 +9,7 @@
 	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
 	import PanelFooter from '$lib/components/ui/PanelFooter.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
-	import { css, spinner, button, chip } from '$lib/styles/panda';
+	import { css, spinner, button, chip, cx, row } from '$lib/styles/panda';
 
 	const queryClient = useQueryClient();
 
@@ -120,7 +120,7 @@
 	}
 </script>
 
-<div class={css({ marginX: 'auto', maxWidth: '275', paddingX: '6', paddingY: '7' })}>
+<div class={css({ marginX: 'auto', maxWidth: 'pageWide', paddingX: '6', paddingY: '7' })}>
 	<header
 		class={css({
 			marginBottom: '6',
@@ -129,9 +129,8 @@
 			alignItems: 'stretch',
 			justifyContent: 'space-between',
 			gap: '6',
-			borderBottomWidth: '1px',
-			borderBottomStyle: 'solid',
-			borderBottomColor: 'border.tertiary',
+			borderBottomWidth: '1',
+			borderBottomColor: 'border.primary',
 			paddingBottom: '5',
 			md: { flexDirection: 'row', alignItems: 'flex-start' }
 		})}
@@ -158,26 +157,19 @@
 		</div>
 	</header>
 
-	<div class={css({ marginBottom: '4', display: 'flex', alignItems: 'center', gap: '3' })}>
+	<div class={cx(row, css({ marginBottom: '4', gap: '3' }))}>
 		<input
 			id="udf-search"
 			aria-label="Search UDFs"
 			type="text"
 			placeholder="Search UDFs..."
 			bind:value={search}
-			class={css({ maxWidth: '90' })}
+			class={css({ maxWidth: 'popover' })}
 		/>
 	</div>
 
 	{#if query.isLoading}
-		<div
-			class={css({
-				display: 'flex',
-				height: '100%',
-				alignItems: 'center',
-				justifyContent: 'center'
-			})}
-		>
+		<div class={cx(row, css({ height: '100%', justifyContent: 'center' }))}>
 			<div class={spinner()}></div>
 		</div>
 	{:else if query.isError}
@@ -188,9 +180,9 @@
 		{#if query.data.length === 0}
 			<div
 				class={css({
-					borderWidth: '1px',
+					borderWidth: '1',
 					borderStyle: 'dashed',
-					borderColor: 'border.tertiary',
+					borderColor: 'border.primary',
 					padding: '8',
 					textAlign: 'center'
 				})}
@@ -209,20 +201,17 @@
 							flexDirection: 'column',
 							justifyContent: 'space-between',
 							gap: '4',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							padding: '4',
 							md: { flexDirection: 'row' }
 						})}
 					>
 						<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-							<div class={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+							<div class={cx(row, css({ gap: '3' }))}>
 								<h3 class={css({ margin: '0', fontSize: 'md' })}>{udf.name}</h3>
-								<div
-									class={css({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1' })}
-								>
+								<div class={cx(row, css({ flexWrap: 'wrap', gap: '1' }))}>
 									{#if udf.signature?.inputs?.length}
 										{#each udf.signature.inputs as input, i (i)}
 											<ColumnTypeBadge columnType={input.dtype} size="xs" showIcon={false} />
@@ -237,7 +226,7 @@
 											class={css({
 												fontSize: 'xs',
 												textTransform: 'uppercase',
-												letterSpacing: 'wider',
+												letterSpacing: 'wide',
 												color: 'fg.muted'
 											})}
 										>
@@ -259,7 +248,7 @@
 								</div>
 							{/if}
 						</div>
-						<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+						<div class={cx(row, css({ gap: '2' }))}>
 							<button
 								class={button({ variant: 'ghost', size: 'sm' })}
 								onclick={() => editUdf(udf.id)}
@@ -316,10 +305,9 @@
 				transform: 'translate(-50%, -50%)',
 				width: 'min(720px, 92vw)',
 				backgroundColor: 'bg.primary',
-				borderWidth: '1px',
-				borderStyle: 'solid',
+				borderWidth: '1',
 				borderColor: 'border.primary',
-				zIndex: 'calc(var(--z-modal) + 1)',
+				zIndex: '1001',
 				display: 'flex',
 				flexDirection: 'column',
 				_focus: { outline: 'none' }
@@ -366,9 +354,7 @@
 					bind:value={importText}
 					class={css({ fontFamily: 'mono' })}
 				></textarea>
-				<label
-					class={css({ display: 'flex', alignItems: 'center', gap: '2', color: 'fg.secondary' })}
-				>
+				<label class={cx(row, css({ gap: '2', color: 'fg.secondary' }))}>
 					<input id="udf-overwrite-import" type="checkbox" bind:checked={overwriteImport} />
 					Overwrite existing by name
 				</label>

@@ -4,7 +4,7 @@
 	import { buildSnapshotMap } from '$lib/utils/build-snapshot-map';
 	import { Trash2, ChevronDown, Clock } from 'lucide-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
-	import { css, cx, spinner } from '$lib/styles/panda';
+	import { css, cx, spinner, row, muted } from '$lib/styles/panda';
 
 	interface Props {
 		datasourceId: string;
@@ -464,9 +464,8 @@
 				cursor: 'pointer',
 				alignItems: 'center',
 				justifyContent: 'space-between',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary',
+				borderWidth: '1',
+				borderColor: 'border.primary',
 				backgroundColor: 'bg.secondary',
 				padding: '2',
 				paddingX: '3',
@@ -491,13 +490,12 @@
 			<Clock size={12} />
 			<span>{label}</span>
 		</div>
-		<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+		<div class={cx(row, css({ gap: '2' }))}>
 			{#if selectedSnapshotId}
 				<span
 					class={css({
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'bg.tertiary',
 						paddingX: '1.5',
 						paddingY: '0.5',
@@ -511,8 +509,7 @@
 			{:else}
 				<span
 					class={css({
-						borderWidth: '1px',
-						borderStyle: 'solid',
+						borderWidth: '1',
 						borderColor: 'accent.primary',
 						backgroundColor: 'accent.bg',
 						paddingX: '1.5',
@@ -525,13 +522,7 @@
 					Latest
 				</span>
 			{/if}
-			<span
-				class={cx(
-					css({ color: 'fg.muted' }),
-					css({ display: 'flex', alignItems: 'center' }),
-					snapshotsOpen && css({ transform: 'rotate(180deg)' })
-				)}
-			>
+			<span class={cx(muted, row, snapshotsOpen && css({ transform: 'rotate(180deg)' }))}>
 				<ChevronDown size={12} />
 			</span>
 		</div>
@@ -545,9 +536,8 @@
 				width: 'var(--popover-width)',
 				position: 'fixed',
 				zIndex: 'overlay',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.tertiary',
+				borderWidth: '1',
+				borderColor: 'border.primary',
 				backgroundColor: 'bg.primary',
 				padding: '2',
 				boxShadow: 'sm',
@@ -563,9 +553,8 @@
 					display: 'flex',
 					alignItems: 'center',
 					justifyContent: 'space-between',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderWidth: '1',
+					borderColor: 'border.primary',
 					backgroundColor: 'bg.secondary',
 					paddingX: '2',
 					paddingY: '1'
@@ -584,9 +573,8 @@
 				{#if selectedSnapshotId}
 					<button
 						class={css({
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderWidth: '1',
+							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							paddingX: '2',
 							paddingY: '1',
@@ -604,8 +592,7 @@
 			{#if missingSnapshotId}
 				<div
 					class={css({
-						borderWidth: '1px',
-						borderStyle: 'solid',
+						borderWidth: '1',
 						borderColor: 'warning.border',
 						backgroundColor: 'warning.bg',
 						paddingX: '2',
@@ -618,8 +605,7 @@
 					<button
 						class={css({
 							marginLeft: '2',
-							borderWidth: '1px',
-							borderStyle: 'solid',
+							borderWidth: '1',
 							borderColor: 'warning.border',
 							paddingX: '1.5',
 							paddingY: '0.5'
@@ -656,12 +642,11 @@
 			{:else}
 				<div class={css({ display: 'flex', gap: '2' })}>
 					<div class={css({ display: 'flex', flex: '1', flexDirection: 'column', gap: '2' })}>
-						<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+						<div class={cx(row, css({ gap: '2' }))}>
 							<button
 								class={css({
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.tertiary',
+									borderWidth: '1',
+									borderColor: 'border.primary',
 									backgroundColor: 'bg.secondary',
 									paddingX: '2',
 									paddingY: '1',
@@ -681,9 +666,8 @@
 							>
 							<button
 								class={css({
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.tertiary',
+									borderWidth: '1',
+									borderColor: 'border.primary',
 									backgroundColor: 'bg.secondary',
 									paddingX: '2',
 									paddingY: '1',
@@ -701,9 +685,8 @@
 								display: 'grid',
 								gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
 								gap: '1',
-								borderWidth: '1px',
-								borderStyle: 'solid',
-								borderColor: 'border.tertiary',
+								borderWidth: '1',
+								borderColor: 'border.primary',
 								padding: '2'
 							})}
 						>
@@ -718,10 +701,9 @@
 										class={cx(
 											css({
 												position: 'relative',
-												height: '9',
-												borderWidth: '1px',
-												borderStyle: 'solid',
-												borderColor: 'border.tertiary',
+												height: 'rowXl',
+												borderWidth: '1',
+												borderColor: 'border.primary',
 												fontSize: 'xs',
 												_hover: { backgroundColor: 'bg.tertiary' }
 											}),
@@ -748,20 +730,19 @@
 										{/if}
 									</button>
 								{:else}
-									<div class={css({ height: '9' })}></div>
+									<div class={css({ height: 'rowXl' })}></div>
 								{/if}
 							{/each}
 						</div>
 					</div>
 					<div
 						class={css({
-							width: '50',
-							maxHeight: '56',
+							width: 'listSm',
+							maxHeight: 'previewMd',
 							overflowY: 'auto',
 							overflowX: 'hidden',
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary'
+							borderWidth: '1',
+							borderColor: 'border.primary'
 						})}
 					>
 						{#if selectedDay}
@@ -814,9 +795,8 @@
 										{#if deleteConfirmId === snap.id}
 											<button
 												class={css({
-													borderWidth: '1px',
-													borderStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderWidth: '1',
+													borderColor: 'border.primary',
 													paddingX: '1.5',
 													paddingY: '0.5',
 													fontSize: '2xs',
@@ -833,9 +813,8 @@
 											<button
 												class={css({
 													marginLeft: '1',
-													borderWidth: '1px',
-													borderStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderWidth: '1',
+													borderColor: 'border.primary',
 													paddingX: '1.5',
 													paddingY: '0.5',
 													fontSize: '2xs',
@@ -850,9 +829,8 @@
 										{:else}
 											<button
 												class={css({
-													borderWidth: '1px',
-													borderStyle: 'solid',
-													borderColor: 'border.tertiary',
+													borderWidth: '1',
+													borderColor: 'border.primary',
 													padding: '1',
 													color: 'fg.tertiary',
 													_hover: { color: 'error.fg' }

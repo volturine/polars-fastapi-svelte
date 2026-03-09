@@ -38,7 +38,7 @@
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import { formatDateDisplay } from '$lib/utils/datetime';
 	import { resolveColumnType } from '$lib/utils/columnTypes';
-	import { css, cx, button, tabButton, chip, emptyText } from '$lib/styles/panda';
+	import { css, cx, button, tabButton, chip, emptyText, row } from '$lib/styles/panda';
 
 	interface Props {
 		datasource: DataSource;
@@ -483,14 +483,7 @@
 	}
 </script>
 
-<div
-	class={css({
-		borderTopWidth: '1',
-		borderTopStyle: 'solid',
-		borderColor: 'border.tertiary',
-		backgroundColor: 'bg.secondary'
-	})}
->
+<div class={css({ backgroundColor: 'bg.secondary' })}>
 	{#if updateMutation.isError}
 		<Callout tone="error">
 			<div class={css({ display: 'flex', alignItems: 'flex-start', gap: '3' })}>
@@ -507,27 +500,25 @@
 
 	{#if updateMutation.isSuccess}
 		<div
-			class={css({
-				margin: '4',
-				marginBottom: '0',
-				display: 'flex',
-				alignItems: 'center',
-				gap: '2',
-				paddingX: '3',
-				paddingY: '2.5',
-				border: 'none',
-				borderLeftWidth: '2',
-				borderLeftStyle: 'solid',
-				borderRadius: '0',
-				fontSize: 'xs',
-				lineHeight: 'normal',
-				backgroundColor: 'transparent',
-				borderLeftColor: 'success.fg',
-				color: 'success.fg',
-				borderWidth: '1',
-				borderStyle: 'solid',
-				borderColor: 'success.fg'
-			})}
+			class={cx(
+				row,
+				css({
+					margin: '4',
+					marginBottom: '0',
+					gap: '2',
+					paddingX: '3',
+					paddingY: '2.5',
+					border: 'none',
+					borderLeft: '2px solid',
+					fontSize: 'xs',
+					lineHeight: 'normal',
+					backgroundColor: 'transparent',
+					borderLeftColor: 'success.fg',
+					color: 'success.fg',
+					borderWidth: '1',
+					borderColor: 'success.border'
+				})
+			)}
 		>
 			<p class={css({ margin: '0' })}>Changes saved successfully!</p>
 		</div>
@@ -537,9 +528,6 @@
 		class={css({
 			display: 'flex',
 			gap: '0',
-			borderBottomWidth: '1',
-			borderBottomStyle: 'solid',
-			borderColor: 'border.tertiary',
 			paddingX: '4',
 			paddingTop: '3'
 		})}
@@ -595,8 +583,8 @@
 						class={css({
 							marginLeft: '1',
 							display: 'inline-block',
-							height: '2',
-							width: '2',
+							height: 'dot',
+							width: 'dot',
 							backgroundColor: 'success.fg'
 						})}
 						title="All checks passing"
@@ -606,8 +594,8 @@
 						class={css({
 							marginLeft: '1',
 							display: 'inline-block',
-							height: '2',
-							width: '2',
+							height: 'dot',
+							width: 'dot',
 							backgroundColor: 'error.fg'
 						})}
 						title="Some checks failing"
@@ -617,9 +605,9 @@
 						class={css({
 							marginLeft: '1',
 							display: 'inline-block',
-							height: '2',
-							width: '2',
-							backgroundColor: 'fg.muted'
+							height: 'dot',
+							width: 'dot',
+							backgroundColor: 'bg.indicator'
 						})}
 						title="No results yet"
 					></span>
@@ -652,7 +640,6 @@
 						placeholder="Data source name"
 						class={css({
 							borderWidth: '1',
-							borderStyle: 'solid',
 							paddingX: '3',
 							paddingY: '2',
 							fontSize: 'sm',
@@ -662,14 +649,7 @@
 					/>
 				</div>
 
-				<div
-					class={css({
-						borderTopWidth: '1',
-						borderTopStyle: 'solid',
-						borderColor: 'border.tertiary',
-						paddingTop: '4'
-					})}
-				>
+				<div class={css({ paddingTop: '4' })}>
 					<h3
 						class={css({
 							margin: '0',
@@ -682,8 +662,8 @@
 						Source Information
 					</h3>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '3', fontSize: 'xs' })}>
-						<div class={css({ display: 'flex', alignItems: 'center', gap: '4' })}>
-							<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+						<div class={cx(row, css({ gap: '4', borderColor: 'border.primary' }))}>
+							<div class={cx(row, css({ gap: '2', borderColor: 'border.primary' }))}>
 								<span
 									class={css({
 										textTransform: 'uppercase',
@@ -699,13 +679,13 @@
 								{/if}
 							</div>
 							{#if ds.is_hidden}
-								<div class={css({ display: 'flex', alignItems: 'center', gap: '1.5' })}>
+								<div class={cx(row, css({ gap: '1.5' }))}>
 									<span class={chip({ tone: 'warning' })}> Hidden </span>
 								</div>
 							{/if}
 						</div>
 
-						<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+						<div class={cx(row, css({ gap: '2', borderColor: 'border.primary' }))}>
 							<span
 								class={css({
 									textTransform: 'uppercase',
@@ -834,9 +814,8 @@
 								{@const fileSource = config.source as Record<string, unknown>}
 								<div
 									class={css({
-										borderTopWidth: '1',
-										borderTopStyle: 'solid',
-										borderColor: 'border.tertiary',
+										borderTop: '1px solid',
+										borderTopColor: 'border.primary',
 										paddingTop: '2',
 										marginTop: '1',
 										display: 'flex',
@@ -853,7 +832,7 @@
 											fontWeight: 'semibold'
 										})}>Original Source</span
 									>
-									<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+									<div class={cx(row, css({ gap: '2' }))}>
 										<span
 											class={css({
 												textTransform: 'uppercase',
@@ -888,8 +867,8 @@
 							{/if}
 						{/if}
 
-						<div class={css({ display: 'flex', alignItems: 'center', gap: '4' })}>
-							<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+						<div class={cx(row, css({ gap: '4' }))}>
+							<div class={cx(row, css({ gap: '2' }))}>
 								<span
 									class={css({
 										textTransform: 'uppercase',
@@ -902,7 +881,7 @@
 								>
 							</div>
 							{#if schemaQuery.data}
-								<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+								<div class={cx(row, css({ gap: '2' }))}>
 									<span
 										class={css({
 											textTransform: 'uppercase',
@@ -914,7 +893,7 @@
 										>{schemaQuery.data.row_count?.toLocaleString() ?? 'Unknown'}</span
 									>
 								</div>
-								<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+								<div class={cx(row, css({ gap: '2' }))}>
 									<span
 										class={css({
 											textTransform: 'uppercase',
@@ -931,23 +910,9 @@
 					</div>
 				</div>
 
-				<div
-					class={css({
-						borderTopWidth: '1',
-						borderTopStyle: 'solid',
-						borderColor: 'border.tertiary',
-						paddingTop: '4',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						gap: '3'
-					})}
-				>
+				<div class={cx(row, css({ paddingTop: '4', justifyContent: 'space-between', gap: '3' }))}>
 					<button
-						class={cx(
-							button({ variant: 'secondary' }),
-							css({ display: 'flex', alignItems: 'center', gap: '2' })
-						)}
+						class={cx(button({ variant: 'secondary' }), cx(row, css({ gap: '2' })))}
 						onclick={handleRefresh}
 						disabled={isRefreshing || updateMutation.isPending}
 					>
@@ -961,10 +926,7 @@
 					</button>
 					{#if hasChanges}
 						<button
-							class={cx(
-								button({ variant: 'primary' }),
-								css({ display: 'flex', alignItems: 'center', gap: '2' })
-							)}
+							class={cx(button({ variant: 'primary' }), cx(row, css({ gap: '2' })))}
 							onclick={handleSave}
 							disabled={updateMutation.isPending}
 						>
@@ -1019,15 +981,16 @@
 				{/if}
 				{#if schemaQuery.isLoading}
 					<div
-						class={css({
-							display: 'flex',
-							flexDirection: 'column',
-							alignItems: 'center',
-							justifyContent: 'center',
-							gap: '3',
-							paddingY: '8',
-							color: 'fg.muted'
-						})}
+						class={cx(
+							row,
+							css({
+								flexDirection: 'column',
+								justifyContent: 'center',
+								gap: '3',
+								paddingY: '8',
+								color: 'fg.muted'
+							})
+						)}
 					>
 						<Loader size={24} class={css({ animation: 'spin 1s linear infinite' })} />
 						<p class={css({ fontSize: 'sm' })}>Loading schema...</p>
@@ -1036,8 +999,7 @@
 					<div
 						class={css({
 							borderWidth: '1',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary'
+							borderColor: 'border.primary'
 						})}
 					>
 						<div
@@ -1054,9 +1016,8 @@
 								textTransform: 'uppercase',
 								letterSpacing: 'wide',
 								color: 'fg.muted',
-								borderBottomWidth: '1',
-								borderBottomStyle: 'solid',
-								borderColor: 'border.tertiary'
+								borderBottom: '1px solid',
+								borderBottomColor: 'border.primary'
 							})}
 						>
 							<span>#</span>
@@ -1078,9 +1039,8 @@
 									}),
 									index > 0
 										? css({
-												borderTopWidth: '1',
-												borderTopStyle: 'solid',
-												borderColor: 'border.tertiary'
+												borderTop: '1px solid',
+												borderTopColor: 'border.primary'
 											})
 										: ''
 								)}
@@ -1132,7 +1092,6 @@
 							onchange={(e) => handleCsvConfigChange('delimiter', e.currentTarget.value)}
 							class={css({
 								borderWidth: '1',
-								borderStyle: 'solid',
 								paddingX: '3',
 								paddingY: '2',
 								fontSize: 'sm',
@@ -1160,7 +1119,6 @@
 							onchange={(e) => handleCsvConfigChange('quote_char', e.currentTarget.value)}
 							class={css({
 								borderWidth: '1',
-								borderStyle: 'solid',
 								paddingX: '3',
 								paddingY: '2',
 								fontSize: 'sm',
@@ -1186,7 +1144,6 @@
 							onchange={(e) => handleCsvConfigChange('encoding', e.currentTarget.value)}
 							class={css({
 								borderWidth: '1',
-								borderStyle: 'solid',
 								paddingX: '3',
 								paddingY: '2',
 								fontSize: 'sm',
@@ -1216,7 +1173,6 @@
 								handleCsvConfigChange('skip_rows', parseInt(e.currentTarget.value) || 0)}
 							class={css({
 								borderWidth: '1',
-								borderStyle: 'solid',
 								paddingX: '3',
 								paddingY: '2',
 								fontSize: 'sm',
@@ -1227,13 +1183,13 @@
 					</div>
 				</div>
 
-				<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+				<div class={cx(row, css({ gap: '2' }))}>
 					<input
 						id="csv-header-{datasource.id}"
 						type="checkbox"
 						checked={csvConfig.has_header}
 						onchange={(e) => handleCsvConfigChange('has_header', e.currentTarget.checked)}
-						class={css({ height: '4', width: '4', cursor: 'pointer' })}
+						class={css({ height: 'iconSm', width: 'iconSm', cursor: 'pointer' })}
 					/>
 					<label
 						for="csv-header-{datasource.id}"
@@ -1246,13 +1202,7 @@
 					<button
 						class={cx(
 							button({ variant: 'primary' }),
-							css({
-								width: '100%',
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								gap: '2'
-							})
+							cx(row, css({ width: '100%', justifyContent: 'center', gap: '2' }))
 						)}
 						onclick={handleSave}
 						disabled={updateMutation.isPending}
@@ -1281,13 +1231,7 @@
 					<button
 						class={cx(
 							button({ variant: 'primary' }),
-							css({
-								width: '100%',
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								gap: '2'
-							})
+							cx(row, css({ width: '100%', justifyContent: 'center', gap: '2' }))
 						)}
 						onclick={handleSave}
 						disabled={updateMutation.isPending}
@@ -1314,8 +1258,7 @@
 						button({ variant: 'ghost', size: 'sm' }),
 						css({
 							borderWidth: '1',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderColor: 'border.primary',
 							fontSize: 'xs',
 							width: 'fit-content'
 						})
@@ -1333,15 +1276,16 @@
 				</button>
 				{#if runsQuery.isLoading}
 					<div
-						class={css({
-							display: 'flex',
-							flexDirection: 'column',
-							alignItems: 'center',
-							justifyContent: 'center',
-							gap: '3',
-							paddingY: '8',
-							color: 'fg.muted'
-						})}
+						class={cx(
+							row,
+							css({
+								flexDirection: 'column',
+								justifyContent: 'center',
+								gap: '3',
+								paddingY: '8',
+								color: 'fg.muted'
+							})
+						)}
 					>
 						<Loader size={24} class={css({ animation: 'spin 1s linear infinite' })} />
 						<p class={css({ fontSize: 'sm' })}>Loading runs...</p>
@@ -1369,8 +1313,7 @@
 					<div
 						class={css({
 							borderWidth: '1',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary'
+							borderColor: 'border.primary'
 						})}
 					>
 						<div
@@ -1387,9 +1330,8 @@
 								textTransform: 'uppercase',
 								letterSpacing: 'wide',
 								color: 'fg.muted',
-								borderBottomWidth: '1',
-								borderBottomStyle: 'solid',
-								borderColor: 'border.tertiary'
+								borderBottom: '1px solid',
+								borderBottomColor: 'border.primary'
 							})}
 						>
 							<span>Type</span>
@@ -1411,16 +1353,13 @@
 									}),
 									index > 0
 										? css({
-												borderTopWidth: '1',
-												borderTopStyle: 'solid',
-												borderColor: 'border.tertiary'
+												borderTop: '1px solid',
+												borderTopColor: 'border.primary'
 											})
 										: ''
 								)}
 							>
-								<div
-									class={css({ display: 'flex', alignItems: 'center', gap: '2', fontSize: 'xs' })}
-								>
+								<div class={cx(row, css({ gap: '2', fontSize: 'xs' }))}>
 									{#if (run.kind as string) === 'preview'}
 										<Eye size={14} class={css({ flexShrink: '0', color: 'accent.primary' })} />
 										<span>Preview</span>
@@ -1450,9 +1389,7 @@
 										</span>
 									{/if}
 								</div>
-								<div
-									class={css({ display: 'flex', alignItems: 'center', gap: '1.5', fontSize: 'xs' })}
-								>
+								<div class={cx(row, css({ gap: '1.5', fontSize: 'xs' }))}>
 									{#if run.status === 'success'}
 										<CircleCheck size={14} class={css({ color: 'success.fg' })} />
 										<span class={css({ color: 'success.fg' })}>Success</span>

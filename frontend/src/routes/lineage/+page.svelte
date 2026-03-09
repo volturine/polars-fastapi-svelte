@@ -16,7 +16,7 @@
 		ZoomIn,
 		ZoomOut
 	} from 'lucide-svelte';
-	import { css, cx, button } from '$lib/styles/panda';
+	import { css, cx, button, row, divider, muted } from '$lib/styles/panda';
 
 	type LayoutMode = 'horizontal' | 'vertical' | 'grid';
 	type LineageGraphApi = {
@@ -119,9 +119,8 @@
 <div class={css({ display: 'flex', height: '100%', flexDirection: 'column' })}>
 	<header
 		class={css({
-			borderBottomWidth: '1px',
-			borderBottomStyle: 'solid',
-			borderBottomColor: 'border.tertiary',
+			borderBottomWidth: '1',
+			borderBottomColor: 'border.primary',
 			backgroundColor: 'bg.primary',
 			paddingX: '6',
 			paddingY: '3'
@@ -141,27 +140,26 @@
 		})}
 	>
 		<div
-			class={css({
-				gridColumn: '1 / -1',
-				gridRow: '1',
-				display: 'flex',
-				alignItems: 'center',
-				gap: '1',
-				paddingX: '3',
-				paddingY: '1.5',
-				borderBottomWidth: '1px',
-				borderBottomStyle: 'solid',
-				borderBottomColor: 'border.tertiary',
-				background: 'bg.primary'
-			})}
+			class={cx(
+				row,
+				css({
+					gridColumn: '1 / -1',
+					gridRow: '1',
+					gap: '1',
+					paddingX: '3',
+					paddingY: '1.5',
+					borderBottomWidth: '1',
+					borderBottomColor: 'border.primary',
+					background: 'bg.primary'
+				})
+			)}
 		>
-			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+			<div class={cx(row, css({ gap: '2' }))}>
 				<select
 					class={css({
 						fontSize: 'xs',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'bg.primary',
 						paddingX: '2',
 						paddingY: '1'
@@ -179,9 +177,8 @@
 				<select
 					class={css({
 						fontSize: 'xs',
-						borderWidth: '1px',
-						borderStyle: 'solid',
-						borderColor: 'border.tertiary',
+						borderWidth: '1',
+						borderColor: 'border.primary',
 						backgroundColor: 'bg.primary',
 						paddingX: '2',
 						paddingY: '1'
@@ -234,7 +231,12 @@
 			</button>
 
 			<div
-				class={css({ marginX: '2', height: '4', width: 'px', backgroundColor: 'border.primary' })}
+				class={css({
+					marginX: '2',
+					height: 'iconSm',
+					width: 'px',
+					backgroundColor: 'bg.muted'
+				})}
 			></div>
 
 			<button class={button({ variant: 'ghost', size: 'sm' })} onclick={zoomIn} title="Zoom in">
@@ -261,9 +263,8 @@
 				gridColumn: '1',
 				gridRow: '2',
 				minHeight: '0',
-				borderRightWidth: '1px',
-				borderRightStyle: 'solid',
-				borderRightColor: 'border.tertiary',
+				borderRightWidth: '1',
+				borderRightColor: 'border.primary',
 				background: 'bg.primary',
 				boxShadow: 'popover',
 				display: 'flex',
@@ -272,19 +273,19 @@
 			})}
 		>
 			<div
-				class={css({
-					display: 'flex',
-					alignItems: 'center',
-					gap: '3',
-					borderBottomWidth: '1px',
-					borderBottomStyle: 'solid',
-					borderBottomColor: 'border.tertiary',
-					paddingX: '4',
-					paddingY: '3'
-				})}
+				class={cx(
+					row,
+					css({
+						gap: '3',
+						borderBottomWidth: '1',
+						borderBottomColor: 'border.primary',
+						paddingX: '4',
+						paddingY: '3'
+					})
+				)}
 			>
 				{#if selectedNode}
-					<div class={css({ display: 'flex', alignItems: 'center', gap: '2', color: 'fg.muted' })}>
+					<div class={cx(row, css({ gap: '2', color: 'fg.muted' }))}>
 						{#if selectedType === 'datasource'}
 							<Database size={16} />
 						{:else}
@@ -334,40 +335,19 @@
 						class={css({ marginBottom: '4', display: 'flex', flexDirection: 'column', gap: '2' })}
 					>
 						{#if selectedNode.source_type}
-							<div
-								class={css({
-									display: 'flex',
-									alignItems: 'center',
-									justifyContent: 'space-between',
-									fontSize: 'sm'
-								})}
-							>
-								<span class={css({ color: 'fg.muted' })}>Source</span>
+							<div class={cx(row, css({ justifyContent: 'space-between', fontSize: 'sm' }))}>
+								<span class={muted}>Source</span>
 								<span class={css({ color: 'fg.primary' })}>{selectedNode.source_type}</span>
 							</div>
 						{/if}
 						{#if selectedNode.status}
-							<div
-								class={css({
-									display: 'flex',
-									alignItems: 'center',
-									justifyContent: 'space-between',
-									fontSize: 'sm'
-								})}
-							>
-								<span class={css({ color: 'fg.muted' })}>Status</span>
+							<div class={cx(row, css({ justifyContent: 'space-between', fontSize: 'sm' }))}>
+								<span class={muted}>Status</span>
 								<span class={css({ color: 'fg.primary' })}>{selectedNode.status}</span>
 							</div>
 						{/if}
-						<div
-							class={css({
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'space-between',
-								fontSize: 'sm'
-							})}
-						>
-							<span class={css({ color: 'fg.muted' })}>ID</span>
+						<div class={cx(row, css({ justifyContent: 'space-between', fontSize: 'sm' }))}>
+							<span class={muted}>ID</span>
 							<span
 								class={css({
 									textOverflow: 'ellipsis',
@@ -385,12 +365,12 @@
 
 					{#if selectedType === 'datasource' && selectedRawId}
 						<div
-							class={css({
-								borderTopWidth: '1px',
-								borderTopStyle: 'solid',
-								borderTopColor: 'border.tertiary',
-								paddingTop: '4'
-							})}
+							class={cx(
+								divider,
+								css({
+									paddingTop: '4'
+								})
+							)}
 						>
 							<h3
 								class={css({
@@ -424,27 +404,16 @@
 		>
 			{#if query.isLoading}
 				<div
-					class={css({
-						display: 'flex',
-						height: '100%',
-						alignItems: 'center',
-						justifyContent: 'center',
-						gap: '2',
-						color: 'fg.tertiary'
-					})}
+					class={cx(
+						row,
+						css({ height: '100%', justifyContent: 'center', gap: '2', color: 'fg.tertiary' })
+					)}
 				>
 					<Loader size={16} class={css({ animation: 'spin 1s linear infinite' })} />
 					Loading lineage...
 				</div>
 			{:else if query.isError}
-				<div
-					class={css({
-						display: 'flex',
-						height: '100%',
-						alignItems: 'center',
-						justifyContent: 'center'
-					})}
-				>
+				<div class={cx(row, css({ height: '100%', justifyContent: 'center' }))}>
 					<p class={css({ fontSize: 'sm', color: 'error.fg' })}>Failed to load lineage.</p>
 				</div>
 			{:else}

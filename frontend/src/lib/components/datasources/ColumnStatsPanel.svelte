@@ -5,7 +5,7 @@
 	import type { HistogramBin } from '$lib/api/datasource';
 	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, cx, row, muted } from '$lib/styles/panda';
 
 	interface Props {
 		datasourceId: string;
@@ -64,15 +64,13 @@
 		<div
 			class={css({
 				borderTopWidth: '1',
-				borderTopStyle: 'solid',
-				borderColor: 'border.tertiary',
-				backgroundColor: 'bg.primary',
-				animation: 'var(--animate-slide-up)'
+				borderColor: 'border.primary',
+				backgroundColor: 'bg.primary'
 			})}
 		>
 			<PanelHeader>
 				{#snippet title()}
-					<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+					<div class={cx(row, css({ gap: '2' }))}>
 						<BarChart3 size={16} />
 						<h3 class={css({ margin: '0', fontSize: 'xs', fontWeight: 'semibold' })}>
 							Column Stats
@@ -94,16 +92,14 @@
 							alignItems: 'center',
 							justifyContent: 'center',
 							borderWidth: '1',
-							borderStyle: 'solid',
-							borderColor: 'border.tertiary',
+							borderColor: 'border.primary',
 							backgroundColor: 'transparent',
 							paddingX: '2',
 							paddingY: '1',
 							fontSize: 'xs',
 							color: 'fg.secondary',
 							_hover: { backgroundColor: 'bg.hover' },
-							transitionProperty: 'color, background-color',
-							transitionDuration: '160ms'
+							transition: 'color 160ms, background-color 160ms'
 						})}
 						onclick={onClose}
 						type="button"
@@ -113,7 +109,7 @@
 				{/snippet}
 			</PanelHeader>
 
-			<div class={css({ height: '80', overflowY: 'auto', padding: '5' })}>
+			<div class={css({ height: 'listLg', overflowY: 'auto', padding: '5' })}>
 				{#if loading}
 					<div class={css({ fontSize: 'sm', color: 'fg.muted' })}>Computing stats...</div>
 				{:else if error}
@@ -123,7 +119,7 @@
 				{:else if stats}
 					<div class={css({ display: 'flex', gap: '6' })}>
 						<!-- Left: Core metrics -->
-						<div class={css({ minWidth: '240', flexShrink: '0' })}>
+						<div class={css({ minWidth: 'list', flexShrink: '0' })}>
 							<!-- Overview section -->
 							<div class={css({ marginBottom: '4' })}>
 								<div
@@ -178,10 +174,9 @@
 								</div>
 								<div
 									class={css({
-										height: '6px',
+										height: 'barTall',
 										backgroundColor: 'bg.tertiary',
 										borderWidth: '1',
-										borderStyle: 'solid',
 										borderColor: 'border.primary',
 										marginTop: '1',
 										overflow: 'hidden'
@@ -191,9 +186,7 @@
 										class={css({
 											height: '100%',
 											backgroundColor: 'accent.primary',
-											transitionProperty: 'width',
-											transitionDuration: '300ms',
-											transitionTimingFunction: 'ease'
+											transition: 'width 300ms ease'
 										})}
 										style="width: {Math.min(stats.null_percentage, 100)}%"
 									></div>
@@ -449,10 +442,9 @@
 									</div>
 									<div
 										class={css({
-											height: '8px',
+											height: 'dot',
 											backgroundColor: 'bg.tertiary',
 											borderWidth: '1',
-											borderStyle: 'solid',
 											borderColor: 'border.primary',
 											overflow: 'hidden'
 										})}
@@ -461,9 +453,7 @@
 											class={css({
 												height: '100%',
 												backgroundColor: 'accent.primary',
-												transitionProperty: 'width',
-												transitionDuration: '300ms',
-												transitionTimingFunction: 'ease'
+												transition: 'width 300ms ease'
 											})}
 											style="width: {truePct}%"
 										></div>
@@ -479,9 +469,7 @@
 										<span class={css({ color: 'accent.primary' })}
 											>True: {stats.true_count.toLocaleString()}</span
 										>
-										<span class={css({ color: 'fg.muted' })}
-											>False: {(stats.false_count ?? 0).toLocaleString()}</span
-										>
+										<span class={muted}>False: {(stats.false_count ?? 0).toLocaleString()}</span>
 									</div>
 								</div>
 							{/if}
@@ -581,7 +569,7 @@
 											display: 'flex',
 											alignItems: 'flex-end',
 											gap: 'px',
-											height: '30'
+											height: 'fieldMd'
 										})}
 									>
 										{#each stats.histogram as bin (bin.start)}
@@ -601,9 +589,7 @@
 														backgroundColor: 'accent.primary',
 														opacity: '0.7',
 														minHeight: 'px',
-														transitionProperty: 'height',
-														transitionDuration: '300ms',
-														transitionTimingFunction: 'ease',
+														transition: 'height 300ms ease',
 														_groupHover: { opacity: '1' }
 													})}
 													style="height: {barPct(bin.count, histMax)}%"
@@ -661,7 +647,7 @@
 															overflow: 'hidden',
 															textOverflow: 'ellipsis',
 															whiteSpace: 'nowrap',
-															maxWidth: '50'
+															maxWidth: 'listSm'
 														})}
 														title={val}>{val}</span
 													>
@@ -671,10 +657,9 @@
 												</div>
 												<div
 													class={css({
-														height: '6px',
+														height: 'barTall',
 														backgroundColor: 'bg.tertiary',
 														borderWidth: '1',
-														borderStyle: 'solid',
 														borderColor: 'border.primary',
 														overflow: 'hidden'
 													})}
@@ -684,9 +669,7 @@
 															height: '100%',
 															backgroundColor: 'accent.primary',
 															opacity: '0.7',
-															transitionProperty: 'width',
-															transitionDuration: '300ms',
-															transitionTimingFunction: 'ease'
+															transition: 'width 300ms ease'
 														})}
 														style="width: {barPct(cnt, topMax)}%"
 													></div>

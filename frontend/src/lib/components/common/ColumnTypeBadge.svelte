@@ -23,9 +23,9 @@
 	const labelVisible = $derived(showLabel && variant !== 'compact');
 
 	const sizes: Record<string, Record<string, string>> = {
-		xs: { paddingX: '1.5', paddingY: '0.5', fontSize: 'xs', gap: '3px' },
-		sm: { paddingX: '2', paddingY: '0.5', fontSize: 'xs', gap: '4px' },
-		md: { paddingX: '2.5', paddingY: '1', fontSize: 'sm', gap: '5px' }
+		xs: { paddingX: '1.5', paddingY: '0.5', fontSize: 'xs', gap: 'px' },
+		sm: { paddingX: '2', paddingY: '0.5', fontSize: 'xs', gap: '1' },
+		md: { paddingX: '2.5', paddingY: '1', fontSize: 'sm', gap: '1' }
 	};
 
 	const variants: Record<string, Record<string, string>> = {
@@ -43,8 +43,7 @@
 			whiteSpace: 'nowrap',
 			lineHeight: '1',
 			userSelect: 'none',
-			transitionProperty: 'opacity',
-			transitionDuration: '160ms',
+			transition: 'opacity 160ms',
 			_hover: { opacity: '0.9' },
 			...sizes[size],
 			...variants[variant]

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import type { FileType } from '$lib/utils/fileTypes';
-	import { css } from '$lib/styles/panda';
+	import { css, stepConfig, cx, row } from '$lib/styles/panda';
 
 	interface Props {
 		config?: {
@@ -43,19 +43,14 @@
 	const formatOptions = $derived(formats);
 </script>
 
-<div
-	class={css({ padding: '0', border: 'none', borderRadius: '0', backgroundColor: 'bg.primary' })}
-	role="region"
-	aria-label="Export configuration"
->
+<div class={stepConfig()} role="region" aria-label="Export configuration">
 	<div class={css({ marginBottom: '5' })}>
-		<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+		<div class={cx(row, css({ gap: '2' }))}>
 			Destination
 			<span
 				class={css({
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.tertiary',
+					borderWidth: '1',
+					borderColor: 'border.primary',
 					backgroundColor: 'bg.tertiary',
 					paddingX: '2',
 					paddingY: '1',
@@ -91,10 +86,7 @@
 
 	{#if showFormatOptions}
 		<div class={css({ marginBottom: '5' })}>
-			<label
-				for="export-select-format"
-				class={css({ display: 'flex', alignItems: 'center', gap: '2' })}
-			>
+			<label for="export-select-format" class={cx(row, css({ gap: '2' }))}>
 				Format
 				{#if selectedFileType === 'duckdb'}
 					<FileTypeBadge sourceType="duckdb" size="sm" />

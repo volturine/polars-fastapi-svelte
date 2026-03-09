@@ -3,7 +3,7 @@
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
-	import { css, stepConfig, cx, divider } from '$lib/styles/panda';
+	import { css, stepConfig, cx, divider, label, input } from '$lib/styles/panda';
 
 	const uid = $props.id();
 
@@ -126,24 +126,13 @@
 				/>
 			</div>
 
-			<label
-				for="{uid}-agg-function"
-				class={css({
-					position: 'absolute',
-					width: 'px',
-					height: 'px',
-					padding: '0',
-					margin: '-1px',
-					overflow: 'hidden',
-					clip: 'rect(0, 0, 0, 0)',
-					whiteSpace: 'nowrap',
-					border: '0'
-				})}>Aggregation function</label
+			<label for="{uid}-agg-function" class={label({ variant: 'hidden' })}
+				>Aggregation function</label
 			>
 			<select
 				id="{uid}-agg-function"
 				data-testid="agg-function-select"
-				class={css({ flex: '1', minWidth: 'fieldMd' })}
+				class={cx(input(), css({ flex: '1', minWidth: 'fieldMd' }))}
 				bind:value={newAggregation.function}
 			>
 				{#each aggregationFunctions as func (func)}
@@ -154,7 +143,7 @@
 			<input
 				id="{uid}-agg-alias"
 				type="text"
-				class={css({ flex: '2', minWidth: 'inputSm' })}
+				class={cx(input(), css({ flex: '2', minWidth: 'inputSm' }))}
 				bind:value={newAggregation.alias}
 				placeholder="Alias (optional)"
 			/>

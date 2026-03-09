@@ -19,7 +19,7 @@
 	} from 'lucide-svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
-	import { css, stepConfig, cx, divider } from '$lib/styles/panda';
+	import { css, label, stepConfig, cx, divider, input } from '$lib/styles/panda';
 
 	type PlotConfigData = Omit<PlotConfigBase, 'aggregation' | 'chart_type' | 'stack_mode'> & {
 		chart_type:
@@ -624,7 +624,14 @@
 					aria-labelledby={`${uid}-plot-bins`}
 				>
 					<span id={`${uid}-plot-bins`}><SectionHeader>Bins</SectionHeader></span>
-					<input id={`${uid}-bins`} type="number" min="2" max="100" bind:value={plotConfig.bins} />
+					<input
+						id={`${uid}-bins`}
+						type="number"
+						min="2"
+						max="100"
+						class={input()}
+						bind:value={plotConfig.bins}
+					/>
 				</div>
 			{/if}
 
@@ -644,12 +651,7 @@
 					<select
 						id={`${uid}-aggregation`}
 						bind:value={plotConfig.aggregation}
-						class={css({
-							backgroundColor: 'bg.secondary',
-							borderColor: 'border.primary',
-							color: 'fg.primary',
-							fontFamily: 'mono'
-						})}
+						class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 					>
 						{#each aggregations as agg (agg.value)}
 							<option value={agg.value}>{agg.label}</option>
@@ -674,12 +676,7 @@
 					<select
 						id={`${uid}-stack-mode`}
 						bind:value={plotConfig.stack_mode}
-						class={css({
-							backgroundColor: 'bg.secondary',
-							borderColor: 'border.primary',
-							color: 'fg.primary',
-							fontFamily: 'mono'
-						})}
+						class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 					>
 						<option value="grouped">Grouped</option>
 						<option value="stacked">Stacked</option>
@@ -726,27 +723,11 @@
 					<span id={`${uid}-plot-group-sort`}><SectionHeader>Group Sorting</SectionHeader></span>
 					<div class={css({ display: 'grid', gap: '3' })}>
 						<div>
-							<label
-								class={css({
-									display: 'block',
-									fontSize: 'xs',
-									fontWeight: '600',
-									color: 'fg.muted',
-									marginBottom: '1.5',
-									textTransform: 'uppercase',
-									letterSpacing: 'wider'
-								})}
-								for={`${uid}-group-sort-by`}>Sort By</label
-							>
+							<label class={label()} for={`${uid}-group-sort-by`}>Sort By</label>
 							<select
 								id={`${uid}-group-sort-by`}
 								bind:value={plotConfig.group_sort_by}
-								class={css({
-									backgroundColor: 'bg.secondary',
-									borderColor: 'border.primary',
-									color: 'fg.primary',
-									fontFamily: 'mono'
-								})}
+								class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 							>
 								<option value={null}>Default</option>
 								<option value="name">Name</option>
@@ -755,27 +736,11 @@
 							</select>
 						</div>
 						<div>
-							<label
-								class={css({
-									display: 'block',
-									fontSize: 'xs',
-									fontWeight: '600',
-									color: 'fg.muted',
-									marginBottom: '1.5',
-									textTransform: 'uppercase',
-									letterSpacing: 'wider'
-								})}
-								for={`${uid}-group-sort-order`}>Order</label
-							>
+							<label class={label()} for={`${uid}-group-sort-order`}>Order</label>
 							<select
 								id={`${uid}-group-sort-order`}
 								bind:value={plotConfig.group_sort_order}
-								class={css({
-									backgroundColor: 'bg.secondary',
-									borderColor: 'border.primary',
-									color: 'fg.primary',
-									fontFamily: 'mono'
-								})}
+								class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 							>
 								<option value="asc">Ascending</option>
 								<option value="desc">Descending</option>
@@ -783,19 +748,7 @@
 						</div>
 						{#if plotConfig.group_sort_by === 'custom'}
 							<div>
-								<div
-									class={css({
-										display: 'block',
-										fontSize: 'xs',
-										fontWeight: '600',
-										color: 'fg.muted',
-										marginBottom: '1.5',
-										textTransform: 'uppercase',
-										letterSpacing: 'wider'
-									})}
-								>
-									Sort Column
-								</div>
+								<div class={label()}>Sort Column</div>
 								<div>
 									<ColumnDropdown
 										{schema}
@@ -825,27 +778,11 @@
 					<span id={`${uid}-plot-date-bucket`}><SectionHeader>Date Bucketing</SectionHeader></span>
 					<div class={css({ display: 'grid', gap: '3' })}>
 						<div>
-							<label
-								class={css({
-									display: 'block',
-									fontSize: 'xs',
-									fontWeight: '600',
-									color: 'fg.muted',
-									marginBottom: '1.5',
-									textTransform: 'uppercase',
-									letterSpacing: 'wider'
-								})}
-								for={`${uid}-date-bucket`}>Bucket</label
-							>
+							<label class={label()} for={`${uid}-date-bucket`}>Bucket</label>
 							<select
 								id={`${uid}-date-bucket`}
 								bind:value={plotConfig.date_bucket}
-								class={css({
-									backgroundColor: 'bg.secondary',
-									borderColor: 'border.primary',
-									color: 'fg.primary',
-									fontFamily: 'mono'
-								})}
+								class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 							>
 								<option value={null}>None</option>
 								<option value="exact">Exact</option>
@@ -858,27 +795,11 @@
 							</select>
 						</div>
 						<div>
-							<label
-								class={css({
-									display: 'block',
-									fontSize: 'xs',
-									fontWeight: '600',
-									color: 'fg.muted',
-									marginBottom: '1.5',
-									textTransform: 'uppercase',
-									letterSpacing: 'wider'
-								})}
-								for={`${uid}-date-ordinal`}>Ordinal</label
-							>
+							<label class={label()} for={`${uid}-date-ordinal`}>Ordinal</label>
 							<select
 								id={`${uid}-date-ordinal`}
 								bind:value={plotConfig.date_ordinal}
-								class={css({
-									backgroundColor: 'bg.secondary',
-									borderColor: 'border.primary',
-									color: 'fg.primary',
-									fontFamily: 'mono'
-								})}
+								class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 							>
 								<option value={null}>None</option>
 								<option value="day_of_week">Day of Week</option>
@@ -915,27 +836,11 @@
 					<span id={`${uid}-plot-sort`}><SectionHeader>Sort Options</SectionHeader></span>
 					<div class={css({ display: 'grid', gap: '3' })}>
 						<div>
-							<label
-								class={css({
-									display: 'block',
-									fontSize: 'xs',
-									fontWeight: '600',
-									color: 'fg.muted',
-									marginBottom: '1.5',
-									textTransform: 'uppercase',
-									letterSpacing: 'wider'
-								})}
-								for={`${uid}-sort-by`}>Sort By</label
-							>
+							<label class={label()} for={`${uid}-sort-by`}>Sort By</label>
 							<select
 								id={`${uid}-sort-by`}
 								bind:value={plotConfig.sort_by}
-								class={css({
-									backgroundColor: 'bg.secondary',
-									borderColor: 'border.primary',
-									color: 'fg.primary',
-									fontFamily: 'mono'
-								})}
+								class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 							>
 								<option value={null}>Default</option>
 								<option value="x">X value</option>
@@ -944,27 +849,11 @@
 							</select>
 						</div>
 						<div>
-							<label
-								class={css({
-									display: 'block',
-									fontSize: 'xs',
-									fontWeight: '600',
-									color: 'fg.muted',
-									marginBottom: '1.5',
-									textTransform: 'uppercase',
-									letterSpacing: 'wider'
-								})}
-								for={`${uid}-sort-order`}>Order</label
-							>
+							<label class={label()} for={`${uid}-sort-order`}>Order</label>
 							<select
 								id={`${uid}-sort-order`}
 								bind:value={plotConfig.sort_order}
-								class={css({
-									backgroundColor: 'bg.secondary',
-									borderColor: 'border.primary',
-									color: 'fg.primary',
-									fontFamily: 'mono'
-								})}
+								class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 							>
 								<option value="asc">Ascending</option>
 								<option value="desc">Descending</option>
@@ -972,19 +861,7 @@
 						</div>
 						{#if plotConfig.sort_by === 'custom'}
 							<div>
-								<div
-									class={css({
-										display: 'block',
-										fontSize: 'xs',
-										fontWeight: '600',
-										color: 'fg.muted',
-										marginBottom: '1.5',
-										textTransform: 'uppercase',
-										letterSpacing: 'wider'
-									})}
-								>
-									Sort Column
-								</div>
+								<div class={label()}>Sort Column</div>
 								<div>
 									<ColumnDropdown
 										{schema}
@@ -1014,17 +891,7 @@
 					<span id={`${uid}-plot-interactivity`}><SectionHeader>Interactivity</SectionHeader></span>
 					<div class={css({ display: 'grid', gap: '3' })}>
 						<label
-							class={css({
-								display: 'flex',
-								alignItems: 'center',
-								gap: '2',
-								fontSize: 'sm',
-								color: 'fg.secondary',
-								marginBottom: '0',
-								fontWeight: 'normal',
-								textTransform: 'none',
-								letterSpacing: 'normal'
-							})}
+							class={cx(label({ variant: 'checkbox' }), css({ gap: '2' }))}
 							for={`${uid}-plot-zoom`}
 						>
 							<input
@@ -1035,17 +902,7 @@
 							<span>Pan & Zoom</span>
 						</label>
 						<label
-							class={css({
-								display: 'flex',
-								alignItems: 'center',
-								gap: '2',
-								fontSize: 'sm',
-								color: 'fg.secondary',
-								marginBottom: '0',
-								fontWeight: 'normal',
-								textTransform: 'none',
-								letterSpacing: 'normal'
-							})}
+							class={cx(label({ variant: 'checkbox' }), css({ gap: '2' }))}
 							for={`${uid}-plot-select`}
 						>
 							<input
@@ -1057,17 +914,7 @@
 						</label>
 						{#if showAreaSelection}
 							<label
-								class={css({
-									display: 'flex',
-									alignItems: 'center',
-									gap: '2',
-									fontSize: 'sm',
-									color: 'fg.secondary',
-									marginBottom: '0',
-									fontWeight: 'normal',
-									textTransform: 'none',
-									letterSpacing: 'normal'
-								})}
+								class={cx(label({ variant: 'checkbox' }), css({ gap: '2' }))}
 								for={`${uid}-plot-area-select`}
 							>
 								<input
@@ -1100,19 +947,7 @@
 				<span id={`${uid}-plot-overlays`}><SectionHeader>Overlays</SectionHeader></span>
 				<div class={css({ display: 'grid', gap: '3' })}>
 					<div>
-						<div
-							class={css({
-								display: 'block',
-								fontSize: 'xs',
-								fontWeight: '600',
-								color: 'fg.muted',
-								marginBottom: '1.5',
-								textTransform: 'uppercase',
-								letterSpacing: 'wider'
-							})}
-						>
-							Y Column
-						</div>
+						<div class={label()}>Y Column</div>
 						<ColumnDropdown
 							{schema}
 							value={overlayValue}
@@ -1121,27 +956,11 @@
 						/>
 					</div>
 					<div>
-						<label
-							class={css({
-								display: 'block',
-								fontSize: 'xs',
-								fontWeight: '600',
-								color: 'fg.muted',
-								marginBottom: '1.5',
-								textTransform: 'uppercase',
-								letterSpacing: 'wider'
-							})}
-							for={`${uid}-overlay-type`}>Chart Type</label
-						>
+						<label class={label()} for={`${uid}-overlay-type`}>Chart Type</label>
 						<select
 							id={`${uid}-overlay-type`}
 							bind:value={overlayType}
-							class={css({
-								backgroundColor: 'bg.secondary',
-								borderColor: 'border.primary',
-								color: 'fg.primary',
-								fontFamily: 'mono'
-							})}
+							class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 						>
 							<option value="line">Line</option>
 							<option value="area">Area</option>
@@ -1150,54 +969,22 @@
 						</select>
 					</div>
 					<div>
-						<label
-							class={css({
-								display: 'block',
-								fontSize: 'xs',
-								fontWeight: '600',
-								color: 'fg.muted',
-								marginBottom: '1.5',
-								textTransform: 'uppercase',
-								letterSpacing: 'wider'
-							})}
-							for={`${uid}-overlay-axis`}>Axis</label
-						>
+						<label class={label()} for={`${uid}-overlay-axis`}>Axis</label>
 						<select
 							id={`${uid}-overlay-axis`}
 							bind:value={overlayAxis}
-							class={css({
-								backgroundColor: 'bg.secondary',
-								borderColor: 'border.primary',
-								color: 'fg.primary',
-								fontFamily: 'mono'
-							})}
+							class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 						>
 							<option value="left">Left</option>
 							<option value="right">Right</option>
 						</select>
 					</div>
 					<div>
-						<label
-							class={css({
-								display: 'block',
-								fontSize: 'xs',
-								fontWeight: '600',
-								color: 'fg.muted',
-								marginBottom: '1.5',
-								textTransform: 'uppercase',
-								letterSpacing: 'wider'
-							})}
-							for={`${uid}-overlay-agg`}>Aggregation</label
-						>
+						<label class={label()} for={`${uid}-overlay-agg`}>Aggregation</label>
 						<select
 							id={`${uid}-overlay-agg`}
 							bind:value={overlayAgg}
-							class={css({
-								backgroundColor: 'bg.secondary',
-								borderColor: 'border.primary',
-								color: 'fg.primary',
-								fontFamily: 'mono'
-							})}
+							class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 						>
 							{#each aggregations as agg (agg.value)}
 								<option value={agg.value}>{agg.label}</option>
@@ -1258,12 +1045,7 @@
 								<select
 									id={`${uid}-overlay-${index}-type`}
 									aria-label="Overlay chart type"
-									class={css({
-										backgroundColor: 'bg.secondary',
-										borderColor: 'border.primary',
-										color: 'fg.primary',
-										fontFamily: 'mono'
-									})}
+									class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 									bind:value={overlay.chart_type}
 									onchange={(e) =>
 										updateOverlay(index, {
@@ -1278,12 +1060,7 @@
 								<select
 									id={`${uid}-overlay-${index}-agg`}
 									aria-label="Overlay aggregation"
-									class={css({
-										backgroundColor: 'bg.secondary',
-										borderColor: 'border.primary',
-										color: 'fg.primary',
-										fontFamily: 'mono'
-									})}
+									class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 									bind:value={overlay.aggregation}
 									onchange={(e) =>
 										updateOverlay(index, {
@@ -1297,12 +1074,7 @@
 								<select
 									id={`${uid}-overlay-${index}-yaxis`}
 									aria-label="Overlay Y axis position"
-									class={css({
-										backgroundColor: 'bg.secondary',
-										borderColor: 'border.primary',
-										color: 'fg.primary',
-										fontFamily: 'mono'
-									})}
+									class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 									bind:value={overlay.y_axis_position}
 									onchange={(e) =>
 										updateOverlay(index, {
@@ -1375,90 +1147,44 @@
 				>
 				<div class={css({ display: 'grid', gap: '3' })}>
 					<div>
-						<label
-							class={css({
-								display: 'block',
-								fontSize: 'xs',
-								fontWeight: '600',
-								color: 'fg.muted',
-								marginBottom: '1.5',
-								textTransform: 'uppercase',
-								letterSpacing: 'wider'
-							})}
-							for={`${uid}-ref-axis`}>Axis</label
-						>
+						<label class={label()} for={`${uid}-ref-axis`}>Axis</label>
 						<select
 							id={`${uid}-ref-axis`}
 							bind:value={refAxis}
-							class={css({
-								backgroundColor: 'bg.secondary',
-								borderColor: 'border.primary',
-								color: 'fg.primary',
-								fontFamily: 'mono'
-							})}
+							class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 						>
 							<option value="y">Y</option>
 							<option value="x">X</option>
 						</select>
 					</div>
 					<div>
-						<label
-							class={css({
-								display: 'block',
-								fontSize: 'xs',
-								fontWeight: '600',
-								color: 'fg.muted',
-								marginBottom: '1.5',
-								textTransform: 'uppercase',
-								letterSpacing: 'wider'
-							})}
-							for={`${uid}-ref-value`}>Value</label
-						>
+						<label class={label()} for={`${uid}-ref-value`}>Value</label>
 						<input
 							id={`${uid}-ref-value`}
 							type="number"
+							class={input()}
 							value={refValue}
 							oninput={(e) => (refValue = e.currentTarget.value)}
 							placeholder="0"
 						/>
 					</div>
 					<div>
-						<label
-							class={css({
-								display: 'block',
-								fontSize: 'xs',
-								fontWeight: '600',
-								color: 'fg.muted',
-								marginBottom: '1.5',
-								textTransform: 'uppercase',
-								letterSpacing: 'wider'
-							})}
-							for={`${uid}-ref-label`}>Label</label
-						>
+						<label class={label()} for={`${uid}-ref-label`}>Label</label>
 						<input
 							id={`${uid}-ref-label`}
 							type="text"
+							class={input()}
 							value={refLabel}
 							oninput={(e) => (refLabel = e.currentTarget.value)}
 							placeholder="Optional"
 						/>
 					</div>
 					<div>
-						<label
-							class={css({
-								display: 'block',
-								fontSize: 'xs',
-								fontWeight: '600',
-								color: 'fg.muted',
-								marginBottom: '1.5',
-								textTransform: 'uppercase',
-								letterSpacing: 'wider'
-							})}
-							for={`${uid}-ref-color`}>Color</label
-						>
+						<label class={label()} for={`${uid}-ref-color`}>Color</label>
 						<input
 							id={`${uid}-ref-color`}
 							type="text"
+							class={input()}
 							value={refColor}
 							oninput={(e) => (refColor = e.currentTarget.value)}
 							placeholder="#E0687A"
@@ -1510,12 +1236,7 @@
 								<select
 									id={`${uid}-ref-${index}-axis`}
 									aria-label="Reference line axis"
-									class={css({
-										backgroundColor: 'bg.secondary',
-										borderColor: 'border.primary',
-										color: 'fg.primary',
-										fontFamily: 'mono'
-									})}
+									class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 									bind:value={line.axis}
 									onchange={(e) =>
 										updateReferenceLine(index, {
@@ -1529,6 +1250,7 @@
 									id={`${uid}-ref-${index}-value`}
 									aria-label="Reference line value"
 									type="number"
+									class={input()}
 									value={line.value ?? ''}
 									oninput={(e) =>
 										updateReferenceLine(index, {
@@ -1540,6 +1262,7 @@
 									id={`${uid}-ref-${index}-label`}
 									aria-label="Reference line label"
 									type="text"
+									class={input()}
 									value={line.label ?? ''}
 									oninput={(e) =>
 										updateReferenceLine(index, {
@@ -1551,6 +1274,7 @@
 									id={`${uid}-ref-${index}-color`}
 									aria-label="Reference line color"
 									type="text"
+									class={input()}
 									value={line.color ?? ''}
 									oninput={(e) =>
 										updateReferenceLine(index, {
@@ -1620,6 +1344,7 @@
 				<input
 					id={`${uid}-title`}
 					type="text"
+					class={input()}
 					value={plotConfig.title ?? ''}
 					oninput={(e) => (plotConfig.title = e.currentTarget.value)}
 					placeholder="Optional title"
@@ -1642,12 +1367,7 @@
 					<select
 						id={`${uid}-legend-position`}
 						bind:value={plotConfig.legend_position}
-						class={css({
-							backgroundColor: 'bg.secondary',
-							borderColor: 'border.primary',
-							color: 'fg.primary',
-							fontFamily: 'mono'
-						})}
+						class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 					>
 						<option value="right">Right</option>
 						<option value="left">Left</option>
@@ -1673,42 +1393,22 @@
 					<span id={`${uid}-plot-axis`}><SectionHeader>Axis Formatting</SectionHeader></span>
 					<div class={css({ display: 'grid', gap: '3' })}>
 						<div>
-							<label
-								class={css({
-									display: 'block',
-									fontSize: 'xs',
-									fontWeight: '600',
-									color: 'fg.muted',
-									marginBottom: '1.5',
-									textTransform: 'uppercase',
-									letterSpacing: 'wider'
-								})}
-								for={`${uid}-axis-x-label`}>X Axis Label</label
-							>
+							<label class={label()} for={`${uid}-axis-x-label`}>X Axis Label</label>
 							<input
 								id={`${uid}-axis-x-label`}
 								type="text"
+								class={input()}
 								value={plotConfig.x_axis_label ?? ''}
 								oninput={(e) => (plotConfig.x_axis_label = e.currentTarget.value)}
 								placeholder="Optional label"
 							/>
 						</div>
 						<div>
-							<label
-								class={css({
-									display: 'block',
-									fontSize: 'xs',
-									fontWeight: '600',
-									color: 'fg.muted',
-									marginBottom: '1.5',
-									textTransform: 'uppercase',
-									letterSpacing: 'wider'
-								})}
-								for={`${uid}-axis-y-label`}>Y Axis Label</label
-							>
+							<label class={label()} for={`${uid}-axis-y-label`}>Y Axis Label</label>
 							<input
 								id={`${uid}-axis-y-label`}
 								type="text"
+								class={input()}
 								value={plotConfig.y_axis_label ?? ''}
 								oninput={(e) => (plotConfig.y_axis_label = e.currentTarget.value)}
 								placeholder="Optional label"
@@ -1716,48 +1416,22 @@
 						</div>
 						{#if needsYAxis}
 							<div>
-								<label
-									class={css({
-										display: 'block',
-										fontSize: 'xs',
-										fontWeight: '600',
-										color: 'fg.muted',
-										marginBottom: '1.5',
-										textTransform: 'uppercase',
-										letterSpacing: 'wider'
-									})}
-									for={`${uid}-axis-y-scale`}>Y Axis Scale</label
-								>
+								<label class={label()} for={`${uid}-axis-y-scale`}>Y Axis Scale</label>
 								<select
 									id={`${uid}-axis-y-scale`}
 									bind:value={plotConfig.y_axis_scale}
-									class={css({
-										backgroundColor: 'bg.secondary',
-										borderColor: 'border.primary',
-										color: 'fg.primary',
-										fontFamily: 'mono'
-									})}
+									class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 								>
 									<option value="linear">Linear</option>
 									<option value="log">Log</option>
 								</select>
 							</div>
 							<div>
-								<label
-									class={css({
-										display: 'block',
-										fontSize: 'xs',
-										fontWeight: '600',
-										color: 'fg.muted',
-										marginBottom: '1.5',
-										textTransform: 'uppercase',
-										letterSpacing: 'wider'
-									})}
-									for={`${uid}-axis-y-min`}>Y Axis Min</label
-								>
+								<label class={label()} for={`${uid}-axis-y-min`}>Y Axis Min</label>
 								<input
 									id={`${uid}-axis-y-min`}
 									type="number"
+									class={input()}
 									value={yMinDisplay}
 									oninput={(e) => setYAxisMin(e.currentTarget.value)}
 									onblur={commitYAxisMin}
@@ -1765,21 +1439,11 @@
 								/>
 							</div>
 							<div>
-								<label
-									class={css({
-										display: 'block',
-										fontSize: 'xs',
-										fontWeight: '600',
-										color: 'fg.muted',
-										marginBottom: '1.5',
-										textTransform: 'uppercase',
-										letterSpacing: 'wider'
-									})}
-									for={`${uid}-axis-y-max`}>Y Axis Max</label
-								>
+								<label class={label()} for={`${uid}-axis-y-max`}>Y Axis Max</label>
 								<input
 									id={`${uid}-axis-y-max`}
 									type="number"
+									class={input()}
 									value={yMaxDisplay}
 									oninput={(e) => setYAxisMax(e.currentTarget.value)}
 									onblur={commitYAxisMax}
@@ -1788,27 +1452,11 @@
 							</div>
 						{/if}
 						<div>
-							<label
-								class={css({
-									display: 'block',
-									fontSize: 'xs',
-									fontWeight: '600',
-									color: 'fg.muted',
-									marginBottom: '1.5',
-									textTransform: 'uppercase',
-									letterSpacing: 'wider'
-								})}
-								for={`${uid}-axis-units`}>Display Units</label
-							>
+							<label class={label()} for={`${uid}-axis-units`}>Display Units</label>
 							<select
 								id={`${uid}-axis-units`}
 								bind:value={plotConfig.display_units}
-								class={css({
-									backgroundColor: 'bg.secondary',
-									borderColor: 'border.primary',
-									color: 'fg.primary',
-									fontFamily: 'mono'
-								})}
+								class={cx(input(), css({ backgroundColor: 'bg.secondary' }))}
 							>
 								<option value="">None</option>
 								<option value="K">Thousands (K)</option>
@@ -1818,23 +1466,13 @@
 							</select>
 						</div>
 						<div>
-							<label
-								class={css({
-									display: 'block',
-									fontSize: 'xs',
-									fontWeight: '600',
-									color: 'fg.muted',
-									marginBottom: '1.5',
-									textTransform: 'uppercase',
-									letterSpacing: 'wider'
-								})}
-								for={`${uid}-axis-decimals`}>Decimal Places</label
-							>
+							<label class={label()} for={`${uid}-axis-decimals`}>Decimal Places</label>
 							<input
 								id={`${uid}-axis-decimals`}
 								type="number"
 								min="0"
 								max="4"
+								class={input()}
 								value={decimalDisplay}
 								oninput={(e) => setDecimalPlaces(e.currentTarget.value)}
 								onblur={commitDecimalPlaces}
@@ -1863,6 +1501,7 @@
 						min="0"
 						max="1"
 						step="0.05"
+						class={input()}
 						value={areaOpacityDisplay}
 						oninput={(e) => setAreaOpacity(e.currentTarget.value)}
 						onblur={commitAreaOpacity}
@@ -1896,6 +1535,7 @@
 					<input
 						id={`${uid}-series-colors`}
 						type="text"
+						class={input()}
 						value={plotConfig.series_colors.join(', ')}
 						oninput={(e) => (plotConfig.series_colors = parseSeriesColors(e.currentTarget.value))}
 						placeholder="#4A8FE7, #50B88E, #E8A838"

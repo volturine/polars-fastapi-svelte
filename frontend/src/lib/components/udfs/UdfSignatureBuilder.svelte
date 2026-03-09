@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { UdfInput } from '$lib/types/udf';
 	import ColumnTypeDropdown from '$lib/components/common/ColumnTypeDropdown.svelte';
-	import { css, button, emptyText, rowBetween } from '$lib/styles/panda';
+	import { css, cx, button, emptyText, input, label, rowBetween } from '$lib/styles/panda';
 
 	interface Props {
 		inputs: UdfInput[];
@@ -42,7 +42,7 @@
 		<p class={emptyText({ size: 'inline' })}>No inputs yet.</p>
 	{:else}
 		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-			{#each inputs as input, index (index)}
+			{#each inputs as item, index (index)}
 				<div
 					class={css({
 						display: 'grid',
@@ -53,24 +53,20 @@
 					})}
 				>
 					<label
-						class={css({
-							fontSize: 'xs',
-							textAlign: 'left',
-							color: 'fg.muted',
-							md: { textAlign: 'center' }
-						})}
+						class={cx(label(), css({ textAlign: 'left', md: { textAlign: 'center' } }))}
 						for="udf-input-{index}-label">{index + 1}</label
 					>
 					<input
 						type="text"
 						id="udf-input-{index}-label"
 						placeholder="Label"
-						value={input.label ?? ''}
+						value={item.label ?? ''}
+						class={input()}
 						oninput={(e) => updateInput(index, { label: e.currentTarget.value })}
 					/>
 					<div>
 						<ColumnTypeDropdown
-							value={input.dtype}
+							value={item.dtype}
 							onChange={(val) => updateInput(index, { dtype: val })}
 							placeholder="Select type..."
 						/>

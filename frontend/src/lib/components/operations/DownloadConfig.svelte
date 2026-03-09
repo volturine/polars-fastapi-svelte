@@ -8,7 +8,7 @@
 		config?: DownloadConfigData;
 	}
 
-	import { css, cx, stepConfig, divider } from '$lib/styles/panda';
+	import { css, cx, label, stepConfig, divider, input } from '$lib/styles/panda';
 
 	let { config = $bindable({ format: 'csv', filename: 'download' }) }: Props = $props();
 
@@ -32,14 +32,12 @@
 			border: 'none'
 		})}
 	>
-		<label
-			for="download-filename"
-			class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}
-		>
+		<label for="download-filename" class={cx(label({ variant: 'wrapper' }), css({ gap: '3' }))}>
 			Filename
 			<input
 				id="download-filename"
 				type="text"
+				class={input()}
 				bind:value={config.filename}
 				placeholder="download"
 			/>
@@ -73,12 +71,9 @@
 			)
 		)}
 	>
-		<label
-			for="download-format"
-			class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}
-		>
+		<label for="download-format" class={cx(label({ variant: 'wrapper' }), css({ gap: '3' }))}>
 			Format
-			<select id="download-format" bind:value={config.format}>
+			<select id="download-format" class={input()} bind:value={config.format}>
 				{#each formats as fmt (fmt.value)}
 					<option value={fmt.value}>{fmt.label}</option>
 				{/each}

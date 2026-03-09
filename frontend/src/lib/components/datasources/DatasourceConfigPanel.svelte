@@ -38,7 +38,17 @@
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import { formatDateDisplay } from '$lib/utils/datetime';
 	import { resolveColumnType } from '$lib/utils/columnTypes';
-	import { css, cx, button, tabButton, chip, emptyText, row } from '$lib/styles/panda';
+	import {
+		css,
+		cx,
+		button,
+		input,
+		label,
+		tabButton,
+		chip,
+		emptyText,
+		row
+	} from '$lib/styles/panda';
 
 	interface Props {
 		datasource: DataSource;
@@ -630,7 +640,7 @@
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
 					<label
 						for="datasource-name-{datasource.id}"
-						class={css({ fontSize: 'xs', fontWeight: 'medium', color: 'fg.secondary' })}>Name</label
+						class={cx(label({ variant: 'field' }), css({ fontSize: 'xs' }))}>Name</label
 					>
 					<input
 						id="datasource-name-{datasource.id}"
@@ -638,14 +648,7 @@
 						value={name}
 						oninput={(e) => handleNameChange(e.currentTarget.value)}
 						placeholder="Data source name"
-						class={css({
-							borderWidth: '1',
-							paddingX: '3',
-							paddingY: '2',
-							fontSize: 'sm',
-							borderColor: 'border.primary',
-							backgroundColor: 'bg.primary'
-						})}
+						class={input()}
 					/>
 				</div>
 
@@ -1083,21 +1086,13 @@
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
 						<label
 							for="csv-delimiter-{datasource.id}"
-							class={css({ fontSize: 'xs', fontWeight: 'medium', color: 'fg.secondary' })}
-							>Delimiter</label
+							class={cx(label({ variant: 'field' }), css({ fontSize: 'xs' }))}>Delimiter</label
 						>
 						<select
 							id="csv-delimiter-{datasource.id}"
 							value={csvConfig.delimiter}
 							onchange={(e) => handleCsvConfigChange('delimiter', e.currentTarget.value)}
-							class={css({
-								borderWidth: '1',
-								paddingX: '3',
-								paddingY: '2',
-								fontSize: 'sm',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary'
-							})}
+							class={input()}
 						>
 							<option value=",">Comma (,)</option>
 							<option value=";">Semicolon (;)</option>
@@ -1110,21 +1105,13 @@
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
 						<label
 							for="csv-quote-{datasource.id}"
-							class={css({ fontSize: 'xs', fontWeight: 'medium', color: 'fg.secondary' })}
-							>Quote</label
+							class={cx(label({ variant: 'field' }), css({ fontSize: 'xs' }))}>Quote</label
 						>
 						<select
 							id="csv-quote-{datasource.id}"
 							value={csvConfig.quote_char}
 							onchange={(e) => handleCsvConfigChange('quote_char', e.currentTarget.value)}
-							class={css({
-								borderWidth: '1',
-								paddingX: '3',
-								paddingY: '2',
-								fontSize: 'sm',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary'
-							})}
+							class={input()}
 						>
 							<option value="&quot;">Double Quote (")</option>
 							<option value="'">Single Quote (')</option>
@@ -1135,21 +1122,13 @@
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
 						<label
 							for="csv-encoding-{datasource.id}"
-							class={css({ fontSize: 'xs', fontWeight: 'medium', color: 'fg.secondary' })}
-							>Encoding</label
+							class={cx(label({ variant: 'field' }), css({ fontSize: 'xs' }))}>Encoding</label
 						>
 						<select
 							id="csv-encoding-{datasource.id}"
 							value={csvConfig.encoding}
 							onchange={(e) => handleCsvConfigChange('encoding', e.currentTarget.value)}
-							class={css({
-								borderWidth: '1',
-								paddingX: '3',
-								paddingY: '2',
-								fontSize: 'sm',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary'
-							})}
+							class={input()}
 						>
 							<option value="utf8">UTF-8</option>
 							<option value="utf8-lossy">UTF-8 (lossy)</option>
@@ -1161,8 +1140,7 @@
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
 						<label
 							for="csv-skip-rows-{datasource.id}"
-							class={css({ fontSize: 'xs', fontWeight: 'medium', color: 'fg.secondary' })}
-							>Skip Rows</label
+							class={cx(label({ variant: 'field' }), css({ fontSize: 'xs' }))}>Skip Rows</label
 						>
 						<input
 							id="csv-skip-rows-{datasource.id}"
@@ -1171,14 +1149,7 @@
 							value={csvConfig.skip_rows}
 							oninput={(e) =>
 								handleCsvConfigChange('skip_rows', parseInt(e.currentTarget.value) || 0)}
-							class={css({
-								borderWidth: '1',
-								paddingX: '3',
-								paddingY: '2',
-								fontSize: 'sm',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary'
-							})}
+							class={input()}
 						/>
 					</div>
 				</div>
@@ -1193,8 +1164,7 @@
 					/>
 					<label
 						for="csv-header-{datasource.id}"
-						class={css({ margin: '0', fontSize: 'sm', color: 'fg.secondary' })}
-						>First row is header</label
+						class={cx(label({ variant: 'field' }), css({ margin: '0' }))}>First row is header</label
 					>
 				</div>
 

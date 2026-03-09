@@ -14,7 +14,7 @@
 	import FileBrowser from '$lib/components/common/FileBrowser.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { Check, X } from 'lucide-svelte';
-	import { css, cx, button, tabButton, row } from '$lib/styles/panda';
+	import { css, cx, button, input, tabButton, label, row } from '$lib/styles/panda';
 
 	type Tab = 'file' | 'database' | 'path';
 
@@ -400,9 +400,7 @@
 		{#if activeTab === 'file'}
 			<div class={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<span class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
-						>Source</span
-					>
+					<span class={label({ variant: 'field' })}>Source</span>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
 						<div
 							class={css({
@@ -421,12 +419,7 @@
 				</div>
 
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label
-						for="file-input"
-						class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
-					>
-						Files
-					</label>
+					<label for="file-input" class={label({ variant: 'field' })}> Files </label>
 					<input
 						id="file-input"
 						type="file"
@@ -434,11 +427,7 @@
 						accept=".csv,.xlsx"
 						onchange={handleFileChange}
 						disabled={loading}
-						class={css({
-							borderWidth: '1',
-							borderColor: 'border.primary',
-							padding: '2'
-						})}
+						class={input()}
 					/>
 					<p class={css({ margin: '0', fontSize: 'xs', lineHeight: '1.625', color: 'fg.muted' })}>
 						Select one or more CSV or Excel files (one type per batch). Names are derived from
@@ -531,26 +520,14 @@
 
 				{#if selectedFiles.length === 1}
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-						<label
-							for="file-name"
-							class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
-						>
-							Name
-						</label>
+						<label for="file-name" class={label({ variant: 'field' })}> Name </label>
 						<input
 							id="file-name"
 							type="text"
 							bind:value={fileName}
 							placeholder="My Dataset"
 							disabled={loading}
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '3',
-								paddingY: '2',
-								fontSize: 'sm'
-							})}
+							class={input()}
 						/>
 						{#if file}
 							<p class={css({ margin: '0', fontSize: 'sm', color: 'fg.secondary' })}>
@@ -592,7 +569,7 @@
 							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
 								<label
 									for="csv-delimiter"
-									class={css({ fontSize: 'xs', fontWeight: 'medium', color: 'fg.secondary' })}
+									class={cx(label({ variant: 'field' }), css({ fontSize: 'xs' }))}
 								>
 									Delimiter
 								</label>
@@ -600,14 +577,7 @@
 									id="csv-delimiter"
 									bind:value={csvDelimiter}
 									disabled={loading}
-									class={css({
-										borderWidth: '1',
-										borderColor: 'border.primary',
-										backgroundColor: 'bg.primary',
-										paddingX: '3',
-										paddingY: '2',
-										fontSize: 'sm'
-									})}
+									class={input()}
 								>
 									<option value=",">Comma (,)</option>
 									<option value=";">Semicolon (;)</option>
@@ -619,23 +589,11 @@
 							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
 								<label
 									for="csv-quote"
-									class={css({ fontSize: 'xs', fontWeight: 'medium', color: 'fg.secondary' })}
+									class={cx(label({ variant: 'field' }), css({ fontSize: 'xs' }))}
 								>
 									Quote
 								</label>
-								<select
-									id="csv-quote"
-									bind:value={csvQuoteChar}
-									disabled={loading}
-									class={css({
-										borderWidth: '1',
-										borderColor: 'border.primary',
-										backgroundColor: 'bg.primary',
-										paddingX: '3',
-										paddingY: '2',
-										fontSize: 'sm'
-									})}
-								>
+								<select id="csv-quote" bind:value={csvQuoteChar} disabled={loading} class={input()}>
 									<option value="&quot;">Double Quote (")</option>
 									<option value="'">Single Quote (')</option>
 									<option value="">None</option>
@@ -644,7 +602,7 @@
 							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
 								<label
 									for="csv-encoding"
-									class={css({ fontSize: 'xs', fontWeight: 'medium', color: 'fg.secondary' })}
+									class={cx(label({ variant: 'field' }), css({ fontSize: 'xs' }))}
 								>
 									Encoding
 								</label>
@@ -652,14 +610,7 @@
 									id="csv-encoding"
 									bind:value={csvEncoding}
 									disabled={loading}
-									class={css({
-										borderWidth: '1',
-										borderColor: 'border.primary',
-										backgroundColor: 'bg.primary',
-										paddingX: '3',
-										paddingY: '2',
-										fontSize: 'sm'
-									})}
+									class={input()}
 								>
 									<option value="utf8">UTF-8</option>
 									<option value="utf8-lossy">UTF-8 (lossy)</option>
@@ -670,7 +621,7 @@
 							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
 								<label
 									for="csv-skip-rows"
-									class={css({ fontSize: 'xs', fontWeight: 'medium', color: 'fg.secondary' })}
+									class={cx(label({ variant: 'field' }), css({ fontSize: 'xs' }))}
 								>
 									Skip Rows
 								</label>
@@ -680,14 +631,7 @@
 									min="0"
 									bind:value={csvSkipRows}
 									disabled={loading}
-									class={css({
-										borderWidth: '1',
-										borderColor: 'border.primary',
-										backgroundColor: 'bg.primary',
-										paddingX: '3',
-										paddingY: '2',
-										fontSize: 'sm'
-									})}
+									class={input()}
 								/>
 							</div>
 						</div>
@@ -806,34 +750,19 @@
 		{:else if activeTab === 'database'}
 			<div class={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label
-						for="db-name"
-						class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
-					>
-						Name
-					</label>
+					<label for="db-name" class={label({ variant: 'field' })}> Name </label>
 					<input
 						id="db-name"
 						type="text"
 						bind:value={dbName}
 						placeholder="My Database"
 						disabled={loading}
-						class={css({
-							borderWidth: '1',
-							borderColor: 'border.primary',
-							backgroundColor: 'bg.primary',
-							paddingX: '3',
-							paddingY: '2',
-							fontSize: 'sm'
-						})}
+						class={input()}
 					/>
 				</div>
 
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label
-						for="connection-string"
-						class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
-					>
+					<label for="connection-string" class={label({ variant: 'field' })}>
 						Connection String
 					</label>
 					<input
@@ -842,14 +771,7 @@
 						bind:value={connectionString}
 						placeholder="postgresql://user:pass@localhost/db"
 						disabled={loading}
-						class={css({
-							borderWidth: '1',
-							borderColor: 'border.primary',
-							backgroundColor: 'bg.primary',
-							paddingX: '3',
-							paddingY: '2',
-							fontSize: 'sm'
-						})}
+						class={input()}
 					/>
 					<p class={css({ margin: '0', fontSize: 'xs', color: 'fg.muted' })}>
 						Example: postgresql://user:pass@localhost/dbname
@@ -857,27 +779,14 @@
 				</div>
 
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label
-						for="query"
-						class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
-					>
-						Query
-					</label>
+					<label for="query" class={label({ variant: 'field' })}> Query </label>
 					<textarea
 						id="query"
 						bind:value={query}
 						placeholder="SELECT * FROM table"
 						rows="5"
 						disabled={loading}
-						class={css({
-							resize: 'vertical',
-							borderWidth: '1',
-							borderColor: 'border.primary',
-							backgroundColor: 'bg.primary',
-							paddingX: '3',
-							paddingY: '2',
-							fontSize: 'sm'
-						})}
+						class={cx(input(), css({ resize: 'vertical' }))}
 					></textarea>
 				</div>
 
@@ -892,33 +801,18 @@
 		{:else if activeTab === 'path'}
 			<div class={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label
-						for="iceberg-path-name"
-						class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
-					>
-						Name
-					</label>
+					<label for="iceberg-path-name" class={label({ variant: 'field' })}> Name </label>
 					<input
 						id="iceberg-path-name"
 						type="text"
 						bind:value={pathName}
 						placeholder="Existing Iceberg"
 						disabled={loading}
-						class={css({
-							borderWidth: '1',
-							borderColor: 'border.primary',
-							backgroundColor: 'bg.primary',
-							paddingX: '3',
-							paddingY: '2',
-							fontSize: 'sm'
-						})}
+						class={input()}
 					/>
 				</div>
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label
-						for="iceberg-path-value"
-						class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
-					>
+					<label for="iceberg-path-value" class={label({ variant: 'field' })}>
 						Table Root Path
 					</label>
 					<input
@@ -927,14 +821,7 @@
 						bind:value={pathValue}
 						placeholder="/data/<namespace>/clean/<uuid>"
 						disabled={loading}
-						class={css({
-							borderWidth: '1',
-							borderColor: 'border.primary',
-							backgroundColor: 'bg.primary',
-							paddingX: '3',
-							paddingY: '2',
-							fontSize: 'sm'
-						})}
+						class={input()}
 					/>
 					<div class={cx(row, css({ gap: '2' }))}>
 						<button

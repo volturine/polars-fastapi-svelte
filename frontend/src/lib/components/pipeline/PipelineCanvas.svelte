@@ -281,7 +281,7 @@
 					css({
 						display: 'flex',
 						width: '100%',
-						cursor: 'default',
+						cursor: canDrop ? 'pointer' : 'default',
 						flexDirection: 'column',
 						alignItems: 'center',
 						paddingY: '2'
@@ -379,7 +379,7 @@
 						css({
 							display: 'flex',
 							width: '100%',
-							cursor: 'default',
+							cursor: canDrop ? 'pointer' : 'default',
 							flexDirection: 'column',
 							alignItems: 'center',
 							paddingY: '2'
@@ -481,7 +481,7 @@
 								css({
 									display: 'flex',
 									width: '100%',
-									cursor: 'default',
+									cursor: canDrop ? 'pointer' : 'default',
 									flexDirection: 'column',
 									alignItems: 'center',
 									paddingY: '2'
@@ -600,3 +600,9 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	.insert-zone.ready:hover :global(.connection-line) {
+		color: var(--colors-accent-primary);
+	}
+</style>

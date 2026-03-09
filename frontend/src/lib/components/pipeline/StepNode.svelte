@@ -323,7 +323,6 @@
 	class={cx(
 		'step-node',
 		nodeWidthClass,
-		isOtherDragging && 'drag-target',
 		isDragging &&
 			css({
 				opacity: '0.4',
@@ -364,7 +363,14 @@
 				borderColor: 'border.primary',
 				backgroundColor: 'bg.primary',
 				_hover: { borderColor: 'border.primary' }
-			})
+			}),
+			isOtherDragging &&
+				css({
+					borderStyle: 'dashed',
+					borderColor: 'border.primary',
+					opacity: '0.7',
+					transform: 'scale(0.98)'
+				})
 		)}
 		role="listitem"
 	>

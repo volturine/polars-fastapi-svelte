@@ -607,6 +607,7 @@
 							marginLeft: '2',
 							borderWidth: '1',
 							borderColor: 'warning.border',
+							backgroundColor: 'bg.primary',
 							paddingX: '1.5',
 							paddingY: '0.5'
 						})}
@@ -797,6 +798,7 @@
 												class={css({
 													borderWidth: '1',
 													borderColor: 'border.primary',
+													backgroundColor: 'bg.primary',
 													paddingX: '1.5',
 													paddingY: '0.5',
 													fontSize: '2xs',
@@ -815,6 +817,7 @@
 													marginLeft: '1',
 													borderWidth: '1',
 													borderColor: 'border.primary',
+													backgroundColor: 'bg.primary',
 													paddingX: '1.5',
 													paddingY: '0.5',
 													fontSize: '2xs',
@@ -831,6 +834,7 @@
 												class={css({
 													borderWidth: '1',
 													borderColor: 'border.primary',
+													backgroundColor: 'bg.primary',
 													padding: '1',
 													color: 'fg.tertiary',
 													_hover: { color: 'error.fg' }

@@ -24,7 +24,7 @@
 	import { onClickOutside } from 'runed';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
-	import { css, cx, menuItem, divider, muted } from '$lib/styles/panda';
+	import { css, cx, menuItem, divider, muted, input } from '$lib/styles/panda';
 	import type { TableCellValue } from '$lib/types/api-responses';
 	import { resolveColumnType } from '$lib/utils/columnTypes';
 	import { formatDateTimeDisplay, formatDateDisplay } from '$lib/utils/datetime';
@@ -531,16 +531,10 @@
 			{/if}
 			<input
 				type="text"
-				class={css({
-					borderColor: 'border.primary',
-					backgroundColor: 'bg.primary',
-					borderWidth: '1',
-					paddingX: '2',
-					paddingY: '1',
-					fontSize: 'xs',
-					marginLeft: 'auto',
-					width: 'list'
-				})}
+				class={cx(
+					input(),
+					css({ paddingX: '2', paddingY: '1', fontSize: 'xs', marginLeft: 'auto', width: 'list' })
+				)}
 				id="dt-col-search"
 				aria-label="Filter columns"
 				placeholder="Filter columns"

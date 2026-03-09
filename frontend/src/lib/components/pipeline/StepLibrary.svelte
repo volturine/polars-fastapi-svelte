@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { drag, type DropTarget } from '$lib/stores/drag.svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, cx, input } from '$lib/styles/panda';
 
 	interface StepType {
 		type: string;
@@ -361,15 +361,13 @@
 		</h4>
 		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
 			<select
-				class={css({
-					borderWidth: '1',
-					borderColor: 'border.primary',
-					backgroundColor: 'bg.secondary',
-					paddingX: '3',
-					paddingY: '2',
-					fontSize: 'xs',
-					color: 'fg.primary'
-				})}
+				class={cx(
+					input(),
+					css({
+						backgroundColor: 'bg.secondary',
+						fontSize: 'xs'
+					})
+				)}
 				id="step-lib-type"
 				aria-label="Quick insert operation type"
 				value={selectedType ?? ''}

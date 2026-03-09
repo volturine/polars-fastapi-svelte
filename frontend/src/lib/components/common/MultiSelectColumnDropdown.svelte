@@ -2,7 +2,7 @@
 	import type { Schema } from '$lib/types/schema';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import SearchableDropdown from '$lib/components/ui/SearchableDropdown.svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, cx, label } from '$lib/styles/panda';
 
 	interface ColumnOption {
 		id: string;
@@ -57,16 +57,16 @@
 })}
 	{@const item = payload.option as ColumnOption}
 	<label
-		class={css({
-			display: 'flex',
-			cursor: 'pointer',
-			alignItems: 'center',
-			gap: '2',
-			paddingX: '3',
-			paddingY: '2',
-			color: 'fg.primary',
-			_hover: { backgroundColor: 'bg.hover' }
-		})}
+		class={cx(
+			label({ variant: 'checkbox' }),
+			css({
+				gap: '2',
+				paddingX: '3',
+				paddingY: '2',
+				color: 'fg.primary',
+				_hover: { backgroundColor: 'bg.hover' }
+			})
+		)}
 	>
 		<input
 			type="checkbox"

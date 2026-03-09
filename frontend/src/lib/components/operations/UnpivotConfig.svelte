@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
-	import { css, stepConfig } from '$lib/styles/panda';
+	import { css, label, stepConfig, input } from '$lib/styles/panda';
 
 	interface Props {
 		schema: Schema;
@@ -79,11 +79,12 @@
 	</div>
 
 	<div class={css({ marginBottom: '5' })}>
-		<label for="unpivot-input-variable">Variable column name</label>
+		<label class={label()} for="unpivot-input-variable">Variable column name</label>
 		<input
 			id="unpivot-input-variable"
 			data-testid="unpivot-variable-input"
 			type="text"
+			class={input()}
 			value={get('variable_name', 'variable')}
 			oninput={(e) => (config.variable_name = e.currentTarget.value)}
 			placeholder="variable"
@@ -91,11 +92,12 @@
 	</div>
 
 	<div class={css({ marginBottom: '0' })}>
-		<label for="unpivot-input-value">Value column name</label>
+		<label class={label()} for="unpivot-input-value">Value column name</label>
 		<input
 			id="unpivot-input-value"
 			data-testid="unpivot-value-input"
 			type="text"
+			class={input()}
 			value={get('value_name', 'value')}
 			oninput={(e) => (config.value_name = e.currentTarget.value)}
 			placeholder="value"

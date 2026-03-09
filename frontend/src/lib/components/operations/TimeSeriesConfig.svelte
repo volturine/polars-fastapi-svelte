@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
-	import { css, cx, stepConfig, divider } from '$lib/styles/panda';
+	import { css, cx, label, stepConfig, divider, input } from '$lib/styles/panda';
 
 	interface TimeSeriesConfigData {
 		column: string;
@@ -147,23 +147,13 @@
 		>
 			Operation Type
 		</h4>
-		<label
-			for="ts-select-operation"
-			class={css({
-				position: 'absolute',
-				width: 'px',
-				height: 'px',
-				padding: '0',
-				margin: '-1px',
-				overflow: 'hidden',
-				clip: 'rect(0, 0, 0, 0)',
-				whiteSpace: 'nowrap',
-				border: '0'
-			})}>Select operation type</label
+		<label for="ts-select-operation" class={label({ variant: 'hidden' })}
+			>Select operation type</label
 		>
 		<select
 			id="ts-select-operation"
 			data-testid="ts-operation-select"
+			class={input()}
 			bind:value={config.operation_type}
 		>
 			{#each operations as op (op.value)}
@@ -198,23 +188,13 @@
 			>
 				Extract Component
 			</h4>
-			<label
-				for="ts-select-component"
-				class={css({
-					position: 'absolute',
-					width: 'px',
-					height: 'px',
-					padding: '0',
-					margin: '-1px',
-					overflow: 'hidden',
-					clip: 'rect(0, 0, 0, 0)',
-					whiteSpace: 'nowrap',
-					border: '0'
-				})}>Select component to extract</label
+			<label for="ts-select-component" class={label({ variant: 'hidden' })}
+				>Select component to extract</label
 			>
 			<select
 				id="ts-select-component"
 				data-testid="ts-component-select"
+				class={input()}
 				bind:value={config.component}
 			>
 				{#each extractComponents as comp (comp)}
@@ -248,23 +228,13 @@
 			>
 				Timestamp Unit
 			</h4>
-			<label
-				for="ts-select-timestamp-unit"
-				class={css({
-					position: 'absolute',
-					width: 'px',
-					height: 'px',
-					padding: '0',
-					margin: '-1px',
-					overflow: 'hidden',
-					clip: 'rect(0, 0, 0, 0)',
-					whiteSpace: 'nowrap',
-					border: '0'
-				})}>Select timestamp time unit</label
+			<label for="ts-select-timestamp-unit" class={label({ variant: 'hidden' })}
+				>Select timestamp time unit</label
 			>
 			<select
 				id="ts-select-timestamp-unit"
 				data-testid="ts-timestamp-unit-select"
+				class={input()}
 				bind:value={config.unit}
 			>
 				{#each timestampUnits as unit (unit)}
@@ -311,18 +281,13 @@
 				<div class={css({ flex: '1' })}>
 					<label
 						for="ts-input-value"
-						class={css({
-							display: 'block',
-							fontSize: 'sm',
-							marginBottom: '1',
-							color: 'fg.secondary'
-						})}>Value:</label
+						class={cx(label({ variant: 'field' }), css({ marginBottom: '1' }))}>Value:</label
 					>
 					<input
 						id="ts-input-value"
 						data-testid="ts-value-input"
 						type="number"
-						class={css({ flex: '1' })}
+						class={cx(input(), css({ flex: '1' }))}
 						bind:value={config.value}
 						min="0"
 						aria-label="Time period value"
@@ -331,17 +296,12 @@
 				<div class={css({ flex: '1' })}>
 					<label
 						for="ts-select-unit"
-						class={css({
-							display: 'block',
-							fontSize: 'sm',
-							marginBottom: '1',
-							color: 'fg.secondary'
-						})}>Unit:</label
+						class={cx(label({ variant: 'field' }), css({ marginBottom: '1' }))}>Unit:</label
 					>
 					<select
 						id="ts-select-unit"
 						data-testid="ts-unit-select"
-						class={css({ flex: '1' })}
+						class={cx(input(), css({ flex: '1' }))}
 						bind:value={config.unit}
 					>
 						{#each timeUnits as unit (unit)}
@@ -424,23 +384,11 @@
 		>
 			New Column Name
 		</h4>
-		<label
-			for="ts-input-new-column"
-			class={css({
-				position: 'absolute',
-				width: 'px',
-				height: 'px',
-				padding: '0',
-				margin: '-1px',
-				overflow: 'hidden',
-				clip: 'rect(0, 0, 0, 0)',
-				whiteSpace: 'nowrap',
-				border: '0'
-			})}>New column name</label
-		>
+		<label for="ts-input-new-column" class={label({ variant: 'hidden' })}>New column name</label>
 		<input
 			id="ts-new-column"
 			type="text"
+			class={input()}
 			bind:value={config.new_column}
 			placeholder="e.g., year, future_date"
 		/>

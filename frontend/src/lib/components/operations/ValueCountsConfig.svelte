@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
-	import { css, stepConfig } from '$lib/styles/panda';
+	import { css, label, stepConfig } from '$lib/styles/panda';
 
 	interface Props {
 		schema: Schema;
@@ -39,14 +39,14 @@
 	</div>
 
 	<div class={css({ marginBottom: '5' })}>
-		<label class={css({ display: 'flex', cursor: 'pointer', alignItems: 'center', gap: '3' })}>
+		<label class={label({ variant: 'checkbox' })}>
 			<input id="normalize" type="checkbox" bind:checked={config.normalize} />
 			<span>Normalize (show proportions instead of counts)</span>
 		</label>
 	</div>
 
 	<div class={css({ marginBottom: '0' })}>
-		<label class={css({ display: 'flex', cursor: 'pointer', alignItems: 'center', gap: '3' })}>
+		<label class={label({ variant: 'checkbox' })}>
 			<input
 				id="sort"
 				type="checkbox"

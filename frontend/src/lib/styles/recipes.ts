@@ -152,6 +152,10 @@ export const callout = defineRecipe({
 export const button = defineRecipe({
 	className: 'btn',
 	base: {
+		display: 'inline-flex',
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: '2',
 		cursor: 'pointer',
 		borderWidth: '1',
 		fontFamily: 'mono',
@@ -329,20 +333,34 @@ export const input = defineRecipe({
 	className: 'input',
 	base: {
 		width: 'full',
+		fontFamily: 'mono',
+		fontSize: 'sm2',
+		color: 'fg.primary',
+		backgroundColor: 'bg.primary',
 		borderWidth: '1',
 		borderColor: 'border.primary',
-		backgroundColor: 'transparent',
-		paddingX: '2',
-		paddingY: '1.5',
-		fontSize: 'xs',
-		color: 'fg.primary',
-		_focus: { borderColor: 'border.primary', outline: 'none' }
+		borderRadius: '0',
+		paddingX: '3.5',
+		paddingY: '2.25',
+		transitionProperty: 'border-color',
+		transitionDuration: '160ms',
+		transitionTimingFunction: 'ease',
+		_focus: { outline: 'none' },
+		_disabled: { opacity: '0.5', cursor: 'not-allowed', backgroundColor: 'bg.tertiary' },
+		_placeholder: { color: 'fg.muted' }
 	},
 	variants: {
 		variant: {
 			default: {},
+			compact: {
+				fontSize: 'xs',
+				backgroundColor: 'transparent',
+				paddingX: '2',
+				paddingY: '1.5'
+			},
 			search: {
 				paddingLeft: '8',
+				paddingRight: '2',
 				paddingY: '1.5',
 				fontSize: 'sm',
 				backgroundColor: 'transparent',
@@ -350,6 +368,7 @@ export const input = defineRecipe({
 			},
 			searchCompact: {
 				paddingLeft: '8',
+				paddingRight: '2',
 				paddingY: '1',
 				fontSize: 'xs',
 				backgroundColor: 'bg.secondary',
@@ -372,6 +391,79 @@ export const input = defineRecipe({
 				borderColor: 'border.primary',
 				fontFamily: 'mono',
 				fontSize: 'sm'
+			}
+		}
+	},
+	defaultVariants: { variant: 'default' }
+});
+
+export const label = defineRecipe({
+	className: 'label',
+	base: {
+		display: 'block',
+		fontSize: 'xs2',
+		fontWeight: '600',
+		color: 'fg.muted',
+		marginBottom: '1.5',
+		textTransform: 'uppercase',
+		letterSpacing: 'wider'
+	},
+	variants: {
+		variant: {
+			default: {},
+			field: {
+				fontSize: 'sm',
+				fontWeight: 'medium',
+				color: 'fg.secondary',
+				textTransform: 'none',
+				letterSpacing: 'normal'
+			},
+			compact: {
+				fontSize: '2xs',
+				fontWeight: 'medium',
+				color: 'fg.secondary'
+			},
+			checkbox: {
+				display: 'flex',
+				cursor: 'pointer',
+				alignItems: 'center',
+				gap: '3',
+				fontSize: 'sm',
+				fontWeight: 'normal',
+				color: 'fg.secondary',
+				textTransform: 'none',
+				letterSpacing: 'normal',
+				marginBottom: '0'
+			},
+			inline: {
+				display: 'inline-flex',
+				alignItems: 'center',
+				gap: '2',
+				fontSize: 'sm',
+				fontWeight: 'normal',
+				color: 'fg.secondary',
+				textTransform: 'none',
+				letterSpacing: 'normal',
+				marginBottom: '0'
+			},
+			wrapper: {
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '1',
+				textTransform: 'none',
+				letterSpacing: 'normal',
+				marginBottom: '0'
+			},
+			hidden: {
+				position: 'absolute',
+				width: 'px',
+				height: 'px',
+				padding: '0',
+				margin: '-1px',
+				overflow: 'hidden',
+				clip: 'rect(0, 0, 0, 0)',
+				whiteSpace: 'nowrap',
+				borderWidth: '0'
 			}
 		}
 	},

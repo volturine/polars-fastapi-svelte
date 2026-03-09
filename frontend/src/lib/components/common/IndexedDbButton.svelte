@@ -273,6 +273,7 @@
 													textAlign: 'left',
 													fontSize: 'xs',
 													color: 'fg.muted',
+													backgroundColor: 'bg.primary',
 													wordBreak: 'break-word'
 												})}
 												onclick={() => toggleExpand(entry.key)}

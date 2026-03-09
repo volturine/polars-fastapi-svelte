@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Search, X, Trash2 } from 'lucide-svelte';
-	import { css, input, cx, row } from '$lib/styles/panda';
+	import { css, input, cx, row, label } from '$lib/styles/panda';
 
 	export type SortOption = 'newest' | 'oldest' | 'name-asc' | 'name-desc';
 
@@ -101,7 +101,7 @@
 	>
 		<label
 			for="sort-select"
-			class={css({ whiteSpace: 'nowrap', fontSize: 'xs', fontWeight: 'medium', color: 'fg.muted' })}
+			class={cx(label(), css({ whiteSpace: 'nowrap', fontWeight: 'medium' }))}
 		>
 			Sort:
 		</label>
@@ -109,20 +109,15 @@
 			id="sort-select"
 			value={sortOption}
 			onchange={(e) => onSort((e.target as HTMLSelectElement).value as SortOption)}
-			class={css({
-				cursor: 'pointer',
-				appearance: 'none',
-				borderWidth: '1',
-				borderColor: 'border.primary',
-				backgroundColor: 'bg.primary',
-				paddingY: '2',
-				paddingLeft: '3',
-				paddingRight: '8',
-				fontFamily: 'mono',
-				fontSize: 'sm',
-				color: 'fg.primary',
-				smDown: { flex: '1' }
-			})}
+			class={cx(
+				input(),
+				css({
+					cursor: 'pointer',
+					appearance: 'none',
+					paddingRight: '8',
+					smDown: { flex: '1' }
+				})
+			)}
 		>
 			<option value="newest">Newest</option>
 			<option value="oldest">Oldest</option>

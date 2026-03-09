@@ -6,7 +6,7 @@
 	import DatasourcePicker from '$lib/components/common/DatasourcePicker.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
-	import { css, cx, stepConfig, row, divider, muted } from '$lib/styles/panda';
+	import { css, cx, stepConfig, label, divider, muted } from '$lib/styles/panda';
 
 	interface UnionByNameConfigData {
 		sources: string[];
@@ -175,7 +175,7 @@
 		)}
 	>
 		<SectionHeader>Column Matching</SectionHeader>
-		<label class={cx(row, css({ gap: '3' }))}>
+		<label class={label({ variant: 'checkbox' })}>
 			<input id="allow-missing" type="checkbox" bind:checked={config.allow_missing} />
 			<span>Allow missing columns (fill with nulls)</span>
 		</label>

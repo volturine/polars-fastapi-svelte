@@ -5,7 +5,7 @@
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
 	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
 	import PanelFooter from '$lib/components/ui/PanelFooter.svelte';
-	import { css, button } from '$lib/styles/panda';
+	import { css, button, input } from '$lib/styles/panda';
 
 	interface Props {
 		show: boolean;
@@ -79,7 +79,13 @@
 			gap: '3'
 		})}
 	>
-		<input name="search" type="text" placeholder="Search UDFs..." bind:value={search} />
+		<input
+			name="search"
+			type="text"
+			placeholder="Search UDFs..."
+			bind:value={search}
+			class={input()}
+		/>
 		<div
 			class={css({
 				display: 'flex',

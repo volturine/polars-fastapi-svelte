@@ -15,6 +15,7 @@ export {
 	emptyText,
 	badge,
 	input,
+	label,
 	stepConfig
 } from '../../../styled-system/recipes';
 

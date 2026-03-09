@@ -15,6 +15,7 @@ import {
 	emptyText,
 	badge,
 	input,
+	label,
 	stepConfig
 } from './src/lib/styles/recipes';
 
@@ -67,51 +68,9 @@ export default defineConfig({
 			margin: '0',
 			font: 'inherit'
 		},
-		'body input, body textarea, body select': {
-			fontFamily: 'var(--fonts-mono)',
-			fontSize: '0.8125rem',
-			color: 'var(--colors-fg-primary)',
-			backgroundColor: 'var(--colors-bg-primary)',
-			borderWidth: '1px',
-			borderRadius: '0',
-			padding: '0.5625rem 0.875rem',
-			width: '100%',
-			transition: 'border-color 160ms ease'
-		},
-		'body input:focus, body textarea:focus, body select:focus': {
-			outline: 'none'
-		},
-		'body input:disabled, body textarea:disabled, body select:disabled': {
-			opacity: '0.5',
-			cursor: 'not-allowed',
-			backgroundColor: 'var(--colors-bg-tertiary)'
-		},
-		'body input::placeholder, body textarea::placeholder': {
-			color: 'var(--colors-fg-muted)'
-		},
 		"body input[type='checkbox'], body input[type='radio']": {
 			width: 'auto',
 			cursor: 'pointer'
-		},
-		"body input[type='date'], body input[type='time'], body input[type='datetime-local']": {
-			cursor: 'pointer'
-		},
-		"body input[type='date']::-webkit-calendar-picker-indicator, body input[type='time']::-webkit-calendar-picker-indicator, body input[type='datetime-local']::-webkit-calendar-picker-indicator":
-			{
-				cursor: 'pointer'
-			},
-		"body[data-theme=dark] input[type='date']::-webkit-calendar-picker-indicator, body[data-theme=dark] input[type='time']::-webkit-calendar-picker-indicator, body[data-theme=dark] input[type='datetime-local']::-webkit-calendar-picker-indicator":
-			{
-				filter: 'invert(0.8)'
-			},
-		'body label': {
-			display: 'block',
-			fontSize: '0.6875rem',
-			fontWeight: '600',
-			color: 'var(--colors-fg-muted)',
-			marginBottom: '0.375rem',
-			textTransform: 'uppercase',
-			letterSpacing: '0.05em'
 		},
 		'body button': {
 			fontFamily: 'var(--fonts-mono)',
@@ -126,23 +85,11 @@ export default defineConfig({
 			display: 'inline-flex',
 			alignItems: 'center',
 			justifyContent: 'center',
-			gap: '0.5rem',
-			backgroundColor: 'var(--colors-bg-primary)'
+			gap: '0.5rem'
 		},
 		'body button:disabled': {
 			opacity: '0.5',
 			cursor: 'not-allowed'
-		},
-		'body .datasource-comparison-scroll .dataset-table__row': {
-			contentVisibility: 'auto',
-			containIntrinsicSize: 'auto 36px'
-		},
-		'body .excel-grid': {
-			contain: 'content'
-		},
-		'body .excel-grid .dataset-table__row, body .excel-grid .preview-row': {
-			contentVisibility: 'auto',
-			containIntrinsicSize: 'auto 32px'
 		},
 		'body.touch-dragging': {
 			userSelect: 'none',
@@ -152,30 +99,6 @@ export default defineConfig({
 		'body.touch-dragging .pipeline-canvas': {
 			overflow: 'hidden',
 			touchAction: 'none'
-		},
-		'body .step-node.drag-target .step-content': {
-			borderStyle: 'dashed',
-			borderColor: 'var(--colors-border-primary)',
-			opacity: '0.7',
-			transform: 'scale(0.98)'
-		},
-		'body .insert-zone.ready:hover .connection-line': {
-			color: 'var(--colors-accent-primary)'
-		},
-		'body .insert-zone.ready': {
-			cursor: 'pointer'
-		},
-		'body .datasource-node.drag-active .node-content': {
-			borderColor: 'var(--colors-border-primary)',
-			borderStyle: 'dashed',
-			opacity: '0.85'
-		},
-		'body [data-readonly] :is(.step-node, .step-button, .drag-handle, .action-btn, .drop-slot, .datasource-node)':
-			{
-				pointerEvents: 'none !important'
-			},
-		'body [data-readonly] .inline-preview-table': {
-			pointerEvents: 'auto !important'
 		}
 	},
 	staticCss: {
@@ -187,7 +110,11 @@ export default defineConfig({
 			badge: [{ tone: ['type', 'file'], size: ['sm', 'md', 'lg'] }],
 			tabButton: [{ active: ['true', 'false'], size: ['default', 'lg'] }],
 			emptyText: [{ size: ['compact', 'panel', 'inline'] }],
-			toggleButton: [{ active: ['true', 'false'], radius: ['left', 'right'] }]
+			toggleButton: [{ active: ['true', 'false'], radius: ['left', 'right'] }],
+			input: [{ variant: ['default', 'compact', 'search', 'searchCompact', 'menu', 'searchWide'] }],
+			label: [
+				{ variant: ['default', 'field', 'compact', 'checkbox', 'inline', 'wrapper', 'hidden'] }
+			]
 		}
 	},
 	importMap: {
@@ -223,6 +150,7 @@ export default defineConfig({
 				emptyText,
 				badge,
 				input,
+				label,
 				stepConfig
 			},
 			tokens: {
@@ -235,6 +163,7 @@ export default defineConfig({
 					'2xs': { value: '0.625rem' },
 					'2xs2': { value: '0.65rem' },
 					xs2: { value: '0.6875rem' },
+					sm2: { value: '0.8125rem' },
 					'3xs': { value: '0.5625rem' }
 				},
 				letterSpacings: {
@@ -254,6 +183,7 @@ export default defineConfig({
 				spacing: {
 					1: { value: '0.25rem' },
 					2: { value: '0.5rem' },
+					'2.25': { value: '0.5625rem' },
 					3: { value: '0.75rem' },
 					px: { value: '1px' },
 					tight: { value: '0.15rem' }

@@ -5,7 +5,7 @@
 	import DateTimeInput from '$lib/components/common/DateTimeInput.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import ToggleButton from '$lib/components/ui/ToggleButton.svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, cx, label, input } from '$lib/styles/panda';
 
 	const uid = $props.id();
 
@@ -312,9 +312,7 @@
 								paddingBottom: '2'
 							})}
 						>
-							<span class={css({ fontSize: 'xs', fontWeight: 'semibold', color: 'fg.muted' })}
-								>#{i + 1}</span
-							>
+							<span class={cx(label(), css({ fontWeight: 'semibold' }))}>#{i + 1}</span>
 							{#if cond.column}
 								<span class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.primary' })}
 									>{cond.column}</span
@@ -408,6 +406,7 @@
 								<select
 									id="{uid}-operator-{i}"
 									data-testid={`filter-operator-select-${i}`}
+									class={input()}
 									value={cond.operator}
 									onchange={(e) => handleOperatorChange(i, e.currentTarget.value)}
 								>
@@ -435,9 +434,7 @@
 											gap: '2'
 										})}
 									>
-										<span class={css({ fontSize: 'xs', fontWeight: 'normal', color: 'fg.muted' })}
-											>Compare to</span
-										>
+										<span class={cx(label(), css({ fontWeight: 'normal' }))}>Compare to</span>
 										<div class={css({ display: 'flex' })} role="radiogroup" aria-label="Value mode">
 											<ToggleButton
 												active={!isColumn}
@@ -469,6 +466,7 @@
 											id="{uid}-value-{i}"
 											data-testid={`filter-value-input-${i}`}
 											type="number"
+											class={input()}
 											step="any"
 											value={typeof cond.value === 'number'
 												? String(cond.value)
@@ -490,11 +488,13 @@
 											type="date"
 											value={formatDateForInput(cond.value)}
 											onchange={(e) => updateCondition(i, { value: e.currentTarget.value })}
+											class={cx(input(), css({ cursor: 'pointer' }))}
 										/>
 									{:else if colType === 'boolean'}
 										<select
 											id="{uid}-value-{i}"
 											data-testid={`filter-value-input-${i}`}
+											class={input()}
 											value={String(cond.value ?? 'true')}
 											onchange={(e) =>
 												updateCondition(i, { value: e.currentTarget.value === 'true' })}
@@ -509,6 +509,7 @@
 												id="{uid}-value-{i}"
 												data-testid={`filter-value-input-${i}`}
 												type="text"
+												class={input()}
 												value=""
 												onkeydown={(e) => {
 													if (e.key !== 'Enter') return;
@@ -577,6 +578,7 @@
 											id="{uid}-value-{i}"
 											data-testid={`filter-value-input-${i}`}
 											type="text"
+											class={input()}
 											value={cond.value ?? ''}
 											oninput={(e) => updateCondition(i, { value: e.currentTarget.value })}
 											placeholder={cond.operator === 'regex' ? 'pattern' : 'value'}
@@ -593,9 +595,7 @@
 										minWidth: 'list'
 									})}
 								>
-									<span class={css({ fontSize: 'xs', fontWeight: 'normal', color: 'fg.muted' })}
-										>Value</span
-									>
+									<span class={cx(label(), css({ fontWeight: 'normal' }))}>Value</span>
 									<div
 										class={css({
 											display: 'flex',

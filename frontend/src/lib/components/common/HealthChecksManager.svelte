@@ -27,7 +27,7 @@
 		PowerOff
 	} from 'lucide-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
-	import { css, cx, emptyText, input, row, rowBetween, muted } from '$lib/styles/panda';
+	import { css, cx, emptyText, input, label, row, rowBetween, muted } from '$lib/styles/panda';
 
 	interface Props {
 		datasourceId?: string;
@@ -310,7 +310,11 @@
 				>New Health Check</span
 			>
 			<button
-				class={css({ color: 'fg.tertiary', _hover: { color: 'fg.primary' } })}
+				class={css({
+					backgroundColor: 'bg.primary',
+					color: 'fg.tertiary',
+					_hover: { color: 'fg.primary' }
+				})}
 				onclick={() => {
 					creating = false;
 					resetForm();
@@ -322,29 +326,19 @@
 
 		{#if !datasourceId}
 			<div class={css({ marginBottom: '3', display: 'flex', flexDirection: 'column', gap: '1' })}>
-				<label
-					for="hc-target"
-					class={css({
-						fontSize: '2xs',
-						fontWeight: 'medium',
-						color: 'fg.secondary',
-						textTransform: 'uppercase'
-					})}>Datasource</label
-				>
+				<label for="hc-target" class={label({ variant: 'compact' })}>Datasource</label>
 				<select
 					id="hc-target"
-					class={css({
-						width: '100%',
-						appearance: 'none',
-						borderWidth: '1',
-						borderColor: 'border.primary',
-						backgroundColor: 'bg.primary',
-						paddingX: '2',
-						paddingY: '1.5',
-						fontSize: 'xs',
-						color: 'fg.primary',
-						_focus: { borderColor: 'accent.primary', outline: 'none' }
-					})}
+					class={cx(
+						input(),
+						css({
+							appearance: 'none',
+							paddingX: '2',
+							paddingY: '1.5',
+							fontSize: 'xs',
+							_focus: { borderColor: 'accent.primary' }
+						})
+					)}
 					bind:value={targetDatasourceId}
 				>
 					<option value="">Select datasource...</option>
@@ -364,59 +358,39 @@
 			)}
 		>
 			<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-				<label
-					for="hc-name"
-					class={css({
-						fontSize: '2xs',
-						fontWeight: 'medium',
-						color: 'fg.secondary',
-						textTransform: 'uppercase'
-					})}>Name</label
-				>
+				<label for="hc-name" class={label({ variant: 'compact' })}>Name</label>
 				<input
 					id="hc-name"
 					type="text"
-					class={css({
-						borderWidth: '1',
-						borderColor: 'border.primary',
-						backgroundColor: 'bg.primary',
-						paddingX: '2',
-						paddingY: '1.5',
-						fontSize: 'xs',
-						color: 'fg.primary',
-						_placeholder: { color: 'fg.muted' },
-						_focus: { borderColor: 'accent.primary', outline: 'none' }
-					})}
+					class={cx(
+						input(),
+						css({
+							paddingX: '2',
+							paddingY: '1.5',
+							fontSize: 'xs',
+							_focus: { borderColor: 'accent.primary' }
+						})
+					)}
 					bind:value={name}
 					placeholder="e.g. Row count guard"
 				/>
 			</div>
 
 			<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-				<label
-					for="hc-type"
-					class={css({
-						fontSize: '2xs',
-						fontWeight: 'medium',
-						color: 'fg.secondary',
-						textTransform: 'uppercase'
-					})}>Type</label
-				>
+				<label for="hc-type" class={label({ variant: 'compact' })}>Type</label>
 				<div class={css({ position: 'relative' })}>
 					<select
 						id="hc-type"
-						class={css({
-							width: '100%',
-							appearance: 'none',
-							borderWidth: '1',
-							borderColor: 'border.primary',
-							backgroundColor: 'bg.primary',
-							paddingX: '2',
-							paddingY: '1.5',
-							fontSize: 'xs',
-							color: 'fg.primary',
-							_focus: { borderColor: 'accent.primary', outline: 'none' }
-						})}
+						class={cx(
+							input(),
+							css({
+								appearance: 'none',
+								paddingX: '2',
+								paddingY: '1.5',
+								fontSize: 'xs',
+								_focus: { borderColor: 'accent.primary' }
+							})
+						)}
 						bind:value={checkType}
 						onchange={() => {
 							config = {};
@@ -462,54 +436,36 @@
 					)}
 				>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<label
-							for="hc-min-rows"
-							class={css({
-								fontSize: '2xs',
-								fontWeight: 'medium',
-								color: 'fg.secondary',
-								textTransform: 'uppercase'
-							})}>Min Rows</label
-						>
+						<label for="hc-min-rows" class={label({ variant: 'compact' })}>Min Rows</label>
 						<input
 							id="hc-min-rows"
 							type="number"
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '1.5',
-								fontSize: 'xs',
-								color: 'fg.primary',
-								_focus: { borderColor: 'accent.primary', outline: 'none' }
-							})}
+							class={cx(
+								input(),
+								css({
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary' }
+								})
+							)}
 							oninput={(e) => updateConfig('min_rows', parseInt(e.currentTarget.value) || 0)}
 						/>
 					</div>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<label
-							for="hc-max-rows"
-							class={css({
-								fontSize: '2xs',
-								fontWeight: 'medium',
-								color: 'fg.secondary',
-								textTransform: 'uppercase'
-							})}>Max Rows</label
-						>
+						<label for="hc-max-rows" class={label({ variant: 'compact' })}>Max Rows</label>
 						<input
 							id="hc-max-rows"
 							type="number"
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '1.5',
-								fontSize: 'xs',
-								color: 'fg.primary',
-								_focus: { borderColor: 'accent.primary', outline: 'none' }
-							})}
+							class={cx(
+								input(),
+								css({
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary' }
+								})
+							)}
 							oninput={(e) => updateConfig('max_rows', parseInt(e.currentTarget.value) || 0)}
 						/>
 					</div>
@@ -528,54 +484,36 @@
 					)}
 				>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<label
-							for="hc-min-cols"
-							class={css({
-								fontSize: '2xs',
-								fontWeight: 'medium',
-								color: 'fg.secondary',
-								textTransform: 'uppercase'
-							})}>Min Columns</label
-						>
+						<label for="hc-min-cols" class={label({ variant: 'compact' })}>Min Columns</label>
 						<input
 							id="hc-min-cols"
 							type="number"
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '1.5',
-								fontSize: 'xs',
-								color: 'fg.primary',
-								_focus: { borderColor: 'accent.primary', outline: 'none' }
-							})}
+							class={cx(
+								input(),
+								css({
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary' }
+								})
+							)}
 							oninput={(e) => updateConfig('min_columns', parseInt(e.currentTarget.value) || 0)}
 						/>
 					</div>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<label
-							for="hc-max-cols"
-							class={css({
-								fontSize: '2xs',
-								fontWeight: 'medium',
-								color: 'fg.secondary',
-								textTransform: 'uppercase'
-							})}>Max Columns</label
-						>
+						<label for="hc-max-cols" class={label({ variant: 'compact' })}>Max Columns</label>
 						<input
 							id="hc-max-cols"
 							type="number"
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '1.5',
-								fontSize: 'xs',
-								color: 'fg.primary',
-								_focus: { borderColor: 'accent.primary', outline: 'none' }
-							})}
+							class={cx(
+								input(),
+								css({
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary' }
+								})
+							)}
 							oninput={(e) => updateConfig('max_columns', parseInt(e.currentTarget.value) || 0)}
 						/>
 					</div>
@@ -589,28 +527,19 @@
 						gap: '1'
 					})}
 				>
-					<label
-						for="hc-null-threshold"
-						class={css({
-							fontSize: '2xs',
-							fontWeight: 'medium',
-							color: 'fg.secondary',
-							textTransform: 'uppercase'
-						})}>Threshold (%)</label
-					>
+					<label for="hc-null-threshold" class={label({ variant: 'compact' })}>Threshold (%)</label>
 					<input
 						id="hc-null-threshold"
 						type="number"
-						class={css({
-							borderWidth: '1',
-							borderColor: 'border.primary',
-							backgroundColor: 'bg.primary',
-							paddingX: '2',
-							paddingY: '1.5',
-							fontSize: 'xs',
-							color: 'fg.primary',
-							_focus: { borderColor: 'accent.primary', outline: 'none' }
-						})}
+						class={cx(
+							input(),
+							css({
+								paddingX: '2',
+								paddingY: '1.5',
+								fontSize: 'xs',
+								_focus: { borderColor: 'accent.primary' }
+							})
+						)}
 						oninput={(e) => updateConfig('threshold', parseFloat(e.currentTarget.value) || 0)}
 					/>
 				</div>
@@ -628,55 +557,39 @@
 					)}
 				>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<label
-							for="hc-dup-threshold"
-							class={css({
-								fontSize: '2xs',
-								fontWeight: 'medium',
-								color: 'fg.secondary',
-								textTransform: 'uppercase'
-							})}>Threshold (%)</label
+						<label for="hc-dup-threshold" class={label({ variant: 'compact' })}>Threshold (%)</label
 						>
 						<input
 							id="hc-dup-threshold"
 							type="number"
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '1.5',
-								fontSize: 'xs',
-								color: 'fg.primary',
-								_focus: { borderColor: 'accent.primary', outline: 'none' }
-							})}
+							class={cx(
+								input(),
+								css({
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary' }
+								})
+							)}
 							oninput={(e) => updateConfig('threshold', parseFloat(e.currentTarget.value) || 0)}
 						/>
 					</div>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<label
-							for="hc-dup-cols"
-							class={css({
-								fontSize: '2xs',
-								fontWeight: 'medium',
-								color: 'fg.secondary',
-								textTransform: 'uppercase'
-							})}>Columns (optional, comma separated)</label
+						<label for="hc-dup-cols" class={label({ variant: 'compact' })}
+							>Columns (optional, comma separated)</label
 						>
 						<input
 							id="hc-dup-cols"
 							type="text"
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '1.5',
-								fontSize: 'xs',
-								color: 'fg.primary',
-								_placeholder: { color: 'fg.muted' },
-								_focus: { borderColor: 'accent.primary', outline: 'none' }
-							})}
+							class={cx(
+								input(),
+								css({
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary' }
+								})
+							)}
 							value={duplicateColumns}
 							placeholder="col_a, col_b"
 							oninput={(e) => updateDuplicateColumns(e.currentTarget.value)}
@@ -697,54 +610,36 @@
 					)}
 				>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<label
-							for="hc-column"
-							class={css({
-								fontSize: '2xs',
-								fontWeight: 'medium',
-								color: 'fg.secondary',
-								textTransform: 'uppercase'
-							})}>Column Name</label
-						>
+						<label for="hc-column" class={label({ variant: 'compact' })}>Column Name</label>
 						<input
 							id="hc-column"
 							type="text"
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '1.5',
-								fontSize: 'xs',
-								color: 'fg.primary',
-								_focus: { borderColor: 'accent.primary', outline: 'none' }
-							})}
+							class={cx(
+								input(),
+								css({
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary' }
+								})
+							)}
 							oninput={(e) => updateConfig('column', e.currentTarget.value)}
 						/>
 					</div>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<label
-							for="hc-threshold"
-							class={css({
-								fontSize: '2xs',
-								fontWeight: 'medium',
-								color: 'fg.secondary',
-								textTransform: 'uppercase'
-							})}>Threshold (%)</label
-						>
+						<label for="hc-threshold" class={label({ variant: 'compact' })}>Threshold (%)</label>
 						<input
 							id="hc-threshold"
 							type="number"
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '1.5',
-								fontSize: 'xs',
-								color: 'fg.primary',
-								_focus: { borderColor: 'accent.primary', outline: 'none' }
-							})}
+							class={cx(
+								input(),
+								css({
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary' }
+								})
+							)}
 							oninput={(e) => updateConfig('threshold', parseFloat(e.currentTarget.value) || 0)}
 						/>
 					</div>
@@ -763,54 +658,38 @@
 					)}
 				>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<label
-							for="hc-unique-column"
-							class={css({
-								fontSize: '2xs',
-								fontWeight: 'medium',
-								color: 'fg.secondary',
-								textTransform: 'uppercase'
-							})}>Column Name</label
-						>
+						<label for="hc-unique-column" class={label({ variant: 'compact' })}>Column Name</label>
 						<input
 							id="hc-unique-column"
 							type="text"
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '1.5',
-								fontSize: 'xs',
-								color: 'fg.primary',
-								_focus: { borderColor: 'accent.primary', outline: 'none' }
-							})}
+							class={cx(
+								input(),
+								css({
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary' }
+								})
+							)}
 							oninput={(e) => updateConfig('column', e.currentTarget.value)}
 						/>
 					</div>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<label
-							for="hc-expected"
-							class={css({
-								fontSize: '2xs',
-								fontWeight: 'medium',
-								color: 'fg.secondary',
-								textTransform: 'uppercase'
-							})}>Expected Unique Count</label
+						<label for="hc-expected" class={label({ variant: 'compact' })}
+							>Expected Unique Count</label
 						>
 						<input
 							id="hc-expected"
 							type="number"
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '1.5',
-								fontSize: 'xs',
-								color: 'fg.primary',
-								_focus: { borderColor: 'accent.primary', outline: 'none' }
-							})}
+							class={cx(
+								input(),
+								css({
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary' }
+								})
+							)}
 							oninput={(e) => updateConfig('expected_unique', parseInt(e.currentTarget.value) || 0)}
 						/>
 					</div>
@@ -829,80 +708,53 @@
 					)}
 				>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<label
-							for="hc-range-column"
-							class={css({
-								fontSize: '2xs',
-								fontWeight: 'medium',
-								color: 'fg.secondary',
-								textTransform: 'uppercase'
-							})}>Column Name</label
-						>
+						<label for="hc-range-column" class={label({ variant: 'compact' })}>Column Name</label>
 						<input
 							id="hc-range-column"
 							type="text"
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '1.5',
-								fontSize: 'xs',
-								color: 'fg.primary',
-								_focus: { borderColor: 'accent.primary', outline: 'none' }
-							})}
+							class={cx(
+								input(),
+								css({
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary' }
+								})
+							)}
 							oninput={(e) => updateConfig('column', e.currentTarget.value)}
 						/>
 					</div>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<label
-							for="hc-min"
-							class={css({
-								fontSize: '2xs',
-								fontWeight: 'medium',
-								color: 'fg.secondary',
-								textTransform: 'uppercase'
-							})}>Min Value</label
-						>
+						<label for="hc-min" class={label({ variant: 'compact' })}>Min Value</label>
 						<input
 							id="hc-min"
 							type="number"
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '1.5',
-								fontSize: 'xs',
-								color: 'fg.primary',
-								_focus: { borderColor: 'accent.primary', outline: 'none' }
-							})}
+							class={cx(
+								input(),
+								css({
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary' }
+								})
+							)}
 							oninput={(e) => updateConfig('min', parseFloat(e.currentTarget.value) || 0)}
 						/>
 					</div>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-						<label
-							for="hc-max"
-							class={css({
-								fontSize: '2xs',
-								fontWeight: 'medium',
-								color: 'fg.secondary',
-								textTransform: 'uppercase'
-							})}>Max Value</label
-						>
+						<label for="hc-max" class={label({ variant: 'compact' })}>Max Value</label>
 						<input
 							id="hc-max"
 							type="number"
-							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '1.5',
-								fontSize: 'xs',
-								color: 'fg.primary',
-								_focus: { borderColor: 'accent.primary', outline: 'none' }
-							})}
+							class={cx(
+								input(),
+								css({
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'xs',
+									_focus: { borderColor: 'accent.primary' }
+								})
+							)}
 							oninput={(e) => updateConfig('max', parseFloat(e.currentTarget.value) || 0)}
 						/>
 					</div>
@@ -922,15 +774,10 @@
 			})}
 		>
 			<label
-				class={css({
-					display: 'flex',
-					alignItems: 'center',
-					gap: '2',
-					fontSize: 'xs',
-					color: 'fg.secondary',
-					cursor: 'pointer',
-					userSelect: 'none'
-				})}
+				class={cx(
+					label({ variant: 'checkbox' }),
+					css({ gap: '2', fontSize: 'xs', userSelect: 'none' })
+				)}
 			>
 				<input
 					type="checkbox"
@@ -1720,7 +1567,7 @@
 								transition: 'opacity 160ms'
 							})}
 						>
-							<label class={css({ display: 'flex', cursor: 'pointer', alignItems: 'center' })}>
+							<label class={label({ variant: 'checkbox' })}>
 								<input
 									type="checkbox"
 									class={css({
@@ -1736,7 +1583,11 @@
 								/>
 							</label>
 							<button
-								class={css({ color: 'fg.tertiary', _hover: { color: 'error.fg' } })}
+								class={css({
+									backgroundColor: 'bg.primary',
+									color: 'fg.tertiary',
+									_hover: { color: 'error.fg' }
+								})}
 								onclick={() => deleteMutation.mutate(check.id)}
 								disabled={deleteMutation.isPending}
 								title="Delete check"

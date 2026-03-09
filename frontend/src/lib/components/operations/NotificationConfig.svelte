@@ -9,7 +9,7 @@
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import ToggleButton from '$lib/components/ui/ToggleButton.svelte';
 	import { Search } from 'lucide-svelte';
-	import { css, cx, input, stepConfig } from '$lib/styles/panda';
+	import { css, cx, input, label, stepConfig } from '$lib/styles/panda';
 
 	interface Props {
 		config?: NotificationConfigData;
@@ -144,9 +144,10 @@
 	{/if}
 
 	<div class={css({ marginBottom: '5' })}>
-		<label for="notify-method">Method</label>
+		<label class={label()} for="notify-method">Method</label>
 		<select
 			id="notify-method"
+			class={input()}
 			value={config.method}
 			onchange={(e) => handleMethodChange(e.currentTarget.value as 'email' | 'telegram')}
 		>
@@ -157,10 +158,11 @@
 
 	<div class={css({ marginBottom: '5' })}>
 		{#if method === 'email'}
-			<label for="notify-recipient">Email Address</label>
+			<label class={label()} for="notify-recipient">Email Address</label>
 			<input
 				id="notify-recipient"
 				type="text"
+				class={input()}
 				bind:value={config.recipient}
 				placeholder="user@example.com"
 			/>
@@ -296,18 +298,17 @@
 						{:else}
 							{#each filtered as sub (sub.id)}
 								<label
-									class={css({
-										display: 'flex',
-										cursor: 'pointer',
-										alignItems: 'center',
-										gap: '3',
-										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
-										paddingX: '2',
-										paddingY: '1.5',
-										_hover: { backgroundColor: 'bg.tertiary' },
-										'&:last-child': { borderBottomWidth: '0' }
-									})}
+									class={cx(
+										label({ variant: 'checkbox' }),
+										css({
+											borderBottomWidth: '1',
+											borderBottomColor: 'border.primary',
+											paddingX: '2',
+											paddingY: '1.5',
+											_hover: { backgroundColor: 'bg.tertiary' },
+											_last: { borderBottomWidth: '0' }
+										})
+									)}
 								>
 									<input
 										id={`sub-${sub.id}`}
@@ -347,7 +348,7 @@
 
 	<!-- svelte-ignore a11y_label_has_associated_control -->
 	<div class={css({ marginBottom: '5' })}>
-		<label>Input Column(s)</label>
+		<label class={label()}>Input Column(s)</label>
 		<MultiSelectColumnDropdown
 			{schema}
 			value={inputColumns}
@@ -358,10 +359,11 @@
 	</div>
 
 	<div class={css({ marginBottom: '5' })}>
-		<label for="notify-output">Output Column</label>
+		<label class={label()} for="notify-output">Output Column</label>
 		<input
 			id="notify-output"
 			type="text"
+			class={input()}
 			bind:value={config.output_column}
 			placeholder="notification_status"
 		/>
@@ -369,14 +371,15 @@
 
 	{#if config.method === 'email'}
 		<div class={css({ marginBottom: '4' })}>
-			<label for="notify-subject">Subject Template</label>
-			<input id="notify-subject" type="text" bind:value={config.subject_template} />
+			<label class={label()} for="notify-subject">Subject Template</label>
+			<input id="notify-subject" type="text" class={input()} bind:value={config.subject_template} />
 		</div>
 	{/if}
 
 	<div class={css({ marginBottom: '0' })}>
-		<label for="notify-message">Message Template</label>
-		<textarea id="notify-message" rows="4" bind:value={config.message_template}></textarea>
+		<label class={label()} for="notify-message">Message Template</label>
+		<textarea id="notify-message" class={input()} rows="4" bind:value={config.message_template}
+		></textarea>
 		<span class={css({ marginTop: '1', display: 'block', fontSize: 'xs', color: 'fg.muted' })}>
 			{placeholderHint}
 		</span>

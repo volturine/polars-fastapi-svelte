@@ -3,7 +3,7 @@
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
-	import { css, cx, stepConfig, divider } from '$lib/styles/panda';
+	import { css, cx, label, stepConfig, divider } from '$lib/styles/panda';
 
 	interface DeduplicateConfigData {
 		subset: string[] | null;
@@ -40,14 +40,10 @@
 		<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 			{#each keepStrategies as strategy (strategy.value)}
 				<label
-					class={css({
-						display: 'flex',
-						cursor: 'pointer',
-						alignItems: 'center',
-						gap: '3',
-						paddingY: '2',
-						_hover: { color: 'fg.primary' }
-					})}
+					class={cx(
+						label({ variant: 'checkbox' }),
+						css({ paddingY: '2', _hover: { color: 'fg.primary' } })
+					)}
 				>
 					<input
 						type="radio"

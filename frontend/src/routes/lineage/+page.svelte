@@ -16,7 +16,7 @@
 		ZoomIn,
 		ZoomOut
 	} from 'lucide-svelte';
-	import { css, cx, button, row, divider, muted } from '$lib/styles/panda';
+	import { css, cx, button, input, row, divider, muted } from '$lib/styles/panda';
 
 	type LayoutMode = 'horizontal' | 'vertical' | 'grid';
 	type LineageGraphApi = {
@@ -156,14 +156,14 @@
 		>
 			<div class={cx(row, css({ gap: '2' }))}>
 				<select
-					class={css({
-						fontSize: 'xs',
-						borderWidth: '1',
-						borderColor: 'border.primary',
-						backgroundColor: 'bg.primary',
-						paddingX: '2',
-						paddingY: '1'
-					})}
+					class={cx(
+						input(),
+						css({
+							fontSize: 'xs',
+							paddingX: '2',
+							paddingY: '1'
+						})
+					)}
 					id="lineage-ds"
 					aria-label="Output datasource"
 					value={selectedDatasourceId}
@@ -175,14 +175,14 @@
 					{/each}
 				</select>
 				<select
-					class={css({
-						fontSize: 'xs',
-						borderWidth: '1',
-						borderColor: 'border.primary',
-						backgroundColor: 'bg.primary',
-						paddingX: '2',
-						paddingY: '1'
-					})}
+					class={cx(
+						input(),
+						css({
+							fontSize: 'xs',
+							paddingX: '2',
+							paddingY: '1'
+						})
+					)}
 					id="lineage-branch"
 					aria-label="Branch"
 					value={selectedBranch}

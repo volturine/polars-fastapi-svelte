@@ -39,7 +39,7 @@
 	import DragPreview from '$lib/components/pipeline/DragPreview.svelte';
 	import DatasourceSelectorModal from '$lib/components/common/DatasourceSelectorModal.svelte';
 	import { schemaStore } from '$lib/stores/schema.svelte';
-	import { css, cx, spinner, button, row } from '$lib/styles/panda';
+	import { css, cx, spinner, button, input, row } from '$lib/styles/panda';
 	import {
 		ChevronDown,
 		ChevronLeft,
@@ -1065,6 +1065,7 @@
 											fontSize: 'md',
 											lineHeight: '1',
 											marginLeft: '1',
+											backgroundColor: 'transparent',
 											opacity: '0.4',
 											_hover: { opacity: '1', color: 'error.fg' }
 										})}
@@ -1678,16 +1679,16 @@
 								{#if editingVersionId === version.id}
 									<input
 										type="text"
-										class={css({
-											fontSize: 'sm',
-											fontWeight: 'semibold',
-											color: 'fg.primary',
-											backgroundColor: 'transparent',
-											borderWidth: '1',
-											borderColor: 'border.primary',
-											paddingX: '1',
-											paddingY: '0.5'
-										})}
+										class={cx(
+											input(),
+											css({
+												fontSize: 'sm',
+												fontWeight: 'semibold',
+												backgroundColor: 'transparent',
+												paddingX: '1',
+												paddingY: '0.5'
+											})
+										)}
 										id="version-name-{version.id}"
 										aria-label="Version name"
 										bind:value={editingVersionName}
@@ -1754,3 +1755,9 @@
 {/if}
 
 <DragPreview />
+
+<style>
+	[data-readonly] :global(:is(.step-node, .drag-handle, .action-btn, .datasource-node)) {
+		pointer-events: none !important;
+	}
+</style>

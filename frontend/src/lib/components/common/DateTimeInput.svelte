@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { X } from 'lucide-svelte';
-	import { css } from '$lib/styles/panda';
+	import { css, cx, input } from '$lib/styles/panda';
 
 	interface Props {
 		value: string;
@@ -48,7 +48,17 @@
 		id={id ? `${id}-date` : undefined}
 		value={dateValue}
 		onchange={handleDateChange}
-		class={css({ minWidth: '0', flex: '1', paddingX: '1.5', paddingY: '1', fontSize: 'xs' })}
+		class={cx(
+			input(),
+			css({
+				minWidth: '0',
+				flex: '1',
+				paddingX: '1.5',
+				paddingY: '1',
+				fontSize: 'xs',
+				cursor: 'pointer'
+			})
+		)}
 	/>
 	<div class={css({ position: 'relative', minWidth: '0', flex: '1' })}>
 		<input
@@ -57,14 +67,18 @@
 			value={timeValue}
 			onchange={handleTimeChange}
 			disabled={!dateValue}
-			class={css({
-				width: '100%',
-				paddingX: '1.5',
-				paddingY: '1',
-				paddingRight: '6',
-				fontSize: 'xs',
-				_disabled: { cursor: 'not-allowed', opacity: '0.5' }
-			})}
+			class={cx(
+				input(),
+				css({
+					minWidth: '0',
+					flex: '1',
+					paddingX: '1.5',
+					paddingY: '1',
+					paddingRight: '6',
+					fontSize: 'xs',
+					cursor: 'pointer'
+				})
+			)}
 		/>
 		{#if timeValue}
 			<button

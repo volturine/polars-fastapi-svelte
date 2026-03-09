@@ -2,7 +2,7 @@
 	import type { Schema } from '$lib/types/schema';
 	import type { PivotConfigData } from '$lib/types/operation-config';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
-	import { css, stepConfig } from '$lib/styles/panda';
+	import { css, cx, input, label, stepConfig } from '$lib/styles/panda';
 
 	interface Props {
 		schema: Schema;
@@ -94,16 +94,10 @@
 		>
 			{#each schema.columns as column (column.name)}
 				<label
-					class={css({
-						display: 'flex',
-						alignItems: 'center',
-						gap: '3',
-						paddingX: '2',
-						paddingY: '1',
-						cursor: 'pointer',
-						fontSize: 'sm',
-						_hover: { backgroundColor: 'bg.hover' }
-					})}
+					class={cx(
+						label({ variant: 'checkbox' }),
+						css({ paddingX: '2', paddingY: '1', _hover: { backgroundColor: 'bg.hover' } })
+					)}
 				>
 					<input
 						id={`pivot-checkbox-index-${column.name}`}
@@ -153,10 +147,11 @@
 	</div>
 
 	<div class={css({ marginBottom: '5' })}>
-		<label for="pivot-select-agg">Aggregation</label>
+		<label class={label()} for="pivot-select-agg">Aggregation</label>
 		<select
 			id="pivot-select-agg"
 			data-testid="pivot-agg-select"
+			class={input()}
 			bind:value={config.aggregate_function}
 		>
 			{#each aggregateFunctions as func (func)}

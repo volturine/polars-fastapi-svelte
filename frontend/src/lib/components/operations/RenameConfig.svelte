@@ -3,7 +3,7 @@
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import { ArrowRight, X } from 'lucide-svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
-	import { css, emptyText, stepConfig, muted } from '$lib/styles/panda';
+	import { css, cx, emptyText, input, label, stepConfig, muted } from '$lib/styles/panda';
 
 	interface RenameConfigData {
 		column_mapping: { [oldName: string]: string };
@@ -93,30 +93,18 @@
 		role="group"
 		aria-label="Add rename mapping form"
 	>
-		<label
-			for="rename-input-new"
-			class={css({
-				position: 'absolute',
-				width: 'px',
-				height: 'px',
-				padding: '0',
-				margin: '-1px',
-				overflow: 'hidden',
-				clip: 'rect(0, 0, 0, 0)',
-				whiteSpace: 'nowrap',
-				border: '0'
-			})}>New column name</label
-		>
+		<label for="rename-input-new" class={label({ variant: 'hidden' })}>New column name</label>
 		<input
 			id="rename-input-new"
 			data-testid="rename-new-name-input"
 			type="text"
-			class={css({
-				width: 'full',
-				backgroundColor: !formOldName ? 'bg.muted' : undefined,
-				color: !formOldName ? 'fg.muted' : undefined,
-				_disabled: { cursor: 'not-allowed' }
-			})}
+			class={cx(
+				input(),
+				css({
+					backgroundColor: !formOldName ? 'bg.muted' : undefined,
+					color: !formOldName ? 'fg.muted' : undefined
+				})
+			)}
 			bind:value={formNewName}
 			placeholder={formOldName ? `New name for ${formOldName}` : 'Select a column first'}
 			aria-label="Enter new column name"

@@ -418,14 +418,10 @@
 				</div>
 			{/if}
 			<select
-				class={css({
-					borderWidth: '1',
-					borderColor: 'border.primary',
-					backgroundColor: 'transparent',
-					paddingX: '3',
-					paddingY: '1.5',
-					fontSize: 'sm'
-				})}
+				class={cx(
+					input(),
+					css({ backgroundColor: 'transparent', paddingX: '3', paddingY: '1.5', fontSize: 'sm' })
+				)}
 				id="builds-kind-filter"
 				aria-label="Filter by type"
 				bind:value={kindFilter}
@@ -438,14 +434,10 @@
 				<option value="row_count">Row Count</option>
 			</select>
 			<select
-				class={css({
-					borderWidth: '1',
-					borderColor: 'border.primary',
-					backgroundColor: 'transparent',
-					paddingX: '3',
-					paddingY: '1.5',
-					fontSize: 'sm'
-				})}
+				class={cx(
+					input(),
+					css({ backgroundColor: 'transparent', paddingX: '3', paddingY: '1.5', fontSize: 'sm' })
+				)}
 				id="builds-status-filter"
 				aria-label="Filter by status"
 				bind:value={statusFilter}
@@ -464,7 +456,7 @@
 				<span class={muted}>From</span>
 				<input
 					type="date"
-					class={cx(input(), css({ paddingY: '1', fontSize: 'sm' }))}
+					class={cx(input(), css({ paddingY: '1', fontSize: 'sm', cursor: 'pointer' }))}
 					id="builds-date-from"
 					aria-label="From date"
 					bind:value={dateFrom}
@@ -472,7 +464,7 @@
 				<span class={muted}>To</span>
 				<input
 					type="date"
-					class={cx(input(), css({ paddingY: '1', fontSize: 'sm' }))}
+					class={cx(input(), css({ paddingY: '1', fontSize: 'sm', cursor: 'pointer' }))}
 					id="builds-date-to"
 					aria-label="To date"
 					bind:value={dateTo}

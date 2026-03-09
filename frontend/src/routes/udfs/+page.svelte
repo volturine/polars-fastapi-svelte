@@ -9,7 +9,7 @@
 	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
 	import PanelFooter from '$lib/components/ui/PanelFooter.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
-	import { css, spinner, button, chip, cx, row } from '$lib/styles/panda';
+	import { css, spinner, button, chip, cx, input, label, row } from '$lib/styles/panda';
 
 	const queryClient = useQueryClient();
 
@@ -164,7 +164,7 @@
 			type="text"
 			placeholder="Search UDFs..."
 			bind:value={search}
-			class={css({ maxWidth: 'popover' })}
+			class={cx(input(), css({ maxWidth: 'popover' }))}
 		/>
 	</div>
 
@@ -346,15 +346,15 @@
 					gap: '3'
 				})}
 			>
-				<label for="udf-import-json">Import JSON</label>
+				<label class={label()} for="udf-import-json">Import JSON</label>
 				<textarea
 					rows="10"
 					id="udf-import-json"
 					placeholder="Paste exported JSON here..."
 					bind:value={importText}
-					class={css({ fontFamily: 'mono' })}
+					class={input()}
 				></textarea>
-				<label class={cx(row, css({ gap: '2', color: 'fg.secondary' }))}>
+				<label class={label({ variant: 'inline' })}>
 					<input id="udf-overwrite-import" type="checkbox" bind:checked={overwriteImport} />
 					Overwrite existing by name
 				</label>

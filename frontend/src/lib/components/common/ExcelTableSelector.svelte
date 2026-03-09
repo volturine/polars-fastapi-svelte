@@ -2,7 +2,7 @@
 	import { onDestroy, untrack } from 'svelte';
 	import { preflightExcel, preflightExcelFromPath, previewExcel } from '$lib/api/excel';
 	import DataTable from '$lib/components/common/DataTable.svelte';
-	import { css, cx, button, row, rowBetween } from '$lib/styles/panda';
+	import { css, cx, button, input, label, row, rowBetween } from '$lib/styles/panda';
 
 	interface ExcelConfig {
 		sheet_name: string;
@@ -477,23 +477,13 @@
 		})}
 	>
 		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-			<label
-				class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
-				for="excel-sheet">Sheet</label
-			>
+			<label class={label({ variant: 'field' })} for="excel-sheet">Sheet</label>
 			<select
 				id="excel-sheet"
 				value={selectedSheet}
 				onchange={(event) => applySheet(event.currentTarget.value)}
 				disabled={disabled || previewLoading || !sheetNames.length}
-				class={css({
-					borderWidth: '1',
-					borderColor: 'border.primary',
-					backgroundColor: 'bg.primary',
-					paddingX: '3',
-					paddingY: '2',
-					fontSize: 'sm'
-				})}
+				class={cx(input(), css({ paddingX: '3', paddingY: '2', fontSize: 'sm' }))}
 			>
 				<option value="">Select sheet</option>
 				{#each sheetNames as sheet (sheet)}
@@ -502,23 +492,13 @@
 			</select>
 		</div>
 		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-			<label
-				class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
-				for="excel-table">Excel Table</label
-			>
+			<label class={label({ variant: 'field' })} for="excel-table">Excel Table</label>
 			<select
 				id="excel-table"
 				value={selectedTable}
 				onchange={(event) => applyTable(event.currentTarget.value)}
 				disabled={disabled || previewLoading || !selectedSheet}
-				class={css({
-					borderWidth: '1',
-					borderColor: 'border.primary',
-					backgroundColor: 'bg.primary',
-					paddingX: '3',
-					paddingY: '2',
-					fontSize: 'sm'
-				})}
+				class={cx(input(), css({ paddingX: '3', paddingY: '2', fontSize: 'sm' }))}
 			>
 				<option value="">Manual selection</option>
 				{#each tableMap[selectedSheet] ?? [] as table (table)}
@@ -527,23 +507,13 @@
 			</select>
 		</div>
 		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-			<label
-				class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
-				for="excel-range">Named Range</label
-			>
+			<label class={label({ variant: 'field' })} for="excel-range">Named Range</label>
 			<select
 				id="excel-range"
 				value={selectedRange}
 				onchange={(event) => applyNamedRange(event.currentTarget.value)}
 				disabled={disabled || previewLoading}
-				class={css({
-					borderWidth: '1',
-					borderColor: 'border.primary',
-					backgroundColor: 'bg.primary',
-					paddingX: '3',
-					paddingY: '2',
-					fontSize: 'sm'
-				})}
+				class={cx(input(), css({ paddingX: '3', paddingY: '2', fontSize: 'sm' }))}
 			>
 				<option value="">None</option>
 				{#each namedRanges as range (range)}
@@ -552,10 +522,7 @@
 			</select>
 		</div>
 		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-			<label
-				class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
-				for="excel-cell-range">Manual Range</label
-			>
+			<label class={label({ variant: 'field' })} for="excel-cell-range">Manual Range</label>
 			<input
 				id="excel-cell-range"
 				type="text"
@@ -568,14 +535,7 @@
 				}}
 				disabled={disabled || previewLoading}
 				placeholder="A1:D50"
-				class={css({
-					borderWidth: '1',
-					borderColor: 'border.primary',
-					backgroundColor: 'bg.primary',
-					paddingX: '3',
-					paddingY: '2',
-					fontSize: 'sm'
-				})}
+				class={cx(input(), css({ paddingX: '3', paddingY: '2', fontSize: 'sm' }))}
 			/>
 			<p class={css({ margin: '0', fontSize: 'xs', color: 'fg.muted' })}>
 				Optional A1 range (use Sheet1!A1:D50).
@@ -592,9 +552,7 @@
 			disabled={disabled || previewLoading}
 			class={css({ height: 'iconSm', width: 'iconSm', cursor: 'pointer' })}
 		/>
-		<label
-			for="excel-header"
-			class={css({ margin: '0', fontSize: 'sm', fontWeight: 'medium', color: 'fg.secondary' })}
+		<label for="excel-header" class={cx(label({ variant: 'field' }), css({ margin: '0' }))}
 			>First row is header</label
 		>
 	</div>

@@ -3,7 +3,7 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { listNamespaces } from '$lib/api/namespaces';
 	import { normalizeNamespace } from '$lib/utils/namespace';
-	import { css } from '$lib/styles/panda';
+	import { css, cx, input } from '$lib/styles/panda';
 
 	interface Props {
 		open: boolean;
@@ -184,18 +184,15 @@
 		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2', padding: '2' })}>
 			<input
 				id="namespace-picker-search"
-				class={css({
-					width: '100%',
-					borderWidth: '1',
-					borderColor: 'border.primary',
-					backgroundColor: 'bg.primary',
-					paddingX: '2',
-					paddingY: '1.5',
-					fontSize: 'sm',
-					color: 'fg.primary',
-					_placeholder: { color: 'fg.muted' },
-					_focus: { borderColor: 'accent.primary', outline: 'none' }
-				})}
+				class={cx(
+					input(),
+					css({
+						paddingX: '2',
+						paddingY: '1.5',
+						fontSize: 'sm',
+						_focus: { borderColor: 'accent.primary' }
+					})
+				)}
 				type="text"
 				bind:this={searchInput}
 				bind:value={searchQuery}

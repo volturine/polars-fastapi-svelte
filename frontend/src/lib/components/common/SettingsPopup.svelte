@@ -24,7 +24,7 @@
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
 	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
-	import { css, input, cx, row, rowBetween, divider } from '$lib/styles/panda';
+	import { css, input, cx, label, row, rowBetween, divider } from '$lib/styles/panda';
 
 	interface Props {
 		open: boolean;
@@ -277,7 +277,7 @@
 			<div
 				class={css({ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '2' })}
 			>
-				<label class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+				<label class={label({ variant: 'wrapper' })}>
 					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Host</span>
 					<input
 						type="text"
@@ -287,7 +287,7 @@
 						placeholder="smtp.example.com"
 					/>
 				</label>
-				<label class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+				<label class={label({ variant: 'wrapper' })}>
 					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Port</span>
 					<input type="number" class={input()} id="smtp-port" bind:value={smtp_port} />
 				</label>
@@ -296,7 +296,7 @@
 			<div
 				class={css({ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '2' })}
 			>
-				<label class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+				<label class={label({ variant: 'wrapper' })}>
 					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>User</span>
 					<input
 						type="text"
@@ -306,7 +306,7 @@
 						placeholder="user@example.com"
 					/>
 				</label>
-				<label class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+				<label class={label({ variant: 'wrapper' })}>
 					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Password</span>
 					<input
 						type="password"
@@ -319,7 +319,7 @@
 			</div>
 
 			<div class={css({ display: 'flex', alignItems: 'flex-end', gap: '2' })}>
-				<label class={css({ display: 'flex', flex: '1', flexDirection: 'column', gap: '1' })}>
+				<label class={cx(label({ variant: 'wrapper' }), css({ flex: '1' }))}>
 					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Test recipient</span>
 					<input
 						type="email"
@@ -386,7 +386,7 @@
 				{/if}
 			</div>
 
-			<label class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+			<label class={label({ variant: 'wrapper' })}>
 				<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Bot token</span>
 				<input
 					type="password"

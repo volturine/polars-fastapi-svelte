@@ -10,7 +10,7 @@
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import { X } from 'lucide-svelte';
-	import { css, stepConfig, cx, divider } from '$lib/styles/panda';
+	import { css, stepConfig, cx, divider, label, input } from '$lib/styles/panda';
 
 	const _uid = $props.id();
 
@@ -152,21 +152,13 @@
 		aria-labelledby="join-type-heading"
 	>
 		<span id="join-type-heading"><SectionHeader>Join Type</SectionHeader></span>
-		<label
-			for="join-select-type"
-			class={css({
-				position: 'absolute',
-				width: 'px',
-				height: 'px',
-				padding: '0',
-				margin: '-1px',
-				overflow: 'hidden',
-				clip: 'rect(0, 0, 0, 0)',
-				whiteSpace: 'nowrap',
-				border: '0'
-			})}>Select join type</label
+		<label for="join-select-type" class={label({ variant: 'hidden' })}>Select join type</label>
+		<select
+			id="join-select-type"
+			class={input()}
+			data-testid="join-type-select"
+			bind:value={config.how}
 		>
-		<select id="join-select-type" data-testid="join-type-select" bind:value={config.how}>
 			{#each joinTypes as joinType (joinType.value)}
 				<option value={joinType.value}>{joinType.label}</option>
 			{/each}
@@ -270,14 +262,8 @@
 					aria-label={`Join column pair ${_index + 1}`}
 				>
 					<div class={css({ flex: '1' })}>
-						<label
-							for={`join-left-${joinCol.id}`}
-							class={css({
-								display: 'block',
-								fontSize: 'xs',
-								marginBottom: '1',
-								color: 'fg.muted'
-							})}>Left Column</label
+						<label for={`join-left-${joinCol.id}`} class={cx(label(), css({ marginBottom: '1' }))}
+							>Left Column</label
 						>
 						<ColumnDropdown
 							{schema}
@@ -287,14 +273,8 @@
 						/>
 					</div>
 					<div class={css({ flex: '1' })}>
-						<label
-							for={`join-right-${joinCol.id}`}
-							class={css({
-								display: 'block',
-								fontSize: 'xs',
-								marginBottom: '1',
-								color: 'fg.muted'
-							})}>Right Column</label
+						<label for={`join-right-${joinCol.id}`} class={cx(label(), css({ marginBottom: '1' }))}
+							>Right Column</label
 						>
 						<ColumnDropdown
 							schema={{ columns: rightColumns, row_count: rightSchema?.row_count ?? 0 }}
@@ -388,32 +368,19 @@
 		aria-labelledby="suffix-heading"
 	>
 		<span id="suffix-heading"><SectionHeader>Column Suffix</SectionHeader></span>
-		<label
-			for="join-input-suffix"
-			class={css({
-				position: 'absolute',
-				width: 'px',
-				height: 'px',
-				padding: '0',
-				margin: '-1px',
-				overflow: 'hidden',
-				clip: 'rect(0, 0, 0, 0)',
-				whiteSpace: 'nowrap',
-				border: '0'
-			})}>Suffix for right dataset columns</label
+		<label for="join-input-suffix" class={label({ variant: 'hidden' })}
+			>Suffix for right dataset columns</label
 		>
 		<input
 			id="join-input-suffix"
 			data-testid="join-suffix-input"
 			type="text"
+			class={input()}
 			bind:value={config.suffix}
 			placeholder="_right"
 			aria-describedby="join-suffix-hint"
 		/>
-		<span
-			id="join-suffix-hint"
-			class={css({ marginTop: '1', display: 'block', fontSize: 'xs', color: 'fg.muted' })}
-		>
+		<span id="join-suffix-hint" class={cx(label(), css({ marginTop: '1' }))}>
 			Suffix for columns from the right dataset (when names collide)
 		</span>
 	</div>

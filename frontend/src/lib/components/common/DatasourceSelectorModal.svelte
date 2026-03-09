@@ -5,7 +5,7 @@
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import type { SourceType } from '$lib/utils/fileTypes';
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
-	import { css, cx, row } from '$lib/styles/panda';
+	import { css, cx, row, input } from '$lib/styles/panda';
 
 	interface Props {
 		show: boolean;
@@ -205,18 +205,15 @@
 			</div>
 		{/if}
 		<input
-			class={css({
-				width: '100%',
-				borderWidth: '1',
-				borderColor: 'border.primary',
-				paddingX: '3',
-				paddingY: '3',
-				fontSize: 'sm',
-				backgroundColor: 'bg.primary',
-				color: 'fg.primary',
-				outline: 'none',
-				_focus: { borderColor: 'accent.primary' }
-			})}
+			class={cx(
+				input(),
+				css({
+					paddingX: '3',
+					paddingY: '3',
+					fontSize: 'sm',
+					_focus: { borderColor: 'accent.primary' }
+				})
+			)}
 			type="text"
 			bind:this={searchInput}
 			id="dsm-search"

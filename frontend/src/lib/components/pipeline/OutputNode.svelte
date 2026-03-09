@@ -28,7 +28,7 @@
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
 	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
-	import { css, cx, chip, row, rowBetween, muted } from '$lib/styles/panda';
+	import { css, cx, chip, input, label, row, rowBetween, muted } from '$lib/styles/panda';
 	import {
 		Bell,
 		CalendarClock,
@@ -491,16 +491,15 @@
 				{#if editingName}
 					<div class={cx(row, css({ gap: '1' }))}>
 						<input
-							class={css({
-								minWidth: 'fieldSm',
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '0.5',
-								fontSize: 'sm',
-								outline: 'none'
-							})}
+							class={cx(
+								input(),
+								css({
+									minWidth: 'fieldSm',
+									paddingX: '2',
+									paddingY: '0.5',
+									fontSize: 'sm'
+								})
+							)}
 							id="output-node-name"
 							bind:value={draftName}
 							onkeydown={(e) => {
@@ -898,15 +897,7 @@
 							paddingLeft: '5'
 						})}
 					>
-						<label
-							class={css({
-								display: 'flex',
-								cursor: 'pointer',
-								alignItems: 'center',
-								gap: '2',
-								fontSize: 'xs'
-							})}
-						>
+						<label class={cx(label({ variant: 'checkbox' }), css({ gap: '2', fontSize: 'xs' }))}>
 							<input
 								name="notify_enabled"
 								type="checkbox"
@@ -1031,21 +1022,21 @@
 
 								<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 									<label
-										class={css({ fontSize: '2xs', textTransform: 'uppercase', color: 'fg.muted' })}
+										class={cx(label(), css({ fontSize: '2xs' }))}
 										for={`${idPrefix}-notify-body`}
 									>
 										Message Template
 									</label>
 									<textarea
-										class={css({
-											borderWidth: '1',
-											borderColor: 'border.primary',
-											backgroundColor: 'bg.secondary',
-											paddingY: '1',
-											paddingX: '2',
-											fontSize: 'xs',
-											color: 'fg.primary'
-										})}
+										class={cx(
+											input(),
+											css({
+												backgroundColor: 'bg.secondary',
+												paddingY: '1',
+												paddingX: '2',
+												fontSize: 'xs'
+											})
+										)}
 										id={`${idPrefix}-notify-body`}
 										rows="3"
 										value={notifyConfig.body_template}

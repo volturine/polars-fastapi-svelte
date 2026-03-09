@@ -11,7 +11,7 @@
 	import type { AnalysisCreate, PipelineStep } from '$lib/types/analysis';
 	import { buildOutputConfig } from '$lib/utils/analysis-tab';
 	import { getDefaultConfig } from '$lib/utils/step-config-defaults';
-	import { css, cx, spinner, button, input, row, divider } from '$lib/styles/panda';
+	import { css, cx, spinner, button, label, input, row, divider } from '$lib/styles/panda';
 
 	let step = $state(1);
 	let name = $state('');
@@ -264,15 +264,7 @@
 				</p>
 
 				<div class={css({ marginBottom: '5', display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label
-						for="name"
-						class={css({
-							display: 'block',
-							fontSize: 'sm',
-							fontWeight: 'medium',
-							color: 'fg.secondary'
-						})}
-					>
+					<label for="name" class={label({ variant: 'field' })}>
 						Name <span class={css({ color: 'error.fg' })}>*</span>
 					</label>
 					<input
@@ -280,39 +272,20 @@
 						type="text"
 						bind:value={name}
 						placeholder="My Data Analysis"
-						class={cx(
-							input(),
-							css({ padding: '3', backgroundColor: 'bg.primary', fontSize: 'sm' })
-						)}
+						class={cx(input(), css({ padding: '3', fontSize: 'sm' }))}
 					/>
 				</div>
 				<div class={css({ marginBottom: '5', display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label
-						for="description"
-						class={css({
-							display: 'block',
-							fontSize: 'sm',
-							fontWeight: 'medium',
-							color: 'fg.secondary'
-						})}
-					>
-						Description
-					</label>
+					<label for="description" class={label({ variant: 'field' })}> Description </label>
 					<textarea
 						id="description"
 						bind:value={description}
 						placeholder="Describe what this analysis does..."
 						rows="4"
-						class={css({
-							minHeight: 'fieldSm',
-							width: '100%',
-							resize: 'vertical',
-							borderWidth: '1',
-							borderColor: 'border.primary',
-							backgroundColor: 'bg.primary',
-							padding: '3',
-							fontSize: 'sm'
-						})}
+						class={cx(
+							input(),
+							css({ minHeight: 'fieldSm', resize: 'vertical', padding: '3', fontSize: 'sm' })
+						)}
 					></textarea>
 				</div>
 			</div>

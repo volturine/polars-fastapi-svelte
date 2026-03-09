@@ -2,7 +2,7 @@
 	import type { Schema } from '$lib/types/schema';
 	import type { AIConfigData } from '$lib/utils/step-config-defaults';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
-	import { css, stepConfig } from '$lib/styles/panda';
+	import { css, label, stepConfig, input } from '$lib/styles/panda';
 
 	interface Props {
 		config?: AIConfigData;
@@ -39,28 +39,30 @@
 
 <div class={stepConfig()} role="region" aria-label="AI configuration">
 	<div class={css({ marginBottom: '5' })}>
-		<label for="ai-provider">Provider</label>
-		<select id="ai-provider" bind:value={config.provider}>
+		<label class={label()} for="ai-provider">Provider</label>
+		<select id="ai-provider" class={input()} bind:value={config.provider}>
 			<option value="ollama">Ollama (Local)</option>
 			<option value="openai">OpenAI (Cloud)</option>
 		</select>
 	</div>
 
 	<div class={css({ marginBottom: '5' })}>
-		<label for="ai-model">Model</label>
+		<label class={label()} for="ai-model">Model</label>
 		<input
 			id="ai-model"
 			type="text"
+			class={input()}
 			bind:value={config.model}
 			placeholder={config.provider === 'openai' ? 'gpt-4o' : 'llama2'}
 		/>
 	</div>
 
 	<div class={css({ marginBottom: '5' })}>
-		<label for="ai-endpoint">Endpoint URL</label>
+		<label class={label()} for="ai-endpoint">Endpoint URL</label>
 		<input
 			id="ai-endpoint"
 			type="text"
+			class={input()}
 			bind:value={config.endpoint_url}
 			placeholder={config.provider === 'openai'
 				? 'https://api.openai.com'
@@ -70,14 +72,20 @@
 
 	{#if config.provider === 'openai'}
 		<div class={css({ marginBottom: '5' })}>
-			<label for="ai-api-key">API Key</label>
-			<input id="ai-api-key" type="password" bind:value={config.api_key} placeholder="sk-..." />
+			<label class={label()} for="ai-api-key">API Key</label>
+			<input
+				id="ai-api-key"
+				type="password"
+				class={input()}
+				bind:value={config.api_key}
+				placeholder="sk-..."
+			/>
 		</div>
 	{/if}
 
 	<!-- svelte-ignore a11y_label_has_associated_control -->
 	<div class={css({ marginBottom: '5' })}>
-		<label>Input Column(s)</label>
+		<label class={label()}>Input Column(s)</label>
 		<MultiSelectColumnDropdown
 			{schema}
 			value={inputColumns}
@@ -88,13 +96,20 @@
 	</div>
 
 	<div class={css({ marginBottom: '5' })}>
-		<label for="ai-output">Output Column</label>
-		<input id="ai-output" type="text" bind:value={config.output_column} placeholder="ai_result" />
+		<label class={label()} for="ai-output">Output Column</label>
+		<input
+			id="ai-output"
+			type="text"
+			class={input()}
+			bind:value={config.output_column}
+			placeholder="ai_result"
+		/>
 	</div>
 
 	<div class={css({ marginBottom: '0' })}>
-		<label for="ai-prompt">Prompt Template</label>
-		<textarea id="ai-prompt" rows="4" bind:value={config.prompt_template}></textarea>
+		<label class={label()} for="ai-prompt">Prompt Template</label>
+		<textarea id="ai-prompt" class={input()} rows="4" bind:value={config.prompt_template}
+		></textarea>
 		<span class={css({ marginTop: '1', display: 'block', fontSize: 'xs', color: 'fg.muted' })}>
 			{placeholderHint}
 		</span>

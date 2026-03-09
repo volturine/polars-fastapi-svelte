@@ -50,9 +50,20 @@
 		},
 		{ immediate: true }
 	);
+
+	let trigger = $state<HTMLButtonElement>();
+	let pos = $state({ top: 0, right: 0 });
+
+	// DOM measurement for fixed-position popup — $derived cannot access DOM
+	$effect(() => {
+		if (expanded && trigger) {
+			const rect = trigger.getBoundingClientRect();
+			pos = { top: rect.bottom, right: window.innerWidth - rect.right };
+		}
+	});
 </script>
 
-<div class={css({ position: 'relative' })} bind:this={dropdownRef}>
+<div bind:this={dropdownRef}>
 	<button
 		class={css({
 			display: 'flex',
@@ -64,12 +75,13 @@
 			paddingX: '3',
 			paddingY: '2',
 			fontSize: 'xs',
-			backgroundColor: expanded ? 'bg.hover' : undefined,
+			backgroundColor: expanded ? 'bg.hover' : 'bg.primary',
 			color: expanded ? 'fg.primary' : enginesStore.count > 0 ? 'fg.secondary' : 'fg.tertiary',
 			_hover: { color: 'fg.primary' }
 		})}
 		onclick={toggleExpanded}
 		title="Engine Monitor"
+		bind:this={trigger}
 	>
 		<Cpu size={16} />
 		{#if enginesStore.count > 0}
@@ -95,9 +107,9 @@
 	{#if expanded}
 		<div
 			class={css({
-				position: 'absolute',
-				right: '0',
-				top: '100%',
+				position: 'fixed',
+				right: `${pos.right}px`,
+				top: `${pos.top}px`,
 				zIndex: 'engine',
 				width: 'listLg',
 				overflow: 'hidden',

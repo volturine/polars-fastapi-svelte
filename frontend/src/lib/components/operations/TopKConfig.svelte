@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
-	import { css, stepConfig } from '$lib/styles/panda';
+	import { css, input, label, stepConfig } from '$lib/styles/panda';
 
 	interface Props {
 		schema: Schema;
@@ -44,11 +44,12 @@
 	</div>
 
 	<div class={css({ marginBottom: '5' })}>
-		<label for="topk-input-k">Number of rows (k)</label>
+		<label class={label()} for="topk-input-k">Number of rows (k)</label>
 		<input
 			id="topk-input-k"
 			data-testid="topk-k-input"
 			type="number"
+			class={input()}
 			value={config.k}
 			oninput={(e) => setK(e.currentTarget.value)}
 			min="1"
@@ -57,7 +58,7 @@
 	</div>
 
 	<div class={css({ marginBottom: '0' })}>
-		<label class={css({ display: 'flex', cursor: 'pointer', alignItems: 'center', gap: '3' })}>
+		<label class={label({ variant: 'checkbox' })}>
 			<input
 				id="topk-checkbox-descending"
 				data-testid="topk-descending-checkbox"

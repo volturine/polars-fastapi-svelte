@@ -4,7 +4,7 @@
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
-	import { css, cx, stepConfig, divider } from '$lib/styles/panda';
+	import { css, cx, stepConfig, divider, label, input } from '$lib/styles/panda';
 
 	interface FillNullConfigData {
 		strategy: string;
@@ -48,25 +48,14 @@
 		aria-labelledby="fill-strategy-heading"
 	>
 		<span id="fill-strategy-heading"><SectionHeader>Fill Strategy</SectionHeader></span>
-		<label
-			for="fill-select-strategy"
-			class={css({
-				position: 'absolute',
-				width: 'px',
-				height: 'px',
-				padding: '0',
-				margin: '-1px',
-				overflow: 'hidden',
-				clip: 'rect(0, 0, 0, 0)',
-				whiteSpace: 'nowrap',
-				border: '0'
-			})}>Select fill strategy</label
+		<label for="fill-select-strategy" class={label({ variant: 'hidden' })}
+			>Select fill strategy</label
 		>
 		<select
 			id="fill-select-strategy"
 			data-testid="fill-strategy-select"
 			bind:value={config.strategy}
-			class={css({ marginBottom: '2', width: 'full' })}
+			class={cx(input(), css({ marginBottom: '2' }))}
 		>
 			{#each strategies as strategy (strategy.value)}
 				<option value={strategy.value}>{strategy.label}</option>
@@ -95,26 +84,13 @@
 			aria-labelledby="fill-value-heading"
 		>
 			<span id="fill-value-heading"><SectionHeader>Fill Value</SectionHeader></span>
-			<label
-				for="fill-input-value"
-				class={css({
-					position: 'absolute',
-					width: 'px',
-					height: 'px',
-					padding: '0',
-					margin: '-1px',
-					overflow: 'hidden',
-					clip: 'rect(0, 0, 0, 0)',
-					whiteSpace: 'nowrap',
-					border: '0'
-				})}>Fill value</label
-			>
+			<label for="fill-input-value" class={label({ variant: 'hidden' })}>Fill value</label>
 			<input
 				id="fill-value"
 				type="text"
 				bind:value={config.value}
 				placeholder="Enter value (e.g., 0, N/A)"
-				class={css({ marginBottom: '2', width: 'full' })}
+				class={cx(input(), css({ marginBottom: '2' }))}
 			/>
 			<ColumnTypeDropdown
 				value={config.value_type ?? 'Utf8'}

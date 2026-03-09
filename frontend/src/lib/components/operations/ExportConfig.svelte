@@ -1,7 +1,7 @@
 <script lang="ts">
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import type { FileType } from '$lib/utils/fileTypes';
-	import { css, stepConfig, cx, row } from '$lib/styles/panda';
+	import { css, label, stepConfig, cx, row, input } from '$lib/styles/panda';
 
 	interface Props {
 		config?: {
@@ -68,11 +68,12 @@
 	</div>
 
 	<div class={css({ marginBottom: '5' })}>
-		<label for="export-input-filename">Filename</label>
+		<label class={label()} for="export-input-filename">Filename</label>
 		<input
 			id="export-input-filename"
 			data-testid="export-filename-input"
 			type="text"
+			class={input()}
 			bind:value={config.filename}
 			placeholder="e.g., my_data"
 			aria-describedby="export-filename-hint"
@@ -86,7 +87,7 @@
 
 	{#if showFormatOptions}
 		<div class={css({ marginBottom: '5' })}>
-			<label for="export-select-format" class={cx(row, css({ gap: '2' }))}>
+			<label for="export-select-format" class={label({ variant: 'inline' })}>
 				Format
 				{#if selectedFileType === 'duckdb'}
 					<FileTypeBadge sourceType="duckdb" size="sm" />
@@ -97,6 +98,7 @@
 			<select
 				id="export-select-format"
 				data-testid="export-format-select"
+				class={input()}
 				bind:value={config.format}
 			>
 				{#each formatOptions as fmt (fmt.value)}
@@ -108,11 +110,12 @@
 
 	{#if showDuckDBOptions}
 		<div class={css({ marginBottom: '0' })}>
-			<label for="export-input-tablename">Table Name</label>
+			<label class={label()} for="export-input-tablename">Table Name</label>
 			<input
 				id="export-input-tablename"
 				data-testid="export-tablename-input"
 				type="text"
+				class={input()}
 				value={config.options?.table_name ?? 'data'}
 				oninput={(e) => (config.options = { ...config.options, table_name: e.currentTarget.value })}
 				placeholder="e.g., my_data"

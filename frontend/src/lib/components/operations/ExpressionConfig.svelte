@@ -2,7 +2,7 @@
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
-	import { css, stepConfig, cx, divider } from '$lib/styles/panda';
+	import { css, label, stepConfig, cx, divider, input } from '$lib/styles/panda';
 
 	interface ExpressionConfigData {
 		expression: string;
@@ -36,24 +36,13 @@
 		aria-labelledby="expr-expression-heading"
 	>
 		<span id="expr-expression-heading"><SectionHeader>Expression</SectionHeader></span>
-		<label
-			for="expr-textarea-expression"
-			class={css({
-				position: 'absolute',
-				width: 'px',
-				height: 'px',
-				padding: '0',
-				margin: '-1px',
-				overflow: 'hidden',
-				clip: 'rect(0, 0, 0, 0)',
-				whiteSpace: 'nowrap',
-				border: '0'
-			})}>Polars expression</label
+		<label for="expr-textarea-expression" class={label({ variant: 'hidden' })}
+			>Polars expression</label
 		>
 		<textarea
 			id="expr-textarea-expression"
 			data-testid="expr-expression-textarea"
-			class={css({ width: 'full', resize: 'vertical', marginBottom: '2' })}
+			class={cx(input(), css({ resize: 'vertical', marginBottom: '2' }))}
 			bind:value={config.expression}
 			placeholder="e.g., pl.col(&quot;price&quot;) * 1.2"
 			rows="4"
@@ -170,24 +159,12 @@
 		aria-labelledby="expr-new-column-heading"
 	>
 		<span id="expr-new-column-heading"><SectionHeader>New Column Name</SectionHeader></span>
-		<label
-			for="expr-input-column"
-			class={css({
-				position: 'absolute',
-				width: 'px',
-				height: 'px',
-				padding: '0',
-				margin: '-1px',
-				overflow: 'hidden',
-				clip: 'rect(0, 0, 0, 0)',
-				whiteSpace: 'nowrap',
-				border: '0'
-			})}>New column name</label
-		>
+		<label for="expr-input-column" class={label({ variant: 'hidden' })}>New column name</label>
 		<input
 			id="expr-input-column"
 			data-testid="expr-column-input"
 			type="text"
+			class={input()}
 			bind:value={config.column_name}
 			placeholder="e.g., price_with_tax, full_name"
 		/>

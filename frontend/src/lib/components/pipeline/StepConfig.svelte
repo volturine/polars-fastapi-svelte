@@ -67,7 +67,7 @@
 	import PanelFooter from '$lib/components/ui/PanelFooter.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import { Settings2, X } from 'lucide-svelte';
-	import { css, cx, spinner } from '$lib/styles/panda';
+	import { css, cx, spinner, button } from '$lib/styles/panda';
 
 	type WithColumnsConfigShape = {
 		expressions: Array<{
@@ -318,7 +318,11 @@
 			{:else if !schema && !isLoadingSchema}
 				<Callout tone="warn">
 					<p>Schema not available. Please ensure the data source is loaded.</p>
-					<button onclick={() => onClose?.()} type="button">Close</button>
+					<button
+						class={button({ variant: 'ghost', size: 'sm' })}
+						onclick={() => onClose?.()}
+						type="button">Close</button
+					>
 				</Callout>
 			{:else if isLoadingSchema}
 				<div

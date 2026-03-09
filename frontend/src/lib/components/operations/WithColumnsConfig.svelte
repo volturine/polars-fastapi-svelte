@@ -17,6 +17,8 @@
 		css,
 		button,
 		emptyText,
+		input,
+		label,
 		stepConfig,
 		cx,
 		row,
@@ -246,15 +248,21 @@
 	</h3>
 
 	<div class={css({ display: 'flex', flexDirection: 'column', gap: '3', marginBottom: '5' })}>
-		<label for="wc-expr-type">Type</label>
-		<select id="wc-expr-type" bind:value={exprType}>
+		<label class={label()} for="wc-expr-type">Type</label>
+		<select id="wc-expr-type" class={input()} bind:value={exprType}>
 			<option value="column">From column</option>
 			<option value="literal">Literal value</option>
 			<option value="udf">Python UDF</option>
 		</select>
 
-		<label for="wc-expr-name">Column name</label>
-		<input id="wc-expr-name" type="text" bind:value={exprName} placeholder="New column name" />
+		<label class={label()} for="wc-expr-name">Column name</label>
+		<input
+			id="wc-expr-name"
+			type="text"
+			class={input()}
+			bind:value={exprName}
+			placeholder="New column name"
+		/>
 
 		{#if exprType === 'column'}
 			<ColumnDropdown
@@ -264,32 +272,22 @@
 				placeholder="Select source column..."
 			/>
 		{:else if exprType === 'literal'}
-			<label for="wc-expr-value">Value</label>
-			<input id="wc-expr-value" type="text" bind:value={exprValue} placeholder="Literal value" />
+			<label class={label()} for="wc-expr-value">Value</label>
+			<input
+				id="wc-expr-value"
+				type="text"
+				class={input()}
+				bind:value={exprValue}
+				placeholder="Literal value"
+			/>
 		{:else}
 			<div class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
 				<div class={cx(row, css({ gap: '3' }))}>
-					<label
-						class={css({
-							display: 'inline-flex',
-							alignItems: 'center',
-							gap: '2',
-							fontSize: 'sm',
-							color: 'fg.secondary'
-						})}
-					>
+					<label class={label({ variant: 'inline' })}>
 						<input id="wc-use-lib-no" type="radio" bind:group={useLibrary} value={false} />
 						Inline UDF
 					</label>
-					<label
-						class={css({
-							display: 'inline-flex',
-							alignItems: 'center',
-							gap: '2',
-							fontSize: 'sm',
-							color: 'fg.secondary'
-						})}
-					>
+					<label class={label({ variant: 'inline' })}>
 						<input id="wc-use-lib-yes" type="radio" bind:group={useLibrary} value={true} />
 						Library UDF
 					</label>
@@ -306,21 +304,12 @@
 						</button>
 						{#if exprUdfId}
 							{@const selectedUdf = (udfQuery.data ?? []).find((item) => item.id === exprUdfId)}
-							<span class={css({ fontSize: 'xs', color: 'fg.muted' })}
-								>Selected: {selectedUdf?.name ?? exprUdfId}</span
-							>
+							<span class={label()}>Selected: {selectedUdf?.name ?? exprUdfId}</span>
 						{:else}
-							<span class={css({ fontSize: 'xs', color: 'fg.muted' })}>No UDF selected</span>
+							<span class={label()}>No UDF selected</span>
 						{/if}
 					</div>
-					<span
-						class={css({
-							fontSize: 'xs',
-							textTransform: 'uppercase',
-							letterSpacing: 'wider',
-							color: 'fg.muted'
-						})}>Input columns</span
-					>
+					<span class={label()}>Input columns</span>
 					<MultiSelectColumnDropdown
 						{schema}
 						value={exprArgs}
@@ -328,14 +317,7 @@
 						placeholder="Select input columns..."
 					/>
 				{:else}
-					<span
-						class={css({
-							fontSize: 'xs',
-							textTransform: 'uppercase',
-							letterSpacing: 'wider',
-							color: 'fg.muted'
-						})}>Input columns</span
-					>
+					<span class={label()}>Input columns</span>
 					<MultiSelectColumnDropdown
 						{schema}
 						value={exprArgs}
@@ -344,15 +326,7 @@
 					/>
 
 					<div class={rowBetween}>
-						<label
-							for="wc-expr-code"
-							class={css({
-								fontSize: 'xs',
-								textTransform: 'uppercase',
-								letterSpacing: 'wider',
-								color: 'fg.muted'
-							})}>Function</label
-						>
+						<label for="wc-expr-code" class={label()}>Function</label>
 						<button
 							type="button"
 							class={button({ variant: 'ghost', size: 'sm' })}
@@ -361,27 +335,20 @@
 					</div>
 					<textarea
 						id="wc-expr-code"
-						class={css({
-							resize: 'vertical',
-							minHeight: 'fieldSm',
-							fontSize: 'sm',
-							fontFamily: 'mono'
-						})}
+						class={cx(
+							input(),
+							css({
+								resize: 'vertical',
+								minHeight: 'fieldSm',
+								fontSize: 'sm'
+							})
+						)}
 						rows="5"
 						placeholder="def udf(*args):&#10;    return ..."
 						bind:value={exprCode}
 						oninput={() => (codeEdited = true)}
 					></textarea>
-					<label
-						class={css({
-							display: 'inline-flex',
-							alignItems: 'center',
-							gap: '2',
-							fontSize: 'sm',
-							marginTop: '2',
-							color: 'fg.secondary'
-						})}
-					>
+					<label class={cx(label({ variant: 'inline' }), css({ marginTop: '2' }))}>
 						<input id="wc-save-to-lib" type="checkbox" bind:checked={saveToLibrary} />
 						Save to UDF Library
 					</label>
@@ -398,19 +365,27 @@
 								})
 							)}
 						>
-							<label for="wc-save-name">Name</label>
-							<input id="wc-save-name" type="text" placeholder="UDF name" bind:value={saveName} />
-							<label for="wc-save-desc">Description</label>
+							<label class={label()} for="wc-save-name">Name</label>
+							<input
+								id="wc-save-name"
+								type="text"
+								class={input()}
+								placeholder="UDF name"
+								bind:value={saveName}
+							/>
+							<label class={label()} for="wc-save-desc">Description</label>
 							<input
 								id="wc-save-desc"
 								type="text"
+								class={input()}
 								placeholder="Description"
 								bind:value={saveDescription}
 							/>
-							<label for="wc-save-tags">Tags</label>
+							<label class={label()} for="wc-save-tags">Tags</label>
 							<input
 								id="wc-save-tags"
 								type="text"
+								class={input()}
 								placeholder="Tags (comma-separated)"
 								bind:value={saveTags}
 							/>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { css, stepConfig } from '$lib/styles/panda';
+	import { css, input, label, stepConfig } from '$lib/styles/panda';
 
 	interface Props {
 		config?: {
@@ -13,11 +13,12 @@
 
 <div class={stepConfig()} role="region" aria-label="Sample configuration">
 	<div class={css({ marginBottom: '5' })}>
-		<label for="sample-input-fraction">Fraction</label>
+		<label class={label()} for="sample-input-fraction">Fraction</label>
 		<input
 			id="sample-input-fraction"
 			data-testid="sample-fraction-input"
 			type="number"
+			class={input()}
 			bind:value={config.fraction}
 			min="0"
 			max="1"
@@ -27,11 +28,12 @@
 	</div>
 
 	<div class={css({ marginBottom: '0' })}>
-		<label for="sample-input-seed">Random seed (optional)</label>
+		<label class={label()} for="sample-input-seed">Random seed (optional)</label>
 		<input
 			id="sample-input-seed"
 			data-testid="sample-seed-input"
 			type="number"
+			class={input()}
 			bind:value={config.seed}
 			min="0"
 			placeholder="e.g., 42"

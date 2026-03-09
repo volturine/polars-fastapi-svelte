@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Schema } from '$lib/types/schema';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
-	import { css, cx, stepConfig, divider } from '$lib/styles/panda';
+	import { css, cx, label, stepConfig, divider, input } from '$lib/styles/panda';
 
 	interface StringMethodsConfigData {
 		column: string;
@@ -161,21 +161,13 @@
 		>
 			String Method
 		</h4>
-		<label
-			for="str-select-method"
-			class={css({
-				position: 'absolute',
-				width: 'px',
-				height: 'px',
-				padding: '0',
-				margin: '-1px',
-				overflow: 'hidden',
-				clip: 'rect(0, 0, 0, 0)',
-				whiteSpace: 'nowrap',
-				border: '0'
-			})}>Select string method</label
+		<label for="str-select-method" class={label({ variant: 'hidden' })}>Select string method</label>
+		<select
+			id="str-select-method"
+			data-testid="str-method-select"
+			class={input()}
+			bind:value={config.method}
 		>
-		<select id="str-select-method" data-testid="str-method-select" bind:value={config.method}>
 			{#each methods as method (method.value)}
 				<option value={method.value}>{method.label}</option>
 			{/each}
@@ -212,18 +204,13 @@
 				<div class={css({ flex: '1' })}>
 					<label
 						for="str-input-start"
-						class={css({
-							display: 'block',
-							fontSize: 'sm',
-							fontWeight: 'medium',
-							marginBottom: '1',
-							color: 'fg.secondary'
-						})}>Start Index:</label
+						class={cx(label({ variant: 'field' }), css({ marginBottom: '1' }))}>Start Index:</label
 					>
 					<input
 						id="str-input-start"
 						data-testid="str-start-input"
 						type="number"
+						class={input()}
 						bind:value={config.start}
 						aria-describedby="str-start-help"
 					/>
@@ -245,18 +232,14 @@
 				<div class={css({ flex: '1' })}>
 					<label
 						for="str-input-end"
-						class={css({
-							display: 'block',
-							fontSize: 'sm',
-							fontWeight: 'medium',
-							marginBottom: '1',
-							color: 'fg.secondary'
-						})}>End Index (optional):</label
+						class={cx(label({ variant: 'field' }), css({ marginBottom: '1' }))}
+						>End Index (optional):</label
 					>
 					<input
 						id="str-input-end"
 						data-testid="str-end-input"
 						type="number"
+						class={input()}
 						bind:value={config.end}
 						placeholder="Leave empty for end"
 						aria-describedby="str-end-help"
@@ -309,18 +292,14 @@
 			<div>
 				<label
 					for="str-input-pattern"
-					class={css({
-						display: 'block',
-						fontSize: 'sm',
-						fontWeight: 'medium',
-						marginBottom: '1',
-						color: 'fg.secondary'
-					})}>Pattern to find:</label
+					class={cx(label({ variant: 'field' }), css({ marginBottom: '1' }))}
+					>Pattern to find:</label
 				>
 				<input
 					id="str-input-pattern"
 					data-testid="str-pattern-input"
 					type="text"
+					class={input()}
 					bind:value={config.pattern}
 					placeholder="Text or regex pattern"
 					aria-describedby="str-pattern-help"
@@ -343,18 +322,13 @@
 			<div>
 				<label
 					for="str-input-replacement"
-					class={css({
-						display: 'block',
-						fontSize: 'sm',
-						fontWeight: 'medium',
-						marginBottom: '1',
-						color: 'fg.secondary'
-					})}>Replacement:</label
+					class={cx(label({ variant: 'field' }), css({ marginBottom: '1' }))}>Replacement:</label
 				>
 				<input
 					id="str-input-replacement"
 					data-testid="str-replacement-input"
 					type="text"
+					class={input()}
 					bind:value={config.replacement}
 					placeholder="Replacement text"
 					aria-describedby="str-replacement-help"
@@ -406,18 +380,13 @@
 			<div>
 				<label
 					for="str-input-extract-pattern"
-					class={css({
-						display: 'block',
-						fontSize: 'sm',
-						fontWeight: 'medium',
-						marginBottom: '1',
-						color: 'fg.secondary'
-					})}>Regex Pattern:</label
+					class={cx(label({ variant: 'field' }), css({ marginBottom: '1' }))}>Regex Pattern:</label
 				>
 				<input
 					id="str-input-extract-pattern"
 					data-testid="str-extract-pattern-input"
 					type="text"
+					class={input()}
 					bind:value={config.pattern}
 					placeholder="e.g., @(.+)$ to extract domain"
 					aria-describedby="str-extract-pattern-help"
@@ -440,18 +409,13 @@
 			<div>
 				<label
 					for="str-input-group-index"
-					class={css({
-						display: 'block',
-						fontSize: 'sm',
-						fontWeight: 'medium',
-						marginBottom: '1',
-						color: 'fg.secondary'
-					})}>Group Index:</label
+					class={cx(label({ variant: 'field' }), css({ marginBottom: '1' }))}>Group Index:</label
 				>
 				<input
 					id="str-input-group-index"
 					data-testid="str-group-index-input"
 					type="number"
+					class={input()}
 					bind:value={config.group_index}
 					min="0"
 					aria-describedby="str-group-index-help"
@@ -503,18 +467,13 @@
 			<div>
 				<label
 					for="str-input-delimiter-only"
-					class={css({
-						display: 'block',
-						fontSize: 'sm',
-						fontWeight: 'medium',
-						marginBottom: '1',
-						color: 'fg.secondary'
-					})}>Delimiter:</label
+					class={cx(label({ variant: 'field' }), css({ marginBottom: '1' }))}>Delimiter:</label
 				>
 				<input
 					id="str-input-delimiter-only"
 					data-testid="str-delimiter-only-input"
 					type="text"
+					class={input()}
 					bind:value={config.delimiter}
 					placeholder="e.g., , or |"
 					aria-describedby="str-delimiter-only-help"
@@ -566,18 +525,13 @@
 			<div>
 				<label
 					for="str-input-delimiter"
-					class={css({
-						display: 'block',
-						fontSize: 'sm',
-						fontWeight: 'medium',
-						marginBottom: '1',
-						color: 'fg.secondary'
-					})}>Delimiter:</label
+					class={cx(label({ variant: 'field' }), css({ marginBottom: '1' }))}>Delimiter:</label
 				>
 				<input
 					id="str-input-delimiter"
 					data-testid="str-delimiter-input"
 					type="text"
+					class={input()}
 					bind:value={config.delimiter}
 					placeholder="e.g., , or |"
 					aria-describedby="str-delimiter-help"
@@ -600,18 +554,13 @@
 			<div>
 				<label
 					for="str-input-part-index"
-					class={css({
-						display: 'block',
-						fontSize: 'sm',
-						fontWeight: 'medium',
-						marginBottom: '1',
-						color: 'fg.secondary'
-					})}>Part Index:</label
+					class={cx(label({ variant: 'field' }), css({ marginBottom: '1' }))}>Part Index:</label
 				>
 				<input
 					id="str-input-part-index"
 					data-testid="str-part-index-input"
 					type="number"
+					class={input()}
 					bind:value={config.index}
 					min="0"
 					aria-describedby="str-part-index-help"
@@ -667,24 +616,12 @@
 		>
 			New Column Name
 		</h4>
-		<label
-			for="str-input-new-column"
-			class={css({
-				position: 'absolute',
-				width: 'px',
-				height: 'px',
-				padding: '0',
-				margin: '-1px',
-				overflow: 'hidden',
-				clip: 'rect(0, 0, 0, 0)',
-				whiteSpace: 'nowrap',
-				border: '0'
-			})}>New column name</label
-		>
+		<label for="str-input-new-column" class={label({ variant: 'hidden' })}>New column name</label>
 		<input
 			id="str-input-new-column"
 			data-testid="str-new-column-input"
 			type="text"
+			class={input()}
 			bind:value={config.new_column}
 			placeholder="e.g., name_upper, domain, first_name"
 			aria-describedby="str-new-column-help"

@@ -9,7 +9,7 @@
 	import ColumnTypeDropdown from '$lib/components/common/ColumnTypeDropdown.svelte';
 	import type { Udf, UdfInput, UdfSignature } from '$lib/types/udf';
 	import { ArrowLeft, Save } from 'lucide-svelte';
-	import { css, button, cx, row, rowBetween } from '$lib/styles/panda';
+	import { css, button, cx, input, label, row, rowBetween } from '$lib/styles/panda';
 
 	interface Props {
 		mode: 'create' | 'edit';
@@ -223,20 +223,29 @@
 				})}
 			>
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label for="udf-name" class={css({ fontSize: 'sm', color: 'fg.secondary' })}>Name</label>
-					<input id="udf-name" type="text" bind:value={name} placeholder="UDF name" />
+					<label for="udf-name" class={label({ variant: 'field' })}>Name</label>
+					<input
+						id="udf-name"
+						type="text"
+						bind:value={name}
+						placeholder="UDF name"
+						class={input()}
+					/>
 				</div>
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label for="udf-description" class={css({ fontSize: 'sm', color: 'fg.secondary' })}
-						>Description</label
-					>
-					<textarea id="udf-description" rows="3" bind:value={description}></textarea>
+					<label for="udf-description" class={label({ variant: 'field' })}>Description</label>
+					<textarea id="udf-description" rows="3" bind:value={description} class={input()}
+					></textarea>
 				</div>
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label for="udf-tags" class={css({ fontSize: 'sm', color: 'fg.secondary' })}
-						>Tags (comma-separated)</label
-					>
-					<input id="udf-tags" type="text" bind:value={tags} placeholder="math, text, date" />
+					<label for="udf-tags" class={label({ variant: 'field' })}>Tags (comma-separated)</label>
+					<input
+						id="udf-tags"
+						type="text"
+						bind:value={tags}
+						placeholder="math, text, date"
+						class={input()}
+					/>
 				</div>
 			</div>
 
@@ -253,7 +262,7 @@
 			>
 				<UdfSignatureBuilder {inputs} onChange={updateInputs} />
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label for="udf-output">Output dtype</label>
+					<label class={label()} for="udf-output">Output dtype</label>
 					<ColumnTypeDropdown
 						value={outputDtype}
 						onChange={(val) => (outputDtype = val)}

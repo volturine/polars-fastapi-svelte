@@ -37,7 +37,7 @@
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
 	import SnapshotPicker from '$lib/components/datasources/SnapshotPicker.svelte';
 	import type { SourceType } from '$lib/utils/fileTypes';
-	import { css, cx, row, rowBetween, divider, muted } from '$lib/styles/panda';
+	import { css, cx, input, label, row, rowBetween, divider, muted } from '$lib/styles/panda';
 
 	type ActiveTab = {
 		id: string;
@@ -240,13 +240,7 @@
 	}
 </script>
 
-<div
-	class={cx(
-		'datasource-node',
-		isDragActive && 'drag-active',
-		css({ position: 'relative', width: '60%' })
-	)}
->
+<div class={cx('datasource-node', css({ position: 'relative', width: '60%' }))}>
 	<div
 		class={cx(
 			'node-content',
@@ -255,7 +249,13 @@
 				borderWidth: '1',
 				borderColor: 'border.primary',
 				_hover: { borderColor: 'border.primary' }
-			})
+			}),
+			isDragActive &&
+				css({
+					borderColor: 'border.primary',
+					borderStyle: 'dashed',
+					opacity: '0.85'
+				})
 		)}
 	>
 		<!-- Header with icon and badge -->
@@ -354,16 +354,15 @@
 				{#if isEditing}
 					<div class={cx(row, css({ gap: '1' }))}>
 						<input
-							class={css({
-								minWidth: 'fieldSm',
-								borderWidth: '1',
-								borderColor: 'border.primary',
-								backgroundColor: 'bg.primary',
-								paddingX: '2',
-								paddingY: '0.5',
-								fontSize: 'sm',
-								outline: 'none'
-							})}
+							class={cx(
+								input(),
+								css({
+									minWidth: 'fieldSm',
+									paddingX: '2',
+									paddingY: '0.5',
+									fontSize: 'sm'
+								})
+							)}
 							id="ds-node-name"
 							bind:value={draftName}
 							onkeydown={(e) => {
@@ -638,24 +637,25 @@
 						<div class={cx(row, css({ gap: '3' }))}>
 							<label
 								for="threads-input"
-								class={css({ minWidth: 'labelSm', fontSize: 'xs', color: 'fg.secondary' })}
+								class={cx(
+									label({ variant: 'field' }),
+									css({ minWidth: 'labelSm', fontSize: 'xs' })
+								)}
 							>
 								Threads
 							</label>
 							<input
 								id="threads-input"
-								class={css({
-									flex: '1',
-									borderWidth: '1',
-									borderColor: 'border.primary',
-									backgroundColor: 'bg.secondary',
-									color: 'fg.primary',
-									paddingY: '1',
-									paddingX: '2',
-
-									fontSize: 'xs',
-									_focus: { borderColor: 'accent.primary', outline: 'none' }
-								})}
+								class={cx(
+									input(),
+									css({
+										flex: '1',
+										backgroundColor: 'bg.secondary',
+										paddingY: '1',
+										paddingX: '2',
+										fontSize: 'xs'
+									})
+								)}
 								type="number"
 								min="1"
 								max="64"
@@ -678,24 +678,25 @@
 						<div class={cx(row, css({ gap: '3' }))}>
 							<label
 								for="memory-select"
-								class={css({ minWidth: 'labelSm', fontSize: 'xs', color: 'fg.secondary' })}
+								class={cx(
+									label({ variant: 'field' }),
+									css({ minWidth: 'labelSm', fontSize: 'xs' })
+								)}
 							>
 								Memory
 							</label>
 							<select
 								id="memory-select"
-								class={css({
-									flex: '1',
-									borderWidth: '1',
-									borderColor: 'border.primary',
-									backgroundColor: 'bg.secondary',
-									color: 'fg.primary',
-									paddingY: '1',
-									paddingX: '2',
-
-									fontSize: 'xs',
-									_focus: { borderColor: 'accent.primary', outline: 'none' }
-								})}
+								class={cx(
+									input(),
+									css({
+										flex: '1',
+										backgroundColor: 'bg.secondary',
+										paddingY: '1',
+										paddingX: '2',
+										fontSize: 'xs'
+									})
+								)}
 								value={effectiveMemoryGb}
 								onchange={(e) => setMemoryGb(parseInt(e.currentTarget.value) || 0)}
 							>

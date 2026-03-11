@@ -82,12 +82,11 @@
 				justifyContent: 'flex-start',
 				gap: '2',
 				cursor: 'pointer',
-				color: 'fg.primary',
-				fontSize: 'sm',
+								fontSize: 'sm',
 				'& span': { minWidth: '0', overflowWrap: 'anywhere' },
-				_hover: { backgroundColor: 'bg.hover', borderColor: 'border.primary' }
+				_hover: { backgroundColor: 'bg.hover' }
 			}),
-			isSelected && css({ backgroundColor: 'bg.hover', borderColor: 'border.primary' })
+			isSelected && css({ backgroundColor: 'bg.hover' })
 		)}
 		onclick={onPick}
 		role="option"

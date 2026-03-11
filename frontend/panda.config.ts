@@ -29,7 +29,11 @@ export default defineConfig({
 			boxSizing: 'border-box',
 			borderWidth: '0',
 			borderStyle: 'solid',
-			borderColor: 'var(--colors-border-primary)'
+			borderColor: 'var(--colors-border-primary)',
+			borderTopColor: 'var(--colors-border-primary)',
+			borderRightColor: 'var(--colors-border-primary)',
+			borderBottomColor: 'var(--colors-border-primary)',
+			borderLeftColor: 'var(--colors-border-primary)'
 		},
 		html: {
 			fontSize: '16px',

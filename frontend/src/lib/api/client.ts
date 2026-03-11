@@ -79,7 +79,11 @@ function handleErrorResponse(
 	);
 }
 
-export function apiRequest<T>(endpoint: string, options?: RequestInit): ResultAsync<T, ApiError> {
+function apiFetch<T>(
+	endpoint: string,
+	options: RequestInit | undefined,
+	parse: (response: Response) => ResultAsync<T, ApiError>
+): ResultAsync<T, ApiError> {
 	const headers = buildHeaders(options);
 	return ResultAsync.fromPromise(
 		fetch(`${BASE_URL}${endpoint}`, { ...options, headers }),
@@ -87,6 +91,12 @@ export function apiRequest<T>(endpoint: string, options?: RequestInit): ResultAs
 			createApiError('network', error instanceof Error ? error.message : 'Network error')
 	).andThen((response) => {
 		if (!response.ok) return handleErrorResponse(response, endpoint, options);
+		return parse(response);
+	});
+}
+
+export function apiRequest<T>(endpoint: string, options?: RequestInit): ResultAsync<T, ApiError> {
+	return apiFetch(endpoint, options, (response) => {
 		if (response.status === 204) return okAsync(undefined as T);
 		return ResultAsync.fromPromise(response.json() as Promise<T>, (): ApiError => {
 			trackParseError(endpoint, options?.method);
@@ -99,13 +109,7 @@ export function apiRequestWithHeaders<T>(
 	endpoint: string,
 	options?: RequestInit
 ): ResultAsync<ApiResponse<T>, ApiError> {
-	const headers = buildHeaders(options);
-	return ResultAsync.fromPromise(
-		fetch(`${BASE_URL}${endpoint}`, { ...options, headers }),
-		(error): ApiError =>
-			createApiError('network', error instanceof Error ? error.message : 'Network error')
-	).andThen((response) => {
-		if (!response.ok) return handleErrorResponse(response, endpoint, options);
+	return apiFetch(endpoint, options, (response) => {
 		if (response.status === 204)
 			return okAsync({ data: undefined as T, headers: response.headers });
 		return ResultAsync.fromPromise(response.json() as Promise<T>, (): ApiError => {
@@ -119,16 +123,10 @@ export function apiBlobRequest(
 	endpoint: string,
 	options?: RequestInit
 ): ResultAsync<Blob, ApiError> {
-	const headers = buildHeaders(options);
-	return ResultAsync.fromPromise(
-		fetch(`${BASE_URL}${endpoint}`, { ...options, headers }),
-		(error): ApiError =>
-			createApiError('network', error instanceof Error ? error.message : 'Network error')
-	).andThen((response) => {
-		if (!response.ok) return handleErrorResponse(response, endpoint, options);
-		return ResultAsync.fromPromise(response.blob(), (): ApiError => {
+	return apiFetch(endpoint, options, (response) =>
+		ResultAsync.fromPromise(response.blob(), (): ApiError => {
 			trackParseError(endpoint, options?.method);
 			return createApiError('parse', 'Failed to read response');
-		});
-	});
+		})
+	);
 }

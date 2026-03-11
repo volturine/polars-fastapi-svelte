@@ -63,8 +63,7 @@
 				gap: '2',
 				paddingX: '3',
 				paddingY: '2',
-				color: 'fg.primary',
-				_hover: { backgroundColor: 'bg.hover' }
+								_hover: { backgroundColor: 'bg.hover' }
 			})
 		)}
 	>
@@ -86,7 +85,7 @@
 			})}
 		>
 			<ColumnTypeBadge columnType={item.dtype} size="xs" variant="compact" />
-			<span class={css({ textAlign: 'left', fontSize: 'sm', color: 'fg.primary' })}
+			<span class={css({ textAlign: 'left', fontSize: 'sm' })}
 				>{item.label}</span
 			>
 		</span>

@@ -337,8 +337,7 @@
 									fontSize: 'sm',
 									fontWeight: '500',
 									textTransform: 'lowercase',
-									color: 'fg.primary'
-								})}>{drag.type ?? 'step'}</span
+																	})}>{drag.type ?? 'step'}</span
 							>
 						{/if}
 					</div>
@@ -432,8 +431,7 @@
 										fontSize: 'sm',
 										fontWeight: '500',
 										textTransform: 'lowercase',
-										color: 'fg.primary'
-									})}>{drag.type ?? 'step'}</span
+																			})}>{drag.type ?? 'step'}</span
 								>
 							{/if}
 						</div>
@@ -537,8 +535,7 @@
 												fontSize: 'sm',
 												fontWeight: '500',
 												textTransform: 'lowercase',
-												color: 'fg.primary'
-											})}>{drag.type ?? 'step'}</span
+																							})}>{drag.type ?? 'step'}</span
 										>
 									{/if}
 								</div>

@@ -27,7 +27,7 @@
 			paddingX: '3',
 			paddingY: '2.5',
 			border: 'none',
-			borderLeft: '2px solid',
+			borderLeftWidth: '2',
 			borderLeftColor: 'accent.secondary',
 
 			marginTop: '3',

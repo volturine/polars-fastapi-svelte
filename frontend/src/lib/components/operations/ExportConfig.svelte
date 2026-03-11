@@ -50,7 +50,6 @@
 			<span
 				class={css({
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'bg.tertiary',
 					paddingX: '2',
 					paddingY: '1',

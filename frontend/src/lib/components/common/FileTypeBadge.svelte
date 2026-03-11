@@ -51,7 +51,7 @@
 	const variants: Record<string, Record<string, string>> = {
 		default: {},
 		minimal: { border: 'none', padding: '0', backgroundColor: 'transparent' },
-		outline: { backgroundColor: 'transparent', borderColor: 'border.primary' }
+		outline: { backgroundColor: 'transparent' }
 	};
 </script>
 

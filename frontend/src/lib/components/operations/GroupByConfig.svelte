@@ -155,8 +155,7 @@
 				class={css({
 					backgroundColor: 'accent.primary',
 					color: 'fg.inverse',
-					border: '1px solid',
-					borderColor: 'border.primary',
+					borderWidth: '1',
 					paddingX: '4',
 					paddingY: '2',
 					cursor: 'pointer',
@@ -164,7 +163,6 @@
 					_disabled: {
 						backgroundColor: 'bg.muted',
 						color: 'fg.muted',
-						borderColor: 'border.primary',
 						cursor: 'not-allowed'
 					}
 				})}
@@ -188,8 +186,7 @@
 						class={css({
 							backgroundColor: 'transparent',
 							border: 'none',
-							borderBottom: '1px solid',
-							borderBottomColor: 'border.primary',
+							borderBottomWidth: '1',
 							display: 'flex',
 							justifyContent: 'space-between',
 							alignItems: 'center',
@@ -198,7 +195,7 @@
 						})}
 						role="listitem"
 					>
-						<span class={css({ fontSize: 'sm', fontFamily: 'mono', color: 'fg.primary' })}>
+						<span class={css({ fontSize: 'sm', fontFamily: 'mono' })}>
 							{agg.function}({agg.column}) as {agg.alias}
 						</span>
 						<button
@@ -208,7 +205,7 @@
 							class={css({
 								backgroundColor: 'error.bg',
 								color: 'error.fg',
-								border: '1px solid',
+								borderWidth: '1',
 								borderColor: 'error.border'
 							})}
 							onclick={() => removeAggregation(i)}

@@ -465,7 +465,6 @@
 				alignItems: 'center',
 				justifyContent: 'space-between',
 				borderWidth: '1',
-				borderColor: 'border.primary',
 				backgroundColor: 'bg.secondary',
 				padding: '2',
 				paddingX: '3',
@@ -495,7 +494,6 @@
 				<span
 					class={css({
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'bg.tertiary',
 						paddingX: '1.5',
 						paddingY: '0.5',
@@ -537,7 +535,6 @@
 				position: 'fixed',
 				zIndex: 'overlay',
 				borderWidth: '1',
-				borderColor: 'border.primary',
 				backgroundColor: 'bg.primary',
 				padding: '2',
 				boxShadow: 'sm',
@@ -554,7 +551,6 @@
 					alignItems: 'center',
 					justifyContent: 'space-between',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'bg.secondary',
 					paddingX: '2',
 					paddingY: '1'
@@ -574,7 +570,6 @@
 					<button
 						class={css({
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							paddingX: '2',
 							paddingY: '1',
@@ -647,7 +642,6 @@
 							<button
 								class={css({
 									borderWidth: '1',
-									borderColor: 'border.primary',
 									backgroundColor: 'bg.secondary',
 									paddingX: '2',
 									paddingY: '1',
@@ -668,7 +662,6 @@
 							<button
 								class={css({
 									borderWidth: '1',
-									borderColor: 'border.primary',
 									backgroundColor: 'bg.secondary',
 									paddingX: '2',
 									paddingY: '1',
@@ -687,7 +680,6 @@
 								gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
 								gap: '1',
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								padding: '2'
 							})}
 						>
@@ -704,7 +696,6 @@
 												position: 'relative',
 												height: 'rowXl',
 												borderWidth: '1',
-												borderColor: 'border.primary',
 												fontSize: 'xs',
 												_hover: { backgroundColor: 'bg.tertiary' }
 											}),
@@ -742,8 +733,7 @@
 							maxHeight: 'previewMd',
 							overflowY: 'auto',
 							overflowX: 'hidden',
-							borderWidth: '1',
-							borderColor: 'border.primary'
+							borderWidth: '1'
 						})}
 					>
 						{#if selectedDay}
@@ -797,7 +787,6 @@
 											<button
 												class={css({
 													borderWidth: '1',
-													borderColor: 'border.primary',
 													backgroundColor: 'bg.primary',
 													paddingX: '1.5',
 													paddingY: '0.5',
@@ -816,7 +805,6 @@
 												class={css({
 													marginLeft: '1',
 													borderWidth: '1',
-													borderColor: 'border.primary',
 													backgroundColor: 'bg.primary',
 													paddingX: '1.5',
 													paddingY: '0.5',
@@ -833,7 +821,6 @@
 											<button
 												class={css({
 													borderWidth: '1',
-													borderColor: 'border.primary',
 													backgroundColor: 'bg.primary',
 													padding: '1',
 													color: 'fg.tertiary',

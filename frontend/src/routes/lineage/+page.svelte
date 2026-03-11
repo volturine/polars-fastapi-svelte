@@ -120,7 +120,6 @@
 	<header
 		class={css({
 			borderBottomWidth: '1',
-			borderBottomColor: 'border.primary',
 			backgroundColor: 'bg.primary',
 			paddingX: '6',
 			paddingY: '3'
@@ -149,7 +148,6 @@
 					paddingX: '3',
 					paddingY: '1.5',
 					borderBottomWidth: '1',
-					borderBottomColor: 'border.primary',
 					background: 'bg.primary'
 				})
 			)}
@@ -264,7 +262,6 @@
 				gridRow: '2',
 				minHeight: '0',
 				borderRightWidth: '1',
-				borderRightColor: 'border.primary',
 				background: 'bg.primary',
 				boxShadow: 'popover',
 				display: 'flex',
@@ -278,7 +275,6 @@
 					css({
 						gap: '3',
 						borderBottomWidth: '1',
-						borderBottomColor: 'border.primary',
 						paddingX: '4',
 						paddingY: '3'
 					})
@@ -311,7 +307,6 @@
 							whiteSpace: 'nowrap',
 							fontSize: 'sm',
 							fontWeight: 'semibold',
-							color: 'fg.primary'
 						})}
 					>
 						{selectedNode ? selectedNode.name : 'Select a node'}
@@ -337,13 +332,13 @@
 						{#if selectedNode.source_type}
 							<div class={cx(row, css({ justifyContent: 'space-between', fontSize: 'sm' }))}>
 								<span class={muted}>Source</span>
-								<span class={css({ color: 'fg.primary' })}>{selectedNode.source_type}</span>
+								<span>{selectedNode.source_type}</span>
 							</div>
 						{/if}
 						{#if selectedNode.status}
 							<div class={cx(row, css({ justifyContent: 'space-between', fontSize: 'sm' }))}>
 								<span class={muted}>Status</span>
-								<span class={css({ color: 'fg.primary' })}>{selectedNode.status}</span>
+								<span>{selectedNode.status}</span>
 							</div>
 						{/if}
 						<div class={cx(row, css({ justifyContent: 'space-between', fontSize: 'sm' }))}>
@@ -377,7 +372,6 @@
 									marginBottom: '3',
 									fontSize: 'sm',
 									fontWeight: 'semibold',
-									color: 'fg.primary'
 								})}
 							>
 								Schedules

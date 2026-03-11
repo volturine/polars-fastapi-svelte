@@ -124,7 +124,6 @@
 			maxHeight: '70vh',
 			flexDirection: 'column',
 			borderWidth: '1',
-			borderColor: 'border.primary',
 			backgroundColor: 'bg.primary'
 		})}
 		role="dialog"
@@ -139,13 +138,12 @@
 				gridTemplateColumns: '1fr auto',
 				gap: '2',
 				borderBottomWidth: '1',
-				borderBottomColor: 'border.primary',
 				padding: '4'
 			})}
 		>
 			<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 				<h4
-					class={css({ margin: '0', fontSize: 'sm', fontWeight: 'semibold', color: 'fg.primary' })}
+					class={css({ margin: '0', fontSize: 'sm', fontWeight: 'semibold' })}
 				>
 					Data directory
 				</h4>
@@ -223,7 +221,6 @@
 								justifyContent: 'space-between',
 								gap: '2',
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								padding: '2',
 								paddingX: '3',
 								textAlign: 'left',
@@ -234,7 +231,7 @@
 							disabled={loading}
 						>
 							<div class={css({ display: 'flex', flexDirection: 'column', gap: '0.5' })}>
-								<span class={css({ fontSize: 'sm', color: 'fg.primary' })}>{entry.name}</span>
+								<span class={css({ fontSize: 'sm' })}>{entry.name}</span>
 								<span class={css({ fontSize: 'xs', color: 'fg.muted' })}>{entryType(entry)}</span>
 							</div>
 							<FileTypeBadge path={entry.name} isFolder={entry.is_dir} size="sm" />
@@ -265,7 +262,6 @@
 						alignItems: 'center',
 						justifyContent: 'center',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'bg.primary',
 						color: 'fg.secondary',
 						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
@@ -281,14 +277,12 @@
 					class={css({
 						cursor: 'pointer',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						paddingX: '4',
 						paddingY: '2',
 						fontSize: 'sm',
 						fontWeight: 'medium',
 						backgroundColor: 'bg.secondary',
-						color: 'fg.primary',
-						_hover: { backgroundColor: 'bg.hover', borderColor: 'border.primary' },
+												_hover: { backgroundColor: 'bg.hover' },
 						_disabled: { cursor: 'not-allowed', opacity: 0.5 }
 					})}
 					onclick={() => onselect(path, true)}
@@ -301,14 +295,12 @@
 				class={css({
 					cursor: 'pointer',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					paddingX: '4',
 					paddingY: '2',
 					fontSize: 'sm',
 					fontWeight: 'medium',
 					backgroundColor: 'bg.secondary',
-					color: 'fg.primary',
-					_hover: { backgroundColor: 'bg.hover', borderColor: 'border.primary' },
+										_hover: { backgroundColor: 'bg.hover' },
 					_disabled: { cursor: 'not-allowed', opacity: 0.5 }
 				})}
 				onclick={() => load(path)}

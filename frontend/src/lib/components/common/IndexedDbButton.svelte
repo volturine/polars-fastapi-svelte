@@ -111,7 +111,6 @@
 					width: 'popover',
 					overflow: 'hidden',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary'
 				})}
 			>
@@ -121,12 +120,11 @@
 						alignItems: 'center',
 						justifyContent: 'space-between',
 						borderBottomWidth: '1',
-						borderBottomColor: 'border.primary',
 						padding: '3',
 						backgroundColor: 'bg.secondary'
 					})}
 				>
-					<span class={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.primary' })}>
+					<span class={css({ fontSize: 'sm', fontWeight: 'semibold' })}>
 						IndexedDB
 					</span>
 					<div class={cx(row, css({ gap: '2' }))}>
@@ -137,7 +135,6 @@
 								alignItems: 'center',
 								justifyContent: 'center',
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								backgroundColor: 'transparent',
 								paddingX: '2',
 								paddingY: '1',
@@ -217,7 +214,6 @@
 								<li
 									class={css({
 										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
 										padding: '3'
 									})}
 								>
@@ -235,8 +231,7 @@
 													class={css({
 														fontFamily: 'mono',
 														fontSize: 'xs',
-														color: 'fg.primary'
-													})}
+																											})}
 												>
 													{entry.key}
 												</span>
@@ -246,7 +241,6 @@
 														alignItems: 'center',
 														gap: '1',
 														borderWidth: '1',
-														borderColor: 'border.primary',
 														backgroundColor: 'transparent',
 														paddingX: '2',
 														paddingY: '0.5',
@@ -284,8 +278,7 @@
 														class={css({
 															whiteSpace: 'pre-wrap',
 															fontSize: 'xs',
-															color: 'fg.primary'
-														})}>
+																													})}>
 													{formatValue(entry.value)}
 												</pre>
 												{:else}

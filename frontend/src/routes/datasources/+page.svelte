@@ -130,8 +130,8 @@
 
 <div
 	class={css({
-		borderTop: '1px solid',
-		borderTopColor: 'border.primary',
+		borderTopWidth: '1',
+		borderColor: 'border.primary',
 		display: 'flex',
 		height: '100%'
 	})}
@@ -141,7 +141,6 @@
 		class={css({
 			width: 'datasourcePanel',
 			borderRightWidth: '1',
-			borderRightColor: 'border.primary',
 			display: 'flex',
 			flexDirection: 'column',
 			backgroundColor: 'bg.primary',
@@ -157,7 +156,6 @@
 				paddingX: '4',
 				paddingY: '3',
 				borderBottomWidth: '1',
-				borderBottomColor: 'border.primary',
 				height: 'fieldSm',
 				boxSizing: 'border-box'
 			})}
@@ -176,7 +174,6 @@
 							paddingY: '1',
 							backgroundColor: 'transparent',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							color: showHidden ? 'accent.primary' : undefined
 						})}
 						title={showHidden
@@ -263,8 +260,7 @@
 							textDecoration: 'none',
 							backgroundColor: 'accent.primary',
 							color: 'fg.inverse',
-							borderWidth: '1',
-							borderColor: 'border.primary'
+							borderWidth: '1'
 						})}
 						data-sveltekit-reload
 					>
@@ -280,11 +276,10 @@
 					<div
 						class={css({
 							borderBottomWidth: '1',
-							borderBottomColor: 'border.primary',
 							...(selectedId === datasource.id
 								? {
 										backgroundColor: 'accent.bg',
-										borderLeft: '2px solid',
+										borderLeftWidth: '2',
 										borderLeftColor: 'border.primary'
 									}
 								: {})
@@ -386,7 +381,6 @@
 						row,
 						css({
 							borderBottomWidth: '1',
-							borderBottomColor: 'border.primary',
 							backgroundColor: 'bg.secondary',
 							padding: '3',
 							justifyContent: 'space-between',
@@ -428,7 +422,6 @@
 										button({ variant: 'ghost', size: 'sm' }),
 										css({
 											borderWidth: '1',
-											borderColor: 'border.primary',
 											fontSize: 'xs'
 										})
 									)}

@@ -130,7 +130,6 @@
 			justifyContent: 'space-between',
 			gap: '6',
 			borderBottomWidth: '1',
-			borderBottomColor: 'border.primary',
 			paddingBottom: '5',
 			md: { flexDirection: 'row', alignItems: 'flex-start' }
 		})}
@@ -182,7 +181,6 @@
 				class={css({
 					borderWidth: '1',
 					borderStyle: 'dashed',
-					borderColor: 'border.primary',
 					padding: '8',
 					textAlign: 'center'
 				})}
@@ -202,7 +200,6 @@
 							justifyContent: 'space-between',
 							gap: '4',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							padding: '4',
 							md: { flexDirection: 'row' }
@@ -306,7 +303,6 @@
 				width: 'min(720px, 92vw)',
 				backgroundColor: 'bg.primary',
 				borderWidth: '1',
-				borderColor: 'border.primary',
 				zIndex: '1001',
 				display: 'flex',
 				flexDirection: 'column',
@@ -314,7 +310,7 @@
 			})}
 		>
 			<PanelHeader>
-				{#snippet title()}<h2 class={css({ margin: '0', fontSize: 'md', color: 'fg.primary' })}>
+				{#snippet title()}<h2 class={css({ margin: '0', fontSize: 'md' })}>
 						Import UDFs
 					</h2>{/snippet}
 				{#snippet actions()}

@@ -169,8 +169,7 @@
 				color: 'fg.tertiary',
 				backgroundColor: 'transparent',
 				border: 'none',
-				borderLeft: '2px solid',
-				borderLeftColor: 'border.primary',
+				borderLeftWidth: '2',
 				fontSize: 'xs',
 				paddingX: '3',
 				paddingY: '2',
@@ -254,7 +253,6 @@
 						alignItems: 'end',
 						marginBottom: '3',
 						borderLeftWidth: '2',
-						borderLeftColor: 'border.primary',
 						paddingLeft: '4',
 						paddingBottom: '3'
 					})}

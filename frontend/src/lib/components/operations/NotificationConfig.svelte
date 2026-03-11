@@ -247,7 +247,6 @@
 							maxHeight: 'colMd',
 							overflowY: 'auto',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'bg.secondary'
 						})}
 					>
@@ -302,7 +301,6 @@
 										label({ variant: 'checkbox' }),
 										css({
 											borderBottomWidth: '1',
-											borderBottomColor: 'border.primary',
 											paddingX: '2',
 											paddingY: '1.5',
 											_hover: { backgroundColor: 'bg.tertiary' },
@@ -322,8 +320,7 @@
 											textOverflow: 'ellipsis',
 											whiteSpace: 'nowrap',
 											fontSize: 'xs',
-											color: 'fg.primary'
-										})}
+																					})}
 									>
 										{sub.title}
 									</span>

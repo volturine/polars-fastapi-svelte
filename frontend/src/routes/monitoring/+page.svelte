@@ -23,7 +23,6 @@
 		class={css({
 			marginBottom: '6',
 			borderBottomWidth: '1',
-			borderBottomColor: 'border.primary',
 			paddingBottom: '5'
 		})}
 	>
@@ -39,7 +38,6 @@
 			flexDirection: 'column',
 			gap: '3',
 			borderBottomWidth: '1',
-			borderBottomColor: 'border.primary',
 			paddingBottom: '3'
 		})}
 	>
@@ -67,8 +65,7 @@
 			class={css({
 				display: 'flex',
 				gap: '0',
-				borderBottomWidth: '1',
-				borderBottomColor: 'border.primary'
+				borderBottomWidth: '1'
 			})}
 		>
 			{#each tabs as tab (tab.key)}

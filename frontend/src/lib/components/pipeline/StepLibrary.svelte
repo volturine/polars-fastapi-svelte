@@ -321,7 +321,7 @@
 						gap: '0'
 					})}
 				>
-					<span class={css({ fontSize: 'xs', fontWeight: '500', color: 'fg.primary' })}
+					<span class={css({ fontSize: 'xs', fontWeight: '500' })}
 						>{stepType.label}</span
 					>
 					<span
@@ -342,7 +342,6 @@
 		class={css({
 			flexShrink: '0',
 			borderTopWidth: '1',
-			borderTopColor: 'border.primary',
 			paddingX: '4',
 			paddingY: '3'
 		})}
@@ -383,7 +382,6 @@
 					class={css({
 						cursor: 'pointer',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'transparent',
 						paddingX: '3',
 						paddingY: '1.5',
@@ -407,7 +405,6 @@
 					class={css({
 						cursor: 'pointer',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'transparent',
 						paddingX: '3',
 						paddingY: '1.5',

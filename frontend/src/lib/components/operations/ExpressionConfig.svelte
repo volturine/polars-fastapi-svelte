@@ -72,7 +72,6 @@
 				borderRightWidth: '0',
 				borderBottomWidth: '0',
 				borderLeftWidth: '2',
-				borderLeftColor: 'border.primary',
 				fontSize: 'xs',
 				paddingX: '3',
 				paddingY: '2',

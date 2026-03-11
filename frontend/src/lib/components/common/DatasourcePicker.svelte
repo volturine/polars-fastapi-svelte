@@ -182,14 +182,12 @@
 	inputClass={css({
 		width: 'full',
 		borderWidth: '1',
-		borderColor: 'border.primary',
 		backgroundColor: 'bg.primary',
 		paddingX: '3',
 		paddingY: '2',
 		fontFamily: 'mono',
 		fontSize: 'sm',
-		_focus: { borderColor: 'accent.primary', outline: 'none' },
-		color: 'fg.primary'
+		_focus: { borderColor: 'accent.primary', outline: 'none' }
 	})}
 	{searchValue}
 	emptyLabel="No datasources found"
@@ -268,7 +266,7 @@
 				fontSize: 'sm',
 				...(payload.selected ? { backgroundColor: 'accent.bg' } : {}),
 				...(option.id === highlightId
-					? { borderLeft: '3px solid', borderLeftColor: 'accent.secondary' }
+					? { borderLeftWidth: '3', borderLeftColor: 'accent.secondary' }
 					: {})
 			})
 		)}
@@ -307,7 +305,6 @@
 				class={css({
 					marginLeft: '2',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'bg.tertiary',
 					paddingX: '2',
 					paddingY: '1',

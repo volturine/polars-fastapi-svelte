@@ -46,7 +46,6 @@
 		maxWidth: 'panel',
 		overflow: 'hidden',
 		borderWidth: '1',
-		borderColor: 'border.primary',
 		_focus: { outline: 'none' },
 		smDown: { maxWidth: 'full' },
 		backgroundColor: 'bg.primary'
@@ -61,7 +60,7 @@
 		{#snippet title()}
 			<h2
 				id="dialog-title"
-				class={css({ margin: '0', fontSize: 'md', fontWeight: 'semibold', color: 'fg.primary' })}
+				class={css({ margin: '0', fontSize: 'md', fontWeight: 'semibold' })}
 			>
 				{heading}
 			</h2>

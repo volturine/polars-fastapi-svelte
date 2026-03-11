@@ -185,7 +185,6 @@
 		maxHeight: '90vh',
 		overflowY: 'auto',
 		borderWidth: '1',
-		borderColor: 'border.primary',
 		backgroundColor: 'bg.primary',
 		outline: 'none'
 	})}
@@ -198,7 +197,7 @@
 		{#snippet title()}
 			<h2
 				id="settings-title"
-				class={css({ margin: '0', fontSize: 'sm', fontWeight: 'semibold', color: 'fg.primary' })}
+				class={css({ margin: '0', fontSize: 'sm', fontWeight: 'semibold' })}
 			>
 				Settings
 			</h2>
@@ -337,7 +336,6 @@
 						alignItems: 'center',
 						gap: '1',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						paddingX: '3',
 						paddingY: '1.5',
 						fontSize: 'xs',
@@ -362,8 +360,7 @@
 
 			<div
 				class={css({
-					borderBottomWidth: '1',
-					borderBottomColor: 'border.primary'
+					borderBottomWidth: '1'
 				})}
 			></div>
 
@@ -399,7 +396,7 @@
 
 			<div class={rowBetween}>
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '0.5' })}>
-					<span class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.primary' })}
+					<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}
 						>Enable Bot</span
 					>
 					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>
@@ -444,7 +441,6 @@
 						alignItems: 'center',
 						justifyContent: 'space-between',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						paddingX: '3',
 						paddingY: '2',
 						fontSize: 'xs',
@@ -477,8 +473,7 @@
 					class={css({
 						display: 'flex',
 						flexDirection: 'column',
-						borderWidth: '1',
-						borderColor: 'border.primary'
+						borderWidth: '1'
 					})}
 				>
 					{#each subscribers as sub (sub.id)}
@@ -488,7 +483,6 @@
 								alignItems: 'center',
 								justifyContent: 'space-between',
 								borderBottomWidth: '1',
-								borderBottomColor: 'border.primary',
 								paddingX: '3',
 								paddingY: '2',
 								fontSize: 'xs'
@@ -505,7 +499,7 @@
 									})}
 									title={sub.is_active ? 'Active' : 'Inactive'}
 								></span>
-								<span class={css({ fontWeight: 'medium', color: 'fg.primary' })}>{sub.title}</span>
+								<span class={css({ fontWeight: 'medium' })}>{sub.title}</span>
 								<span class={css({ color: 'fg.tertiary' })}>{sub.chat_id}</span>
 							</div>
 							<button
@@ -539,8 +533,7 @@
 
 			<div
 				class={css({
-					borderBottomWidth: '1',
-					borderBottomColor: 'border.primary'
+					borderBottomWidth: '1'
 				})}
 			></div>
 
@@ -551,7 +544,7 @@
 
 			<div class={rowBetween}>
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '0.5' })}>
-					<span class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.primary' })}>
+					<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>
 						IndexedDB Inspector
 					</span>
 					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>

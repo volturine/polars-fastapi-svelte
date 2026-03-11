@@ -420,7 +420,6 @@
 		flexDirection: 'column',
 		gap: '4',
 		borderWidth: '1',
-		borderColor: 'border.primary',
 		backgroundColor: 'bg.tertiary',
 		padding: '4'
 	})}
@@ -454,7 +453,7 @@
 				paddingX: '3',
 				paddingY: '2.5',
 				border: 'none',
-				borderLeft: '2px solid',
+				borderLeftWidth: '2',
 
 				marginTop: '3',
 				marginBottom: '0',
@@ -562,7 +561,6 @@
 			class={css({
 				overflow: 'hidden',
 				borderWidth: '1',
-				borderColor: 'border.primary',
 				backgroundColor: 'bg.primary'
 			})}
 		>
@@ -578,40 +576,31 @@
 					fontWeight: 'medium',
 					backgroundColor: 'bg.tertiary',
 					borderBottomWidth: '1',
-					borderColor: 'border.primary',
 					color: 'fg.muted'
 				})}
 			>
 				<span class={cx(row, css({ gap: '1' }))}
 					><span class={css({ color: 'fg.tertiary' })}>Start row:</span>
-					<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}>{startRow + 1}</span
-					></span
+					<span class={css({ fontWeight: 'semibold' })}>{startRow + 1}</span></span
 				>
 				<span class={cx(row, css({ gap: '1' }))}
 					><span class={css({ color: 'fg.tertiary' })}>Start col:</span>
-					<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}
-						>{cellLabel(startCol)}</span
-					></span
+					<span class={css({ fontWeight: 'semibold' })}>{cellLabel(startCol)}</span></span
 				>
 				<span class={cx(row, css({ gap: '1' }))}
 					><span class={css({ color: 'fg.tertiary' })}>End col:</span>
-					<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}
-						>{cellLabel(endCol)}</span
-					></span
+					<span class={css({ fontWeight: 'semibold' })}>{cellLabel(endCol)}</span></span
 				>
 				{#if endRow !== null}
 					<span class={cx(row, css({ gap: '1' }))}
 						><span class={css({ color: 'fg.tertiary' })}>End row:</span>
-						<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}>{endRow + 1}</span
-						></span
+						<span class={css({ fontWeight: 'semibold' })}>{endRow + 1}</span></span
 					>
 				{/if}
 				{#if detectedEndRow !== null}
 					<span class={cx(row, css({ gap: '1' }))}
 						><span class={css({ color: 'fg.tertiary' })}>Detected end:</span>
-						<span class={css({ fontWeight: 'semibold', color: 'fg.primary' })}
-							>{detectedEndRow + 1}</span
-						></span
+						<span class={css({ fontWeight: 'semibold' })}>{detectedEndRow + 1}</span></span
 					>
 				{/if}
 			</div>
@@ -620,8 +609,7 @@
 					contain: 'content',
 					maxHeight: 'listLg',
 					overflow: 'auto',
-					borderTopWidth: '1',
-					borderColor: 'border.primary'
+					borderTopWidth: '1'
 				})}
 			>
 				<DataTable

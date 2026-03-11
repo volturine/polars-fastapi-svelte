@@ -18,7 +18,6 @@
 		justifyContent: 'center',
 		borderWidth: '1',
 		borderStyle: 'dashed',
-		borderColor: 'border.primary',
 		paddingX: '6',
 		paddingY: '12',
 		textAlign: 'center'
@@ -56,7 +55,6 @@
 			backgroundColor: 'accent.primary',
 			color: 'fg.inverse',
 			borderWidth: '1',
-			borderColor: 'border.primary',
 			paddingX: '4',
 			paddingY: '2',
 			display: 'inline-flex',

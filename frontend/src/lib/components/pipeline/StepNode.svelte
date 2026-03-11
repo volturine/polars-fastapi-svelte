@@ -358,8 +358,7 @@
 				width: 'dot',
 				borderWidth: '2',
 				transform: 'translateX(-50%)',
-				backgroundColor: 'bg.indicator',
-				borderColor: 'border.primary'
+				backgroundColor: 'bg.indicator'
 			})
 		)}
 	></div>
@@ -369,14 +368,11 @@
 			'step-content',
 			css({
 				borderWidth: '1',
-				borderColor: 'border.primary',
-				backgroundColor: 'bg.primary',
-				_hover: { borderColor: 'border.primary' }
+				backgroundColor: 'bg.primary'
 			}),
 			isOtherDragging &&
 				css({
 					borderStyle: 'dashed',
-					borderColor: 'border.primary',
 					opacity: '0.7',
 					transform: 'scale(0.98)'
 				})
@@ -390,8 +386,7 @@
 				gap: '2',
 				paddingX: '4',
 				paddingY: '3',
-				borderBottomWidth: '1',
-				borderBottomColor: 'border.primary'
+				borderBottomWidth: '1'
 			})}
 		>
 			<button
@@ -464,8 +459,7 @@
 							? {
 									backgroundColor: 'bg.secondary',
 									color: 'fg.muted',
-									border: '1px dashed',
-									borderColor: 'border.primary'
+									border: '1px dashed'
 								}
 							: {})
 					})
@@ -607,7 +601,6 @@
 							fontSize: 'xs2',
 							color: 'fg.muted',
 							border: '1px dashed',
-							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary'
 						})}
 						style="height: {chartHeightPx}px"
@@ -702,7 +695,6 @@
 						alignItems: 'center',
 						gap: '1',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'transparent',
 						color: 'fg.muted',
 						paddingX: '2',
@@ -753,8 +745,7 @@
 			width: 'dot',
 			borderWidth: '2',
 			transform: 'translateX(-50%)',
-			backgroundColor: 'bg.indicator',
-			borderColor: 'border.primary'
+			backgroundColor: 'bg.indicator'
 		})}
 	></div>
 </div>

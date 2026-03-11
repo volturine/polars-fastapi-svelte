@@ -490,7 +490,6 @@
 				paddingX: '4',
 				paddingY: '2',
 				borderBottomWidth: '1',
-				borderBottomColor: 'border.primary',
 				backgroundColor: 'bg.tertiary'
 			})}
 		>
@@ -500,10 +499,8 @@
 						paddingY: '1',
 						paddingX: '2.5',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'bg.primary',
-						color: 'fg.primary',
-						fontSize: 'xs',
+												fontSize: 'xs',
 						_disabled: { opacity: 0.5, cursor: 'not-allowed' }
 					})}
 					onclick={pagination.onPrev}
@@ -517,10 +514,8 @@
 						paddingY: '1',
 						paddingX: '2.5',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'bg.primary',
-						color: 'fg.primary',
-						fontSize: 'xs',
+												fontSize: 'xs',
 						_disabled: { opacity: 0.5, cursor: 'not-allowed' }
 					})}
 					onclick={pagination.onNext}
@@ -648,7 +643,6 @@
 											textAlign: 'left',
 											fontWeight: 'semibold',
 											borderBottomWidth: '1',
-											borderBottomColor: 'border.primary'
 										}),
 										dragOver === header.id &&
 											css({
@@ -750,8 +744,7 @@
 														fontFamily: 'mono',
 														fontSize: 'sm',
 														fontWeight: 'semibold',
-														color: 'fg.primary'
-													})}
+																											})}
 												>
 													{typeof header.column.columnDef.header === 'string'
 														? header.column.columnDef.header
@@ -830,7 +823,6 @@
 												top: '10',
 												background: 'bg.primary',
 												borderWidth: '1',
-												borderColor: 'border.primary',
 												zIndex: 'tooltip',
 												padding: '2',
 												minWidth: 'inputSm',
@@ -1005,10 +997,8 @@
 			paddingX: '3',
 			paddingY: '2',
 			borderWidth: '1',
-			borderColor: 'border.primary',
 			background: 'bg.primary',
-			color: 'fg.primary',
-			fontSize: 'sm',
+						fontSize: 'sm',
 			boxShadow: 'menu',
 			zIndex: 'tooltip',
 			whiteSpace: 'normal',
@@ -1032,14 +1022,12 @@
 			gap: '2',
 			whiteSpace: 'nowrap',
 			borderWidth: '1',
-			borderColor: 'border.primary',
 			paddingX: '3',
 			paddingY: '1.5',
 			fontSize: 'sm',
 			fontWeight: 'semibold',
 			backgroundColor: 'bg.primary',
-			color: 'fg.primary',
-			boxShadow: 'popup'
+						boxShadow: 'popup'
 		})}
 		style="left: {dragPointerX + 12}px; top: {dragPointerY + 12}px;"
 	>

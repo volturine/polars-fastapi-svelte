@@ -77,7 +77,6 @@
 					color: 'fg.muted',
 					backgroundColor: 'transparent',
 					border: '1px dashed',
-					borderColor: 'border.primary',
 					padding: '6',
 					textAlign: 'center',
 					marginBottom: '5'
@@ -118,8 +117,7 @@
 			class={css({
 				backgroundColor: 'accent.primary',
 				color: 'fg.inverse',
-				border: '1px solid',
-				borderColor: 'border.primary',
+				borderWidth: '1',
 				paddingY: '2',
 				paddingX: '4',
 				cursor: 'pointer',
@@ -128,7 +126,6 @@
 				_hover: { opacity: '0.9' },
 				_disabled: {
 					backgroundColor: 'bg.tertiary',
-					borderColor: 'border.primary',
 					color: 'fg.muted',
 					cursor: 'not-allowed'
 				}
@@ -154,8 +151,7 @@
 					class={css({
 						backgroundColor: 'transparent',
 						border: 'none',
-						borderBottom: '1px solid',
-						borderBottomColor: 'border.primary',
+						borderBottomWidth: '1',
 						display: 'flex',
 						justifyContent: 'space-between',
 						alignItems: 'center',
@@ -181,8 +177,7 @@
 								overflow: 'hidden',
 								textOverflow: 'ellipsis',
 								whiteSpace: 'nowrap',
-								color: 'fg.primary'
-							})}
+															})}
 							title={mapping.oldName}>{mapping.oldName}</span
 						>
 						<ArrowRight size={12} class={muted} aria-hidden="true" />
@@ -217,8 +212,7 @@
 							borderColor: 'border.transparent',
 							_hover: {
 								color: 'fg.primary',
-								backgroundColor: 'bg.hover',
-								borderColor: 'border.primary'
+								backgroundColor: 'bg.hover'
 							}
 						})}
 						onclick={() => removeMapping(mapping.oldName)}

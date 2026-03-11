@@ -246,13 +246,10 @@
 			'node-content',
 			css({
 				backgroundColor: 'bg.primary',
-				borderWidth: '1',
-				borderColor: 'border.primary',
-				_hover: { borderColor: 'border.primary' }
+				borderWidth: '1'
 			}),
 			isDragActive &&
 				css({
-					borderColor: 'border.primary',
 					borderStyle: 'dashed',
 					opacity: '0.85'
 				})
@@ -266,8 +263,7 @@
 				justifyContent: 'space-between',
 				paddingX: '4',
 				paddingY: '3',
-				borderBottomWidth: '1',
-				borderBottomColor: 'border.primary'
+				borderBottomWidth: '1'
 			})}
 		>
 			<div class={cx(row, css({ gap: '2' }))}>
@@ -308,7 +304,6 @@
 			<span
 				class={css({
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'bg.tertiary',
 					color: 'fg.faint',
 					paddingX: '1.5',
@@ -330,7 +325,6 @@
 				alignItems: 'center',
 				justifyContent: 'space-between',
 				borderWidth: '1',
-				borderColor: 'border.primary',
 				backgroundColor: 'bg.secondary',
 				paddingY: '2',
 				paddingX: '3'
@@ -430,14 +424,12 @@
 								alignItems: 'center',
 								justifyContent: 'center',
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								color: 'fg.muted',
 								backgroundColor: 'bg.primary',
 								padding: '0',
 								opacity: '0.5',
 								lineHeight: '1',
 								_hover: {
-									borderColor: 'border.primary',
 									color: 'fg.primary',
 									backgroundColor: 'bg.tertiary',
 									opacity: '1'
@@ -478,7 +470,6 @@
 						flexDirection: 'column',
 						gap: '2',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'bg.tertiary',
 						padding: '3'
 					})}
@@ -552,7 +543,6 @@
 					class={css({
 						borderWidth: '1',
 						borderStyle: 'dashed',
-						borderColor: 'border.primary',
 						padding: '3',
 						textAlign: 'center'
 					})}
@@ -569,8 +559,7 @@
 					marginX: '4',
 					marginBottom: '3',
 					overflow: 'hidden',
-					borderWidth: '1',
-					borderColor: 'border.primary'
+					borderWidth: '1'
 				})}
 			>
 				<button
@@ -737,7 +726,6 @@
 						justifyContent: 'center',
 						gap: '2',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'bg.secondary',
 						color: 'fg.muted',
 						paddingY: '2',

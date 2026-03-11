@@ -893,7 +893,7 @@
 				paddingX: '2.5',
 				paddingY: '3',
 				border: 'none',
-				borderLeft: '2px solid',
+				borderLeftWidth: '2',
 
 				fontSize: 'xs',
 				lineHeight: '1.5',
@@ -917,8 +917,7 @@
 					fontWeight: 'bold',
 					width: 'logoLg',
 					height: 'logoLg',
-					borderWidth: '1',
-					borderColor: 'border.primary'
+					borderWidth: '1'
 				})
 			)}
 		>
@@ -955,7 +954,6 @@
 				height: 'headerSm',
 				backgroundColor: 'bg.primary',
 				borderBottomWidth: '1',
-				borderBottomColor: 'border.primary',
 				zIndex: 'header'
 			})}
 		>
@@ -966,7 +964,6 @@
 						height: '100%',
 						boxSizing: 'border-box',
 						borderRightWidth: '1',
-						borderRightColor: 'border.primary',
 						width: 'operationsPanel',
 						transitionProperty: 'width, visibility',
 						transitionDuration: 'normal'
@@ -994,7 +991,6 @@
 							overflow: 'hidden',
 							textOverflow: 'ellipsis',
 							outline: 'none',
-							color: 'fg.primary',
 							letterSpacing: 'wide2',
 							cursor: isEditingMode ? 'text' : 'default',
 							_focus: {
@@ -1206,7 +1202,6 @@
 						height: '100%',
 						boxSizing: 'border-box',
 						borderLeftWidth: '1',
-						borderLeftColor: 'border.primary',
 						width: 'operationsPanel',
 						transitionProperty: 'width, visibility',
 						transitionDuration: 'normal'
@@ -1224,10 +1219,9 @@
 							paddingX: '3',
 							backgroundColor: 'bg.tertiary',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							color: 'fg.secondary',
 							gap: '2',
-							_hover: { backgroundColor: 'bg.hover', borderColor: 'border.primary' }
+							_hover: { backgroundColor: 'bg.hover' }
 						})}
 						onclick={() => (showModeDropdown = !showModeDropdown)}
 						type="button"
@@ -1245,7 +1239,6 @@
 								minWidth: 'inputSm',
 								backgroundColor: 'bg.primary',
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								padding: '1',
 								zIndex: '100'
 							})}
@@ -1382,12 +1375,11 @@
 								? {
 										backgroundColor: 'warning.bg',
 										color: 'warning.fg',
-										borderLeft: '1px solid',
+										borderLeftWidth: '1',
 										borderLeftColor: 'warning.border'
 									}
 								: {
 										backgroundColor: 'transparent',
-										borderColor: 'border.primary',
 										color: 'success.fg'
 									})
 						})}
@@ -1421,7 +1413,6 @@
 						boxSizing: 'border-box',
 						backgroundColor: 'bg.primary',
 						borderRightWidth: '1',
-						borderRightColor: 'border.primary',
 						width: 'operationsPanel',
 						transitionProperty: 'width, visibility',
 						transitionDuration: 'normal',
@@ -1483,7 +1474,6 @@
 							boxSizing: 'border-box',
 							backgroundColor: 'bg.primary',
 							borderTopWidth: '1',
-							borderTopColor: 'border.primary',
 							width: '100%',
 							position: 'relative',
 							transitionProperty: 'height, visibility',
@@ -1529,7 +1519,6 @@
 						boxSizing: 'border-box',
 						backgroundColor: 'bg.primary',
 						borderLeftWidth: '1',
-						borderLeftColor: 'border.primary',
 						width: 'operationsPanel',
 						transitionProperty: 'width, visibility',
 						transitionDuration: 'normal',
@@ -1582,7 +1571,6 @@
 			maxHeight: '80vh',
 			backgroundColor: 'bg.primary',
 			borderWidth: '1',
-			borderColor: 'border.primary',
 			zIndex: '1001',
 			display: 'flex',
 			flexDirection: 'column',
@@ -1600,7 +1588,6 @@
 				paddingX: '4',
 				paddingY: '3',
 				borderBottomWidth: '1',
-				borderBottomColor: 'border.primary',
 				'& h2': { margin: '0', fontSize: 'md', color: 'fg.primary' }
 			})}
 		>
@@ -1641,7 +1628,7 @@
 						paddingX: '2.5',
 						paddingY: '3',
 						border: 'none',
-						borderLeft: '2px solid',
+						borderLeftWidth: '2',
 
 						marginTop: '3',
 						marginBottom: '0',
@@ -1671,7 +1658,7 @@
 						paddingX: '2.5',
 						paddingY: '3',
 						border: 'none',
-						borderLeft: '2px solid',
+						borderLeftWidth: '2',
 
 						marginTop: '3',
 						marginBottom: '0',
@@ -1707,7 +1694,6 @@
 								justifyContent: 'space-between',
 								gap: '4',
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								backgroundColor: 'bg.tertiary',
 								padding: '3'
 							})}
@@ -1747,9 +1733,7 @@
 									/>
 								{:else}
 									<div class={cx(row, css({ gap: '2' }))}>
-										<span
-											class={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.primary' })}
-										>
+										<span class={css({ fontSize: 'sm', fontWeight: 'semibold' })}>
 											{version.name}
 										</span>
 										<button
@@ -1790,7 +1774,6 @@
 				paddingX: '4',
 				paddingY: '3',
 				borderTopWidth: '1',
-				borderTopColor: 'border.primary',
 				display: 'flex',
 				justifyContent: 'flex-end',
 				gap: '2'

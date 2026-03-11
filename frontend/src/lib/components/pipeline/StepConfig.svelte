@@ -498,7 +498,6 @@
 						class={css({
 							cursor: 'pointer',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'transparent',
 							paddingX: '5',
 							paddingY: '2',
@@ -519,7 +518,6 @@
 					flex: '1',
 					cursor: 'pointer',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'transparent',
 					paddingX: '4',
 					paddingY: '2.5',
@@ -543,7 +541,6 @@
 					flex: '1',
 					cursor: 'pointer',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'accent.bg',
 					paddingX: '4',
 					paddingY: '2.5',

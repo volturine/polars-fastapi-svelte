@@ -114,7 +114,6 @@
 				width: 'listLg',
 				overflow: 'hidden',
 				borderWidth: '1',
-				borderColor: 'border.primary',
 				backgroundColor: 'bg.primary'
 			})}
 		>
@@ -124,13 +123,12 @@
 					css({
 						justifyContent: 'space-between',
 						borderBottomWidth: '1',
-						borderBottomColor: 'border.primary',
 						padding: '3',
 						backgroundColor: 'bg.secondary'
 					})
 				)}
 			>
-				<span class={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.primary' })}>
+				<span class={css({ fontSize: 'sm', fontWeight: 'semibold' })}>
 					Active Engines
 				</span>
 				<button
@@ -184,7 +182,6 @@
 									css({
 										gap: '3',
 										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
 										padding: '3'
 									})
 								)}
@@ -195,8 +192,7 @@
 											class={css({
 												fontFamily: 'mono',
 												fontSize: 'xs',
-												color: 'fg.primary'
-											})}
+																							})}
 											title={engine.analysis_id}
 										>
 											{engine.analysis_id.slice(0, 8)}...
@@ -239,7 +235,6 @@
 										alignItems: 'center',
 										justifyContent: 'center',
 										borderWidth: '1',
-										borderColor: 'border.primary',
 										padding: '1',
 										backgroundColor: 'transparent',
 										color: 'fg.muted',

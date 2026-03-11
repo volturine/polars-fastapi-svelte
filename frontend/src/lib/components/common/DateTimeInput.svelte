@@ -65,8 +65,7 @@
 	const headerBtn = css({
 		fontSize: 'xs',
 		fontWeight: '600',
-		color: 'fg.primary',
-		cursor: 'pointer',
+				cursor: 'pointer',
 		border: 'none',
 		background: 'transparent',
 		padding: '0',
@@ -329,7 +328,6 @@
 				marginTop: '1',
 				backgroundColor: 'bg.primary',
 				borderWidth: '1',
-				borderColor: 'border.primary',
 				boxShadow: 'menu',
 				padding: '2',
 				display: 'flex',
@@ -367,11 +365,11 @@
 						</button>
 					</span>
 				{:else if mode === 'month'}
-					<span class={css({ fontSize: 'xs', fontWeight: '600', color: 'fg.primary' })}
+					<span class={css({ fontSize: 'xs', fontWeight: '600' })}
 						>{currentYear}</span
 					>
 				{:else}
-					<span class={css({ fontSize: 'xs', fontWeight: '600', color: 'fg.primary' })}
+					<span class={css({ fontSize: 'xs', fontWeight: '600' })}
 						>{yearLabel}</span
 					>
 				{/if}
@@ -500,7 +498,6 @@
 						display: 'flex',
 						alignItems: 'center',
 						borderTopWidth: '1',
-						borderTopColor: 'border.primary',
 						paddingTop: '2'
 					})}
 				>
@@ -531,7 +528,6 @@
 						alignItems: 'center',
 						gap: '1',
 						borderTopWidth: '1',
-						borderTopColor: 'border.primary',
 						paddingTop: '2'
 					})}
 				>

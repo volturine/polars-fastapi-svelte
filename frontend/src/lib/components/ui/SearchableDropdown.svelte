@@ -273,10 +273,8 @@
 					paddingX: '3',
 					paddingY: '2.5',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'bg.secondary',
-					color: 'fg.primary',
-					cursor: 'pointer',
+										cursor: 'pointer',
 					justifyContent: 'space-between',
 					fontSize: 'sm',
 					_focusVisible: {
@@ -351,7 +349,6 @@
 					maxWidth: '100%',
 					backgroundColor: 'bg.primary',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					padding: '2',
 					display: 'flex',
 					flexDirection: 'column',
@@ -384,7 +381,6 @@
 						display: 'flex',
 						gap: '2',
 						borderBottomWidth: '1',
-						borderBottomColor: 'border.primary',
 						padding: '2',
 						backgroundColor: 'bg.secondary'
 					})}
@@ -395,7 +391,6 @@
 							flex: '1',
 							cursor: 'pointer',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'transparent',
 							paddingX: '2',
 							paddingY: '1',
@@ -403,7 +398,6 @@
 							color: 'fg.secondary',
 							_hover: {
 								backgroundColor: 'bg.hover',
-								borderColor: 'border.primary',
 								color: 'accent.secondary'
 							}
 						})}
@@ -420,7 +414,6 @@
 							flex: '1',
 							cursor: 'pointer',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'transparent',
 							paddingX: '2',
 							paddingY: '1',
@@ -428,7 +421,6 @@
 							color: 'fg.secondary',
 							_hover: {
 								backgroundColor: 'bg.hover',
-								borderColor: 'border.primary',
 								color: 'accent.secondary'
 							}
 						})}
@@ -487,7 +479,6 @@
 				maxHeight: 'labelSm',
 				overflowY: 'auto',
 				borderWidth: '1',
-				borderColor: 'border.primary',
 				padding: '2',
 				fontSize: 'xs'
 			})

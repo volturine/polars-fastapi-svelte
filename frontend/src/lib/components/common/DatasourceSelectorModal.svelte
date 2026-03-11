@@ -99,7 +99,6 @@
 			maxWidth: 'modalSm',
 			flexDirection: 'column',
 			borderWidth: '1',
-			borderColor: 'border.primary',
 			backgroundColor: 'bg.primary',
 			outline: 'none'
 		})
@@ -121,7 +120,7 @@
 	>
 		<h2
 			id="modal-title"
-			class={css({ margin: '0', fontSize: 'sm', fontWeight: 'semibold', color: 'fg.primary' })}
+			class={css({ margin: '0', fontSize: 'sm', fontWeight: 'semibold' })}
 		>
 			{mode === 'change' ? 'Change Datasource' : 'Add Datasource'}
 		</h2>
@@ -160,7 +159,6 @@
 					css({
 						gap: '1',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'bg.tertiary',
 						padding: '1'
 					})
@@ -275,7 +273,7 @@
 						onclick={() => handleAnalysisTabSelect(entry)}
 						type="button"
 					>
-						<span class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.primary' })}>
+						<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>
 							{entry.name}
 						</span>
 						<span class={css({ fontSize: 'xs', color: 'fg.muted' })}>analysis tab</span>
@@ -299,7 +297,7 @@
 						onclick={() => handleSelect(ds.id, ds.name)}
 						type="button"
 					>
-						<span class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.primary' })}>
+						<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>
 							{ds.name}
 						</span>
 						<span class={cx(row, css({ gap: '1', color: 'fg.muted' }))}>

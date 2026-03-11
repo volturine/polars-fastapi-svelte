@@ -519,7 +519,7 @@
 					paddingX: '3',
 					paddingY: '2.5',
 					border: 'none',
-					borderLeft: '2px solid',
+					borderLeftWidth: '2',
 					fontSize: 'xs',
 					lineHeight: 'normal',
 					backgroundColor: 'transparent',
@@ -665,8 +665,8 @@
 						Source Information
 					</h3>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '3', fontSize: 'xs' })}>
-						<div class={cx(row, css({ gap: '4', borderColor: 'border.primary' }))}>
-							<div class={cx(row, css({ gap: '2', borderColor: 'border.primary' }))}>
+						<div class={cx(row, css({ gap: '4' }))}>
+							<div class={cx(row, css({ gap: '2' }))}>
 								<span
 									class={css({
 										textTransform: 'uppercase',
@@ -688,7 +688,7 @@
 							{/if}
 						</div>
 
-						<div class={cx(row, css({ gap: '2', borderColor: 'border.primary' }))}>
+						<div class={cx(row, css({ gap: '2' }))}>
 							<span
 								class={css({
 									textTransform: 'uppercase',
@@ -817,8 +817,6 @@
 								{@const fileSource = config.source as Record<string, unknown>}
 								<div
 									class={css({
-										borderTop: '1px solid',
-										borderTopColor: 'border.primary',
 										paddingTop: '2',
 										marginTop: '1',
 										display: 'flex',
@@ -879,7 +877,7 @@
 										color: 'fg.muted'
 									})}>Created</span
 								>
-								<span class={css({ fontWeight: 'medium', color: 'fg.primary' })}
+								<span class={css({ fontWeight: 'medium' })}
 									>{formatDateDisplay(ds.created_at)}</span
 								>
 							</div>
@@ -892,7 +890,7 @@
 											color: 'fg.muted'
 										})}>Rows</span
 									>
-									<span class={css({ fontWeight: 'medium', color: 'fg.primary' })}
+									<span class={css({ fontWeight: 'medium' })}
 										>{schemaQuery.data.row_count?.toLocaleString() ?? 'Unknown'}</span
 									>
 								</div>
@@ -904,7 +902,7 @@
 											color: 'fg.muted'
 										})}>Columns</span
 									>
-									<span class={css({ fontWeight: 'medium', color: 'fg.primary' })}
+									<span class={css({ fontWeight: 'medium' })}
 										>{schemaQuery.data.columns.length}</span
 									>
 								</div>
@@ -1001,8 +999,7 @@
 				{:else if columns.length > 0}
 					<div
 						class={css({
-							borderWidth: '1',
-							borderColor: 'border.primary'
+							borderWidth: '1'
 						})}
 					>
 						<div
@@ -1019,8 +1016,7 @@
 								textTransform: 'uppercase',
 								letterSpacing: 'wide',
 								color: 'fg.muted',
-								borderBottom: '1px solid',
-								borderBottomColor: 'border.primary'
+								borderBottomWidth: '1'
 							})}
 						>
 							<span>#</span>
@@ -1042,8 +1038,7 @@
 									}),
 									index > 0
 										? css({
-												borderTop: '1px solid',
-												borderTopColor: 'border.primary'
+												borderTopWidth: '1'
 											})
 										: ''
 								)}
@@ -1061,7 +1056,7 @@
 								}}
 							>
 								<span class={css({ fontSize: 'xs', color: 'fg.faint' })}>{index + 1}</span>
-								<span class={css({ fontSize: 'xs', color: 'fg.primary' })}>{column.name}</span>
+								<span class={css({ fontSize: 'xs' })}>{column.name}</span>
 								<ColumnTypeBadge columnType={column.dtype} size="sm" showIcon={true} />
 							</div>
 						{/each}
@@ -1228,7 +1223,6 @@
 						button({ variant: 'ghost', size: 'sm' }),
 						css({
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							fontSize: 'xs',
 							width: 'fit-content'
 						})
@@ -1282,8 +1276,7 @@
 				{:else}
 					<div
 						class={css({
-							borderWidth: '1',
-							borderColor: 'border.primary'
+							borderWidth: '1'
 						})}
 					>
 						<div
@@ -1300,8 +1293,7 @@
 								textTransform: 'uppercase',
 								letterSpacing: 'wide',
 								color: 'fg.muted',
-								borderBottom: '1px solid',
-								borderBottomColor: 'border.primary'
+								borderBottomWidth: '1'
 							})}
 						>
 							<span>Type</span>
@@ -1323,8 +1315,7 @@
 									}),
 									index > 0
 										? css({
-												borderTop: '1px solid',
-												borderTopColor: 'border.primary'
+												borderTopWidth: '1'
 											})
 										: ''
 								)}

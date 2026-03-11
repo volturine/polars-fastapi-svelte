@@ -3595,7 +3595,6 @@
 		paddingY: '1.5',
 		paddingX: '2.5',
 		borderBottomWidth: '1',
-		borderBottomColor: 'border.primary'
 	});
 
 	const controlsCss = css({ display: 'flex', gap: '1.5' });
@@ -3625,7 +3624,6 @@
 		paddingY: '2',
 		backgroundColor: 'bg.primary',
 		borderWidth: '1',
-		borderColor: 'border.primary',
 		fontSize: 'sm',
 		boxShadow: 'lg',
 		wordBreak: 'break-word',
@@ -3644,7 +3642,6 @@
 		columnGap: '2',
 		backgroundColor: 'bg.secondary',
 		borderBottomWidth: '1',
-		borderBottomColor: 'border.primary'
 	});
 
 	const legendCollapsedCss = css({
@@ -3670,13 +3667,11 @@
 		paddingX: '2',
 		background: 'color-mix(in srgb, {colors.bg.primary} 90%, transparent)',
 		borderWidth: '1',
-		borderColor: 'border.primary',
 		borderRadius: 'pill',
 		cursor: 'pointer',
 		transition: 'background 120ms ease, border-color 120ms ease',
 		_hover: {
-			background: 'bg.secondary',
-			borderColor: 'border.primary'
+			background: 'bg.secondary'
 		}
 	});
 
@@ -3728,7 +3723,6 @@
 		cursor: 'pointer',
 		background: 'color-mix(in srgb, {colors.bg.secondary} 95%, transparent)',
 		borderWidth: '1',
-		borderColor: 'border.primary',
 		color: 'fg.muted',
 		transition: 'background-color 120ms ease, color 120ms ease',
 		_hover: {
@@ -3750,8 +3744,7 @@
 
 	const tabCollapsedCss = css({
 		borderRadius: 'sm2',
-		borderWidth: '1',
-		borderColor: 'border.primary'
+		borderWidth: '1'
 	});
 
 	const itemsCss = css({
@@ -3764,8 +3757,7 @@
 		maxHeight: 'calc(100vh - 200px)',
 		overflowY: 'auto',
 		backgroundColor: 'color-mix(in srgb, {colors.bg.secondary} 95%, transparent)',
-		borderWidth: '1',
-		borderColor: 'border.primary'
+		borderWidth: '1'
 	});
 
 	const itemsRightCss = css({ borderRadius: '0 4px 4px 0' });
@@ -3875,7 +3867,6 @@
 					button({ variant: 'ghost', size: 'sm' }),
 					css({
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						fontSize: 'xs'
 					})
 				)}
@@ -3890,7 +3881,6 @@
 					button({ variant: 'ghost', size: 'sm' }),
 					css({
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						fontSize: 'xs'
 					})
 				)}
@@ -3907,7 +3897,6 @@
 					button({ variant: 'ghost', size: 'sm' }),
 					css({
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						fontSize: 'xs'
 					})
 				)}

@@ -403,7 +403,6 @@
 	<div
 		class={css({
 			borderWidth: '1',
-			borderColor: 'border.primary',
 			backgroundColor: 'bg.primary'
 		})}
 	>
@@ -415,8 +414,7 @@
 				justifyContent: 'space-between',
 				paddingX: '4',
 				paddingY: '3',
-				borderBottom: '1px solid',
-				borderBottomColor: 'border.primary'
+				borderBottomWidth: '1'
 			})}
 		>
 			<div class={cx(row, css({ gap: '2' }))}>
@@ -449,7 +447,6 @@
 					chip({ tone: 'neutral' }),
 					css({
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						letterSpacing: 'widest',
 						color: 'fg.faint'
 					})
@@ -467,7 +464,6 @@
 				alignItems: 'center',
 				justifyContent: 'space-between',
 				borderWidth: '1',
-				borderColor: 'border.primary',
 				backgroundColor: 'bg.secondary',
 				paddingY: '2',
 				paddingX: '3'
@@ -517,7 +513,6 @@
 								alignItems: 'center',
 								justifyContent: 'center',
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								color: 'success.fg',
 								backgroundColor: 'bg.primary',
 								padding: '0',
@@ -566,16 +561,13 @@
 							alignItems: 'center',
 							justifyContent: 'center',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							color: 'fg.muted',
 							backgroundColor: 'bg.primary',
 							padding: '0',
 							opacity: '0.5',
 							lineHeight: '1',
 							_hover: {
-								borderColor: 'border.primary',
-								color: 'fg.primary',
-								backgroundColor: 'bg.tertiary',
+																backgroundColor: 'bg.tertiary',
 								opacity: '1'
 							}
 						})}
@@ -612,7 +604,6 @@
 					flexDirection: 'column',
 					gap: '2',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'bg.tertiary',
 					padding: '3'
 				})}
@@ -628,7 +619,6 @@
 							alignItems: 'center',
 							gap: '1',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'bg.secondary',
 							paddingX: '2',
 							paddingY: '0.5',
@@ -656,8 +646,7 @@
 						display: 'grid',
 						gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
 						gap: '2',
-						borderTop: '1px solid',
-						borderTopColor: 'border.primary',
+						borderTopWidth: '1',
 						paddingTop: '2'
 					})}
 				>
@@ -684,10 +673,8 @@
 									paddingX: '3',
 									paddingY: '2',
 									borderWidth: '1',
-									borderColor: 'border.primary',
 									backgroundColor: 'bg.secondary',
-									color: 'fg.primary',
-									cursor: 'pointer',
+																		cursor: 'pointer',
 									justifyContent: 'space-between',
 									fontSize: 'sm',
 									_focusVisible: {
@@ -725,7 +712,6 @@
 									maxWidth: '100%',
 									backgroundColor: 'bg.primary',
 									borderWidth: '1',
-									borderColor: 'border.primary',
 									padding: '2',
 									display: 'flex',
 									flexDirection: 'column',
@@ -764,13 +750,11 @@
 													justifyContent: 'flex-start',
 													gap: '2',
 													cursor: 'pointer',
-													color: 'fg.primary',
-													fontSize: 'sm',
+																										fontSize: 'sm',
 													'& span': { minWidth: '0', overflowWrap: 'anywhere' },
-													_hover: { backgroundColor: 'bg.hover', borderColor: 'border.primary' }
+													_hover: { backgroundColor: 'bg.hover' }
 												}),
-												outputConfig.build_mode === mode &&
-													css({ backgroundColor: 'bg.hover', borderColor: 'border.primary' })
+												outputConfig.build_mode === mode && css({ backgroundColor: 'bg.hover' })
 											)}
 											onclick={() => {
 												updateOutputConfig({ build_mode: mode });
@@ -808,7 +792,6 @@
 					justifyContent: 'center',
 					gap: '2',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'bg.secondary',
 					paddingY: '2',
 					paddingX: '3',
@@ -816,10 +799,8 @@
 					fontWeight: '500',
 					color: 'fg.secondary',
 					_hover: {
-						borderColor: 'border.primary',
 						backgroundColor: 'bg.tertiary',
-						color: 'fg.primary',
-						'& svg': { opacity: '1' }
+												'& svg': { opacity: '1' }
 					},
 					_disabled: { cursor: 'not-allowed', opacity: '0.5' }
 				})}
@@ -844,8 +825,7 @@
 				display: 'flex',
 				flexDirection: 'column',
 				gap: '3',
-				borderTop: '1px solid',
-				borderTopColor: 'border.primary',
+				borderTopWidth: '1',
 				paddingTop: '3',
 				marginX: '4',
 				marginBottom: '3'
@@ -938,7 +918,6 @@
 												maxHeight: 'colMd',
 												overflowY: 'auto',
 												borderWidth: '1',
-												borderColor: 'border.primary',
 												backgroundColor: 'bg.secondary'
 											})}
 										>
@@ -982,8 +961,7 @@
 															display: 'flex',
 															alignItems: 'center',
 															gap: '2',
-															borderBottom: '1px solid',
-															borderBottomColor: 'border.primary',
+															borderBottomWidth: '1',
 															paddingX: '2',
 															paddingY: '1.5',
 															'&:last-child': { borderBottomWidth: '0' }
@@ -1108,7 +1086,6 @@
 							class={css({
 								marginTop: '2',
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary',
 								padding: '2'
 							})}
@@ -1121,7 +1098,6 @@
 								marginTop: '2',
 								borderWidth: '1',
 								borderStyle: 'dashed',
-								borderColor: 'border.primary',
 								padding: '3',
 								textAlign: 'center',
 								fontSize: 'xs',
@@ -1175,7 +1151,6 @@
 						class={css({
 							marginTop: '2',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							padding: '2'
 						})}

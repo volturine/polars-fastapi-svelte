@@ -252,7 +252,6 @@
 						alignItems: 'center',
 						justifyContent: 'center',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'bg.tertiary',
 						padding: '0',
 						color: 'fg.secondary',
@@ -297,7 +296,6 @@
 					<div
 						class={css({
 							borderLeftWidth: '2',
-							borderLeftColor: 'border.primary',
 							paddingLeft: '4',
 							paddingBottom: '2'
 						})}
@@ -314,7 +312,7 @@
 						>
 							<span class={cx(label(), css({ fontWeight: 'semibold' }))}>#{i + 1}</span>
 							{#if cond.column}
-								<span class={css({ fontSize: 'sm', fontWeight: 'medium', color: 'fg.primary' })}
+								<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}
 									>{cond.column}</span
 								>
 							{/if}
@@ -531,10 +529,8 @@
 																alignItems: 'center',
 																gap: '1',
 																borderWidth: '1',
-																borderColor: 'border.primary',
 																backgroundColor: 'bg.tertiary',
-																color: 'fg.primary',
-																fontSize: 'xs',
+																																fontSize: 'xs',
 																paddingY: '1',
 																paddingX: '2'
 															})}

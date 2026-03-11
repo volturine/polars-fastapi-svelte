@@ -288,7 +288,6 @@
 		class={css({
 			marginBottom: '4',
 			borderWidth: '1',
-			borderColor: 'border.primary',
 			backgroundColor: 'bg.secondary',
 			padding: '3',
 			boxShadow: 'sm',
@@ -302,11 +301,10 @@
 				alignItems: 'center',
 				justifyContent: 'space-between',
 				borderBottomWidth: '1',
-				borderColor: 'border.primary',
 				paddingBottom: '2'
 			})}
 		>
-			<span class={css({ fontSize: 'xs', fontWeight: 'semibold', color: 'fg.primary' })}
+			<span class={css({ fontSize: 'xs', fontWeight: 'semibold' })}
 				>New Health Check</span
 			>
 			<button
@@ -769,7 +767,6 @@
 				alignItems: 'center',
 				justifyContent: 'space-between',
 				borderTopWidth: '1',
-				borderColor: 'border.primary',
 				paddingTop: '3'
 			})}
 		>
@@ -781,7 +778,7 @@
 			>
 				<input
 					type="checkbox"
-					class={css({ borderColor: 'border.primary', color: 'accent.primary' })}
+					class={css({ color: 'accent.primary' })}
 					id="hc-critical"
 					checked={critical}
 					onchange={(e) => (critical = e.currentTarget.checked)}
@@ -793,7 +790,6 @@
 				<button
 					class={css({
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'transparent',
 						paddingX: '3',
 						paddingY: '1.5',
@@ -848,7 +844,6 @@
 			class={css({
 				marginBottom: '6',
 				borderBottomWidth: '1',
-				borderColor: 'border.primary',
 				paddingBottom: '5'
 			})}
 		>
@@ -866,7 +861,6 @@
 							alignItems: 'center',
 							gap: '1.5',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'accent.bg',
 							paddingX: '3',
 							paddingY: '1.5',
@@ -954,7 +948,6 @@
 						alignItems: 'center',
 						gap: '1',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'accent.bg',
 						paddingX: '2',
 						paddingY: '1',
@@ -979,7 +972,6 @@
 				class={css({
 					marginBottom: '4',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'color-mix(in srgb, {colors.bg.secondary} 50%, transparent)',
 					padding: '2',
 					fontSize: 'xs',
@@ -1028,7 +1020,6 @@
 					justifyContent: 'center',
 					borderWidth: '1',
 					borderStyle: 'dashed',
-					borderColor: 'border.primary',
 					backgroundColor: 'bg.secondary/50',
 					paddingY: compact ? '4' : '8',
 					textAlign: 'center'
@@ -1048,7 +1039,6 @@
 			class={css({
 				borderWidth: '1',
 				borderStyle: 'dashed',
-				borderColor: 'border.primary',
 				paddingX: '6',
 				paddingY: '8',
 				textAlign: 'center'
@@ -1061,8 +1051,7 @@
 			<div
 				class={css({
 					overflowX: 'auto',
-					borderWidth: '1',
-					borderColor: 'border.primary'
+					borderWidth: '1'
 				})}
 			>
 				<table class={css({ width: '100%', borderCollapse: 'collapse', fontSize: 'xs' })}>
@@ -1072,7 +1061,6 @@
 								class={css({
 									width: 'iconLg',
 									borderBottomWidth: '1',
-									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1083,7 +1071,6 @@
 								class={css({
 									width: 'rowLg',
 									borderBottomWidth: '1',
-									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1093,7 +1080,6 @@
 							<th
 								class={css({
 									borderBottomWidth: '1',
-									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1104,7 +1090,6 @@
 								<th
 									class={css({
 										borderBottomWidth: '1',
-										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5',
 										textAlign: 'left',
@@ -1115,7 +1100,6 @@
 							<th
 								class={css({
 									borderBottomWidth: '1',
-									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1126,7 +1110,6 @@
 								class={css({
 									width: 'colNarrow',
 									borderBottomWidth: '1',
-									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1137,7 +1120,6 @@
 								class={css({
 									width: 'colNarrow',
 									borderBottomWidth: '1',
-									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1148,7 +1130,6 @@
 								class={css({
 									width: 'logoXl',
 									borderBottomWidth: '1',
-									borderColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1170,7 +1151,6 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1186,7 +1166,6 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1237,12 +1216,11 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
 								>
-									<span class={css({ fontWeight: 'medium', color: 'fg.primary' })}
+									<span class={css({ fontWeight: 'medium' })}
 										>{check.name}</span
 									>
 								</td>
@@ -1250,7 +1228,6 @@
 									<td
 										class={css({
 											borderBottomWidth: '1',
-											borderColor: 'border.primary',
 											paddingX: '2',
 											paddingY: '1.5'
 										})}
@@ -1272,7 +1249,6 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5',
 										color: 'fg.secondary'
@@ -1283,7 +1259,6 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1313,7 +1288,6 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1346,7 +1320,6 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1379,7 +1352,6 @@
 										colspan={colCount}
 										class={css({
 											borderBottomWidth: '1',
-											borderColor: 'border.primary',
 											backgroundColor: 'bg.primary',
 											padding: '0'
 										})}
@@ -1477,10 +1449,9 @@
 							alignItems: 'center',
 							gap: '2',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'bg.primary',
 							padding: '2',
-							_hover: { borderColor: 'border.primary' },
+							_hover: { backgroundColor: 'bg.hover' },
 							transition: 'color 160ms, background-color 160ms, border-color 160ms',
 							'&:hover .group-hover-show': { opacity: '1' }
 						})}
@@ -1519,8 +1490,7 @@
 									whiteSpace: 'nowrap',
 									fontSize: 'xs',
 									fontWeight: 'medium',
-									color: 'fg.primary'
-								})}
+																	})}
 								title={check.name}
 							>
 								{check.name}
@@ -1573,7 +1543,6 @@
 									class={css({
 										height: 'iconTiny',
 										width: 'iconTiny',
-										borderColor: 'border.primary',
 										color: 'success.fg'
 									})}
 									id="check-{check.id}-enabled"

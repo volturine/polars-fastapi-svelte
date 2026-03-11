@@ -111,7 +111,7 @@
 					paddingX: '3',
 					paddingY: '2.5',
 					border: 'none',
-					borderLeft: '2px solid',
+					borderLeftWidth: '2',
 
 					marginTop: '3',
 					marginBottom: '0',

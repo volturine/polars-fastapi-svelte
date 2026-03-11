@@ -437,7 +437,6 @@
 								alignItems: 'center',
 								paddingY: '2',
 								borderBottomWidth: '1',
-								borderBottomColor: 'border.primary',
 								borderLeftWidth: '2',
 								borderLeftColor: 'accent.primary',
 								backgroundColor: 'bg.hover',
@@ -449,7 +448,6 @@
 								alignItems: 'center',
 								paddingY: '2',
 								borderBottomWidth: '1',
-								borderBottomColor: 'border.primary',
 								backgroundColor: 'transparent',
 								'&:last-child': { borderBottomWidth: '0' }
 							})}
@@ -463,8 +461,7 @@
 								overflow: 'hidden',
 								textOverflow: 'ellipsis',
 								whiteSpace: 'nowrap',
-								color: 'fg.primary'
-							})}
+															})}
 							title={expr.name}>{expr.name}</span
 						>
 						<span class={css({ fontSize: 'xs', color: 'fg.muted' })}>
@@ -548,7 +545,6 @@
 			width: 'min(720px, 92vw)',
 			backgroundColor: 'bg.primary',
 			borderWidth: '1',
-			borderColor: 'border.primary',
 			zIndex: '1001',
 			display: 'flex',
 			flexDirection: 'column',

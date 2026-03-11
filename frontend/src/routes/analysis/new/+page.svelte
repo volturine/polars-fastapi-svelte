@@ -111,7 +111,6 @@
 					display: 'flex',
 					alignItems: 'center',
 					gap: '2',
-					borderColor: 'border.primary',
 					color: 'fg.muted',
 					backgroundColor: 'bg.primary'
 				})}
@@ -124,7 +123,7 @@
 						alignItems: 'center',
 						justifyContent: 'center',
 						borderWidth: '1',
-						borderColor: step >= 1 ? 'border.primary' : 'border.primary',
+
 						fontSize: 'xs',
 						fontWeight: 'semibold',
 						...(step === 1
@@ -162,7 +161,6 @@
 					display: 'flex',
 					alignItems: 'center',
 					gap: '2',
-					borderColor: 'border.primary',
 					color: 'fg.muted',
 					backgroundColor: 'bg.primary'
 				})}
@@ -175,7 +173,6 @@
 						alignItems: 'center',
 						justifyContent: 'center',
 						borderWidth: '1',
-						borderColor: step >= 2 ? 'border.primary' : 'border.primary',
 						fontSize: 'xs',
 						fontWeight: 'semibold',
 						...(step === 2
@@ -211,7 +208,6 @@
 					display: 'flex',
 					alignItems: 'center',
 					gap: '2',
-					borderColor: 'border.primary',
 					color: 'fg.muted',
 					backgroundColor: 'bg.primary'
 				})}
@@ -224,7 +220,6 @@
 						alignItems: 'center',
 						justifyContent: 'center',
 						borderWidth: '1',
-						borderColor: step >= 3 ? 'border.primary' : 'border.primary',
 						fontSize: 'xs',
 						fontWeight: 'semibold',
 						...(step === 3
@@ -249,8 +244,7 @@
 			<div
 				class={css({
 					backgroundColor: 'bg.primary',
-					border: '1px solid',
-					borderColor: 'border.primary',
+					borderWidth: '1',
 
 					padding: '5'
 				})}
@@ -292,8 +286,7 @@
 			<div
 				class={css({
 					backgroundColor: 'bg.primary',
-					border: '1px solid',
-					borderColor: 'border.primary',
+					borderWidth: '1',
 
 					padding: '5'
 				})}
@@ -325,7 +318,6 @@
 						class={css({
 							borderWidth: '1',
 							borderStyle: 'dashed',
-							borderColor: 'border.primary',
 							padding: '8',
 							textAlign: 'center',
 							color: 'fg.tertiary'
@@ -355,8 +347,7 @@
 			<div
 				class={css({
 					backgroundColor: 'bg.primary',
-					border: '1px solid',
-					borderColor: 'border.primary',
+					borderWidth: '1',
 
 					padding: '5'
 				})}
@@ -372,7 +363,6 @@
 					class={css({
 						marginBottom: '6',
 						borderBottomWidth: '1',
-						borderBottomColor: 'border.primary',
 						paddingBottom: '6'
 					})}
 				>
@@ -428,11 +418,10 @@
 										alignItems: 'center',
 										gap: '3',
 										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
 										paddingY: '2'
 									})}
 								>
-									<span class={css({ color: 'fg.primary' })}>{ds.name}</span>
+									<span>{ds.name}</span>
 									<span class={css({ fontSize: 'xs', color: 'fg.muted' })}>
 										{#if ds.source_type === 'file'}
 											<FileTypeBadge

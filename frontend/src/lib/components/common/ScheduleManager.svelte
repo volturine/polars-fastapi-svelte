@@ -405,7 +405,6 @@
 			class={css({
 				marginBottom: '6',
 				borderBottomWidth: '1',
-				borderBottomColor: 'border.primary',
 				paddingBottom: '5'
 			})}
 		>
@@ -423,7 +422,6 @@
 						alignItems: 'center',
 						gap: '1.5',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'accent.bg',
 						paddingX: '3',
 						paddingY: '1.5',
@@ -502,7 +500,6 @@
 						alignItems: 'center',
 						gap: '1',
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'accent.bg',
 						paddingX: '2',
 						paddingY: '1',
@@ -539,7 +536,6 @@
 				class={css({
 					marginBottom: '3',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'bg.secondary',
 					padding: '2',
 					fontSize: 'xs',
@@ -578,7 +574,6 @@
 			class={css({
 				marginBottom: '3',
 				borderWidth: '1',
-				borderColor: 'border.primary',
 				backgroundColor: 'bg.secondary',
 				padding: '2',
 				fontSize: 'xs',
@@ -596,7 +591,6 @@
 				css({
 					marginBottom: '4',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary',
 					padding: '4'
 				}),
@@ -616,7 +610,6 @@
 							marginBottom: '3',
 							gap: '2',
 							borderBottomWidth: '1',
-							borderBottomColor: 'border.primary',
 							paddingBottom: '2'
 						})
 					)}
@@ -721,7 +714,6 @@
 							marginBottom: '3',
 							gap: '2',
 							borderBottomWidth: '1',
-							borderBottomColor: 'border.primary',
 							paddingBottom: '2'
 						})
 					)}
@@ -741,7 +733,6 @@
 							alignItems: 'flex-start',
 							gap: '3',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'bg.secondary',
 							padding: '3',
 							_hover: { backgroundColor: 'bg.hover' }
@@ -797,7 +788,6 @@
 							alignItems: 'flex-start',
 							gap: '3',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'bg.secondary',
 							padding: '3',
 							_hover: { backgroundColor: 'bg.hover' }
@@ -858,7 +848,6 @@
 							alignItems: 'flex-start',
 							gap: '3',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'bg.secondary',
 							padding: '3',
 							_hover: { backgroundColor: 'bg.hover' }
@@ -927,7 +916,6 @@
 				<button
 					class={css({
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'accent.bg',
 						paddingX: '3',
 						paddingY: '1.5',
@@ -948,7 +936,6 @@
 				<button
 					class={css({
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						backgroundColor: 'transparent',
 						paddingX: '3',
 						paddingY: '1.5',
@@ -980,7 +967,7 @@
 				paddingX: '3',
 				paddingY: '2.5',
 				border: 'none',
-				borderLeft: '2px solid',
+				borderLeftWidth: '2',
 
 				marginTop: '3',
 				marginBottom: '0',
@@ -1001,7 +988,6 @@
 				css({
 					borderWidth: '1',
 					borderStyle: 'dashed',
-					borderColor: 'border.primary',
 					padding: '6',
 					textAlign: 'center'
 				}),
@@ -1024,7 +1010,6 @@
 			class={css({
 				borderWidth: '1',
 				borderStyle: 'dashed',
-				borderColor: 'border.primary',
 				paddingX: '6',
 				paddingY: '8',
 				textAlign: 'center'
@@ -1044,7 +1029,6 @@
 							'group',
 							css({
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								backgroundColor: 'bg.primary'
 							})
 						)}
@@ -1308,8 +1292,7 @@
 			<div
 				class={css({
 					overflowX: 'auto',
-					borderWidth: '1',
-					borderColor: 'border.primary'
+					borderWidth: '1'
 				})}
 			>
 				<table class={css({ width: '100%', borderCollapse: 'collapse', fontSize: 'xs' })}>
@@ -1319,7 +1302,6 @@
 								class={css({
 									width: 'iconLg',
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1330,7 +1312,6 @@
 								<th
 									class={css({
 										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5',
 										textAlign: 'left',
@@ -1343,7 +1324,6 @@
 							<th
 								class={css({
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1355,7 +1335,6 @@
 							<th
 								class={css({
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1367,7 +1346,6 @@
 							<th
 								class={css({
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1379,7 +1357,6 @@
 							<th
 								class={css({
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1391,7 +1368,6 @@
 							<th
 								class={css({
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1404,7 +1380,6 @@
 								class={css({
 									width: 'logoXl',
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '2',
 									paddingY: '1.5',
 									textAlign: 'left',
@@ -1429,7 +1404,6 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1446,7 +1420,6 @@
 									<td
 										class={css({
 											borderBottomWidth: '1',
-											borderBottomColor: 'border.primary',
 											paddingX: '2',
 											paddingY: '1.5'
 										})}
@@ -1472,7 +1445,6 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1494,7 +1466,6 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1506,7 +1477,6 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1534,7 +1504,6 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1568,7 +1537,6 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5',
 										color: 'fg.secondary'
@@ -1579,7 +1547,6 @@
 								<td
 									class={css({
 										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
 										paddingX: '2',
 										paddingY: '1.5'
 									})}
@@ -1612,7 +1579,6 @@
 										colspan={colCount}
 										class={css({
 											borderBottomWidth: '1',
-											borderBottomColor: 'border.primary',
 											backgroundColor: 'bg.primary',
 											padding: '0'
 										})}

@@ -394,7 +394,6 @@
 					alignItems: 'center',
 					gap: '1',
 					borderBottomWidth: '1',
-					borderBottomColor: 'border.primary',
 					backgroundColor: 'bg.primary',
 					paddingX: '3',
 					paddingY: '1.5'
@@ -567,8 +566,7 @@
 								whiteSpace: 'nowrap',
 								fontSize: 'sm',
 								fontWeight: '600',
-								color: 'fg.primary'
-							})}
+															})}
 						>
 							{node.label}
 						</div>

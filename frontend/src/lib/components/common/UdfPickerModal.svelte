@@ -35,7 +35,6 @@
 		maxHeight: 'screenTall',
 		overflowY: 'auto',
 		borderWidth: '1',
-		borderColor: 'border.primary',
 		backgroundColor: 'bg.primary'
 	})}
 	ariaLabelledby="udf-modal-title"
@@ -45,9 +44,7 @@
 {#snippet content()}
 	<PanelHeader>
 		{#snippet title()}
-			<h2 id="udf-modal-title" class={css({ margin: '0', fontSize: 'md', color: 'fg.primary' })}>
-				Select UDF
-			</h2>
+			<h2 id="udf-modal-title" class={css({ margin: '0', fontSize: 'md' })}>Select UDF</h2>
 		{/snippet}
 		{#snippet actions()}
 			<button
@@ -103,11 +100,9 @@
 						class={css({
 							textAlign: 'left',
 							padding: '3',
-							border: '1px solid',
-							borderColor: 'border.primary',
+							borderWidth: '1',
 
 							backgroundColor: 'bg.secondary',
-							color: 'fg.primary',
 							cursor: 'pointer',
 							_hover: { backgroundColor: 'bg.hover' }
 						})}

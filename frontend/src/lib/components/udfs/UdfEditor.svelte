@@ -151,7 +151,6 @@
 			marginBottom: '6',
 			paddingBottom: '5',
 			borderBottomWidth: '1',
-			borderBottomColor: 'border.primary',
 			sm: { flexDirection: 'row', alignItems: 'center' }
 		})}
 	>
@@ -166,7 +165,6 @@
 					justifyContent: 'center',
 					backgroundColor: 'bg.tertiary',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 
 					color: 'fg.secondary',
 					_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
@@ -256,7 +254,6 @@
 					gap: '3',
 					padding: '4',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary'
 				})}
 			>
@@ -278,7 +275,6 @@
 					gap: '3',
 					padding: '4',
 					borderWidth: '1',
-					borderColor: 'border.primary',
 					backgroundColor: 'bg.primary'
 				})}
 			>

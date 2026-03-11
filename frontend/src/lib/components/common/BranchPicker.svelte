@@ -181,10 +181,8 @@
 			padding: '2',
 			paddingX: '3',
 			borderWidth: '1',
-			borderColor: 'border.primary',
 			background: 'bg.secondary',
-			color: 'fg.primary',
-			fontSize: 'sm',
+						fontSize: 'sm',
 			textTransform: 'none'
 		})}
 		onclick={payload.onOpen}
@@ -225,7 +223,7 @@
 				gap: '2',
 				fontSize: 'sm',
 				'& span': { minWidth: '0', overflowWrap: 'anywhere' },
-				...(payload.selected ? { backgroundColor: 'bg.hover', borderColor: 'border.primary' } : {})
+				...(payload.selected ? { backgroundColor: 'bg.hover' } : {})
 			})
 		)}
 		onclick={payload.onSelect}

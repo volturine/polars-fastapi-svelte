@@ -16,7 +16,6 @@
 		css({
 			overflow: 'hidden',
 			borderWidth: '1',
-			borderColor: 'border.primary',
 			backgroundColor: 'bg.primary'
 		})
 	)}
@@ -29,12 +28,11 @@
 				paddingX: '5',
 				paddingY: '4',
 				borderBottomWidth: '1',
-				borderBottomColor: 'border.primary',
 				backgroundColor: 'bg.tertiary'
 			})
 		)}
 	>
-		<h3 class={css({ margin: '0', fontSize: 'lg', fontWeight: 'semibold', color: 'fg.primary' })}>
+		<h3 class={css({ margin: '0', fontSize: 'lg', fontWeight: 'semibold' })}>
 			Schema
 		</h3>
 		{#if schema.row_count !== null}
@@ -53,7 +51,6 @@
 				paddingX: '5',
 				paddingY: '3',
 				borderBottomWidth: '1',
-				borderBottomColor: 'border.primary',
 				fontSize: 'xs',
 				fontWeight: 'semibold',
 				textTransform: 'uppercase',
@@ -76,11 +73,10 @@
 					paddingX: '5',
 					paddingY: '3.5',
 					borderBottomWidth: '1',
-					borderBottomColor: 'border.primary',
 					_hover: { backgroundColor: 'bg.hover' }
 				})}
 			>
-				<div class={cx(row, css({ gap: '2', fontWeight: 'medium', color: 'fg.primary' }))}>
+				<div class={cx(row, css({ gap: '2', fontWeight: 'medium' }))}>
 					<span class={css({ fontFamily: 'mono', fontSize: 'sm' })}>{column.name}</span>
 				</div>
 				<div class={row}>

@@ -336,7 +336,6 @@
 			class={css({
 				marginBottom: '6',
 				borderBottomWidth: '1',
-				borderBottomColor: 'border.primary',
 				paddingBottom: '5'
 			})}
 		>
@@ -376,7 +375,6 @@
 					button({ variant: 'ghost', size: 'sm' }),
 					css({
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						fontSize: 'xs',
 						width: 'fit-content'
 					})
@@ -483,7 +481,7 @@
 				paddingX: '3',
 				paddingY: '2.5',
 				border: 'none',
-				borderLeft: '2px solid',
+				borderLeftWidth: '2',
 
 				marginTop: '3',
 				marginBottom: '0',
@@ -501,7 +499,6 @@
 			class={css({
 				borderWidth: '1',
 				borderStyle: 'dashed',
-				borderColor: 'border.primary',
 				padding: '8',
 				textAlign: 'center'
 			})}
@@ -516,8 +513,7 @@
 		<div
 			class={css({
 				overflowX: 'auto',
-				borderWidth: '1',
-				borderColor: 'border.primary'
+				borderWidth: '1'
 			})}
 		>
 			<table class={css({ width: '100%', borderCollapse: 'collapse', fontSize: 'sm' })}>
@@ -527,7 +523,6 @@
 							class={css({
 								width: 'rowLg',
 								borderBottomWidth: '1',
-								borderBottomColor: 'border.primary',
 								paddingX: '3',
 								paddingY: '2',
 								textAlign: 'left',
@@ -539,7 +534,6 @@
 								class={css({
 									cursor: 'pointer',
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2',
 									textAlign: 'left',
@@ -580,7 +574,6 @@
 							<td
 								class={css({
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2'
 								})}
@@ -593,7 +586,6 @@
 							<td
 								class={css({
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2'
 								})}
@@ -641,7 +633,6 @@
 							<td
 								class={css({
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2'
 								})}
@@ -659,7 +650,6 @@
 							<td
 								class={css({
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2'
 								})}
@@ -674,7 +664,6 @@
 							<td
 								class={css({
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2'
 								})}
@@ -693,7 +682,6 @@
 							<td
 								class={css({
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2'
 								})}
@@ -712,7 +700,6 @@
 							<td
 								class={css({
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2',
 									fontFamily: 'mono',
@@ -724,7 +711,6 @@
 							<td
 								class={css({
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingX: '3',
 									paddingY: '2',
 									color: 'fg.secondary'
@@ -739,7 +725,6 @@
 									colspan="8"
 									class={css({
 										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
 										backgroundColor: 'bg.primary',
 										padding: '0'
 									})}
@@ -750,8 +735,7 @@
 												marginBottom: '4',
 												display: 'flex',
 												gap: '1',
-												borderBottomWidth: '1',
-												borderBottomColor: 'border.primary'
+												borderBottomWidth: '1'
 											})}
 										>
 											<button
@@ -873,7 +857,6 @@
 															maxHeight: 'listLg',
 															overflowX: 'auto',
 															borderWidth: '1',
-															borderColor: 'border.primary',
 															backgroundColor: 'bg.tertiary',
 															padding: '3',
 															fontFamily: 'mono',
@@ -889,7 +872,7 @@
 															paddingX: '3',
 															paddingY: '2.5',
 															border: 'none',
-															borderLeft: '2px solid',
+															borderLeftWidth: '2',
 
 															marginTop: '3',
 															marginBottom: '0',
@@ -992,7 +975,6 @@
 																		maxHeight: 'inputSm',
 																		overflowX: 'auto',
 																		borderWidth: '1',
-																		borderColor: 'border.primary',
 																		backgroundColor: 'bg.tertiary',
 																		padding: '3',
 																		fontFamily: 'mono',
@@ -1115,7 +1097,6 @@
 																overflowX: 'auto',
 																whiteSpace: 'pre-wrap',
 																borderWidth: '1',
-																borderColor: 'border.primary',
 																backgroundColor: 'bg.tertiary',
 																padding: '3',
 																fontFamily: 'mono',
@@ -1139,7 +1120,6 @@
 																overflowX: 'auto',
 																whiteSpace: 'pre-wrap',
 																borderWidth: '1',
-																borderColor: 'border.primary',
 																backgroundColor: 'bg.tertiary',
 																padding: '3',
 																fontFamily: 'mono',

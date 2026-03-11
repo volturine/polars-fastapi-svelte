@@ -29,6 +29,5 @@ export const rowBetween = css({
 	justifyContent: 'space-between'
 });
 export const divider = css({
-	borderTopWidth: '1',
-	borderTopColor: 'border.primary'
+	borderTopWidth: '1'
 });

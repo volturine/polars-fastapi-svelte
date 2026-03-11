@@ -64,7 +64,6 @@
 		<div
 			class={css({
 				borderTopWidth: '1',
-				borderColor: 'border.primary',
 				backgroundColor: 'bg.primary'
 			})}
 		>
@@ -92,7 +91,6 @@
 							alignItems: 'center',
 							justifyContent: 'center',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'transparent',
 							paddingX: '2',
 							paddingY: '1',
@@ -147,8 +145,7 @@
 										class={css({
 											fontSize: 'xs',
 											fontWeight: '600',
-											color: 'fg.primary',
-											fontFamily: 'mono'
+																						fontFamily: 'mono'
 										})}>{stats.count.toLocaleString()}</span
 									>
 								</div>
@@ -165,8 +162,7 @@
 										class={css({
 											fontSize: 'xs',
 											fontWeight: '600',
-											color: 'fg.primary',
-											fontFamily: 'mono'
+																						fontFamily: 'mono'
 										})}
 									>
 										{stats.null_count.toLocaleString()}
@@ -177,7 +173,6 @@
 										height: 'barTall',
 										backgroundColor: 'bg.tertiary',
 										borderWidth: '1',
-										borderColor: 'border.primary',
 										marginTop: '1',
 										overflow: 'hidden'
 									})}
@@ -209,8 +204,7 @@
 											class={css({
 												fontSize: 'xs',
 												fontWeight: '600',
-												color: 'fg.primary',
-												fontFamily: 'mono'
+																								fontFamily: 'mono'
 											})}>{stats.unique.toLocaleString()}</span
 										>
 									</div>
@@ -245,8 +239,7 @@
 											class={css({
 												fontSize: 'xs',
 												fontWeight: '600',
-												color: 'fg.primary',
-												fontFamily: 'mono'
+																								fontFamily: 'mono'
 											})}>{fmt(stats.mean)}</span
 										>
 									</div>
@@ -264,8 +257,7 @@
 												class={css({
 													fontSize: 'xs',
 													fontWeight: '600',
-													color: 'fg.primary',
-													fontFamily: 'mono'
+																										fontFamily: 'mono'
 												})}>{fmt(stats.median)}</span
 											>
 										</div>
@@ -284,8 +276,7 @@
 												class={css({
 													fontSize: 'xs',
 													fontWeight: '600',
-													color: 'fg.primary',
-													fontFamily: 'mono'
+																										fontFamily: 'mono'
 												})}>{fmt(stats.std)}</span
 											>
 										</div>
@@ -303,8 +294,7 @@
 											class={css({
 												fontSize: 'xs',
 												fontWeight: '600',
-												color: 'fg.primary',
-												fontFamily: 'mono'
+																								fontFamily: 'mono'
 											})}>{stats.min}</span
 										>
 									</div>
@@ -322,8 +312,7 @@
 												class={css({
 													fontSize: 'xs',
 													fontWeight: '600',
-													color: 'fg.primary',
-													fontFamily: 'mono'
+																										fontFamily: 'mono'
 												})}>{fmt(stats.q25)}</span
 											>
 										</div>
@@ -342,8 +331,7 @@
 												class={css({
 													fontSize: 'xs',
 													fontWeight: '600',
-													color: 'fg.primary',
-													fontFamily: 'mono'
+																										fontFamily: 'mono'
 												})}>{fmt(stats.q75)}</span
 											>
 										</div>
@@ -361,8 +349,7 @@
 											class={css({
 												fontSize: 'xs',
 												fontWeight: '600',
-												color: 'fg.primary',
-												fontFamily: 'mono'
+																								fontFamily: 'mono'
 											})}>{stats.max}</span
 										>
 									</div>
@@ -397,8 +384,7 @@
 											class={css({
 												fontSize: 'xs',
 												fontWeight: '600',
-												color: 'fg.primary',
-												fontFamily: 'mono'
+																								fontFamily: 'mono'
 											})}>{stats.min}</span
 										>
 									</div>
@@ -415,8 +401,7 @@
 											class={css({
 												fontSize: 'xs',
 												fontWeight: '600',
-												color: 'fg.primary',
-												fontFamily: 'mono'
+																								fontFamily: 'mono'
 											})}>{stats.max}</span
 										>
 									</div>
@@ -445,7 +430,6 @@
 											height: 'dot',
 											backgroundColor: 'bg.tertiary',
 											borderWidth: '1',
-											borderColor: 'border.primary',
 											overflow: 'hidden'
 										})}
 									>
@@ -502,8 +486,7 @@
 											class={css({
 												fontSize: 'xs',
 												fontWeight: '600',
-												color: 'fg.primary',
-												fontFamily: 'mono'
+																								fontFamily: 'mono'
 											})}>{stats.min_length}</span
 										>
 									</div>
@@ -520,8 +503,7 @@
 											class={css({
 												fontSize: 'xs',
 												fontWeight: '600',
-												color: 'fg.primary',
-												fontFamily: 'mono'
+																								fontFamily: 'mono'
 											})}>{fmt(stats.avg_length)}</span
 										>
 									</div>
@@ -538,8 +520,7 @@
 											class={css({
 												fontSize: 'xs',
 												fontWeight: '600',
-												color: 'fg.primary',
-												fontFamily: 'mono'
+																								fontFamily: 'mono'
 											})}>{stats.max_length}</span
 										>
 									</div>
@@ -643,8 +624,7 @@
 														class={css({
 															fontSize: 'xs',
 															fontFamily: 'mono',
-															color: 'fg.primary',
-															overflow: 'hidden',
+																														overflow: 'hidden',
 															textOverflow: 'ellipsis',
 															whiteSpace: 'nowrap',
 															maxWidth: 'listSm'
@@ -660,7 +640,6 @@
 														height: 'barTall',
 														backgroundColor: 'bg.tertiary',
 														borderWidth: '1',
-														borderColor: 'border.primary',
 														overflow: 'hidden'
 													})}
 												>

@@ -405,7 +405,6 @@
 		class={css({
 			padding: '3 0',
 			borderBottomWidth: '1',
-			borderBottomColor: 'border.primary'
 		})}
 		role="group"
 		aria-labelledby={`${uid}-plot-type`}
@@ -437,7 +436,6 @@
 								paddingY: '2',
 								paddingX: '1',
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								backgroundColor: 'accent.bg',
 								color: 'accent.primary',
 								fontSize: '2xs',
@@ -453,7 +451,6 @@
 								paddingY: '2',
 								paddingX: '1',
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								backgroundColor: 'transparent',
 								color: 'fg.muted',
 								fontSize: '2xs',
@@ -478,7 +475,6 @@
 			margin: '0',
 			display: 'flex',
 			borderBottomWidth: '1',
-			borderBottomColor: 'border.primary'
 		})}
 	>
 		<button
@@ -1029,7 +1025,6 @@
 									alignItems: 'center',
 									gap: '2',
 									borderWidth: '1',
-									borderColor: 'border.primary',
 									padding: '2'
 								})}
 								role="group"
@@ -1228,7 +1223,6 @@
 									alignItems: 'center',
 									gap: '2',
 									borderWidth: '1',
-									borderColor: 'border.primary',
 									padding: '2'
 								})}
 								role="group"
@@ -1579,7 +1573,6 @@
 										paddingY: '1.5',
 										paddingX: '2',
 										borderWidth: '1',
-										borderColor: 'border.primary',
 										backgroundColor: 'accent.bg',
 										color: 'accent.primary',
 										fontSize: 'xs',
@@ -1593,7 +1586,6 @@
 										paddingY: '1.5',
 										paddingX: '2',
 										borderWidth: '1',
-										borderColor: 'border.primary',
 										backgroundColor: 'transparent',
 										color: 'fg.muted',
 										fontSize: 'xs',
@@ -1638,7 +1630,6 @@
 										paddingY: '1.5',
 										paddingX: '2',
 										borderWidth: '1',
-										borderColor: 'border.primary',
 										backgroundColor: 'accent.bg',
 										color: 'accent.primary',
 										fontSize: 'xs',
@@ -1652,7 +1643,6 @@
 										paddingY: '1.5',
 										paddingX: '2',
 										borderWidth: '1',
-										borderColor: 'border.primary',
 										backgroundColor: 'transparent',
 										color: 'fg.muted',
 										fontSize: 'xs',

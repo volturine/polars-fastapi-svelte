@@ -345,8 +345,7 @@
 			marginBottom: '8',
 			display: 'flex',
 			gap: '2',
-			borderBottomWidth: '2',
-			borderBottomColor: 'border.primary'
+			borderBottomWidth: '2'
 		})}
 	>
 		<button
@@ -375,8 +374,7 @@
 				paddingX: '2.5',
 				paddingY: '3',
 				border: 'none',
-				borderLeft: '2px solid',
-
+				borderLeftWidth: '2',
 				marginTop: '3',
 				marginBottom: '0',
 				fontSize: 'xs',
@@ -393,7 +391,6 @@
 	<div
 		class={css({
 			borderWidth: '1',
-			borderColor: 'border.primary',
 			padding: '8'
 		})}
 	>
@@ -405,7 +402,6 @@
 						<div
 							class={css({
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								backgroundColor: 'bg.secondary',
 								padding: '3'
 							})}
@@ -438,7 +434,6 @@
 							class={css({
 								marginTop: '3',
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								backgroundColor: 'bg.tertiary',
 								padding: '3'
 							})}
@@ -450,7 +445,6 @@
 									alignItems: 'center',
 									justifyContent: 'space-between',
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									paddingBottom: '2',
 									fontSize: 'sm',
 									color: 'fg.secondary'
@@ -480,7 +474,6 @@
 										alignItems: 'center',
 										justifyContent: 'space-between',
 										borderBottomWidth: '1',
-										borderBottomColor: 'border.primary',
 										padding: '2'
 									})}
 								>
@@ -490,8 +483,7 @@
 											overflow: 'hidden',
 											textOverflow: 'ellipsis',
 											whiteSpace: 'nowrap',
-											fontSize: 'sm',
-											color: 'fg.primary'
+											fontSize: 'sm'
 										})}
 									>
 										{selectedFile.name}
@@ -544,7 +536,6 @@
 							flexDirection: 'column',
 							gap: '3',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'bg.tertiary',
 							padding: '4'
 						})}
@@ -658,7 +649,6 @@
 						class={css({
 							marginTop: '4',
 							borderWidth: '1',
-							borderColor: 'border.primary',
 							backgroundColor: 'bg.tertiary',
 							padding: '4'
 						})}
@@ -681,7 +671,6 @@
 									alignItems: 'center',
 									gap: '2',
 									borderBottomWidth: '1',
-									borderBottomColor: 'border.primary',
 									padding: '2',
 									fontSize: 'sm',
 									color: result.success ? 'success.fg' : 'error.fg'

@@ -82,7 +82,6 @@
 	class={css({
 		overflow: 'hidden',
 		borderWidth: '1',
-		borderColor: 'border.primary',
 		backgroundColor: 'bg.tertiary'
 	})}
 	style:height

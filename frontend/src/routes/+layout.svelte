@@ -187,7 +187,7 @@
 						aria-label="Select namespace"
 						bind:this={namespaceTrigger}
 					>
-						<span class={css({ color: 'fg.primary' })}>analysis</span>
+						<span>analysis</span>
 						<span class={muted}>/</span>
 						<span class={css({ color: 'fg.tertiary' })}>{namespaceDraft}</span>
 					</button>

@@ -168,8 +168,7 @@
 				class={css({
 					backgroundColor: 'accent.primary',
 					color: 'fg.inverse',
-					border: '1px solid',
-					borderColor: 'border.primary',
+					borderWidth: '1',
 					width: 'full',
 					paddingY: '2',
 					paddingX: '3',

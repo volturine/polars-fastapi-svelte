@@ -28,6 +28,7 @@ settings_engine = create_engine(
 _enable_sqlite_pragmas(settings_engine)
 
 _namespace_engines: dict[str, Engine] = {}
+_MAX_NAMESPACE_ENGINES = 50
 
 # Engine override for testing - allows tests to swap the engine used by run_db
 _engine_override: Engine | None = None
@@ -149,26 +150,26 @@ def _get_namespace_engine() -> Engine:
     namespace = get_namespace()
     if namespace in _namespace_engines:
         return _namespace_engines[namespace]
+    if len(_namespace_engines) >= _MAX_NAMESPACE_ENGINES:
+        oldest = next(iter(_namespace_engines))
+        del _namespace_engines[oldest]
     paths = namespace_paths(namespace)
-    engine_to_use = create_engine(
-        f'sqlite:///{paths.db_path}',
-        echo=settings.debug,
-        connect_args={},
-    )
-    _enable_sqlite_pragmas(engine_to_use)
-    _namespace_engines[namespace] = engine_to_use
+    engine = create_engine(f'sqlite:///{paths.db_path}', echo=settings.debug, connect_args={})
+    _enable_sqlite_pragmas(engine)
+    _namespace_engines[namespace] = engine
     _init_namespace_db(namespace)
-    return engine_to_use
+    return engine
 
 
 def _init_namespace_db(namespace: str) -> None:
     paths = namespace_paths(namespace)
-    namespace_engine = create_engine(
+    namespace_engine = _namespace_engines.get(namespace) or create_engine(
         f'sqlite:///{paths.db_path}',
         echo=settings.debug,
         connect_args={},
     )
-    _enable_sqlite_pragmas(namespace_engine)
+    if namespace not in _namespace_engines:
+        _enable_sqlite_pragmas(namespace_engine)
     from modules.analysis.models import Analysis, AnalysisDataSource
     from modules.analysis_versions.models import AnalysisVersion
     from modules.datasource.models import DataSource

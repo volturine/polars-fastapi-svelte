@@ -201,7 +201,6 @@
 <div
 	class={css({
 		borderWidth: '1',
-		borderColor: 'border.primary',
 		backgroundColor: 'bg.primary',
 		display: 'flex',
 		flexDirection: 'column',
@@ -213,8 +212,7 @@
 			display: 'flex',
 			alignItems: 'center',
 			justifyContent: 'space-between',
-			borderBottom: '1px solid',
-			borderBottomColor: 'border.primary',
+			borderBottomWidth: '1',
 			backgroundColor: 'bg.tertiary',
 			paddingX: '4',
 			paddingY: '3'
@@ -270,7 +268,6 @@
 				<div
 					class={css({
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						padding: '3'
 					})}
 				>
@@ -343,7 +340,6 @@
 													alignItems: 'flex-start',
 													justifyContent: 'space-between',
 													borderWidth: '1',
-													borderColor: 'border.primary',
 													backgroundColor: 'transparent',
 													paddingX: '3',
 													paddingY: '2',
@@ -383,7 +379,6 @@
 				<div
 					class={css({
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						padding: '3'
 					})}
 				>
@@ -422,7 +417,6 @@
 											alignItems: 'center',
 											justifyContent: 'space-between',
 											borderWidth: '1',
-											borderColor: 'border.primary',
 											backgroundColor: 'bg.secondary',
 											paddingX: '3',
 											paddingY: '2',
@@ -477,13 +471,12 @@
 			</div>
 
 			{#if comparison}
-				<div class={css({ borderWidth: '1', borderColor: 'border.primary' })}>
+				<div class={css({ borderWidth: '1' })}>
 					<div
 						class={css({
 							display: 'grid',
 							gap: '4',
-							borderBottom: '1px solid',
-							borderBottomColor: 'border.primary',
+							borderBottomWidth: '1',
 							padding: '4',
 							md: { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }
 						})}
@@ -491,7 +484,6 @@
 						<div
 							class={css({
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								padding: '3',
 								textAlign: 'center'
 							})}
@@ -504,7 +496,6 @@
 						<div
 							class={css({
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								padding: '3',
 								textAlign: 'center'
 							})}
@@ -517,7 +508,6 @@
 						<div
 							class={css({
 								borderWidth: '1',
-								borderColor: 'border.primary',
 								padding: '3',
 								textAlign: 'center'
 							})}
@@ -547,8 +537,7 @@
 						{#if comparison.schema_diff.length > 0}
 							<div
 								class={css({
-									borderWidth: '1',
-									borderColor: 'border.primary'
+									borderWidth: '1'
 								})}
 							>
 								<table class={css({ width: '100%', borderCollapse: 'collapse', fontSize: 'sm' })}>
@@ -556,8 +545,7 @@
 										<tr class={css({ backgroundColor: 'bg.tertiary' })}>
 											<th
 												class={css({
-													borderBottom: '1px solid',
-													borderBottomColor: 'border.primary',
+													borderBottomWidth: '1',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -566,8 +554,7 @@
 											>
 											<th
 												class={css({
-													borderBottom: '1px solid',
-													borderBottomColor: 'border.primary',
+													borderBottomWidth: '1',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -576,8 +563,7 @@
 											>
 											<th
 												class={css({
-													borderBottom: '1px solid',
-													borderBottomColor: 'border.primary',
+													borderBottomWidth: '1',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -586,8 +572,7 @@
 											>
 											<th
 												class={css({
-													borderBottom: '1px solid',
-													borderBottomColor: 'border.primary',
+													borderBottomWidth: '1',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -601,8 +586,7 @@
 											<tr>
 												<td
 													class={css({
-														borderBottom: '1px solid',
-														borderBottomColor: 'border.primary',
+														borderBottomWidth: '1',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -611,8 +595,7 @@
 												>
 												<td
 													class={css({
-														borderBottom: '1px solid',
-														borderBottomColor: 'border.primary',
+														borderBottomWidth: '1',
 														paddingX: '3',
 														paddingY: '1.5'
 													})}
@@ -657,8 +640,7 @@
 												</td>
 												<td
 													class={css({
-														borderBottom: '1px solid',
-														borderBottomColor: 'border.primary',
+														borderBottomWidth: '1',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -670,8 +652,7 @@
 												</td>
 												<td
 													class={css({
-														borderBottom: '1px solid',
-														borderBottomColor: 'border.primary',
+														borderBottomWidth: '1',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -690,7 +671,6 @@
 							<div
 								class={css({
 									borderWidth: '1',
-									borderColor: 'border.primary',
 									backgroundColor: 'bg.tertiary',
 									padding: '4',
 									textAlign: 'center',
@@ -716,8 +696,7 @@
 						</h4>
 						<div
 							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary'
+								borderWidth: '1'
 							})}
 						>
 							<div
@@ -738,8 +717,7 @@
 										<tr>
 											<th
 												class={css({
-													borderBottom: '1px solid',
-													borderBottomColor: 'border.primary',
+													borderBottomWidth: '1',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -748,8 +726,7 @@
 											>
 											<th
 												class={css({
-													borderBottom: '1px solid',
-													borderBottomColor: 'border.primary',
+													borderBottomWidth: '1',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -758,8 +735,7 @@
 											>
 											<th
 												class={css({
-													borderBottom: '1px solid',
-													borderBottomColor: 'border.primary',
+													borderBottomWidth: '1',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -768,8 +744,7 @@
 											>
 											<th
 												class={css({
-													borderBottom: '1px solid',
-													borderBottomColor: 'border.primary',
+													borderBottomWidth: '1',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -778,8 +753,7 @@
 											>
 											<th
 												class={css({
-													borderBottom: '1px solid',
-													borderBottomColor: 'border.primary',
+													borderBottomWidth: '1',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -788,8 +762,7 @@
 											>
 											<th
 												class={css({
-													borderBottom: '1px solid',
-													borderBottomColor: 'border.primary',
+													borderBottomWidth: '1',
 													paddingX: '3',
 													paddingY: '1.5',
 													textAlign: 'left',
@@ -803,8 +776,7 @@
 											<tr>
 												<td
 													class={css({
-														borderBottom: '1px solid',
-														borderBottomColor: 'border.primary',
+														borderBottomWidth: '1',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -816,8 +788,7 @@
 												</td>
 												<td
 													class={css({
-														borderBottom: '1px solid',
-														borderBottomColor: 'border.primary',
+														borderBottomWidth: '1',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -829,8 +800,7 @@
 												</td>
 												<td
 													class={css({
-														borderBottom: '1px solid',
-														borderBottomColor: 'border.primary',
+														borderBottomWidth: '1',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -855,8 +825,7 @@
 												</td>
 												<td
 													class={css({
-														borderBottom: '1px solid',
-														borderBottomColor: 'border.primary',
+														borderBottomWidth: '1',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -881,8 +850,7 @@
 												</td>
 												<td
 													class={css({
-														borderBottom: '1px solid',
-														borderBottomColor: 'border.primary',
+														borderBottomWidth: '1',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -900,8 +868,7 @@
 												</td>
 												<td
 													class={css({
-														borderBottom: '1px solid',
-														borderBottomColor: 'border.primary',
+														borderBottomWidth: '1',
 														paddingX: '3',
 														paddingY: '1.5',
 														fontFamily: 'mono',
@@ -934,14 +901,12 @@
 					>
 						<div
 							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary'
+								borderWidth: '1'
 							})}
 						>
 							<div
 								class={css({
-									borderBottom: '1px solid',
-									borderBottomColor: 'border.primary',
+									borderBottomWidth: '1',
 									backgroundColor: 'bg.tertiary',
 									paddingX: '3',
 									paddingY: '2',
@@ -969,14 +934,12 @@
 						</div>
 						<div
 							class={css({
-								borderWidth: '1',
-								borderColor: 'border.primary'
+								borderWidth: '1'
 							})}
 						>
 							<div
 								class={css({
-									borderBottom: '1px solid',
-									borderBottomColor: 'border.primary',
+									borderBottomWidth: '1',
 									backgroundColor: 'bg.tertiary',
 									paddingX: '3',
 									paddingY: '2',
@@ -1008,7 +971,6 @@
 				<div
 					class={css({
 						borderWidth: '1',
-						borderColor: 'border.primary',
 						padding: '4',
 						fontSize: 'sm',
 						color: 'fg.tertiary'

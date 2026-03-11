@@ -155,7 +155,6 @@
 						alignItems: 'center',
 						paddingY: '2',
 						borderBottomWidth: '1',
-						borderBottomColor: 'border.primary',
 						'&:last-child': { borderBottomWidth: '0' }
 					})}
 					role="group"

@@ -85,8 +85,8 @@ def test_cache_namespace_engine_disposes_evicted_engine(monkeypatch):
         def dispose(self):
             self.disposed = True
 
-    monkeypatch.setattr(database, '_namespace_engines', OrderedDict(), raising=False)
-    monkeypatch.setattr(database, '_MAX_NAMESPACE_ENGINES', 2, raising=False)
+    monkeypatch.setattr(database, '_namespace_engines', OrderedDict())
+    monkeypatch.setattr(database, '_MAX_NAMESPACE_ENGINES', 2)
 
     alpha = DummyEngine()
     beta = DummyEngine()

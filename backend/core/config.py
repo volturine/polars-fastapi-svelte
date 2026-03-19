@@ -7,6 +7,7 @@ from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic_settings.sources import DotEnvSettingsSource
 from sqlalchemy.engine.url import make_url
+from sqlalchemy.exc import ArgumentError
 
 # (field_name, min_inclusive, max_inclusive) — None means no bound
 _NUMERIC_CONSTRAINTS: list[tuple[str, int | None, int | None]] = [
@@ -222,7 +223,7 @@ class Settings(BaseSettings):
             value = f'sqlite:///{Path(data_dir) / "app.db"}'
         try:
             make_url(value)
-        except Exception as exc:
+        except ArgumentError as exc:
             raise ValueError(f'database_url must be a valid SQLAlchemy URL, got {value}') from exc
         return value
 

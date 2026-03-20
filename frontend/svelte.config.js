@@ -5,9 +5,10 @@ export default {
 	preprocess: [vitePreprocess()],
 
 	onwarn: (warning, handler) => {
-		// Suppress specific warnings
-		if (warning.code === 'state_referenced_locally') return;
+		// css_unused_selector: Panda CSS generates selectors consumed at runtime — cannot be resolved statically
 		if (warning.code === 'css_unused_selector') return;
+		// state_referenced_locally / non_reactive_update: tracked as tech debt in AGENTS.md
+		if (warning.code === 'state_referenced_locally') return;
 		if (warning.code === 'non_reactive_update') return;
 		handler(warning);
 	},
@@ -23,9 +24,16 @@ export default {
 		alias: {
 			'styled-system': './styled-system/*'
 		},
-		// Ensure the app is served from the root path
 		paths: {
 			base: ''
+		}
+	},
+
+	// Enable runes for all project files; leave dependencies as-is
+	vitePlugin: {
+		dynamicCompileOptions({ filename }) {
+			if (filename.includes('node_modules')) return;
+			return { runes: true };
 		}
 	}
 };

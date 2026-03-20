@@ -8,24 +8,24 @@ install:
     @echo "Installing backend dependencies..."
     cd backend && uv sync
     @echo "Installing frontend dependencies..."
-    cd frontend && npm install
+    cd frontend && bun install
 
 # Run development servers concurrently
 dev:
     @echo "Starting servers..."
-    (cd backend && uv run --env-file .env ./main.py) & (cd frontend && npm run dev) & wait
+    (cd backend && uv run --env-file .env ./main.py) & (cd frontend && bun run dev) & wait
 
 # Format code
 format:
     @echo "Formatting backend..."
     cd backend && uv run ruff format .
     @echo "Formatting frontend..."
-    cd frontend && npm run format
+    cd frontend && bun run format
 
 # Run all linters and type checks
-check: 
+check:
     cd backend && uv run ruff format --check . && uv run ruff check . && uv run mypy .
-    cd frontend && npx svelte-check --threshold warning && npm run lint
+    cd frontend && bun run panda:codegen && bun run check && bun run lint
 
 # Run backend tests
 test:
@@ -41,6 +41,6 @@ verify: format check
 # Build for production
 prod:
     @echo "Building frontend..."
-    cd frontend && npm run build
+    cd frontend && bun run build
     @echo "Starting backend in production mode..."
     cd backend && uv run --env-file .prod.env ./main.py

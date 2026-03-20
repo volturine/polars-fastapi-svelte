@@ -88,7 +88,7 @@
 		goto(resolve(url as '/'), { replaceState: true });
 	}
 
-	// initializes snapshotConfig on datasource selection — depends on external config shape
+	// $derived cannot write to $state or express the circular snapshotConfig guard — must imperatively assign snapshotConfig and selectedBranch together
 	$effect(() => {
 		const selected = selectedDatasource;
 		if (!selectedId) return;

@@ -108,6 +108,11 @@ export function renameTransform(input: Schema | null, config: StepConfig): Schem
 	};
 }
 
+function buildAggName(col: string, func: string | Array<{ column: string; agg: string }>): string {
+	if (typeof func === 'string') return `${col}_${func}`;
+	return `${col}_${func.map((a) => a.agg).join('_')}`;
+}
+
 export function groupbyTransform(input: Schema | null, config: StepConfig): Schema {
 	if (!input) return EMPTY;
 
@@ -141,13 +146,7 @@ export function groupbyTransform(input: Schema | null, config: StepConfig): Sche
 	}
 
 	for (const [aggColumn, aggFunc] of Object.entries(aggregations ?? {})) {
-		const aggName =
-			typeof aggFunc === 'string'
-				? `${aggColumn}_${aggFunc}`
-				: Array.isArray(aggFunc)
-					? `${aggColumn}_${aggFunc.map((a) => a.agg).join('_')}`
-					: `${aggColumn}_${(aggFunc as { column: string; agg: string }).agg}`;
-
+		const aggName = buildAggName(aggColumn, aggFunc);
 		result.push({
 			name: aggName,
 			dtype: 'Float64',

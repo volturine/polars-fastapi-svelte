@@ -32,6 +32,7 @@ export default {
 	// Enable runes for all project files; leave dependencies as-is
 	vitePlugin: {
 		dynamicCompileOptions({ filename }) {
+			if (!filename) return;
 			if (filename.includes('node_modules')) return;
 			return { runes: true };
 		}

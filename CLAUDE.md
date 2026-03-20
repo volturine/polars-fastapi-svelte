@@ -1,95 +1,60 @@
-# AGENTS.md
+# CLAUDE.md
 
-**Mandatory for all AI assistants.** Read fully before any work in this repository.
+**Claude Code instructions for this repository.** Read `AGENTS.md` first — this file extends it with Claude-specific guidance.
 
-## Commands
+## Quick Reference
 
 ```bash
-just verify          # REQUIRED before declaring any task done (format + check)
+just verify          # REQUIRED before declaring any task done
 just format          # ruff format + prettier
-just test            # backend pytest
 just check           # ruff + mypy + svelte-check + eslint
+just test            # backend pytest
 just dev             # start both servers
 ```
 
-## Definition of Done
+## Claude Code Behaviour
 
-- Run `just verify` before declaring any backend task done or asking for review
-- If `just verify` fails, fix the underlying issues immediately
-- do not ignore or suppress warnings, even if they seem unrelated
-- Write backend Python tests for new/changed functionality
-- Pre-existing warnings are tech debt — fix them, do not ignore them
-- If a warning cannot be fixed (third-party stubs), suppress with an inline comment explaining why
+- **No confirmation prompts** on implementation details — decide, implement, verify
+- **Stop and ask** only on genuine requirement ambiguity or conflicts with AGENTS.md rules
+- **Always run `just verify`** before declaring a task complete — never skip this
+- **One task at a time** in the todo list; mark complete immediately when done
 
-## Workflow
+## Agentic Workflow
 
-1. **Explore** — Read relevant files, understand context
-2. **Plan** —
-3. **Code** — Implement. Use parallel agents when possible
-4. **Verify** — Run `just verify` mandatorily before declaring any task done
-5. **Reviewer** — Ask for review and address feedback
-6. **Finish** —
-7. **Reflect** — Update `AGENTS.md` if you did anything wrong on first pass either prompted by user feedback or your own reflection
+Use parallel subagents where possible to maximise throughput:
 
-**Do not ask for confirmation on implementation details.** Make decisions, implement, verify. Stop and ask only on genuine ambiguity about requirements or conflicts with these rules.
+1. **Explore** (Explorer agent) — gather context before changing anything
+2. **Plan** (Planner agent) — structured plan, identify risks
+3. **Implement** (Implementer agent) — write code, parallel where independent
+4. **Verify** — `just verify` must pass
+5. **Review** (Reviewer agent) — check diff before finishing
+6. **Reflect** — update `AGENTS.md` with any new learnings
 
-**Reflect on your work.** After completing a task, review the process and outcome. If you made any mistakes or could have done something better, update this document to prevent future issues.
+## Tool Usage
 
-## Non-Negotiables
+- **Grep/Glob** for targeted searches; **Explore agent** for broad codebase exploration
+- **Read before Edit** — always read a file before modifying it
+- **Write** only for new files; **Edit** for modifications
+- Prefer **parallel tool calls** for independent reads/searches
 
-- **No workarounds.** Fix root causes or stop and ask
-- **No hidden compromises.** State conflicts and propose alternatives
-- **No silent behavior changes.** All changes explicit and intentional
-- **Redesign over hotfix.** If existing code is wrong, redesign properly
-- **Fix warnings, not just errors.** Treat warnings as bugs
-- **Autonomous completion.** Continue until every requirement is implemented, tested, and verified
-- **No legacy support.** New features/redesigns must not preserve legacy paths or backward compatibility
+## Code Standards
 
-## Learnings
+Defer to `STYLE_GUIDE.md` for all style decisions. Key reminders:
 
-- When adding new API endpoints mirroring existing behavior (e.g., download vs preview), compare response payload shapes end-to-end. Don’t assume fields like `columns` exist; follow the engine response (`data.schema` + `data.data`) to avoid false “no data” errors.
+- All Svelte components need `lang="ts"`
+- No `any` — infer types or use proper generics
+- `$derived` over `$effect` for computed state
+- `const` over `let`; early returns over `else`
+- Panda CSS for all styling — no inline styles
 
-### Transitions
+## MCP Servers Available
 
-**Never use `transition-all`.** Always use specific properties:
+| Server         | Use For                              |
+| -------------- | ------------------------------------ |
+| **Svelte**     | Svelte/SvelteKit docs, autofixer     |
+| **Perplexity** | Research, unfamiliar APIs/libraries  |
 
-- `transition-colors` for hover effects
-- `transition-opacity` for fades
-- `transition-[color,background-color,border-color,opacity]` for combined
-- Add `transform` to the list only when transform changes
+## Enabled Plugins
 
-## Code Style
-
-See [`STYLE_GUIDE.md`](STYLE_GUIDE.md)
-
-## Git
-
-- NEVER push to remote unless explicitly asked
-- Local commits only
-- Create PRs for sharing changes
-
-## OpenCode Agents
-
-These are built-in OpenCode roles.
-
-| Agent            | Purpose                                   | Permissions     |
-| ---------------- | ----------------------------------------- | --------------- |
-| **Orchestrator** | Coordinates tasks and delegations         | No write access |
-| **Ask**          | Clarifies requirements and open questions | No write access |
-
-## Specialized Subagents
-
-| Subagents       | When to Use                                                              | Permissions     |
-| --------------- | ------------------------------------------------------------------------ | --------------- |
-| **Explorer**    | Reads files and gathers context                                          | Read-only       |
-| **Planner**     | Produces structured plans                                                | No write access |
-| **Implementer** | Edits code and applies changes                                           | Write access    |
-| **Reviewer**    | Reviews diffs for correctness and quality use Before completing ANY task | Read-only       |
-| **Senior**      | Senior developer for complex tasks                                       | Write access    |
-
-## MCP Servers
-
-| Server         | Purpose                     |
-| -------------- | --------------------------- |
-| **Svelte**     | Documentation and autofixer |
-| **Perplexity** | Research                    |
+- `typescript-lsp` — TypeScript language server integration
+- `frontend-design` — Frontend design patterns

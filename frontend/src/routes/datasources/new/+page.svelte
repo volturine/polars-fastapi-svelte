@@ -227,17 +227,17 @@
 				}
 				queryClient.invalidateQueries({ queryKey: ['datasources'] });
 				goto(resolve('/datasources'), { invalidateAll: true });
-			} else {
-				await uploadFile(file, fileName, {
-					delimiter: csvDelimiter,
-					quote_char: csvQuoteChar,
-					has_header: csvHasHeader,
-					skip_rows: csvSkipRows,
-					encoding: csvEncoding
-				});
-				queryClient.invalidateQueries({ queryKey: ['datasources'] });
-				goto(resolve('/datasources'), { invalidateAll: true });
+				return;
 			}
+			await uploadFile(file, fileName, {
+				delimiter: csvDelimiter,
+				quote_char: csvQuoteChar,
+				has_header: csvHasHeader,
+				skip_rows: csvSkipRows,
+				encoding: csvEncoding
+			});
+			queryClient.invalidateQueries({ queryKey: ['datasources'] });
+			goto(resolve('/datasources'), { invalidateAll: true });
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Upload failed';
 		} finally {

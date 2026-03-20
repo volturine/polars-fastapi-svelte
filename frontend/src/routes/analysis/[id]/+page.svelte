@@ -549,12 +549,12 @@
 
 		if (mode === 'editing' && !isEditingMode) {
 			const success = await acquireLock(analysisId);
-			if (success) {
-				isEditingMode = true;
-				startLockCheck();
-			} else {
+			if (!success) {
 				alert('This analysis is currently being edited by another user. Please try again later.');
+				return;
 			}
+			isEditingMode = true;
+			startLockCheck();
 		} else if (mode === 'viewing' && isEditingMode) {
 			// Release lock
 			await releaseLock(analysisId);
@@ -876,9 +876,10 @@
 		const result = await renameAnalysisVersion(analysisId, version, trimmed);
 		if (result.isErr()) {
 			versionError = result.error.message;
-		} else {
-			versionsQuery.refetch();
+			editingVersionId = null;
+			return;
 		}
+		versionsQuery.refetch();
 		editingVersionId = null;
 	}
 </script>

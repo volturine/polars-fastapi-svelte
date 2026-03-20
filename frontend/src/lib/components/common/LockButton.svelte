@@ -18,11 +18,11 @@
 
 	async function handleAcquire() {
 		const success = await acquireLock(resourceId);
-		if (success) {
-			onAcquire?.();
-		} else {
+		if (!success) {
 			alert('This resource is currently locked by another user. Please try again later.');
+			return;
 		}
+		onAcquire?.();
 	}
 
 	async function handleRelease() {

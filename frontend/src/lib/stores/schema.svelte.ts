@@ -8,7 +8,7 @@ import {
 	unionByNameTransform,
 	type StepConfig
 } from '$lib/utils/transform';
-import { resolveColumnType } from '$lib/utils/columnTypes';
+import { resolveColumnType } from '$lib/utils/column-types';
 import { hashPipeline } from '$lib/utils/hash';
 import { applySteps } from '$lib/utils/pipeline';
 import { SvelteMap } from 'svelte/reactivity';

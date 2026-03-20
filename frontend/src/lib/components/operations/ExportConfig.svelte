@@ -1,6 +1,6 @@
 <script lang="ts">
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
-	import type { FileType } from '$lib/utils/fileTypes';
+	import type { FileType } from '$lib/utils/file-types';
 	import { css, label, stepConfig, cx, row, input } from '$lib/styles/panda';
 
 	interface Props {

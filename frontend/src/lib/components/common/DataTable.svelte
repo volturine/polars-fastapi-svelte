@@ -26,7 +26,7 @@
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import { css, cx, menuItem, divider, muted, input } from '$lib/styles/panda';
 	import type { TableCellValue } from '$lib/types/api-responses';
-	import { resolveColumnType } from '$lib/utils/columnTypes';
+	import { resolveColumnType } from '$lib/utils/column-types';
 	import { formatDateTimeDisplay, formatDateDisplay } from '$lib/utils/datetime';
 
 	interface Props {
@@ -94,7 +94,7 @@
 	});
 
 	// Non-reactive resize tracking to avoid table re-renders during resize
-	let resizeOffset = { delta: 0, start: 0 };
+	const resizeOffset = { delta: 0, start: 0 };
 	let columnVisibility = $state<Record<string, boolean>>({});
 	let columnOrder = $state<string[]>([]);
 	let columnPinning = $state<ColumnPinningState>({ left: [], right: [] });
@@ -109,11 +109,11 @@
 	let scrollRef = $state<HTMLDivElement>();
 
 	// Non-reactive copy state to avoid table re-renders
-	let copiedCells = new SvelteSet<string>();
-	let copyTimers = new SvelteMap<string, number>();
+	const copiedCells = new SvelteSet<string>();
+	const copyTimers = new SvelteMap<string, number>();
 
 	// Non-reactive tooltip state to avoid table re-renders
-	let tipState = {
+	const tipState = {
 		text: '',
 		x: 0,
 		y: 0,
@@ -141,15 +141,15 @@
 			y: tipState.y,
 			visible: tipState.visible
 		};
-		if (tipState.visible) {
-			tipRef.style.setProperty('--tip-left', `${tipState.x}px`);
-			tipRef.style.setProperty('--tip-top', `${tipState.y}px`);
-			tipRef.style.opacity = '1';
-			tipRef.style.visibility = 'visible';
-		} else {
+		if (!tipState.visible) {
 			tipRef.style.opacity = '0';
 			tipRef.style.visibility = 'hidden';
+			return;
 		}
+		tipRef.style.setProperty('--tip-left', `${tipState.x}px`);
+		tipRef.style.setProperty('--tip-top', `${tipState.y}px`);
+		tipRef.style.opacity = '1';
+		tipRef.style.visibility = 'visible';
 	});
 
 	function setWidth(node: HTMLElement, size: number) {
@@ -219,14 +219,14 @@
 					resizeOffset.delta = next.deltaOffset ?? 0;
 					resizeOffset.start = next.startOffset ?? 0;
 					document.documentElement.style.setProperty('--resize-delta', `${resizeOffset.delta}px`);
-				} else {
-					// Resize start/end - update reactive state
-					columnSizingInfo = next;
-					resizeOffset.delta = next.deltaOffset ?? 0;
-					resizeOffset.start = next.startOffset ?? 0;
-					if (!isResizing) {
-						document.documentElement.style.removeProperty('--resize-delta');
-					}
+					return;
+				}
+				// Resize start/end - update reactive state
+				columnSizingInfo = next;
+				resizeOffset.delta = next.deltaOffset ?? 0;
+				resizeOffset.start = next.startOffset ?? 0;
+				if (!isResizing) {
+					document.documentElement.style.removeProperty('--resize-delta');
 				}
 			},
 			getCoreRowModel: getCoreRowModel(),
@@ -311,12 +311,12 @@
 		const els = document.elementsFromPoint(event.clientX, event.clientY);
 		const th = els.find((el) => el.closest('[data-column-header]')) as HTMLElement | undefined;
 		const header = th?.closest('[data-column-header]') as HTMLElement | null;
-		if (header) {
-			const id = header.dataset.columnId ?? null;
-			dragOver = id && id !== dragColumn ? id : null;
-		} else {
+		if (!header) {
 			dragOver = null;
+			return;
 		}
+		const id = header.dataset.columnId ?? null;
+		dragOver = id && id !== dragColumn ? id : null;
 	}
 
 	function handleColumnPointerUp() {

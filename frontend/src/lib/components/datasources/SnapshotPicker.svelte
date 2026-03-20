@@ -89,11 +89,7 @@
 			selectedSnapshotId = configSnapshot ?? null;
 		}
 		const ts = datasourceConfig.snapshot_timestamp_ms as number | null;
-		if (selectedSnapshotId && ts) {
-			selectedSnapshotLabel = formatSnapshotLabel(ts);
-		} else {
-			selectedSnapshotLabel = null;
-		}
+		selectedSnapshotLabel = selectedSnapshotId && ts ? formatSnapshotLabel(ts) : null;
 		missingSnapshotId = selectedSnapshotId;
 		if (snapshotsOpen && snapshotMonth) {
 			buildCalendar(snapshotMonth);

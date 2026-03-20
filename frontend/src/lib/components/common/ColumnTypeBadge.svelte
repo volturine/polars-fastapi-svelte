@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getColumnTypeConfig } from '$lib/utils/columnTypes';
+	import { getColumnTypeConfig } from '$lib/utils/column-types';
 	import { css, cx, badge } from '$lib/styles/panda';
 
 	interface Props {

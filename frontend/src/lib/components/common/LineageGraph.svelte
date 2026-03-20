@@ -122,28 +122,22 @@
 				});
 				idx += 1;
 			}
-		} else {
-			const layers = topoSort();
-			for (let li = 0; li < layers.length; li += 1) {
-				const layer = layers[li];
-				for (let ni = 0; ni < layer.length; ni += 1) {
-					const id = layer[ni];
-					if (mode === 'horizontal') {
-						physicsMap.set(id, {
-							x: 80 + li * gap,
-							y: 80 + ni * (rowGap + nodeHeight),
-							vx: 0,
-							vy: 0
-						});
-					} else {
-						physicsMap.set(id, {
-							x: 80 + ni * gap,
-							y: 80 + li * (rowGap + nodeHeight),
-							vx: 0,
-							vy: 0
-						});
-					}
-				}
+			return;
+		}
+		const layers = topoSort();
+		for (let li = 0; li < layers.length; li += 1) {
+			const layer = layers[li];
+			for (let ni = 0; ni < layer.length; ni += 1) {
+				const id = layer[ni];
+				physicsMap.set(id, {
+					x: mode === 'horizontal' ? 80 + li * gap : 80 + ni * gap,
+					y:
+						mode === 'horizontal'
+							? 80 + ni * (rowGap + nodeHeight)
+							: 80 + li * (rowGap + nodeHeight),
+					vx: 0,
+					vy: 0
+				});
 			}
 		}
 		syncSnapshot();

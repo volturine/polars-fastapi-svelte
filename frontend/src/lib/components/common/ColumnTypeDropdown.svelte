@@ -2,7 +2,7 @@
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import SearchableDropdown from '$lib/components/ui/SearchableDropdown.svelte';
 	import { css, cx } from '$lib/styles/panda';
-	import { getAllColumnTypes } from '$lib/utils/columnTypes';
+	import { getAllColumnTypes } from '$lib/utils/column-types';
 
 	interface ColumnTypeOption {
 		id: string;

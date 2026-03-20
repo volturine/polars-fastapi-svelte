@@ -3,7 +3,7 @@
 	import { X } from 'lucide-svelte';
 	import type { DataSource } from '$lib/types/datasource';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
-	import type { SourceType } from '$lib/utils/fileTypes';
+	import type { SourceType } from '$lib/utils/file-types';
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
 	import { css, cx, row, input } from '$lib/styles/panda';
 

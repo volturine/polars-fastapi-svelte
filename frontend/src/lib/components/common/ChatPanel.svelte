@@ -150,6 +150,7 @@
 		}
 	}
 
+	// DOM scroll after timeline update — $derived cannot trigger rAF
 	$effect(() => {
 		const _ = chatStore.timeline.length;
 		const _l = chatStore.loading;
@@ -163,6 +164,7 @@
 		}
 	});
 
+	// event listener side effect — must imperatively add/remove from window
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 		function onPatch(e: Event) {
@@ -184,6 +186,7 @@
 		return () => window.removeEventListener('chat:ui_patch', onPatch);
 	});
 
+	// keyboard event listener — imperative DOM subscription
 	$effect(() => {
 		if (!chatStore.open) return;
 		if (typeof window === 'undefined') return;
@@ -193,15 +196,16 @@
 					configOpen = false;
 					toolsOpen = false;
 					sessionsOpen = false;
-				} else {
-					chatStore.close();
+					return;
 				}
+				chatStore.close();
 			}
 		}
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
 	});
 
+	// DOM focus after state change — $derived cannot call focus()
 	$effect(() => {
 		if (chatStore.open && !chatStore.loading && inputEl) {
 			requestAnimationFrame(() => inputEl?.focus());
@@ -396,9 +400,9 @@
 		const sent = await chatStore.send(text);
 		if (!sent) {
 			inputValue = text;
-		} else {
-			requestAnimationFrame(() => inputEl?.focus());
+			return;
 		}
+		requestAnimationFrame(() => inputEl?.focus());
 	}
 
 	function handleKeydown(e: KeyboardEvent) {

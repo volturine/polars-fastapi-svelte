@@ -36,7 +36,7 @@
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
 	import SnapshotPicker from '$lib/components/datasources/SnapshotPicker.svelte';
-	import type { SourceType } from '$lib/utils/fileTypes';
+	import type { SourceType } from '$lib/utils/file-types';
 	import { css, cx, input, label, row, rowBetween, divider, muted } from '$lib/styles/panda';
 
 	type ActiveTab = {

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { getColumnTypesByCategory, CATEGORY_REGISTRY } from '$lib/utils/columnTypes';
-	import type { ColumnTypeCategory } from '$lib/utils/columnTypes';
+	import { getColumnTypesByCategory, CATEGORY_REGISTRY } from '$lib/utils/column-types';
+	import type { ColumnTypeCategory } from '$lib/utils/column-types';
 	import ColumnTypeBadge from './ColumnTypeBadge.svelte';
 	import { css, cx, input } from '$lib/styles/panda';
 

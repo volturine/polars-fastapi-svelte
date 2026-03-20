@@ -47,10 +47,10 @@
 			longPressTimer = window.setTimeout(() => {
 				initiateDrag(event, stepType);
 			}, longPressDelay);
-		} else {
-			// For mouse/trackpad, start drag immediately
-			initiateDrag(event, stepType);
+			return;
 		}
+		// For mouse/trackpad, start drag immediately
+		initiateDrag(event, stepType);
 	}
 
 	function initiateDrag(event: PointerEvent, stepType: string) {

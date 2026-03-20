@@ -97,11 +97,7 @@
 		const next = { ...conditions[idx], ...updates } as Condition;
 		if (coerce && next.value_type === 'number' && typeof next.value === 'string') {
 			const trimmed = next.value.trim();
-			if (trimmed === '') {
-				next.value = '';
-			} else {
-				next.value = Number(trimmed);
-			}
+			next.value = trimmed === '' ? '' : Number(trimmed);
 		}
 		config.conditions = conditions.map((c, i) => (i === idx ? next : c));
 	}
@@ -161,14 +157,14 @@
 
 		if (isColumn) {
 			updateCondition(idx, { value_type: 'column', compare_column: '', operator: op, value: '' });
-		} else {
-			updateCondition(idx, {
-				value_type: colType,
-				compare_column: undefined,
-				operator: op,
-				value: ''
-			});
+			return;
 		}
+		updateCondition(idx, {
+			value_type: colType,
+			compare_column: undefined,
+			operator: op,
+			value: ''
+		});
 	}
 
 	function handleOperatorChange(idx: number, op: string) {

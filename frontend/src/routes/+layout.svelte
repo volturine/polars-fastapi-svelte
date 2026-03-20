@@ -238,9 +238,9 @@
 						onclick={() => {
 							if (chatStore.open) {
 								chatStore.close();
-							} else {
-								void chatStore.open_panel();
+								return;
 							}
+							void chatStore.open_panel();
 						}}
 						title="AI Assistant"
 						aria-label="AI Assistant"

@@ -88,6 +88,7 @@
 		goto(resolve(url as '/'), { replaceState: true });
 	}
 
+	// initializes snapshotConfig on datasource selection — depends on external config shape
 	$effect(() => {
 		const selected = selectedDatasource;
 		if (!selectedId) return;

@@ -31,11 +31,7 @@
 	function toggleIndexColumn(columnName: string) {
 		const base = Array.isArray(config.index) ? config.index : [];
 		const idx = base.indexOf(columnName);
-		if (idx > -1) {
-			config.index = base.filter((_, i) => i !== idx);
-		} else {
-			config.index = [...base, columnName];
-		}
+		config.index = idx > -1 ? base.filter((_, i) => i !== idx) : [...base, columnName];
 	}
 </script>
 

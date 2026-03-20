@@ -5,7 +5,7 @@
 	import type { AnalysisGalleryItem } from '$lib/types/analysis';
 	import { listAnalyses } from '$lib/api/analysis';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
-	import type { SourceType } from '$lib/utils/fileTypes';
+	import type { SourceType } from '$lib/utils/file-types';
 	import SearchableDropdown from '$lib/components/ui/SearchableDropdown.svelte';
 	import { css, button, menuItem, cx } from '$lib/styles/panda';
 

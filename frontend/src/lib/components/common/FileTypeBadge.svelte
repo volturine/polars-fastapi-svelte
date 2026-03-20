@@ -5,7 +5,7 @@
 		getSourceTypeConfig,
 		type FileType,
 		type SourceType
-	} from '$lib/utils/fileTypes';
+	} from '$lib/utils/file-types';
 	import { css, cx, badge } from '$lib/styles/panda';
 
 	interface Props {

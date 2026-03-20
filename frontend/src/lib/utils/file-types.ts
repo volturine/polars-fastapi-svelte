@@ -6,7 +6,7 @@
  *
  * Usage:
  * ```typescript
- * import { detectFileType, getFileTypeConfig } from '$lib/utils/fileTypes';
+ * import { detectFileType, getFileTypeConfig } from '$lib/utils/file-types';
  *
  * const fileType = detectFileType('data.parquet');
  * const config = getFileTypeConfig(fileType);

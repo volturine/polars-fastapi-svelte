@@ -141,15 +141,12 @@ export function groupbyTransform(input: Schema | null, config: StepConfig): Sche
 	}
 
 	for (const [aggColumn, aggFunc] of Object.entries(aggregations ?? {})) {
-		let aggName: string;
-
-		if (typeof aggFunc === 'string') {
-			aggName = `${aggColumn}_${aggFunc}`;
-		} else if (Array.isArray(aggFunc)) {
-			aggName = `${aggColumn}_${aggFunc.map((a) => a.agg).join('_')}`;
-		} else {
-			aggName = `${aggColumn}_${(aggFunc as { column: string; agg: string }).agg}`;
-		}
+		const aggName =
+			typeof aggFunc === 'string'
+				? `${aggColumn}_${aggFunc}`
+				: Array.isArray(aggFunc)
+					? `${aggColumn}_${aggFunc.map((a) => a.agg).join('_')}`
+					: `${aggColumn}_${(aggFunc as { column: string; agg: string }).agg}`;
 
 		result.push({
 			name: aggName,

@@ -37,7 +37,7 @@
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import { formatDateDisplay } from '$lib/utils/datetime';
-	import { resolveColumnType } from '$lib/utils/columnTypes';
+	import { resolveColumnType } from '$lib/utils/column-types';
 	import {
 		css,
 		cx,

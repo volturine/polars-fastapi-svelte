@@ -42,9 +42,9 @@
 	let configOpen = $state(false);
 	let toolsOpen = $state(false);
 	let sessionsOpen = $state(false);
-	let apiKeyDraft = $state(chatStore.apiKey);
-	let modelDraft = $state(chatStore.model);
-	let systemPromptDraft = $state(chatStore.systemPrompt);
+	let apiKeyDraft = $state('');
+	let modelDraft = $state('');
+	let systemPromptDraft = $state('');
 	let modelSearch = $state('');
 	let inputValue = $state('');
 	let messagesEl: HTMLElement | undefined;
@@ -160,10 +160,11 @@
 	}
 
 	// DOM scroll after timeline update — $derived cannot trigger rAF
+	const timelineLength = $derived(chatStore.timeline.length);
+	const isLoading = $derived(chatStore.loading);
 	$effect(() => {
-		const _ = chatStore.timeline.length;
-		const _l = chatStore.loading;
-		void _l;
+		void timelineLength;
+		void isLoading;
 		if (!userScrolledUp && messagesEl) {
 			requestAnimationFrame(() => {
 				requestAnimationFrame(() => {
@@ -239,7 +240,7 @@
 
 	// Inject copy buttons into rendered code blocks
 	$effect(() => {
-		const _ = chatStore.timeline.length;
+		void timelineLength;
 		if (!messagesEl) return;
 		requestAnimationFrame(() => {
 			const blocks = messagesEl?.querySelectorAll('.chat-markdown pre');

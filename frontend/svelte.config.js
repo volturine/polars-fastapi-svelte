@@ -7,9 +7,6 @@ export default {
 	onwarn: (warning, handler) => {
 		// css_unused_selector: Panda CSS generates selectors consumed at runtime — cannot be resolved statically
 		if (warning.code === 'css_unused_selector') return;
-		// state_referenced_locally / non_reactive_update: tracked as tech debt in AGENTS.md
-		if (warning.code === 'state_referenced_locally') return;
-		if (warning.code === 'non_reactive_update') return;
 		handler(warning);
 	},
 

@@ -25,39 +25,17 @@
 
 	let { schema, config = $bindable(defaultConfig) }: Props = $props();
 
-	let selectedSources = $state<string[]>(config.sources ?? []);
-	let loadedSources = $state<string[]>([]);
-
 	const currentTabDatasource = $derived(analysisStore.activeTab?.datasource.id ?? null);
 	const currentDatasource = $derived(
 		datasourceStore.datasources.find((ds) => ds.id === currentTabDatasource)
 	);
 	const datasourceOptions = $derived(datasourceStore.datasources);
 
-	// Sync selectedSources with config.sources
-	// Subscription: $derived can't sync selected sources to config.
-	$effect(() => {
-		config.sources = selectedSources;
-	});
-
-	// Load schemas for selected sources
-	// Network: $derived can't fetch source schemas.
-	$effect(() => {
-		const selected = new Set(selectedSources);
-		for (const sourceId of selectedSources) {
-			if (!loadedSources.includes(sourceId)) {
-				loadSourceSchema(sourceId);
-			}
-		}
-		const removed = loadedSources.filter((id) => !selected.has(id));
-		if (removed.length === 0) return;
-		for (const sourceId of removed) {
-			schemaStore.removeJoinDatasource(sourceId);
-		}
-		loadedSources = loadedSources.filter((id) => selected.has(id));
-	});
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- bookkeeping only, never read by template
+	const loaded = new Set<string>();
 
 	async function loadSourceSchema(datasourceId: string) {
+		loaded.add(datasourceId);
 		const schemaInfo = await datasourceStore.getSchema(datasourceId);
 		const unionSchema: Schema = {
 			columns: schemaInfo.columns.map((c) => ({
@@ -68,10 +46,24 @@
 			row_count: schemaInfo.row_count
 		};
 		schemaStore.setJoinDatasource(datasourceId, unionSchema);
-		if (!loadedSources.includes(datasourceId)) {
-			loadedSources = [...loadedSources, datasourceId];
-		}
 	}
+
+	function removeSourceSchema(datasourceId: string) {
+		loaded.delete(datasourceId);
+		schemaStore.removeJoinDatasource(datasourceId);
+	}
+
+	// Network: $derived can't trigger async schema loads for pre-populated or externally-changed sources.
+	$effect(() => {
+		const current = new Set(config.sources);
+		for (const id of current) {
+			if (!loaded.has(id)) void loadSourceSchema(id);
+		}
+		const stale = [...loaded].filter((id) => !current.has(id));
+		for (const id of stale) {
+			removeSourceSchema(id);
+		}
+	});
 </script>
 
 <div class={stepConfig()}>
@@ -144,15 +136,16 @@
 		{:else}
 			<DatasourcePicker
 				datasources={datasourceOptions}
-				bind:selected={selectedSources}
+				bind:selected={config.sources}
 				mode="multi"
 				showChips={true}
 				showBulkActions={true}
-				onSelect={(id) => loadSourceSchema(id)}
+				onSelect={(id) => void loadSourceSchema(id)}
+				onDeselect={(id) => removeSourceSchema(id)}
 			/>
 		{/if}
 
-		{#if selectedSources.length === 0}
+		{#if config.sources.length === 0}
 			<Callout tone="warn">Select at least one datasource to union.</Callout>
 		{/if}
 	</div>

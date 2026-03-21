@@ -103,6 +103,8 @@ See [`STYLE_GUIDE.md`](STYLE_GUIDE.md)
 
 - When adding new API endpoints mirroring existing behavior (e.g., download vs preview), compare response payload shapes end-to-end. Don't assume fields like `columns` exist; follow the engine response (`data.schema` + `data.data`) to avoid false "no data" errors.
 - `state_referenced_locally` and `non_reactive_update` Svelte warnings are tracked tech debt — fix them when touching affected components rather than suppressing
+- MCP tool contracts should reject unknown top-level args (`additionalProperties: false`) and expose path/query/payload metadata from the registry so AI prompts can describe exact input placement without drift.
+- Path-template failures in MCP execution should surface as structured `validation_error` responses, not indirect 404/422s, so AI agents can repair the exact missing parameter.
 
 ## MCP Servers
 

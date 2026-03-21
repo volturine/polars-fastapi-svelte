@@ -38,9 +38,10 @@ def _openapi_to_json_schema(schema_ref: Any, components: dict) -> Any:
     result = dict(schema_ref)
     for k in ('title', 'x-orderIndex'):
         result.pop(k, None)
-    for key in ('properties', 'additionalProperties'):
-        if isinstance(result.get(key), dict):
-            result[key] = {k: _openapi_to_json_schema(v, components) for k, v in result[key].items()}
+    if isinstance(result.get('properties'), dict):
+        result['properties'] = {k: _openapi_to_json_schema(v, components) for k, v in result['properties'].items()}
+    if isinstance(result.get('additionalProperties'), dict):
+        result['additionalProperties'] = _openapi_to_json_schema(result['additionalProperties'], components)
     if 'items' in result:
         result['items'] = _openapi_to_json_schema(result['items'], components)
     if 'allOf' in result:
@@ -62,6 +63,8 @@ def _build_tool(route_data: dict, components: dict) -> dict:
 
     properties: dict[str, Any] = {}
     required: list[str] = []
+    path_params: list[dict[str, Any]] = []
+    query_params: list[dict[str, Any]] = []
 
     for param in op.get('parameters', []):
         p_in = param.get('in', '')
@@ -73,20 +76,31 @@ def _build_tool(route_data: dict, components: dict) -> dict:
         if param.get('description'):
             schema['description'] = param['description']
         properties[name] = schema
-        if param.get('required', p_in == 'path'):
+        is_required = bool(param.get('required', p_in == 'path'))
+        if is_required and name not in required:
             required.append(name)
+        meta = {'name': name, 'required': is_required, 'description': param.get('description', ''), 'schema': schema}
+        if p_in == 'path':
+            path_params.append(meta)
+        if p_in == 'query':
+            query_params.append(meta)
 
     body_content = op.get('requestBody', {}).get('content', {})
     body_schema: dict | None = None
+    body_mime: str | None = None
     for mime in ('application/json', 'multipart/form-data', 'application/x-www-form-urlencoded'):
         if mime in body_content:
             raw = body_content[mime].get('schema', {})
             body_schema = _openapi_to_json_schema(raw, components)
+            body_mime = mime
             break
+    body_required = bool(op.get('requestBody', {}).get('required', False))
     if body_schema:
         properties['payload'] = body_schema
+        if body_required and 'payload' not in required:
+            required.append('payload')
 
-    tool_schema: dict[str, Any] = {'type': 'object', 'properties': properties}
+    tool_schema: dict[str, Any] = {'type': 'object', 'properties': properties, 'additionalProperties': False}
     if required:
         tool_schema['required'] = required
 
@@ -100,6 +114,17 @@ def _build_tool(route_data: dict, components: dict) -> dict:
         'safety': 'safe' if method in SAFE_METHODS else 'mutating',
         'confirm_required': _requires_confirm(method, path),
         'input_schema': tool_schema,
+        'arg_metadata': {
+            'path': path_params,
+            'query': query_params,
+            'payload': {
+                'required': body_required,
+                'content_type': body_mime,
+                'description': op.get('requestBody', {}).get('description', ''),
+            }
+            if body_schema is not None
+            else None,
+        },
         'tags': op.get('tags', []),
     }
 

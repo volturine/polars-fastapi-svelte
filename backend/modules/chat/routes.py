@@ -82,6 +82,30 @@ _TOOL_CALL_RE = re.compile(r'TOOLCALL>\s*(\[.*\])', re.DOTALL)
 _TOOL_CALL_OBJ_RE = re.compile(r'TOOLCALL>\s*(\{.*\})', re.DOTALL)
 
 
+def _format_param_details(name: str, schema: dict, required: bool, location: str, description: str = '') -> str:
+    type_name = schema.get('type', 'any')
+    req = 'required' if required else 'optional'
+    parts = [f'    - {name} ({location}, {type_name}, {req})']
+    if description:
+        parts.append(f'      description: {description}')
+    if 'enum' in schema and isinstance(schema['enum'], list):
+        enum_values = ', '.join(json.dumps(v) for v in schema['enum'])
+        parts.append(f'      enum: [{enum_values}]')
+    if 'default' in schema:
+        parts.append(f'      default: {json.dumps(schema["default"])}')
+    if 'examples' in schema and isinstance(schema['examples'], list) and schema['examples']:
+        parts.append(f'      examples: {json.dumps(schema["examples"][:2])}')
+    elif 'example' in schema:
+        parts.append(f'      example: {json.dumps(schema["example"])}')
+    return '\n'.join(parts)
+
+
+def _format_fallback_param_details(schema: dict) -> list[str]:
+    props = schema.get('properties', {})
+    required = set(schema.get('required', []))
+    return [_format_param_details(name, prop, name in required, 'arg', prop.get('description', '')) for name, prop in props.items()]
+
+
 def _build_tool_system_message(tools: list[dict]) -> str:
     """Build a system message describing available tools and how to call them."""
     lines = [
@@ -94,19 +118,54 @@ def _build_tool_system_message(tools: list[dict]) -> str:
         '- Only then should you continue your response based on the actual result.',
         '- You may call multiple tools in one TOOLCALL by passing an array.',
         '- Always use generate_uuid to get UUIDs — never invent them.',
+        '- Path parameters: provide them as top-level arguments by exact name; they are inserted into URL templates.',
+        '- Query parameters: provide as top-level arguments that are not path params and not payload.',
+        '- Request body: always pass JSON body as `payload`.',
+        '- Never send unknown arguments; only use documented parameters.',
         '',
         'Available tools:',
     ]
     for t in tools:
         desc = t.get('description', '')
         schema = t.get('input_schema', {})
-        props = schema.get('properties', {})
-        required = schema.get('required', [])
-        param_parts = []
-        for name, prop in props.items():
-            ptype = prop.get('type', 'any')
-            req = ' (required)' if name in required else ''
-            param_parts.append(f'    {name}: {ptype}{req}')
+        meta = t.get('arg_metadata', {}) or {}
+        path_meta = meta.get('path') or []
+        query_meta = meta.get('query') or []
+        payload_meta = meta.get('payload')
+
+        param_parts: list[str] = []
+        for item in path_meta:
+            param_parts.append(
+                _format_param_details(
+                    item.get('name', ''),
+                    item.get('schema', {}),
+                    bool(item.get('required', True)),
+                    'path',
+                    item.get('description', ''),
+                )
+            )
+        for item in query_meta:
+            param_parts.append(
+                _format_param_details(
+                    item.get('name', ''),
+                    item.get('schema', {}),
+                    bool(item.get('required', False)),
+                    'query',
+                    item.get('description', ''),
+                )
+            )
+        if payload_meta is not None:
+            payload_schema = schema.get('properties', {}).get('payload', {})
+            payload_desc = payload_meta.get('description', '')
+            param_parts.append(
+                _format_param_details('payload', payload_schema, bool(payload_meta.get('required', False)), 'body', payload_desc)
+            )
+            if payload_meta.get('content_type'):
+                param_parts.append(f'      content_type: {payload_meta["content_type"]}')
+
+        if not param_parts:
+            param_parts = _format_fallback_param_details(schema)
+
         params_str = '\n'.join(param_parts) if param_parts else '    (no parameters)'
         lines.append(f'- {t["id"]} [{t["method"]}]: {desc}')
         lines.append(f'  Parameters:\n{params_str}')
@@ -319,7 +378,11 @@ async def _run_agent_turn(session: LiveSession, app: Any, user_content: str, too
 
                 session.push_event({'type': 'tool_start', 'tool_id': tool_id, 'method': method, 'path': path})
                 t0 = time.monotonic()
-                result = await call_tool(app, method, path, normalized)
+                try:
+                    result = await call_tool(app, method, path, normalized)
+                except ValueError as exc:
+                    _push_tool_error(session, tc, tool_id, method, path, normalized, str(exc))
+                    continue
                 duration_ms = round((time.monotonic() - t0) * 1000)
                 patch = _infer_patch(tool_id, method, path, result)
 

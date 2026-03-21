@@ -72,7 +72,7 @@ export type StepConfig =
 	| Record<string, unknown>;
 
 const defaultConfigs: Record<string, StepConfig> = {
-	select: { columns: [] } satisfies SelectConfig,
+	select: { columns: [], cast_map: {} } satisfies SelectConfig,
 
 	drop: { columns: [] } satisfies DropConfig,
 

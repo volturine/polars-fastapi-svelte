@@ -86,7 +86,16 @@ async def call(request: Request, body: ToolRequest) -> dict:
             'confirm_required': tool.get('confirm_required', False),
         }
 
-    result = await call_tool(request.app, method, path, normalized)
+    try:
+        result = await call_tool(request.app, method, path, normalized)
+    except ValueError as exc:
+        return {
+            'status': 'validation_error',
+            'valid': False,
+            'errors': [{'path': '$', 'message': str(exc), 'validator': 'path_params'}],
+            'tool_id': body.tool_id,
+            'args': normalized,
+        }
     return {'status': 'executed', 'result': result}
 
 
@@ -97,7 +106,16 @@ async def confirm(request: Request, body: ConfirmRequest) -> dict:
     if entry is None:
         raise HTTPException(status_code=404, detail='Token not found or expired')
 
-    result = await call_tool(request.app, entry['method'], entry['path'], entry['args'])
+    try:
+        result = await call_tool(request.app, entry['method'], entry['path'], entry['args'])
+    except ValueError as exc:
+        return {
+            'status': 'validation_error',
+            'valid': False,
+            'errors': [{'path': '$', 'message': str(exc), 'validator': 'path_params'}],
+            'tool_id': entry['tool_id'],
+            'args': entry['args'],
+        }
     return {'status': 'executed', 'result': result, 'tool_id': entry['tool_id']}
 
 

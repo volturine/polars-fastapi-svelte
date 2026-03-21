@@ -1,4 +1,6 @@
 import polars as pl
+import pytest
+from pydantic import ValidationError
 
 from modules.compute.operations.fill_null import FillNullHandler
 from modules.compute.operations.filter import FilterHandler
@@ -275,3 +277,32 @@ def test_select_and_sort_handlers():
     lf = select(_frame(), {'columns': ['age']})
     lf = sort(lf, {'columns': ['age'], 'descending': [True]})
     assert lf.collect()['age'].to_list()[0] == 40
+
+
+def test_select_handler_cast_map():
+    handler = SelectHandler()
+    lf = handler(
+        pl.DataFrame({'age': ['30', '25'], 'name': ['Alice', 'Bob']}).lazy(),
+        {'columns': ['age', 'name'], 'cast_map': {'age': 'Int64'}},
+    )
+    result = lf.collect()
+    assert result.schema['age'] == pl.Int64()
+    assert result['age'].to_list() == [30, 25]
+
+
+def test_select_handler_cast_map_invalid_type():
+    handler = SelectHandler()
+    with pytest.raises(ValidationError, match='cast_map'):
+        handler(
+            pl.DataFrame({'age': ['30']}).lazy(),
+            {'columns': ['age'], 'cast_map': {'age': 'Nope'}},
+        ).collect()
+
+
+def test_select_handler_cast_map_non_selected_column():
+    handler = SelectHandler()
+    with pytest.raises(ValueError, match='cast_map keys must reference selected columns'):
+        handler(
+            pl.DataFrame({'age': ['30'], 'name': ['Alice']}).lazy(),
+            {'columns': ['age'], 'cast_map': {'name': 'String'}},
+        ).collect()

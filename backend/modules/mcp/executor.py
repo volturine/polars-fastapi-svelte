@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 from fastapi import FastAPI
@@ -14,9 +15,21 @@ def _interpolate_path(path: str, args: dict) -> tuple[str, dict]:
     """Replace {param} placeholders in path, return (url, remaining_args)."""
     params = re.findall(r'\{(\w+)\}', path)
     remaining = dict(args)
+    missing: list[str] = []
     for p in params:
-        if p in remaining:
-            path = path.replace(f'{{{p}}}', str(remaining.pop(p)))
+        if p not in remaining:
+            missing.append(p)
+            continue
+        value = remaining.pop(p)
+        if value is None:
+            missing.append(p)
+            continue
+        path = path.replace(f'{{{p}}}', quote(str(value), safe=''))
+    if missing:
+        miss = ', '.join(sorted(missing))
+        raise ValueError(f'Missing required path parameter(s): {miss}')
+    if re.search(r'\{\w+\}', path):
+        raise ValueError(f'Unresolved path template remains: {path}')
     return path, remaining
 
 

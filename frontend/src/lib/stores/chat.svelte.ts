@@ -14,6 +14,9 @@ import { getSettings, updateSettings } from '$lib/api/settings';
 import type { AppSettings } from '$lib/api/settings';
 import { listTools } from '$lib/api/mcp';
 import type { MCPTool } from '$lib/api/mcp';
+import { analysisStore } from '$lib/stores/analysis.svelte';
+import { schemaStore } from '$lib/stores/schema.svelte';
+import type { Schema } from '$lib/types/schema';
 import { SvelteSet, SvelteMap } from 'svelte/reactivity';
 
 const SESSION_KEY = 'chat_session_id';
@@ -434,7 +437,7 @@ export class ChatStore {
 	}
 
 	private static _stripPageContext(content: string): string {
-		return content.replace(/^\[user is viewing [^\]]*\]\n?/, '');
+		return content.replace(/^\[ctx:[^\]]*\]\n?/, '');
 	}
 
 	private _handleEvent(event: ChatEvent): void {
@@ -598,11 +601,46 @@ export class ChatStore {
 		window.dispatchEvent(new CustomEvent('chat:ui_patch', { detail: event }));
 	}
 
+	private _resolveSchema(): Schema | null {
+		const last = schemaStore.getLastOutput();
+		if (last) return last;
+
+		const calculated = analysisStore.calculatedSchema;
+		if (calculated) return calculated;
+
+		const key = analysisStore.activeSchemaKey;
+		const source = key ? analysisStore.sourceSchemas.get(key) : undefined;
+		if (!source) return null;
+		return { columns: source.columns, row_count: source.row_count };
+	}
+
 	private _pageContext(): string {
 		if (typeof window === 'undefined') return '';
 		const path = window.location.pathname;
-		if (path === '/' || !path) return '';
-		return `[user is viewing ${path}]\n`;
+		if (!path || path === '/') return '';
+
+		const parts: string[] = [`path=${path}`];
+
+		const analysis = analysisStore.current;
+		if (analysis) {
+			parts.push(`analysis="${analysis.name}"`);
+			const tab = analysisStore.activeTab;
+			if (tab) {
+				parts.push(`tab="${tab.name}" tab_id=${tab.id}`);
+				const schema = this._resolveSchema();
+				if (schema && schema.columns.length > 0) {
+					const total = schema.columns.length;
+					const cols = schema.columns
+						.slice(0, 50)
+						.map((c) => `${c.name}:${c.dtype}`)
+						.join(',');
+					const suffix = total > 50 ? ` (${total} cols, truncated)` : '';
+					parts.push(`schema={${cols}}${suffix}`);
+				}
+			}
+		}
+
+		return `[ctx:${parts.join(' ')}]\n`;
 	}
 
 	async send(content: string): Promise<boolean> {

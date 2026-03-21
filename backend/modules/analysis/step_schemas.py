@@ -50,6 +50,10 @@ class SelectConfig(BaseModel):
     model_config = ConfigDict(extra='allow')
 
     columns: list[str] = Field(default_factory=list, description='Columns to keep')
+    cast_map: dict[str, Literal['Int64', 'Float64', 'Boolean', 'String', 'Utf8', 'Date', 'Datetime']] = Field(
+        default_factory=dict,
+        description='Optional per-column cast map applied after selection',
+    )
 
 
 class DropConfig(BaseModel):

@@ -16,23 +16,28 @@
 		onChange: (value: string) => void;
 		placeholder?: string;
 		disabled?: boolean;
+		allowed?: string[];
 	}
 
 	let {
 		value = $bindable(),
 		onChange,
 		placeholder = 'Select type...',
-		disabled = false
+		disabled = false,
+		allowed
 	}: Props = $props();
 
 	const allColumnTypes = getAllColumnTypes();
+	const allowedSet = $derived(allowed ? new Set(allowed) : null);
 	const options = $derived(
-		allColumnTypes.map((entry) => ({
-			id: entry.type,
-			label: entry.label,
-			type: entry.type,
-			description: entry.description
-		}))
+		allColumnTypes
+			.filter((entry) => !allowedSet || allowedSet.has(entry.type))
+			.map((entry) => ({
+				id: entry.type,
+				label: entry.label,
+				type: entry.type,
+				description: entry.description
+			}))
 	);
 </script>
 

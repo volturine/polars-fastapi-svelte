@@ -15,6 +15,7 @@ export interface StepConfig {
 	conditions?: Array<{ column: string; operator: string; value: string }>;
 	logic?: string;
 	columns?: string[];
+	cast_map?: Record<string, string>;
 	groupBy?: string[];
 	aggregations?:
 		| Array<{ column: string; function?: string; agg?: string; alias?: string }>
@@ -71,8 +72,16 @@ export function selectTransform(input: Schema | null, config: StepConfig): Schem
 		return { columns: input.columns, row_count: null };
 	}
 
+	const casts = (config.cast_map ?? {}) as Record<string, string>;
+
 	return {
-		columns: input.columns.filter((col) => columns.includes(col.name)),
+		columns: input.columns
+			.filter((col) => columns.includes(col.name))
+			.map((col) => {
+				const cast = casts[col.name];
+				if (!cast) return col;
+				return { ...col, dtype: normalizeDtype(cast) ?? cast };
+			}),
 		row_count: null
 	};
 }

@@ -3,6 +3,10 @@
 
 export interface SelectConfig {
 	columns?: string[];
+	cast_map?: Record<
+		string,
+		'Int64' | 'Float64' | 'Boolean' | 'String' | 'Utf8' | 'Date' | 'Datetime'
+	>;
 }
 
 export interface DropConfig {

@@ -100,6 +100,24 @@ def _format_error_path(error: jsonschema.ValidationError) -> str:
     return '.'.join(parts) if parts else '$'
 
 
+def _build_error_message(error: jsonschema.ValidationError) -> str:
+    message = error.message
+    key = error.validator
+    if key is None:
+        return f'{message}. Check input against schema.'
+    if key == 'required':
+        return f'{message}. Provide all required fields.'
+    if key == 'additionalProperties':
+        return f'{message}. Remove unknown fields or use documented parameter names.'
+    if key == 'enum':
+        return f'{message}. Use one of the documented enum values.'
+    if key == 'type':
+        return f'{message}. Use the documented JSON type for this field.'
+    if key in {'minLength', 'maxLength', 'minimum', 'maximum', 'pattern', 'format'}:
+        return f'{message}. Check schema constraints for this field.'
+    return message
+
+
 def apply_defaults(schema: dict, data: dict) -> dict:
     """Return a copy of data with missing properties filled from schema defaults/consts."""
     if schema.get('type') != 'object':
@@ -127,7 +145,14 @@ def validate_args(schema: dict, args: dict) -> tuple[bool, list[dict[str, Any]],
     validator = validator_cls(schema, format_checker=FormatChecker())
     raw = list(validator.iter_errors(args))
     if raw:
-        errors = [{'path': _format_error_path(e), 'message': e.message} for e in raw]
+        errors = [
+            {
+                'path': _format_error_path(e),
+                'message': _build_error_message(e),
+                'validator': e.validator or 'unknown',
+            }
+            for e in raw
+        ]
         return False, errors, args
     normalized = apply_defaults(schema, args)
     return True, [], normalized

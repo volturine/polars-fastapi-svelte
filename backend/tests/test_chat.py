@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
@@ -1010,7 +1011,149 @@ class TestTextToolCallParsing:
         cleaned, calls = _parse_text_tool_calls(content)
         assert cleaned == ''
         assert len(calls) == 1
-        assert calls[0]['function']['name'] == 'get_config'
+
+
+class TestToolSystemMessage:
+    def test_tool_system_message_includes_contract_and_metadata(self) -> None:
+        from modules.chat.routes import _build_tool_system_message
+
+        tools = [
+            {
+                'id': 'get_item',
+                'method': 'GET',
+                'path': '/api/v1/items/{item_id}',
+                'description': 'Fetch item',
+                'input_schema': {
+                    'type': 'object',
+                    'properties': {
+                        'item_id': {'type': 'string', 'description': 'Item id'},
+                        'mode': {'type': 'string', 'enum': ['full', 'summary'], 'default': 'summary'},
+                    },
+                    'required': ['item_id'],
+                    'additionalProperties': False,
+                },
+                'arg_metadata': {
+                    'path': [
+                        {
+                            'name': 'item_id',
+                            'required': True,
+                            'description': 'Path id',
+                            'schema': {'type': 'string'},
+                        }
+                    ],
+                    'query': [
+                        {
+                            'name': 'mode',
+                            'required': False,
+                            'description': 'Response mode',
+                            'schema': {'type': 'string', 'enum': ['full', 'summary'], 'default': 'summary'},
+                        }
+                    ],
+                    'payload': None,
+                },
+            },
+            {
+                'id': 'post_item',
+                'method': 'POST',
+                'path': '/api/v1/items',
+                'description': 'Create item',
+                'input_schema': {
+                    'type': 'object',
+                    'properties': {'payload': {'type': 'object'}},
+                    'required': ['payload'],
+                    'additionalProperties': False,
+                },
+                'arg_metadata': {
+                    'path': [],
+                    'query': [],
+                    'payload': {'required': True, 'content_type': 'application/json', 'description': 'Create payload'},
+                },
+            },
+        ]
+
+        msg = _build_tool_system_message(tools)
+        assert 'Path parameters: provide them as top-level arguments by exact name' in msg
+        assert 'Query parameters: provide as top-level arguments' in msg
+        assert 'Request body: always pass JSON body as `payload`' in msg
+        assert 'Never send unknown arguments' in msg
+        assert '- item_id (path, string, required)' in msg
+        assert '- mode (query, string, optional)' in msg
+        assert 'enum: ["full", "summary"]' in msg
+        assert 'default: "summary"' in msg
+        assert '- payload (body, object, required)' in msg
+        assert 'content_type: application/json' in msg
+
+    def test_tool_system_message_falls_back_when_arg_metadata_missing(self) -> None:
+        from modules.chat.routes import _build_tool_system_message
+
+        tools = [
+            {
+                'id': 'fallback_tool',
+                'method': 'GET',
+                'path': '/api/v1/fallback',
+                'description': 'Fallback metadata test',
+                'input_schema': {
+                    'type': 'object',
+                    'properties': {
+                        'q': {'type': 'string', 'description': 'Query text', 'default': 'x'},
+                        'mode': {'type': 'string', 'enum': ['a', 'b']},
+                    },
+                    'required': ['q'],
+                    'additionalProperties': False,
+                },
+                'arg_metadata': None,
+            }
+        ]
+
+        msg = _build_tool_system_message(tools)
+        assert '- q (arg, string, required)' in msg
+        assert '- mode (arg, string, optional)' in msg
+        assert 'description: Query text' in msg
+        assert 'default: "x"' in msg
+        assert 'enum: ["a", "b"]' in msg
+
+    def test_tool_system_message_is_coherent_with_real_registry(self, client: TestClient) -> None:
+        from fastapi import FastAPI
+
+        from modules.chat.routes import _build_tool_system_message
+        from modules.mcp.routes import get_registry
+
+        assert isinstance(client.app, FastAPI)
+        tools = get_registry(client.app)
+        assert len(tools) > 0
+        msg = _build_tool_system_message(tools)
+
+        assert 'CRITICAL RULES:' in msg
+        assert 'NEVER fabricate or guess tool results' in msg
+        assert 'Path parameters: provide them as top-level arguments by exact name' in msg
+        assert 'Query parameters: provide as top-level arguments' in msg
+        assert 'Request body: always pass JSON body as `payload`' in msg
+        assert 'Never send unknown arguments; only use documented parameters.' in msg
+
+        for tool in tools:
+            assert f'- {tool["id"]} [{tool["method"]}]:' in msg
+
+        headers = re.findall(r'^- .+ \[[A-Z]+\]:', msg, flags=re.MULTILINE)
+        assert len(headers) == len(tools)
+
+        path_tool = next((t for t in tools if (t.get('arg_metadata', {}).get('path') or [])), None)
+        assert path_tool is not None
+        first_path = path_tool['arg_metadata']['path'][0]
+        assert f'- {path_tool["id"]} [{path_tool["method"]}]' in msg
+        assert f'- {first_path["name"]} (path,' in msg
+
+        query_tool = next((t for t in tools if (t.get('arg_metadata', {}).get('query') or [])), None)
+        if query_tool is not None:
+            first_query = query_tool['arg_metadata']['query'][0]
+            assert f'- {query_tool["id"]} [{query_tool["method"]}]' in msg
+            assert f'- {first_query["name"]} (query,' in msg
+
+        payload_tool = next((t for t in tools if t.get('arg_metadata', {}).get('payload') is not None), None)
+        assert payload_tool is not None
+        content_type = payload_tool['arg_metadata']['payload']['content_type']
+        assert f'- {payload_tool["id"]} [{payload_tool["method"]}]' in msg
+        assert '- payload (body,' in msg
+        assert f'content_type: {content_type}' in msg
 
     def test_parses_single_object(self) -> None:
         from modules.chat.routes import _parse_text_tool_calls

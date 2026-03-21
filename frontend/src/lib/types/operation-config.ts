@@ -17,6 +17,7 @@ export interface FilterConfigData {
 
 export interface SelectConfigData {
 	columns: string[];
+	cast_map?: Record<string, string>;
 }
 
 export interface Aggregation {

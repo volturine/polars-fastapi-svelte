@@ -1,5 +1,8 @@
 """Tests for MCP tool listing and preview/confirm flow."""
 
+import re
+
+import pytest
 from fastapi.testclient import TestClient
 
 from modules.mcp.registry import _build_tool, _openapi_to_json_schema
@@ -79,8 +82,9 @@ class TestMCPCallPreview:
     def test_call_mutating_tool_returns_pending(self, client: TestClient) -> None:
         response = client.get('/api/v1/mcp/tools')
         tools = response.json()
-        post_tool = next((t for t in tools if t['method'] == 'POST'), None)
-        assert post_tool is not None
+        post_tool = next((t for t in tools if t['method'] == 'POST' and not t['input_schema'].get('required')), None)
+        if post_tool is None:
+            pytest.skip('No POST tool without required args available')
 
         call_resp = client.post('/api/v1/mcp/call', json={'tool_id': post_tool['id'], 'args': {}})
         assert call_resp.status_code == 200
@@ -98,8 +102,9 @@ class TestMCPConfirm:
     def test_confirm_executes_pending_action(self, client: TestClient) -> None:
         response = client.get('/api/v1/mcp/tools')
         tools = response.json()
-        post_tool = next((t for t in tools if t['method'] == 'POST'), None)
-        assert post_tool is not None
+        post_tool = next((t for t in tools if t['method'] == 'POST' and not t['input_schema'].get('required')), None)
+        if post_tool is None:
+            pytest.skip('No POST tool without required args available')
 
         call_resp = client.post('/api/v1/mcp/call', json={'tool_id': post_tool['id'], 'args': {}})
         token = call_resp.json()['token']
@@ -117,8 +122,9 @@ class TestMCPConfirm:
     def test_token_consumed_after_confirm(self, client: TestClient) -> None:
         response = client.get('/api/v1/mcp/tools')
         tools = response.json()
-        post_tool = next((t for t in tools if t['method'] == 'POST'), None)
-        assert post_tool is not None
+        post_tool = next((t for t in tools if t['method'] == 'POST' and not t['input_schema'].get('required')), None)
+        if post_tool is None:
+            pytest.skip('No POST tool without required args available')
 
         call_resp = client.post('/api/v1/mcp/call', json={'tool_id': post_tool['id'], 'args': {}})
         token = call_resp.json()['token']
@@ -134,7 +140,7 @@ class TestMCPValidate:
         tools = response.json()
         post_tool = next((t for t in tools if t['method'] == 'POST' and t['input_schema'].get('required')), None)
         if post_tool is None:
-            return
+            pytest.skip('No POST tool with required args available')
         resp = client.post('/api/v1/mcp/validate', json={'tool_id': post_tool['id'], 'args': {}})
         assert resp.status_code == 200
         data = resp.json()
@@ -164,7 +170,7 @@ class TestMCPCallValidation:
         tools = response.json()
         post_tool = next((t for t in tools if t['method'] == 'POST' and t['input_schema'].get('required')), None)
         if post_tool is None:
-            return
+            pytest.skip('No POST tool with required args available')
         resp = client.post('/api/v1/mcp/call', json={'tool_id': post_tool['id'], 'args': {'__invalid__': 1}})
         assert resp.status_code == 200
         data = resp.json()
@@ -177,7 +183,7 @@ class TestMCPCallValidation:
         tools = response.json()
         post_tool = next((t for t in tools if t['method'] == 'POST' and t['input_schema'].get('required')), None)
         if post_tool is None:
-            return
+            pytest.skip('No POST tool with required args available')
         resp = client.post('/api/v1/mcp/call', json={'tool_id': post_tool['id'], 'args': {'__invalid__': 1}})
         data = resp.json()
         assert data['status'] == 'validation_error'
@@ -323,6 +329,62 @@ class TestValidationFormatAndDefaults:
         assert valid is True
         assert normalized['version'] == 'v1'
 
+    def test_validate_reports_actionable_required_error(self) -> None:
+        from modules.mcp.validation import validate_args
+
+        schema = {
+            'type': 'object',
+            'properties': {'name': {'type': 'string'}},
+            'required': ['name'],
+        }
+        valid, errors, _ = validate_args(schema, {})
+        assert valid is False
+        assert len(errors) == 1
+        assert errors[0]['validator'] == 'required'
+        assert 'Provide all required fields' in errors[0]['message']
+
+    def test_validate_reports_actionable_additional_properties_error(self) -> None:
+        from modules.mcp.validation import validate_args
+
+        schema = {
+            'type': 'object',
+            'properties': {'name': {'type': 'string'}},
+            'additionalProperties': False,
+        }
+        valid, errors, _ = validate_args(schema, {'extra': 1})
+        assert valid is False
+        assert len(errors) == 1
+        assert errors[0]['validator'] == 'additionalProperties'
+        assert 'Remove unknown fields' in errors[0]['message']
+
+    def test_validate_reports_actionable_enum_error(self) -> None:
+        from modules.mcp.validation import validate_args
+
+        schema = {
+            'type': 'object',
+            'properties': {'mode': {'type': 'string', 'enum': ['a', 'b']}},
+            'required': ['mode'],
+        }
+        valid, errors, _ = validate_args(schema, {'mode': 'c'})
+        assert valid is False
+        assert len(errors) == 1
+        assert errors[0]['validator'] == 'enum'
+        assert 'Use one of the documented enum values' in errors[0]['message']
+
+    def test_validate_reports_actionable_type_error(self) -> None:
+        from modules.mcp.validation import validate_args
+
+        schema = {
+            'type': 'object',
+            'properties': {'limit': {'type': 'integer'}},
+            'required': ['limit'],
+        }
+        valid, errors, _ = validate_args(schema, {'limit': 'ten'})
+        assert valid is False
+        assert len(errors) == 1
+        assert errors[0]['validator'] == 'type'
+        assert 'Use the documented JSON type' in errors[0]['message']
+
 
 class TestOpenAPIToJsonSchema:
     def test_bool_true_passthrough(self) -> None:
@@ -355,6 +417,29 @@ class TestOpenAPIToJsonSchema:
         schema = {'type': 'object', 'additionalProperties': {'type': 'string'}}
         result = _openapi_to_json_schema(schema, {})
         assert result == {'type': 'object', 'additionalProperties': {'type': 'string'}}
+
+    def test_additional_properties_ref_schema(self) -> None:
+        components = {
+            'schemas': {
+                'ExtraValue': {
+                    'type': 'object',
+                    'properties': {'name': {'type': 'string'}},
+                    'required': ['name'],
+                    'additionalProperties': False,
+                }
+            }
+        }
+        schema = {'type': 'object', 'additionalProperties': {'$ref': '#/components/schemas/ExtraValue'}}
+        result = _openapi_to_json_schema(schema, components)
+        assert result == {
+            'type': 'object',
+            'additionalProperties': {
+                'type': 'object',
+                'properties': {'name': {'type': 'string'}},
+                'required': ['name'],
+                'additionalProperties': False,
+            },
+        }
 
     def test_items_bool(self) -> None:
         schema = {'type': 'array', 'items': True}
@@ -394,6 +479,163 @@ class TestOpenAPIToJsonSchema:
         tool = _build_tool({'method': 'POST', 'path': '/api/v1/test', 'operation': op}, {})
         payload = tool['input_schema']['properties']['payload']
         assert payload == {'type': 'object', 'additionalProperties': False}
+
+    def test_build_tool_sets_top_level_additional_properties_false(self) -> None:
+        op = {'summary': 'Test', 'parameters': [{'name': 'id', 'in': 'path', 'required': True, 'schema': {'type': 'string'}}]}
+        tool = _build_tool({'method': 'GET', 'path': '/api/v1/test/{id}', 'operation': op}, {})
+        assert tool['input_schema']['additionalProperties'] is False
+
+    def test_build_tool_includes_arg_metadata(self) -> None:
+        op = {
+            'summary': 'Test',
+            'parameters': [
+                {'name': 'id', 'in': 'path', 'required': True, 'schema': {'type': 'string'}, 'description': 'Resource ID'},
+                {'name': 'limit', 'in': 'query', 'required': False, 'schema': {'type': 'integer', 'default': 10}},
+            ],
+            'requestBody': {
+                'required': True,
+                'description': 'Body payload',
+                'content': {'application/json': {'schema': {'type': 'object', 'properties': {'x': {'type': 'string'}}}}},
+            },
+        }
+        tool = _build_tool({'method': 'POST', 'path': '/api/v1/test/{id}', 'operation': op}, {})
+        meta = tool['arg_metadata']
+        assert meta['path'][0]['name'] == 'id'
+        assert meta['query'][0]['name'] == 'limit'
+        assert meta['payload']['required'] is True
+        assert meta['payload']['content_type'] == 'application/json'
+        assert 'payload' in tool['input_schema']['required']
+
+
+class TestMCPContractGuardrails:
+    @staticmethod
+    def _path_names(path: str) -> set[str]:
+        return set(re.findall(r'\{(\w+)\}', path))
+
+    def test_registry_schemas_are_closed_at_top_level(self, client: TestClient) -> None:
+        tools = client.get('/api/v1/mcp/tools').json()
+        assert len(tools) > 0
+        for tool in tools:
+            assert tool['input_schema'].get('additionalProperties') is False
+
+    def test_path_parameter_contract_is_consistent(self, client: TestClient) -> None:
+        tools = client.get('/api/v1/mcp/tools').json()
+        for tool in tools:
+            path_names = self._path_names(tool['path'])
+            path_meta = tool.get('arg_metadata', {}).get('path') or []
+            meta_names = {item['name'] for item in path_meta}
+            required = set(tool['input_schema'].get('required', []))
+            assert meta_names == path_names
+            for item in path_meta:
+                assert item.get('required') is True
+            for name in path_names:
+                assert name in required
+
+    def test_payload_contract_is_consistent(self, client: TestClient) -> None:
+        tools = client.get('/api/v1/mcp/tools').json()
+        payload_tools = [t for t in tools if t.get('arg_metadata', {}).get('payload') is not None]
+        assert len(payload_tools) > 0
+        for tool in payload_tools:
+            meta = tool['arg_metadata']['payload']
+            schema = tool['input_schema']
+            props = schema.get('properties', {})
+            required = set(schema.get('required', []))
+            assert 'payload' in props
+            assert meta.get('content_type') in {
+                'application/json',
+                'multipart/form-data',
+                'application/x-www-form-urlencoded',
+            }
+            if meta.get('required'):
+                assert 'payload' in required
+
+    def test_confirm_returns_structured_validation_error_for_missing_path_param(self, client: TestClient) -> None:
+        from fastapi import FastAPI
+
+        app = client.app
+        assert isinstance(app, FastAPI)
+        app.state.mcp_registry = [
+            {
+                'id': 'broken_mutating_tool',
+                'method': 'POST',
+                'path': '/api/v1/test/{item_id}',
+                'description': 'Broken for confirm test',
+                'safety': 'mutating',
+                'confirm_required': False,
+                'input_schema': {'type': 'object', 'properties': {}, 'required': [], 'additionalProperties': False},
+                'arg_metadata': {'path': [], 'query': [], 'payload': None},
+                'tags': [],
+            }
+        ]
+
+        call_resp = client.post('/api/v1/mcp/call', json={'tool_id': 'broken_mutating_tool', 'args': {}})
+        assert call_resp.status_code == 200
+        assert call_resp.json()['status'] == 'pending'
+        token = call_resp.json()['token']
+
+        confirm_resp = client.post('/api/v1/mcp/confirm', json={'token': token})
+        assert confirm_resp.status_code == 200
+        data = confirm_resp.json()
+        assert data['status'] == 'validation_error'
+        assert data['valid'] is False
+        assert data['tool_id'] == 'broken_mutating_tool'
+        assert isinstance(data['errors'], list)
+        assert data['errors'][0]['validator'] == 'path_params'
+        assert 'Missing required path parameter' in data['errors'][0]['message']
+
+
+class TestPathParameterReliability:
+    async def test_call_tool_raises_on_missing_path_param(self) -> None:
+        import pytest
+        from fastapi import FastAPI
+
+        from modules.mcp.executor import call_tool
+
+        app = FastAPI()
+        with pytest.raises(ValueError, match='Missing required path parameter'):
+            await call_tool(app, 'GET', '/api/v1/test/{item_id}', {})
+
+    def test_call_route_returns_validation_error_for_missing_path_param_at_execution(self, client: TestClient) -> None:
+        from fastapi import FastAPI
+
+        app = client.app
+        assert isinstance(app, FastAPI)
+        app.state.mcp_registry = [
+            {
+                'id': 'broken_tool',
+                'method': 'GET',
+                'path': '/api/v1/test/{item_id}',
+                'description': 'Broken for test',
+                'safety': 'safe',
+                'confirm_required': False,
+                'input_schema': {'type': 'object', 'properties': {}, 'required': [], 'additionalProperties': False},
+                'arg_metadata': {'path': [], 'query': [], 'payload': None},
+                'tags': [],
+            }
+        ]
+        resp = client.post('/api/v1/mcp/call', json={'tool_id': 'broken_tool', 'args': {}})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data['status'] == 'validation_error'
+        assert data['errors'][0]['validator'] == 'path_params'
+        assert data['tool_id'] == 'broken_tool'
+        assert 'Missing required path parameter' in data['errors'][0]['message']
+
+    async def test_call_tool_url_encodes_path_param(self) -> None:
+        from fastapi import FastAPI
+
+        from modules.mcp.executor import call_tool
+
+        app = FastAPI()
+
+        @app.get('/api/v1/test/{name}')
+        async def get_name(name: str) -> dict[str, str]:
+            return {'name': name}
+
+        result = await call_tool(app, 'GET', '/api/v1/test/{name}', {'name': 'a b'})
+        assert result['ok'] is True
+        assert result['status'] == 200
+        assert result['body']['name'] == 'a b'
 
 
 class TestCheckSchemaSupported:

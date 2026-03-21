@@ -1,6 +1,7 @@
 ---
 description: Ask clarifying questions before implementation begins
 model: opencode/minimax-m2.5-free
+name: ask
 tools:
   write: false
   edit: false
@@ -24,7 +25,7 @@ When given a request:
 
 If everything is already clear, say so:
 
-> ✅ Requirements are clear and ready for implementation.
+> Requirements are clear and ready for implementation.
 
 ## Rules
 

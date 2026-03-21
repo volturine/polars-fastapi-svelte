@@ -22,6 +22,7 @@ commands.
 - Map dependencies between modules
 - Identify existing conventions and patterns
 - Answer "where is X?" and "how does Y work?" questions
+- Map API contracts — what the backend exposes and what the frontend consumes
 
 ## How to search
 

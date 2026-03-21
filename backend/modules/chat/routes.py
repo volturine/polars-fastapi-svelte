@@ -219,13 +219,12 @@ async def _run_agent_turn(session: LiveSession, app: Any, user_content: str, too
     tool_system_msg = {'role': 'system', 'content': _build_tool_system_message(all_tools)} if all_tools else None
 
     try:
-        max_turns = 5
-        for turn in range(1, max_turns + 1):
-            session.push_event({'type': 'turn_start', 'turn': turn, 'max_turns': max_turns})
-            # Inject tool instructions into messages sent to API (not persisted)
+        turn = 0
+        while True:
+            turn += 1
+            session.push_event({'type': 'turn_start', 'turn': turn})
             api_messages = list(session.messages)
             if tool_system_msg:
-                # Insert after the user's system prompt (index 0) if present
                 insert_idx = 1 if api_messages and api_messages[0].get('role') == 'system' else 0
                 api_messages.insert(insert_idx, tool_system_msg)
 
@@ -247,7 +246,6 @@ async def _run_agent_turn(session: LiveSession, app: Any, user_content: str, too
             assistant_content = raw.get('content') or ''
             tool_calls = raw.get('tool_calls') or []
 
-            # Fallback: parse tool calls from text when model doesn't support function calling
             if not tool_calls and assistant_content:
                 cleaned, parsed = _parse_text_tool_calls(assistant_content)
                 if parsed:
@@ -337,22 +335,6 @@ async def _run_agent_turn(session: LiveSession, app: Any, user_content: str, too
                         'content': tool_result_str,
                     }
                 )
-
-        else:
-            # for/else — loop exhausted max_turns without breaking
-            session.push_event(
-                {
-                    'type': 'message',
-                    'role': 'assistant',
-                    'content': f'Reached the maximum of {max_turns} tool-calling turns. You can send another message to continue.',
-                }
-            )
-            session.append_message(
-                {
-                    'role': 'assistant',
-                    'content': f'Reached the maximum of {max_turns} tool-calling turns. You can send another message to continue.',
-                }
-            )
 
         session.push_event({'type': 'usage', **turn_usage})
     except OpenRouterError as exc:

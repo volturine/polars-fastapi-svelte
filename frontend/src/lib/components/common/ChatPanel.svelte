@@ -57,7 +57,9 @@
 	let modelPickerSearch = $state('');
 	let panelHeight = $state(500);
 	let panelWidth = $state(420);
-	let expandedHeight = $state(typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.95) : 800);
+	let expandedHeight = $state(
+		typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.95) : 800
+	);
 	let isResizing = $state(false);
 
 	async function stopGeneration() {
@@ -408,7 +410,10 @@
 		const minH = maximized ? 400 : 300;
 		function onMove(ev: PointerEvent) {
 			panelWidth = Math.max(320, Math.min(window.innerWidth * 0.9, startW + (startX - ev.clientX)));
-			const dh = Math.max(minH, Math.min(window.innerHeight * 0.95, startH + (startY - ev.clientY)));
+			const dh = Math.max(
+				minH,
+				Math.min(window.innerHeight * 0.95, startH + (startY - ev.clientY))
+			);
 			if (maximized) {
 				expandedHeight = dh;
 			} else {
@@ -2236,10 +2241,14 @@
 								fontSize: '10px',
 								fontFamily: 'mono'
 							})}
-							title={`Agent turn ${chatStore.currentTurn} of ${chatStore.maxTurns}`}
+							title={chatStore.maxTurns != null
+								? `Agent turn ${chatStore.currentTurn} of ${chatStore.maxTurns}`
+								: `Agent turn ${chatStore.currentTurn}`}
 						>
 							<Timer size={8} />
-							Turn {chatStore.currentTurn}/{chatStore.maxTurns}
+							Turn {chatStore.currentTurn}{chatStore.maxTurns != null
+								? `/${chatStore.maxTurns}`
+								: ''}
 						</span>
 					{/if}
 				{/if}

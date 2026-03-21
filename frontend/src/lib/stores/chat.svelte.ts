@@ -107,7 +107,7 @@ export class ChatStore {
 	lastFailedContent = $state<string | null>(null);
 	sessions = $state<ChatSessionInfo[]>([]);
 	currentTurn = $state(0);
-	maxTurns = $state(0);
+	maxTurns = $state<number | null>(null);
 	pendingConfirm = $state<{
 		tool_id: string;
 		method: string;
@@ -486,7 +486,7 @@ export class ChatStore {
 		}
 		if (event.type === 'turn_start') {
 			this.currentTurn = event.turn ?? 0;
-			this.maxTurns = event.max_turns ?? 0;
+			this.maxTurns = event.max_turns ?? null;
 		}
 		if (event.type === 'tool_start' && event.tool_id) {
 			// Update the matching running tool call with start timestamp
@@ -554,7 +554,7 @@ export class ChatStore {
 		if (event.type === 'done') {
 			this.loading = false;
 			this.currentTurn = 0;
-			this.maxTurns = 0;
+			this.maxTurns = null;
 			this.pendingConfirm = null;
 		}
 	}
@@ -747,7 +747,7 @@ export class ChatStore {
 		this.sessionUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 		this.lastTurnUsage = null;
 		this.currentTurn = 0;
-		this.maxTurns = 0;
+		this.maxTurns = null;
 		this.pendingConfirm = null;
 		if (typeof window !== 'undefined') {
 			localStorage.removeItem(SESSION_KEY);

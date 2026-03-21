@@ -2,7 +2,7 @@ import logging
 from typing import Literal
 
 import polars as pl
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from modules.compute.core.base import OperationHandler, OperationParams
 
@@ -84,6 +84,20 @@ class ChartParams(OperationParams):
     pan_zoom_enabled: bool = False
     selection_enabled: bool = False
     area_selection_enabled: bool = False
+
+    @field_validator('sort_by', mode='before')
+    @classmethod
+    def coerce_sort_by(cls, v: object) -> object:
+        if v in ('x', 'y', 'custom', None):
+            return v
+        return None
+
+    @field_validator('group_sort_by', mode='before')
+    @classmethod
+    def coerce_group_sort_by(cls, v: object) -> object:
+        if v in ('name', 'value', 'custom', None):
+            return v
+        return None
 
 
 def compute_chart_data(lf: pl.LazyFrame, params: dict) -> pl.LazyFrame:

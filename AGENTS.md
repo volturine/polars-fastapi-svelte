@@ -104,25 +104,6 @@ See [`STYLE_GUIDE.md`](STYLE_GUIDE.md)
 - When adding new API endpoints mirroring existing behavior (e.g., download vs preview), compare response payload shapes end-to-end. Don't assume fields like `columns` exist; follow the engine response (`data.schema` + `data.data`) to avoid false "no data" errors.
 - `state_referenced_locally` and `non_reactive_update` Svelte warnings are tracked tech debt — fix them when touching affected components rather than suppressing
 
-## OpenCode Agents
-
-These are built-in OpenCode roles.
-
-| Agent            | Purpose                                   | Permissions     |
-| ---------------- | ----------------------------------------- | --------------- |
-| **Orchestrator** | Coordinates tasks and delegations         | No write access |
-| **Ask**          | Clarifies requirements and open questions | No write access |
-
-## Specialized Subagents
-
-| Subagents       | When to Use                                                              | Permissions     |
-| --------------- | ------------------------------------------------------------------------ | --------------- |
-| **Explorer**    | Reads files and gathers context                                          | Read-only       |
-| **Planner**     | Produces structured plans                                                | No write access |
-| **Implementer** | Edits code and applies changes                                           | Write access    |
-| **Reviewer**    | Reviews diffs for correctness and quality — use before completing ANY task | Read-only       |
-| **Senior**      | Senior developer for complex tasks                                       | Write access    |
-
 ## MCP Servers
 
 | Server         | Purpose                     |

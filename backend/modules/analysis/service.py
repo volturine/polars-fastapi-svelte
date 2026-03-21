@@ -164,7 +164,11 @@ def create_analysis(
     with transaction:
         session.add(analysis)
 
+        seen: set[str] = set()
         for datasource_id in datasource_ids:
+            if datasource_id in seen:
+                continue
+            seen.add(datasource_id)
             link = AnalysisDataSource(
                 analysis_id=analysis_id,
                 datasource_id=datasource_id,

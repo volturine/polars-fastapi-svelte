@@ -11,7 +11,6 @@ StepType = Literal[
     'groupby',
     'join',
     'union_by_name',
-    'value_counts',
     'unpivot',
     'explode',
     'pivot',
@@ -33,7 +32,6 @@ StepType = Literal[
     'deduplicate',
     'string_transform',
     'timeseries',
-    'null_count',
     'plot_bar',
     'plot_horizontal_bar',
     'plot_area',
@@ -191,14 +189,6 @@ class FillNullConfig(BaseModel):
     columns: list[str] | None = None
     value: str | int | float | None = None
     value_type: str | None = None
-
-
-class ValueCountsConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
-
-    column: str = Field('', description='Column to count values of')
-    normalize: bool = False
-    sort: bool = True
 
 
 class UnpivotConfig(BaseModel):
@@ -393,10 +383,6 @@ class DatasourceConfig(BaseModel):
     model_config = ConfigDict(extra='allow')
 
 
-class NullCountConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
-
-
 class TimeSeriesConfig(BaseModel):
     model_config = ConfigDict(extra='allow')
 
@@ -515,16 +501,6 @@ STEP_CATALOG: dict[str, dict] = {
         'description': 'Return the top K rows ranked by a column value.',
         'category': 'aggregate',
         'config': TopKConfig,
-    },
-    'value_counts': {
-        'description': 'Count occurrences of each unique value in a column, optionally normalized.',
-        'category': 'aggregate',
-        'config': ValueCountsConfig,
-    },
-    'null_count': {
-        'description': 'Count the number of null values per column.',
-        'category': 'aggregate',
-        'config': NullCountConfig,
     },
     'pivot': {
         'description': 'Pivot long-format data to wide-format using index, column, and value fields.',

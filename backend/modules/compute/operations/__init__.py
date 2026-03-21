@@ -13,7 +13,6 @@ from modules.compute.operations.groupby import GroupByHandler
 from modules.compute.operations.join import JoinHandler
 from modules.compute.operations.limit import LimitHandler
 from modules.compute.operations.notification import NotificationHandler
-from modules.compute.operations.null_count import NullCountHandler
 from modules.compute.operations.pivot import PivotHandler
 from modules.compute.operations.plot import ChartHandler
 from modules.compute.operations.rename import RenameHandler
@@ -25,7 +24,6 @@ from modules.compute.operations.timeseries import TimeseriesHandler
 from modules.compute.operations.topk import TopKHandler
 from modules.compute.operations.union import UnionByNameHandler
 from modules.compute.operations.unpivot import UnpivotHandler
-from modules.compute.operations.value_counts import ValueCountsHandler
 from modules.compute.operations.view import ViewHandler
 from modules.compute.operations.with_columns import WithColumnsHandler
 
@@ -48,7 +46,6 @@ HANDLERS: dict[str, OperationHandler] = {
     'groupby': GroupByHandler(),
     'join': JoinHandler(),
     'limit': LimitHandler(),
-    'null_count': NullCountHandler(),
     'notification': NotificationHandler(),
     'pivot': PivotHandler(),
     'rename': RenameHandler(),
@@ -60,7 +57,6 @@ HANDLERS: dict[str, OperationHandler] = {
     'topk': TopKHandler(),
     'union_by_name': UnionByNameHandler(),
     'unpivot': UnpivotHandler(),
-    'value_counts': ValueCountsHandler(),
     'view': ViewHandler(),
     'with_columns': WithColumnsHandler(),
     'expression': ExpressionHandler(),

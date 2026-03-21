@@ -748,19 +748,4 @@
 			</button>
 		{/if}
 	</div>
-
-	<div
-		class={css({
-			position: 'absolute',
-			bottom: '-5px',
-			left: '50%',
-			zIndex: '2',
-			height: 'dotLg',
-			width: 'dotLg',
-			transform: 'translateX(-50%)',
-			backgroundColor: 'bg.primary',
-			borderWidth: '2',
-			borderColor: 'accent.primary'
-		})}
-	></div>
 </div>

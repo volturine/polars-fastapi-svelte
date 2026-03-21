@@ -57,6 +57,7 @@
 	const runSnapshotMap = $derived(buildSnapshotMap(buildRuns, toSnapshotRefs(snapshotList)));
 	const filteredSnapshotList = $derived.by(() => {
 		if (!showBuildPreviews) return snapshotList;
+		if (buildRuns.length === 0) return snapshotList;
 		const mapped = new SvelteMap<string, boolean>();
 		for (const snap of runSnapshotMap.values()) {
 			if (!snap) continue;

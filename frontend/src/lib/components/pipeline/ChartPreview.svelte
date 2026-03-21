@@ -103,6 +103,107 @@
 		return String(v);
 	}
 
+	const CHAR_WIDTH = 6;
+	const TITLE_PAD = 14;
+
+	function estimateLabelWidth(labels: string[], fontSize: number = 10): number {
+		const maxLen = Math.max(0, ...labels.map((l) => l.length));
+		return maxLen * fontSize * (CHAR_WIDTH / 10);
+	}
+
+	interface TitleSpacing {
+		bottom: number;
+		left: number;
+	}
+
+	function estimateTitleSpacing(
+		xTitle: string,
+		yTitle: string,
+		baseBottom: number,
+		baseLeft: number
+	): TitleSpacing {
+		const extraBottom = xTitle.length > 0 ? TITLE_PAD : 0;
+		const extraLeft = yTitle.length > 0 ? TITLE_PAD : 0;
+		return {
+			bottom: baseBottom + extraBottom,
+			left: baseLeft + extraLeft
+		};
+	}
+
+	function legendInset(position: string, labels: string[], containerWidth: number): number {
+		if (position !== 'left' && position !== 'right') return 0;
+		if (labels.length === 0) return 0;
+		const maxLabel = Math.max(0, ...labels.map((l) => Math.min(l.length, 14)));
+		const swatch = 10;
+		const pad = 32;
+		const tabWidth = 20;
+		const estimated = maxLabel * CHAR_WIDTH + swatch + pad + tabWidth;
+		return Math.min(estimated, containerWidth * 0.25);
+	}
+
+	interface ChartMargins {
+		top: number;
+		right: number;
+		bottom: number;
+		left: number;
+	}
+
+	function computeMargins(opts: {
+		width: number;
+		baseTop?: number;
+		baseRight?: number;
+		baseBottom?: number;
+		baseLeft?: number;
+		yTickWidth?: number;
+		willRotate?: boolean;
+		xTitle?: string;
+		yTitle?: string;
+		hasRightAxis?: boolean;
+		legendLabels?: string[];
+	}): ChartMargins {
+		const baseTop = opts.baseTop ?? 28;
+		const baseRight = opts.hasRightAxis ? 64 : (opts.baseRight ?? 24);
+		const baseBottom = opts.willRotate ? 68 : (opts.baseBottom ?? 56);
+		const baseLeft = opts.yTickWidth != null ? Math.max(opts.yTickWidth + 24, 64) : 64;
+
+		const spacing = estimateTitleSpacing(
+			opts.xTitle ?? '',
+			opts.yTitle ?? '',
+			baseBottom,
+			baseLeft
+		);
+
+		const pos = str(config.legend_position) || 'right';
+		const labels = opts.legendLabels ?? [];
+		const inset = legendInset(pos, labels, opts.width);
+
+		const rightWithLegend = pos === 'right' ? baseRight + inset : baseRight;
+		const leftWithLegend = pos === 'left' ? spacing.left + inset : spacing.left;
+
+		return {
+			top: baseTop,
+			right: Math.round(rightWithLegend),
+			bottom: Math.round(spacing.bottom),
+			left: Math.round(leftWithLegend)
+		};
+	}
+
+	function truncateLabel(text: string, maxChars: number): string {
+		if (text.length <= maxChars) return text;
+		return text.slice(0, maxChars - 1) + '…';
+	}
+
+	function truncateTickLabels(
+		group: d3.Selection<SVGGElement, unknown, null, undefined>,
+		maxChars: number
+	) {
+		group.selectAll<SVGTextElement, unknown>('text').each(function () {
+			const el = d3.select(this);
+			const text = el.text();
+			if (text.length > maxChars) el.text(truncateLabel(text, maxChars));
+		});
+	}
+
 	function getChartAriaLabel(): string {
 		const title = str(config.title).trim();
 		if (title) return title;
@@ -555,26 +656,37 @@
 		return grid;
 	}
 
-	function addTitles(svg: Svg, xLabel: string, yLabel: string, w: number, h: number) {
-		svg
-			.append('text')
-			.attr('x', w / 2)
-			.attr('y', h + 44)
-			.attr('text-anchor', 'middle')
-			.attr('fill', 'var(--colors-fg-muted)')
-			.style('font-size', '11px')
-			.style('font-family', 'var(--fonts-mono)')
-			.text(xLabel);
-		svg
-			.append('text')
-			.attr('transform', 'rotate(-90)')
-			.attr('x', -h / 2)
-			.attr('y', -48)
-			.attr('text-anchor', 'middle')
-			.attr('fill', 'var(--colors-fg-muted)')
-			.style('font-size', '11px')
-			.style('font-family', 'var(--fonts-mono)')
-			.text(yLabel);
+	function addTitles(
+		svg: Svg,
+		xLabel: string,
+		yLabel: string,
+		w: number,
+		h: number,
+		margins: { bottom: number; left: number }
+	) {
+		if (xLabel) {
+			svg
+				.append('text')
+				.attr('x', w / 2)
+				.attr('y', h + margins.bottom - 6)
+				.attr('text-anchor', 'middle')
+				.attr('fill', 'var(--colors-fg-muted)')
+				.style('font-size', '10px')
+				.style('font-family', 'var(--fonts-mono)')
+				.text(xLabel);
+		}
+		if (yLabel) {
+			svg
+				.append('text')
+				.attr('transform', 'rotate(-90)')
+				.attr('x', -h / 2)
+				.attr('y', -(margins.left - 8))
+				.attr('text-anchor', 'middle')
+				.attr('fill', 'var(--colors-fg-muted)')
+				.style('font-size', '10px')
+				.style('font-family', 'var(--fonts-mono)')
+				.text(yLabel);
+		}
 	}
 
 	function addChartTitle(svg: RootSvg, title: string, width: number) {
@@ -1065,7 +1177,34 @@
 	function renderBar(el: HTMLDivElement, width: number, height: number) {
 		const overlays = getOverlayConfigs();
 		const overlayRight = overlays.some((overlay) => overlayAxisPosition(overlay) === 'right');
-		const margin = { top: 28, right: overlayRight ? 64 : 24, bottom: 56, left: 64 };
+		const barLabels = [...new Set(data.map((r) => str(r.x)))];
+		const barMaxLen = Math.max(0, ...barLabels.map((l) => l.length));
+		const willRotate = barMaxLen > 8 && barLabels.length > 4;
+
+		const barYValues = data.map((r) => num(r.y));
+		const overlayYValues: number[] = [];
+		for (const overlay of overlays) {
+			for (const row of overlayData(overlay)) {
+				overlayYValues.push(num((row as Row).y));
+			}
+		}
+		const allYValues = [...barYValues, ...overlayYValues];
+		const yMax = allYValues.length ? Math.max(...allYValues) : 0;
+		const yTickWidth = estimateLabelWidth([fmtAxis(yMax)], 10);
+
+		const groupCol = config.group_column as string | null;
+		const hasGroup = groupCol && data.length > 0 && groupCol in data[0];
+		const legendLabels = hasGroup ? getGroupOrder(data, groupCol) : [];
+
+		const margin = computeMargins({
+			width,
+			yTickWidth,
+			willRotate,
+			xTitle: getXTitle(),
+			yTitle: getYTitle(),
+			hasRightAxis: overlayRight,
+			legendLabels
+		});
 		const w = width - margin.left - margin.right;
 		const h = height - margin.top - margin.bottom;
 
@@ -1080,9 +1219,6 @@
 		const svg = root
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`) as Svg;
-
-		const groupCol = config.group_column as string | null;
-		const hasGroup = groupCol && data.length > 0 && groupCol in data[0];
 
 		const stackMode = getStackMode();
 
@@ -1140,7 +1276,7 @@
 			makeXAxis(svg, x, h, labels);
 			makeYAxis(svg, y);
 			if (yRight) addRightYAxis(svg, yRight, w);
-			addTitles(svg, getXTitle(), getYTitle(), w, h);
+			addTitles(svg, getXTitle(), getYTitle(), w, h, margin);
 			addLegend(svg, groups, (l) => color(l), w, h, {
 				onClick: (series: string, event: MouseEvent | KeyboardEvent) => {
 					if (event.metaKey || event.ctrlKey) {
@@ -1301,7 +1437,7 @@
 			makeXAxis(svg, x0, h, labels);
 			makeYAxis(svg, y);
 			if (yRight) addRightYAxis(svg, yRight, w);
-			addTitles(svg, getXTitle(), getYTitle(), w, h);
+			addTitles(svg, getXTitle(), getYTitle(), w, h, margin);
 			addLegend(svg, groups, (l) => color(l), w, h, {
 				onClick: (series: string, event: MouseEvent | KeyboardEvent) => {
 					if (event.metaKey || event.ctrlKey) {
@@ -1461,7 +1597,7 @@
 			makeXAxis(svg, x, h, labels);
 			makeYAxis(svg, y);
 			if (yRight) addRightYAxis(svg, yRight, w);
-			addTitles(svg, getXTitle(), getYTitle(), w, h);
+			addTitles(svg, getXTitle(), getYTitle(), w, h, margin);
 
 			svg
 				.selectAll('.bar')
@@ -1595,7 +1731,29 @@
 	function renderHorizontalBar(el: HTMLDivElement, width: number, height: number) {
 		const overlays = getOverlayConfigs();
 		const overlayRight = overlays.some((overlay) => overlayAxisPosition(overlay) === 'right');
-		const margin = { top: 28, right: overlayRight ? 64 : 24, bottom: 48, left: 84 };
+		const labels = [...new Set(data.map((r) => str(r.x)))];
+		const maxLabelChars = 18;
+		const labelWidth = estimateLabelWidth(
+			labels.map((l) => truncateLabel(l, maxLabelChars)),
+			10
+		);
+		const dynamicLeft = Math.min(Math.max(labelWidth + 24, 64), width * 0.35);
+
+		const groupCol = config.group_column as string | null;
+		const hasGroup = groupCol && data.length > 0 && groupCol in data[0];
+		const legendLabels = hasGroup ? getGroupOrder(data, groupCol) : [];
+
+		const xTitle = getYTitle();
+		const yTitle = getXTitle();
+		const spacing = estimateTitleSpacing(xTitle, yTitle, 56, dynamicLeft);
+		const pos = str(config.legend_position) || 'right';
+		const inset = legendInset(pos, legendLabels, width);
+		const margin: ChartMargins = {
+			top: 28,
+			right: Math.round((overlayRight ? 64 : 24) + (pos === 'right' ? inset : 0)),
+			bottom: Math.round(spacing.bottom),
+			left: Math.round(spacing.left + (pos === 'left' ? inset : 0))
+		};
 		const w = width - margin.left - margin.right;
 		const h = height - margin.top - margin.bottom;
 
@@ -1611,8 +1769,6 @@
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`) as Svg;
 
-		const groupCol = config.group_column as string | null;
-		const hasGroup = groupCol && data.length > 0 && groupCol in data[0];
 		const stackMode = getStackMode();
 
 		const overlayPoints: Row[] = [];
@@ -1639,14 +1795,10 @@
 			.map((row) => num((row as Row).y));
 		const yRight = rightValues.length > 0 ? buildValueScale(rightValues, 0, [0, w]) : null;
 
-		const labels = [...new Set(data.map((r) => str(r.x)))];
 		const yBand = d3.scaleBand().domain(labels).range([0, h]).padding(0.2);
 		const yAxis = d3.axisLeft(yBand).tickSizeOuter(0);
 		const yAxisGroup = svg.append('g').call(yAxis);
-		const maxLen = Math.max(...labels.map((l) => l.length));
-		if (maxLen > 12) {
-			yAxisGroup.selectAll('text').style('font-size', '9px');
-		}
+		truncateTickLabels(yAxisGroup, maxLabelChars);
 
 		if (hasGroup && stackMode !== 'grouped') {
 			const groups = getGroupOrder(data, groupCol);
@@ -1669,7 +1821,7 @@
 						.tickFormat((d) => fmtAxis(d as number))
 				);
 			if (yRight) addRightYAxis(svg, yRight as AxisScale, w);
-			addTitles(svg, getYTitle(), getXTitle(), w, h);
+			addTitles(svg, getYTitle(), getXTitle(), w, h, margin);
 			addLegend(svg, groups, (l) => color(l), w, h, {
 				onClick: (series: string, event: MouseEvent | KeyboardEvent) => {
 					if (event.metaKey || event.ctrlKey) {
@@ -1832,7 +1984,7 @@
 					.tickFormat((d) => fmtAxis(d as number))
 			);
 		if (yRight) addRightYAxis(svg, yRight as AxisScale, w);
-		addTitles(svg, getYTitle(), getXTitle(), w, h);
+		addTitles(svg, getYTitle(), getXTitle(), w, h, margin);
 
 		if (hasGroup) {
 			const groups = getGroupOrder(data, groupCol);
@@ -2003,7 +2155,34 @@
 	function renderArea(el: HTMLDivElement, width: number, height: number) {
 		const overlays = getOverlayConfigs();
 		const overlayRight = overlays.some((overlay) => overlayAxisPosition(overlay) === 'right');
-		const margin = { top: 28, right: overlayRight ? 64 : 24, bottom: 56, left: 64 };
+		const areaLabels = [...new Set(data.map((r) => str(r.x)))];
+		const areaMaxLen = Math.max(0, ...areaLabels.map((l) => l.length));
+		const areaRotate = areaMaxLen > 8 && areaLabels.length > 4;
+
+		const areaYValues = data.map((r) => num(r.y));
+		const overlayYValues: number[] = [];
+		for (const overlay of overlays) {
+			for (const row of overlayData(overlay)) {
+				overlayYValues.push(num((row as Row).y));
+			}
+		}
+		const allYValues = [...areaYValues, ...overlayYValues];
+		const yMax = allYValues.length ? Math.max(...allYValues) : 0;
+		const yTickWidth = estimateLabelWidth([fmtAxis(yMax)], 10);
+
+		const groupCol = config.group_column as string | null;
+		const hasGroup = groupCol && data.length > 0 && groupCol in data[0];
+		const legendLabels = hasGroup ? getGroupOrder(data, groupCol) : [];
+
+		const margin = computeMargins({
+			width,
+			yTickWidth,
+			willRotate: areaRotate,
+			xTitle: getXTitle(),
+			yTitle: getYTitle(),
+			hasRightAxis: overlayRight,
+			legendLabels
+		});
 		const w = width - margin.left - margin.right;
 		const h = height - margin.top - margin.bottom;
 
@@ -2019,8 +2198,6 @@
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`) as Svg;
 
-		const groupCol = config.group_column as string | null;
-		const hasGroup = groupCol && data.length > 0 && groupCol in data[0];
 		const labels = [...new Set(data.map((r) => str(r.x)))];
 		const x = d3.scalePoint().domain(labels).range([0, w]).padding(0.5);
 		const stackMode = getStackMode();
@@ -2061,7 +2238,7 @@
 			makeXAxis(svg, x, h, labels);
 			makeYAxis(svg, y);
 			if (yRight) addRightYAxis(svg, yRight, w);
-			addTitles(svg, getXTitle(), getYTitle(), w, h);
+			addTitles(svg, getXTitle(), getYTitle(), w, h, margin);
 			addLegend(svg, groups, (l) => color(l), w, h, {
 				onClick: (series: string, event: MouseEvent | KeyboardEvent) => {
 					if (event.metaKey || event.ctrlKey) {
@@ -2198,7 +2375,7 @@
 		makeXAxis(svg, x, h, labels);
 		makeYAxis(svg, y);
 		if (yRight) addRightYAxis(svg, yRight, w);
-		addTitles(svg, getXTitle(), getYTitle(), w, h);
+		addTitles(svg, getXTitle(), getYTitle(), w, h, margin);
 
 		if (hasGroup) {
 			const groups = getGroupOrder(data, groupCol);
@@ -2336,7 +2513,22 @@
 	}
 
 	function renderHeatgrid(el: HTMLDivElement, width: number, height: number) {
-		const margin = { top: 28, right: 64, bottom: 56, left: 80 };
+		const xLabels = [...new Set(data.map((r) => str(r.x)))];
+		const xMaxLen = Math.max(0, ...xLabels.map((l) => l.length));
+		const willRotate = xMaxLen > 8 && xLabels.length > 4;
+		const yLabels = [...new Set(data.map((r) => str(r.y)))];
+		const yTickWidth = estimateLabelWidth(
+			yLabels.map((l) => truncateLabel(l, 14)),
+			10
+		);
+		const margin = computeMargins({
+			width,
+			yTickWidth,
+			willRotate,
+			baseRight: 64,
+			xTitle: getXTitle(),
+			yTitle: getYTitle()
+		});
 		const w = width - margin.left - margin.right;
 		const h = height - margin.top - margin.bottom;
 
@@ -2352,8 +2544,6 @@
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`) as Svg;
 
-		const xLabels = [...new Set(data.map((r) => str(r.x)))];
-		const yLabels = [...new Set(data.map((r) => str(r.y)))];
 		const x = d3.scaleBand().domain(xLabels).range([0, w]).padding(0.08);
 		const y = d3.scaleBand().domain(yLabels).range([0, h]).padding(0.08);
 
@@ -2362,9 +2552,10 @@
 		const maxValue = d3.max(values) ?? 0;
 		const color = d3.scaleSequential(d3.interpolateBlues).domain([minValue, maxValue || 1]);
 
-		svg.append('g').call(d3.axisLeft(y).tickSizeOuter(0));
+		const heatYGroup = svg.append('g').call(d3.axisLeft(y).tickSizeOuter(0));
+		truncateTickLabels(heatYGroup, 14);
 		makeXAxis(svg, x, h, xLabels);
-		addTitles(svg, getXTitle(), getYTitle(), w, h);
+		addTitles(svg, getXTitle(), getYTitle(), w, h, margin);
 
 		svg
 			.selectAll('.heat-cell')
@@ -2433,7 +2624,34 @@
 	function renderLine(el: HTMLDivElement, width: number, height: number) {
 		const overlays = getOverlayConfigs();
 		const overlayRight = overlays.some((overlay) => overlayAxisPosition(overlay) === 'right');
-		const margin = { top: 28, right: overlayRight ? 64 : 24, bottom: 56, left: 64 };
+		const lineLabels = [...new Set(data.map((r) => str(r.x)))];
+		const lineMaxLen = Math.max(0, ...lineLabels.map((l) => l.length));
+		const lineRotate = lineMaxLen > 8 && lineLabels.length > 4;
+
+		const lineYValues = data.map((r) => num(r.y));
+		const overlayYValues: number[] = [];
+		for (const overlay of overlays) {
+			for (const row of overlayData(overlay)) {
+				overlayYValues.push(num((row as Row).y));
+			}
+		}
+		const allYValues = [...lineYValues, ...overlayYValues];
+		const yMax = allYValues.length ? Math.max(...allYValues) : 0;
+		const yTickWidth = estimateLabelWidth([fmtAxis(yMax)], 10);
+
+		const groupCol = config.group_column as string | null;
+		const hasGroup = groupCol && data.length > 0 && groupCol in data[0];
+		const legendLabels = hasGroup ? getGroupOrder(data, groupCol) : [];
+
+		const margin = computeMargins({
+			width,
+			yTickWidth,
+			willRotate: lineRotate,
+			xTitle: getXTitle(),
+			yTitle: getYTitle(),
+			hasRightAxis: overlayRight,
+			legendLabels
+		});
 		const w = width - margin.left - margin.right;
 		const h = height - margin.top - margin.bottom;
 
@@ -2449,8 +2667,6 @@
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`) as Svg;
 
-		const groupCol = config.group_column as string | null;
-		const hasGroup = groupCol && data.length > 0 && groupCol in data[0];
 		const labels = [...new Set(data.map((r) => str(r.x)))];
 		const indexDomain = labels.map((_, i) => i);
 
@@ -2513,7 +2729,7 @@
 				.tickFormat((d) => fmtAxis(d as number))
 		);
 		if (yRight) addRightYAxis(svg, yRight, w);
-		addTitles(svg, getXTitle(), getYTitle(), w, h);
+		addTitles(svg, getXTitle(), getYTitle(), w, h, margin);
 
 		if (hasGroup) {
 			const groups = getGroupOrder(data, groupCol);
@@ -2863,7 +3079,10 @@
 
 	function renderPie(el: HTMLDivElement, width: number, height: number) {
 		const margin = 16;
-		const radius = Math.min(width, height) / 2 - margin;
+		const titleText = str(config.title).trim();
+		const titleReserve = titleText.length > 0 ? 28 : 0;
+		const drawableHeight = height - titleReserve;
+		const radius = Math.min(width, drawableHeight) / 2 - margin;
 
 		const root = d3
 			.select(el)
@@ -2872,7 +3091,7 @@
 			.attr('height', height)
 			.attr('role', 'img')
 			.attr('aria-label', getChartAriaLabel()) as RootSvg;
-		addChartTitle(root, str(config.title), width);
+		addChartTitle(root, titleText, width);
 		const hasGroup = data.length > 0 && 'group' in data[0];
 		const grouped = hasGroup ? d3.group(data, (r) => str(r.group)) : new Map([['', data]]);
 		const groupOrder = hasGroup ? getGroupOrder(data, 'group') : [''];
@@ -2897,7 +3116,7 @@
 			.innerRadius(radius * 0.65)
 			.outerRadius(radius * 0.65);
 		const groupWidth = width / Math.max(groupEntries.length, 1);
-		const baseRadius = Math.min(groupWidth, height) / 2 - margin;
+		const baseRadius = Math.min(groupWidth, drawableHeight) / 2 - margin;
 
 		for (let i = 0; i < groupEntries.length; i += 1) {
 			const entry = groupEntries[i];
@@ -2907,7 +3126,7 @@
 			const labels = groupRows.map((r) => str(r.label));
 			const total = d3.sum(values);
 			const cx = groupWidth * i + groupWidth / 2;
-			const cy = height / 2;
+			const cy = titleReserve + drawableHeight / 2;
 			const groupRadius = Math.max(60, Math.min(baseRadius, radius));
 			const g = root.append('g').attr('transform', `translate(${cx},${cy})`) as Svg;
 
@@ -2968,7 +3187,15 @@
 	}
 
 	function renderHistogram(el: HTMLDivElement, width: number, height: number) {
-		const margin = { top: 28, right: 24, bottom: 56, left: 64 };
+		const countValues = data.map((r) => num(r.count));
+		const countMax = d3.max(countValues) ?? 0;
+		const yTickWidth = estimateLabelWidth([fmtAxis(countMax)], 10);
+		const margin = computeMargins({
+			width,
+			yTickWidth,
+			xTitle: getXTitle(),
+			yTitle: 'Count'
+		});
 		const w = width - margin.left - margin.right;
 		const h = height - margin.top - margin.bottom;
 
@@ -3006,7 +3233,7 @@
 			);
 
 		makeYAxis(svg, y);
-		addTitles(svg, getXTitle(), 'Count', w, h);
+		addTitles(svg, getXTitle(), 'Count', w, h, margin);
 
 		svg
 			.selectAll('.bin')
@@ -3040,7 +3267,29 @@
 	function renderScatter(el: HTMLDivElement, width: number, height: number) {
 		const overlays = getOverlayConfigs();
 		const overlayRight = overlays.some((overlay) => overlayAxisPosition(overlay) === 'right');
-		const margin = { top: 28, right: overlayRight ? 64 : 24, bottom: 56, left: 64 };
+
+		const scatterYValues = data.map((r) => num(r.y));
+		const overlayYValues: number[] = [];
+		for (const overlay of overlays) {
+			for (const row of overlayData(overlay)) {
+				overlayYValues.push(num((row as Row).y));
+			}
+		}
+		const allYValues = [...scatterYValues, ...overlayYValues];
+		const yMax = allYValues.length ? Math.max(...allYValues) : 0;
+		const yTickWidth = estimateLabelWidth([fmtAxis(yMax)], 10);
+
+		const hasGroup = data.length > 0 && 'group' in data[0];
+		const legendLabels = hasGroup ? getGroupOrder(data, 'group') : [];
+
+		const margin = computeMargins({
+			width,
+			yTickWidth,
+			xTitle: getXTitle(),
+			yTitle: getYTitle(),
+			hasRightAxis: overlayRight,
+			legendLabels
+		});
 		const w = width - margin.left - margin.right;
 		const h = height - margin.top - margin.bottom;
 
@@ -3136,9 +3385,7 @@
 				.tickFormat((d) => fmtAxis(d as number))
 		);
 		if (yRight) addRightYAxis(svg, yRight, w);
-		addTitles(svg, getXTitle(), getYTitle(), w, h);
-
-		const hasGroup = data.length > 0 && 'group' in data[0];
+		addTitles(svg, getXTitle(), getYTitle(), w, h, margin);
 
 		if (hasGroup) {
 			const groups = getGroupOrder(data, 'group');
@@ -3444,7 +3691,22 @@
 	}
 
 	function renderBoxplot(el: HTMLDivElement, width: number, height: number) {
-		const margin = { top: 20, right: 24, bottom: 48, left: 80 };
+		const groups = data.map((r) => str(r.group));
+		const maxLabelChars = 18;
+		const labelWidth = estimateLabelWidth(
+			groups.map((l) => truncateLabel(l, maxLabelChars)),
+			10
+		);
+		const dynamicLeft = Math.min(Math.max(labelWidth + 24, 64), width * 0.35);
+		const yTitle = getYTitle();
+		const xTitle = '';
+		const spacing = estimateTitleSpacing(yTitle, xTitle, 52, dynamicLeft);
+		const margin: ChartMargins = {
+			top: 20,
+			right: 24,
+			bottom: Math.round(spacing.bottom),
+			left: Math.round(spacing.left)
+		};
 		const w = width - margin.left - margin.right;
 		const h = height - margin.top - margin.bottom;
 
@@ -3460,7 +3722,6 @@
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`) as Svg;
 
-		const groups = data.map((r) => str(r.group));
 		const y = d3.scaleBand().domain(groups).range([0, h]).padding(0.3);
 
 		const xMin = d3.min(data, (r) => num(r.min)) ?? 0;
@@ -3486,7 +3747,8 @@
 			.attr('stroke-dasharray', '3,3');
 		vGrid.select('.domain').remove();
 
-		svg.append('g').call(d3.axisLeft(y).tickSizeOuter(0));
+		const yAxisGroup = svg.append('g').call(d3.axisLeft(y).tickSizeOuter(0));
+		truncateTickLabels(yAxisGroup, maxLabelChars);
 
 		svg
 			.append('g')
@@ -3498,7 +3760,7 @@
 					.tickFormat((d) => fmtAxis(d as number))
 			);
 
-		addTitles(svg, getYTitle(), '', w, h);
+		addTitles(svg, getYTitle(), '', w, h, margin);
 
 		const bandH = y.bandwidth();
 
@@ -3586,7 +3848,7 @@
 		styleChart(svg);
 	}
 
-	const outerCss = css({ width: '100%', backgroundColor: 'bg.primary' });
+	const outerCss = css({ width: '100%', backgroundColor: 'bg.primary', padding: '3' });
 
 	const toolbarCss = css({
 		display: 'flex',

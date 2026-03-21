@@ -11,6 +11,7 @@ from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, Sche
 from modules.analysis.models import Analysis
 from modules.compute.manager import ProcessManager
 from modules.datasource.models import DataSource
+from modules.datasource.service import is_reingestable_raw_datasource
 from modules.engine_runs.models import EngineRun
 from modules.scheduler.models import Schedule
 from modules.scheduler.schemas import ScheduleCreate, ScheduleResponse, ScheduleUpdate
@@ -18,22 +19,30 @@ from modules.scheduler.schemas import ScheduleCreate, ScheduleResponse, Schedule
 logger = logging.getLogger(__name__)
 
 
-def _resolve_schedule_target(session: Session, datasource_id: str) -> tuple[str, str | None]:
-    """Resolve a datasource to its producing analysis and tab.
+def is_schedule_target_eligible(datasource: DataSource) -> bool:
+    """Schedules can target any existing datasource."""
+    return datasource is not None
 
-    Returns: (analysis_id, tab_id) - tab_id may be None
+
+def _resolve_schedule_target(session: Session, datasource_id: str) -> tuple[str, str | None, str | None]:
+    """Resolve schedule execution path and optional analysis provenance.
+
+    Returns: (target_kind, analysis_id, tab_id)
+    target_kind: analysis | raw | datasource
     """
     datasource = session.get(DataSource, datasource_id)
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
 
     analysis_id = datasource.created_by_analysis_id
-    if not analysis_id:
-        raise ScheduleValidationError('Datasource has no provenance (not created by analysis)', details={'datasource_id': datasource_id})
+    if datasource.created_by == 'analysis' and analysis_id:
+        tab_id = datasource.config.get('analysis_tab_id') if isinstance(datasource.config, dict) else None
+        return 'analysis', analysis_id, tab_id
 
-    tab_id = datasource.config.get('analysis_tab_id') if isinstance(datasource.config, dict) else None
+    if is_reingestable_raw_datasource(datasource):
+        return 'raw', None, None
 
-    return analysis_id, tab_id
+    return 'datasource', None, None
 
 
 def _enrich_schedule_response(session: Session, schedule: Schedule) -> ScheduleResponse:
@@ -87,22 +96,15 @@ def list_schedules(
 
 
 def create_schedule(session: Session, payload: ScheduleCreate) -> ScheduleResponse:
-    """Create a new schedule targeting a specific dataset.
+    """Create a new schedule targeting a specific datasource.
 
-    The datasource must be an analysis output (created_by='analysis').
-    The analysis_id and tab_id are resolved from the datasource at execution time,
-    not stored in the schedule.
+    analysis_id and tab_id are resolved from datasource provenance at execution time.
     """
-    # Validate datasource exists and is an analysis output
+    # Validate datasource exists
     datasource = session.get(DataSource, payload.datasource_id)
     if not datasource:
         raise DataSourceNotFoundError(payload.datasource_id)
-    if datasource.created_by != 'analysis':
-        raise ScheduleValidationError(
-            'Schedules can only be created for analysis-output datasources',
-            details={'datasource_id': payload.datasource_id, 'created_by': datasource.created_by},
-        )
-    if not datasource.created_by_analysis_id:
+    if datasource.created_by == 'analysis' and not datasource.created_by_analysis_id:
         raise ScheduleValidationError('Datasource has no analysis provenance', details={'datasource_id': payload.datasource_id})
 
     # Validate dependency if provided
@@ -147,10 +149,6 @@ def update_schedule(session: Session, schedule_id: str, payload: ScheduleUpdate)
         datasource = session.get(DataSource, payload.datasource_id)
         if not datasource:
             raise DataSourceNotFoundError(payload.datasource_id)
-        if datasource.created_by != 'analysis':
-            raise ScheduleValidationError(
-                'Schedules can only target analysis-output datasources', details={'datasource_id': payload.datasource_id}
-            )
         # Update backward-compat analysis_id
         schedule.analysis_id = datasource.created_by_analysis_id
 
@@ -325,9 +323,9 @@ def execute_schedule(session: Session, manager: ProcessManager, schedule_id: str
     The LATEST version of the analysis is always used.
 
     BUILD BEHAVIOR:
-    - Single execution builds the target tab
-    - Lazyframe inputs: Query plan automatically includes upstream tab logic (single query)
-    - Exported inputs: Uses current snapshot data (may be stale, that's OK)
+    - Analysis provenance datasource: build the producing analysis tab
+    - Reingestable raw iceberg datasource: refresh external source into iceberg
+    - Other datasources: refresh schema/cache from current source and log update run
 
     Returns build results.
     """
@@ -338,7 +336,33 @@ def execute_schedule(session: Session, manager: ProcessManager, schedule_id: str
         raise ValueError(f'Schedule {schedule_id} not found')
 
     # Resolve target at execution time
-    analysis_id, _ = _resolve_schedule_target(session, schedule.datasource_id)
+    target_kind, analysis_id, _ = _resolve_schedule_target(session, schedule.datasource_id)
+
+    if target_kind == 'raw':
+        from modules.datasource import service as datasource_service
+
+        refreshed = datasource_service.refresh_external_datasource(session, schedule.datasource_id)
+        return {
+            'schedule_id': schedule_id,
+            'datasource_id': schedule.datasource_id,
+            'analysis_id': None,
+            'tab_id': None,
+            'tab_name': refreshed.name,
+            'status': 'success',
+        }
+
+    if target_kind == 'datasource':
+        from modules.datasource import service as datasource_service
+
+        refreshed = datasource_service.refresh_datasource_for_schedule(session, schedule.datasource_id)
+        return {
+            'schedule_id': schedule_id,
+            'datasource_id': schedule.datasource_id,
+            'analysis_id': None,
+            'tab_id': None,
+            'tab_name': refreshed.name,
+            'status': 'success',
+        }
 
     # Get the LATEST analysis version
     analysis = session.get(Analysis, analysis_id)
@@ -364,8 +388,8 @@ def execute_schedule(session: Session, manager: ProcessManager, schedule_id: str
 
     tab_id = target_tab.get('id', 'unknown')
     tab_name = target_tab.get('name', 'unnamed')
-    datasource = target_tab.get('datasource') if isinstance(target_tab, dict) else None
-    tab_datasource_id = datasource.get('id') if isinstance(datasource, dict) else None
+    tab_datasource = target_tab.get('datasource') if isinstance(target_tab, dict) else None
+    tab_datasource_id = tab_datasource.get('id') if isinstance(tab_datasource, dict) else None
     steps = target_tab.get('steps', [])
     output_config = target_tab.get('output') if isinstance(target_tab, dict) else None
 

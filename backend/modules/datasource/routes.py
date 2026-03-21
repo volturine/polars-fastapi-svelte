@@ -13,7 +13,6 @@ from core.error_handlers import handle_errors
 from core.exceptions import DataSourceNotFoundError, DataSourceValidationError
 from core.namespace import namespace_paths
 from core.validation import DataSourceId, PreflightId, parse_datasource_id, parse_preflight_id
-from modules.compute.operations.datasource import resolve_iceberg_metadata_path
 from modules.datasource import schemas, service
 from modules.datasource.preflight import clear_preflight, create_preflight, get_preflight
 from modules.datasource.source_types import DataSourceType
@@ -487,14 +486,14 @@ def connect_datasource(
     """Connect a new datasource (database, Iceberg, or analysis type).
 
     For database: config needs {connection_string, query, branch}.
-    For Iceberg: config needs {metadata_path} and optionally snapshot/catalog settings.
+    For Iceberg: config needs {source} where source_type is reingestable today (file/database).
     File datasources must use the /upload endpoint instead.
     Use GET /datasource to verify creation.
     """
     if datasource.source_type == DataSourceType.FILE:
         raise HTTPException(
             status_code=400,
-            detail='File datasource creation must use upload or existing Iceberg path',
+            detail='File datasource creation must use upload',
         )
     if datasource.source_type == 'duckdb':
         raise HTTPException(
@@ -534,20 +533,11 @@ def _connect_database(datasource: schemas.DataSourceCreate, session: Session) ->
 
 def _connect_iceberg(datasource: schemas.DataSourceCreate, session: Session) -> schemas.DataSourceResponse:
     iceberg_config = schemas.IcebergDataSourceConfig.model_validate(datasource.config)
-    metadata_path = iceberg_config.metadata_path
     return service.create_iceberg_datasource(
         session=session,
         name=datasource.name,
-        metadata_path=metadata_path,
-        snapshot_id=iceberg_config.snapshot_id,
-        snapshot_timestamp_ms=iceberg_config.snapshot_timestamp_ms,
-        storage_options=iceberg_config.storage_options,
-        reader=iceberg_config.reader,
-        catalog_type=iceberg_config.catalog_type,
-        catalog_uri=iceberg_config.catalog_uri,
-        warehouse=iceberg_config.warehouse,
-        namespace=iceberg_config.namespace,
-        table=iceberg_config.table,
+        source=iceberg_config.source,
+        branch=iceberg_config.branch,
     )
 
 
@@ -726,15 +716,6 @@ def get_column_stats_with_config(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DataSourceValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@router.get('/iceberg/resolve')
-@handle_errors(operation='resolve iceberg metadata', value_error_status=400)
-@deterministic_tool
-async def resolve_iceberg(metadata_path: str):
-    """Resolve an Iceberg metadata path to its canonical form. Used to validate Iceberg table locations."""
-    resolved = resolve_iceberg_metadata_path(metadata_path)
-    return {'metadata_path': resolved}
 
 
 @router.get('/file/list', response_model=schemas.FileListResponse)

@@ -1,5 +1,8 @@
 import uuid
 from pathlib import Path
+from unittest.mock import patch
+
+import polars as pl
 
 from core.namespace import namespace_paths
 from modules.datasource.models import DataSource
@@ -113,6 +116,53 @@ class TestDataSourceConnect:
         response = client.post('/api/v1/datasource/connect', json=payload)
 
         assert response.status_code == 422
+
+    def test_connect_iceberg_rejects_direct_metadata_path(self, client):
+        payload = {
+            'name': 'Bad Iceberg Connection',
+            'source_type': 'iceberg',
+            'config': {'metadata_path': '/tmp/existing-table'},
+        }
+
+        response = client.post('/api/v1/datasource/connect', json=payload)
+
+        assert response.status_code == 400
+
+    @patch('modules.datasource.service.load_datasource')
+    @patch('modules.datasource.service._write_iceberg_table')
+    def test_connect_iceberg_with_source_config_creates_iceberg(
+        self,
+        mock_write,
+        mock_load,
+        client,
+        sample_csv_file: Path,
+    ):
+        class _Snap:
+            snapshot_id = 100
+            timestamp_ms = 123456
+
+        class _Table:
+            def current_snapshot(self):
+                return _Snap()
+
+        mock_load.return_value = pl.DataFrame({'a': [1]}).lazy()
+        mock_write.return_value = _Table()
+
+        payload = {
+            'name': 'Good Iceberg Connection',
+            'source_type': 'iceberg',
+            'config': {
+                'branch': 'master',
+                'source': {'source_type': 'file', 'file_path': str(sample_csv_file), 'file_type': 'csv', 'options': {}},
+            },
+        }
+
+        response = client.post('/api/v1/datasource/connect', json=payload)
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body['source_type'] == 'iceberg'
+        assert body['config']['source']['source_type'] == 'file'
 
 
 class TestDataSourceList:

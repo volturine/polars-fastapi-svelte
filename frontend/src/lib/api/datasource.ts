@@ -72,22 +72,6 @@ export function uploadBulkFiles(
 	});
 }
 
-export function connectIcebergPath(
-	name: string,
-	metadataPath: string
-): ResultAsync<DataSource, ApiError> {
-	return apiRequest<DataSource>('/v1/datasource/connect', {
-		method: 'POST',
-		body: JSON.stringify({
-			name,
-			source_type: 'iceberg',
-			config: {
-				metadata_path: metadataPath
-			}
-		})
-	});
-}
-
 export interface FileListItem {
 	name: string;
 	path: string;
@@ -151,18 +135,6 @@ export function connectAnalysisDatasource(
 			config: { analysis_id: analysisId }
 		})
 	});
-}
-
-export function resolveIcebergMetadata(
-	metadataPath: string
-): ResultAsync<{ metadata_path: string }, ApiError> {
-	const params = new URLSearchParams({ metadata_path: metadataPath });
-	return apiRequest<{ metadata_path: string }>(
-		`/v1/datasource/iceberg/resolve?${params.toString()}`,
-		{
-			method: 'GET'
-		}
-	);
 }
 
 export function refreshDatasource(datasourceId: string): ResultAsync<DataSource, ApiError> {

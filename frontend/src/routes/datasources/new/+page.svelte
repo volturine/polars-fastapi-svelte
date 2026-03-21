@@ -2,21 +2,16 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { useQueryClient } from '@tanstack/svelte-query';
-	import {
-		uploadFile,
-		uploadBulkFiles,
-		connectDatabase,
-		connectIcebergPath
-	} from '$lib/api/datasource';
+	import { uploadFile, uploadBulkFiles, connectDatabase } from '$lib/api/datasource';
 	import { confirmExcel } from '$lib/api/excel';
 	import ExcelTableSelector from '$lib/components/common/ExcelTableSelector.svelte';
 	import type { BulkUploadResult } from '$lib/api/datasource';
-	import FileBrowser from '$lib/components/common/FileBrowser.svelte';
+
 	import { SvelteSet } from 'svelte/reactivity';
 	import { Check, X } from 'lucide-svelte';
 	import { css, cx, button, input, tabButton, label, row } from '$lib/styles/panda';
 
-	type Tab = 'file' | 'database' | 'path';
+	type Tab = 'file' | 'database';
 
 	const queryClient = useQueryClient();
 	let activeTab = $state<Tab>('file');
@@ -245,59 +240,6 @@
 		}
 	}
 
-	// Iceberg path datasource
-	let pathName = $state('');
-	let pathValue = $state('');
-	let pickerOpen = $state(false);
-
-	async function handlePathConnect() {
-		if (!pathName || !pathValue) {
-			error = 'Please fill in name and path';
-			return;
-		}
-		const trimmedPath = pathValue.trim().replace(/\/+$/, '');
-		if (!trimmedPath) {
-			error = 'Please provide the datasource root path';
-			return;
-		}
-		const parts = trimmedPath.split('/').filter((part) => part.length > 0);
-		const lastPart = parts[parts.length - 1] ?? '';
-		if (!/^[0-9a-fA-F-]{36}$/.test(lastPart)) {
-			error = 'Path must point to the datasource UUID directory';
-			return;
-		}
-		loading = true;
-		error = null;
-
-		const result = await connectIcebergPath(pathName, trimmedPath);
-		if (result.isErr()) {
-			error = result.error.message || 'Failed to create datasource';
-			loading = false;
-			return;
-		}
-		queryClient.invalidateQueries({ queryKey: ['datasources'] });
-		goto(resolve('/datasources'), { invalidateAll: true });
-	}
-
-	function openPicker() {
-		pickerOpen = true;
-	}
-
-	function closePicker() {
-		pickerOpen = false;
-	}
-
-	function handlePathSelect(next: string) {
-		pathValue = next.replace(/\/+$/, '');
-		pickerOpen = false;
-	}
-
-	function browserStart() {
-		const value = pathValue.trim();
-		if (!value) return '';
-		return value;
-	}
-
 	async function handleDatabaseConnect() {
 		if (!dbName || !connectionString || !query) {
 			error = 'Please fill in all fields';
@@ -359,12 +301,6 @@
 			onclick={() => (activeTab = 'database')}
 		>
 			External DB
-		</button>
-		<button
-			class={tabButton({ active: activeTab === 'path', size: 'lg' })}
-			onclick={() => (activeTab = 'path')}
-		>
-			Iceberg Path
 		</button>
 	</div>
 
@@ -782,57 +718,6 @@
 				<button
 					class={button({ variant: 'primary' })}
 					onclick={handleDatabaseConnect}
-					disabled={loading}
-				>
-					{loading ? 'Connecting...' : 'Connect'}
-				</button>
-			</div>
-		{:else if activeTab === 'path'}
-			<div class={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>
-				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label for="iceberg-path-name" class={label({ variant: 'field' })}> Name </label>
-					<input
-						id="iceberg-path-name"
-						type="text"
-						bind:value={pathName}
-						placeholder="Existing Iceberg"
-						disabled={loading}
-						class={input()}
-					/>
-				</div>
-				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-					<label for="iceberg-path-value" class={label({ variant: 'field' })}>
-						Table Root Path
-					</label>
-					<input
-						id="iceberg-path-value"
-						type="text"
-						bind:value={pathValue}
-						placeholder="/data/<namespace>/clean/<uuid>"
-						disabled={loading}
-						class={input()}
-					/>
-					<div class={cx(row, css({ gap: '2' }))}>
-						<button
-							class={button({ variant: 'secondary' })}
-							type="button"
-							onclick={openPicker}
-							disabled={loading}
-						>
-							Browse
-						</button>
-					</div>
-				</div>
-				{#if pickerOpen}
-					<FileBrowser
-						initialPath={browserStart()}
-						oncancel={closePicker}
-						onselect={(path) => handlePathSelect(path)}
-					/>
-				{/if}
-				<button
-					class={button({ variant: 'primary' })}
-					onclick={handlePathConnect}
 					disabled={loading}
 				>
 					{loading ? 'Connecting...' : 'Connect'}

@@ -2,21 +2,25 @@
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import select
 from sqlmodel import Session
 
-from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, ScheduleNotFoundError, ScheduleValidationError
+from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, ScheduleNotFoundError
 from modules.analysis.models import Analysis, AnalysisDataSource
 from modules.datasource.models import DataSource
+from modules.engine_runs.models import EngineRun
 from modules.scheduler.models import Schedule
 from modules.scheduler.schemas import ScheduleCreate, ScheduleUpdate
 from modules.scheduler.service import (
     create_schedule,
     delete_schedule,
+    execute_schedule,
     get_build_order,
     get_due_schedules,
+    is_schedule_target_eligible,
     list_schedules,
     mark_schedule_run,
     run_analysis_build,
@@ -248,14 +252,61 @@ class TestScheduleCrud:
         with pytest.raises(ValidationError):
             ScheduleCreate(cron_expression='0 * * * *')  # type: ignore[call-arg]
 
-    def test_create_schedule_rejected_for_non_analysis_datasource(self, test_db_session: Session, sample_datasource: DataSource):
-        """Schedules must be rejected for datasources not created by an analysis."""
+    def test_create_schedule_allows_non_analysis_datasource(self, test_db_session: Session, sample_datasource: DataSource):
+        """Schedules can target non-analysis datasources."""
         payload = ScheduleCreate(
             datasource_id=sample_datasource.id,
             cron_expression='0 * * * *',
         )
-        with pytest.raises(ScheduleValidationError, match='analysis-output'):
-            create_schedule(test_db_session, payload)
+        created = create_schedule(test_db_session, payload)
+        assert created.datasource_id == sample_datasource.id
+
+    def test_create_schedule_allows_reingestable_raw_iceberg(self, test_db_session: Session, sample_csv_file):
+        source = {'source_type': 'file', 'file_path': str(sample_csv_file), 'file_type': 'csv', 'options': {}}
+        raw = DataSource(
+            id=str(uuid.uuid4()),
+            name='Raw Iceberg',
+            source_type='iceberg',
+            config={'metadata_path': '/tmp/path', 'branch': 'master', 'source': source},
+            created_by='import',
+            created_at=datetime.now(UTC),
+        )
+        test_db_session.add(raw)
+        test_db_session.commit()
+
+        created = create_schedule(test_db_session, ScheduleCreate(datasource_id=raw.id, cron_expression='0 * * * *'))
+        assert created.datasource_id == raw.id
+
+
+class TestScheduleEligibility:
+    def test_eligible_for_analysis_output(self, output_datasource: DataSource):
+        assert is_schedule_target_eligible(output_datasource) is True
+
+    def test_eligible_for_reingestable_raw_iceberg(self, sample_csv_file):
+        raw = DataSource(
+            id=str(uuid.uuid4()),
+            name='Raw Iceberg',
+            source_type='iceberg',
+            config={
+                'metadata_path': '/tmp/path',
+                'branch': 'master',
+                'source': {'source_type': 'file', 'file_path': str(sample_csv_file), 'file_type': 'csv', 'options': {}},
+            },
+            created_by='import',
+            created_at=datetime.now(UTC),
+        )
+        assert is_schedule_target_eligible(raw) is True
+
+    def test_eligible_for_non_reingestable_raw(self):
+        datasource = DataSource(
+            id=str(uuid.uuid4()),
+            name='Raw Iceberg',
+            source_type='iceberg',
+            config={'metadata_path': '/tmp/path', 'branch': 'master', 'source': {'source_type': 's3'}},
+            created_by='import',
+            created_at=datetime.now(UTC),
+        )
+        assert is_schedule_target_eligible(datasource) is True
 
     def test_create_schedule_rejected_for_nonexistent_datasource(self, test_db_session: Session):
         """Schedules must be rejected when datasource does not exist."""
@@ -654,6 +705,71 @@ class TestRunAnalysisBuild:
         assert len(result_all['results']) == 2
 
 
+class TestExecuteSchedule:
+    @patch('modules.datasource.service.refresh_external_datasource')
+    def test_execute_schedule_for_reingestable_raw_runs_refresh(
+        self,
+        mock_refresh,
+        test_db_session: Session,
+        sample_csv_file,
+    ):
+        source = {'source_type': 'file', 'file_path': str(sample_csv_file), 'file_type': 'csv', 'options': {}}
+        raw = DataSource(
+            id=str(uuid.uuid4()),
+            name='Raw Iceberg',
+            source_type='iceberg',
+            config={'metadata_path': '/tmp/path', 'branch': 'master', 'source': source},
+            created_by='import',
+            created_at=datetime.now(UTC),
+        )
+        test_db_session.add(raw)
+        test_db_session.commit()
+
+        schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=raw.id, cron_expression='0 * * * *'))
+
+        mock_refresh.return_value = raw
+        manager = MagicMock()
+        result = execute_schedule(test_db_session, manager, schedule.id)
+
+        assert result['status'] == 'success'
+        assert result['datasource_id'] == raw.id
+        assert result['analysis_id'] is None
+        mock_refresh.assert_called_once_with(test_db_session, raw.id)
+
+    def test_execute_schedule_for_plain_datasource_runs_generic_refresh(
+        self,
+        test_db_session: Session,
+        sample_datasource: DataSource,
+    ):
+        schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=sample_datasource.id, cron_expression='0 * * * *'))
+
+        manager = MagicMock()
+        result = execute_schedule(test_db_session, manager, schedule.id)
+
+        assert result['status'] == 'success'
+        assert result['datasource_id'] == sample_datasource.id
+        assert result['analysis_id'] is None
+
+        refreshed = test_db_session.get(DataSource, sample_datasource.id)
+        assert refreshed is not None
+        assert refreshed.schema_cache is not None
+        refresh_meta = refreshed.config.get('refresh') if isinstance(refreshed.config, dict) else None
+        assert isinstance(refresh_meta, dict)
+        assert refresh_meta.get('mode') == 'schedule_schema_refresh'
+
+        runs = (
+            test_db_session.execute(
+                select(EngineRun).where(EngineRun.datasource_id == sample_datasource.id)  # type: ignore[arg-type]
+            )
+            .scalars()
+            .all()
+        )
+        assert len(runs) >= 1
+        latest = sorted(runs, key=lambda row: row.created_at)[-1]
+        assert latest.kind == 'datasource_update'
+        assert latest.triggered_by == 'schedule'
+
+
 # ---------------------------------------------------------------------------
 # API Routes
 # ---------------------------------------------------------------------------
@@ -744,14 +860,34 @@ class TestScheduleRoutes:
         response = client.delete(f'/api/v1/schedules/{missing_id}')
         assert response.status_code == 404
 
-    def test_create_rejected_for_non_analysis_datasource(self, client, sample_datasource: DataSource):
-        """API returns 400 when schedule targets an import datasource."""
+    def test_create_allows_non_analysis_datasource(self, client, sample_datasource: DataSource):
+        """API allows schedule creation for non-analysis datasource targets."""
         payload = {
             'datasource_id': sample_datasource.id,
             'cron_expression': '0 * * * *',
         }
         response = client.post('/api/v1/schedules', json=payload)
-        assert response.status_code == 400
+        assert response.status_code == 200
+
+    def test_create_allows_reingestable_raw_iceberg(self, client, test_db_session: Session, sample_csv_file):
+        raw = DataSource(
+            id=str(uuid.uuid4()),
+            name='Raw Iceberg',
+            source_type='iceberg',
+            config={
+                'metadata_path': '/tmp/path',
+                'branch': 'master',
+                'source': {'source_type': 'file', 'file_path': str(sample_csv_file), 'file_type': 'csv', 'options': {}},
+            },
+            created_by='import',
+            created_at=datetime.now(UTC),
+        )
+        test_db_session.add(raw)
+        test_db_session.commit()
+
+        payload = {'datasource_id': raw.id, 'cron_expression': '0 * * * *'}
+        response = client.post('/api/v1/schedules', json=payload)
+        assert response.status_code == 200
 
     def test_create_rejected_for_nonexistent_datasource(self, client):
         """API returns 404 when schedule targets a datasource that does not exist."""

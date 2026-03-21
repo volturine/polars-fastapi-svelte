@@ -10,7 +10,6 @@ import type {
 	FilterConfig,
 	GroupByConfig,
 	UnionByNameConfig,
-	ValueCountsConfig,
 	UnpivotConfig,
 	ExplodeConfig,
 	PivotConfig,
@@ -29,7 +28,7 @@ export type { DropConfig as DropConfigData } from '$lib/types/step-schemas.gener
 export type { FilterConfig as FilterConfigData } from '$lib/types/step-schemas.generated';
 export type { GroupByConfig as GroupByConfigData } from '$lib/types/step-schemas.generated';
 export type { UnionByNameConfig as UnionByNameConfigData } from '$lib/types/step-schemas.generated';
-export type { ValueCountsConfig as ValueCountsConfigData } from '$lib/types/step-schemas.generated';
+
 export type { UnpivotConfig as UnpivotConfigData } from '$lib/types/step-schemas.generated';
 export type { ExplodeConfig as ExplodeConfigData } from '$lib/types/step-schemas.generated';
 export type { PivotConfig as PivotConfigData } from '$lib/types/step-schemas.generated';
@@ -56,7 +55,6 @@ export type StepConfig =
 	| FilterConfig
 	| GroupByConfig
 	| UnionByNameConfig
-	| ValueCountsConfig
 	| UnpivotConfig
 	| ExplodeConfig
 	| PivotConfig
@@ -98,11 +96,6 @@ const defaultConfigs: Record<string, StepConfig> = {
 		sources: [],
 		allow_missing: true
 	} satisfies UnionByNameConfig,
-
-	value_counts: {
-		column: '',
-		sort: true
-	} satisfies ValueCountsConfig,
 
 	unpivot: {
 		id_vars: [],
@@ -226,8 +219,7 @@ const defaultConfigs: Record<string, StepConfig> = {
 	fill_null: {},
 	deduplicate: {},
 	string_transform: {},
-	timeseries: {},
-	null_count: {}
+	timeseries: {}
 };
 
 /**

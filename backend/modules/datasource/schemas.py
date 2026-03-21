@@ -175,18 +175,8 @@ class DatabaseDataSourceConfig(BaseModel):
 
 
 class IcebergDataSourceConfig(BaseModel):
-    metadata_path: str
     branch: str = 'master'
-    snapshot_id: str | None = None
-    snapshot_timestamp_ms: int | None = None
-    storage_options: dict | None = None
-    reader: str | None = None
-    catalog_type: str | None = None
-    catalog_uri: str | None = None
-    warehouse: str | None = None
-    namespace: str | None = None
-    table: str | None = None
-    source: dict | None = None
+    source: dict
     refresh: dict | None = None
 
     model_config = ConfigDict(from_attributes=True)

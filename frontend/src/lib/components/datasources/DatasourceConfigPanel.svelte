@@ -475,6 +475,16 @@
 			? (ds.created_by_analysis_id ?? (ds.config?.analysis_id as string | undefined) ?? null)
 			: null
 	);
+	const rawSchedulable = $derived.by(() => {
+		if (ds.source_type !== 'iceberg') return false;
+		if (ds.created_by === 'analysis') return false;
+		const source = (ds.config as Record<string, unknown>)?.source as
+			| Record<string, unknown>
+			| undefined;
+		if (!source) return false;
+		const st = source.source_type;
+		return st === 'file' || st === 'database';
+	});
 
 	function formatDuration(ms: number | null): string {
 		if (ms === null) return '-';
@@ -624,7 +634,7 @@
 				{/if}
 			{/if}
 		</button>
-		{#if scheduleAnalysisId}
+		{#if scheduleAnalysisId || rawSchedulable}
 			<button
 				class={tabButton({ active: activeTab === 'schedules' })}
 				onclick={() => (activeTab = 'schedules')}

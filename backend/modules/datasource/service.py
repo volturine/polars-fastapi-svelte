@@ -20,7 +20,7 @@ from sqlmodel import Session, col
 
 from core.exceptions import DataSourceConnectionError, DataSourceNotFoundError, DataSourceValidationError, FileError
 from core.namespace import get_namespace, namespace_paths
-from modules.compute.operations.datasource import load_datasource, resolve_iceberg_branch_metadata_path
+from modules.compute.operations.datasource import load_datasource
 from modules.datasource.models import DataSource
 from modules.datasource.schemas import (
     ColumnSchema,
@@ -90,25 +90,6 @@ def _build_iceberg_config(paths, target_path: Path, branch: str, source_config: 
         'namespace_name': get_namespace(),
         'refresh': None,
     }
-
-
-def _validate_clean_iceberg_path(metadata_path: str) -> tuple[str, str]:
-    resolved = Path(metadata_path)
-    if not resolved.name.endswith('.metadata.json'):
-        raise DataSourceValidationError('Iceberg metadata_path must point to a metadata.json file')
-    table_root = resolved.parents[1]
-    uuid_dir = table_root.parent
-    clean_dir = namespace_paths().clean_dir
-    if uuid_dir.parent != clean_dir:
-        raise DataSourceValidationError('Iceberg datasource must be stored under the clean directory')
-    try:
-        uuid.UUID(uuid_dir.name)
-    except ValueError as exc:
-        raise DataSourceValidationError('Iceberg datasource path must include a UUID directory') from exc
-    branch_name = table_root.name
-    if not branch_name:
-        raise DataSourceValidationError('Iceberg datasource path is missing a branch name')
-    return str(table_root), branch_name
 
 
 def create_file_datasource(
@@ -507,6 +488,7 @@ def _detect_end_row(sheet, start_row: int, start_col: int, end_col: int) -> int:
     if max_row <= start_row:
         return start_row
     for row_index in range(start_row + 1, max_row + 1):
+        values: list[object | None] = []
         for cell in sheet.iter_rows(min_row=row_index, max_row=row_index, min_col=start_col + 1, max_col=end_col + 1):
             values = [c.value for c in cell]
         if all(value is None or str(value).strip() == '' for value in values):
@@ -603,79 +585,55 @@ def create_database_datasource(
 def create_iceberg_datasource(
     session: Session,
     name: str,
-    metadata_path: str,
-    snapshot_id: str | None = None,
-    snapshot_timestamp_ms: int | None = None,
-    storage_options: dict | None = None,
-    reader: str | None = None,
-    catalog_type: str | None = None,
-    catalog_uri: str | None = None,
-    warehouse: str | None = None,
-    namespace: str | None = None,
-    table: str | None = None,
-    branch: str | None = None,
+    source: dict,
+    branch: str = 'master',
 ) -> DataSourceResponse:
-    datasource_id = str(uuid.uuid4())
-
-    normalized_path = _normalize_iceberg_path(metadata_path)
-    try:
-        resolved_metadata = resolve_iceberg_branch_metadata_path(normalized_path, None)
-    except ValueError as exc:
-        raise DataSourceValidationError(str(exc), details={'metadata_path': metadata_path}) from exc
-
-    if snapshot_id:
-        try:
-            int(snapshot_id)
-        except (TypeError, ValueError) as exc:
-            raise DataSourceValidationError('Snapshot ID must be an integer', details={'snapshot_id': snapshot_id}) from exc
-
-    config = {
-        'metadata_path': normalized_path,
-        'snapshot_id': snapshot_id,
-        'snapshot_timestamp_ms': snapshot_timestamp_ms,
-        'storage_options': storage_options,
-        'reader': reader,
-    }
-    paths = namespace_paths()
-    catalog_config = {
-        'type': catalog_type or 'sql',
-        'uri': catalog_uri or f'sqlite:///{paths.clean_dir / "catalog.db"}',
-        'warehouse': warehouse or f'file://{paths.clean_dir}',
-    }
-    namespace_value = namespace or 'clean'
-    table_value = table
-    if not table_value:
-        table_value = Path(resolved_metadata).parent.parent.name
-    try:
-        catalog = load_catalog('local', **catalog_config)
-        catalog.create_namespace_if_not_exists(namespace_value)
-        identifier = f'{namespace_value}.{table_value}'
-        if catalog.table_exists(identifier):
-            existing = catalog.load_table(identifier)
-            if existing.metadata_location != resolved_metadata:
-                raise DataSourceValidationError(
-                    'Iceberg catalog table already exists with different metadata',
-                    details={'metadata_path': normalized_path, 'namespace': namespace_value, 'table': table_value},
-                )
-        else:
-            catalog.register_table(identifier, resolved_metadata)
-    except Exception as exc:
+    source_type = source.get('source_type') if isinstance(source, dict) else None
+    if source_type not in {DataSourceType.FILE, DataSourceType.DATABASE}:
         raise DataSourceValidationError(
-            f'Failed to register Iceberg table in catalog: {exc}',
-            details={'metadata_path': normalized_path, 'namespace': namespace_value, 'table': table_value},
-        ) from exc
-    config['catalog_type'] = catalog_config['type']
-    config['catalog_uri'] = catalog_config['uri']
-    config['warehouse'] = catalog_config['warehouse']
-    table_root, branch_from_path = _validate_clean_iceberg_path(resolved_metadata)
-    if branch and branch != branch_from_path:
-        raise DataSourceValidationError('Iceberg branch does not match table path')
-    config['metadata_path'] = table_root
-    resolved_branch = branch or branch_from_path
-    config['branch'] = resolved_branch
-    config['namespace'] = namespace_value
-    config['table'] = table_value
-    config['namespace_name'] = get_namespace()
+            'Iceberg datasource source_type is not supported for ingestion',
+            details={'source_type': source_type},
+        )
+    if source_type == DataSourceType.DATABASE:
+        connection_string = source.get('connection_string')
+        query = source.get('query')
+        if not connection_string or not query:
+            raise DataSourceValidationError(
+                'Datasource source is missing connection details',
+                details={'source_type': source_type},
+            )
+        try:
+            lazy = load_datasource(
+                {
+                    'source_type': DataSourceType.DATABASE,
+                    'connection_string': connection_string,
+                    'query': query,
+                }
+            )
+        except Exception as exc:
+            raise DataSourceConnectionError(
+                'Failed to query database datasource',
+                details={'source_type': source_type},
+            ) from exc
+    else:
+        try:
+            lazy = load_datasource(source)
+        except Exception as exc:
+            raise DataSourceConnectionError(
+                'Failed to read file datasource',
+                details={'source_type': source_type},
+            ) from exc
+
+    datasource_id = str(uuid.uuid4())
+    paths = namespace_paths()
+    branch_name = branch or 'master'
+    target_path = _prepare_clean_target(paths.clean_dir, datasource_id, branch_name)
+    snapshot = _write_iceberg_table(lazy, target_path, build_mode='recreate')
+    config = _build_iceberg_config(paths, target_path, branch=branch_name, source_config=source)
+    current_snapshot = snapshot.current_snapshot() if snapshot else None
+    if current_snapshot:
+        config['snapshot_id'] = str(current_snapshot.snapshot_id)
+        config['snapshot_timestamp_ms'] = int(current_snapshot.timestamp_ms)
 
     datasource = DataSource(
         id=datasource_id,
@@ -689,14 +647,13 @@ def create_iceberg_datasource(
     session.commit()
     session.refresh(datasource)
 
-    _log_datasource_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch=resolved_branch)
+    _log_datasource_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch=branch_name)
 
     try:
         schema_info = _extract_schema(datasource)
         datasource.schema_cache = schema_info.model_dump()
         session.commit()
         session.refresh(datasource)
-        logger.info(f'Cached schema for datasource {datasource_id}: {len(schema_info.columns)} columns, {schema_info.row_count} rows')
     except Exception as e:
         session.rollback()
         raise DataSourceValidationError(
@@ -704,7 +661,7 @@ def create_iceberg_datasource(
             details={'datasource_id': datasource_id},
         ) from e
 
-    logger.info(f'Created Iceberg datasource {datasource_id} ({name})')
+    logger.info(f'Created Iceberg datasource {datasource_id} ({name}) from source {source_type}')
     return DataSourceResponse.model_validate(datasource)
 
 
@@ -729,7 +686,8 @@ def refresh_external_datasource(session: Session, datasource_id: str) -> DataSou
             'Datasource source is not refreshable',
             details={'datasource_id': datasource_id, 'source_type': source_type},
         )
-    branch = source.get('branch', 'master')
+    branch_raw = datasource.config.get('branch', source.get('branch', 'master'))
+    branch = branch_raw if isinstance(branch_raw, str) and branch_raw else 'master'
     if source_type == DataSourceType.DATABASE:
         connection_string = source.get('connection_string')
         query = source.get('query')
@@ -766,27 +724,113 @@ def refresh_external_datasource(session: Session, datasource_id: str) -> DataSou
             details={'datasource_id': datasource_id},
         )
     paths = namespace_paths()
-    target_path = _prepare_clean_target(paths.clean_dir, datasource_id, branch)
+    target_path = Path(metadata_path)
+    if target_path.name != branch:
+        target_path = _prepare_clean_target(paths.clean_dir, datasource_id, branch)
     snapshot = _write_iceberg_table(lazy, target_path, build_mode='recreate')
 
     current_snapshot = snapshot.current_snapshot() if snapshot else None
+    next_config = dict(datasource.config)
     if current_snapshot:
         snapshot_id = current_snapshot.snapshot_id
         snapshot_ts = current_snapshot.timestamp_ms
-        datasource.config['snapshot_id'] = str(snapshot_id)
-        datasource.config['snapshot_timestamp_ms'] = int(snapshot_ts)
-    datasource.config['branch'] = branch
-    datasource.config['source'] = source
-    datasource.config['refresh'] = {
+        next_config['snapshot_id'] = str(snapshot_id)
+        next_config['snapshot_timestamp_ms'] = int(snapshot_ts)
+    next_config['branch'] = branch
+    next_config['metadata_path'] = str(target_path)
+    next_config['source'] = source
+    next_config['refresh'] = {
         'refreshed_at': datetime.now(UTC).replace(tzinfo=None).isoformat(),
     }
+    datasource.config = next_config
     datasource.schema_cache = None
     session.add(datasource)
     session.commit()
     session.refresh(datasource)
 
-    _log_datasource_create(session, datasource.id, datasource.name, DataSourceType.ICEBERG, datasource.config, branch=branch)
+    _log_datasource_update(session, datasource.id, datasource.name, datasource.config, branch=branch)
     return DataSourceResponse.model_validate(datasource)
+
+
+def refresh_datasource_for_schedule(session: Session, datasource_id: str) -> DataSourceResponse:
+    datasource = session.get(DataSource, datasource_id)
+    if not datasource:
+        raise DataSourceNotFoundError(datasource_id)
+
+    if is_reingestable_raw_datasource(datasource):
+        return refresh_external_datasource(session, datasource_id)
+
+    schema = _extract_schema(datasource)
+    next_config = dict(datasource.config) if isinstance(datasource.config, dict) else {}
+    next_config['refresh'] = {
+        'refreshed_at': datetime.now(UTC).replace(tzinfo=None).isoformat(),
+        'mode': 'schedule_schema_refresh',
+    }
+
+    datasource.config = next_config
+    datasource.schema_cache = schema.model_dump()
+    session.add(datasource)
+    session.commit()
+    session.refresh(datasource)
+
+    payload = engine_run_service.create_engine_run_payload(
+        analysis_id=None,
+        datasource_id=datasource.id,
+        kind='datasource_update',
+        status='success',
+        request_json={
+            'name': datasource.name,
+            'source_type': datasource.source_type,
+            'mode': 'schedule_schema_refresh',
+            'config': datasource.config,
+        },
+        result_json={
+            'datasource_id': datasource.id,
+            'datasource_name': datasource.name,
+            'schema_columns': len(schema.columns),
+            'row_count': schema.row_count,
+        },
+        triggered_by='schedule',
+    )
+    engine_run_service.create_engine_run(session, payload)
+    return DataSourceResponse.model_validate(datasource)
+
+
+def is_reingestable_raw_datasource(datasource: DataSource) -> bool:
+    if datasource.source_type != DataSourceType.ICEBERG:
+        return False
+    if datasource.created_by == 'analysis':
+        return False
+    if not isinstance(datasource.config, dict):
+        return False
+    source = datasource.config.get('source')
+    if not isinstance(source, dict):
+        return False
+    source_type = source.get('source_type')
+    return source_type in {DataSourceType.FILE, DataSourceType.DATABASE}
+
+
+def _log_datasource_update(
+    session: Session,
+    datasource_id: str,
+    name: str,
+    config: dict,
+    branch: str,
+) -> None:
+    payload = engine_run_service.create_engine_run_payload(
+        analysis_id=None,
+        datasource_id=datasource_id,
+        kind='datasource_update',
+        status='success',
+        request_json={
+            'name': name,
+            'source_type': DataSourceType.ICEBERG.value,
+            'config': config,
+            'iceberg_options': {'branch': branch},
+        },
+        result_json={'datasource_id': datasource_id, 'datasource_name': name},
+    )
+    engine_run_service.create_engine_run(session, payload)
 
 
 def _log_datasource_create(
@@ -1191,21 +1235,6 @@ def _build_schema_diff(schema_a: pl.Schema, schema_b: pl.Schema) -> list[SchemaD
         )
 
     return diffs
-
-
-def _normalize_iceberg_path(metadata_path: str) -> str:
-    path = Path(metadata_path)
-    if path.suffix == '.db':
-        raise DataSourceValidationError('Iceberg metadata_path must be a table directory, not catalog.db')
-    normalized = path if path.name.endswith('.metadata.json') else path
-    parts = [normalized, *normalized.parents]
-    if any(part.is_symlink() for part in parts):
-        raise DataSourceValidationError('Iceberg metadata_path cannot be a symlink')
-    resolved = normalized.resolve()
-    data_root = Path(os.path.realpath(namespace_paths().base_dir.resolve()))
-    if data_root not in resolved.parents and data_root != resolved:
-        raise DataSourceValidationError('Iceberg metadata_path must be inside data directory')
-    return str(resolved)
 
 
 def get_datasource(session: Session, datasource_id: str) -> DataSourceResponse:

@@ -142,14 +142,6 @@ export interface TopKConfigData {
 	descending: boolean;
 }
 
-export type NullCountConfigData = Record<string, never>;
-
-export interface ValueCountsConfigData {
-	column: string;
-	normalize?: boolean;
-	sort?: boolean;
-}
-
 export interface UnpivotConfigData {
 	index?: string[];
 	on?: string[];
@@ -287,8 +279,6 @@ export type OperationConfig =
 	| SampleConfigData
 	| LimitConfigData
 	| TopKConfigData
-	| NullCountConfigData
-	| ValueCountsConfigData
 	| UnpivotConfigData
 	| UnionByNameConfigData
 	| PlotConfigData

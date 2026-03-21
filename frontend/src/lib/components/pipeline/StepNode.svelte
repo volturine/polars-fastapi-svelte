@@ -14,7 +14,7 @@
 	} from '$lib/api/compute';
 	import { applySteps } from '$lib/utils/pipeline';
 	import { hashPipeline } from '$lib/utils/hash';
-	import { GripVertical, Hash, RefreshCw } from 'lucide-svelte';
+	import { GripVertical, Hash, RefreshCw, Copy } from 'lucide-svelte';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
 	import { schemaStore } from '$lib/stores/schema.svelte';
@@ -40,7 +40,7 @@
 
 	let {
 		step,
-		index,
+		index: _index,
 		analysisId,
 		datasourceId,
 		allSteps = [],
@@ -62,16 +62,16 @@
 	);
 
 	const nodeWidthClass = $derived.by(() => {
-		if (!isChart || !chartWidth || chartWidth === 'normal') return css({ width: '60%' });
-		if (chartWidth === 'wide') return css({ width: '80%' });
-		return css({ width: '95%' });
+		if (!isChart || !chartWidth || chartWidth === 'normal') return css({ width: '55%' });
+		if (chartWidth === 'wide') return css({ width: '75%' });
+		return css({ width: '90%' });
 	});
 
 	const chartHeightPx = $derived.by(() => {
-		if (chartHeight === 'small') return 200;
-		if (chartHeight === 'large') return 450;
-		if (chartHeight === 'xlarge') return 600;
-		return 300;
+		if (chartHeight === 'small') return 260;
+		if (chartHeight === 'large') return 520;
+		if (chartHeight === 'xlarge') return 680;
+		return 380;
 	});
 
 	// Derived values from declarative config
@@ -202,6 +202,21 @@
 		rowCountErrors.delete(rowCountKey);
 	}
 
+	let copyFeedback = $state(false);
+
+	async function copyStepToClipboard() {
+		const payload = JSON.stringify({
+			type: step.type,
+			config: step.config,
+			is_applied: (step as PipelineStep & { is_applied?: boolean }).is_applied
+		});
+		await navigator.clipboard.writeText(payload);
+		copyFeedback = true;
+		window.setTimeout(() => {
+			copyFeedback = false;
+		}, 1200);
+	}
+
 	let dragging = $state(false);
 	let clickConsumed = $state(false);
 	let longPressTimer = $state<number | null>(null);
@@ -324,29 +339,13 @@
 		css({
 			position: 'relative',
 			contentVisibility: 'auto',
-			containIntrinsicSize: isChart || step.type === 'view' ? 'auto 500px' : 'auto 200px',
+			containIntrinsicSize: isChart || step.type === 'view' ? 'auto 600px' : 'auto 200px',
 			...(step.type === 'view' ? { width: '85%', minWidth: 'listLg' } : {})
 		})
 	)}
 	data-step-id={step.id}
 	data-step-type={step.type}
 >
-	<div
-		class={cx(
-			css({
-				position: 'absolute',
-				left: '50%',
-				top: '-1',
-				zIndex: '2',
-				height: 'dot',
-				width: 'dot',
-				borderWidth: '2',
-				transform: 'translateX(-50%)',
-				backgroundColor: 'bg.indicator'
-			})
-		)}
-	></div>
-
 	<div
 		class={cx(
 			'step-content',
@@ -423,9 +422,25 @@
 			>
 				{label}
 			</span>
-			<span class={css({ flexShrink: '0', fontSize: '2xs', color: 'fg.faint' })}>
-				#{index + 1}
-			</span>
+			<button
+				class={css({
+					flexShrink: '0',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					cursor: 'pointer',
+					border: 'none',
+					backgroundColor: 'transparent',
+					padding: '0.5',
+					color: copyFeedback ? 'success.fg' : 'fg.faint',
+					_hover: { color: 'fg.primary', backgroundColor: 'bg.hover' }
+				})}
+				onclick={copyStepToClipboard}
+				type="button"
+				title="Copy step to clipboard"
+			>
+				<Copy size={11} />
+			</button>
 		</div>
 
 		<div class={css({ paddingX: '4', paddingY: '3' })}>
@@ -718,18 +733,4 @@
 			</div>
 		{/if}
 	</div>
-
-	<div
-		class={css({
-			position: 'absolute',
-			left: '50%',
-			bottom: '-1',
-			zIndex: '2',
-			height: 'dot',
-			width: 'dot',
-			borderWidth: '2',
-			transform: 'translateX(-50%)',
-			backgroundColor: 'bg.indicator'
-		})}
-	></div>
 </div>

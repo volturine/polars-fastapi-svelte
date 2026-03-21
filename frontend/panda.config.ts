@@ -211,7 +211,7 @@ export default defineConfig({
 				sizes: {
 					operationsPanel: { value: '460px' },
 					datasourcePanel: { value: '520px' },
-					pipelineConnection: { value: '18px' },
+					pipelineConnection: { value: '12px' },
 					px: { value: '1px' },
 					page: { value: '75rem' },
 					pageWide: { value: '68.75rem' },

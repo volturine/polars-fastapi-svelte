@@ -20,7 +20,6 @@
 		SampleConfigData,
 		LimitConfigData,
 		TopKConfigData,
-		ValueCountsConfigData,
 		UnpivotConfigData
 	} from '$lib/types/operation-config';
 	import { schemaStore } from '$lib/stores/schema.svelte';
@@ -54,8 +53,7 @@
 	import SampleConfig from '$lib/components/operations/SampleConfig.svelte';
 	import LimitConfig from '$lib/components/operations/LimitConfig.svelte';
 	import TopKConfig from '$lib/components/operations/TopKConfig.svelte';
-	import NullCountConfig from '$lib/components/operations/NullCountConfig.svelte';
-	import ValueCountsConfig from '$lib/components/operations/ValueCountsConfig.svelte';
+
 	import UnpivotConfig from '$lib/components/operations/UnpivotConfig.svelte';
 	import PlotConfig from '$lib/components/operations/PlotConfig.svelte';
 	import NotificationConfig from '$lib/components/operations/NotificationConfig.svelte';
@@ -459,13 +457,6 @@
 				<LimitConfig bind:config={draftConfig as unknown as LimitConfigData} />
 			{:else if step.type === 'topk'}
 				<TopKConfig schema={inputSchema} bind:config={draftConfig as unknown as TopKConfigData} />
-			{:else if step.type === 'null_count'}
-				<NullCountConfig bind:config={draftConfig as unknown as Record<string, never>} />
-			{:else if step.type === 'value_counts'}
-				<ValueCountsConfig
-					schema={inputSchema}
-					bind:config={draftConfig as unknown as ValueCountsConfigData}
-				/>
 			{:else if step.type === 'unpivot'}
 				<UnpivotConfig
 					schema={inputSchema}

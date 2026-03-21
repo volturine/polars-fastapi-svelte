@@ -7,6 +7,14 @@
 	import ConnectionLine from './ConnectionLine.svelte';
 	import DatasourceNode from './DatasourceNode.svelte';
 	import { css, cx } from '$lib/styles/panda';
+	import { ClipboardPaste, Plus, Eye } from 'lucide-svelte';
+	import { stepTypes } from './utils';
+
+	export interface ClipboardStep {
+		type: string;
+		config: Record<string, unknown>;
+		is_applied?: boolean;
+	}
 
 	interface Props {
 		steps: PipelineStep[];
@@ -20,6 +28,7 @@
 		onStepDelete: (id: string) => void;
 		onStepToggle: (id: string) => void;
 		onInsertStep: (type: string, target: DropTarget) => void;
+		onPasteStep: (payload: ClipboardStep, target: DropTarget) => void;
 		onMoveStep: (stepId: string, target: DropTarget) => void;
 		onChangeDatasource?: () => void;
 		onRenameTab?: (name: string) => void;
@@ -37,6 +46,7 @@
 		onStepDelete,
 		onStepToggle,
 		onInsertStep,
+		onPasteStep,
 		onMoveStep,
 		onChangeDatasource: _onChangeDatasource,
 		onRenameTab: _onRenameTab
@@ -47,6 +57,7 @@
 	const activeTabId = $derived(activeTab?.id ?? null);
 
 	let lastTabId = $state<string | null>(null);
+	let pasteError = $state<string | null>(null);
 
 	// $effect: drag reset is a UI side effect not derivable from state
 	// Subscription: $derived can't reset drag UI on tab change.
@@ -61,12 +72,51 @@
 		drag.clearTarget();
 	});
 
+	// Timer: clear paste error after 3s — $derived can't schedule timeouts
+	$effect(() => {
+		if (!pasteError) return;
+		const timer = window.setTimeout(() => (pasteError = null), 3000);
+		return () => window.clearTimeout(timer);
+	});
+
 	function buildTarget(index: number): DropTarget {
 		return {
 			index,
 			parentId: index === 0 ? null : (steps[index - 1]?.id ?? null),
 			nextId: steps[index]?.id ?? null
 		};
+	}
+
+	function isClipboardStep(data: unknown): data is ClipboardStep {
+		if (typeof data !== 'object' || data === null) return false;
+		const obj = data as Record<string, unknown>;
+		if (typeof obj.type !== 'string') return false;
+		if (typeof obj.config !== 'object' || obj.config === null) return false;
+		return true;
+	}
+
+	async function handlePaste(index: number) {
+		try {
+			const text = await navigator.clipboard.readText();
+			const parsed: unknown = JSON.parse(text);
+			if (!isClipboardStep(parsed)) {
+				pasteError = 'Clipboard does not contain a valid step';
+				return;
+			}
+			if (!(parsed.type in stepTypes) && !parsed.type.startsWith('plot_')) {
+				pasteError = `Unknown step type: ${parsed.type}`;
+				return;
+			}
+			const target = buildTarget(index);
+			onPasteStep(parsed, target);
+		} catch {
+			pasteError = 'Could not read clipboard';
+		}
+	}
+
+	function handleInsertView(index: number) {
+		const target = buildTarget(index);
+		onInsertStep('view', target);
 	}
 
 	function shouldShowInsert(index: number): boolean {
@@ -228,6 +278,47 @@
 		const intervalId = window.setInterval(handleScroll, 16);
 		return () => window.clearInterval(intervalId);
 	});
+
+	const insertControls = cx(
+		'insert-controls-group',
+		css({
+			display: 'flex',
+			alignItems: 'center',
+			justifyContent: 'center',
+			gap: '0.5',
+			position: 'absolute',
+			inset: '0',
+			opacity: '0',
+			transitionProperty: 'opacity',
+			transitionDuration: '150ms',
+			zIndex: '2'
+		})
+	);
+
+	const insertBtn = css({
+		display: 'inline-flex',
+		alignItems: 'center',
+		justifyContent: 'center',
+		padding: '0.5',
+		borderRadius: 'xs',
+		color: 'fg.faint',
+		backgroundColor: 'transparent',
+		border: 'none',
+		cursor: 'pointer',
+		transitionProperty: 'color',
+		transitionDuration: '150ms',
+		_hover: {
+			color: 'fg.primary'
+		}
+	});
+
+	const inertPlus = css({
+		display: 'inline-flex',
+		alignItems: 'center',
+		justifyContent: 'center',
+		padding: '0.5',
+		color: 'fg.faint'
+	});
 </script>
 
 <div
@@ -272,7 +363,7 @@
 						cursor: canDrop ? 'pointer' : 'default',
 						flexDirection: 'column',
 						alignItems: 'center',
-						paddingY: '2'
+						paddingY: '0'
 					})
 				)}
 				class:ready={canDrop}
@@ -284,13 +375,13 @@
 				ondragleave={handleDragLeave}
 				ondrop={(e) => handleDrop(e, 0)}
 			>
-				<ConnectionLine
-					fromStepIndex={-1}
-					toStepIndex={0}
-					totalSteps={steps.length + 1}
-					highlighted={hoverIndex === 0}
-				/>
 				{#if canDrop}
+					<ConnectionLine
+						fromStepIndex={-1}
+						toStepIndex={0}
+						totalSteps={steps.length + 1}
+						highlighted={hoverIndex === 0}
+					/>
 					<div
 						class={css({
 							marginY: '2',
@@ -334,6 +425,43 @@
 							highlighted={hoverIndex === 0}
 						/>
 					{/if}
+				{:else}
+					<div
+						class={css({
+							position: 'relative',
+							display: 'flex',
+							flexDirection: 'column',
+							alignItems: 'center',
+							justifyContent: 'center'
+						})}
+					>
+						<ConnectionLine
+							fromStepIndex={-1}
+							toStepIndex={0}
+							totalSteps={steps.length + 1}
+							highlighted={false}
+							arrow={false}
+						/>
+						{#if steps.length > 0}
+							<ConnectionLine
+								fromStepIndex={-1}
+								toStepIndex={0}
+								totalSteps={steps.length + 1}
+								highlighted={false}
+							/>
+						{/if}
+						<div class={insertControls}>
+							<button class={insertBtn} title="Insert view" onclick={() => handleInsertView(0)}>
+								<Eye size={14} />
+							</button>
+							<div class={inertPlus} aria-hidden="true">
+								<Plus size={14} />
+							</div>
+							<button class={insertBtn} title="Paste step" onclick={() => handlePaste(0)}>
+								<ClipboardPaste size={14} />
+							</button>
+						</div>
+					</div>
 				{/if}
 			</div>
 		{:else if steps.length > 0}
@@ -342,7 +470,7 @@
 					display: 'flex',
 					alignItems: 'center',
 					justifyContent: 'center',
-					paddingY: '2'
+					paddingY: '0'
 				})}
 				aria-hidden="true"
 			>
@@ -361,29 +489,29 @@
 				onToggleApply={onStepToggle}
 				onTouchMove={onMoveStep}
 			/>
-			{#if i < steps.length - 1 || canDrop}
-				{#if shouldShowInsert(i + 1)}
-					<div
-						class={cx(
-							'insert-zone',
-							css({
-								display: 'flex',
-								width: '100%',
-								cursor: canDrop ? 'pointer' : 'default',
-								flexDirection: 'column',
-								alignItems: 'center',
-								paddingY: '2'
-							})
-						)}
-						class:ready={canDrop}
-						role="button"
-						tabindex="0"
-						data-index={i + 1}
-						ondragenter={(e) => handleDragEnter(e, i + 1)}
-						ondragover={handleDragOver}
-						ondragleave={handleDragLeave}
-						ondrop={(e) => handleDrop(e, i + 1)}
-					>
+			{#if shouldShowInsert(i + 1)}
+				<div
+					class={cx(
+						'insert-zone',
+						css({
+							display: 'flex',
+							width: '100%',
+							cursor: canDrop ? 'pointer' : 'default',
+							flexDirection: 'column',
+							alignItems: 'center',
+							paddingY: '0'
+						})
+					)}
+					class:ready={canDrop}
+					role="button"
+					tabindex="0"
+					data-index={i + 1}
+					ondragenter={(e) => handleDragEnter(e, i + 1)}
+					ondragover={handleDragOver}
+					ondragleave={handleDragLeave}
+					ondrop={(e) => handleDrop(e, i + 1)}
+				>
+					{#if canDrop}
 						{#if i < steps.length - 1 || !drag.isReorder || drag.stepId !== step.id}
 							<ConnectionLine
 								fromStepIndex={i}
@@ -392,66 +520,105 @@
 								highlighted={hoverIndex === i + 1}
 							/>
 						{/if}
-						{#if canDrop}
-							<div
-								class={css({
-									marginY: '2',
-									display: 'flex',
-									minHeight: 'row',
-									width: 'min(55%, 480px)',
-									flexShrink: '0',
-									alignItems: 'center',
-									justifyContent: 'center',
-									borderWidth: '2',
-									borderStyle: 'dashed',
-									paddingX: '4',
-									paddingY: '2',
-									textAlign: 'center',
-									borderColor:
-										hoverIndex === i + 1 && !drag.valid ? 'error.border' : 'border.primary',
-									backgroundColor:
-										hoverIndex === i + 1 && !drag.valid
-											? 'error.bg'
-											: hoverIndex === i + 1
-												? 'bg.tertiary'
-												: 'transparent',
-									_hover: { backgroundColor: 'bg.hover' }
-								})}
-							>
-								{#if hoverIndex === i + 1}
-									<span
-										class={css({
-											fontFamily: 'mono',
-											fontSize: 'sm',
-											fontWeight: '500',
-											textTransform: 'lowercase'
-										})}>{drag.type ?? 'step'}</span
-									>
-								{/if}
-							</div>
+						<div
+							class={css({
+								marginY: '2',
+								display: 'flex',
+								minHeight: 'row',
+								width: 'min(55%, 480px)',
+								flexShrink: '0',
+								alignItems: 'center',
+								justifyContent: 'center',
+								borderWidth: '2',
+								borderStyle: 'dashed',
+								paddingX: '4',
+								paddingY: '2',
+								textAlign: 'center',
+								borderColor:
+									hoverIndex === i + 1 && !drag.valid ? 'error.border' : 'border.primary',
+								backgroundColor:
+									hoverIndex === i + 1 && !drag.valid
+										? 'error.bg'
+										: hoverIndex === i + 1
+											? 'bg.tertiary'
+											: 'transparent',
+								_hover: { backgroundColor: 'bg.hover' }
+							})}
+						>
+							{#if hoverIndex === i + 1}
+								<span
+									class={css({
+										fontFamily: 'mono',
+										fontSize: 'sm',
+										fontWeight: '500',
+										textTransform: 'lowercase'
+									})}>{drag.type ?? 'step'}</span
+								>
+							{/if}
+						</div>
+						{#if i < steps.length - 1}
+							<ConnectionLine
+								fromStepIndex={i}
+								toStepIndex={i + 1}
+								totalSteps={steps.length}
+								highlighted={hoverIndex === i + 1}
+							/>
+						{/if}
+					{:else}
+						<div
+							class={css({
+								position: 'relative',
+								display: 'flex',
+								flexDirection: 'column',
+								alignItems: 'center',
+								justifyContent: 'center'
+							})}
+						>
+							<ConnectionLine
+								fromStepIndex={i}
+								toStepIndex={i + 1}
+								totalSteps={steps.length}
+								highlighted={false}
+								arrow={false}
+							/>
 							{#if i < steps.length - 1}
 								<ConnectionLine
 									fromStepIndex={i}
 									toStepIndex={i + 1}
 									totalSteps={steps.length}
-									highlighted={hoverIndex === i + 1}
+									highlighted={false}
 								/>
 							{/if}
-						{/if}
-					</div>
-				{:else if i < steps.length - 1 || !drag.isReorder || drag.stepId !== step.id}
-					<div
-						class={css({
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							paddingY: '2'
-						})}
-						aria-hidden="true"
-					>
-						<ConnectionLine fromStepIndex={i} toStepIndex={i + 1} totalSteps={steps.length} />
-					</div>
-				{/if}
+							<div class={insertControls}>
+								<button
+									class={insertBtn}
+									title="Insert view"
+									onclick={() => handleInsertView(i + 1)}
+								>
+									<Eye size={14} />
+								</button>
+								<div class={inertPlus} aria-hidden="true">
+									<Plus size={14} />
+								</div>
+								<button class={insertBtn} title="Paste step" onclick={() => handlePaste(i + 1)}>
+									<ClipboardPaste size={14} />
+								</button>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{:else if i < steps.length - 1 || !drag.isReorder || drag.stepId !== step.id}
+				<div
+					class={css({
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						paddingY: '0'
+					})}
+					aria-hidden="true"
+				>
+					<ConnectionLine fromStepIndex={i} toStepIndex={i + 1} totalSteps={steps.length} />
+				</div>
 			{/if}
 		{/each}
 		<div
@@ -459,7 +626,7 @@
 				display: 'flex',
 				alignItems: 'center',
 				justifyContent: 'center',
-				paddingY: '2'
+				paddingY: '0'
 			})}
 			aria-hidden="true"
 		>
@@ -471,10 +638,39 @@
 		</div>
 		<OutputNode {analysisId} {datasourceId} {activeTab} />
 	</div>
+	{#if pasteError}
+		<div
+			class={css({
+				position: 'fixed',
+				bottom: '4',
+				left: '50%',
+				transform: 'translateX(-50%)',
+				backgroundColor: 'error.bg',
+				borderWidth: '1',
+				borderColor: 'error.border',
+				color: 'error.fg',
+				paddingX: '4',
+				paddingY: '2',
+				fontSize: 'sm',
+				zIndex: 'toast'
+			})}
+		>
+			{pasteError}
+		</div>
+	{/if}
 </div>
 
 <style>
 	.insert-zone.ready:hover :global(.connection-line) {
 		color: var(--colors-accent-primary);
+	}
+
+	.insert-zone:hover :global(.insert-controls-group) {
+		opacity: 1;
+	}
+
+	/* When hovering, hide the chain line — only insert prompts remain */
+	.insert-zone:not(.ready):hover :global(.connection-line) {
+		opacity: 0;
 	}
 </style>

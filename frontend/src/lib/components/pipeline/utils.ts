@@ -6,7 +6,6 @@ import {
 	Brush,
 	Calculator,
 	Calendar,
-	CircleHelp,
 	Dices,
 	Download,
 	Eye,
@@ -283,27 +282,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 			return `top ${k} by ${col} ${desc ? '▼' : '▲'}`;
 		}
 	},
-	null_count: {
-		label: 'Null Count',
-		icon: CircleHelp,
-		typeLabel: 'null_count',
-		summary: () => 'count nulls per column'
-	},
-	value_counts: {
-		label: 'Value Counts',
-		icon: BarChart3,
-		typeLabel: 'value_counts',
-		summary: (c) => {
-			const col = c.column as string;
-			const norm = c.normalize as boolean;
-			const sort = c.sort as boolean;
-			if (!col) return 'not configured';
-			const extras = [];
-			if (norm) extras.push('%');
-			if (sort) extras.push('sorted');
-			return extras.length ? `${col} (${extras.join(', ')})` : col;
-		}
-	},
+
 	chart: {
 		label: 'Chart',
 		icon: BarChart4,

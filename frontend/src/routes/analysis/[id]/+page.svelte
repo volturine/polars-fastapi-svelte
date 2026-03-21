@@ -37,7 +37,9 @@
 	import type { EngineResourceConfig, EngineDefaults } from '$lib/types/compute';
 	import type { DropTarget } from '$lib/stores/drag.svelte';
 	import StepLibrary from '$lib/components/pipeline/StepLibrary.svelte';
-	import PipelineCanvas from '$lib/components/pipeline/PipelineCanvas.svelte';
+	import PipelineCanvas, {
+		type ClipboardStep
+	} from '$lib/components/pipeline/PipelineCanvas.svelte';
 	import StepConfig from '$lib/components/pipeline/StepConfig.svelte';
 	import DragPreview from '$lib/components/pipeline/DragPreview.svelte';
 	import DatasourceSelectorModal from '$lib/components/common/DatasourceSelectorModal.svelte';
@@ -474,6 +476,23 @@
 	function handleInsertStep(type: string, target: DropTarget) {
 		if (!isEditingMode) return;
 		const step = buildStep(type);
+		const inserted = analysisStore.insertStep(step, target.index, target.parentId, target.nextId);
+		if (inserted) {
+			selectedStepId = step.id;
+			rightPaneCollapsed = false;
+			markUnsaved();
+		}
+	}
+
+	function handlePasteStep(payload: ClipboardStep, target: DropTarget) {
+		if (!isEditingMode) return;
+		const step: PipelineStep = {
+			id: crypto.randomUUID(),
+			type: payload.type,
+			config: JSON.parse(JSON.stringify(payload.config)),
+			depends_on: [],
+			is_applied: payload.is_applied
+		};
 		const inserted = analysisStore.insertStep(step, target.index, target.parentId, target.nextId);
 		if (inserted) {
 			selectedStepId = step.id;
@@ -1462,6 +1481,7 @@
 						onStepDelete={handleDeleteStep}
 						onStepToggle={handleToggleStep}
 						onInsertStep={handleInsertStep}
+						onPasteStep={handlePasteStep}
 						onMoveStep={handleMoveStep}
 						onChangeDatasource={() => openDatasourceModal('change')}
 						onRenameTab={handleRenameSourceTab}

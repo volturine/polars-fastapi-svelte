@@ -78,63 +78,31 @@ async def scheduler_loop(stop_event: asyncio.Event, manager: ProcessManager) -> 
                             logger.debug('No schedules due')
                             break
 
-                        # Build a topological order to respect analysis dependencies
-                        all_analysis_ids = {str(s.analysis_id) for s in due if s.analysis_id}
-                        ordered_ids: list[str] = []
-                        for aid in all_analysis_ids:
-                            build_order = scheduler_service.get_build_order(session, aid)
-                            for oid in build_order:
-                                if oid in all_analysis_ids and oid not in ordered_ids:
-                                    ordered_ids.append(oid)
-
-                        # Add any remaining IDs not in the build order
-                        for aid in all_analysis_ids:
-                            if aid not in ordered_ids:
-                                ordered_ids.append(aid)
-
-                        # Map schedule by analysis_id for marking
-                        schedule_map: dict[str, list] = {}
-                        for s in due:
-                            if not s.analysis_id:
-                                continue
-                            schedule_map.setdefault(str(s.analysis_id), []).append(s)
-
                         # Build schedule-level dependency order within each analysis group.
                         # If schedule B depends_on schedule A, run A before B.
                         due_by_id = {s.id: s for s in due}
                         completed_schedule_ids: set[str] = set()
 
-                        for aid in ordered_ids:
-                            logger.info(f'Scheduler: running build for analysis {aid}')
-                            schedules_for_aid = schedule_map.get(aid, [])
+                        sorted_schedules = _topo_sort_schedules(due, due_by_id)
+                        for sched in sorted_schedules:
+                            if sched.depends_on and sched.depends_on not in completed_schedule_ids and sched.depends_on in due_by_id:
+                                logger.warning(f'Scheduler: skipping schedule {sched.id} — dependency {sched.depends_on} did not complete')
+                                continue
 
-                            # Topological sort within this analysis's schedules
-                            sorted_schedules = _topo_sort_schedules(schedules_for_aid, due_by_id)
-
-                            for sched in sorted_schedules:
-                                # If this schedule depends on another schedule that was
-                                # due in this batch but has not completed, skip it.
-                                if sched.depends_on and sched.depends_on not in completed_schedule_ids and sched.depends_on in due_by_id:
-                                    logger.warning(
-                                        f'Scheduler: skipping schedule {sched.id} — dependency {sched.depends_on} did not complete'
-                                    )
-                                    continue
-
-                                try:
-                                    result = scheduler_service.run_analysis_build(
-                                        session, aid, manager=manager, datasource_id=sched.datasource_id
-                                    )
-                                    scheduler_service.mark_schedule_run(session, sched.id)
-                                    completed_schedule_ids.add(sched.id)
-                                    logger.info(
-                                        f'Scheduler: build complete for analysis {aid} '
-                                        f'(datasource={sched.datasource_id}) — '
-                                        f'{result["tabs_built"]} tab(s) built'
-                                    )
-                                except Exception as e:
-                                    logger.error(f'Scheduler: build failed for analysis {aid}: {e}', exc_info=True)
-                                    # Still mark the schedule as run to prevent retry storms
-                                    scheduler_service.mark_schedule_run(session, sched.id)
+                            try:
+                                result = scheduler_service.execute_schedule(session, manager, sched.id)
+                                scheduler_service.mark_schedule_run(session, sched.id)
+                                completed_schedule_ids.add(sched.id)
+                                logger.info(
+                                    'Scheduler: execution complete for schedule %s (datasource=%s status=%s)',
+                                    sched.id,
+                                    sched.datasource_id,
+                                    result.get('status', 'unknown'),
+                                )
+                            except Exception as e:
+                                logger.error(f'Scheduler: execution failed for schedule {sched.id}: {e}', exc_info=True)
+                                # Still mark the schedule as run to prevent retry storms
+                                scheduler_service.mark_schedule_run(session, sched.id)
                         break
                 finally:
                     reset_namespace(token)

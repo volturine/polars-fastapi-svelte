@@ -111,7 +111,6 @@
 		Brush,
 		Calculator,
 		Calendar,
-		CircleHelp,
 		Dices,
 		Eye,
 		Filter,
@@ -183,18 +182,6 @@
 		{ type: 'limit', label: 'Limit', icon: Scissors, description: 'Keep first N rows' },
 		{ type: 'topk', label: 'Top K', icon: Trophy, description: 'Get top K rows by column' },
 		{
-			type: 'null_count',
-			label: 'Null Count',
-			icon: CircleHelp,
-			description: 'Count null values per column'
-		},
-		{
-			type: 'value_counts',
-			label: 'Value Counts',
-			icon: BarChart3,
-			description: 'Get value frequencies'
-		},
-		{
 			type: 'chart',
 			label: 'Chart',
 			icon: BarChart4,
@@ -224,6 +211,19 @@
 
 	// Quick insert selected type
 	let selectedType = $state<string | null>(null);
+
+	// Search/filter
+	let search = $state('');
+	const filtered = $derived.by(() => {
+		const q = search.trim().toLowerCase();
+		if (!q) return stepTypes;
+		return stepTypes.filter(
+			(s) =>
+				s.label.toLowerCase().includes(q) ||
+				s.type.toLowerCase().includes(q) ||
+				s.description.toLowerCase().includes(q)
+		);
+	});
 </script>
 
 <div
@@ -255,6 +255,7 @@
 		<h3
 			class={css({
 				margin: '0',
+				marginBottom: '3',
 				fontSize: 'xs',
 				fontWeight: '600',
 				textTransform: 'uppercase',
@@ -264,6 +265,19 @@
 		>
 			Operations
 		</h3>
+		<input
+			type="text"
+			placeholder="Search operations..."
+			bind:value={search}
+			class={cx(
+				input(),
+				css({
+					width: '100%',
+					fontSize: 'xs',
+					backgroundColor: 'bg.secondary'
+				})
+			)}
+		/>
 	</div>
 	<div
 		class={css({
@@ -371,7 +385,7 @@
 				onchange={(event) => (selectedType = event.currentTarget.value || null)}
 			>
 				<option value="">Select operation...</option>
-				{#each stepTypes as stepType (stepType.type)}
+				{#each filtered as stepType (stepType.type)}
 					<option value={stepType.type}>{stepType.label}</option>
 				{/each}
 			</select>

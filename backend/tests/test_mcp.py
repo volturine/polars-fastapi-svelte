@@ -5,7 +5,9 @@ import re
 import pytest
 from fastapi.testclient import TestClient
 
+from modules.mcp.decorators import MCP_TOOL_MARKER, deterministic_tool, get_mcp_tool_meta
 from modules.mcp.registry import _build_tool, _openapi_to_json_schema
+from modules.mcp.router import MCP_ROUTE_META, MCPRouter, get_mcp_route_meta
 
 
 class TestMCPToolListing:
@@ -26,7 +28,21 @@ class TestMCPToolListing:
             assert 'description' in tool
             assert 'safety' in tool
             assert 'input_schema' in tool
+            assert 'contract' in tool
             assert 'confirm_required' in tool
+            assert 'output_schema' in tool
+
+    def test_tools_expose_contract_with_schema_parity(self, client: TestClient) -> None:
+        response = client.get('/api/v1/mcp/tools')
+        tools = response.json()
+        assert len(tools) > 0
+        for tool in tools:
+            contract = tool.get('contract')
+            assert isinstance(contract, dict)
+            assert 'input_schema' in contract
+            assert 'output_schema' in contract
+            assert contract['input_schema'] == tool['input_schema']
+            assert contract['output_schema'] == tool['output_schema']
 
     def test_get_tools_are_safe(self, client: TestClient) -> None:
         response = client.get('/api/v1/mcp/tools')
@@ -506,6 +522,59 @@ class TestOpenAPIToJsonSchema:
         assert meta['payload']['content_type'] == 'application/json'
         assert 'payload' in tool['input_schema']['required']
 
+    def test_build_tool_includes_output_schema_for_json_success_response(self) -> None:
+        op = {
+            'summary': 'Test',
+            'responses': {
+                '200': {
+                    'description': 'Success',
+                    'content': {
+                        'application/json': {
+                            'schema': {
+                                'type': 'object',
+                                'properties': {'ok': {'type': 'boolean'}},
+                                'required': ['ok'],
+                            }
+                        }
+                    },
+                }
+            },
+        }
+        tool = _build_tool(
+            {
+                'method': 'GET',
+                'path': '/api/v1/test',
+                'operation': op,
+                'meta': {'response_model': 'TestResponse'},
+            },
+            {},
+        )
+        output = tool['output_schema']
+        assert output is not None
+        assert output['status_code'] == '200'
+        assert output['content_type'] == 'application/json'
+        assert output['schema'] == {
+            'type': 'object',
+            'properties': {'ok': {'type': 'boolean'}},
+            'required': ['ok'],
+        }
+        assert output['response_model'] == 'TestResponse'
+        assert tool['contract']['input_schema'] == tool['input_schema']
+        assert tool['contract']['output_schema'] == output
+
+    def test_build_tool_output_schema_is_none_when_success_schema_missing(self) -> None:
+        op = {
+            'summary': 'Test',
+            'responses': {
+                '204': {'description': 'No content'},
+                '400': {'description': 'Bad request'},
+            },
+        }
+        tool = _build_tool({'method': 'GET', 'path': '/api/v1/test', 'operation': op}, {})
+        assert tool['output_schema'] is None
+        assert tool['contract']['input_schema'] == tool['input_schema']
+        assert tool['contract']['output_schema'] is None
+
 
 class TestMCPContractGuardrails:
     @staticmethod
@@ -582,6 +651,293 @@ class TestMCPContractGuardrails:
         assert isinstance(data['errors'], list)
         assert data['errors'][0]['validator'] == 'path_params'
         assert 'Missing required path parameter' in data['errors'][0]['message']
+
+
+class TestDeterministicToolMetadata:
+    def test_decorator_preserves_marker_truthiness(self) -> None:
+        @deterministic_tool
+        def endpoint() -> None:
+            pass
+
+        assert bool(getattr(endpoint, MCP_TOOL_MARKER)) is True
+
+    def test_decorator_attaches_structured_metadata(self) -> None:
+        @deterministic_tool(confirm_required=True)
+        def endpoint(name: str, limit: int = 10) -> None:
+            """Demo endpoint."""
+
+        meta = get_mcp_tool_meta(endpoint)
+        assert isinstance(meta, dict)
+        assert meta['name'] == 'endpoint'
+        assert meta['docstring'] == 'Demo endpoint.'
+        assert meta['confirm_required'] is True
+        assert isinstance(meta['inputs'], list)
+        assert meta['inputs'][0]['name'] == 'name'
+        assert meta['inputs'][0]['required'] is True
+        assert meta['inputs'][1]['name'] == 'limit'
+        assert meta['inputs'][1]['required'] is False
+
+    def test_metadata_lookup_is_wrapper_aware(self) -> None:
+        from functools import wraps
+
+        def wrap(fn):
+            @wraps(fn)
+            def inner(*args, **kwargs):
+                return fn(*args, **kwargs)
+
+            return inner
+
+        @wrap
+        @deterministic_tool
+        def endpoint(value: str) -> None:
+            """Wrapped endpoint."""
+
+        meta = get_mcp_tool_meta(endpoint)
+        assert isinstance(meta, dict)
+        assert meta['name'] == 'endpoint'
+        assert meta['docstring'] == 'Wrapped endpoint.'
+        assert meta['inputs'][0]['name'] == 'value'
+
+
+class TestRouterDecoratorOnboarding:
+    def test_mcp_defaults_to_off(self) -> None:
+        from fastapi import APIRouter, FastAPI
+
+        from modules.mcp import registry as reg
+
+        leaf = MCPRouter(prefix='/demo', tags=['demo'])
+
+        @leaf.delete('/item/{item_id}')
+        def endpoint(item_id: str) -> dict[str, str]:
+            """Delete item endpoint."""
+            return {'id': item_id}
+
+        v1 = APIRouter(prefix='/api/v1')
+        v1.include_router(leaf)
+        app = FastAPI()
+        app.include_router(v1)
+
+        tools = reg.build_tool_registry(app)
+        assert tools == []
+
+    def test_mcp_true_onboards_route(self) -> None:
+        from fastapi import APIRouter, FastAPI
+
+        from modules.mcp import registry as reg
+
+        leaf = MCPRouter(prefix='/demo', tags=['demo'])
+
+        @leaf.delete('/item/{item_id}', mcp=True)
+        def endpoint(item_id: str) -> dict[str, str]:
+            """Delete item endpoint."""
+            return {'id': item_id}
+
+        v1 = APIRouter(prefix='/api/v1')
+        v1.include_router(leaf)
+        app = FastAPI()
+        app.include_router(v1)
+
+        tools = reg.build_tool_registry(app)
+        assert len(tools) == 1
+        assert tools[0]['id'] == 'endpoint'
+
+    def test_confirm_required_override_from_router_decorator(self) -> None:
+        from fastapi import APIRouter, FastAPI
+
+        from modules.mcp import registry as reg
+
+        leaf = MCPRouter(prefix='/datasource', tags=['demo'])
+
+        @leaf.delete('/item/{item_id}', mcp=True, mcp_confirm_required=False)
+        def endpoint(item_id: str) -> dict[str, str]:
+            """Delete item endpoint."""
+            return {'id': item_id}
+
+        v1 = APIRouter(prefix='/api/v1')
+        v1.include_router(leaf)
+        app = FastAPI()
+        app.include_router(v1)
+
+        tools = reg.build_tool_registry(app)
+        assert len(tools) == 1
+        assert tools[0]['confirm_required'] is False
+
+    def test_tool_id_override_from_router_decorator(self) -> None:
+        from fastapi import APIRouter, FastAPI
+
+        from modules.mcp import registry as reg
+
+        leaf = MCPRouter(prefix='/demo', tags=['demo'])
+
+        @leaf.get('/custom', mcp=True, mcp_tool_id='stable_custom_tool')
+        def endpoint() -> dict[str, str]:
+            return {'ok': 'yes'}
+
+        v1 = APIRouter(prefix='/api/v1')
+        v1.include_router(leaf)
+        app = FastAPI()
+        app.include_router(v1)
+
+        tools = reg.build_tool_registry(app)
+        assert len(tools) == 1
+        assert tools[0]['id'] == 'stable_custom_tool'
+
+    def test_description_prefers_docstring_when_operation_text_missing(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        from fastapi import FastAPI
+
+        from modules.mcp import registry as reg
+
+        def fake_openapi() -> dict:
+            return {
+                'paths': {'/api/v1/demo/doc': {'get': {'parameters': []}}},
+                'components': {},
+            }
+
+        def endpoint() -> None:
+            """Docstring text for MCP description."""
+
+        router = MCPRouter(prefix='/api/v1/demo', tags=['demo'])
+        router.add_api_route('/doc', endpoint, methods=['GET'], mcp=True)
+        app = FastAPI()
+        app.include_router(router)
+        monkeypatch.setattr(app, 'openapi', fake_openapi)
+
+        tools = reg.build_tool_registry(app)
+        assert len(tools) == 1
+        assert tools[0]['description'] == 'Docstring text for MCP description.'
+
+
+class TestRouterRegistrationOnboarding:
+    def test_mcp_router_attaches_metadata_on_registered_route(self) -> None:
+        from fastapi.routing import APIRoute
+        from pydantic import BaseModel
+
+        class DemoResponse(BaseModel):
+            ok: bool
+
+        router = MCPRouter(prefix='/demo', tags=['demo'])
+
+        @router.get('/item', response_model=DemoResponse, mcp=True, mcp_confirm_required=True)
+        def item(item_id: str) -> DemoResponse:
+            return DemoResponse(ok=bool(item_id))
+
+        route = next(r for r in router.routes if isinstance(r, APIRoute) and r.path == '/demo/item')
+        meta = get_mcp_route_meta(route)
+        assert isinstance(meta, dict)
+        assert getattr(route, MCP_ROUTE_META) == meta
+        assert meta['name'] == 'item'
+        assert meta['confirm_required'] is True
+        assert meta['response_model'] == 'DemoResponse'
+
+    def test_router_metadata_survives_nested_include_router(self) -> None:
+        from fastapi import APIRouter, FastAPI
+        from fastapi.routing import APIRoute
+
+        leaf = MCPRouter(prefix='/leaf', tags=['leaf'])
+
+        @leaf.get('/value', mcp=True)
+        def value() -> dict[str, str]:
+            return {'ok': 'yes'}
+
+        v1 = APIRouter(prefix='/api/v1')
+        v1.include_router(leaf)
+        app = FastAPI()
+        app.include_router(v1)
+
+        route = next(r for r in app.routes if isinstance(r, APIRoute) and r.path == '/api/v1/leaf/value')
+        meta = get_mcp_route_meta(route)
+        assert isinstance(meta, dict)
+        assert meta['name'] == 'value'
+
+    def test_registry_prefers_route_registered_metadata(self) -> None:
+        from fastapi import APIRouter, FastAPI
+        from fastapi.routing import APIRoute
+
+        from modules.mcp import registry as reg
+
+        leaf = MCPRouter(prefix='/demo', tags=['demo'])
+
+        @leaf.delete('/item/{item_id}', mcp=True, mcp_confirm_required=True)
+        def remove(item_id: str) -> None:
+            del item_id
+
+        route = next(r for r in leaf.routes if isinstance(r, APIRoute) and r.path == '/demo/item/{item_id}')
+        meta = dict(get_mcp_route_meta(route) or {})
+        meta['confirm_required'] = False
+        meta['name'] = 'stable_override_name'
+        setattr(route, MCP_ROUTE_META, meta)
+
+        v1 = APIRouter(prefix='/api/v1')
+        v1.include_router(leaf)
+        app = FastAPI()
+        app.include_router(v1)
+
+        app_route = next(r for r in app.routes if isinstance(r, APIRoute) and r.path == '/api/v1/demo/item/{item_id}')
+        app_meta = dict(get_mcp_route_meta(app_route) or {})
+        app_meta['confirm_required'] = False
+        app_meta['name'] = 'stable_override_name'
+        setattr(app_route, MCP_ROUTE_META, app_meta)
+
+        tools = reg.build_tool_registry(app)
+        assert len(tools) == 1
+        assert tools[0]['id'] == 'stable_override_name'
+        assert tools[0]['confirm_required'] is False
+
+    def test_plain_apirouter_route_not_onboarded(self) -> None:
+        from fastapi import APIRouter, FastAPI
+
+        from modules.mcp import registry as reg
+
+        plain = APIRouter(prefix='/api/v1/plain', tags=['plain'])
+
+        @plain.get('/decorated')
+        def plain_decorated() -> dict[str, str]:
+            return {'ok': 'yes'}
+
+        app = FastAPI()
+        app.include_router(plain)
+
+        tools = reg.build_tool_registry(app)
+        assert tools == []
+
+    def test_raw_api_route_not_onboarded(self) -> None:
+        from fastapi import FastAPI
+        from fastapi.routing import APIRoute
+
+        from modules.mcp import registry as reg
+
+        def raw_decorated() -> None:
+            return None
+
+        app = FastAPI()
+        app.routes.append(APIRoute('/api/v1/raw/decorated', raw_decorated, methods=['GET']))
+
+        tools = reg.build_tool_registry(app)
+        assert tools == []
+
+    def test_registry_tool_ids_stay_endpoint_stable(self) -> None:
+        from fastapi import APIRouter, FastAPI
+
+        from modules.mcp import registry as reg
+
+        leaf = MCPRouter(prefix='/stable', tags=['stable'])
+
+        @leaf.get('/a', mcp=True)
+        def alpha() -> dict[str, str]:
+            return {'ok': 'a'}
+
+        @leaf.post('/b', mcp=True)
+        def beta() -> dict[str, str]:
+            return {'ok': 'b'}
+
+        v1 = APIRouter(prefix='/api/v1')
+        v1.include_router(leaf)
+        app = FastAPI()
+        app.include_router(v1)
+
+        tools = reg.build_tool_registry(app)
+        ids = {tool['id'] for tool in tools}
+        assert ids == {'alpha', 'beta'}
 
 
 class TestPathParameterReliability:
@@ -789,11 +1145,9 @@ class TestMCPCapabilities:
 class TestBuildRegistryFailFast:
     def test_raises_on_unsupported_schema(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
         import pytest
-        from fastapi import FastAPI
-        from fastapi.routing import APIRoute
+        from fastapi import APIRouter, FastAPI
 
         from modules.mcp import registry as reg
-        from modules.mcp.decorators import deterministic_tool
 
         def fake_openapi() -> dict:
             return {
@@ -814,54 +1168,66 @@ class TestBuildRegistryFailFast:
                 'components': {},
             }
 
-        @deterministic_tool
         def fake_endpoint() -> None:
             pass
 
+        leaf = MCPRouter(prefix='/fake', tags=['fake'])
+        leaf.add_api_route('/endpoint', fake_endpoint, methods=['GET'], mcp=True)
+        v1 = APIRouter(prefix='/api/v1')
+        v1.include_router(leaf)
         app = FastAPI()
-        app.routes.append(APIRoute('/api/v1/fake/endpoint', fake_endpoint, methods=['GET']))
+        app.include_router(v1)
         monkeypatch.setattr(app, 'openapi', fake_openapi)
 
         with pytest.raises(ValueError, match='fake_endpoint'):
             reg.build_tool_registry(app)
 
-    def test_undecorated_route_excluded(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    def test_undecorated_route_excluded(self) -> None:
         from fastapi import FastAPI
-        from fastapi.routing import APIRoute
 
         from modules.mcp import registry as reg
 
-        def fake_openapi() -> dict:
-            return {
-                'paths': {
-                    '/api/v1/undecorated/endpoint': {
-                        'get': {
-                            'summary': 'Undecorated',
-                            'parameters': [],
-                        }
-                    }
-                },
-                'components': {},
-            }
+        router = MCPRouter(prefix='/api/v1/undecorated', tags=['undecorated'])
 
-        def undecorated_endpoint() -> None:
-            pass
+        @router.get('/endpoint')
+        def undecorated_endpoint() -> dict[str, str]:
+            return {'ok': 'no'}
 
         app = FastAPI()
-        app.routes.append(APIRoute('/api/v1/undecorated/endpoint', undecorated_endpoint, methods=['GET']))
-        monkeypatch.setattr(app, 'openapi', fake_openapi)
+        app.include_router(router)
 
         tools = reg.build_tool_registry(app)
         assert tools == []
+
+    def test_mixed_routes_include_only_decorated(self) -> None:
+        from fastapi import FastAPI
+
+        from modules.mcp import registry as reg
+
+        router = MCPRouter(prefix='/api/v1/mixed', tags=['mixed'])
+
+        @router.get('/decorated', mcp=True)
+        def decorated_endpoint() -> dict[str, str]:
+            return {'type': 'decorated'}
+
+        @router.get('/undecorated')
+        def undecorated_endpoint() -> dict[str, str]:
+            return {'type': 'undecorated'}
+
+        app = FastAPI()
+        app.include_router(router)
+
+        tools = reg.build_tool_registry(app)
+        assert len(tools) == 1
+        assert tools[0]['id'] == 'decorated_endpoint'
+        assert tools[0]['path'] == '/api/v1/mixed/decorated'
 
 
 class TestStartupEnforcement:
     def test_startup_raises_on_unsupported_schema(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
         import pytest
-        from fastapi import FastAPI
-        from fastapi.routing import APIRoute
+        from fastapi import APIRouter, FastAPI
 
-        from modules.mcp.decorators import deterministic_tool
         from modules.mcp.routes import get_registry
 
         def fake_openapi() -> dict:
@@ -883,12 +1249,15 @@ class TestStartupEnforcement:
                 'components': {},
             }
 
-        @deterministic_tool
         def startup_check() -> None:
             pass
 
+        leaf = MCPRouter(prefix='/startup', tags=['startup'])
+        leaf.add_api_route('/check', startup_check, methods=['GET'], mcp=True)
+        v1 = APIRouter(prefix='/api/v1')
+        v1.include_router(leaf)
         app = FastAPI()
-        app.routes.append(APIRoute('/api/v1/startup/check', startup_check, methods=['GET']))
+        app.include_router(v1)
         monkeypatch.setattr(app, 'openapi', fake_openapi)
 
         with pytest.raises(ValueError, match='startup_check'):

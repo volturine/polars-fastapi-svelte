@@ -1,28 +1,26 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import Depends, HTTPException
 from sqlmodel import Session
 
 from core.database import get_db
 from core.error_handlers import handle_errors
 from core.validation import HealthcheckId, parse_datasource_id, parse_healthcheck_id
 from modules.healthcheck import schemas, service
-from modules.mcp.decorators import deterministic_tool
+from modules.mcp.router import MCPRouter
 
-router = APIRouter(prefix='/healthchecks', tags=['healthchecks'])
+router = MCPRouter(prefix='/healthchecks', tags=['healthchecks'])
 
 
-@router.get('', response_model=list[schemas.HealthCheckResponse])
+@router.get('', response_model=list[schemas.HealthCheckResponse], mcp=True)
 @handle_errors(operation='list healthchecks')
-@deterministic_tool
 def list_healthchecks(datasource_id: str, session: Session = Depends(get_db)):
     """List all healthchecks for a datasource. Requires datasource_id (from GET /datasource)."""
     return service.list_healthchecks(session, parse_datasource_id(datasource_id))
 
 
-@router.get('/results', response_model=list[schemas.HealthCheckResultResponse])
+@router.get('/results', response_model=list[schemas.HealthCheckResultResponse], mcp=True)
 @handle_errors(operation='list healthcheck results')
-@deterministic_tool
 def list_results(datasource_id: str, limit: int = 10, session: Session = Depends(get_db)):
     """List recent healthcheck results for a datasource. Returns the last N results (default 10)."""
     parsed_id = parse_datasource_id(datasource_id)
@@ -31,9 +29,8 @@ def list_results(datasource_id: str, limit: int = 10, session: Session = Depends
     return service.list_results(session, parsed_id, limit)
 
 
-@router.post('', response_model=schemas.HealthCheckResponse)
+@router.post('', response_model=schemas.HealthCheckResponse, mcp=True)
 @handle_errors(operation='create healthcheck')
-@deterministic_tool
 def create_healthcheck(payload: schemas.HealthCheckCreate, session: Session = Depends(get_db)):
     """Create a healthcheck for a datasource.
 
@@ -44,9 +41,8 @@ def create_healthcheck(payload: schemas.HealthCheckCreate, session: Session = De
     return service.create_healthcheck(session, payload)
 
 
-@router.put('/{healthcheck_id}', response_model=schemas.HealthCheckResponse)
+@router.put('/{healthcheck_id}', response_model=schemas.HealthCheckResponse, mcp=True)
 @handle_errors(operation='update healthcheck')
-@deterministic_tool
 def update_healthcheck(
     healthcheck_id: HealthcheckId,
     payload: schemas.HealthCheckUpdate,
@@ -60,9 +56,8 @@ def update_healthcheck(
         raise HTTPException(status_code=status, detail=str(exc))
 
 
-@router.delete('/{healthcheck_id}', status_code=204)
+@router.delete('/{healthcheck_id}', status_code=204, mcp=True)
 @handle_errors(operation='delete healthcheck')
-@deterministic_tool
 def delete_healthcheck(healthcheck_id: HealthcheckId, session: Session = Depends(get_db)):
     """Delete a healthcheck by ID. Use GET /healthchecks?datasource_id=... to find healthcheck IDs."""
     try:

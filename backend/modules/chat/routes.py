@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from modules.chat.openrouter import OpenRouterError, chat_with_tools, list_models
 from modules.chat.sessions import LiveSession, session_store
+from modules.chat.tool_contract import format_output_details, tool_input_schema, tool_output_schema
 from modules.mcp.executor import call_tool
 from modules.mcp.validation import validate_args
 
@@ -127,7 +128,7 @@ def _build_tool_system_message(tools: list[dict]) -> str:
     ]
     for t in tools:
         desc = t.get('description', '')
-        schema = t.get('input_schema', {})
+        schema = tool_input_schema(t)
         meta = t.get('arg_metadata', {}) or {}
         path_meta = meta.get('path') or []
         query_meta = meta.get('query') or []
@@ -169,6 +170,9 @@ def _build_tool_system_message(tools: list[dict]) -> str:
         params_str = '\n'.join(param_parts) if param_parts else '    (no parameters)'
         lines.append(f'- {t["id"]} [{t["method"]}]: {desc}')
         lines.append(f'  Parameters:\n{params_str}')
+        output_line = format_output_details(tool_output_schema(t))
+        if output_line:
+            lines.append(output_line)
     return '\n'.join(lines)
 
 
@@ -347,7 +351,7 @@ async def _run_agent_turn(session: LiveSession, app: Any, user_content: str, too
 
                 session.push_event({'type': 'tool_call', 'tool_id': tool_id, 'method': method, 'path': path, 'args': args})
 
-                valid, errors, normalized = validate_args(tool.get('input_schema', {'type': 'object'}), args)
+                valid, errors, normalized = validate_args(tool_input_schema(tool), args)
                 if not valid:
                     session.push_event(
                         {'type': 'tool_error', 'tool_id': tool_id, 'method': method, 'path': path, 'args': args, 'errors': errors}

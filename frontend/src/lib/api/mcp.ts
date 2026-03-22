@@ -10,6 +10,12 @@ export interface MCPTool {
 	safety: 'safe' | 'mutating';
 	confirm_required: boolean;
 	input_schema: Record<string, unknown>;
+	output_schema?: {
+		status_code: string;
+		content_type: string | null;
+		schema: Record<string, unknown> | boolean | null;
+		response_model: string | null;
+	} | null;
 	tags: string[];
 }
 

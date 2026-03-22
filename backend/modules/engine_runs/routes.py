@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import Depends
 from sqlmodel import Session
 
 from core.database import get_db
@@ -6,14 +6,13 @@ from core.error_handlers import handle_errors
 from core.validation import EngineRunId, parse_analysis_id, parse_datasource_id, parse_engine_run_id
 from modules.engine_runs import schemas, service
 from modules.engine_runs.models import EngineRun
-from modules.mcp.decorators import deterministic_tool
+from modules.mcp.router import MCPRouter
 
-router = APIRouter(prefix='/engine-runs', tags=['engine-runs'])
+router = MCPRouter(prefix='/engine-runs', tags=['engine-runs'])
 
 
-@router.get('/compare', response_model=schemas.BuildComparisonResponse)
+@router.get('/compare', response_model=schemas.BuildComparisonResponse, mcp=True)
 @handle_errors(operation='compare engine runs')
-@deterministic_tool
 def compare_runs(
     run_a: str,
     run_b: str,
@@ -33,9 +32,8 @@ def compare_runs(
     )
 
 
-@router.get('', response_model=list[schemas.EngineRunResponseSchema])
+@router.get('', response_model=list[schemas.EngineRunResponseSchema], mcp=True)
 @handle_errors(operation='list engine runs')
-@deterministic_tool
 def list_runs(
     analysis_id: str | None = None,
     datasource_id: str | None = None,
@@ -61,9 +59,8 @@ def list_runs(
     )
 
 
-@router.get('/{run_id}', response_model=schemas.EngineRunResponseSchema)
+@router.get('/{run_id}', response_model=schemas.EngineRunResponseSchema, mcp=True)
 @handle_errors(operation='get engine run')
-@deterministic_tool
 def get_run(run_id: EngineRunId, session: Session = Depends(get_db)):
     """Get a single engine run by ID with full request/result JSON and step timings."""
     run = session.get(EngineRun, parse_engine_run_id(run_id))

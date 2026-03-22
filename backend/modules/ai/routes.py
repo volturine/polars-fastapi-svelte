@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Query
+from fastapi import Query
 from pydantic import BaseModel
 
 from core.error_handlers import handle_errors
 from modules.ai.service import get_ai_client
-from modules.mcp.decorators import deterministic_tool
+from modules.mcp.router import MCPRouter
 
-router = APIRouter(prefix='/ai', tags=['ai'])
+router = MCPRouter(prefix='/ai', tags=['ai'])
 
 
 class AIModelResponse(BaseModel):
@@ -18,9 +18,8 @@ class AIConnectionResponse(BaseModel):
     detail: str
 
 
-@router.get('/models', response_model=list[AIModelResponse])
+@router.get('/models', response_model=list[AIModelResponse], mcp=True)
 @handle_errors(operation='list ai models', value_error_status=400)
-@deterministic_tool
 def list_models(
     provider: str = Query('ollama'),
     endpoint_url: str | None = Query(None),
@@ -36,9 +35,8 @@ def list_models(
     return [AIModelResponse(name=m.get('name', ''), detail=str({k: v for k, v in m.items() if k != 'name'})) for m in raw]
 
 
-@router.get('/test', response_model=AIConnectionResponse)
+@router.get('/test', response_model=AIConnectionResponse, mcp=True)
 @handle_errors(operation='test ai connection', value_error_status=400)
-@deterministic_tool
 def test_connection(
     provider: str = Query('ollama'),
     endpoint_url: str | None = Query(None),

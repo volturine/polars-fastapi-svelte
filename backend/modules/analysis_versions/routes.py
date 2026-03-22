@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import Depends, HTTPException
 from sqlmodel import Session
 
 from core.database import get_db
@@ -6,14 +6,13 @@ from core.error_handlers import handle_errors
 from core.validation import AnalysisId, parse_analysis_id
 from modules.analysis import schemas as analysis_schemas
 from modules.analysis_versions import schemas, service
-from modules.mcp.decorators import deterministic_tool
+from modules.mcp.router import MCPRouter
 
-router = APIRouter(prefix='/analysis', tags=['analysis-versions'])
+router = MCPRouter(prefix='/analysis', tags=['analysis-versions'])
 
 
-@router.get('/{analysis_id}/versions', response_model=list[schemas.AnalysisVersionSummary])
+@router.get('/{analysis_id}/versions', response_model=list[schemas.AnalysisVersionSummary], mcp=True)
 @handle_errors(operation='list analysis versions')
-@deterministic_tool
 def list_versions(
     analysis_id: AnalysisId,
     session: Session = Depends(get_db),
@@ -26,9 +25,8 @@ def list_versions(
     return service.list_versions(session, parse_analysis_id(analysis_id))
 
 
-@router.get('/{analysis_id}/versions/{version}', response_model=schemas.AnalysisVersionResponse)
+@router.get('/{analysis_id}/versions/{version}', response_model=schemas.AnalysisVersionResponse, mcp=True)
 @handle_errors(operation='get analysis version', value_error_status=404)
-@deterministic_tool
 def get_version(
     analysis_id: AnalysisId,
     version: int,
@@ -41,9 +39,8 @@ def get_version(
     return result
 
 
-@router.delete('/{analysis_id}/versions/{version}')
+@router.delete('/{analysis_id}/versions/{version}', mcp=True)
 @handle_errors(operation='delete analysis version')
-@deterministic_tool
 def delete_version(
     analysis_id: AnalysisId,
     version: int,
@@ -54,9 +51,8 @@ def delete_version(
     return None
 
 
-@router.patch('/{analysis_id}/versions/{version}', response_model=schemas.AnalysisVersionResponse)
+@router.patch('/{analysis_id}/versions/{version}', response_model=schemas.AnalysisVersionResponse, mcp=True)
 @handle_errors(operation='rename analysis version')
-@deterministic_tool
 def rename_version(
     analysis_id: AnalysisId,
     version: int,
@@ -67,9 +63,8 @@ def rename_version(
     return service.rename_version(session, parse_analysis_id(analysis_id), version, body.name)
 
 
-@router.post('/{analysis_id}/versions/{version}/restore', response_model=analysis_schemas.AnalysisResponseSchema)
+@router.post('/{analysis_id}/versions/{version}/restore', response_model=analysis_schemas.AnalysisResponseSchema, mcp=True)
 @handle_errors(operation='restore analysis version')
-@deterministic_tool
 def restore_version(
     analysis_id: AnalysisId,
     version: int,

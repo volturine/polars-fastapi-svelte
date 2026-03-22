@@ -5,12 +5,12 @@ import smtplib
 from email.message import EmailMessage
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import Depends, HTTPException
 from sqlmodel import Session
 
 from core.database import get_settings_db
 from core.error_handlers import handle_errors
-from modules.mcp.decorators import deterministic_tool
+from modules.mcp.router import MCPRouter
 from modules.settings.schemas import (
     DetectCustomBotRequest,
     DetectTelegramResponse,
@@ -30,20 +30,18 @@ from modules.settings.service import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix='/settings', tags=['settings'])
+router = MCPRouter(prefix='/settings', tags=['settings'])
 
 
-@router.get('', response_model=SettingsResponse)
+@router.get('', response_model=SettingsResponse, mcp=True)
 @handle_errors(operation='get settings')
-@deterministic_tool
 def read_settings(session: Session = Depends(get_settings_db)) -> SettingsResponse:
     """Get application settings including SMTP config, Telegram token, OpenRouter API key, and feature flags."""
     return get_settings(session)
 
 
-@router.put('', response_model=SettingsResponse)
+@router.put('', response_model=SettingsResponse, mcp=True)
 @handle_errors(operation='update settings')
-@deterministic_tool
 def write_settings(data: SettingsUpdate, session: Session = Depends(get_settings_db)) -> SettingsResponse:
     """Update application settings. Only provided fields are changed; omitted fields keep current values."""
     from modules.telegram.bot import telegram_bot
@@ -61,9 +59,8 @@ def write_settings(data: SettingsUpdate, session: Session = Depends(get_settings
     return result
 
 
-@router.post('/test-smtp', response_model=TestResult)
+@router.post('/test-smtp', response_model=TestResult, mcp=True)
 @handle_errors(operation='test smtp')
-@deterministic_tool
 def test_smtp(body: TestSmtpRequest) -> TestResult:
     """Send a test email via SMTP to verify email notification settings. Requires 'to' address in body."""
     smtp = get_resolved_smtp()
@@ -92,9 +89,8 @@ def test_smtp(body: TestSmtpRequest) -> TestResult:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.post('/test-telegram', response_model=TestResult)
+@router.post('/test-telegram', response_model=TestResult, mcp=True)
 @handle_errors(operation='test telegram')
-@deterministic_tool
 def test_telegram(body: TestTelegramRequest) -> TestResult:
     """Send a test message to a Telegram chat to verify bot settings. Requires chat_id in body."""
     resolved = get_resolved_telegram_settings()
@@ -120,9 +116,8 @@ def test_telegram(body: TestTelegramRequest) -> TestResult:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.post('/detect-telegram-chat', response_model=DetectTelegramResponse)
+@router.post('/detect-telegram-chat', response_model=DetectTelegramResponse, mcp=True)
 @handle_errors(operation='detect telegram chat')
-@deterministic_tool
 def detect_telegram_chat() -> DetectTelegramResponse:
     """Detect Telegram chats that have messaged the configured bot.
 
@@ -175,9 +170,8 @@ def detect_telegram_chat() -> DetectTelegramResponse:
             telegram_bot.resume()
 
 
-@router.post('/detect-chat-custom', response_model=DetectTelegramResponse)
+@router.post('/detect-chat-custom', response_model=DetectTelegramResponse, mcp=True)
 @handle_errors(operation='detect custom telegram chat')
-@deterministic_tool
 def detect_custom_bot_chat(body: DetectCustomBotRequest) -> DetectTelegramResponse:
     """Detect chats for a custom Telegram bot token (not the one saved in settings).
 

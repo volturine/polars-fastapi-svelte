@@ -1,4 +1,4 @@
-"""MCP tool registry — discovers /api/v1 routes and exposes them as tools."""
+"""MCP tool registry built from MCP-onboarded FastAPI routes."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
+from modules.mcp.router import get_mcp_route_meta
 from modules.mcp.validation import check_schema_supported
 
 SAFE_METHODS = frozenset({'GET', 'HEAD', 'OPTIONS'})
@@ -23,6 +24,44 @@ CONFIRM_REQUIRED_PATTERNS: list[tuple[str, str]] = [
 
 def _requires_confirm(method: str, path: str) -> bool:
     return any(method == m and re.match(pattern, path) for m, pattern in CONFIRM_REQUIRED_PATTERNS)
+
+
+def _route_openapi_operation(route: APIRoute, schema: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
+    path_item = schema.get('paths', {}).get(route.path)
+    if not isinstance(path_item, dict):
+        return None
+    allowed_methods = route.methods or set()
+    for method in path_item:
+        method_upper = method.upper()
+        if method_upper not in allowed_methods:
+            continue
+        op = path_item.get(method)
+        if not isinstance(op, dict):
+            continue
+        return method_upper, op
+    return None
+
+
+def _description(op: dict[str, Any], meta: dict[str, Any], method: str, path: str) -> str:
+    text = op.get('description') or op.get('summary') or meta.get('docstring')
+    if isinstance(text, str) and text.strip():
+        return text
+    return f'{method} {path}'
+
+
+def _confirm_required(method: str, path: str, meta: dict[str, Any]) -> bool:
+    value = meta.get('confirm_required')
+    if isinstance(value, bool):
+        return value
+    return _requires_confirm(method, path)
+
+
+def _tag_list(route: APIRoute, op: dict[str, Any]) -> list[str]:
+    tags = op.get('tags')
+    if isinstance(tags, list):
+        return [t for t in tags if isinstance(t, str)]
+    route_tags = route.tags or []
+    return [t for t in route_tags if isinstance(t, str)]
 
 
 def _openapi_to_json_schema(schema_ref: Any, components: dict) -> Any:
@@ -54,12 +93,58 @@ def _openapi_to_json_schema(schema_ref: Any, components: dict) -> Any:
     return result
 
 
+def _is_success_status(code: Any) -> bool:
+    if not isinstance(code, str):
+        return False
+    if code == 'default':
+        return False
+    return code.startswith('2')
+
+
+def _best_response_content(content: Any, components: dict) -> tuple[str | None, Any]:
+    if not isinstance(content, dict):
+        return None, None
+    for mime in ('application/json',):
+        if mime in content and isinstance(content[mime], dict):
+            return mime, _openapi_to_json_schema(content[mime].get('schema'), components)
+    for mime, item in content.items():
+        if not isinstance(mime, str) or not isinstance(item, dict):
+            continue
+        return mime, _openapi_to_json_schema(item.get('schema'), components)
+    return None, None
+
+
+def _output_schema(op: dict[str, Any], meta: dict[str, Any], components: dict) -> dict[str, Any] | None:
+    responses = op.get('responses')
+    if not isinstance(responses, dict):
+        return None
+
+    candidates = [(code, value) for code, value in responses.items() if _is_success_status(code) and isinstance(value, dict)]
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: int(item[0]) if item[0].isdigit() else 999)
+    for code, response in candidates:
+        content_type, schema = _best_response_content(response.get('content'), components)
+        if schema is None:
+            continue
+        return {
+            'status_code': code,
+            'content_type': content_type,
+            'schema': schema,
+            'response_model': meta.get('response_model'),
+        }
+    return None
+
+
 def _build_tool(route_data: dict, components: dict) -> dict:
     method = route_data['method']
     path = route_data['path']
     op = route_data['operation']
+    onboard = route_data.get('meta', {})
+    route = route_data.get('route')
 
-    description = op.get('description') or op.get('summary') or f'{method} {path}'
+    description = _description(op, onboard, method, path)
 
     properties: dict[str, Any] = {}
     required: list[str] = []
@@ -79,11 +164,11 @@ def _build_tool(route_data: dict, components: dict) -> dict:
         is_required = bool(param.get('required', p_in == 'path'))
         if is_required and name not in required:
             required.append(name)
-        meta = {'name': name, 'required': is_required, 'description': param.get('description', ''), 'schema': schema}
+        item = {'name': name, 'required': is_required, 'description': param.get('description', ''), 'schema': schema}
         if p_in == 'path':
-            path_params.append(meta)
+            path_params.append(item)
         if p_in == 'query':
-            query_params.append(meta)
+            query_params.append(item)
 
     body_content = op.get('requestBody', {}).get('content', {})
     body_schema: dict | None = None
@@ -106,14 +191,23 @@ def _build_tool(route_data: dict, components: dict) -> dict:
 
     tool_id = route_data.get('name') or f'{method.lower()}_{path.replace("/", "_").replace("{", "").replace("}", "").strip("_")}'
 
+    tags = op.get('tags', [])
+    if isinstance(route, APIRoute):
+        tags = _tag_list(route, op)
+    output_schema = _output_schema(op, onboard, components)
+
     return {
         'id': tool_id,
         'method': method,
         'path': path,
         'description': description,
         'safety': 'safe' if method in SAFE_METHODS else 'mutating',
-        'confirm_required': _requires_confirm(method, path),
+        'confirm_required': _confirm_required(method, path, onboard),
         'input_schema': tool_schema,
+        'contract': {
+            'input_schema': tool_schema,
+            'output_schema': output_schema,
+        },
         'arg_metadata': {
             'path': path_params,
             'query': query_params,
@@ -125,47 +219,60 @@ def _build_tool(route_data: dict, components: dict) -> dict:
             if body_schema is not None
             else None,
         },
-        'tags': op.get('tags', []),
+        'output_schema': output_schema,
+        'tags': tags,
     }
 
 
-def _marked_routes(app: FastAPI) -> dict[tuple[str, str], str]:
-    """Return mapping of (METHOD, path) -> endpoint function name for marked routes."""
-    marked: dict[tuple[str, str], str] = {}
+def _marked_routes(app: FastAPI) -> list[dict[str, Any]]:
+    """Return metadata for routes onboarded via MCP route registration."""
+    allowed_methods = SAFE_METHODS | MUTATING_METHODS
+    marked: list[dict[str, Any]] = []
     for route in app.routes:
         if not isinstance(route, APIRoute):
             continue
-        if not getattr(route.endpoint, '__mcp_tool__', False):
+        route_meta = get_mcp_route_meta(route)
+        meta = dict(route_meta) if isinstance(route_meta, dict) else None
+        if not isinstance(meta, dict):
             continue
-        name = route.endpoint.__name__
-        for method in route.methods or []:
-            marked[(method.upper(), route.path)] = name
+        if not route.path.startswith('/api/v1/'):
+            continue
+        # Routes in this codebase are single-method; MCP exposes one tool per route.
+        method = next((m.upper() for m in (route.methods or set()) if m.upper() in allowed_methods), None)
+        if method is None:
+            continue
+        endpoint = route.endpoint
+        fallback = endpoint.__name__ if hasattr(endpoint, '__name__') else route.name
+        name = meta.get('name') or fallback
+        marked.append({'route': route, 'method': method, 'name': name, 'meta': meta})
     return marked
 
 
 def build_tool_registry(app: FastAPI) -> list[dict]:
-    """Extract marked /api/v1 routes from the app's OpenAPI schema and return tool defs."""
-    allowed = _marked_routes(app)
+    """Extract MCPRouter mcp=True onboarded routes as MCP tool definitions."""
+    marked = _marked_routes(app)
     schema = app.openapi()
     components = schema.get('components', {})
-    paths = schema.get('paths', {})
-    tools = []
-    for path, path_item in paths.items():
-        if not path.startswith('/api/v1/'):
+    tools: list[dict[str, Any]] = []
+    for item in marked:
+        route = item['route']
+        op_item = _route_openapi_operation(route, schema)
+        if op_item is None:
             continue
-        if '/mcp/' in path or '/ai/chat' in path:
-            continue
-        for method, op in path_item.items():
-            if method.upper() not in {*SAFE_METHODS, *MUTATING_METHODS}:
-                continue
-            if not isinstance(op, dict):
-                continue
-            if (method.upper(), path) not in allowed:
-                continue
-            tool_name = allowed[(method.upper(), path)]
-            tool = _build_tool({'method': method.upper(), 'path': path, 'operation': op, 'name': tool_name}, components)
-            issues = check_schema_supported(tool['input_schema'])
-            if issues:
-                raise ValueError(f'Tool {tool["id"]!r} has unsupported schema: {", ".join(issues)}')
-            tools.append(tool)
+        method, op = op_item
+        tool = _build_tool(
+            {
+                'method': method,
+                'path': route.path,
+                'operation': op,
+                'name': item['name'],
+                'meta': item['meta'],
+                'route': route,
+            },
+            components,
+        )
+        issues = check_schema_supported(tool['input_schema'])
+        if issues:
+            raise ValueError(f'Tool {tool["id"]!r} has unsupported schema: {", ".join(issues)}')
+        tools.append(tool)
     return tools

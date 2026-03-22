@@ -33,6 +33,7 @@
 	import { css, cx, iconButton, button, input, label } from '$lib/styles/panda';
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import { chatStore } from '$lib/stores/chat.svelte';
+	import type { MCPTool } from '$lib/api/mcp';
 	import type { ChatEvent } from '$lib/api/chat';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import { renderMarkdown, timeAgo } from '$lib/utils/markdown';
@@ -134,6 +135,37 @@
 		if (r.ok === false) return `Error ${r.status ?? ''}`;
 		if (r.ok === true) return `OK ${r.status ?? 200}`;
 		return '';
+	}
+
+	function findTool(toolId: string): MCPTool | undefined {
+		return chatStore.tools.find((t) => t.id === toolId);
+	}
+
+	function outputFields(schema: Record<string, unknown> | boolean | null): string[] {
+		if (!schema || typeof schema !== 'object') return [];
+		if (schema.type === 'object') {
+			const props = schema.properties;
+			if (!props || typeof props !== 'object') return [];
+			return Object.keys(props as Record<string, unknown>);
+		}
+		if (schema.type === 'array') {
+			const items = schema.items;
+			if (!items || typeof items !== 'object') return [];
+			const itemSchema = items as Record<string, unknown>;
+			const props = itemSchema.properties;
+			if (!props || typeof props !== 'object') return [];
+			return Object.keys(props as Record<string, unknown>);
+		}
+		return [];
+	}
+
+	function outputHint(tool: MCPTool | undefined): string | null {
+		if (!tool?.output_schema) return null;
+		const out = tool.output_schema;
+		const parts: string[] = [];
+		if (out.response_model) parts.push(out.response_model);
+		if (out.status_code && out.status_code !== '200') parts.push(out.status_code);
+		return parts.length > 0 ? parts.join(' · ') : null;
 	}
 
 	const EXAMPLE_PROMPTS = [
@@ -1057,6 +1089,7 @@
 							<div class={css({ display: 'flex', flexDirection: 'column' })}>
 								{#each tagTools as tool (tool.id)}
 									{@const enabled = chatStore.isToolEnabled(tool.id)}
+									{@const hint = outputHint(tool)}
 									<button
 										class={css({
 											display: 'flex',
@@ -1126,6 +1159,22 @@
 										>
 											{tool.path}
 										</span>
+										{#if hint}
+											<span
+												class={css({
+													fontSize: '9px',
+													color: 'fg.muted',
+													flexShrink: '0',
+													maxWidth: '80px',
+													overflow: 'hidden',
+													textOverflow: 'ellipsis',
+													whiteSpace: 'nowrap'
+												})}
+												title={hint}
+											>
+												→ {hint}
+											</span>
+										{/if}
 									</button>
 								{/each}
 							</div>
@@ -1667,6 +1716,7 @@
 						<!-- Tool call card -->
 						{@const tc = entry.item}
 						{@const summary = resultSummary(tc.result)}
+						{@const toolDef = findTool(tc.tool_id)}
 						{@const elapsed =
 							tc.startedAt && tc.status === 'running' ? elapsedTick - tc.startedAt : undefined}
 						<div
@@ -1866,6 +1916,47 @@
 										>
 										{tc.path}
 									</div>
+									{#if toolDef?.output_schema}
+										{@const out = toolDef.output_schema}
+										{@const fields = outputFields(out.schema)}
+										<div
+											class={css({
+												display: 'flex',
+												flexWrap: 'wrap',
+												alignItems: 'center',
+												gap: '1',
+												color: 'fg.muted',
+												marginBottom: '0.5'
+											})}
+										>
+											<span>→</span>
+											{#if out.response_model}
+												<span
+													class={css({
+														paddingX: '1',
+														paddingY: '0.5',
+														borderRadius: 'xs',
+														backgroundColor: 'bg.canvas',
+														fontWeight: 'medium',
+														color: 'fg.secondary'
+													})}
+												>
+													{out.response_model}
+												</span>
+											{/if}
+											{#if out.status_code}
+												<span>{out.status_code}</span>
+											{/if}
+											{#if out.content_type}
+												<span>{out.content_type}</span>
+											{/if}
+											{#if fields.length > 0}
+												<span class={css({ color: 'fg.muted' })} title={fields.join(', ')}>
+													{`{ ${fields.slice(0, 6).join(', ')}${fields.length > 6 ? ', \u2026' : ''} }`}
+												</span>
+											{/if}
+										</div>
+									{/if}
 									{#if Object.keys(tc.args).length > 0}
 										<div
 											class={css({

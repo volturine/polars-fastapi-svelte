@@ -1,6 +1,6 @@
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends
+from fastapi import Depends
 from fastapi.responses import Response
 from sqlmodel import Session
 
@@ -11,14 +11,13 @@ from core.exceptions import EngineNotFoundError
 from core.validation import AnalysisId, DataSourceId, parse_analysis_id, parse_datasource_id
 from modules.compute import schemas, service
 from modules.compute.manager import ProcessManager
-from modules.mcp.decorators import deterministic_tool
+from modules.mcp.router import MCPRouter
 
-router = APIRouter(prefix='/compute', tags=['compute'])
+router = MCPRouter(prefix='/compute', tags=['compute'])
 
 
-@router.post('/preview', response_model=schemas.StepPreviewResponse)
+@router.post('/preview', response_model=schemas.StepPreviewResponse, mcp=True)
 @handle_errors(operation='preview step')
-@deterministic_tool
 def preview_step(
     request: schemas.StepPreviewRequest,
     session: Session = Depends(get_db),
@@ -46,9 +45,8 @@ def preview_step(
     )
 
 
-@router.post('/schema', response_model=schemas.StepSchemaResponse)
+@router.post('/schema', response_model=schemas.StepSchemaResponse, mcp=True)
 @handle_errors(operation='get step schema')
-@deterministic_tool
 def get_step_schema(
     request: schemas.StepSchemaRequest,
     session: Session = Depends(get_db),
@@ -71,9 +69,8 @@ def get_step_schema(
     )
 
 
-@router.post('/row-count', response_model=schemas.StepRowCountResponse)
+@router.post('/row-count', response_model=schemas.StepRowCountResponse, mcp=True)
 @handle_errors(operation='get step row count')
-@deterministic_tool
 def get_step_row_count(
     request: schemas.StepRowCountRequest,
     session: Session = Depends(get_db),
@@ -93,9 +90,8 @@ def get_step_row_count(
     )
 
 
-@router.get('/iceberg/{datasource_id}/snapshots', response_model=schemas.IcebergSnapshotsResponse)
+@router.get('/iceberg/{datasource_id}/snapshots', response_model=schemas.IcebergSnapshotsResponse, mcp=True)
 @handle_errors(operation='list iceberg snapshots')
-@deterministic_tool
 def list_iceberg_snapshots(
     datasource_id: DataSourceId,
     branch: str | None = None,
@@ -112,9 +108,9 @@ def list_iceberg_snapshots(
 @router.delete(
     '/iceberg/{datasource_id}/snapshots/{snapshot_id}',
     response_model=schemas.IcebergSnapshotDeleteResponse,
+    mcp=True,
 )
 @handle_errors(operation='delete iceberg snapshot')
-@deterministic_tool
 def delete_iceberg_snapshot(
     datasource_id: DataSourceId,
     snapshot_id: int,
@@ -127,9 +123,8 @@ def delete_iceberg_snapshot(
     return service.delete_iceberg_snapshot(session, parse_datasource_id(datasource_id), str(snapshot_id))
 
 
-@router.post('/build', response_model=schemas.BuildResponse)
+@router.post('/build', response_model=schemas.BuildResponse, mcp=True)
 @handle_errors(operation='build analysis')
-@deterministic_tool
 def build_analysis_from_payload(
     request: schemas.BuildRequest,
     session: Session = Depends(get_db),
@@ -151,9 +146,8 @@ def build_analysis_from_payload(
 # Engine lifecycle endpoints
 
 
-@router.post('/engine/spawn/{analysis_id}', response_model=schemas.EngineStatusSchema)
+@router.post('/engine/spawn/{analysis_id}', response_model=schemas.EngineStatusSchema, mcp=True)
 @handle_errors(operation='spawn engine')
-@deterministic_tool
 def spawn_engine(
     analysis_id: AnalysisId,
     request: schemas.SpawnEngineRequest | None = None,
@@ -169,9 +163,8 @@ def spawn_engine(
     return manager.get_engine_status(analysis_id_value)
 
 
-@router.post('/engine/keepalive/{analysis_id}', response_model=schemas.EngineStatusSchema)
+@router.post('/engine/keepalive/{analysis_id}', response_model=schemas.EngineStatusSchema, mcp=True)
 @handle_errors(operation='keepalive engine')
-@deterministic_tool
 def keepalive(analysis_id: AnalysisId, manager: ProcessManager = Depends(get_manager)):
     """Send keepalive ping for an analysis engine."""
     analysis_id_value = parse_analysis_id(analysis_id)
@@ -181,9 +174,8 @@ def keepalive(analysis_id: AnalysisId, manager: ProcessManager = Depends(get_man
     return manager.get_engine_status(analysis_id_value)
 
 
-@router.post('/engine/configure/{analysis_id}', response_model=schemas.EngineStatusSchema)
+@router.post('/engine/configure/{analysis_id}', response_model=schemas.EngineStatusSchema, mcp=True)
 @handle_errors(operation='configure engine')
-@deterministic_tool
 def configure_engine(
     analysis_id: AnalysisId,
     request: schemas.EngineResourceConfig,
@@ -200,17 +192,15 @@ def configure_engine(
     return manager.get_engine_status(analysis_id_value)
 
 
-@router.get('/engine/status/{analysis_id}', response_model=schemas.EngineStatusSchema)
+@router.get('/engine/status/{analysis_id}', response_model=schemas.EngineStatusSchema, mcp=True)
 @handle_errors(operation='get engine status')
-@deterministic_tool
 def get_engine_status(analysis_id: AnalysisId, manager: ProcessManager = Depends(get_manager)):
     """Get the status of an analysis engine."""
     return manager.get_engine_status(parse_analysis_id(analysis_id))
 
 
-@router.delete('/engine/{analysis_id}', status_code=204)
+@router.delete('/engine/{analysis_id}', status_code=204, mcp=True)
 @handle_errors(operation='shutdown engine')
-@deterministic_tool
 def shutdown_engine(analysis_id: AnalysisId, manager: ProcessManager = Depends(get_manager)):
     """Shutdown an analysis engine."""
     analysis_id_value = parse_analysis_id(analysis_id)
@@ -221,18 +211,16 @@ def shutdown_engine(analysis_id: AnalysisId, manager: ProcessManager = Depends(g
     return None
 
 
-@router.get('/engines', response_model=schemas.EngineListSchema)
+@router.get('/engines', response_model=schemas.EngineListSchema, mcp=True)
 @handle_errors(operation='list engines')
-@deterministic_tool
 def list_engines(manager: ProcessManager = Depends(get_manager)):
     """List all active engines with their status."""
     statuses = manager.list_all_engine_statuses()
     return {'engines': statuses, 'total': len(statuses)}
 
 
-@router.get('/defaults', response_model=schemas.EngineDefaults)
+@router.get('/defaults', response_model=schemas.EngineDefaults, mcp=True)
 @handle_errors(operation='get engine defaults')
-@deterministic_tool
 def get_engine_defaults():
     """Get default engine resource settings from environment configuration."""
     from core.config import settings
@@ -244,9 +232,8 @@ def get_engine_defaults():
     )
 
 
-@router.post('/export')
+@router.post('/export', mcp=True)
 @handle_errors(operation='export data')
-@deterministic_tool
 def export_data(
     request: schemas.ExportRequest,
     session: Session = Depends(get_db),
@@ -298,9 +285,8 @@ def export_data(
     )
 
 
-@router.post('/download')
+@router.post('/download', mcp=True)
 @handle_errors(operation='download step')
-@deterministic_tool
 def download_step(
     request: schemas.DownloadRequest,
     session: Session = Depends(get_db),

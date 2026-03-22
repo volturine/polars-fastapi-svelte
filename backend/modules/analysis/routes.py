@@ -1,6 +1,6 @@
 import contextlib
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
@@ -12,14 +12,13 @@ from modules.analysis import schemas, service
 from modules.analysis.step_schemas import StepType, get_config_model, get_step_catalog
 from modules.compute import service as compute_service
 from modules.compute.manager import ProcessManager
-from modules.mcp.decorators import deterministic_tool
+from modules.mcp.router import MCPRouter
 
-router = APIRouter(prefix='/analysis', tags=['analysis'])
+router = MCPRouter(prefix='/analysis', tags=['analysis'])
 
 
-@router.post('/validate')
+@router.post('/validate', mcp=True)
 @handle_errors(operation='validate analysis', value_error_status=400)
-@deterministic_tool
 def validate_analysis(
     data: schemas.AnalysisCreateSchema,
     session: Session = Depends(get_db),
@@ -28,9 +27,8 @@ def validate_analysis(
     return service.validate_analysis(session, data)
 
 
-@router.post('', response_model=schemas.AnalysisResponseSchema)
+@router.post('', response_model=schemas.AnalysisResponseSchema, mcp=True)
 @handle_errors(operation='create analysis', value_error_status=400)
-@deterministic_tool
 def create_analysis(
     data: schemas.AnalysisCreateSchema,
     session: Session = Depends(get_db),
@@ -51,17 +49,15 @@ def create_analysis(
     return service.create_analysis(session, data)
 
 
-@router.get('', response_model=list[schemas.AnalysisGalleryItemSchema])
+@router.get('', response_model=list[schemas.AnalysisGalleryItemSchema], mcp=True)
 @handle_errors(operation='list analyses')
-@deterministic_tool
 def list_analyses(session: Session = Depends(get_db)):
     """List all analyses as gallery items with id, name, thumbnail, and timestamps."""
     return service.list_analyses(session)
 
 
-@router.get('/step-types')
+@router.get('/step-types', mcp=True)
 @handle_errors(operation='list step types')
-@deterministic_tool
 def list_step_types():
     """List all available pipeline step types with descriptions and config schemas.
 
@@ -71,9 +67,8 @@ def list_step_types():
     return get_step_catalog()
 
 
-@router.get('/{analysis_id}', response_model=schemas.AnalysisResponseSchema)
+@router.get('/{analysis_id}', response_model=schemas.AnalysisResponseSchema, mcp=True)
 @handle_errors(operation='get analysis', value_error_status=404)
-@deterministic_tool
 def get_analysis(
     analysis_id: AnalysisId,
     response: Response,
@@ -86,9 +81,8 @@ def get_analysis(
     return analysis
 
 
-@router.put('/{analysis_id}', response_model=schemas.AnalysisResponseSchema)
+@router.put('/{analysis_id}', response_model=schemas.AnalysisResponseSchema, mcp=True)
 @handle_errors(operation='update analysis', value_error_status=409)
-@deterministic_tool
 def update_analysis(
     analysis_id: AnalysisId,
     data: schemas.AnalysisUpdateSchema,
@@ -108,9 +102,8 @@ def update_analysis(
     return service.update_analysis(session, analysis_id_value, data)
 
 
-@router.delete('/{analysis_id}', status_code=204)
+@router.delete('/{analysis_id}', status_code=204, mcp=True)
 @handle_errors(operation='delete analysis', value_error_status=404)
-@deterministic_tool
 def delete_analysis(
     analysis_id: AnalysisId,
     session: Session = Depends(get_db),
@@ -124,9 +117,8 @@ def delete_analysis(
     return None
 
 
-@router.post('/{analysis_id}/execute')
+@router.post('/{analysis_id}/execute', mcp=True)
 @handle_errors(operation='execute analysis', value_error_status=400)
-@deterministic_tool
 async def execute_analysis(
     analysis_id: AnalysisId,
     request: Request,
@@ -201,9 +193,8 @@ class UpdateStepBody(BaseModel):
     config: dict | None = Field(None, description='New config. Omit to keep current config.')
 
 
-@router.post('/{analysis_id}/tabs/{tab_id}/steps')
+@router.post('/{analysis_id}/tabs/{tab_id}/steps', mcp=True)
 @handle_errors(operation='add step', value_error_status=400)
-@deterministic_tool
 def add_step(
     analysis_id: AnalysisId,
     tab_id: str,
@@ -230,9 +221,8 @@ def add_step(
     )
 
 
-@router.put('/{analysis_id}/tabs/{tab_id}/steps/{step_id}')
+@router.put('/{analysis_id}/tabs/{tab_id}/steps/{step_id}', mcp=True)
 @handle_errors(operation='update step', value_error_status=400)
-@deterministic_tool
 def update_step(
     analysis_id: AnalysisId,
     tab_id: str,
@@ -272,9 +262,8 @@ def update_step(
     )
 
 
-@router.delete('/{analysis_id}/tabs/{tab_id}/steps/{step_id}', status_code=204)
+@router.delete('/{analysis_id}/tabs/{tab_id}/steps/{step_id}', status_code=204, mcp=True)
 @handle_errors(operation='remove step', value_error_status=400)
-@deterministic_tool
 def remove_step(
     analysis_id: AnalysisId,
     tab_id: str,
@@ -295,9 +284,8 @@ class DeriveTabBody(BaseModel):
     name: str | None = Field(None, description='Name for the new derived tab. Defaults to "Derived N".')
 
 
-@router.post('/{analysis_id}/tabs/{tab_id}/derive')
+@router.post('/{analysis_id}/tabs/{tab_id}/derive', mcp=True)
 @handle_errors(operation='derive tab', value_error_status=400)
-@deterministic_tool
 def derive_tab(
     analysis_id: AnalysisId,
     tab_id: str,

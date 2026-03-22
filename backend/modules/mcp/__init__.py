@@ -1,4 +1,4 @@
-"""MCP module — auto-expose /api/v1 routes as tools with preview-first execution."""
+"""MCP module — only MCPRouter routes with mcp=True are exposed as tools."""
 
 from modules.mcp.routes import router
 

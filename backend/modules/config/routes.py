@@ -2,16 +2,16 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import Depends, Query
 from pydantic import BaseModel
 from sqlmodel import Session
 
 from core.config import settings
 from core.database import get_settings_db
-from modules.mcp.decorators import deterministic_tool
+from modules.mcp.router import MCPRouter
 from modules.settings.service import get_settings
 
-router = APIRouter(prefix='/config', tags=['config'])
+router = MCPRouter(prefix='/config', tags=['config'])
 
 
 class FrontendConfig(BaseModel):
@@ -39,8 +39,7 @@ class UuidResponse(BaseModel):
     uuids: list[str]
 
 
-@router.get('/uuid', response_model=UuidResponse)
-@deterministic_tool
+@router.get('/uuid', response_model=UuidResponse, mcp=True)
 def generate_uuid(count: int = Query(default=1, ge=1, le=20)) -> UuidResponse:
     """Generate UUID v4 values for use in analysis creation (output.result_id) or any UUID field.
 
@@ -49,8 +48,7 @@ def generate_uuid(count: int = Query(default=1, ge=1, le=20)) -> UuidResponse:
     return UuidResponse(uuids=[str(uuid.uuid4()) for _ in range(count)])
 
 
-@router.get('', response_model=FrontendConfig)
-@deterministic_tool
+@router.get('', response_model=FrontendConfig, mcp=True)
 def get_config(session: Session = Depends(get_settings_db)) -> FrontendConfig:
     """Get application configuration: timeouts, logging settings, feature flags, and default namespace."""
     db_settings = get_settings(session)

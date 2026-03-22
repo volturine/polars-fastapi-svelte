@@ -104,3 +104,6 @@ See [`STYLE_GUIDE.md`](STYLE_GUIDE.md)
 - When adding API endpoints that mirror existing compute behavior, inspect the raw engine payload shape end-to-end before mapping it into API schemas. The engine returns `schema` + `data`; backend adapters must translate that shape explicitly instead of assuming preview-style fields already exist.
 - MCP tool contracts should reject unknown top-level args (`additionalProperties: false`) and expose path/query/payload placement metadata so AI prompts can describe exact input placement without drift.
 - Path-template failures in MCP execution should return structured `validation_error` responses, not indirect 404/422s, so AI agents can repair missing parameters.
+- MCP tool onboarding is `MCPRouter`-only: tool-exposed API modules must use `MCPRouter`, and routes are onboarded only with explicit `mcp=True` on the router decorator; plain `APIRouter` routes must not be onboarded.
+- MCP registry discovery should start from MCP-attached `APIRoute` metadata and use OpenAPI only to enrich input/output schemas and details; raw endpoint scanning and fallback onboarding paths are forbidden.
+- FastAPI `include_router()` can re-create route objects; for MCP metadata to survive nesting, `MCPRouter` must enforce an MCP-aware `route_class` that re-attaches metadata during route construction, not only in `add_api_route()`.

@@ -8,6 +8,8 @@ from typing import Any
 
 import httpx
 
+from modules.chat.tool_contract import output_hint, tool_input_schema, tool_output_schema
+
 logger = logging.getLogger(__name__)
 
 _OPENROUTER_BASE = 'https://openrouter.ai/api/v1'
@@ -27,12 +29,16 @@ def _headers(api_key: str) -> dict[str, str]:
 
 
 def _mcp_tool_to_openai(tool: dict) -> dict:
+    desc = tool['description']
+    hint = output_hint(tool_output_schema(tool))
+    if hint:
+        desc = f'{desc}\n{hint}'
     return {
         'type': 'function',
         'function': {
             'name': tool['id'],
-            'description': tool['description'],
-            'parameters': tool['input_schema'],
+            'description': desc,
+            'parameters': tool_input_schema(tool),
         },
     }
 

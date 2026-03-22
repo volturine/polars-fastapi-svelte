@@ -3,7 +3,7 @@ from collections.abc import Callable
 from pathlib import Path
 from shutil import copy2
 
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
+from fastapi import Depends, Form, HTTPException, UploadFile
 from sqlmodel import Session
 from starlette.concurrency import run_in_threadpool
 
@@ -16,9 +16,9 @@ from core.validation import DataSourceId, PreflightId, parse_datasource_id, pars
 from modules.datasource import schemas, service
 from modules.datasource.preflight import clear_preflight, create_preflight, get_preflight
 from modules.datasource.source_types import DataSourceType
-from modules.mcp.decorators import deterministic_tool
+from modules.mcp.router import MCPRouter
 
-router = APIRouter(prefix='/datasource', tags=['datasource'])
+router = MCPRouter(prefix='/datasource', tags=['datasource'])
 
 _FILE_TYPE_MAPPING: dict[str, str] = {
     '.csv': 'csv',
@@ -476,9 +476,8 @@ async def confirm_excel(
     return datasource
 
 
-@router.post('/connect', response_model=schemas.DataSourceResponse)
+@router.post('/connect', response_model=schemas.DataSourceResponse, mcp=True)
 @handle_errors(operation='connect datasource', value_error_status=400)
-@deterministic_tool
 def connect_datasource(
     datasource: schemas.DataSourceCreate,
     session: Session = Depends(get_db),
@@ -548,9 +547,8 @@ def _connect_analysis(datasource: schemas.DataSourceCreate, session: Session) ->
     )
 
 
-@router.get('', response_model=list[schemas.DataSourceResponse])
+@router.get('', response_model=list[schemas.DataSourceResponse], mcp=True)
 @handle_errors(operation='list datasources')
-@deterministic_tool
 def list_datasources(include_hidden: bool = False, session: Session = Depends(get_db)):
     """List all datasources with their type, config, and metadata.
 
@@ -560,9 +558,8 @@ def list_datasources(include_hidden: bool = False, session: Session = Depends(ge
     return service.list_datasources(session, include_hidden=include_hidden)
 
 
-@router.get('/lineage')
+@router.get('/lineage', mcp=True)
 @handle_errors(operation='get lineage')
-@deterministic_tool
 def get_lineage(
     target_datasource_id: DataSourceId | None = None,
     branch: str | None = None,
@@ -588,9 +585,8 @@ def get_lineage(
     return build_lineage(session, target_datasource_id=datasource_id, branch=branch)
 
 
-@router.get('/{datasource_id}', response_model=schemas.DataSourceResponse)
+@router.get('/{datasource_id}', response_model=schemas.DataSourceResponse, mcp=True)
 @handle_errors(operation='get datasource')
-@deterministic_tool
 def get_datasource(
     datasource_id: DataSourceId,
     session: Session = Depends(get_db),
@@ -609,9 +605,8 @@ def get_datasource(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get('/{datasource_id}/schema', response_model=schemas.SchemaInfo)
+@router.get('/{datasource_id}/schema', response_model=schemas.SchemaInfo, mcp=True)
 @handle_errors(operation='get datasource schema')
-@deterministic_tool
 def get_datasource_schema(
     datasource_id: DataSourceId,
     sheet_name: str | None = None,
@@ -631,9 +626,8 @@ def get_datasource_schema(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post('/{datasource_id}/compare-snapshots', response_model=schemas.SnapshotCompareResponse)
+@router.post('/{datasource_id}/compare-snapshots', response_model=schemas.SnapshotCompareResponse, mcp=True)
 @handle_errors(operation='compare datasource snapshots')
-@deterministic_tool
 def compare_snapshots(
     datasource_id: DataSourceId,
     payload: schemas.SnapshotCompareRequest,
@@ -678,9 +672,8 @@ def _handle_column_stats(
     )
 
 
-@router.get('/{datasource_id}/column/{column_name}/stats', response_model=schemas.ColumnStatsResponse)
+@router.get('/{datasource_id}/column/{column_name}/stats', response_model=schemas.ColumnStatsResponse, mcp=True)
 @handle_errors(operation='get column stats')
-@deterministic_tool
 def get_column_stats(
     datasource_id: DataSourceId,
     column_name: str,
@@ -699,9 +692,8 @@ def get_column_stats(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post('/{datasource_id}/column/{column_name}/stats', response_model=schemas.ColumnStatsResponse)
+@router.post('/{datasource_id}/column/{column_name}/stats', response_model=schemas.ColumnStatsResponse, mcp=True)
 @handle_errors(operation='get column stats')
-@deterministic_tool
 def get_column_stats_with_config(
     datasource_id: DataSourceId,
     column_name: str,
@@ -718,17 +710,15 @@ def get_column_stats_with_config(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get('/file/list', response_model=schemas.FileListResponse)
+@router.get('/file/list', response_model=schemas.FileListResponse, mcp=True)
 @handle_errors(operation='list data files', value_error_status=400)
-@deterministic_tool
 async def list_files(path: str | None = None):
     """List data files in the upload/data directory. Optionally pass path to list a subdirectory."""
     return service.list_data_files(path)
 
 
-@router.put('/{datasource_id}', response_model=schemas.DataSourceResponse)
+@router.put('/{datasource_id}', response_model=schemas.DataSourceResponse, mcp=True)
 @handle_errors(operation='update datasource')
-@deterministic_tool
 def update_datasource(
     datasource_id: DataSourceId,
     update: schemas.DataSourceUpdate,
@@ -743,9 +733,8 @@ def update_datasource(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post('/{datasource_id}/refresh', response_model=schemas.DataSourceResponse)
+@router.post('/{datasource_id}/refresh', response_model=schemas.DataSourceResponse, mcp=True)
 @handle_errors(operation='refresh datasource')
-@deterministic_tool
 def refresh_datasource(
     datasource_id: DataSourceId,
     session: Session = Depends(get_db),
@@ -759,9 +748,8 @@ def refresh_datasource(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.delete('/{datasource_id}', status_code=204)
+@router.delete('/{datasource_id}', status_code=204, mcp=True)
 @handle_errors(operation='delete datasource')
-@deterministic_tool
 def delete_datasource(
     datasource_id: DataSourceId,
     session: Session = Depends(get_db),

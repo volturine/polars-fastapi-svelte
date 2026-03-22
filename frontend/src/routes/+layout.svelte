@@ -156,7 +156,7 @@
 			class={css({
 				position: 'sticky',
 				top: '0',
-				zIndex: 'header',
+				zIndex: 'nav',
 				backgroundColor: 'bg.panel'
 			})}
 		>

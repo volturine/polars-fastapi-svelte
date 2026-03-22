@@ -261,6 +261,7 @@ export default defineConfig({
 				},
 				zIndex: {
 					header: { value: '100' },
+					nav: { value: '150' },
 					dropdown: { value: '101' },
 					engine: { value: '200' },
 					modal: { value: '1000' },

@@ -52,7 +52,13 @@ export class SchemaStore {
 				output = input;
 			} else if (entry && (step.type === 'pivot' || step.type === 'unpivot')) {
 				output = entry.schema;
-			} else if (entry?.hash !== null && entry?.hash === currentHash) {
+			} else if (
+				entry?.hash !== null &&
+				entry?.hash === currentHash &&
+				step.type !== 'chart' &&
+				step.type !== 'plot' &&
+				!step.type.startsWith('plot_')
+			) {
 				output = entry.schema;
 			} else if (step.type === 'join') {
 				const rightSource = typeof config.right_source === 'string' ? config.right_source : '';

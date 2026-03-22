@@ -17,7 +17,6 @@
 	import { GripVertical, Hash, RefreshCw, Copy } from 'lucide-svelte';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
-	import { schemaStore } from '$lib/stores/schema.svelte';
 	import { getStepTypeConfig } from '$lib/components/pipeline/utils';
 	import {
 		buildAnalysisPipelinePayload,
@@ -141,13 +140,6 @@
 	}));
 
 	const rowCounts = new SvelteMap<string, number>();
-
-	// Schema sync: $derived can't write to an external store reactively.
-	$effect(() => {
-		const response = chartQuery.data;
-		if (!isChart || !response) return;
-		schemaStore.syncPreviewSchema(step.id, response, chartPipelineKey);
-	});
 
 	const rowCountLoads = new SvelteMap<string, boolean>();
 	const rowCountErrors = new SvelteMap<string, string>();

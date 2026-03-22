@@ -107,3 +107,4 @@ See [`STYLE_GUIDE.md`](STYLE_GUIDE.md)
 - MCP tool onboarding is `MCPRouter`-only: tool-exposed API modules must use `MCPRouter`, and routes are onboarded only with explicit `mcp=True` on the router decorator; plain `APIRouter` routes must not be onboarded.
 - MCP registry discovery should start from MCP-attached `APIRoute` metadata and use OpenAPI only to enrich input/output schemas and details; raw endpoint scanning and fallback onboarding paths are forbidden.
 - FastAPI `include_router()` can re-create route objects; for MCP metadata to survive nesting, `MCPRouter` must enforce an MCP-aware `route_class` that re-attaches metadata during route construction, not only in `add_api_route()`.
+- Chart/plot preview responses expose visualization columns like `x`/`y`; frontend schema propagation must treat chart steps as schema-transparent and never cache chart preview schemas as downstream pipeline schema.

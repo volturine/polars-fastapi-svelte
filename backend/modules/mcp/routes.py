@@ -5,7 +5,6 @@ from typing import Any
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from pydantic import BaseModel
 
-from modules.chat.tool_contract import tool_input_schema
 from modules.mcp.executor import call_tool
 from modules.mcp.pending import pending_store
 from modules.mcp.registry import MUTATING_METHODS, build_tool_registry
@@ -27,7 +26,7 @@ def _resolve_tool(app: FastAPI, tool_id: str, args: dict) -> tuple[dict, bool, l
     tool = next((t for t in registry if t['id'] == tool_id), None)
     if tool is None:
         raise HTTPException(status_code=404, detail=f'Tool {tool_id!r} not found')
-    valid, errors, normalized = validate_args(tool_input_schema(tool), args)
+    valid, errors, normalized = validate_args(tool['input_schema'], args)
     return tool, valid, errors, normalized
 
 
@@ -128,7 +127,7 @@ def capabilities(request: Request, body: CapabilitiesRequest) -> list[dict]:
     return [
         {
             'tool_id': tool['id'],
-            'supported': not (unsupported := check_schema_supported(tool_input_schema(tool))),
+            'supported': not (unsupported := check_schema_supported(tool['input_schema'])),
             'issues': [{'path': p, 'message': 'unsupported schema'} for p in unsupported],
         }
         for tool in tools

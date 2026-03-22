@@ -496,7 +496,6 @@ SAMPLE_REGISTRY = [
         'safety': 'safe',
         'tags': ['config'],
         'input_schema': {'type': 'object', 'properties': {}, 'additionalProperties': False},
-        'contract': {'input_schema': {'type': 'object', 'properties': {'alt': {'type': 'boolean'}}, 'additionalProperties': False}},
     },
     {
         'id': 'get_datasources',
@@ -657,9 +656,6 @@ VALIDATION_REGISTRY = [
         'tags': ['config'],
         'confirm_required': False,
         'input_schema': {'type': 'object', 'properties': {}, 'required': []},
-        'contract': {
-            'input_schema': {'type': 'object', 'properties': {'flag': {'type': 'boolean'}}, 'required': []},
-        },
     },
     {
         'id': 'mutating_tool_with_required',
@@ -672,13 +668,6 @@ VALIDATION_REGISTRY = [
             'type': 'object',
             'properties': {'payload': {'type': 'object', 'properties': {'name': {'type': 'string'}}, 'required': ['name']}},
             'required': ['payload'],
-        },
-        'contract': {
-            'input_schema': {
-                'type': 'object',
-                'properties': {'payload': {'type': 'object', 'properties': {'name': {'type': 'string'}}, 'required': ['name']}},
-                'required': ['payload'],
-            },
         },
     },
 ]
@@ -817,7 +806,6 @@ UNSUPPORTED_SCHEMA_REGISTRY = [
         'tags': ['datasource'],
         'confirm_required': False,
         'input_schema': {'type': 'object', 'x-unsupported-extension': True},
-        'contract': {'input_schema': {'type': 'object', 'x-unsupported-extension': True}},
     },
 ]
 
@@ -1047,7 +1035,7 @@ class TestTextToolCallParsing:
 
 
 class TestToolSystemMessage:
-    def test_tool_system_message_includes_contract_and_metadata(self) -> None:
+    def test_tool_system_message_includes_argument_guidance_and_metadata(self) -> None:
         from modules.chat.routes import _build_tool_system_message
 
         tools = [
@@ -1174,74 +1162,10 @@ class TestToolSystemMessage:
 
         msg = _build_tool_system_message(tools)
         assert 'Expected output:' in msg
-        assert 'status_code=200' in msg
-        assert 'content_type=application/json' in msg
-        assert 'response_model=ItemResponse' in msg
-        assert 'fields=id, name, created_at' in msg
-
-    def test_tool_system_message_prefers_contract_output_schema(self) -> None:
-        from modules.chat.routes import _build_tool_system_message
-
-        tools = [
-            {
-                'id': 'get_item',
-                'method': 'GET',
-                'path': '/api/v1/items/{item_id}',
-                'description': 'Fetch item',
-                'input_schema': {'type': 'object', 'properties': {}, 'additionalProperties': False},
-                'output_schema': {
-                    'status_code': '201',
-                    'content_type': 'application/json',
-                    'schema': {'type': 'object', 'properties': {'from_top': {'type': 'string'}}},
-                },
-                'contract': {
-                    'input_schema': {'type': 'object', 'properties': {}, 'additionalProperties': False},
-                    'output_schema': {
-                        'status_code': '200',
-                        'content_type': 'application/json',
-                        'schema': {'type': 'object', 'properties': {'from_contract': {'type': 'string'}}},
-                    },
-                },
-                'arg_metadata': {'path': [], 'query': [], 'payload': None},
-            }
-        ]
-
-        msg = _build_tool_system_message(tools)
-        assert 'status_code=200' in msg
-        assert 'fields=from_contract' in msg
-        assert 'status_code=201' not in msg
-        assert 'fields=from_top' not in msg
-
-    def test_tool_system_message_prefers_contract_input_schema(self) -> None:
-        from modules.chat.routes import _build_tool_system_message
-
-        tools = [
-            {
-                'id': 'fallback_tool',
-                'method': 'GET',
-                'path': '/api/v1/fallback',
-                'description': 'Fallback metadata test',
-                'input_schema': {
-                    'type': 'object',
-                    'properties': {'from_top': {'type': 'string'}},
-                    'required': ['from_top'],
-                    'additionalProperties': False,
-                },
-                'contract': {
-                    'input_schema': {
-                        'type': 'object',
-                        'properties': {'from_contract': {'type': 'string'}},
-                        'required': ['from_contract'],
-                        'additionalProperties': False,
-                    }
-                },
-                'arg_metadata': None,
-            }
-        ]
-
-        msg = _build_tool_system_message(tools)
-        assert '- from_contract (arg, string, required)' in msg
-        assert '- from_top (arg, string, required)' not in msg
+        assert 'status 200' in msg
+        assert 'application/json' in msg
+        assert 'model ItemResponse' in msg
+        assert 'fields: id, name, created_at' in msg
 
     def test_tool_system_message_is_coherent_with_real_registry(self, client: TestClient) -> None:
         from fastapi import FastAPI
@@ -1372,50 +1296,10 @@ class TestOpenRouterToolMapping:
         mapped = _mcp_tool_to_openai(tool)
         assert mapped['function']['description'] == 'Fetch item'
 
-    def test_mcp_tool_to_openai_prefers_contract_schemas(self) -> None:
-        from modules.chat.openrouter import _mcp_tool_to_openai
-
-        tool = {
-            'id': 'get_item',
-            'description': 'Fetch item',
-            'input_schema': {
-                'type': 'object',
-                'properties': {'from_top': {'type': 'string'}},
-                'additionalProperties': False,
-            },
-            'output_schema': {
-                'status_code': '201',
-                'content_type': 'application/json',
-                'schema': {'type': 'object', 'properties': {'from_top': {'type': 'string'}}},
-            },
-            'contract': {
-                'input_schema': {
-                    'type': 'object',
-                    'properties': {'from_contract': {'type': 'string'}},
-                    'additionalProperties': False,
-                },
-                'output_schema': {
-                    'status_code': '200',
-                    'content_type': 'application/json',
-                    'schema': {'type': 'object', 'properties': {'from_contract': {'type': 'string'}}},
-                },
-            },
-        }
-
-        mapped = _mcp_tool_to_openai(tool)
-        desc = mapped['function']['description']
-        assert 'status 200' in desc
-        assert 'fields: from_contract' in desc
-        assert 'status 201' not in desc
-        assert 'fields: from_top' not in desc
-        props = mapped['function']['parameters']['properties']
-        assert 'from_contract' in props
-        assert 'from_top' not in props
-
 
 class TestToolContractFormatting:
-    def test_shared_output_formatters_match_expected_shapes(self) -> None:
-        from modules.chat.tool_contract import format_output_details, output_hint, top_level_output_fields
+    def test_format_output_hint_matches_expected_shape(self) -> None:
+        from modules.chat.tool_contract import format_output_hint, top_level_output_fields
 
         schema = {
             'type': 'array',
@@ -1432,10 +1316,7 @@ class TestToolContractFormatting:
         }
 
         assert top_level_output_fields(schema) == ['id', 'name']
-        assert format_output_details(output) == (
-            '  Expected output: status_code=200; content_type=application/json; response_model=ItemsResponse; fields=id, name'
-        )
-        assert output_hint(output) == 'Expected output: status 200; application/json; model ItemsResponse; fields: id, name'
+        assert format_output_hint(output) == 'Expected output: status 200; application/json; model ItemsResponse; fields: id, name'
 
 
 MALFORMED_ARGS_REGISTRY = [
@@ -1447,7 +1328,6 @@ MALFORMED_ARGS_REGISTRY = [
         'tags': ['config'],
         'confirm_required': False,
         'input_schema': {'type': 'object', 'properties': {}, 'required': []},
-        'contract': {'input_schema': {'type': 'object', 'properties': {}, 'required': []}},
     },
 ]
 

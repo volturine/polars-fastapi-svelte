@@ -8,7 +8,7 @@ from typing import Any
 
 import httpx
 
-from modules.chat.tool_contract import output_hint, tool_input_schema, tool_output_schema
+from modules.chat.tool_contract import format_output_hint
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def _headers(api_key: str) -> dict[str, str]:
 
 def _mcp_tool_to_openai(tool: dict) -> dict:
     desc = tool['description']
-    hint = output_hint(tool_output_schema(tool))
+    hint = format_output_hint(tool.get('output_schema'))
     if hint:
         desc = f'{desc}\n{hint}'
     return {
@@ -38,7 +38,7 @@ def _mcp_tool_to_openai(tool: dict) -> dict:
         'function': {
             'name': tool['id'],
             'description': desc,
-            'parameters': tool_input_schema(tool),
+            'parameters': tool['input_schema'],
         },
     }
 

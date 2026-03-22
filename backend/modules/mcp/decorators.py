@@ -6,6 +6,8 @@ import inspect
 from collections.abc import Callable
 from typing import Any, TypeVar, overload
 
+from modules.mcp.router import build_inputs
+
 F = TypeVar('F', bound=Callable)
 MCP_TOOL_MARKER = '__mcp_tool__'
 MCP_TOOL_META = '__mcp_tool_meta__'
@@ -26,30 +28,9 @@ def _iter_wrapped(fn: Callable) -> list[Callable]:
     return stack
 
 
-def _build_inputs(fn: Callable) -> list[dict[str, Any]]:
-    signature = inspect.signature(fn)
-    items: list[dict[str, Any]] = []
-    for p in signature.parameters.values():
-        if p.kind in {inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD}:
-            continue
-        ann = p.annotation
-        ann_name = None if ann is inspect.Parameter.empty else str(ann)
-        has_default = p.default is not inspect.Parameter.empty
-        items.append(
-            {
-                'name': p.name,
-                'kind': p.kind.name.lower(),
-                'required': not has_default,
-                'default': None if not has_default else p.default,
-                'annotation': ann_name,
-            }
-        )
-    return items
-
-
 def _build_meta(fn: Callable, confirm_required: bool | None) -> dict[str, Any]:
     doc = inspect.getdoc(fn) or ''
-    meta: dict[str, Any] = {'name': fn.__name__, 'docstring': doc, 'inputs': _build_inputs(fn)}
+    meta: dict[str, Any] = {'name': fn.__name__, 'docstring': doc, 'inputs': build_inputs(fn)}
     if confirm_required is not None:
         meta['confirm_required'] = confirm_required
     return meta

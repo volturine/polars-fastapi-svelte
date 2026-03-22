@@ -28,21 +28,8 @@ class TestMCPToolListing:
             assert 'description' in tool
             assert 'safety' in tool
             assert 'input_schema' in tool
-            assert 'contract' in tool
             assert 'confirm_required' in tool
             assert 'output_schema' in tool
-
-    def test_tools_expose_contract_with_schema_parity(self, client: TestClient) -> None:
-        response = client.get('/api/v1/mcp/tools')
-        tools = response.json()
-        assert len(tools) > 0
-        for tool in tools:
-            contract = tool.get('contract')
-            assert isinstance(contract, dict)
-            assert 'input_schema' in contract
-            assert 'output_schema' in contract
-            assert contract['input_schema'] == tool['input_schema']
-            assert contract['output_schema'] == tool['output_schema']
 
     def test_get_tools_are_safe(self, client: TestClient) -> None:
         response = client.get('/api/v1/mcp/tools')
@@ -559,8 +546,6 @@ class TestOpenAPIToJsonSchema:
             'required': ['ok'],
         }
         assert output['response_model'] == 'TestResponse'
-        assert tool['contract']['input_schema'] == tool['input_schema']
-        assert tool['contract']['output_schema'] == output
 
     def test_build_tool_output_schema_is_none_when_success_schema_missing(self) -> None:
         op = {
@@ -572,8 +557,6 @@ class TestOpenAPIToJsonSchema:
         }
         tool = _build_tool({'method': 'GET', 'path': '/api/v1/test', 'operation': op}, {})
         assert tool['output_schema'] is None
-        assert tool['contract']['input_schema'] == tool['input_schema']
-        assert tool['contract']['output_schema'] is None
 
 
 class TestMCPContractGuardrails:

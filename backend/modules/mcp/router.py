@@ -20,7 +20,7 @@ def _response_model_name(route: APIRoute) -> str | None:
     return getattr(model, '__name__', str(model))
 
 
-def _build_inputs(fn: Callable[..., Any]) -> list[dict[str, Any]]:
+def build_inputs(fn: Callable[..., Any]) -> list[dict[str, Any]]:
     signature = inspect.signature(fn)
     items: list[dict[str, Any]] = []
     for p in signature.parameters.values():
@@ -58,7 +58,7 @@ def set_mcp_endpoint_meta(
     meta: dict[str, Any] = {
         'name': mcp_tool_id or getattr(root, '__name__', getattr(endpoint, '__name__', 'tool')),
         'docstring': doc,
-        'inputs': _build_inputs(root),
+        'inputs': build_inputs(root),
     }
     if mcp_confirm_required is not None:
         meta['confirm_required'] = mcp_confirm_required

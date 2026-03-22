@@ -93,47 +93,35 @@ def _openapi_to_json_schema(schema_ref: Any, components: dict) -> Any:
     return result
 
 
-def _is_success_status(code: Any) -> bool:
-    if not isinstance(code, str):
-        return False
-    if code == 'default':
-        return False
-    return code.startswith('2')
-
-
-def _best_response_content(content: Any, components: dict) -> tuple[str | None, Any]:
-    if not isinstance(content, dict):
-        return None, None
-    for mime in ('application/json',):
-        if mime in content and isinstance(content[mime], dict):
-            return mime, _openapi_to_json_schema(content[mime].get('schema'), components)
-    for mime, item in content.items():
-        if not isinstance(mime, str) or not isinstance(item, dict):
-            continue
-        return mime, _openapi_to_json_schema(item.get('schema'), components)
-    return None, None
-
-
 def _output_schema(op: dict[str, Any], meta: dict[str, Any], components: dict) -> dict[str, Any] | None:
     responses = op.get('responses')
     if not isinstance(responses, dict):
         return None
 
-    candidates = [(code, value) for code, value in responses.items() if _is_success_status(code) and isinstance(value, dict)]
-    if not candidates:
-        return None
+    def pick_mime(content: dict) -> str | None:
+        if isinstance(content.get('application/json'), dict):
+            return 'application/json'
+        return next((m for m, item in content.items() if isinstance(m, str) and isinstance(item, dict)), None)
 
-    candidates.sort(key=lambda item: int(item[0]) if item[0].isdigit() else 999)
-    for code, response in candidates:
-        content_type, schema = _best_response_content(response.get('content'), components)
+    success = sorted(
+        [
+            (code, r)
+            for code, r in responses.items()
+            if isinstance(code, str) and code.startswith('2') and code != 'default' and isinstance(r, dict)
+        ],
+        key=lambda pair: int(pair[0]) if pair[0].isdigit() else 999,
+    )
+    for code, response in success:
+        content = response.get('content')
+        if not isinstance(content, dict):
+            continue
+        mime = pick_mime(content)
+        if mime is None:
+            continue
+        schema = _openapi_to_json_schema(content[mime].get('schema'), components)
         if schema is None:
             continue
-        return {
-            'status_code': code,
-            'content_type': content_type,
-            'schema': schema,
-            'response_model': meta.get('response_model'),
-        }
+        return {'status_code': code, 'content_type': mime, 'schema': schema, 'response_model': meta.get('response_model')}
     return None
 
 
@@ -204,10 +192,6 @@ def _build_tool(route_data: dict, components: dict) -> dict:
         'safety': 'safe' if method in SAFE_METHODS else 'mutating',
         'confirm_required': _confirm_required(method, path, onboard),
         'input_schema': tool_schema,
-        'contract': {
-            'input_schema': tool_schema,
-            'output_schema': output_schema,
-        },
         'arg_metadata': {
             'path': path_params,
             'query': query_params,
@@ -232,9 +216,9 @@ def _marked_routes(app: FastAPI) -> list[dict[str, Any]]:
         if not isinstance(route, APIRoute):
             continue
         route_meta = get_mcp_route_meta(route)
-        meta = dict(route_meta) if isinstance(route_meta, dict) else None
-        if not isinstance(meta, dict):
+        if not isinstance(route_meta, dict):
             continue
+        meta = dict(route_meta)
         if not route.path.startswith('/api/v1/'):
             continue
         # Routes in this codebase are single-method; MCP exposes one tool per route.

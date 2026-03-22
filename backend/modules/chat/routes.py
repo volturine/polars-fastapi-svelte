@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from modules.chat.openrouter import OpenRouterError, chat_with_tools, list_models
 from modules.chat.sessions import LiveSession, session_store
-from modules.chat.tool_contract import format_output_details, tool_input_schema, tool_output_schema
+from modules.chat.tool_contract import format_output_hint
 from modules.mcp.executor import call_tool
 from modules.mcp.validation import validate_args
 
@@ -128,7 +128,7 @@ def _build_tool_system_message(tools: list[dict]) -> str:
     ]
     for t in tools:
         desc = t.get('description', '')
-        schema = tool_input_schema(t)
+        schema = t['input_schema']
         meta = t.get('arg_metadata', {}) or {}
         path_meta = meta.get('path') or []
         query_meta = meta.get('query') or []
@@ -170,9 +170,9 @@ def _build_tool_system_message(tools: list[dict]) -> str:
         params_str = '\n'.join(param_parts) if param_parts else '    (no parameters)'
         lines.append(f'- {t["id"]} [{t["method"]}]: {desc}')
         lines.append(f'  Parameters:\n{params_str}')
-        output_line = format_output_details(tool_output_schema(t))
-        if output_line:
-            lines.append(output_line)
+        hint = format_output_hint(t.get('output_schema'))
+        if hint:
+            lines.append(f'  {hint}')
     return '\n'.join(lines)
 
 
@@ -281,13 +281,14 @@ async def _run_agent_turn(session: LiveSession, app: Any, user_content: str, too
 
     tool_system_msg = {'role': 'system', 'content': _build_tool_system_message(all_tools)} if all_tools else None
 
+    use_text_format = True  # becomes False once native function calling is confirmed
     try:
         turn = 0
         while True:
             turn += 1
             session.push_event({'type': 'turn_start', 'turn': turn})
             api_messages = list(session.messages)
-            if tool_system_msg:
+            if tool_system_msg and use_text_format:
                 insert_idx = 1 if api_messages and api_messages[0].get('role') == 'system' else 0
                 api_messages.insert(insert_idx, tool_system_msg)
 
@@ -307,9 +308,11 @@ async def _run_agent_turn(session: LiveSession, app: Any, user_content: str, too
             turn_usage['total_tokens'] += usage.get('total_tokens', 0)
 
             assistant_content = raw.get('content') or ''
-            tool_calls = raw.get('tool_calls') or []
+            tool_calls = list(raw.get('tool_calls') or [])
 
-            if not tool_calls and assistant_content:
+            if tool_calls:
+                use_text_format = False  # model uses native calling; drop text instructions hereafter
+            elif assistant_content:
                 cleaned, parsed = _parse_text_tool_calls(assistant_content)
                 if parsed:
                     tool_calls = parsed
@@ -351,7 +354,7 @@ async def _run_agent_turn(session: LiveSession, app: Any, user_content: str, too
 
                 session.push_event({'type': 'tool_call', 'tool_id': tool_id, 'method': method, 'path': path, 'args': args})
 
-                valid, errors, normalized = validate_args(tool_input_schema(tool), args)
+                valid, errors, normalized = validate_args(tool['input_schema'], args)
                 if not valid:
                     session.push_event(
                         {'type': 'tool_error', 'tool_id': tool_id, 'method': method, 'path': path, 'args': args, 'errors': errors}

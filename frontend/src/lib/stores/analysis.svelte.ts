@@ -13,7 +13,6 @@ import { normalizeDtype } from '$lib/utils/transform';
 import { normalizeConfig } from '$lib/utils/step-config-defaults';
 import { track } from '$lib/utils/audit-log';
 import { schemaStore } from '$lib/stores/schema.svelte';
-import { getLockPayload } from '$lib/stores/lockManager.svelte';
 import { SvelteMap } from 'svelte/reactivity';
 import { ResultAsync, err, ok } from 'neverthrow';
 import type { ApiError } from '$lib/api/client';
@@ -484,14 +483,6 @@ export class AnalysisStore {
 
 		this.loading = true;
 		this.error = null;
-		const lockPayload = getLockPayload(this.current.id);
-		if (!lockPayload) {
-			this.loading = false;
-			return err({
-				type: 'parse' as const,
-				message: 'Editing lock required'
-			}) as unknown as ResultAsync<void, ApiError>;
-		}
 
 		const errors = validatePipelineTabs(this.tabs);
 		if (errors.length) {
@@ -504,9 +495,7 @@ export class AnalysisStore {
 		const update: AnalysisUpdate = {
 			name: this.current.name,
 			description: this.current.description,
-			tabs: this.tabs,
-			client_id: lockPayload.clientId,
-			lock_token: lockPayload.lockToken
+			tabs: this.tabs
 		};
 
 		return updateAnalysis(this.current.id, update)

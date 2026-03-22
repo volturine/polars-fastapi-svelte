@@ -97,8 +97,6 @@ class AnalysisUpdateSchema(BaseModel):
     description: str | None = None
     status: str | None = None
     tabs: list[TabSchema]
-    client_id: str | None = None
-    lock_token: str | None = None
 
     @model_validator(mode='before')
     @classmethod

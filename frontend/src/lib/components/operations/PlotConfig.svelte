@@ -108,8 +108,7 @@
 		series_colors: [],
 		overlays: [],
 		reference_lines: [],
-		chart_height: 'medium' as const,
-		chart_width: 'normal' as const
+		chart_height: 'medium' as const
 	} satisfies PlotConfigData;
 
 	const configDefaults = defaultConfig satisfies Record<string, unknown>;
@@ -1546,63 +1545,6 @@
 					</p>
 				</div>
 			{/if}
-
-			<div
-				class={cx(
-					divider,
-					css({
-						marginBottom: '0',
-						paddingBottom: '5',
-						paddingTop: '5',
-						backgroundColor: 'transparent',
-
-						border: 'none'
-					})
-				)}
-				role="group"
-				aria-labelledby={`${uid}-plot-width`}
-			>
-				<span id={`${uid}-plot-width`}><SectionHeader>Chart Width</SectionHeader></span>
-				<div class={css({ display: 'flex', gap: '1' })} role="group" aria-label="Chart width">
-					{#each [{ value: 'normal', label: 'Normal' }, { value: 'wide', label: 'Wide' }, { value: 'full', label: 'Full' }] as opt (opt.value)}
-						<button
-							type="button"
-							class={(plotConfig.chart_width ?? 'normal') === opt.value
-								? css({
-										flex: '1',
-										paddingY: '1.5',
-										paddingX: '2',
-										borderWidth: '1',
-										backgroundColor: 'accent.bg',
-										color: 'accent.primary',
-										fontSize: 'xs',
-										fontFamily: 'mono',
-										cursor: 'pointer',
-										textAlign: 'center',
-										letterSpacing: 'wide2'
-									})
-								: css({
-										flex: '1',
-										paddingY: '1.5',
-										paddingX: '2',
-										borderWidth: '1',
-										backgroundColor: 'transparent',
-										color: 'fg.muted',
-										fontSize: 'xs',
-										fontFamily: 'mono',
-										cursor: 'pointer',
-										textAlign: 'center',
-										letterSpacing: 'wide2',
-										_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
-									})}
-							onclick={() => (plotConfig.chart_width = opt.value as PlotConfigData['chart_width'])}
-							aria-pressed={(plotConfig.chart_width ?? 'normal') === opt.value}
-						>
-							{opt.label}
-						</button>
-					{/each}
-				</div>
-			</div>
 
 			<div
 				class={cx(

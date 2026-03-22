@@ -47,9 +47,7 @@
 	let selectedSnapshotId = $state<string | null>(null);
 	let selectedSnapshotLabel = $state<string | null>(null);
 	let missingSnapshotId = $state<string | null>(null);
-	let calendarDays = $state<Array<{ key: string; day: number; count: number; inMonth: boolean }>>(
-		[]
-	);
+	const calendarDays = $derived.by(() => computeCalendarDays(snapshotMonth, filteredSnapshotList));
 	let deleteConfirmId = $state<string | null>(null);
 	let deleteLoading = $state(false);
 	let deleteError = $state<string | null>(null);
@@ -92,9 +90,6 @@
 		const ts = datasourceConfig.snapshot_timestamp_ms as number | null;
 		selectedSnapshotLabel = selectedSnapshotId && ts ? formatSnapshotLabel(ts) : null;
 		missingSnapshotId = selectedSnapshotId;
-		if (snapshotsOpen && snapshotMonth) {
-			buildCalendar(snapshotMonth);
-		}
 	});
 
 	let lastDatasourceId = $state<string | null>(null);
@@ -105,7 +100,6 @@
 		snapshotList = [];
 		snapshotsError = null;
 		snapshotsLoading = false;
-		calendarDays = [];
 		selectedDay = '';
 		selectedSnapshotId = null;
 		selectedSnapshotLabel = null;
@@ -171,11 +165,11 @@
 		}
 	}
 
-	function buildCalendar(monthKey: string) {
-		if (!monthKey) {
-			calendarDays = [];
-			return;
-		}
+	function computeCalendarDays(
+		monthKey: string,
+		snapshots: Array<{ timestamp: number }>
+	): Array<{ key: string; day: number; count: number; inMonth: boolean }> {
+		if (!monthKey) return [];
 		const [yearStr, monthStr] = monthKey.split('-');
 		const year = Number(yearStr);
 		const month = Number(monthStr) - 1;
@@ -189,7 +183,7 @@
 		}
 
 		const counts = new SvelteMap<string, number>();
-		for (const snap of filteredSnapshotList) {
+		for (const snap of snapshots) {
 			const key = formatSnapshotKey(snap.timestamp);
 			counts.set(key, (counts.get(key) ?? 0) + 1);
 		}
@@ -199,7 +193,7 @@
 			days.push({ key, day, count, inMonth: true });
 		}
 
-		calendarDays = days;
+		return days;
 	}
 
 	function updateUi(updates: { open?: boolean; month?: string; day?: string }) {
@@ -215,7 +209,6 @@
 		snapshotMonth = monthKey;
 		selectedDay = '';
 		updateUi({ month: monthKey, day: '' });
-		buildCalendar(monthKey);
 	}
 
 	// Subscription: $derived can't clear day selection.
@@ -231,21 +224,11 @@
 		updateUi({ day: '' });
 	});
 
-	// Subscription: $derived can't rebuild calendar.
-	$effect(() => {
-		if (!snapshotsOpen) return;
-		if (!snapshotMonth) return;
-		buildCalendar(snapshotMonth);
-	});
-
 	// Subscription: $derived can't select month on open.
 	$effect(() => {
 		if (!snapshotsOpen) return;
 		const source = showBuildPreviews ? filteredSnapshotList : snapshotList;
-		if (!source.length) {
-			calendarDays = [];
-			return;
-		}
+		if (!source.length) return;
 		const monthOptions = Array.from(
 			new Set(source.map((snap) => formatSnapshotKey(snap.timestamp).slice(0, 7)))
 		).sort((a, b) => (a > b ? -1 : 1));
@@ -378,9 +361,6 @@
 		updatePopoverPosition();
 		if (!snapshotsLoading) {
 			loadSnapshots();
-		}
-		if (snapshotMonth) {
-			buildCalendar(snapshotMonth);
 		}
 		if (showBuildPreviews && !buildRuns.length) {
 			loadBuildRuns();

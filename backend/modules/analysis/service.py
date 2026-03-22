@@ -16,7 +16,6 @@ from modules.analysis.schemas import (
 from modules.analysis.step_schemas import validate_step
 from modules.analysis_versions import service as version_service
 from modules.datasource.models import DataSource
-from modules.locks import service as lock_service
 
 
 def _to_response(analysis: Analysis) -> AnalysisResponseSchema:
@@ -268,8 +267,6 @@ def delete_analysis(
 
     session.delete(analysis)
     session.commit()
-
-    lock_service.clear_lock(session, analysis_id)
 
 
 def _get_analysis_source_id(datasource: DataSource) -> str:

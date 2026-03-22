@@ -12,7 +12,6 @@ from modules.analysis import schemas, service
 from modules.analysis.step_schemas import StepType, get_config_model, get_step_catalog
 from modules.compute import service as compute_service
 from modules.compute.manager import ProcessManager
-from modules.locks import service as lock_service
 from modules.mcp.decorators import deterministic_tool
 
 router = APIRouter(prefix='/analysis', tags=['analysis'])
@@ -95,9 +94,8 @@ def update_analysis(
     data: schemas.AnalysisUpdateSchema,
     session: Session = Depends(get_db),
 ):
-    """Update an analysis (requires editing lock — NOT for AI agent use).
+    """Update an analysis and replace the full tabs array.
 
-    Requires client_id and lock_token from the lock system. Replaces the full tabs array.
     DO NOT call this to add tabs — use POST /analysis/{id}/tabs/{tab_id}/derive instead,
     then add steps via POST /analysis/{id}/tabs/{tab_id}/steps.
     """
@@ -106,11 +104,6 @@ def update_analysis(
         service.get_analysis(session, analysis_id_value)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    if not data.client_id or not data.lock_token:
-        raise HTTPException(status_code=409, detail='Editing lock required')
-
-    lock_service.validate_lock(session, analysis_id_value, data.client_id, data.lock_token)
 
     return service.update_analysis(session, analysis_id_value, data)
 

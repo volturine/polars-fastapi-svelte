@@ -53,6 +53,12 @@ export const renameAnalysisVersion = (
 		body: JSON.stringify({ name })
 	});
 
+export const deleteAnalysisVersion = (
+	analysisId: string,
+	version: number
+): ResultAsync<void, ApiError> =>
+	apiRequest<void>(`/v1/analysis/${analysisId}/versions/${version}`, { method: 'DELETE' });
+
 export const deleteAnalysis = (id: string): ResultAsync<void, ApiError> =>
 	apiRequest<void>(`/v1/analysis/${id}`, { method: 'DELETE' });
 

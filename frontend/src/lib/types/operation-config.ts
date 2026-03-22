@@ -205,7 +205,6 @@ export interface PlotConfigData {
 	overlays: OverlayConfig[];
 	reference_lines: ReferenceLineConfig[];
 	chart_height: 'small' | 'medium' | 'large' | 'xlarge';
-	chart_width: 'normal' | 'wide' | 'full';
 }
 
 export interface OverlayConfig {

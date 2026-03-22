@@ -49,8 +49,6 @@ export interface AnalysisUpdate {
 	description?: string | null;
 	status?: string | null;
 	tabs: AnalysisTabInput[];
-	client_id?: string | null;
-	lock_token?: string | null;
 }
 
 export interface Analysis {

@@ -556,14 +556,12 @@
 								>
 							{/if}
 						</div>
-						{#if i < steps.length - 1}
-							<ConnectionLine
-								fromStepIndex={i}
-								toStepIndex={i + 1}
-								totalSteps={steps.length}
-								highlighted={hoverIndex === i + 1}
-							/>
-						{/if}
+						<ConnectionLine
+							fromStepIndex={i}
+							toStepIndex={i + 1}
+							totalSteps={steps.length}
+							highlighted={hoverIndex === i + 1}
+						/>
 					{:else}
 						<div
 							class={css({
@@ -581,14 +579,12 @@
 								highlighted={false}
 								arrow={false}
 							/>
-							{#if i < steps.length - 1}
-								<ConnectionLine
-									fromStepIndex={i}
-									toStepIndex={i + 1}
-									totalSteps={steps.length}
-									highlighted={false}
-								/>
-							{/if}
+							<ConnectionLine
+								fromStepIndex={i}
+								toStepIndex={i + 1}
+								totalSteps={steps.length}
+								highlighted={false}
+							/>
 							<div class={insertControls}>
 								<button
 									class={insertBtn}
@@ -621,21 +617,19 @@
 				</div>
 			{/if}
 		{/each}
-		<div
-			class={css({
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'center',
-				paddingY: '0'
-			})}
-			aria-hidden="true"
-		>
-			<ConnectionLine
-				fromStepIndex={steps.length > 0 ? steps.length - 1 : -1}
-				toStepIndex={steps.length > 0 ? steps.length : 0}
-				totalSteps={steps.length > 0 ? steps.length + 1 : 1}
-			/>
-		</div>
+		{#if steps.length === 0}
+			<div
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					paddingY: '0'
+				})}
+				aria-hidden="true"
+			>
+				<ConnectionLine fromStepIndex={-1} toStepIndex={0} totalSteps={1} />
+			</div>
+		{/if}
 		<OutputNode {analysisId} {datasourceId} {activeTab} />
 	</div>
 	{#if pasteError}

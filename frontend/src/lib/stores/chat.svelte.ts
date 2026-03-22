@@ -43,7 +43,7 @@ const EXECUTE_SYSTEM_PROMPT =
 	'1) GET /analysis/{id} to see current tabs and their output.result_id values. ' +
 	"2) POST /analysis/{id}/tabs/{tab_id}/derive to create a new tab chained from an existing tab's output. " +
 	'3) POST /analysis/{id}/tabs/{tab_id}/steps to add steps to the new tab. ' +
-	'Do NOT use PUT /analysis/{id} — it requires a lock token.';
+	'Do NOT use PUT /analysis/{id} — use the dedicated tab/step endpoints instead.';
 
 export type ConnectionStatus = 'connected' | 'reconnecting' | 'disconnected';
 

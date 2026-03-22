@@ -65,7 +65,6 @@ Enable users to design and operate end-to-end dataset pipelines visually while k
 ### FR-2 Analysis Editor
 
 - Multi-tab editor with visual pipeline canvas.
-- Editing lock required for write operations.
 - Step operations: add, insert, move, delete, configure.
 - Version history: restore and rename versions.
 - Save persists tabs and pipeline definition.
@@ -273,8 +272,8 @@ Build that tab (with lazyframe deps auto-resolved)
 
 1. Open analysis page.
 2. Engine status/defaults initialized.
-3. Acquire lock, edit tabs/steps.
-4. Save via `PUT /analysis/{id}` with lock payload.
+3. Switch to editing mode, edit tabs/steps.
+4. Save via `PUT /analysis/{id}`.
 5. Backend persists analysis + version updates.
 
 ### 7.2 Preview

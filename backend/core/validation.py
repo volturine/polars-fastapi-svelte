@@ -21,7 +21,6 @@ EngineRunId = Annotated[str, Path(description='Engine run ID', examples=['b3b1a0
 HealthcheckId = Annotated[str, Path(description='Healthcheck ID', examples=['b3b1a08a-6a30-4f06-8c8a-9c1f1c8a4c2a'], min_length=1)]
 UdfId = Annotated[str, Path(description='UDF ID', examples=['b3b1a08a-6a30-4f06-8c8a-9c1f1c8a4c2a'], min_length=1)]
 PreflightId = Annotated[str, Path(description='Preflight ID', examples=['b3b1a08a-6a30-4f06-8c8a-9c1f1c8a4c2a'], min_length=1)]
-LockResourceId = Annotated[str, Path(description='Lock resource ID', examples=['b3b1a08a-6a30-4f06-8c8a-9c1f1c8a4c2a'], min_length=1)]
 
 
 parse_analysis_id = _parse_uuid
@@ -37,4 +36,3 @@ parse_engine_run_id = _parse_uuid
 parse_healthcheck_id = _parse_uuid
 parse_udf_id = _parse_uuid
 parse_preflight_id = _parse_uuid
-parse_lock_resource_id = _parse_uuid

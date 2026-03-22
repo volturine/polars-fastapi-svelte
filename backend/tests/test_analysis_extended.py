@@ -4,7 +4,6 @@ import uuid
 
 from modules.analysis.models import Analysis
 from modules.datasource.models import DataSource
-from tests.conftest import acquire_lock
 
 
 class TestAnalysisValidation:
@@ -157,8 +156,6 @@ class TestAnalysisValidation:
                     'steps': [],
                 }
             ],
-            'client_id': str(uuid.uuid4()),
-            'lock_token': str(uuid.uuid4()),
         }
 
         response = client.put(f'/api/v1/analysis/{fake_id}', json=payload)
@@ -266,7 +263,6 @@ class TestAnalysisPipeline:
 
     def test_update_analysis_pipeline(self, client, sample_analysis: Analysis):
         """Test updating analysis pipeline."""
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         new_steps = [
             {
                 'id': 'new_step',
@@ -280,8 +276,6 @@ class TestAnalysisPipeline:
 
         payload = {
             'tabs': tabs,
-            'client_id': client_id,
-            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -329,12 +323,9 @@ class TestAnalysisStatus:
 
     def test_update_analysis_status(self, client, sample_analysis: Analysis):
         """Test updating analysis status."""
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         payload = {
             'status': 'running',
             'tabs': sample_analysis.pipeline_definition['tabs'],
-            'client_id': client_id,
-            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -345,12 +336,9 @@ class TestAnalysisStatus:
 
     def test_invalid_status_transition(self, client, sample_analysis: Analysis):
         """Test invalid status value."""
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         payload = {
             'status': 'invalid_status',
             'tabs': sample_analysis.pipeline_definition['tabs'],
-            'client_id': client_id,
-            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -360,15 +348,12 @@ class TestAnalysisStatus:
 
     def test_analysis_lifecycle_statuses(self, client, sample_analysis: Analysis):
         """Test analysis through different statuses."""
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         statuses = ['draft', 'running', 'completed', 'error']
 
         for status in statuses:
             payload = {
                 'status': status,
                 'tabs': sample_analysis.pipeline_definition['tabs'],
-                'client_id': client_id,
-                'lock_token': lock_token,
             }
             response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
 
@@ -412,12 +397,9 @@ class TestAnalysisMetadata:
 
     def test_update_analysis_description(self, client, sample_analysis: Analysis):
         """Test updating analysis description."""
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         payload = {
             'description': 'Updated description',
             'tabs': sample_analysis.pipeline_definition['tabs'],
-            'client_id': client_id,
-            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -428,13 +410,10 @@ class TestAnalysisMetadata:
 
     def test_update_analysis_thumbnail(self, client, sample_analysis: Analysis):
         """Test updating analysis thumbnail."""
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         thumbnail = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
         payload = {
             'thumbnail': thumbnail,
             'tabs': sample_analysis.pipeline_definition['tabs'],
-            'client_id': client_id,
-            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -482,10 +461,9 @@ class TestAnalysisMetadata:
         response1.json()
 
         # Update
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         client.put(
             f'/api/v1/analysis/{sample_analysis.id}',
-            json={'name': 'Updated', 'tabs': sample_analysis.pipeline_definition['tabs'], 'client_id': client_id, 'lock_token': lock_token},
+            json={'name': 'Updated', 'tabs': sample_analysis.pipeline_definition['tabs']},
         )
 
         # Get updated
@@ -598,10 +576,9 @@ class TestDeriveTab:
         tabs = analysis_data['pipeline_definition']['tabs']
         assert len(tabs) == 2
 
-        # Acquire lock and update with both tabs (derived tab references same analysis)
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
+        # Update with both tabs (derived tab references same analysis)
         update_resp = client.put(
             f'/api/v1/analysis/{sample_analysis.id}',
-            json={'tabs': tabs, 'client_id': client_id, 'lock_token': lock_token},
+            json={'tabs': tabs},
         )
         assert update_resp.status_code == 200

@@ -4,7 +4,6 @@ from sqlalchemy import select
 
 from modules.analysis.models import Analysis, AnalysisDataSource
 from modules.datasource.models import DataSource
-from tests.conftest import acquire_lock
 
 
 class TestAnalysisCreate:
@@ -373,12 +372,9 @@ class TestAnalysisList:
 
 class TestAnalysisUpdate:
     def test_update_analysis_name(self, client, sample_analysis: Analysis):
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         payload = {
             'name': 'Updated Analysis Name',
             'tabs': sample_analysis.pipeline_definition['tabs'],
-            'client_id': client_id,
-            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -390,12 +386,9 @@ class TestAnalysisUpdate:
         assert result['description'] == sample_analysis.description
 
     def test_update_analysis_description(self, client, sample_analysis: Analysis):
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         payload = {
             'description': 'Updated description',
             'tabs': sample_analysis.pipeline_definition['tabs'],
-            'client_id': client_id,
-            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -407,7 +400,6 @@ class TestAnalysisUpdate:
         assert result['name'] == sample_analysis.name
 
     def test_update_analysis_tab_steps(self, client, sample_analysis: Analysis):
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         payload = {
             'tabs': [
                 {
@@ -435,8 +427,6 @@ class TestAnalysisUpdate:
                     ],
                 }
             ],
-            'client_id': client_id,
-            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -450,12 +440,9 @@ class TestAnalysisUpdate:
         assert result['pipeline_definition']['tabs']
 
     def test_update_analysis_status(self, client, sample_analysis: Analysis):
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         payload = {
             'status': 'completed',
             'tabs': sample_analysis.pipeline_definition['tabs'],
-            'client_id': client_id,
-            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -466,14 +453,11 @@ class TestAnalysisUpdate:
         assert result['status'] == 'completed'
 
     def test_update_analysis_multiple_fields(self, client, sample_analysis: Analysis):
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         payload: dict[str, object] = {
             'name': 'Updated Name',
             'description': 'Updated Description',
             'status': 'running',
             'tabs': sample_analysis.pipeline_definition['tabs'],
-            'client_id': client_id,
-            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -489,8 +473,6 @@ class TestAnalysisUpdate:
         payload = {
             'name': 'Updated Name',
             'tabs': sample_analysis.pipeline_definition['tabs'],
-            'client_id': str(uuid.uuid4()),
-            'lock_token': str(uuid.uuid4()),
         }
         missing_id = str(uuid.uuid4())
 
@@ -500,11 +482,8 @@ class TestAnalysisUpdate:
         assert 'not found' in response.json()['detail']
 
     def test_update_analysis_empty_payload(self, client, sample_analysis: Analysis):
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         payload: dict[str, object] = {
             'tabs': sample_analysis.pipeline_definition['tabs'],
-            'client_id': client_id,
-            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -516,12 +495,9 @@ class TestAnalysisUpdate:
         assert result['description'] == sample_analysis.description
 
     def test_update_analysis_rejects_pipeline_steps(self, client, sample_analysis: Analysis):
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         payload: dict[str, object] = {
             'tabs': sample_analysis.pipeline_definition['tabs'],
             'pipeline_steps': [{'id': 'step1', 'type': 'filter', 'config': {}}],
-            'client_id': client_id,
-            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)
@@ -539,7 +515,6 @@ class TestAnalysisUpdate:
 
         before = test_db_session.execute(sa_select(DS)).scalars().all()
 
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
         payload = {
             'tabs': [
                 {
@@ -577,8 +552,6 @@ class TestAnalysisUpdate:
                     'steps': [],
                 },
             ],
-            'client_id': client_id,
-            'lock_token': lock_token,
         }
 
         response = client.put(f'/api/v1/analysis/{sample_analysis.id}', json=payload)

@@ -27,14 +27,14 @@ let clientIdValue = '';
 
 async function initClientId(): Promise<void> {
 	if (!browser) return;
-	const existing = await idbGet<string>('lock_client_id');
+	const existing = await idbGet<string>('client_id');
 	if (existing) {
 		clientIdValue = existing;
 		return;
 	}
 	const id = generateUUID();
 	clientIdValue = id;
-	await idbSet('lock_client_id', id);
+	await idbSet('client_id', id);
 }
 
 // Generate a hash from fingerprint for server storage

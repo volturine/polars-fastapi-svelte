@@ -41,6 +41,19 @@ def get_version(
     return result
 
 
+@router.delete('/{analysis_id}/versions/{version}')
+@handle_errors(operation='delete analysis version')
+@deterministic_tool
+def delete_version(
+    analysis_id: AnalysisId,
+    version: int,
+    session: Session = Depends(get_db),
+):
+    """Delete a specific version of an analysis by version number."""
+    service.delete_version(session, parse_analysis_id(analysis_id), version)
+    return None
+
+
 @router.patch('/{analysis_id}/versions/{version}', response_model=schemas.AnalysisVersionResponse)
 @handle_errors(operation='rename analysis version')
 @deterministic_tool

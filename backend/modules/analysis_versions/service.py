@@ -61,6 +61,14 @@ def get_version(session: Session, analysis_id: str, version: int) -> AnalysisVer
     return result.scalar_one_or_none()
 
 
+def delete_version(session: Session, analysis_id: str, version: int) -> None:
+    target = get_version(session, analysis_id, version)
+    if not target:
+        raise AnalysisVersionNotFoundError(analysis_id, version)
+    session.delete(target)
+    session.commit()
+
+
 def rename_version(session: Session, analysis_id: str, version: int, name: str) -> AnalysisVersion:
     target = get_version(session, analysis_id, version)
     if not target:

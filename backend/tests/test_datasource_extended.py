@@ -610,14 +610,8 @@ class TestIsHidden:
 
     def test_auto_creation_on_analysis_update(self, client, test_db_session, sample_analysis: Analysis):
         """Updating an analysis keeps explicit datasource ids."""
-        from tests.conftest import acquire_lock
-
-        client_id, lock_token = acquire_lock(client, sample_analysis.id)
-
         new_tab_id = str(uuid.uuid4())
-        update_payload = {
-            'client_id': client_id,
-            'lock_token': lock_token,
+        update_payload: dict[str, object] = {
             'tabs': [
                 {
                     'id': new_tab_id,

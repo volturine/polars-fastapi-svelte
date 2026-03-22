@@ -209,9 +209,6 @@
 		}
 	];
 
-	// Quick insert selected type
-	let selectedType = $state<string | null>(null);
-
 	// Search/filter
 	let search = $state('');
 	const filtered = $derived.by(() => {
@@ -293,7 +290,7 @@
 		})}
 		role="list"
 	>
-		{#each stepTypes as stepType (stepType.type)}
+		{#each filtered as stepType (stepType.type)}
 			<button
 				class={css({
 					position: 'relative',
@@ -348,95 +345,5 @@
 				</div>
 			</button>
 		{/each}
-	</div>
-
-	<div
-		class={css({
-			flexShrink: '0',
-			borderTopWidth: '1',
-			paddingX: '4',
-			paddingY: '3'
-		})}
-	>
-		<h4
-			class={css({
-				margin: '0',
-				marginBottom: '2',
-				fontSize: '2xs',
-				textTransform: 'uppercase',
-				letterSpacing: 'widest',
-				color: 'fg.faint'
-			})}
-		>
-			Quick Insert
-		</h4>
-		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-			<select
-				class={cx(
-					input(),
-					css({
-						backgroundColor: 'bg.secondary',
-						fontSize: 'xs'
-					})
-				)}
-				id="step-lib-type"
-				aria-label="Quick insert operation type"
-				value={selectedType ?? ''}
-				onchange={(event) => (selectedType = event.currentTarget.value || null)}
-			>
-				<option value="">Select operation...</option>
-				{#each filtered as stepType (stepType.type)}
-					<option value={stepType.type}>{stepType.label}</option>
-				{/each}
-			</select>
-			<div class={css({ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2' })}>
-				<button
-					class={css({
-						cursor: 'pointer',
-						borderWidth: '1',
-						backgroundColor: 'transparent',
-						paddingX: '3',
-						paddingY: '1.5',
-						fontSize: 'xs',
-						color: 'fg.secondary',
-						_hover: { backgroundColor: 'bg.hover' },
-						_disabled: { cursor: 'not-allowed', opacity: '0.4' }
-					})}
-					type="button"
-					disabled={!selectedType}
-					onclick={() => {
-						if (selectedType) {
-							onAddStep(selectedType);
-							selectedType = null;
-						}
-					}}
-				>
-					Add to end
-				</button>
-				<button
-					class={css({
-						cursor: 'pointer',
-						borderWidth: '1',
-						backgroundColor: 'transparent',
-						paddingX: '3',
-						paddingY: '1.5',
-						fontSize: 'xs',
-						color: 'fg.secondary',
-						_hover: { backgroundColor: 'bg.hover' },
-						_disabled: { cursor: 'not-allowed', opacity: '0.4' }
-					})}
-					type="button"
-					disabled={!selectedType}
-					onclick={() => {
-						if (selectedType) {
-							onInsertStep(selectedType, { index: 0, parentId: null, nextId: null });
-							selectedType = null;
-						}
-					}}
-				>
-					Insert at start
-				</button>
-			</div>
-		</div>
 	</div>
 </div>

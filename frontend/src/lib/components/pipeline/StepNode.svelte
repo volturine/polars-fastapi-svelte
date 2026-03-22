@@ -54,17 +54,12 @@
 		step.type === 'chart' || step.type === 'plot' || step.type.startsWith('plot_')
 	);
 
-	const chartWidth = $derived(
-		isChart ? (step.config?.chart_width as string | undefined) : undefined
-	);
 	const chartHeight = $derived(
 		isChart ? (step.config?.chart_height as string | undefined) : undefined
 	);
 
 	const nodeWidthClass = $derived.by(() => {
-		if (!isChart || !chartWidth || chartWidth === 'normal') return css({ width: '55%' });
-		if (chartWidth === 'wide') return css({ width: '75%' });
-		return css({ width: '90%' });
+		return css({ width: '60%' });
 	});
 
 	const chartHeightPx = $derived.by(() => {
@@ -340,7 +335,7 @@
 			position: 'relative',
 			contentVisibility: 'auto',
 			containIntrinsicSize: isChart || step.type === 'view' ? 'auto 600px' : 'auto 200px',
-			...(step.type === 'view' ? { width: '85%', minWidth: 'listLg' } : {})
+			...(step.type === 'view' || isChart ? { width: '85%', minWidth: 'listLg' } : {})
 		})
 	)}
 	data-step-id={step.id}

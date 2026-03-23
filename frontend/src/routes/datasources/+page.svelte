@@ -294,6 +294,7 @@
 			{:else}
 				{#each filteredDatasources as datasource (datasource.id)}
 					<div
+						data-ds-row={datasource.name}
 						class={css({
 							borderBottomWidth: '1',
 							...(selectedId === datasource.id

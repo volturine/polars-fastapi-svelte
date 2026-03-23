@@ -71,13 +71,6 @@
 		handleClose();
 	}
 
-	function handleBackdropKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
-			handleClose();
-		}
-	}
-
 	// DOM: $derived can't focus the search input.
 	$effect(() => {
 		if (show && searchInput) {
@@ -104,7 +97,6 @@
 		})
 	)}
 	ariaLabelledby="modal-title"
-	onBackdropKeydown={handleBackdropKeydown}
 	{content}
 />
 

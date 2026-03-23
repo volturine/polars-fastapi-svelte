@@ -21,14 +21,15 @@ just dev             # start both servers
 
 ## Agentic Workflow
 
-Use parallel subagents where possible to maximise throughput:
+Sequential with parallelism only where independent:
 
-1. **Explore** (Explorer agent) — gather context before changing anything
-2. **Plan** (Planner agent) — structured plan, identify risks
-3. **Implement** (Implementer agent) — write code, parallel where independent
-4. **Verify** — `just verify` must pass
-5. **Review** (Reviewer agent) — check diff before finishing
-6. **Reflect** — update `AGENTS.md` with any new learnings
+1. **Explore** → gather context before anything else (prerequisite for all other steps)
+2. **Plan** → orchestrator creates a structured plan from exploration results (depends on step 1)
+3. **Implement** → delegate to backend/frontend; parallelize only independent implementation tasks (depends on step 2)
+4. **Verify + Review** — `just verify` must pass and reviewer checks the diff (depends on step 3)
+5. **Reflect** — update `AGENTS.md` with any new learnings
+
+**Critical:** Do NOT parallelize Explore, Plan, and Implement. Each step depends on the previous one's results. Only parallelize when two implementation tasks are truly independent (e.g., backend and frontend changes).
 
 ## Tool Usage
 

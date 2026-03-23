@@ -1,22 +1,27 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-	testDir: './e2e',
-	globalSetup: './e2e/global-setup.ts',
-	globalTeardown: './e2e/global-teardown.ts',
+	testDir: './tests',
+	globalSetup: './tests/global-setup.ts',
+	globalTeardown: './tests/global-teardown.ts',
 	timeout: 30_000,
 	expect: { timeout: 10_000 },
 	fullyParallel: false,
 	retries: 1,
-	reporter: [['html', { open: 'never', outputFolder: 'playwright-report' }], ['line']],
+	outputDir: './tests/test-results',
+	reporter: [['html', { open: 'never', outputFolder: 'tests/playwright-report' }], ['line']],
 	use: {
 		baseURL: 'http://localhost:3000',
-		trace: 'on-first-retry'
+		trace: 'on-first-retry',
+		screenshot: 'only-on-failure'
 	},
 	projects: [
 		{
 			name: 'chromium',
-			use: { ...devices['Desktop Chrome'] }
+			use: {
+				...devices['Desktop Chrome'],
+				viewport: { width: 1920, height: 1080 }
+			}
 		}
 	],
 	webServer: {

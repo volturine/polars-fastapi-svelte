@@ -18,7 +18,7 @@
 		"generate:step-types": "cd .. && just generate-step-types",
 		"test:e2e": "playwright test",
 		"test:e2e:ui": "playwright test --ui",
-		"test:e2e:report": "playwright show-report"
+		"test:e2e:report": "playwright show-report tests/playwright-report"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.2",

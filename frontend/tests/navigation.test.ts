@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { screenshot } from './utils/visual.js';
 
 /**
  * Smoke tests: every top-level route renders without a JS crash,
@@ -8,12 +9,14 @@ test.describe('Navigation – page load smoke tests', () => {
 	test('home page renders Analyses heading', async ({ page }) => {
 		await page.goto('/');
 		await expect(page.getByRole('heading', { name: 'Analyses' })).toBeVisible();
-		await expect(page.getByRole('button', { name: /New Analysis/i })).toBeVisible();
+		await expect(page.getByRole('link', { name: /New Analysis/i })).toBeVisible();
+		await screenshot(page, 'navigation', 'home-page');
 	});
 
 	test('datasources page renders Data Sources heading', async ({ page }) => {
 		await page.goto('/datasources');
 		await expect(page.getByRole('heading', { name: 'Data Sources' })).toBeVisible();
+		await screenshot(page, 'navigation', 'datasources-page');
 	});
 
 	test('UDF library page renders UDF Library heading', async ({ page }) => {
@@ -24,11 +27,13 @@ test.describe('Navigation – page load smoke tests', () => {
 	test('monitoring page renders Monitoring heading', async ({ page }) => {
 		await page.goto('/monitoring');
 		await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible();
+		await screenshot(page, 'navigation', 'monitoring-page');
 	});
 
 	test('new analysis page renders wizard', async ({ page }) => {
 		await page.goto('/analysis/new');
 		await expect(page.getByRole('heading', { name: 'New Analysis' })).toBeVisible();
+		await screenshot(page, 'navigation', 'new-analysis-wizard');
 	});
 
 	test('new datasource page loads', async ({ page }) => {
@@ -50,11 +55,11 @@ test.describe('Navigation – page load smoke tests', () => {
 		await expect(page).toHaveURL('/');
 	});
 
-	test('"New Analysis" button navigates to /analysis/new', async ({ page }) => {
+	test('"New Analysis" link navigates to /analysis/new', async ({ page }) => {
 		await page.goto('/');
-		const btn = page.getByRole('button', { name: /New Analysis/i });
-		await expect(btn).toBeVisible();
-		await btn.click();
+		const link = page.getByRole('link', { name: /New Analysis/i });
+		await expect(link).toBeVisible();
+		await link.click();
 		await page.waitForURL(/analysis\/new/, { timeout: 15_000 });
 	});
 
@@ -66,10 +71,10 @@ test.describe('Navigation – page load smoke tests', () => {
 	});
 
 	test('UDFs "New UDF" button navigates to /udfs/new', async ({ page }) => {
-		await page.goto('/udfs');
+		await page.goto('/udfs', { waitUntil: 'networkidle' });
 		const newUdfBtn = page.getByRole('button', { name: /New UDF/i });
 		await expect(newUdfBtn).toBeVisible();
 		await newUdfBtn.click();
-		await page.waitForURL(/udfs\/new/, { timeout: 10_000 });
+		await expect(page).toHaveURL(/udfs\/new/);
 	});
 });

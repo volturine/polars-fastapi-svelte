@@ -1255,27 +1255,6 @@ def list_datasources(session: Session, include_hidden: bool = False) -> list[Dat
         query = query.where(col(DataSource.is_hidden) == False)  # type: ignore[arg-type]  # noqa: E712
     result = session.execute(query)
     datasources = result.scalars().all()
-
-    # Populate schema_cache for datasources that don't have it
-    for ds in datasources:
-        if ds.schema_cache is not None:
-            continue
-        if ds.source_type == 'analysis' or ds.created_by == 'analysis':
-            continue
-        try:
-            schema_info = _extract_schema(ds)
-            schema_cache = schema_info.model_dump()
-        except Exception as e:
-            logger.warning(f'Failed to extract schema for datasource {ds.id}: {e}')
-            continue
-        session.execute(
-            update(DataSource)
-            .where(DataSource.id == ds.id)  # type: ignore[arg-type]
-            .values(schema_cache=schema_cache)
-        )
-        session.commit()
-        ds.schema_cache = schema_cache
-        logger.info(f'Populated schema cache for datasource {ds.id}')
     results: list[DataSourceResponse] = []
     for ds in datasources:
         item = DataSourceResponse.model_validate(ds)

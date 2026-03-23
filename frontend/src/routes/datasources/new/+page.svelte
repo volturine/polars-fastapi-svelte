@@ -667,7 +667,7 @@
 				>
 					{loading
 						? 'Uploading...'
-						: selectedFiles.length === 1
+						: selectedFiles.length <= 1
 							? 'Upload'
 							: `Upload ${selectedFiles.length} Files`}
 				</button>

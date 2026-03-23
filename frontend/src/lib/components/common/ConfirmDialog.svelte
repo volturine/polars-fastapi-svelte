@@ -25,12 +25,14 @@
 		onCancel
 	}: Props = $props();
 
+	let confirmRef = $state<HTMLButtonElement>();
+
 	function handleKeydown(e: KeyboardEvent) {
 		if (!show) return;
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			onConfirm();
-		}
+		if (e.key !== 'Enter') return;
+		if (document.activeElement !== confirmRef) return;
+		e.preventDefault();
+		onConfirm();
 	}
 </script>
 
@@ -102,6 +104,7 @@
 			{cancelText}
 		</button>
 		<button
+			bind:this={confirmRef}
 			class={cx(button({ variant: 'danger' }), css({ smDown: { width: 'full' } }))}
 			onclick={onConfirm}
 			type="button"

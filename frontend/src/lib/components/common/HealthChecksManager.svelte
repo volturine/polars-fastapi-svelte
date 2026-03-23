@@ -27,6 +27,7 @@
 		PowerOff
 	} from 'lucide-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
+	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import { css, cx, emptyText, input, label, row, rowBetween, muted } from '$lib/styles/panda';
 
 	interface Props {
@@ -280,6 +281,22 @@
 			id: check.id,
 			update: { enabled: !check.enabled }
 		});
+	}
+
+	let deleteConfirmId = $state<string | null>(null);
+
+	function handleDelete(id: string): void {
+		deleteConfirmId = id;
+	}
+
+	function confirmDelete(): void {
+		if (!deleteConfirmId) return;
+		deleteMutation.mutate(deleteConfirmId);
+		deleteConfirmId = null;
+	}
+
+	function cancelDelete(): void {
+		deleteConfirmId = null;
 	}
 </script>
 
@@ -836,6 +853,15 @@
 	</div>
 {/snippet}
 
+<ConfirmDialog
+	show={deleteConfirmId !== null}
+	heading="Delete Health Check"
+	message="This health check will be permanently deleted. This action cannot be undone."
+	confirmText="Delete"
+	onConfirm={confirmDelete}
+	onCancel={cancelDelete}
+/>
+
 <div class={css({ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' })}>
 	{#if !compact}
 		<header
@@ -1329,14 +1355,20 @@
 											backgroundColor: 'transparent',
 											padding: '0.5',
 											color: 'fg.muted',
-											_hover: { color: 'error.fg' }
+											_hover: { color: 'error.fg' },
+											_focusVisible: {
+												color: 'error.fg',
+												outline: '2px solid',
+												outlineColor: 'accent.primary',
+												outlineOffset: '1px'
+											}
 										})}
 										onclick={(e) => {
 											e.stopPropagation();
-											deleteMutation.mutate(check.id);
+											handleDelete(check.id);
 										}}
 										disabled={deleteMutation.isPending}
-										title="Delete check"
+										aria-label="Delete check"
 									>
 										<Trash2 size={12} />
 									</button>
@@ -1448,8 +1480,7 @@
 							backgroundColor: 'bg.primary',
 							padding: '2',
 							_hover: { backgroundColor: 'bg.hover' },
-							transition: 'color 160ms, background-color 160ms, border-color 160ms',
-							'&:hover .group-hover-show': { opacity: '1' }
+							transition: 'color 160ms, background-color 160ms, border-color 160ms'
 						})}
 					>
 						<div class={css({ flexShrink: '0' })}>
@@ -1526,11 +1557,9 @@
 
 						<div
 							class={css({
-								opacity: '0.6',
 								display: 'flex',
 								alignItems: 'center',
-								gap: '2',
-								transition: 'opacity 160ms'
+								gap: '2'
 							})}
 						>
 							<label class={label({ variant: 'checkbox' })}>
@@ -1551,11 +1580,17 @@
 								class={css({
 									backgroundColor: 'bg.primary',
 									color: 'fg.tertiary',
-									_hover: { color: 'error.fg' }
+									_hover: { color: 'error.fg' },
+									_focusVisible: {
+										color: 'error.fg',
+										outline: '2px solid',
+										outlineColor: 'accent.primary',
+										outlineOffset: '1px'
+									}
 								})}
-								onclick={() => deleteMutation.mutate(check.id)}
+								onclick={() => handleDelete(check.id)}
 								disabled={deleteMutation.isPending}
-								title="Delete check"
+								aria-label="Delete check"
 							>
 								<Trash2 size={12} />
 							</button>

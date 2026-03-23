@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { test, expect } from '@playwright/test';
 import { createUdf } from './utils/api.js';
 import { deleteUdfViaUI } from './utils/ui-cleanup.js';
+import { screenshot } from './utils/visual.js';
 
 /**
  * E2E tests for UDFs – mirrors test_udf.py.
@@ -21,6 +22,7 @@ test.describe('UDFs – list & management', () => {
 		try {
 			await page.goto('/udfs');
 			await expect(page.locator('h3', { hasText: 'e2e_list_udf' })).toBeVisible();
+			await screenshot(page, 'udfs', 'list-with-udf');
 		} finally {
 			await deleteUdfViaUI(page, 'e2e_list_udf');
 		}
@@ -67,7 +69,7 @@ test.describe('UDFs – list & management', () => {
 		await expect(page.locator('h3', { hasText: 'e2e_delete_udf' })).toBeVisible();
 
 		// Row container
-		const row = page.locator('h3', { hasText: 'e2e_delete_udf' }).locator('../../..');
+		const row = page.locator('[data-udf-card="e2e_delete_udf"]');
 		await row.getByRole('button', { name: /^Delete$/i }).click();
 		// Inline confirm/cancel appears
 		await row.getByRole('button', { name: /Confirm/i }).click();
@@ -81,7 +83,7 @@ test.describe('UDFs – list & management', () => {
 		await createUdf(request, 'e2e_cancel_delete_udf');
 		try {
 			await page.goto('/udfs');
-			const row = page.locator('h3', { hasText: 'e2e_cancel_delete_udf' }).locator('../../..');
+			const row = page.locator('[data-udf-card="e2e_cancel_delete_udf"]');
 			await row.getByRole('button', { name: /^Delete$/i }).click();
 			await row.getByRole('button', { name: /Cancel/i }).click();
 			await expect(page.locator('h3', { hasText: 'e2e_cancel_delete_udf' })).toBeVisible();
@@ -96,7 +98,7 @@ test.describe('UDFs – list & management', () => {
 			await page.goto('/udfs');
 			await expect(page.locator('h3', { hasText: 'e2e_clone_udf' })).toBeVisible();
 
-			const row = page.locator('h3', { hasText: 'e2e_clone_udf' }).locator('../../..');
+			const row = page.locator('[data-udf-card="e2e_clone_udf"]');
 			await row.getByRole('button', { name: /Clone/i }).click();
 
 			// A second UDF with same name or "Copy" suffix appears
@@ -114,7 +116,7 @@ test.describe('UDFs – list & management', () => {
 		const udfId = await createUdf(request, 'e2e_edit_udf');
 		try {
 			await page.goto('/udfs');
-			const row = page.locator('h3', { hasText: 'e2e_edit_udf' }).locator('../../..');
+			const row = page.locator('[data-udf-card="e2e_edit_udf"]');
 			await row.getByRole('button', { name: /Edit/i }).click();
 			await page.waitForURL(new RegExp(`/udfs/${udfId}`), { timeout: 10_000 });
 		} finally {
@@ -143,47 +145,49 @@ test.describe('UDFs – export & import', () => {
 	});
 
 	test('Import button opens the import dialog', async ({ page }) => {
-		await page.goto('/udfs');
-		await page.getByRole('button', { name: /Import/i }).click();
+		await page.goto('/udfs', { waitUntil: 'networkidle' });
+		const importBtn = page.getByRole('button', { name: /Import/i });
+		await expect(importBtn).toBeVisible();
+		await importBtn.click();
+		await expect(page.getByRole('dialog')).toBeVisible();
 		await expect(page.getByRole('heading', { name: /Import UDFs/i })).toBeVisible();
 	});
 
 	test('Import dialog Cancel closes it', async ({ page }) => {
-		await page.goto('/udfs');
+		await page.goto('/udfs', { waitUntil: 'networkidle' });
 		const importBtn = page.getByRole('button', { name: /Import/i });
 		await expect(importBtn).toBeVisible();
 		await importBtn.click();
-		const dialogHeading = page.getByRole('heading', { name: /Import UDFs/i });
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible();
+		const dialogHeading = dialog.getByRole('heading', { name: /Import UDFs/i });
 		await expect(dialogHeading).toBeVisible();
-		// Cancel button is in the dialog footer
-		const cancelBtn = page.getByRole('button', { name: /Cancel/i });
-		await expect(cancelBtn).toBeVisible();
-		await cancelBtn.click();
+		await dialog.getByRole('button', { name: /Cancel/i }).click();
 		await expect(dialogHeading).not.toBeVisible();
 	});
 
 	test('Import dialog: invalid JSON shows error', async ({ page }) => {
-		await page.goto('/udfs');
-		await page.getByRole('button', { name: /Import/i }).click();
-		await expect(page.getByRole('heading', { name: /Import UDFs/i })).toBeVisible();
+		await page.goto('/udfs', { waitUntil: 'networkidle' });
+		const importBtn = page.getByRole('button', { name: /Import/i });
+		await expect(importBtn).toBeVisible();
+		await importBtn.click();
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible();
 		await page.locator('#udf-import-json').fill('not-valid-json');
-		// Click the primary Import button inside the dialog (last one = dialog's CTA)
-		await page
-			.getByRole('button', { name: /^Import$/i })
-			.last()
-			.click();
+		await dialog.getByRole('button', { name: /^Import$/i }).click();
 		await expect(page.getByText(/Invalid JSON/i)).toBeVisible();
 	});
 
 	test('Import dialog: missing udfs array shows error', async ({ page }) => {
-		await page.goto('/udfs');
-		await page.getByRole('button', { name: /Import/i }).click();
-		await expect(page.getByRole('heading', { name: /Import UDFs/i })).toBeVisible();
+		await page.goto('/udfs', { waitUntil: 'networkidle' });
+		const importBtn = page.getByRole('button', { name: /Import/i });
+		await expect(importBtn).toBeVisible();
+		await importBtn.click();
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible();
+		await expect(dialog.getByRole('heading', { name: /Import UDFs/i })).toBeVisible();
 		await page.locator('#udf-import-json').fill('{"other": []}');
-		await page
-			.getByRole('button', { name: /^Import$/i })
-			.last()
-			.click();
+		await dialog.getByRole('button', { name: /^Import$/i }).click();
 		await expect(page.getByText(/udfs array/i)).toBeVisible();
 	});
 
@@ -245,6 +249,7 @@ test.describe('UDFs – editor page', () => {
 		await expect(page.locator('.cm-editor').or(page.locator('textarea')).first()).toBeVisible({
 			timeout: 8_000
 		});
+		await screenshot(page, 'udfs', 'editor-page');
 	});
 
 	test('new UDF editor has Save button', async ({ page }) => {

@@ -503,7 +503,7 @@
 	}
 </script>
 
-<div class={css({ backgroundColor: 'bg.secondary' })}>
+<div class={css({ backgroundColor: 'bg.secondary' })} data-ds-config={datasource.id}>
 	{#if updateMutation.isError}
 		<Callout tone="error">
 			<div class={css({ display: 'flex', alignItems: 'flex-start', gap: '3' })}>
@@ -551,16 +551,22 @@
 			paddingX: '4',
 			paddingTop: '3'
 		})}
+		role="tablist"
+		aria-label="Datasource configuration"
 	>
 		<button
 			class={tabButton({ active: activeTab === 'general' })}
 			onclick={() => (activeTab = 'general')}
+			role="tab"
+			aria-selected={activeTab === 'general'}
 		>
 			General
 		</button>
 		<button
 			class={tabButton({ active: activeTab === 'schema' })}
 			onclick={() => (activeTab = 'schema')}
+			role="tab"
+			aria-selected={activeTab === 'schema'}
 		>
 			Schema
 		</button>
@@ -568,6 +574,8 @@
 			<button
 				class={tabButton({ active: activeTab === 'csv' })}
 				onclick={() => (activeTab = 'csv')}
+				role="tab"
+				aria-selected={activeTab === 'csv'}
 			>
 				CSV
 			</button>
@@ -576,6 +584,8 @@
 			<button
 				class={tabButton({ active: activeTab === 'excel' })}
 				onclick={() => (activeTab = 'excel')}
+				role="tab"
+				aria-selected={activeTab === 'excel'}
 			>
 				Excel
 			</button>
@@ -583,6 +593,8 @@
 		<button
 			class={tabButton({ active: activeTab === 'runs' })}
 			onclick={() => (activeTab = 'runs')}
+			role="tab"
+			aria-selected={activeTab === 'runs'}
 		>
 			Runs
 			{#if filteredRuns.length > 0}
@@ -592,6 +604,8 @@
 		<button
 			class={tabButton({ active: activeTab === 'health' })}
 			onclick={() => (activeTab = 'health')}
+			role="tab"
+			aria-selected={activeTab === 'health'}
 		>
 			Health Checks
 			{#if activeHealthChecks.length > 0}
@@ -638,6 +652,8 @@
 			<button
 				class={tabButton({ active: activeTab === 'schedules' })}
 				onclick={() => (activeTab = 'schedules')}
+				role="tab"
+				aria-selected={activeTab === 'schedules'}
 			>
 				Schedules
 			</button>
@@ -1053,6 +1069,7 @@
 								)}
 								role="button"
 								tabindex="0"
+								data-schema-column={column.name}
 								onclick={() => {
 									statsColumn = column.name;
 									statsOpen = true;

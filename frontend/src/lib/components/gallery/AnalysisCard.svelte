@@ -22,7 +22,11 @@
 	}
 
 	function handleKeyPress(e: KeyboardEvent) {
-		if ((e.key === 'Enter' || e.key === ' ') && !(e.target as HTMLElement).closest('button')) {
+		if (
+			(e.key === 'Enter' || e.key === ' ') &&
+			!(e.target as HTMLElement).closest('button') &&
+			!(e.target as HTMLElement).closest('input[type=checkbox]')
+		) {
 			e.preventDefault();
 			goto(resolve(`/analysis/${analysis.id}`), { invalidateAll: true });
 		}
@@ -41,6 +45,7 @@
 </script>
 
 <div
+	data-analysis-card={analysis.name}
 	class={css({
 		position: 'relative',
 		cursor: 'pointer',
@@ -111,18 +116,40 @@
 					overflow: 'hidden',
 					whiteSpace: 'nowrap',
 					fontSize: 'sm',
-					fontWeight: 'semibold'
+					fontWeight: 'semibold',
+					color: 'fg.primary'
 				})}
 			>
 				{analysis.name}
 			</h3>
-			<Trash2
-				size={16}
+			<button
+				type="button"
+				class={css({
+					display: 'inline-flex',
+					flexShrink: '0',
+					alignItems: 'center',
+					justifyContent: 'center',
+					border: 'none',
+					backgroundColor: 'transparent',
+					padding: '1',
+					color: 'fg.muted',
+					cursor: 'pointer',
+					_hover: { color: 'error.fg' },
+					_focusVisible: {
+						color: 'error.fg',
+						outline: '2px solid',
+						outlineColor: 'accent.primary',
+						outlineOffset: '1px'
+					}
+				})}
 				onclick={(e) => {
 					e.stopPropagation();
 					onDelete(analysis.id);
 				}}
-			/>
+				aria-label="Delete analysis"
+			>
+				<Trash2 size={16} />
+			</button>
 		</div>
 
 		<div class={css({ fontSize: 'xs', color: 'fg.muted' })}>

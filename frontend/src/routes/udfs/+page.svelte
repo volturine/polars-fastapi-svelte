@@ -4,7 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { listUdfs, deleteUdf, exportUdfs, importUdfs, cloneUdf } from '$lib/api/udf';
 	import type { UdfExport } from '$lib/types/udf';
-	import { Plus, Upload, Download, Copy, Trash2, Pencil } from 'lucide-svelte';
+	import { Plus, Upload, Download, Copy, Trash2, Pencil, X } from 'lucide-svelte';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
 	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
@@ -217,6 +217,7 @@
 			<div class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
 				{#each query.data as udf (udf.id)}
 					<div
+						data-udf-card={udf.name}
 						class={css({
 							display: 'flex',
 							flexDirection: 'column',
@@ -334,7 +335,6 @@
 						border: 'none',
 						color: 'fg.muted',
 						cursor: 'pointer',
-						fontSize: 'xl',
 						padding: '1',
 						display: 'flex',
 						alignItems: 'center',
@@ -343,8 +343,11 @@
 						transitionDuration: 'normal',
 						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
 					})}
-					onclick={closeImport}>x</button
+					onclick={closeImport}
+					aria-label="Close import dialog"
 				>
+					<X size={16} />
+				</button>
 			{/snippet}
 		</PanelHeader>
 		<div

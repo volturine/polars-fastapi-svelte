@@ -569,7 +569,13 @@
 		>
 			<Bug size={18} />
 			<p class={css({ margin: '0', color: 'fg.tertiary' })}>Failed</p>
-			<p class={css({ margin: '0', color: 'fg.tertiary' })}>{error.message}</p>
+			<p class={css({ margin: '0', color: 'fg.tertiary', maxWidth: 'sm', textAlign: 'center' })}>
+				{error.message.startsWith('{') ||
+				error.message.startsWith('[') ||
+				error.message.includes('/')
+					? 'An error occurred while loading the data.'
+					: error.message}
+			</p>
 		</div>
 	{/if}
 

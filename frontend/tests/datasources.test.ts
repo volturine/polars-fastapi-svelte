@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createDatasource } from './utils/api.js';
 import { deleteDatasourceViaUI } from './utils/ui-cleanup.js';
+import { screenshot } from './utils/visual.js';
 
 const SAMPLE_CSV = 'id,name,age\n1,Alice,30\n2,Bob,25\n';
 
@@ -22,6 +23,7 @@ test.describe('Datasources – list & management', () => {
 		try {
 			await page.goto('/datasources');
 			await expect(page.getByText('e2e-visible-ds')).toBeVisible();
+			await screenshot(page, 'datasources', 'list-with-datasource');
 		} finally {
 			await deleteDatasourceViaUI(page, 'e2e-visible-ds');
 		}
@@ -87,8 +89,8 @@ test.describe('Datasources – list & management', () => {
 		await page.goto('/datasources');
 		await expect(page.getByText('e2e-delete-ds').first()).toBeVisible();
 
-		// The delete button has title="Delete" and is next to the datasource name
-		const row = page.locator('button', { hasText: 'e2e-delete-ds' }).locator('..');
+		// The delete button has title="Delete" inside the datasource row container
+		const row = page.locator('[data-ds-row="e2e-delete-ds"]');
 		const deleteBtn = row.locator('button[title="Delete"]');
 		await deleteBtn.click();
 
@@ -112,6 +114,7 @@ test.describe('Datasources – upload page', () => {
 		await page.goto('/datasources/new');
 		await expect(page.getByRole('button', { name: 'File Upload' })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'External DB' })).toBeVisible();
+		await screenshot(page, 'datasources', 'upload-page');
 	});
 
 	test('upload page shows a file input', async ({ page }) => {
@@ -160,12 +163,36 @@ test.describe('Datasources – detail view', () => {
 		await deleteDatasourceViaUI(page, 'e2e-detail-view-ds');
 	});
 
-	test('selecting datasource shows its config panel', async ({ page }) => {
+	test('selecting datasource shows General tab with source information', async ({ page }) => {
 		await page.goto('/datasources');
 		await page.getByText('e2e-detail-view-ds').click();
-		// Right pane shows either "Time Travel" (iceberg SnapshotPicker label) or
-		// "Time travel is available for Iceberg datasources." (non-iceberg fallback)
-		await expect(page.getByText(/Time travel/i).first()).toBeVisible({ timeout: 8_000 });
+
+		const config = page.locator('[data-ds-config]');
+		await expect(config).toBeVisible({ timeout: 8_000 });
+
+		const generalTab = config.getByRole('tab', { name: 'General' });
+		await expect(generalTab).toHaveAttribute('aria-selected', 'true');
+
+		await expect(config.getByText('Source Information')).toBeVisible();
+		await expect(config.getByText('Imported')).toBeVisible();
+		await expect(config.getByText('Datasource ID')).toBeVisible();
+
+		await screenshot(page, 'datasources', 'detail-config-panel');
+	});
+
+	test('Schema tab shows actual column names from CSV', async ({ page }) => {
+		await page.goto('/datasources');
+		await page.getByText('e2e-detail-view-ds').click();
+
+		const config = page.locator('[data-ds-config]');
+		await expect(config).toBeVisible({ timeout: 8_000 });
+
+		await config.getByRole('tab', { name: 'Schema' }).click();
+
+		await expect(config.locator('[data-schema-column="id"]')).toBeVisible({ timeout: 10_000 });
+		await expect(config.locator('[data-schema-column="name"]')).toBeVisible();
+		await expect(config.locator('[data-schema-column="age"]')).toBeVisible();
+		await expect(config.locator('[data-schema-column="city"]')).toBeVisible();
 	});
 
 	test('datasource URL includes id query param after selection', async ({ page }) => {

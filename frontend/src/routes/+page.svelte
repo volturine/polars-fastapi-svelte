@@ -2,7 +2,6 @@
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { idbGet, idbSet } from '$lib/utils/indexeddb';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { listAnalyses, deleteAnalysis } from '$lib/api/analysis';
 	import GalleryGrid from '$lib/components/gallery/GalleryGrid.svelte';
@@ -77,9 +76,6 @@
 	});
 
 	const selectionCount = $derived(selectedIds.size);
-	function createNew() {
-		goto(resolve('/analysis/new'), { invalidateAll: true });
-	}
 
 	function handleSearch(query: string) {
 		searchQuery = query;
@@ -202,7 +198,8 @@
 				Browse and manage your data analyses
 			</p>
 		</div>
-		<button
+		<a
+			href={resolve('/analysis/new')}
 			class={css({
 				width: '100%',
 				justifyContent: 'center',
@@ -214,13 +211,15 @@
 				display: 'inline-flex',
 				alignItems: 'center',
 				gap: '2',
+				textDecoration: 'none',
+				fontWeight: 'medium',
+				fontSize: 'sm',
 				md: { width: 'auto' }
 			})}
-			onclick={createNew}
 		>
 			<Plus size={16} />
 			New Analysis
-		</button>
+		</a>
 	</header>
 
 	{#if deleteError}

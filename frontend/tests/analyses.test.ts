@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createDatasource, createAnalysis } from './utils/api.js';
 import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
+import { screenshot } from './utils/visual.js';
 
 /**
  * E2E tests for analyses – mirrors test_analysis.py / test_analysis_extended.py.
@@ -10,6 +11,7 @@ test.describe('Analyses – list & gallery', () => {
 		await page.goto('/');
 		await expect(page.getByRole('heading', { name: 'Analyses' })).toBeVisible();
 		await expect(page.getByText(/Browse and manage your data analyses/i)).toBeVisible();
+		await screenshot(page, 'analyses', 'gallery');
 	});
 
 	test('lists existing analysis after API create', async ({ page, request }) => {
@@ -45,19 +47,21 @@ test.describe('Analyses – list & gallery', () => {
 		await createAnalysis(request, 'E2E Delete Me', dsId);
 
 		await page.goto('/');
-		const h3 = page.locator('h3', { hasText: 'E2E Delete Me' });
-		await expect(h3.first()).toBeVisible();
-		const countBefore = await h3.count();
+		const card = page.locator('[data-analysis-card="E2E Delete Me"]');
+		await expect(card.first()).toBeVisible();
+		const countBefore = await card.count();
 
-		// Trash2 is an SVG with onclick on the card
-		await h3.first().locator('..').locator('svg').click();
+		await card
+			.first()
+			.getByRole('button', { name: /Delete analysis/ })
+			.click();
 
 		// Confirm dialog appears
 		const dialog = page.getByRole('dialog');
 		await expect(dialog.getByRole('heading', { name: /Delete Analysis/i })).toBeVisible();
 		await dialog.getByRole('button', { name: /^Delete$/ }).click();
 
-		await expect(h3).toHaveCount(countBefore - 1, { timeout: 8_000 });
+		await expect(card).toHaveCount(countBefore - 1, { timeout: 8_000 });
 
 		// Cleanup the datasource
 		await deleteDatasourceViaUI(page, 'e2e-del-ds');
@@ -81,6 +85,7 @@ test.describe('Analyses – create wizard', () => {
 		await page.locator('#name').fill('E2E Wizard Test');
 		await page.getByRole('button', { name: /Next/i }).click();
 		await expect(page.getByRole('heading', { name: /Select Data Sources/i })).toBeVisible();
+		await screenshot(page, 'analyses', 'wizard-step-2');
 	});
 
 	test('step 2: shows "No data sources available" when none exist', async ({ page, request }) => {
@@ -178,6 +183,7 @@ test.describe('Analyses – detail page', () => {
 		await expect(page.getByRole('heading', { name: 'Operations' })).toBeVisible({
 			timeout: 15_000
 		});
+		await screenshot(page, 'analyses', 'detail-step-library');
 	});
 
 	test('step library shows search box', async ({ page }) => {
@@ -267,6 +273,21 @@ test.describe('Analyses – step library nodes', () => {
 		await page.locator('button[data-step="filter"]').click();
 		// A Filter node should now appear on the canvas
 		await expect(page.locator('[data-step-type="filter"]').first()).toBeVisible({ timeout: 5_000 });
+	});
+
+	test('clicking Filter canvas node opens config panel with correct type', async ({ page }) => {
+		await page.goto(`/analysis/${aId}`);
+		await expect(page.locator('button[data-step="filter"]')).toBeVisible({ timeout: 15_000 });
+		await page.locator('button[data-step="filter"]').click();
+
+		const canvasNode = page.locator('[data-step-type="filter"]').first();
+		await expect(canvasNode).toBeVisible({ timeout: 5_000 });
+		await canvasNode.click();
+
+		const configPanel = page.locator('[data-step-config="filter"]');
+		await expect(configPanel).toBeVisible({ timeout: 8_000 });
+		await expect(configPanel.getByRole('button', { name: 'Apply' })).toBeVisible();
+		await expect(configPanel.getByRole('button', { name: 'Cancel' })).toBeVisible();
 	});
 
 	test('clicking View step adds it to the canvas', async ({ page }) => {

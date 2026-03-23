@@ -24,8 +24,6 @@
 		ariaModal?: boolean;
 		ariaLabelledby?: string;
 		ariaDescribedby?: string;
-		backdropLabel?: string;
-		onBackdropKeydown?: (event: KeyboardEvent) => void;
 	}
 
 	const noopAction: Action<unknown> = () => ({
@@ -59,10 +57,10 @@
 		role = 'dialog',
 		ariaModal = true,
 		ariaLabelledby,
-		ariaDescribedby,
-		backdropLabel = 'Close modal',
-		onBackdropKeydown
+		ariaDescribedby
 	}: Props = $props();
+
+	let panelRef = $state<HTMLElement | null>(null);
 
 	function handleClose() {
 		onClose?.();
@@ -76,19 +74,22 @@
 		handleClose();
 	}
 
-	function handleBackdropClick() {
+	function handleBackdropMousedown(event: MouseEvent) {
 		if (!closeOnBackdrop) return;
+		if (event.target !== event.currentTarget) return;
 		handleClose();
 	}
 
-	function handleBackdropKeydown(event: KeyboardEvent) {
-		onBackdropKeydown?.(event);
-	}
-
-	// DOM: $derived can't lock body scroll.
+	// DOM: $derived can't lock body scroll or trap focus.
 	$effect(() => {
 		if (!open) return;
 		document.body.style.overflow = 'hidden';
+
+		const panel = panelRef;
+		if (panel) {
+			panel.focus();
+		}
+
 		return () => {
 			document.body.style.overflow = '';
 		};
@@ -98,23 +99,16 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if open}
-	<div
-		class={overlayClass}
-		onclick={handleBackdropClick}
-		onkeydown={handleBackdropKeydown}
-		role="button"
-		tabindex="0"
-		aria-label={backdropLabel}
-	>
+	<div class={overlayClass} onmousedown={handleBackdropMousedown} role="presentation">
 		<div
+			bind:this={panelRef}
 			class={panelClass}
 			{role}
 			aria-modal={ariaModal}
 			aria-labelledby={ariaLabelledby}
 			aria-describedby={ariaDescribedby}
 			tabindex="-1"
-			onclick={(event) => event.stopPropagation()}
-			onkeydown={(event) => event.stopPropagation()}
+			onmousedown={(event) => event.stopPropagation()}
 			use:panelAction={panelActionValue}
 		>
 			{@render content()}

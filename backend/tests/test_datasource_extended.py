@@ -405,6 +405,23 @@ class TestDataSourceListing:
         if isinstance(data, list):
             assert len(data) <= 1 or len(data) == len(sample_datasources)
 
+    def test_list_does_not_extract_or_write_schema_cache(self, client, test_db_session, sample_datasource: DataSource, monkeypatch):
+        """Listing datasources stays read-only for schema cache."""
+        calls = {'count': 0}
+
+        def fail_extract(*args, **kwargs):
+            calls['count'] += 1
+            raise AssertionError('list_datasources must not call _extract_schema')
+
+        monkeypatch.setattr('modules.datasource.service._extract_schema', fail_extract)
+
+        response = client.get('/api/v1/datasource')
+        assert response.status_code == 200
+        assert calls['count'] == 0
+
+        test_db_session.refresh(sample_datasource)
+        assert sample_datasource.schema_cache is None
+
 
 class TestComputeHistogram:
     """Test _compute_histogram helper function."""

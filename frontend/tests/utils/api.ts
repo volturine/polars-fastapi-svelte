@@ -9,74 +9,82 @@ const E2E_PREFIX_RE = /^e2e[^a-z]/i;
 /**
  * Purge all resources whose names match the e2e prefix.
  * Safe to call before/after a run to ensure a clean slate.
+ *
+ * Deletion order: schedules + health checks → analyses + UDFs → datasources
+ * (respects foreign-key dependencies).
  */
 export async function purgeE2eResources(request: APIRequestContext): Promise<void> {
-	const [dsResp, aResp, udfResp, schedResp, hcResp] = await Promise.all([
+	const [dsResp, aResp, udfResp, schedResp] = await Promise.all([
 		request.get(`${API_BASE}/datasource`),
 		request.get(`${API_BASE}/analysis`),
 		request.get(`${API_BASE}/udf`),
-		request.get(`${API_BASE}/schedules`),
-		request.get(`${API_BASE}/healthchecks`)
+		request.get(`${API_BASE}/schedules`)
 	]);
 
-	const deletions: Promise<void>[] = [];
+	// Build datasource name→id lookup from a single parse
+	const datasources: Array<{ id: string; name: string }> = dsResp.ok()
+		? ((await dsResp.json()) as Array<{ id: string; name: string }>)
+		: [];
+	const dsNames = new Map(datasources.map((ds) => [ds.id, ds.name]));
+	const e2eDatasourceIds = datasources
+		.filter((ds) => E2E_PREFIX_RE.test(ds.name))
+		.map((ds) => ds.id);
 
-	// Schedules & health checks first (they reference datasources)
+	// ── Phase 1: schedules & health checks (reference datasources) ─────────
+	const phase1: Promise<void>[] = [];
+
 	if (schedResp.ok()) {
 		const schedules = (await schedResp.json()) as Array<{ id: string; datasource_id?: string }>;
-		const dsNames = new Map<string, string>();
-		if (dsResp.ok()) {
-			for (const ds of (await dsResp.json()) as Array<{ id: string; name: string }>) {
-				dsNames.set(ds.id, ds.name);
-			}
-		}
 		for (const s of schedules) {
 			const dsName = s.datasource_id ? dsNames.get(s.datasource_id) : undefined;
 			if (dsName && E2E_PREFIX_RE.test(dsName)) {
-				deletions.push(deleteSchedule(request, s.id).catch(() => undefined));
+				phase1.push(deleteSchedule(request, s.id).catch(() => undefined));
 			}
 		}
 	}
-	if (hcResp.ok()) {
+
+	// Health checks require datasource_id — query per e2e datasource
+	for (const dsId of e2eDatasourceIds) {
+		const hcResp = await request.get(`${API_BASE}/healthchecks?datasource_id=${dsId}`);
+		if (!hcResp.ok()) continue;
 		const checks = (await hcResp.json()) as Array<{ id: string; name: string }>;
 		for (const hc of checks) {
-			if (E2E_PREFIX_RE.test(hc.name)) {
-				deletions.push(deleteHealthCheck(request, hc.id).catch(() => undefined));
-			}
+			phase1.push(deleteHealthCheck(request, hc.id).catch(() => undefined));
 		}
 	}
-	await Promise.all(deletions);
 
-	const deletions2: Promise<void>[] = [];
+	await Promise.all(phase1);
 
-	// Analyses (reference datasources)
+	// ── Phase 2: analyses + UDFs (analyses reference datasources) ──────────
+	const phase2: Promise<void>[] = [];
+
 	if (aResp.ok()) {
 		const analyses = (await aResp.json()) as Array<{ id: string; name: string }>;
 		for (const a of analyses) {
 			if (E2E_PREFIX_RE.test(a.name)) {
-				deletions2.push(deleteAnalysis(request, a.id).catch(() => undefined));
+				phase2.push(deleteAnalysis(request, a.id).catch(() => undefined));
 			}
 		}
 	}
-	// UDFs
 	if (udfResp.ok()) {
 		const udfs = (await udfResp.json()) as Array<{ id: string; name: string }>;
 		for (const u of udfs) {
 			if (E2E_PREFIX_RE.test(u.name)) {
-				deletions2.push(deleteUdf(request, u.id).catch(() => undefined));
+				phase2.push(deleteUdf(request, u.id).catch(() => undefined));
 			}
 		}
 	}
-	// Datasources (must come after analyses/schedules/health checks)
-	if (dsResp.ok()) {
-		const datasources = (await dsResp.json()) as Array<{ id: string; name: string }>;
-		for (const ds of datasources) {
-			if (E2E_PREFIX_RE.test(ds.name)) {
-				deletions2.push(deleteDatasource(request, ds.id).catch(() => undefined));
-			}
+
+	await Promise.all(phase2);
+
+	// ── Phase 3: datasources (must come after everything else) ─────────────
+	const phase3: Promise<void>[] = [];
+	for (const ds of datasources) {
+		if (E2E_PREFIX_RE.test(ds.name)) {
+			phase3.push(deleteDatasource(request, ds.id).catch(() => undefined));
 		}
 	}
-	await Promise.all(deletions2);
+	await Promise.all(phase3);
 }
 
 // ── Datasource ────────────────────────────────────────────────────────────────
@@ -109,7 +117,6 @@ export async function createAnalysis(
 	name: string,
 	datasourceId: string
 ): Promise<string> {
-	// Proper UUID v4 is required by the backend (result_id validator)
 	const resultId = crypto.randomUUID();
 
 	const response = await request.post(`${API_BASE}/analysis`, {
@@ -162,7 +169,7 @@ export async function createUdf(request: APIRequestContext, name: string): Promi
 		data: {
 			name,
 			description: `Test UDF: ${name}`,
-			code: 'def transform(col):\n    return col\n', // backend requires 'code', not 'source'
+			code: 'def transform(col):\n    return col\n',
 			tags: ['test'],
 			signature: { inputs: [], output: null }
 		}

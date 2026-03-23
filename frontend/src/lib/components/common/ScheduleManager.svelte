@@ -22,6 +22,7 @@
 		BarChart3,
 		Search
 	} from 'lucide-svelte';
+	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import {
 		css,
@@ -318,8 +319,20 @@
 		toggleMut.mutate({ id: schedule.id, enabled: !schedule.enabled });
 	}
 
+	let deleteConfirmId = $state<string | null>(null);
+
 	function handleDelete(id: string) {
-		deleteMut.mutate(id);
+		deleteConfirmId = id;
+	}
+
+	function confirmDelete() {
+		if (!deleteConfirmId) return;
+		deleteMut.mutate(deleteConfirmId);
+		deleteConfirmId = null;
+	}
+
+	function cancelDelete() {
+		deleteConfirmId = null;
 	}
 
 	function startEditCron(schedule: Schedule) {
@@ -377,6 +390,15 @@
 		return count;
 	});
 </script>
+
+<ConfirmDialog
+	show={deleteConfirmId !== null}
+	heading="Delete Schedule"
+	message="Are you sure you want to delete this schedule? This action cannot be undone."
+	confirmText="Delete"
+	onConfirm={confirmDelete}
+	onCancel={cancelDelete}
+/>
 
 <div class={css({ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' })}>
 	{#if !compact}
@@ -1064,16 +1086,20 @@
 									backgroundColor: 'transparent',
 									padding: '0',
 									color: 'fg.tertiary',
-									opacity: '0',
-									'&:hover': { color: 'error.fg' },
-									'.group:hover &': { opacity: '1' }
+									_hover: { color: 'error.fg' },
+									_focusVisible: {
+										color: 'error.fg',
+										outline: '2px solid',
+										outlineColor: 'accent.primary',
+										outlineOffset: '1px'
+									}
 								})}
 								onclick={(e) => {
 									e.stopPropagation();
 									handleDelete(schedule.id);
 								}}
 								disabled={deleteMut.isPending}
-								title="Delete schedule"
+								aria-label="Delete schedule"
 							>
 								<Trash2 size={10} />
 							</button>
@@ -1509,14 +1535,20 @@
 											backgroundColor: 'transparent',
 											padding: '0.5',
 											color: 'fg.muted',
-											_hover: { color: 'error.fg' }
+											_hover: { color: 'error.fg' },
+											_focusVisible: {
+												color: 'error.fg',
+												outline: '2px solid',
+												outlineColor: 'accent.primary',
+												outlineOffset: '1px'
+											}
 										})}
 										onclick={(e) => {
 											e.stopPropagation();
 											handleDelete(schedule.id);
 										}}
 										disabled={deleteMut.isPending}
-										title="Delete schedule"
+										aria-label="Delete schedule"
 									>
 										<Trash2 size={12} />
 									</button>

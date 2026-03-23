@@ -292,6 +292,7 @@
 				color: 'fg.primary'
 			})
 		)}
+		data-step-config={step.type}
 	>
 		<PanelHeader>
 			{#snippet title()}{stepLabel}{/snippet}

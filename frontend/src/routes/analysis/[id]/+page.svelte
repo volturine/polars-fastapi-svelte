@@ -1377,7 +1377,13 @@
 	</div>
 {/if}
 
-<svelte:window onkeydown={handleVersionKeydown} />
+<svelte:window
+	onkeydown={handleVersionKeydown}
+	onbeforeunload={(e) => {
+		if (!isDirty) return;
+		e.preventDefault();
+	}}
+/>
 
 {#if tabError}
 	<div

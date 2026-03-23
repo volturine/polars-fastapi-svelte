@@ -3,8 +3,6 @@ import { createDatasource } from './utils/api.js';
 import { deleteDatasourceViaUI } from './utils/ui-cleanup.js';
 import { screenshot } from './utils/visual.js';
 
-const SAMPLE_CSV = 'id,name,age\n1,Alice,30\n2,Bob,25\n';
-
 /**
  * E2E tests for datasources – mirrors test_datasource.py / test_datasource_extended.py.
  */
@@ -138,7 +136,7 @@ test.describe('Datasources – upload page', () => {
 		await fileInput.setInputFiles({
 			name: 'e2e-upload.csv',
 			mimeType: 'text/csv',
-			buffer: Buffer.from(SAMPLE_CSV)
+			buffer: Buffer.from('id,name,age,city\n1,Alice,30,London\n2,Bob,25,Paris\n')
 		});
 
 		// After file selection, the Upload button should become enabled (exact match avoids 'File Upload' tab)
@@ -195,9 +193,40 @@ test.describe('Datasources – detail view', () => {
 		await expect(config.locator('[data-schema-column="city"]')).toBeVisible();
 	});
 
+	test('General tab shows row count from actual data', async ({ page }) => {
+		await page.goto('/datasources');
+		await page.getByText('e2e-detail-view-ds').click();
+
+		const config = page.locator('[data-ds-config]');
+		await expect(config).toBeVisible({ timeout: 8_000 });
+
+		await expect(config.getByText('Rows')).toBeVisible({ timeout: 10_000 });
+		await expect(config.getByText('3', { exact: true })).toBeVisible({ timeout: 5_000 });
+	});
+
 	test('datasource URL includes id query param after selection', async ({ page }) => {
 		await page.goto('/datasources');
 		await page.getByText('e2e-detail-view-ds').click();
 		await expect(page).toHaveURL(/id=/, { timeout: 5_000 });
+	});
+
+	test('right pane shows preview table with column headers and data', async ({ page }) => {
+		test.setTimeout(45_000);
+		await page.goto('/datasources');
+		await page.getByText('e2e-detail-view-ds').click();
+
+		// Preview loads in the right pane (DatasourcePreview), not in a config tab
+		await expect(page.locator('[data-preview-ready="true"]')).toBeVisible({ timeout: 15_000 });
+
+		// Verify actual column headers from the CSV are rendered
+		await expect(page.locator('[data-column-id="id"]')).toBeVisible({ timeout: 5_000 });
+		await expect(page.locator('[data-column-id="name"]')).toBeVisible();
+		await expect(page.locator('[data-column-id="age"]')).toBeVisible();
+		await expect(page.locator('[data-column-id="city"]')).toBeVisible();
+
+		// Verify actual data values from the CSV
+		await expect(page.getByText('Alice', { exact: true }).first()).toBeVisible();
+		await expect(page.getByText('London', { exact: true }).first()).toBeVisible();
+		await expect(page.getByText('Berlin', { exact: true }).first()).toBeVisible();
 	});
 });

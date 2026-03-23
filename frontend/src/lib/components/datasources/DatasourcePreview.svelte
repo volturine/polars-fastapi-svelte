@@ -137,6 +137,7 @@
 		display: 'flex',
 		flexDirection: 'column'
 	})}
+	data-preview-ready={data && !isLoading ? 'true' : undefined}
 >
 	<div class={css({ overflow: 'hidden', height: 'full' })}>
 		<DataTable

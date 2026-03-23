@@ -137,7 +137,7 @@
 		>
 			<ScheduleManager searchQuery={search} />
 		</div>
-	{:else}
+	{:else if activeTab === 'health'}
 		<div
 			id="panel-health"
 			role="tabpanel"

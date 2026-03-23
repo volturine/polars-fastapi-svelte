@@ -28,6 +28,7 @@
 	let error = $state('');
 	let saving = $state(false);
 	let lastArgs = $state('');
+	let dirty = $state(false);
 
 	let initialized = $state(false);
 
@@ -94,6 +95,7 @@
 		},
 		onSuccess: (data: Udf) => {
 			queryClient.invalidateQueries({ queryKey: ['udfs'] });
+			dirty = false;
 			if (mode === 'create') {
 				goto(resolve(`/udfs/${data.id}`), { invalidateAll: true });
 			}
@@ -130,6 +132,13 @@
 	}
 
 	const canSave = $derived(name.trim().length > 0 && code.trim().length > 0);
+
+	// Subscription: $derived can't track mutation across multiple form fields.
+	$effect(() => {
+		void [name, description, tags, code, inputs, outputDtype];
+		if (!initialized && mode === 'edit') return;
+		dirty = true;
+	});
 </script>
 
 <div
@@ -310,3 +319,10 @@
 		</div>
 	{/if}
 </div>
+
+<svelte:window
+	onbeforeunload={(e) => {
+		if (!dirty) return;
+		e.preventDefault();
+	}}
+/>

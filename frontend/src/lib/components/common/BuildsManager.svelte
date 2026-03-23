@@ -52,7 +52,7 @@
 	let dateFrom = $state('');
 	let dateTo = $state('');
 	let page = $state(1);
-	let branchFilter = $state('master');
+	let branchFilter = $state('');
 	let expandedId = $state<string | null>(null);
 	let activeTab = $state<'request' | 'result' | 'plans' | 'timings'>('request');
 	let sortColumn = $state<string>('created_at');
@@ -562,6 +562,9 @@
 				<tbody>
 					{#each filteredRuns as run (run.id)}
 						<tr
+							data-build-row={run.id}
+							data-build-status={run.status}
+							data-build-kind={run.kind}
 							class={cx(
 								css({
 									cursor: 'pointer',
@@ -720,7 +723,7 @@
 							</td>
 						</tr>
 						{#if expandedId === run.id}
-							<tr>
+							<tr data-build-detail={run.id}>
 								<td
 									colspan="8"
 									class={css({

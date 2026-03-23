@@ -212,23 +212,130 @@ test.describe('Analyses – detail page', () => {
 	});
 });
 
-test.describe('Analyses – step library nodes', () => {
+test.describe('Analyses – save/discard dirty tracking', () => {
+	test('Save shows "Saved" and Discard is disabled on clean analysis', async ({
+		page,
+		request
+	}) => {
+		test.setTimeout(45_000);
+		const dsId = await createDatasource(request, 'e2e-dirty-clean-ds');
+		const aId = await createAnalysis(request, 'E2E Dirty Clean', dsId);
+		try {
+			await page.goto(`/analysis/${aId}`);
+			await expect(page.getByRole('heading', { name: 'Operations' })).toBeVisible({
+				timeout: 15_000
+			});
+
+			const saveBtn = page.getByRole('button', { name: 'Saved' });
+			await expect(saveBtn).toBeVisible({ timeout: 5_000 });
+
+			const discardBtn = page.getByRole('button', { name: 'Discard' });
+			await expect(discardBtn).toBeDisabled();
+		} finally {
+			await deleteAnalysisViaUI(page, 'E2E Dirty Clean');
+			await deleteDatasourceViaUI(page, 'e2e-dirty-clean-ds');
+		}
+	});
+
+	test('adding a step makes Save show "Save" and enables Discard', async ({ page, request }) => {
+		test.setTimeout(45_000);
+		const dsId = await createDatasource(request, 'e2e-dirty-add-ds');
+		const aId = await createAnalysis(request, 'E2E Dirty Add', dsId);
+		try {
+			await page.goto(`/analysis/${aId}`);
+			await expect(page.locator('button[data-step="select"]')).toBeVisible({ timeout: 15_000 });
+			await page.locator('button[data-step="select"]').click();
+
+			await expect(page.locator('[data-step-type="select"]').first()).toBeVisible({
+				timeout: 5_000
+			});
+
+			const saveBtn = page.getByRole('button', { name: 'Save' });
+			await expect(saveBtn).toBeVisible({ timeout: 5_000 });
+
+			const discardBtn = page.getByRole('button', { name: 'Discard' });
+			await expect(discardBtn).toBeEnabled({ timeout: 5_000 });
+		} finally {
+			await deleteAnalysisViaUI(page, 'E2E Dirty Add');
+			await deleteDatasourceViaUI(page, 'e2e-dirty-add-ds');
+		}
+	});
+
+	test('Discard reverts dirty state back to "Saved"', async ({ page, request }) => {
+		test.setTimeout(45_000);
+		const dsId = await createDatasource(request, 'e2e-dirty-discard-ds');
+		const aId = await createAnalysis(request, 'E2E Dirty Discard', dsId);
+		try {
+			await page.goto(`/analysis/${aId}`);
+			await expect(page.locator('button[data-step="sort"]')).toBeVisible({ timeout: 15_000 });
+			await page.locator('button[data-step="sort"]').click();
+			await expect(page.locator('[data-step-type="sort"]').first()).toBeVisible({
+				timeout: 5_000
+			});
+
+			await expect(page.getByRole('button', { name: 'Save' })).toBeVisible({ timeout: 5_000 });
+
+			await page.getByRole('button', { name: 'Discard' }).click();
+
+			await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible({ timeout: 8_000 });
+			await expect(page.getByRole('button', { name: 'Discard' })).toBeDisabled();
+		} finally {
+			await deleteAnalysisViaUI(page, 'E2E Dirty Discard');
+			await deleteDatasourceViaUI(page, 'e2e-dirty-discard-ds');
+		}
+	});
+
+	test('step config Apply/Cancel buttons start with correct state for new step', async ({
+		page,
+		request
+	}) => {
+		test.setTimeout(45_000);
+		const dsId = await createDatasource(request, 'e2e-dirty-config-ds');
+		const aId = await createAnalysis(request, 'E2E Dirty Config', dsId);
+		try {
+			await page.goto(`/analysis/${aId}`);
+			await expect(page.locator('button[data-step="filter"]')).toBeVisible({ timeout: 15_000 });
+			await page.locator('button[data-step="filter"]').click();
+
+			const canvasNode = page.locator('[data-step-type="filter"]').first();
+			await expect(canvasNode).toBeVisible({ timeout: 5_000 });
+			await canvasNode.click();
+
+			const configPanel = page.locator('[data-step-config="filter"]');
+			await expect(configPanel).toBeVisible({ timeout: 8_000 });
+
+			const applyBtn = configPanel.getByRole('button', { name: 'Apply' });
+			const cancelBtn = configPanel.getByRole('button', { name: 'Cancel' });
+			await expect(applyBtn).toBeVisible();
+			await expect(cancelBtn).toBeVisible();
+
+			// New steps have is_applied=false → hasChanges is true → both enabled
+			await expect(applyBtn).toBeEnabled();
+			await expect(cancelBtn).toBeEnabled();
+		} finally {
+			await deleteAnalysisViaUI(page, 'E2E Dirty Config');
+			await deleteDatasourceViaUI(page, 'e2e-dirty-config-ds');
+		}
+	});
+});
+
+test.describe('Analyses – step library labels', () => {
 	let dsId = '';
 	let aId = '';
 
 	test.beforeAll(async ({ request }) => {
-		dsId = await createDatasource(request, 'e2e-nodes-ds');
-		aId = await createAnalysis(request, 'E2E Nodes Test', dsId);
+		dsId = await createDatasource(request, 'e2e-labels-ds');
+		aId = await createAnalysis(request, 'E2E Labels Test', dsId);
 	});
 
 	test.afterAll(async ({ browser }) => {
 		const page = await browser.newPage();
-		await deleteAnalysisViaUI(page, 'E2E Nodes Test');
-		await deleteDatasourceViaUI(page, 'e2e-nodes-ds');
+		await deleteAnalysisViaUI(page, 'E2E Labels Test');
+		await deleteDatasourceViaUI(page, 'e2e-labels-ds');
 		await page.close();
 	});
 
-	// All 24 step types that appear in StepLibrary.svelte
+	// All 25 step types that appear in StepLibrary.svelte (read-only checks)
 	const ALL_STEP_LABELS = [
 		'Filter',
 		'Select',
@@ -260,41 +367,166 @@ test.describe('Analyses – step library nodes', () => {
 	for (const label of ALL_STEP_LABELS) {
 		test(`step type "${label}" is visible in library`, async ({ page }) => {
 			await page.goto(`/analysis/${aId}`);
-			// Use button[data-step] to target only step library buttons (not canvas nodes)
 			await expect(page.locator('button[data-step]', { hasText: label }).first()).toBeVisible({
 				timeout: 15_000
 			});
 		});
 	}
+});
 
-	test('clicking Filter step adds it to the canvas', async ({ page }) => {
-		await page.goto(`/analysis/${aId}`);
-		await expect(page.locator('button[data-step="filter"]')).toBeVisible({ timeout: 15_000 });
-		await page.locator('button[data-step="filter"]').click();
-		// A Filter node should now appear on the canvas
-		await expect(page.locator('[data-step-type="filter"]').first()).toBeVisible({ timeout: 5_000 });
+test.describe('Analyses – step interaction', () => {
+	test('clicking Filter step adds it to the canvas', async ({ page, request }) => {
+		test.setTimeout(45_000);
+		const dsId = await createDatasource(request, 'e2e-click-filter-ds');
+		const aId = await createAnalysis(request, 'E2E Click Filter', dsId);
+		try {
+			await page.goto(`/analysis/${aId}`);
+			await expect(page.locator('button[data-step="filter"]')).toBeVisible({ timeout: 15_000 });
+
+			// Count filter nodes before click (should be 0)
+			const before = await page.locator('[data-step-type="filter"]').count();
+			await page.locator('button[data-step="filter"]').click();
+
+			// Exactly one new filter node should appear
+			await expect(page.locator('[data-step-type="filter"]')).toHaveCount(before + 1, {
+				timeout: 5_000
+			});
+		} finally {
+			await deleteAnalysisViaUI(page, 'E2E Click Filter');
+			await deleteDatasourceViaUI(page, 'e2e-click-filter-ds');
+		}
 	});
 
-	test('clicking Filter canvas node opens config panel with correct type', async ({ page }) => {
-		await page.goto(`/analysis/${aId}`);
-		await expect(page.locator('button[data-step="filter"]')).toBeVisible({ timeout: 15_000 });
-		await page.locator('button[data-step="filter"]').click();
+	test('clicking Filter canvas node opens config panel with correct type', async ({
+		page,
+		request
+	}) => {
+		test.setTimeout(45_000);
+		const dsId = await createDatasource(request, 'e2e-config-panel-ds');
+		const aId = await createAnalysis(request, 'E2E Config Panel', dsId);
+		try {
+			await page.goto(`/analysis/${aId}`);
+			await expect(page.locator('button[data-step="filter"]')).toBeVisible({ timeout: 15_000 });
+			await page.locator('button[data-step="filter"]').click();
 
-		const canvasNode = page.locator('[data-step-type="filter"]').first();
-		await expect(canvasNode).toBeVisible({ timeout: 5_000 });
-		await canvasNode.click();
+			const canvasNode = page.locator('[data-step-type="filter"]').first();
+			await expect(canvasNode).toBeVisible({ timeout: 5_000 });
+			await canvasNode.click();
 
-		const configPanel = page.locator('[data-step-config="filter"]');
-		await expect(configPanel).toBeVisible({ timeout: 8_000 });
-		await expect(configPanel.getByRole('button', { name: 'Apply' })).toBeVisible();
-		await expect(configPanel.getByRole('button', { name: 'Cancel' })).toBeVisible();
+			const configPanel = page.locator('[data-step-config="filter"]');
+			await expect(configPanel).toBeVisible({ timeout: 8_000 });
+			await expect(configPanel.getByRole('button', { name: 'Apply' })).toBeVisible();
+			await expect(configPanel.getByRole('button', { name: 'Cancel' })).toBeVisible();
+		} finally {
+			await deleteAnalysisViaUI(page, 'E2E Config Panel');
+			await deleteDatasourceViaUI(page, 'e2e-config-panel-ds');
+		}
 	});
 
-	test('clicking View step adds it to the canvas', async ({ page }) => {
-		await page.goto(`/analysis/${aId}`);
-		await expect(page.locator('button[data-step="view"]')).toBeVisible({ timeout: 15_000 });
-		await page.locator('button[data-step="view"]').click();
-		// Canvas should show a View node
-		await expect(page.locator('[data-step-type="view"]').first()).toBeVisible({ timeout: 5_000 });
+	test('clicking Select step adds it to the canvas (not initial View)', async ({
+		page,
+		request
+	}) => {
+		test.setTimeout(45_000);
+		const dsId = await createDatasource(request, 'e2e-click-select-ds');
+		const aId = await createAnalysis(request, 'E2E Click Select', dsId);
+		try {
+			await page.goto(`/analysis/${aId}`);
+			await expect(page.locator('button[data-step="select"]')).toBeVisible({ timeout: 15_000 });
+
+			// No select nodes before click
+			await expect(page.locator('[data-step-type="select"]')).toHaveCount(0);
+			await page.locator('button[data-step="select"]').click();
+
+			// Exactly one select node after click
+			await expect(page.locator('[data-step-type="select"]')).toHaveCount(1, {
+				timeout: 5_000
+			});
+		} finally {
+			await deleteAnalysisViaUI(page, 'E2E Click Select');
+			await deleteDatasourceViaUI(page, 'e2e-click-select-ds');
+		}
+	});
+});
+
+test.describe('Analyses – save persistence', () => {
+	test('saving a step persists across page reload', async ({ page, request }) => {
+		test.setTimeout(60_000);
+		const dsId = await createDatasource(request, 'e2e-persist-ds');
+		const aId = await createAnalysis(request, 'E2E Persist Test', dsId);
+		try {
+			await page.goto(`/analysis/${aId}`);
+			await expect(page.locator('button[data-step="filter"]')).toBeVisible({ timeout: 15_000 });
+
+			// No filter nodes initially
+			await expect(page.locator('[data-step-type="filter"]')).toHaveCount(0);
+
+			// Add a filter step
+			await page.locator('button[data-step="filter"]').click();
+			await expect(page.locator('[data-step-type="filter"]')).toHaveCount(1, {
+				timeout: 5_000
+			});
+
+			// Click Save
+			await expect(page.getByRole('button', { name: 'Save' })).toBeVisible({ timeout: 5_000 });
+			await page.getByRole('button', { name: 'Save' }).click();
+			await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible({ timeout: 10_000 });
+
+			// Reload the page completely
+			await page.reload();
+
+			// Wait for the page to fully load
+			await expect(page.getByRole('heading', { name: 'Operations' })).toBeVisible({
+				timeout: 15_000
+			});
+
+			// Filter step should still be present after reload
+			await expect(page.locator('[data-step-type="filter"]')).toHaveCount(1, {
+				timeout: 10_000
+			});
+
+			// Save button should show "Saved" (clean state)
+			await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible({ timeout: 5_000 });
+		} finally {
+			await deleteAnalysisViaUI(page, 'E2E Persist Test');
+			await deleteDatasourceViaUI(page, 'e2e-persist-ds');
+		}
+	});
+
+	test('Apply marks step as applied and Cancel reverts config changes', async ({
+		page,
+		request
+	}) => {
+		test.setTimeout(60_000);
+		const dsId = await createDatasource(request, 'e2e-apply-cancel-ds');
+		const aId = await createAnalysis(request, 'E2E Apply Cancel', dsId);
+		try {
+			await page.goto(`/analysis/${aId}`);
+			await expect(page.locator('button[data-step="filter"]')).toBeVisible({ timeout: 15_000 });
+
+			// Add a filter step and open config
+			await page.locator('button[data-step="filter"]').click();
+			const canvasNode = page.locator('[data-step-type="filter"]').first();
+			await expect(canvasNode).toBeVisible({ timeout: 5_000 });
+			await canvasNode.click();
+
+			const configPanel = page.locator('[data-step-config="filter"]');
+			await expect(configPanel).toBeVisible({ timeout: 8_000 });
+
+			const applyBtn = configPanel.getByRole('button', { name: 'Apply' });
+			const cancelBtn = configPanel.getByRole('button', { name: 'Cancel' });
+
+			// New step: is_applied=false → both buttons enabled
+			await expect(applyBtn).toBeEnabled();
+			await expect(cancelBtn).toBeEnabled();
+
+			// Click Apply — marks step as applied → hasChanges becomes false
+			await applyBtn.click();
+			await expect(applyBtn).toBeDisabled({ timeout: 5_000 });
+			await expect(cancelBtn).toBeDisabled({ timeout: 5_000 });
+		} finally {
+			await deleteAnalysisViaUI(page, 'E2E Apply Cancel');
+			await deleteDatasourceViaUI(page, 'e2e-apply-cancel-ds');
+		}
 	});
 });

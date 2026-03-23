@@ -690,6 +690,7 @@
 							onclick={() => (modeMenuOpen = !modeMenuOpen)}
 							aria-expanded={modeMenuOpen}
 							bind:this={modeTriggerRef}
+							data-testid="output-mode-trigger"
 						>
 							<span
 								class={css({
@@ -811,6 +812,7 @@
 				disabled={!analysisId || building}
 				title="Run analysis build"
 				type="button"
+				data-testid="output-build-button"
 			>
 				{#if building}
 					<Loader size={14} class={css({ opacity: '0.7' })} />

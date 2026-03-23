@@ -192,6 +192,7 @@
 		</div>
 		<button
 			class={button({ variant: 'primary' })}
+			data-testid="udf-save-button"
 			onclick={() => saveMutation.mutate()}
 			disabled={!canSave || saving}
 		>
@@ -298,6 +299,7 @@
 
 			{#if error}
 				<div
+					data-testid="udf-save-error"
 					class={css({
 						paddingX: '3',
 						paddingY: '2.5',

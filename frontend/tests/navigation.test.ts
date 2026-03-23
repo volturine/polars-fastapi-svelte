@@ -79,6 +79,72 @@ test.describe('Navigation – page load smoke tests', () => {
 	});
 });
 
+test.describe('Navigation – settings popup', () => {
+	test('settings popup opens and shows SMTP, Telegram, Debug sections', async ({ page }) => {
+		await page.goto('/', { waitUntil: 'networkidle' });
+		await page.locator('[data-testid="settings-trigger"]').click();
+
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible({ timeout: 5_000 });
+		await expect(dialog.getByRole('heading', { name: 'Settings' })).toBeVisible();
+
+		// Verify all three sections render
+		await expect(dialog.getByText('SMTP')).toBeVisible();
+		await expect(dialog.getByText('Telegram')).toBeVisible();
+		await expect(dialog.getByText('Debug')).toBeVisible();
+
+		// Verify SMTP form fields are present
+		await expect(dialog.locator('#smtp-host')).toBeVisible();
+		await expect(dialog.locator('#smtp-port')).toBeVisible();
+
+		await screenshot(page, 'navigation', 'settings-popup-open');
+	});
+
+	test('settings popup closes via close button', async ({ page }) => {
+		await page.goto('/', { waitUntil: 'networkidle' });
+		await page.locator('[data-testid="settings-trigger"]').click();
+
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible({ timeout: 5_000 });
+
+		await dialog.getByRole('button', { name: /Close settings/i }).click();
+		await expect(dialog).not.toBeVisible({ timeout: 3_000 });
+	});
+
+	test('settings popup closes via Escape key', async ({ page }) => {
+		await page.goto('/', { waitUntil: 'networkidle' });
+		await page.locator('[data-testid="settings-trigger"]').click();
+
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible({ timeout: 5_000 });
+
+		await page.keyboard.press('Escape');
+		await expect(dialog).not.toBeVisible({ timeout: 3_000 });
+	});
+
+	test('settings popup shows IndexedDB toggle in Debug section', async ({ page }) => {
+		await page.goto('/', { waitUntil: 'networkidle' });
+		await page.locator('[data-testid="settings-trigger"]').click();
+
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible({ timeout: 5_000 });
+
+		// Debug section has the IndexedDB Inspector toggle
+		await expect(dialog.getByText('IndexedDB Inspector')).toBeVisible();
+		await expect(dialog.getByRole('switch', { name: /Toggle IndexedDB/i })).toBeVisible();
+	});
+
+	test('settings popup shows Telegram bot toggle', async ({ page }) => {
+		await page.goto('/', { waitUntil: 'networkidle' });
+		await page.locator('[data-testid="settings-trigger"]').click();
+
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible({ timeout: 5_000 });
+
+		await expect(dialog.getByRole('switch', { name: /Toggle Telegram bot/i })).toBeVisible();
+	});
+});
+
 test.describe('Navigation – error state regression', () => {
 	test('datasources page handles API failure gracefully', async ({ page }) => {
 		// Intercept the datasource list API to simulate a server error

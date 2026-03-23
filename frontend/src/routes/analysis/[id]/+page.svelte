@@ -830,6 +830,7 @@
 	</div>
 {:else if analysisQuery.isError}
 	<div
+		data-testid="analysis-load-error"
 		class={cx(
 			row,
 			css({
@@ -1218,6 +1219,7 @@
 							onclick={openVersionModal}
 							type="button"
 							title="Rollback to previous version"
+							data-testid="version-history-trigger"
 						>
 							<ChevronDown size={12} />
 						</button>
@@ -1545,6 +1547,7 @@
 				<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
 					{#each versionsQuery.data as version (version.id)}
 						<div
+							data-testid="version-row-{version.version}"
 							class={css({
 								display: 'flex',
 								alignItems: 'center',
@@ -1602,6 +1605,7 @@
 												_hover: { color: 'fg.primary' }
 											})}
 											title="Rename version"
+											data-testid="version-rename-{version.version}"
 											onclick={() => startRenameVersion(version.id, version.name)}
 										>
 											<Pencil size={12} />
@@ -1627,12 +1631,14 @@
 										_hover: { color: 'error.fg' }
 									})}
 									title="Delete version"
+									data-testid="version-delete-{version.version}"
 									onclick={() => handleDeleteVersion(version.version)}
 								>
 									<Trash2 size={14} />
 								</button>
 								<button
 									class={cx(button({ variant: 'secondary', size: 'sm' }))}
+									data-testid="version-restore-{version.version}"
 									onclick={() => handleRestoreVersion(version.version)}
 									type="button"
 								>

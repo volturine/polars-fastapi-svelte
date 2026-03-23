@@ -494,6 +494,7 @@
 				onclick={() => onToggleApply(step.id)}
 				type="button"
 				title={isApplied ? 'Disable step' : 'Enable step'}
+				data-action="toggle"
 			>
 				{isApplied ? 'disable' : 'enable'}
 			</button>
@@ -517,6 +518,7 @@
 				)}
 				onclick={() => onEdit(step.id)}
 				type="button"
+				data-action="edit"
 			>
 				edit
 			</button>
@@ -540,6 +542,7 @@
 				)}
 				onclick={() => onDelete(step.id)}
 				type="button"
+				data-action="delete"
 			>
 				delete
 			</button>
@@ -693,6 +696,7 @@
 					disabled={isLoadingRowCount}
 					type="button"
 					aria-label="Calculate row count"
+					data-action="count-rows"
 				>
 					{#if isLoadingRowCount}
 						<RefreshCw size={9} class={css({ animation: 'spin 1s linear infinite' })} />

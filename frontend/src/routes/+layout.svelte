@@ -230,6 +230,7 @@
 						onclick={() => (settingsOpen = true)}
 						title="Settings"
 						aria-label="Settings"
+						data-testid="settings-trigger"
 					>
 						<Settings size={16} />
 					</button>

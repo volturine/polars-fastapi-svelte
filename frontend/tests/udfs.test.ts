@@ -270,3 +270,75 @@ test.describe('UDFs – editor page', () => {
 		}
 	});
 });
+
+test.describe('UDFs – editor functional flows', () => {
+	test('create UDF via editor and verify it appears in list', async ({ page }) => {
+		test.setTimeout(60_000);
+		await page.goto('/udfs/new');
+		await expect(page.getByLabel(/Name/i).first()).toBeVisible({ timeout: 8_000 });
+
+		await page.locator('#udf-name').fill('e2e_create_flow_udf');
+		await page.locator('#udf-description').fill('Created via editor E2E test');
+		await page.locator('#udf-tags').fill('e2e, create');
+
+		const saveBtn = page.locator('[data-testid="udf-save-button"]');
+		await expect(saveBtn).toBeEnabled();
+		await saveBtn.click();
+
+		// After create, editor redirects to /udfs/<id>
+		await page.waitForURL(/\/udfs\/[0-9a-f-]+$/, { timeout: 15_000 });
+		await screenshot(page, 'udfs', 'editor-after-create');
+
+		// Navigate to list and verify the UDF appears
+		await page.goto('/udfs');
+		await expect(page.locator('h3', { hasText: 'e2e_create_flow_udf' })).toBeVisible({
+			timeout: 10_000
+		});
+
+		await deleteUdfViaUI(page, 'e2e_create_flow_udf');
+	});
+
+	test('edit existing UDF and save changes', async ({ page, request }) => {
+		test.setTimeout(60_000);
+		const udfId = await createUdf(request, 'e2e_edit_flow_udf');
+		try {
+			await page.goto(`/udfs/${udfId}`);
+			const nameInput = page.locator('#udf-name');
+			await expect(nameInput).toBeVisible({ timeout: 10_000 });
+			await expect(nameInput).toHaveValue('e2e_edit_flow_udf');
+
+			// Modify the description
+			await page.locator('#udf-description').fill('Updated description from E2E');
+
+			const saveBtn = page.locator('[data-testid="udf-save-button"]');
+			await saveBtn.click();
+
+			// Reload and verify the changes persisted
+			await page.reload();
+			await expect(page.locator('#udf-description')).toHaveValue('Updated description from E2E', {
+				timeout: 10_000
+			});
+			await screenshot(page, 'udfs', 'editor-after-edit');
+		} finally {
+			await deleteUdfViaUI(page, 'e2e_edit_flow_udf');
+		}
+	});
+
+	test('Save button is disabled when name is empty', async ({ page }) => {
+		await page.goto('/udfs/new');
+		await expect(page.locator('[data-testid="udf-save-button"]')).toBeVisible({ timeout: 8_000 });
+
+		// Name starts empty — Save should be disabled
+		const nameInput = page.locator('#udf-name');
+		await expect(nameInput).toHaveValue('');
+		await expect(page.locator('[data-testid="udf-save-button"]')).toBeDisabled();
+
+		// Fill a name — Save should become enabled
+		await nameInput.fill('e2e_validation_test');
+		await expect(page.locator('[data-testid="udf-save-button"]')).toBeEnabled();
+
+		// Clear the name — Save should be disabled again
+		await nameInput.fill('');
+		await expect(page.locator('[data-testid="udf-save-button"]')).toBeDisabled();
+	});
+});

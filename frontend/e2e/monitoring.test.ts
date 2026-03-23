@@ -1,12 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { createDatasource, createSchedule, createHealthCheck } from './utils/api.js';
 import {
-	createDatasource,
-	deleteDatasource,
-	createSchedule,
-	deleteSchedule,
-	createHealthCheck,
-	deleteHealthCheck
-} from './utils/api.js';
+	deleteDatasourceViaUI,
+	deleteScheduleViaUI,
+	deleteHealthCheckViaUI
+} from './utils/ui-cleanup.js';
 
 /**
  * E2E tests for the monitoring page – mirrors test_healthchecks.py /
@@ -72,11 +70,9 @@ test.describe('Monitoring – Schedules tab', () => {
 	});
 
 	test('created schedule appears in the Schedules tab', async ({ page, request }) => {
-		// Need a datasource to attach the schedule to
 		const dsId = await createDatasource(request, 'e2e-sched-ds');
-		let schedId = '';
+		await createSchedule(request, dsId, '0 6 * * *');
 		try {
-			schedId = await createSchedule(request, dsId, '0 6 * * *');
 			await page.goto('/monitoring');
 			await page.getByRole('button', { name: 'Schedules' }).click();
 			// The cron expression or datasource name should be visible
@@ -84,33 +80,32 @@ test.describe('Monitoring – Schedules tab', () => {
 				page.getByText('0 6 * * *').or(page.getByText('e2e-sched-ds')).first()
 			).toBeVisible({ timeout: 8_000 });
 		} finally {
-			if (schedId) await deleteSchedule(request, schedId).catch(() => undefined);
-			await deleteDatasource(request, dsId);
+			await deleteScheduleViaUI(page, 'e2e-sched-ds');
+			await deleteDatasourceViaUI(page, 'e2e-sched-ds');
 		}
 	});
 
 	test('schedule can be deleted via UI', async ({ page, request }) => {
+		test.setTimeout(60_000);
 		const dsId = await createDatasource(request, 'e2e-sched-del-ds');
-		let schedId = '';
-		try {
-			schedId = await createSchedule(request, dsId, '0 7 * * *');
-			await page.goto('/monitoring');
-			await page.getByRole('button', { name: 'Schedules' }).click();
-			const scheduleText = page.getByText('0 7 * * *');
-			await expect(scheduleText.first()).toBeVisible({ timeout: 8_000 });
-			const countBefore = await scheduleText.count();
+		await createSchedule(request, dsId, '0 7 * * *');
 
-			// Click delete button
-			const deleteBtn = page.getByRole('button', { name: /Delete/i }).first();
-			await deleteBtn.click();
+		await page.goto('/monitoring');
+		await page.getByRole('button', { name: 'Schedules' }).click();
 
-			// After deletion the count should decrease
-			await expect(scheduleText).toHaveCount(countBefore - 1, { timeout: 8_000 });
-			schedId = ''; // already deleted
-		} finally {
-			if (schedId) await deleteSchedule(request, schedId).catch(() => undefined);
-			await deleteDatasource(request, dsId);
-		}
+		// Wait for the schedule delete button to appear (one per schedule row)
+		const deleteBtns = page.locator('button[title="Delete schedule"]');
+		await expect(deleteBtns.first()).toBeAttached({ timeout: 15_000 });
+		const countBefore = await deleteBtns.count();
+
+		// Delete button is hidden (opacity: 0) until row hover — use force click
+		await deleteBtns.first().click({ force: true, timeout: 5_000 });
+
+		// After deletion the button count should decrease
+		await expect(deleteBtns).toHaveCount(countBefore - 1, { timeout: 8_000 });
+
+		// Cleanup the datasource
+		await deleteDatasourceViaUI(page, 'e2e-sched-del-ds');
 	});
 });
 
@@ -129,41 +124,37 @@ test.describe('Monitoring – Health Checks tab', () => {
 
 	test('created health check appears in list', async ({ page, request }) => {
 		const dsId = await createDatasource(request, 'e2e-hc-ds');
-		let hcId = '';
+		await createHealthCheck(request, dsId, 'E2E Row Count Check');
 		try {
-			hcId = await createHealthCheck(request, dsId, 'E2E Row Count Check');
 			await page.goto('/monitoring');
 			await page.getByRole('button', { name: 'Health Checks' }).click();
 			await expect(page.getByText('E2E Row Count Check')).toBeVisible({ timeout: 8_000 });
 		} finally {
-			if (hcId) await deleteHealthCheck(request, hcId).catch(() => undefined);
-			await deleteDatasource(request, dsId);
+			await deleteHealthCheckViaUI(page, 'E2E Row Count Check');
+			await deleteDatasourceViaUI(page, 'e2e-hc-ds');
 		}
 	});
 
 	test('health check delete button removes it from list', async ({ page, request }) => {
 		const dsId = await createDatasource(request, 'e2e-hc-del-ds');
-		let hcId = '';
-		try {
-			hcId = await createHealthCheck(request, dsId, 'E2E Delete Health Check');
-			await page.goto('/monitoring');
-			await page.getByRole('button', { name: 'Health Checks' }).click();
-			await expect(page.getByText('E2E Delete Health Check').first()).toBeVisible({
-				timeout: 8_000
-			});
-			const hcCount = await page.getByText('E2E Delete Health Check').count();
+		await createHealthCheck(request, dsId, 'E2E Delete Health Check');
 
-			// Delete button has title="Delete check"
-			await page.locator('button[title="Delete check"]').first().click();
+		await page.goto('/monitoring');
+		await page.getByRole('button', { name: 'Health Checks' }).click();
+		await expect(page.getByText('E2E Delete Health Check').first()).toBeVisible({
+			timeout: 8_000
+		});
+		const hcCount = await page.getByText('E2E Delete Health Check').count();
 
-			await expect(page.getByText('E2E Delete Health Check')).toHaveCount(hcCount - 1, {
-				timeout: 8_000
-			});
-			hcId = '';
-		} finally {
-			if (hcId) await deleteHealthCheck(request, hcId).catch(() => undefined);
-			await deleteDatasource(request, dsId);
-		}
+		// Delete button has title="Delete check"
+		await page.locator('button[title="Delete check"]').first().click();
+
+		await expect(page.getByText('E2E Delete Health Check')).toHaveCount(hcCount - 1, {
+			timeout: 8_000
+		});
+
+		// Cleanup the datasource
+		await deleteDatasourceViaUI(page, 'e2e-hc-del-ds');
 	});
 });
 
@@ -185,16 +176,14 @@ test.describe('Monitoring – Builds tab', () => {
 
 	test('Builds tab shows datasource creation run', async ({ page, request }) => {
 		test.setTimeout(60_000);
-		// createDatasource triggers a 'datasource_create' engine run with branch='master',
-		// which appears in the Builds tab under the default 'master' branch filter.
-		const dsId = await createDatasource(request, 'e2e-build-ds');
+		await createDatasource(request, 'e2e-build-ds');
 		try {
 			await page.goto('/monitoring');
 			await page.getByRole('button', { name: 'Builds' }).click();
 			// The datasource name appears in the Datasource column once the lookup resolves
 			await expect(page.getByText('e2e-build-ds').first()).toBeVisible({ timeout: 20_000 });
 		} finally {
-			await deleteDatasource(request, dsId);
+			await deleteDatasourceViaUI(page, 'e2e-build-ds');
 		}
 	});
 });

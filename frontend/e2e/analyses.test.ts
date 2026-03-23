@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { createDatasource, deleteDatasource, createAnalysis, deleteAnalysis } from './utils/api.js';
+import { createDatasource, createAnalysis } from './utils/api.js';
+import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
 
 /**
  * E2E tests for analyses – mirrors test_analysis.py / test_analysis_extended.py.
@@ -13,19 +14,19 @@ test.describe('Analyses – list & gallery', () => {
 
 	test('lists existing analysis after API create', async ({ page, request }) => {
 		const dsId = await createDatasource(request, 'e2e-list-ds');
-		const aId = await createAnalysis(request, 'E2E List Test', dsId);
+		await createAnalysis(request, 'E2E List Test', dsId);
 		try {
 			await page.goto('/');
 			await expect(page.getByText('E2E List Test')).toBeVisible();
 		} finally {
-			await deleteAnalysis(request, aId);
-			await deleteDatasource(request, dsId);
+			await deleteAnalysisViaUI(page, 'E2E List Test');
+			await deleteDatasourceViaUI(page, 'e2e-list-ds');
 		}
 	});
 
 	test('search filters out non-matching analyses', async ({ page, request }) => {
 		const dsId = await createDatasource(request, 'e2e-search-ds');
-		const aId = await createAnalysis(request, 'E2E Search Alpha', dsId);
+		await createAnalysis(request, 'E2E Search Alpha', dsId);
 		try {
 			await page.goto('/');
 			await expect(page.getByText('E2E Search Alpha')).toBeVisible();
@@ -34,32 +35,32 @@ test.describe('Analyses – list & gallery', () => {
 			await page.getByRole('textbox').first().fill('ZZZNOMATCH');
 			await expect(page.getByText(/No analyses match your search/i)).toBeVisible();
 		} finally {
-			await deleteAnalysis(request, aId);
-			await deleteDatasource(request, dsId);
+			await deleteAnalysisViaUI(page, 'E2E Search Alpha');
+			await deleteDatasourceViaUI(page, 'e2e-search-ds');
 		}
 	});
 
 	test('delete analysis via confirm dialog removes it from list', async ({ page, request }) => {
 		const dsId = await createDatasource(request, 'e2e-del-ds');
-		const aId = await createAnalysis(request, 'E2E Delete Me', dsId);
-		try {
-			await page.goto('/');
-			const h3 = page.locator('h3', { hasText: 'E2E Delete Me' });
-			await expect(h3.first()).toBeVisible();
-			const countBefore = await h3.count();
+		await createAnalysis(request, 'E2E Delete Me', dsId);
 
-			// Trash2 is an SVG with onclick on the card (not a button element)
-			await h3.first().locator('..').locator('svg').click();
+		await page.goto('/');
+		const h3 = page.locator('h3', { hasText: 'E2E Delete Me' });
+		await expect(h3.first()).toBeVisible();
+		const countBefore = await h3.count();
 
-			// Confirm dialog appears
-			await expect(page.getByRole('heading', { name: /Delete Analysis/i })).toBeVisible();
-			await page.getByRole('button', { name: /^Delete$/ }).click();
+		// Trash2 is an SVG with onclick on the card
+		await h3.first().locator('..').locator('svg').click();
 
-			await expect(h3).toHaveCount(countBefore - 1, { timeout: 8_000 });
-		} finally {
-			await deleteAnalysis(request, aId).catch(() => undefined);
-			await deleteDatasource(request, dsId);
-		}
+		// Confirm dialog appears
+		const dialog = page.getByRole('dialog');
+		await expect(dialog.getByRole('heading', { name: /Delete Analysis/i })).toBeVisible();
+		await dialog.getByRole('button', { name: /^Delete$/ }).click();
+
+		await expect(h3).toHaveCount(countBefore - 1, { timeout: 8_000 });
+
+		// Cleanup the datasource
+		await deleteDatasourceViaUI(page, 'e2e-del-ds');
 	});
 });
 
@@ -109,7 +110,7 @@ test.describe('Analyses – create wizard', () => {
 
 	test('full create flow: wizard → analysis detail page', async ({ page, request }) => {
 		test.setTimeout(60_000);
-		const dsId = await createDatasource(request, 'e2e-create-ds');
+		await createDatasource(request, 'e2e-create-ds');
 		try {
 			await page.goto('/analysis/new');
 
@@ -118,12 +119,10 @@ test.describe('Analyses – create wizard', () => {
 			await page.getByRole('button', { name: /Next/i }).click();
 
 			// Step 2 – pick datasource
-			// The DatasourcePicker is a SearchableDropdown: options only render when open.
-			// We must focus the input to open the dropdown, then click the option.
 			await expect(page.getByRole('heading', { name: /Select Data Sources/i })).toBeVisible();
 			await page.getByPlaceholder('Search datasources...').click();
 			await page.locator('[role="option"]', { hasText: 'e2e-create-ds' }).first().click();
-			// Close the dropdown (it stays open in multi-select mode) by clicking outside
+			// Close the dropdown by clicking outside
 			await page.getByRole('heading', { name: /Select Data Sources/i }).click();
 			await expect(page.getByRole('button', { name: /Next/i })).toBeEnabled();
 			await page.getByRole('button', { name: /Next/i }).click();
@@ -136,15 +135,8 @@ test.describe('Analyses – create wizard', () => {
 			// Redirects to analysis editor
 			await page.waitForURL(/\/analysis\/.+/, { timeout: 20_000 });
 		} finally {
-			try {
-				const listResp = await request.get('http://localhost:8000/api/v1/analysis');
-				const analyses = (await listResp.json()) as Array<{ id: string; name: string }>;
-				const created = analyses.find((a) => a.name === 'E2E Created Analysis');
-				if (created) await deleteAnalysis(request, created.id);
-				await deleteDatasource(request, dsId);
-			} catch {
-				// Cleanup best-effort — context may be closed if test timed out
-			}
+			await deleteAnalysisViaUI(page, 'E2E Created Analysis');
+			await deleteDatasourceViaUI(page, 'e2e-create-ds');
 		}
 	});
 
@@ -173,9 +165,11 @@ test.describe('Analyses – detail page', () => {
 		aId = await createAnalysis(request, 'E2E Detail Test', dsId);
 	});
 
-	test.afterAll(async ({ request }) => {
-		await deleteAnalysis(request, aId);
-		await deleteDatasource(request, dsId);
+	test.afterAll(async ({ browser }) => {
+		const page = await browser.newPage();
+		await deleteAnalysisViaUI(page, 'E2E Detail Test');
+		await deleteDatasourceViaUI(page, 'e2e-detail-ds');
+		await page.close();
 	});
 
 	test('analysis detail page loads with step library', async ({ page }) => {
@@ -221,9 +215,11 @@ test.describe('Analyses – step library nodes', () => {
 		aId = await createAnalysis(request, 'E2E Nodes Test', dsId);
 	});
 
-	test.afterAll(async ({ request }) => {
-		await deleteAnalysis(request, aId);
-		await deleteDatasource(request, dsId);
+	test.afterAll(async ({ browser }) => {
+		const page = await browser.newPage();
+		await deleteAnalysisViaUI(page, 'E2E Nodes Test');
+		await deleteDatasourceViaUI(page, 'e2e-nodes-ds');
+		await page.close();
 	});
 
 	// All 24 step types that appear in StepLibrary.svelte

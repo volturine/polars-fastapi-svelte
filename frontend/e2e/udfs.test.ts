@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { test, expect } from '@playwright/test';
-import { createUdf, deleteUdf } from './utils/api.js';
+import { createUdf } from './utils/api.js';
+import { deleteUdfViaUI } from './utils/ui-cleanup.js';
 
 /**
  * E2E tests for UDFs – mirrors test_udf.py.
@@ -16,38 +17,38 @@ test.describe('UDFs – list & management', () => {
 	});
 
 	test('lists UDF after API create', async ({ page, request }) => {
-		const udfId = await createUdf(request, 'e2e_list_udf');
+		await createUdf(request, 'e2e_list_udf');
 		try {
 			await page.goto('/udfs');
 			await expect(page.locator('h3', { hasText: 'e2e_list_udf' })).toBeVisible();
 		} finally {
-			await deleteUdf(request, udfId);
+			await deleteUdfViaUI(page, 'e2e_list_udf');
 		}
 	});
 
 	test('UDF description is shown in the list', async ({ page, request }) => {
-		const udfId = await createUdf(request, 'e2e_desc_udf');
+		await createUdf(request, 'e2e_desc_udf');
 		try {
 			await page.goto('/udfs');
 			await expect(page.getByText('Test UDF: e2e_desc_udf')).toBeVisible();
 		} finally {
-			await deleteUdf(request, udfId);
+			await deleteUdfViaUI(page, 'e2e_desc_udf');
 		}
 	});
 
 	test('UDF tags are shown in the list', async ({ page, request }) => {
-		const udfId = await createUdf(request, 'e2e_tags_udf');
+		await createUdf(request, 'e2e_tags_udf');
 		try {
 			await page.goto('/udfs');
 			// Tag chips are <span> elements inside the UDF row
 			await expect(page.locator('span', { hasText: 'test' }).first()).toBeVisible();
 		} finally {
-			await deleteUdf(request, udfId);
+			await deleteUdfViaUI(page, 'e2e_tags_udf');
 		}
 	});
 
 	test('search input filters UDF list', async ({ page, request }) => {
-		const udfId = await createUdf(request, 'e2e_search_udf');
+		await createUdf(request, 'e2e_search_udf');
 		try {
 			await page.goto('/udfs');
 			await expect(page.locator('h3', { hasText: 'e2e_search_udf' })).toBeVisible();
@@ -56,32 +57,28 @@ test.describe('UDFs – list & management', () => {
 			// UDF list filtered server-side – item should disappear
 			await expect(page.locator('h3', { hasText: 'e2e_search_udf' })).not.toBeVisible();
 		} finally {
-			await deleteUdf(request, udfId);
+			await deleteUdfViaUI(page, 'e2e_search_udf');
 		}
 	});
 
 	test('Delete button with inline confirm removes UDF', async ({ page, request }) => {
-		const udfId = await createUdf(request, 'e2e_delete_udf');
-		try {
-			await page.goto('/udfs');
-			await expect(page.locator('h3', { hasText: 'e2e_delete_udf' })).toBeVisible();
+		await createUdf(request, 'e2e_delete_udf');
+		await page.goto('/udfs');
+		await expect(page.locator('h3', { hasText: 'e2e_delete_udf' })).toBeVisible();
 
-			// Row container
-			const row = page.locator('h3', { hasText: 'e2e_delete_udf' }).locator('../../..');
-			await row.getByRole('button', { name: /^Delete$/i }).click();
-			// Inline confirm/cancel appears
-			await row.getByRole('button', { name: /Confirm/i }).click();
+		// Row container
+		const row = page.locator('h3', { hasText: 'e2e_delete_udf' }).locator('../../..');
+		await row.getByRole('button', { name: /^Delete$/i }).click();
+		// Inline confirm/cancel appears
+		await row.getByRole('button', { name: /Confirm/i }).click();
 
-			await expect(page.locator('h3', { hasText: 'e2e_delete_udf' })).not.toBeVisible({
-				timeout: 8_000
-			});
-		} finally {
-			await deleteUdf(request, udfId).catch(() => undefined);
-		}
+		await expect(page.locator('h3', { hasText: 'e2e_delete_udf' })).not.toBeVisible({
+			timeout: 8_000
+		});
 	});
 
 	test('Delete cancel keeps UDF in list', async ({ page, request }) => {
-		const udfId = await createUdf(request, 'e2e_cancel_delete_udf');
+		await createUdf(request, 'e2e_cancel_delete_udf');
 		try {
 			await page.goto('/udfs');
 			const row = page.locator('h3', { hasText: 'e2e_cancel_delete_udf' }).locator('../../..');
@@ -89,7 +86,7 @@ test.describe('UDFs – list & management', () => {
 			await row.getByRole('button', { name: /Cancel/i }).click();
 			await expect(page.locator('h3', { hasText: 'e2e_cancel_delete_udf' })).toBeVisible();
 		} finally {
-			await deleteUdf(request, udfId);
+			await deleteUdfViaUI(page, 'e2e_cancel_delete_udf');
 		}
 	});
 
@@ -107,9 +104,9 @@ test.describe('UDFs – list & management', () => {
 				timeout: 8_000
 			});
 		} finally {
-			const resp = await request.get('http://localhost:8000/api/v1/udf?q=e2e_clone_udf');
-			const udfs = (await resp.json()) as Array<{ id: string }>;
-			for (const udf of udfs) await deleteUdf(request, udf.id);
+			// Delete both the clone and the original via UI
+			await deleteUdfViaUI(page, 'e2e_clone_udf');
+			await deleteUdfViaUI(page, 'e2e_clone_udf');
 		}
 	});
 
@@ -121,16 +118,18 @@ test.describe('UDFs – list & management', () => {
 			await row.getByRole('button', { name: /Edit/i }).click();
 			await page.waitForURL(new RegExp(`/udfs/${udfId}`), { timeout: 10_000 });
 		} finally {
-			await deleteUdf(request, udfId);
+			await deleteUdfViaUI(page, 'e2e_edit_udf');
 		}
 	});
 });
 
 test.describe('UDFs – export & import', () => {
 	test('Export button triggers a JSON file download', async ({ page, request }) => {
-		const udfId = await createUdf(request, 'e2e_export_udf');
+		await createUdf(request, 'e2e_export_udf');
 		try {
 			await page.goto('/udfs');
+			// Wait for UDF list to load before exporting
+			await expect(page.locator('h3', { hasText: 'e2e_export_udf' })).toBeVisible();
 
 			const [download] = await Promise.all([
 				page.waitForEvent('download'),
@@ -139,7 +138,7 @@ test.describe('UDFs – export & import', () => {
 
 			expect(download.suggestedFilename()).toBe('udfs.json');
 		} finally {
-			await deleteUdf(request, udfId);
+			await deleteUdfViaUI(page, 'e2e_export_udf');
 		}
 	});
 
@@ -166,7 +165,8 @@ test.describe('UDFs – export & import', () => {
 	test('Import dialog: invalid JSON shows error', async ({ page }) => {
 		await page.goto('/udfs');
 		await page.getByRole('button', { name: /Import/i }).click();
-		await page.getByLabel(/Import JSON/i).fill('not-valid-json');
+		await expect(page.getByRole('heading', { name: /Import UDFs/i })).toBeVisible();
+		await page.locator('#udf-import-json').fill('not-valid-json');
 		// Click the primary Import button inside the dialog (last one = dialog's CTA)
 		await page
 			.getByRole('button', { name: /^Import$/i })
@@ -178,7 +178,8 @@ test.describe('UDFs – export & import', () => {
 	test('Import dialog: missing udfs array shows error', async ({ page }) => {
 		await page.goto('/udfs');
 		await page.getByRole('button', { name: /Import/i }).click();
-		await page.getByLabel(/Import JSON/i).fill('{"other": []}');
+		await expect(page.getByRole('heading', { name: /Import UDFs/i })).toBeVisible();
+		await page.locator('#udf-import-json').fill('{"other": []}');
 		await page
 			.getByRole('button', { name: /^Import$/i })
 			.last()
@@ -188,7 +189,7 @@ test.describe('UDFs – export & import', () => {
 
 	test('valid import roundtrip: export then import', async ({ page, request }) => {
 		test.setTimeout(60_000);
-		const udfId = await createUdf(request, 'e2e_roundtrip_udf');
+		await createUdf(request, 'e2e_roundtrip_udf');
 		try {
 			await page.goto('/udfs');
 
@@ -202,12 +203,12 @@ test.describe('UDFs – export & import', () => {
 				return readFileSync(p, 'utf8');
 			});
 
-			// Delete the UDF first
-			await deleteUdf(request, udfId);
-			await page.reload();
+			// Delete the UDF via UI first
+			await deleteUdfViaUI(page, 'e2e_roundtrip_udf');
+			await page.goto('/udfs');
 			await expect(page.locator('h3', { hasText: 'e2e_roundtrip_udf' })).toHaveCount(0);
 
-			// Import it back directly via API – only import the specific UDF (not the full export)
+			// Import it back via API (testing the API import, not the UI import)
 			const importPayload = JSON.parse(exportedJson) as {
 				udfs: Array<{ name: string; [key: string]: unknown }>;
 			};
@@ -227,13 +228,7 @@ test.describe('UDFs – export & import', () => {
 				timeout: 10_000
 			});
 		} finally {
-			try {
-				const resp = await request.get('http://localhost:8000/api/v1/udf?q=e2e_roundtrip_udf');
-				const udfs = (await resp.json()) as Array<{ id: string }>;
-				for (const udf of udfs) await deleteUdf(request, udf.id).catch(() => undefined);
-			} catch {
-				// Cleanup best-effort — backend may be temporarily unavailable
-			}
+			await deleteUdfViaUI(page, 'e2e_roundtrip_udf');
 		}
 	});
 });
@@ -266,7 +261,7 @@ test.describe('UDFs – editor page', () => {
 			await expect(nameInput).toBeVisible({ timeout: 10_000 });
 			await expect(nameInput).toHaveValue(/e2e_editor_content_udf/);
 		} finally {
-			await deleteUdf(request, udfId);
+			await deleteUdfViaUI(page, 'e2e_editor_content_udf');
 		}
 	});
 });

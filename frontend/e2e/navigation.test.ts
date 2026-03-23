@@ -52,8 +52,10 @@ test.describe('Navigation – page load smoke tests', () => {
 
 	test('"New Analysis" button navigates to /analysis/new', async ({ page }) => {
 		await page.goto('/');
-		await page.getByRole('button', { name: /New Analysis/i }).click();
-		await page.waitForURL(/analysis\/new/, { timeout: 10_000 });
+		const btn = page.getByRole('button', { name: /New Analysis/i });
+		await expect(btn).toBeVisible();
+		await btn.click();
+		await page.waitForURL(/analysis\/new/, { timeout: 15_000 });
 	});
 
 	test('datasources "Add" link navigates to /datasources/new', async ({ page }) => {

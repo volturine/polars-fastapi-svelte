@@ -13,7 +13,7 @@
 
 	let {
 		schema,
-		config = $bindable({ index: [], columns: '', values: '', aggregate_function: 'first' }),
+		config = $bindable({ index: [], columns: '', values: null, aggregate_function: 'first' }),
 		onRefreshSchema,
 		isRefreshing = false
 	}: Props = $props();

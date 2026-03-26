@@ -8,10 +8,17 @@ import { screenshot } from './utils/visual.js';
  * E2E tests for UDFs – mirrors test_udf.py.
  */
 test.describe('UDFs – list & management', () => {
-	test('shows empty state when no UDFs exist', async ({ page, request }) => {
-		const resp = await request.get('http://localhost:8000/api/v1/udf');
-		const udfs = (await resp.json()) as unknown[];
-		test.skip(udfs.length > 0, 'UDFs already exist – skipping empty-state check');
+	test('shows empty state when no UDFs exist', async ({ page }) => {
+		await page.route('**/api/v1/udf', (route) => {
+			if (route.request().method() === 'GET') {
+				return route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify([])
+				});
+			}
+			return route.continue();
+		});
 
 		await page.goto('/udfs');
 		await expect(page.getByText(/No UDFs yet/i)).toBeVisible();

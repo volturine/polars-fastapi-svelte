@@ -4,7 +4,7 @@
 	interface Props {
 		config?: {
 			fraction?: number;
-			seed?: number;
+			seed?: number | null;
 		};
 	}
 

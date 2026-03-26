@@ -959,7 +959,7 @@ class TestStepValidation:
     def test_rejects_invalid_sort_config(self, client, sample_datasource: DataSource):
         payload = self._make_payload(
             sample_datasource.id,
-            [{'id': 's1', 'type': 'sort', 'config': {'descending': True}, 'depends_on': []}],
+            [{'id': 's1', 'type': 'sort', 'config': {'descending': {'bad': True}}, 'depends_on': []}],
         )
         response = client.post('/api/v1/analysis', json=payload)
         assert response.status_code == 400

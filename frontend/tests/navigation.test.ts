@@ -320,6 +320,9 @@ test.describe('Navigation – error state regression', () => {
 			timeout: 10_000
 		});
 
+		// The error callout should be visible
+		await expect(page.getByText(/Error:/i)).toBeVisible({ timeout: 10_000 });
+
 		// The datasource list should not show any items
 		await expect(page.locator('[data-ds-row]')).toHaveCount(0, { timeout: 5_000 });
 	});
@@ -339,6 +342,12 @@ test.describe('Navigation – error state regression', () => {
 		await expect(page.getByRole('tab', { name: 'Builds' })).toBeVisible();
 		await expect(page.getByRole('tab', { name: 'Schedules' })).toBeVisible();
 		await expect(page.getByRole('tab', { name: 'Health Checks' })).toBeVisible();
+
+		// The builds panel should show error or empty state — not silently succeed
+		const panel = page.locator('#panel-builds');
+		await expect(panel.getByText(/error|fail|No engine runs/i).first()).toBeVisible({
+			timeout: 10_000
+		});
 	});
 });
 

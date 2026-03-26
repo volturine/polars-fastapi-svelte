@@ -22,15 +22,13 @@ describe('getDefaultConfig', () => {
 	test('returns sample defaults', () => {
 		const config = getDefaultConfig('sample');
 		expect(config).toEqual({
-			n: 1000,
-			with_replacement: false,
-			shuffle: true,
+			fraction: 0.5,
 			seed: null
 		});
 	});
 
 	test('returns topk defaults', () => {
-		expect(getDefaultConfig('topk')).toEqual({ by: '', k: 10, reverse: false });
+		expect(getDefaultConfig('topk')).toEqual({ column: '', k: 10, descending: false });
 	});
 
 	test('returns empty object for unknown step type', () => {
@@ -56,7 +54,7 @@ describe('getDefaultConfig', () => {
 	});
 
 	test('returns groupby defaults', () => {
-		expect(getDefaultConfig('groupby')).toEqual({ groupBy: [], aggregations: [] });
+		expect(getDefaultConfig('groupby')).toEqual({ group_by: [], aggregations: [] });
 	});
 
 	test('returns view defaults', () => {
@@ -203,5 +201,61 @@ describe('normalizeConfig', () => {
 	test('preserves extra fields for unknown types', () => {
 		const config = normalizeConfig('nonexistent', { custom: 42 });
 		expect(config).toEqual({ custom: 42 });
+	});
+
+	test('migrates legacy groupBy to group_by without mutating input', () => {
+		const input = {
+			groupBy: ['region'],
+			aggregations: [{ column: 'sales', function: 'sum', alias: 'total' }]
+		};
+		const original = { ...input };
+		const config = normalizeConfig('groupby', input);
+		expect(config).toHaveProperty('group_by', ['region']);
+		expect(config).not.toHaveProperty('groupBy');
+		expect(input).toEqual(original);
+	});
+
+	test('does not overwrite existing group_by with legacy groupBy', () => {
+		const config = normalizeConfig('groupby', {
+			groupBy: ['old'],
+			group_by: ['new'],
+			aggregations: []
+		});
+		expect(config).toHaveProperty('group_by', ['new']);
+	});
+
+	test('migrates legacy topk by to column without mutating input', () => {
+		const input = { by: 'score', k: 5, reverse: true };
+		const original = { ...input };
+		const config = normalizeConfig('topk', input);
+		expect(config).toHaveProperty('column', 'score');
+		expect(config).toHaveProperty('descending', true);
+		expect(config).not.toHaveProperty('by');
+		expect(config).not.toHaveProperty('reverse');
+		expect(input).toEqual(original);
+	});
+
+	test('does not overwrite existing topk column with legacy by', () => {
+		const config = normalizeConfig('topk', { by: 'old', column: 'new', k: 3, descending: false });
+		expect(config).toHaveProperty('column', 'new');
+	});
+
+	test('does not overwrite existing topk descending with legacy reverse', () => {
+		const config = normalizeConfig('topk', { reverse: true, column: 'x', k: 3, descending: false });
+		expect(config).toHaveProperty('descending', false);
+	});
+
+	test('migrates only topk by when reverse is absent', () => {
+		const config = normalizeConfig('topk', { by: 'price', k: 10 });
+		expect(config).toHaveProperty('column', 'price');
+		expect(config).toHaveProperty('descending', false);
+		expect(config).not.toHaveProperty('by');
+	});
+
+	test('migrates only topk reverse when by is absent', () => {
+		const config = normalizeConfig('topk', { column: 'price', k: 10, reverse: true });
+		expect(config).toHaveProperty('column', 'price');
+		expect(config).toHaveProperty('descending', true);
+		expect(config).not.toHaveProperty('reverse');
 	});
 });

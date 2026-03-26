@@ -3,17 +3,21 @@
  * Centralizes config shape definitions to eliminate defensive $effect blocks in components.
  */
 
-import type { PlotConfigData } from '$lib/types/operation-config';
+import type {
+	PlotConfigData,
+	TopKConfigData,
+	SampleConfigData,
+	PivotConfigData
+} from '$lib/types/operation-config';
 import type {
 	SelectConfig,
 	DropConfig,
 	FilterConfig,
 	GroupByConfig,
+	JoinConfig,
 	UnionByNameConfig,
 	UnpivotConfig,
 	ExplodeConfig,
-	PivotConfig,
-	SampleConfig,
 	LimitConfig,
 	ViewConfig,
 	ExportConfig,
@@ -21,14 +25,6 @@ import type {
 	NotificationConfig,
 	AIConfig
 } from '$lib/types/step-schemas.generated';
-
-// Frontend-only type: TopK uses different field names than the Pydantic model.
-// The backend uses `column`/`descending`; the frontend UI uses `by`/`reverse`.
-export interface TopKConfigData {
-	by: string;
-	k: number;
-	reverse: boolean;
-}
 
 // ChartConfigData re-uses the richer PlotConfigData type from operation-config.
 export type ChartConfigData = PlotConfigData;
@@ -38,11 +34,12 @@ export type StepConfig =
 	| DropConfig
 	| FilterConfig
 	| GroupByConfig
+	| JoinConfig
 	| UnionByNameConfig
 	| UnpivotConfig
 	| ExplodeConfig
-	| PivotConfig
-	| SampleConfig
+	| PivotConfigData
+	| SampleConfigData
 	| LimitConfig
 	| TopKConfigData
 	| ViewConfig
@@ -64,7 +61,7 @@ const defaultConfigs: Record<string, StepConfig> = {
 	} satisfies FilterConfig,
 
 	groupby: {
-		groupBy: [],
+		group_by: [],
 		aggregations: []
 	} satisfies GroupByConfig,
 
@@ -74,7 +71,7 @@ const defaultConfigs: Record<string, StepConfig> = {
 		join_columns: [],
 		right_columns: [],
 		suffix: '_right'
-	} as Record<string, unknown>,
+	} satisfies JoinConfig,
 
 	union_by_name: {
 		sources: [],
@@ -94,26 +91,24 @@ const defaultConfigs: Record<string, StepConfig> = {
 
 	pivot: {
 		index: [],
-		columns: [],
-		values: [],
+		columns: '',
+		values: null,
 		aggregate_function: 'first'
-	} satisfies PivotConfig,
+	} satisfies PivotConfigData,
 
 	sample: {
-		n: 1000,
-		with_replacement: false,
-		shuffle: true,
+		fraction: 0.5,
 		seed: null
-	} satisfies SampleConfig,
+	} satisfies SampleConfigData,
 
 	limit: {
 		n: 100
 	} satisfies LimitConfig,
 
 	topk: {
-		by: '',
+		column: '',
 		k: 10,
-		reverse: false
+		descending: false
 	} satisfies TopKConfigData,
 
 	view: {
@@ -200,7 +195,7 @@ const defaultConfigs: Record<string, StepConfig> = {
 	expression: { expression: '', column_name: '' },
 	with_columns: { expressions: [] },
 	fill_null: {},
-	deduplicate: {},
+	deduplicate: { subset: null, keep: 'first' },
 	string_transform: {},
 	timeseries: {}
 };
@@ -234,6 +229,24 @@ export function normalizeConfig(stepType: string, config: Record<string, unknown
 		delete cleaned.iceberg_options;
 		cleaned.destination = 'download';
 		return { ...defaults, ...cleaned };
+	}
+
+	// Migrate legacy groupBy → group_by (camelCase → snake_case)
+	if (stepType === 'groupby' && 'groupBy' in config && !('group_by' in config)) {
+		config = { ...config, group_by: config.groupBy };
+		delete config.groupBy;
+	}
+
+	// Migrate legacy topk keys: by → column, reverse → descending
+	if (stepType === 'topk') {
+		if ('by' in config && !('column' in config)) {
+			config = { ...config, column: config.by };
+			delete config.by;
+		}
+		if ('reverse' in config && !('descending' in config)) {
+			config = { ...config, descending: config.reverse };
+			delete config.reverse;
+		}
 	}
 
 	// Handle filter-specific normalization for backward compatibility

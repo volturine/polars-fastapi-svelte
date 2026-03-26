@@ -16,13 +16,13 @@ export interface StepConfig {
 	logic?: string;
 	columns?: string[];
 	cast_map?: Record<string, string>;
-	groupBy?: string[];
+	group_by?: string[];
 	aggregations?:
 		| Array<{ column: string; function?: string; agg?: string; alias?: string }>
 		| Record<string, string | Array<{ column: string; agg: string }>>;
 	sort_by?: Array<{ column: string; descending: boolean }>;
-	mapping?: Record<string, string>;
 	column_mapping?: Record<string, string>;
+	mapping?: Record<string, string>;
 	right?: string;
 	how?: string;
 	left_on?: string | null;
@@ -103,7 +103,7 @@ export function dropTransform(input: Schema | null, config: StepConfig): Schema 
 export function renameTransform(input: Schema | null, config: StepConfig): Schema {
 	if (!input) return EMPTY;
 
-	const mapping = (config.mapping ?? config.column_mapping) as Record<string, string> | undefined;
+	const mapping = (config.column_mapping ?? config.mapping) as Record<string, string> | undefined;
 	if (!mapping || Object.keys(mapping).length === 0) {
 		return { columns: input.columns, row_count: null };
 	}
@@ -125,7 +125,7 @@ function buildAggName(col: string, func: string | Array<{ column: string; agg: s
 export function groupbyTransform(input: Schema | null, config: StepConfig): Schema {
 	if (!input) return EMPTY;
 
-	const groupBy = config.groupBy as string[] | undefined;
+	const groupBy = config.group_by as string[] | undefined;
 	const aggregations = config.aggregations as
 		| Array<{ column: string; function?: string; agg?: string; alias?: string }>
 		| Record<string, string | Array<{ column: string; agg: string }>>

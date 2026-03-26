@@ -1,7 +1,7 @@
 from collections.abc import Callable
 
 import polars as pl
-from pydantic import BaseModel, ConfigDict
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from modules.compute.core.base import OperationHandler, OperationParams
 
@@ -15,7 +15,7 @@ class AggregationSpec(BaseModel):
 
 
 class GroupByParams(OperationParams):
-    group_by: list[str]
+    group_by: list[str] = Field(validation_alias=AliasChoices('group_by', 'groupBy'))
     aggregations: list[AggregationSpec]
 
 

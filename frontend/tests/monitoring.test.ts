@@ -408,12 +408,25 @@ test.describe('Monitoring – Health Check create flow', () => {
 });
 
 test.describe('Monitoring – Builds tab', () => {
-	test('Builds tab shows empty state or build list', async ({ page }) => {
+	test('Builds tab shows empty state when no runs exist', async ({ page }) => {
+		await page.route('**/api/v1/engine/runs**', (route) => {
+			if (route.request().method() === 'GET') {
+				return route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify([])
+				});
+			}
+			return route.continue();
+		});
+
 		await page.goto('/monitoring?tab=builds');
 		await expect(page.getByRole('tab', { name: 'Builds' })).toHaveAttribute(
 			'aria-selected',
 			'true'
 		);
+		const panel = page.locator('#panel-builds');
+		await expect(panel.getByText('No engine runs yet.')).toBeVisible({ timeout: 10_000 });
 	});
 
 	test('Builds search filters by text', async ({ page, request }) => {

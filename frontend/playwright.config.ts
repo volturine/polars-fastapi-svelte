@@ -7,6 +7,7 @@ export default defineConfig({
 	timeout: 30_000,
 	expect: { timeout: 10_000 },
 	fullyParallel: false,
+	workers: 1,
 	retries: 1,
 	outputDir: './tests/test-results',
 	reporter: [['html', { open: 'never', outputFolder: 'tests/playwright-report' }], ['line']],

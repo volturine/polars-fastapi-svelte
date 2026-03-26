@@ -150,33 +150,33 @@ describe('dropTransform', () => {
 
 describe('renameTransform', () => {
 	test('returns EMPTY for null input', () => {
-		expect(renameTransform(null, { mapping: { id: 'pk' } })).toEqual(EMPTY);
+		expect(renameTransform(null, { column_mapping: { id: 'pk' } })).toEqual(EMPTY);
 	});
 
-	test('returns all columns when mapping is empty', () => {
-		const result = renameTransform(BASE, { mapping: {} });
+	test('returns all columns when column_mapping is empty', () => {
+		const result = renameTransform(BASE, { column_mapping: {} });
 		expect(result.columns).toEqual(BASE.columns);
 	});
 
-	test('returns all columns when mapping is undefined', () => {
+	test('returns all columns when column_mapping is undefined', () => {
 		const result = renameTransform(BASE, {});
 		expect(result.columns).toEqual(BASE.columns);
 	});
 
-	test('renames columns via mapping', () => {
-		const result = renameTransform(BASE, { mapping: { id: 'pk', name: 'full_name' } });
+	test('renames columns via column_mapping', () => {
+		const result = renameTransform(BASE, { column_mapping: { id: 'pk', name: 'full_name' } });
 		expect(result.columns[0].name).toBe('pk');
 		expect(result.columns[1].name).toBe('full_name');
 		expect(result.columns[2].name).toBe('age');
 	});
 
-	test('falls back to column_mapping when mapping is absent', () => {
-		const result = renameTransform(BASE, { column_mapping: { city: 'location' } });
+	test('falls back to mapping when column_mapping is absent', () => {
+		const result = renameTransform(BASE, { mapping: { city: 'location' } });
 		expect(result.columns[3].name).toBe('location');
 	});
 
 	test('preserves dtype and nullable through rename', () => {
-		const result = renameTransform(BASE, { mapping: { city: 'location' } });
+		const result = renameTransform(BASE, { column_mapping: { city: 'location' } });
 		expect(result.columns[3].dtype).toBe('Utf8');
 		expect(result.columns[3].nullable).toBe(true);
 	});
@@ -189,15 +189,15 @@ describe('groupbyTransform', () => {
 		expect(groupbyTransform(null, {})).toEqual(EMPTY);
 	});
 
-	test('produces group columns from groupBy', () => {
-		const result = groupbyTransform(BASE, { groupBy: ['city'] });
+	test('produces group columns from group_by', () => {
+		const result = groupbyTransform(BASE, { group_by: ['city'] });
 		expect(result.columns[0].name).toBe('city');
 		expect(result.columns[0].dtype).toBe('Utf8');
 	});
 
 	test('produces aggregation columns from array-format aggregations', () => {
 		const result = groupbyTransform(BASE, {
-			groupBy: ['city'],
+			group_by: ['city'],
 			aggregations: [
 				{ column: 'age', function: 'mean' },
 				{ column: 'id', agg: 'count', alias: 'id_count' }
@@ -211,7 +211,7 @@ describe('groupbyTransform', () => {
 
 	test('skips aggregations missing column or function', () => {
 		const result = groupbyTransform(BASE, {
-			groupBy: ['city'],
+			group_by: ['city'],
 			aggregations: [
 				{ column: '', function: 'mean' },
 				{ column: 'age', function: '' }
@@ -222,7 +222,7 @@ describe('groupbyTransform', () => {
 
 	test('produces aggregation columns from record-format aggregations', () => {
 		const result = groupbyTransform(BASE, {
-			groupBy: [],
+			group_by: [],
 			aggregations: { age: 'mean', name: 'count' }
 		});
 		expect(result.columns.map((c) => c.name)).toEqual(['age_mean', 'name_count']);
@@ -230,25 +230,25 @@ describe('groupbyTransform', () => {
 
 	test('handles record-format with array agg spec', () => {
 		const result = groupbyTransform(BASE, {
-			groupBy: [],
+			group_by: [],
 			aggregations: { age: [{ column: 'age', agg: 'sum' }] as unknown as string }
 		});
 		expect(result.columns[0].name).toBe('age_sum');
 	});
 
-	test('returns only groupBy columns when aggregations undefined', () => {
-		const result = groupbyTransform(BASE, { groupBy: ['id'] });
+	test('returns only group_by columns when aggregations undefined', () => {
+		const result = groupbyTransform(BASE, { group_by: ['id'] });
 		expect(result.columns).toHaveLength(1);
 		expect(result.columns[0].name).toBe('id');
 	});
 
 	test('resolves dtype for group columns from input', () => {
-		const result = groupbyTransform(BASE, { groupBy: ['age'] });
+		const result = groupbyTransform(BASE, { group_by: ['age'] });
 		expect(result.columns[0].dtype).toBe('Int64');
 	});
 
 	test('uses Any for group column not found in input', () => {
-		const result = groupbyTransform(BASE, { groupBy: ['missing'] });
+		const result = groupbyTransform(BASE, { group_by: ['missing'] });
 		expect(result.columns[0].dtype).toBe('Any');
 	});
 });

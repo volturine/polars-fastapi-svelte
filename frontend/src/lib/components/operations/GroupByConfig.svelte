@@ -14,7 +14,7 @@
 	}
 
 	interface GroupByConfigData {
-		groupBy: string[];
+		group_by: string[];
 		aggregations: Aggregation[];
 	}
 
@@ -23,7 +23,7 @@
 		config?: GroupByConfigData;
 	}
 
-	let { schema, config = $bindable({ groupBy: [], aggregations: [] }) }: Props = $props();
+	let { schema, config = $bindable({ group_by: [], aggregations: [] }) }: Props = $props();
 
 	const safeAggregations = $derived(config.aggregations ?? []);
 
@@ -88,8 +88,8 @@
 		<span id="{uid}-columns-heading"><SectionHeader>Group By Columns</SectionHeader></span>
 		<MultiSelectColumnDropdown
 			{schema}
-			value={config.groupBy ?? []}
-			onChange={(val) => (config.groupBy = val)}
+			value={config.group_by ?? []}
+			onChange={(val) => (config.group_by = val)}
 			showSelectAll={false}
 			placeholder="Select group by columns..."
 		/>

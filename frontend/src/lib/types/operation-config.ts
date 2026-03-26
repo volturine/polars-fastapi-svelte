@@ -27,13 +27,13 @@ export interface Aggregation {
 }
 
 export interface GroupByConfigData {
-	groupBy: string[];
+	group_by: string[];
 	aggregations: Aggregation[];
 }
 
 export interface SortConfigData {
 	columns: string[];
-	descending: boolean[];
+	descending: boolean[] | boolean;
 }
 
 export interface RenameConfigData {
@@ -96,7 +96,7 @@ export interface ExplodeConfigData {
 export interface PivotConfigData {
 	index: string[];
 	columns: string;
-	values?: string;
+	values?: string | null;
 	aggregate_function: string;
 }
 
@@ -129,7 +129,7 @@ export interface ViewConfigData {
 
 export interface SampleConfigData {
 	fraction?: number;
-	seed?: number;
+	seed?: number | null;
 }
 
 export interface LimitConfigData {

@@ -71,11 +71,14 @@ test.describe('Lineage – layout switching', () => {
 test.describe('Lineage – graph interaction', () => {
 	test('zoom percentage is displayed', async ({ page }) => {
 		await page.goto('/lineage');
-		await expect(page.getByText('%')).toBeVisible();
+		// The zoom label renders as "{zoomPercent}%" – match the specific pattern
+		await expect(page.getByText(/^\d+%$/)).toBeVisible();
 	});
 
 	test('lineage graph loads without error state', async ({ page }) => {
 		await page.goto('/lineage');
+		// Wait for the loading state to clear first, then verify no error
+		await expect(page.getByText('Loading lineage...')).not.toBeVisible({ timeout: 15_000 });
 		await expect(page.getByText('Failed to load lineage.')).not.toBeVisible();
 	});
 });

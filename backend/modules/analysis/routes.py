@@ -107,6 +107,7 @@ def update_analysis(
 def delete_analysis(
     analysis_id: AnalysisId,
     session: Session = Depends(get_db),
+    manager: ProcessManager = Depends(get_manager),
 ):
     """Delete an analysis and its associated data."""
     analysis_id_value = parse_analysis_id(analysis_id)
@@ -114,6 +115,8 @@ def delete_analysis(
         service.delete_analysis(session, analysis_id_value)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if manager.get_engine(analysis_id_value):
+        manager.shutdown_engine(analysis_id_value)
     return None
 
 

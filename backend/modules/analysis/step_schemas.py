@@ -93,7 +93,6 @@ class GroupByConfig(BaseModel):
 
     group_by: list[str] = Field(
         default_factory=list,
-        alias='groupBy',
         description='Columns to group by',
     )
     aggregations: list[AggregationSchema] = Field(
@@ -106,9 +105,9 @@ class SortConfig(BaseModel):
     model_config = ConfigDict(extra='allow')
 
     columns: list[str] = Field(default_factory=list, description='Columns to sort by')
-    descending: list[bool] = Field(
+    descending: list[bool] | bool = Field(
         default_factory=list,
-        description='Descending flag per column',
+        description='Descending flag per column (or single bool for all)',
     )
 
 
@@ -158,9 +157,7 @@ class LimitConfig(BaseModel):
 class SampleConfig(BaseModel):
     model_config = ConfigDict(extra='allow')
 
-    n: int = Field(1000, description='Number of rows to sample')
-    with_replacement: bool = False
-    shuffle: bool = True
+    fraction: float = Field(0.5, description='Fraction of rows to sample (0–1)')
     seed: int | None = None
 
 
@@ -216,8 +213,8 @@ class PivotConfig(BaseModel):
     model_config = ConfigDict(extra='allow')
 
     index: list[str] = Field(default_factory=list, description='Row identifier columns')
-    columns: list[str] = Field(default_factory=list, description='Column to pivot on')
-    values: list[str] = Field(default_factory=list, description='Values to aggregate')
+    columns: str = Field('', description='Column to pivot on')
+    values: str | None = Field(None, description='Values to aggregate')
     aggregate_function: str = Field(
         'first',
         description='Aggregation function for pivoted values',

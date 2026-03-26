@@ -785,7 +785,11 @@
 			versionError = result.error.message;
 			return;
 		}
+		schemaStore.reset();
+		analysisStore.previewRuns.clear();
 		analysisStore.applyAnalysis(result.value);
+		lastLoadedVersion = result.value.version ?? lastLoadedVersion;
+		selectedStepId = null;
 		showVersionModal = false;
 		isDirty = false;
 	}

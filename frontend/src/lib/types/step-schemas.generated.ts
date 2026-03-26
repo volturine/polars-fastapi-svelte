@@ -33,13 +33,13 @@ export interface AggregationSchema {
 }
 
 export interface GroupByConfig {
-	groupBy?: string[];
+	group_by?: string[];
 	aggregations?: AggregationSchema[];
 }
 
 export interface SortConfig {
 	columns?: string[];
-	descending?: boolean[];
+	descending?: boolean[] | boolean;
 }
 
 export interface RenameConfig {
@@ -70,9 +70,7 @@ export interface LimitConfig {
 }
 
 export interface SampleConfig {
-	n?: number;
-	with_replacement?: boolean;
-	shuffle?: boolean;
+	fraction?: number;
 	seed?: number | null;
 }
 
@@ -94,12 +92,6 @@ export interface FillNullConfig {
 	value_type?: string | null;
 }
 
-export interface ValueCountsConfig {
-	column?: string;
-	normalize?: boolean;
-	sort?: boolean;
-}
-
 export interface UnpivotConfig {
 	id_vars?: string[];
 	value_vars?: string[];
@@ -113,8 +105,8 @@ export interface ExplodeConfig {
 
 export interface PivotConfig {
 	index?: string[];
-	columns?: string[];
-	values?: string[];
+	columns?: string;
+	values?: string | null;
 	aggregate_function?: string;
 }
 
@@ -239,10 +231,6 @@ export interface AIConfig {
 }
 
 export interface DatasourceConfig {
-	[key: string]: unknown;
-}
-
-export interface NullCountConfig {
 	[key: string]: unknown;
 }
 

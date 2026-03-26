@@ -71,7 +71,7 @@ const stepTypes: Record<string, StepTypeConfig> = {
 		icon: BarChart3,
 		typeLabel: 'group_by',
 		summary: (c) => {
-			const keys = c.groupBy as string[];
+			const keys = c.group_by as string[];
 			const aggs = c.aggregations as Array<{ column: string; function: string }>;
 			if (!keys?.length) return 'not configured';
 			const aggStr =

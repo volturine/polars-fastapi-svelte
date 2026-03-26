@@ -90,6 +90,28 @@ def _validate_analysis_payload(
         raise DataSourceNotFoundError(str(datasource_id))
 
     tab_ids = {str(tab.get('id')) for tab in tabs_payload if tab.get('id')}
+
+    # Collect all source references from step configs (union sources, join right_source)
+    referenced_source_ids: set[str] = set()
+    for tab in tabs_payload:
+        for step in tab.get('steps') or []:
+            cfg = step.get('config') if isinstance(step, dict) else None
+            if not isinstance(cfg, dict):
+                continue
+            rs = cfg.get('right_source')
+            if isinstance(rs, str) and rs:
+                referenced_source_ids.add(rs)
+            for src in cfg.get('sources') or []:
+                if isinstance(src, str) and src:
+                    referenced_source_ids.add(src)
+
+    # Validate referenced sources exist as tab IDs or datasources in the DB
+    unknown = referenced_source_ids - tab_ids
+    for src_id in unknown:
+        if not session.get(DataSource, src_id):
+            raise ValueError(f"Step references unknown source '{src_id}'")
+        datasource_ids.append(src_id)
+
     for tab in tabs_payload:
         steps = tab.get('steps')
         if not isinstance(steps, list):
@@ -113,16 +135,6 @@ def _validate_analysis_payload(
             for dep_id in step.get('depends_on') or []:
                 if str(dep_id) not in step_ids:
                     raise ValueError(f"Step depends on unknown step '{dep_id}'")
-
-            right_source = config.get('right_source')
-            if right_source and str(right_source) not in tab_ids:
-                raise ValueError(f"Step references unknown tab '{right_source}'")
-
-            sources = config.get('sources')
-            if isinstance(sources, list):
-                for src in sources:
-                    if isinstance(src, str) and src not in tab_ids:
-                        raise ValueError(f"Step references unknown tab '{src}'")
 
     return tabs_payload, datasource_ids
 
@@ -339,14 +351,22 @@ def add_step(
             raise ValueError(f"depends_on references unknown step '{dep_id}'")
 
     tab_ids = {str(t.get('id')) for t in tabs if t.get('id')}
+    ds_ids = {str(t['datasource']['id']) for t in tabs if isinstance(t.get('datasource'), dict) and t['datasource'].get('id')}
+    valid_source_ids = tab_ids | ds_ids
+
+    def _is_valid_source(src_id: str) -> bool:
+        if src_id in valid_source_ids:
+            return True
+        return session.get(DataSource, src_id) is not None
+
     right_source = config.get('right_source')
-    if right_source and str(right_source) not in tab_ids:
-        raise ValueError(f"Step references unknown tab '{right_source}'")
+    if right_source and not _is_valid_source(str(right_source)):
+        raise ValueError(f"Step references unknown source '{right_source}'")
     sources = config.get('sources')
     if isinstance(sources, list):
         for src in sources:
-            if isinstance(src, str) and src not in tab_ids:
-                raise ValueError(f"Step references unknown tab '{src}'")
+            if isinstance(src, str) and not _is_valid_source(src):
+                raise ValueError(f"Step references unknown source '{src}'")
 
     step_id = str(uuid.uuid4())
     step: dict = {

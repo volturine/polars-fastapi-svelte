@@ -10,14 +10,16 @@
 
 	interface Props {
 		schema: Schema;
-		config?: { columns: string[]; descending: boolean[] };
+		config?: { columns: string[]; descending: boolean[] | boolean };
 	}
 
 	let { schema, config = $bindable({ columns: [], descending: [] }) }: Props = $props();
 
-	const safeConfig = $derived({
+	const safeConfig: { columns: string[]; descending: boolean[] } = $derived({
 		columns: config?.columns ?? [],
-		descending: config?.descending ?? []
+		descending: Array.isArray(config?.descending)
+			? config.descending
+			: (config?.columns ?? []).map(() => (config?.descending as boolean) ?? false)
 	});
 
 	let newColumn = $state('');

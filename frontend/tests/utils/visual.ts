@@ -78,7 +78,11 @@ export async function screenshot(
 	options?: ScreenshotOptions
 ): Promise<void> {
 	await waitForStableUI(page);
-	const path = `${SCREENSHOTS_DIR}/${sanitize(suite)}/${sanitize(name)}.png`;
+	const suitePath = suite
+		.split('/')
+		.map((s) => sanitize(s))
+		.join('/');
+	const path = `${SCREENSHOTS_DIR}/${suitePath}/${sanitize(name)}.png`;
 	mkdirSync(dirname(path), { recursive: true });
 
 	if (options?.target) {

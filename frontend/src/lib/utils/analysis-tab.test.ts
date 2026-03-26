@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import {
 	isUuid,
 	buildOutputConfig,
+	ensureTabDefaults,
 	validatePipelineTabs,
 	formatPipelineErrors
 } from './analysis-tab';
@@ -70,6 +71,45 @@ describe('buildOutputConfig', () => {
 	test('falls back to master for null branch', () => {
 		const config = buildOutputConfig({ outputId: 'x', branch: null });
 		expect((config.iceberg as Record<string, unknown>).branch).toBe('master');
+	});
+});
+
+describe('ensureTabDefaults', () => {
+	const validUuid = '550e8400-e29b-41d4-a716-446655440000';
+
+	test('preserves existing filename and iceberg.table_name', () => {
+		const tab = makeTab({
+			output: { result_id: validUuid, format: 'parquet', filename: 'my_export' }
+		});
+		const result = ensureTabDefaults(tab, 0);
+		expect(result.output.filename).toBe('my_export');
+		expect((result.output.iceberg as Record<string, unknown>).table_name).toBe('my_export');
+	});
+
+	test('does not generate timestamp-based name when filename is missing', () => {
+		const tab = makeTab({
+			output: { result_id: validUuid, format: 'parquet', filename: '' }
+		});
+		const result = ensureTabDefaults(tab, 0);
+		expect(result.output.filename).not.toMatch(/^output-\d+$/);
+		expect(result.output.filename).toBe('export');
+	});
+
+	test('does not generate timestamp-based iceberg.table_name when iceberg is missing', () => {
+		const tab = makeTab({
+			output: { result_id: validUuid, format: 'parquet', filename: '' }
+		});
+		const result = ensureTabDefaults(tab, 0);
+		const iceberg = result.output.iceberg as Record<string, unknown>;
+		expect(iceberg.table_name).not.toMatch(/^output-\d+$/);
+		expect(iceberg.table_name).toBe('export');
+	});
+
+	test('throws for missing result_id', () => {
+		const tab = makeTab({
+			output: { result_id: 'not-a-uuid', format: 'parquet', filename: 'x' }
+		});
+		expect(() => ensureTabDefaults(tab, 0)).toThrow(/missing or invalid output.result_id/);
 	});
 });
 

@@ -9,7 +9,7 @@
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import type { AnalysisCreate, PipelineStep } from '$lib/types/analysis';
-	import { buildOutputConfig } from '$lib/utils/analysis-tab';
+	import { buildOutputConfig, generateOutputName } from '$lib/utils/analysis-tab';
 	import { getDefaultConfig } from '$lib/utils/step-config-defaults';
 	import { css, cx, spinner, button, label, input, row, divider } from '$lib/styles/panda';
 
@@ -56,7 +56,11 @@
 
 		const tabs = selectedDatasourceIds.map((datasourceId, index) => {
 			const name = `Source ${index + 1}`;
-			const output = buildOutputConfig({ outputId: crypto.randomUUID(), name, branch: 'master' });
+			const output = buildOutputConfig({
+				outputId: crypto.randomUUID(),
+				name: generateOutputName(),
+				branch: 'master'
+			});
 			return {
 				id: crypto.randomUUID(),
 				name,

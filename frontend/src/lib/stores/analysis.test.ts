@@ -533,6 +533,28 @@ describe('AnalysisStore.updateTab', () => {
 		store.updateTab('tab-1', { name: 'Changed' });
 		expect(store.tabs[1].name).toBe('Other');
 	});
+
+	test('preserves output when only datasource changes', () => {
+		const original = store.tabs[0].output;
+		store.updateTab('tab-1', {
+			datasource: { id: 'ds-new', analysis_tab_id: null, config: { branch: 'master' } }
+		});
+		expect(store.tabs[0].output).toEqual(original);
+		expect(store.tabs[0].datasource.id).toBe('ds-new');
+	});
+
+	test('preserves output when datasource switches to analysis source', () => {
+		const original = store.tabs[0].output;
+		store.updateTab('tab-1', {
+			datasource: {
+				id: 'output-uuid',
+				analysis_tab_id: 'tab-upstream',
+				config: { branch: 'master' }
+			}
+		});
+		expect(store.tabs[0].output).toEqual(original);
+		expect(store.tabs[0].datasource.analysis_tab_id).toBe('tab-upstream');
+	});
 });
 
 describe('AnalysisStore.moveStep – backward', () => {

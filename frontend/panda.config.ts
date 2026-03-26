@@ -80,6 +80,7 @@ export default defineConfig({
 			fontFamily: 'var(--fonts-mono)',
 			fontSize: '0.875rem',
 			fontWeight: '500',
+			color: 'inherit',
 			cursor: 'pointer',
 			border: '1px solid transparent',
 			borderRadius: '0',

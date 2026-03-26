@@ -138,6 +138,12 @@ describe('getSourceTypeConfig', () => {
 		expect(cfg.label).toBe('Iceberg');
 	});
 
+	test('returns config for derived source', () => {
+		const cfg = getSourceTypeConfig('derived');
+		expect(cfg.label).toBe('Derived Input');
+		expect(cfg.description).toBe('Input derived from another tab');
+	});
+
 	test('every source type registry entry has required fields', () => {
 		for (const cfg of Object.values(SOURCE_TYPE_REGISTRY)) {
 			expect(cfg.label).toBeTruthy();
@@ -153,6 +159,7 @@ describe('getSourceTypeCategory', () => {
 		iceberg: 'file',
 		database: 'database',
 		analysis: 'analysis',
+		derived: 'derived',
 		duckdb: 'duckdb'
 	};
 
@@ -163,7 +170,14 @@ describe('getSourceTypeCategory', () => {
 	}
 
 	test('SOURCE_TYPE_CATEGORY covers all source types', () => {
-		const sourceTypes: SourceType[] = ['file', 'iceberg', 'database', 'analysis', 'duckdb'];
+		const sourceTypes: SourceType[] = [
+			'file',
+			'iceberg',
+			'database',
+			'analysis',
+			'derived',
+			'duckdb'
+		];
 		for (const st of sourceTypes) {
 			expect(SOURCE_TYPE_CATEGORY[st]).toBeDefined();
 		}

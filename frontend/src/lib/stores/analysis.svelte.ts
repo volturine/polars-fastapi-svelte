@@ -7,6 +7,7 @@ import { getAnalysisWithHeaders, updateAnalysis } from '$lib/api/analysis';
 import {
 	buildOutputConfig,
 	ensureTabDefaults,
+	generateOutputName,
 	validatePipelineTabs
 } from '$lib/utils/analysis-tab';
 import { normalizeDtype } from '$lib/utils/transform';
@@ -570,7 +571,11 @@ export class AnalysisStore {
 					analysis_tab_id: null,
 					config: { branch: 'master' }
 				},
-				output: buildOutputConfig({ outputId: crypto.randomUUID(), name, branch: 'master' }),
+				output: buildOutputConfig({
+					outputId: crypto.randomUUID(),
+					name: generateOutputName(),
+					branch: 'master'
+				}),
 				steps: []
 			};
 		});

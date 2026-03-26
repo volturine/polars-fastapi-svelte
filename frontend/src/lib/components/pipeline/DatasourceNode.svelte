@@ -24,6 +24,7 @@
 		Database,
 		Layers,
 		Snowflake,
+		GitMerge,
 		PanelLeft,
 		Pencil,
 		RefreshCw,
@@ -213,8 +214,13 @@
 	}
 
 	const analysisSourceId = $derived(resolvedDatasource?.created_by_analysis_id ?? null);
+	const isDerived = $derived(!!activeTab?.datasource?.analysis_tab_id);
 	const sourceType = $derived(
-		(analysisSourceId ? 'analysis' : (resolvedDatasource?.source_type ?? 'file')) as string
+		(isDerived
+			? 'derived'
+			: analysisSourceId
+				? 'analysis'
+				: (resolvedDatasource?.source_type ?? 'file')) as string
 	);
 	const isDragActive = $derived(drag.active);
 	const snapshotConfig = $derived(activeTab?.datasource?.config ?? {});
@@ -286,6 +292,8 @@
 						<Snowflake size={12} />
 					{:else if sourceType === 'analysis'}
 						<Layers size={12} />
+					{:else if sourceType === 'derived'}
+						<GitMerge size={12} />
 					{:else}
 						<FileText size={12} />
 					{/if}
@@ -480,7 +488,9 @@
 						</div>
 						<div class={cx(row, css({ gap: '2' }))}>
 							{#if datasource}
-								{#if datasource.source_type === 'file'}
+								{#if isDerived}
+									<FileTypeBadge sourceType="derived" size="sm" showIcon={true} />
+								{:else if datasource.source_type === 'file'}
 									<FileTypeBadge
 										path={(datasource.config?.file_path as string) ?? ''}
 										size="sm"

@@ -12,6 +12,10 @@ const defaultBuildMode = 'full';
 const defaultFormat = 'parquet';
 const outputNameFallback = 'export';
 
+export function generateOutputName(): string {
+	return `output-${Date.now()}`;
+}
+
 function cleanBranch(value: unknown): string {
 	const trimmed = typeof value === 'string' ? value.trim() : '';
 	return trimmed || defaultBranch;
@@ -64,18 +68,20 @@ export function ensureTabDefaults(tab: AnalysisTab, index: number): AnalysisTab 
 			`Tab ${tab.id ?? index} has missing or invalid output.result_id — expected a UUID v4`
 		);
 	}
-	const name =
-		typeof tab.name === 'string' && tab.name.trim() ? tab.name.trim() : `Source ${index + 1}`;
-	const defaults = buildOutputConfig({ outputId, name, branch });
+	const existingName =
+		typeof output.filename === 'string' && output.filename ? output.filename : null;
+	const defaults = buildOutputConfig({ outputId, name: existingName, branch });
 	const icebergRaw = output.iceberg;
 	const iceberg =
 		icebergRaw && typeof icebergRaw === 'object' && !Array.isArray(icebergRaw)
 			? { ...(defaults.iceberg as Record<string, unknown>), ...icebergRaw }
 			: defaults.iceberg;
+	const filename = existingName ? toSlug(existingName) : defaults.filename;
 	const normalizedOutput: AnalysisTabOutput = {
 		...defaults,
 		...output,
 		result_id: defaults.result_id,
+		filename,
 		iceberg
 	};
 	return {

@@ -11,6 +11,7 @@
 		buildOutputConfig,
 		ensureTabDefaults,
 		formatPipelineErrors,
+		generateOutputName,
 		isUuid,
 		validatePipelineTabs
 	} from '$lib/utils/analysis-tab';
@@ -603,7 +604,11 @@
 
 	function handleAddTab(datasourceId: string, name: string) {
 		const tabId = `tab-${datasourceId}-${Date.now()}`;
-		const output = buildOutputConfig({ outputId: crypto.randomUUID(), name, branch: 'master' });
+		const output = buildOutputConfig({
+			outputId: crypto.randomUUID(),
+			name: generateOutputName(),
+			branch: 'master'
+		});
 		analysisStore.addTab({
 			id: tabId,
 			name,
@@ -637,7 +642,11 @@
 			return;
 		}
 		const tabId = `tab-analysis-${datasourceId}-${Date.now()}`;
-		const output = buildOutputConfig({ outputId: crypto.randomUUID(), name, branch: 'master' });
+		const output = buildOutputConfig({
+			outputId: crypto.randomUUID(),
+			name: generateOutputName(),
+			branch: 'master'
+		});
 		analysisStore.addTab({
 			id: tabId,
 			name,
@@ -658,19 +667,11 @@
 		markUnsaved();
 	}
 
-	function handleChangeDatasource(datasourceId: string, name: string) {
+	function handleChangeDatasource(datasourceId: string) {
 		const active = activeTab;
 		if (!active) return;
-		const existingOutputId = active.output?.result_id as string | undefined;
-		const outputId = isUuid(existingOutputId) ? (existingOutputId as string) : crypto.randomUUID();
 		analysisStore.updateTab(active.id, {
-			datasource: { ...active.datasource, id: datasourceId, analysis_tab_id: null },
-			name,
-			output: buildOutputConfig({
-				outputId,
-				name,
-				branch: active.datasource.config?.branch ?? null
-			})
+			datasource: { ...active.datasource, id: datasourceId, analysis_tab_id: null }
 		});
 		if (schemaKey) analysisStore.sourceSchemas.delete(schemaKey);
 		showDatasourceModal = false;
@@ -695,20 +696,12 @@
 			if (modalMode === 'change') {
 				const active = activeTab;
 				if (!active) return;
-				const existingId = active.output?.result_id as string | undefined;
-				const keepId = isUuid(existingId) ? (existingId as string) : crypto.randomUUID();
 				analysisStore.updateTab(active.id, {
 					datasource: {
 						...active.datasource,
 						id: outputId,
 						analysis_tab_id: analysisTabId
-					},
-					name,
-					output: buildOutputConfig({
-						outputId: keepId,
-						name,
-						branch: active.datasource.config?.branch ?? null
-					})
+					}
 				});
 				if (schemaKey) analysisStore.sourceSchemas.delete(schemaKey);
 				showDatasourceModal = false;
@@ -719,7 +712,7 @@
 			return;
 		}
 		if (modalMode === 'change') {
-			handleChangeDatasource(datasourceId, name);
+			handleChangeDatasource(datasourceId);
 			return;
 		}
 		handleAddTab(datasourceId, name);

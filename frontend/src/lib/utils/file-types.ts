@@ -21,6 +21,7 @@ import {
 	Database,
 	FileCode,
 	Layers,
+	GitMerge,
 	Snowflake,
 	Folder as FolderIcon,
 	File
@@ -45,15 +46,16 @@ export type FileType =
 /**
  * Supported datasource types (non-file sources)
  */
-export type SourceType = 'database' | 'iceberg' | 'file' | 'analysis' | 'duckdb';
+export type SourceType = 'database' | 'iceberg' | 'file' | 'analysis' | 'derived' | 'duckdb';
 
-export type SourceCategory = 'file' | 'database' | 'analysis' | 'duckdb';
+export type SourceCategory = 'file' | 'database' | 'analysis' | 'derived' | 'duckdb';
 
 export const SOURCE_TYPE_CATEGORY: Record<SourceType, SourceCategory> = {
 	file: 'file',
 	iceberg: 'file',
 	database: 'database',
 	analysis: 'analysis',
+	derived: 'derived',
 	duckdb: 'duckdb'
 };
 
@@ -189,6 +191,13 @@ export const SOURCE_TYPE_REGISTRY: Record<SourceType, FileTypeConfig> = {
 		extensions: [],
 		icon: Layers,
 		description: 'Derived analysis output'
+	},
+	derived: {
+		type: 'unknown',
+		label: 'Derived Input',
+		extensions: [],
+		icon: GitMerge,
+		description: 'Input derived from another tab'
 	},
 	duckdb: {
 		type: 'unknown',

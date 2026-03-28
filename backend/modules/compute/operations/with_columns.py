@@ -1,5 +1,6 @@
 """With columns operation for adding/modifying columns."""
 
+import builtins
 from collections.abc import Callable
 from functools import partial
 from typing import Any, cast
@@ -8,6 +9,10 @@ import polars as pl
 from pydantic import BaseModel, ConfigDict, Field
 
 from modules.compute.core.base import OperationHandler, OperationParams
+
+# Builtins allowed inside UDF code — system-access functions are excluded.
+_DANGEROUS_BUILTINS = frozenset({'open', 'exec', 'eval', 'compile', '__import__', 'input', 'breakpoint'})
+_SAFE_BUILTINS: dict[str, Any] = {name: getattr(builtins, name) for name in dir(builtins) if name not in _DANGEROUS_BUILTINS}
 
 
 class WithColumnsExpr(BaseModel):
@@ -43,7 +48,7 @@ class WithColumnsHandler(OperationHandler):
             elif expr.type == 'column' and expr.column:
                 exprs.append(pl.col(expr.column).alias(expr.name))
             elif expr.type == 'udf' and expr.code:
-                scope: dict[str, Any] = {'pl': pl, '__builtins__': __builtins__}
+                scope: dict[str, Any] = {'pl': pl, '__builtins__': _SAFE_BUILTINS}
                 local_scope: dict[str, Any] = {}
                 exec(expr.code, scope, local_scope)
                 udf = local_scope.get('udf') or scope.get('udf')

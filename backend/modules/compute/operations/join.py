@@ -70,7 +70,10 @@ class JoinHandler(OperationHandler):
         if right_columns and validated.how != 'cross':
             all_columns = joined.collect_schema().names()
             final_columns = [
-                col for col in all_columns if not col.endswith(validated.suffix) or col[: -len(validated.suffix)] in right_columns
+                col
+                for col in all_columns
+                if not col.endswith(validated.suffix)
+                or (len(col) > len(validated.suffix) and col[: -len(validated.suffix)] in right_columns)
             ]
             if final_columns != all_columns:
                 return joined.select(final_columns)

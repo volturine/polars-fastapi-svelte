@@ -93,6 +93,7 @@ class DatasourceHandler(OperationHandler):
     def _load_database(self, config: DatasourceParams) -> pl.LazyFrame:
         if not config.connection_string or not config.query:
             raise ValueError('Datasource database loading requires connection_string and query')
+        _assert_select_only(config.query)
         if config.connection_string.startswith('sqlite:'):
             parsed = urlparse(config.connection_string)
             if not parsed.path:
@@ -112,6 +113,7 @@ class DatasourceHandler(OperationHandler):
 
         if not config.query:
             raise ValueError('Datasource DuckDB loading requires query')
+        _assert_select_only(config.query)
         conn = (
             duckdb.connect(database=config.db_path, read_only=config.read_only) if config.db_path else duckdb.connect(database=':memory:')
         )
@@ -565,6 +567,13 @@ def _normalize_headers(values: tuple[object | None, ...]) -> list[str]:
 
 def _has_bounds(config: DatasourceParams) -> bool:
     return config.start_row is not None and config.start_col is not None and config.end_col is not None and config.end_row is not None
+
+
+def _assert_select_only(query: str) -> None:
+    """Reject queries that are not read-only SELECT statements."""
+    first_token = query.strip().split()[0].upper() if query.strip() else ''
+    if first_token not in ('SELECT', 'WITH'):
+        raise ValueError('Only SELECT queries (including CTEs starting with WITH) are permitted for database datasources')
 
 
 def load_datasource(config: dict) -> pl.LazyFrame:

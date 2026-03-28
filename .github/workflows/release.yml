@@ -21,4 +21,11 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
+          # Release title matches the pushed tag (e.g. "v1.2.3")
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          # GitHub auto-generates a changelog comparing this tag to the previous one
           generate_release_notes: true
+          draft: false
+          prerelease: false
+          make_latest: true

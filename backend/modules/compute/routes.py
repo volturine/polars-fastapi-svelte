@@ -1,19 +1,60 @@
 from urllib.parse import quote
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
+from pydantic import BaseModel, ValidationError
 from sqlmodel import Session
 
 from core.database import get_db
 from core.dependencies import get_manager
 from core.error_handlers import handle_errors
 from core.exceptions import EngineNotFoundError
+from core.namespace import reset_namespace, set_namespace_context
 from core.validation import AnalysisId, DataSourceId, parse_analysis_id, parse_datasource_id
 from modules.compute import schemas, service
 from modules.compute.manager import ProcessManager
 from modules.mcp.router import MCPRouter
 
 router = MCPRouter(prefix='/compute', tags=['compute'])
+
+
+def _get_websocket_manager(websocket: WebSocket) -> ProcessManager:
+    override = websocket.app.dependency_overrides.get(get_manager)
+    if override is not None:
+        return override()
+    return websocket.app.state.manager
+
+
+def _run_compute_websocket_action(
+    message: schemas.ComputeWebsocketRequest,
+    manager: ProcessManager,
+    namespace: str | None,
+) -> dict:
+    token = set_namespace_context(namespace)
+    session_gen = get_db()
+    session = next(session_gen)
+    try:
+        response: BaseModel
+        if message.action == schemas.ComputeWebsocketAction.PREVIEW:
+            preview_request = schemas.StepPreviewRequest.model_validate(message.payload)
+            response = preview_step(request=preview_request, session=session, manager=manager)
+        elif message.action == schemas.ComputeWebsocketAction.SCHEMA:
+            schema_request = schemas.StepSchemaRequest.model_validate(message.payload)
+            response = get_step_schema(request=schema_request, session=session, manager=manager)
+        elif message.action == schemas.ComputeWebsocketAction.ROW_COUNT:
+            row_count_request = schemas.StepRowCountRequest.model_validate(message.payload)
+            response = get_step_row_count(request=row_count_request, session=session, manager=manager)
+        elif message.action == schemas.ComputeWebsocketAction.BUILD:
+            build_request = schemas.BuildRequest.model_validate(message.payload)
+            response = build_analysis_from_payload(request=build_request, session=session, manager=manager)
+        else:
+            raise ValueError(f'Unsupported websocket action: {message.action}')
+        return response.model_dump(mode='json')
+    finally:
+        session.close()
+        session_gen.close()
+        reset_namespace(token)
 
 
 @router.post('/preview', response_model=schemas.StepPreviewResponse, mcp=True)
@@ -217,6 +258,53 @@ def list_engines(manager: ProcessManager = Depends(get_manager)):
     """List all active engines with their status."""
     statuses = manager.list_all_engine_statuses()
     return {'engines': statuses, 'total': len(statuses)}
+
+
+@router.websocket('/ws')
+async def compute_websocket(
+    websocket: WebSocket,
+):
+    manager = _get_websocket_manager(websocket)
+    await websocket.accept()
+    action: schemas.ComputeWebsocketAction | None = None
+    try:
+        raw_message = await websocket.receive_json()
+        message = schemas.ComputeWebsocketRequest.model_validate(raw_message)
+        action = message.action
+        await websocket.send_json(schemas.ComputeWebsocketStartedMessage(action=message.action).model_dump(mode='json'))
+        result = await run_in_threadpool(
+            _run_compute_websocket_action,
+            message,
+            manager,
+            websocket.query_params.get('namespace'),
+        )
+        await websocket.send_json(schemas.ComputeWebsocketResultMessage(action=message.action, data=result).model_dump(mode='json'))
+    except WebSocketDisconnect:
+        return
+    except ValidationError as exc:
+        await websocket.send_json(
+            schemas.ComputeWebsocketErrorMessage(
+                error=str(exc),
+                status_code=400,
+            ).model_dump(mode='json')
+        )
+    except HTTPException as exc:
+        await websocket.send_json(
+            schemas.ComputeWebsocketErrorMessage(
+                action=action,
+                error=str(exc.detail),
+                status_code=exc.status_code,
+            ).model_dump(mode='json')
+        )
+    except Exception as exc:
+        await websocket.send_json(
+            schemas.ComputeWebsocketErrorMessage(
+                action=action,
+                error=str(exc),
+            ).model_dump(mode='json')
+        )
+    finally:
+        await websocket.close()
 
 
 @router.get('/defaults', response_model=schemas.EngineDefaults, mcp=True)

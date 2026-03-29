@@ -3,6 +3,7 @@ from collections.abc import Callable
 import polars as pl
 
 from modules.compute.core.base import OperationHandler, OperationParams
+from modules.compute.operations._validation import validate_regex_pattern
 
 
 class StringTransformParams(OperationParams):
@@ -56,11 +57,13 @@ class StringTransformHandler(OperationHandler):
         if validated.method == 'replace':
             if not validated.pattern:
                 raise ValueError('string_transform replace requires pattern parameter')
+            validate_regex_pattern(validated.pattern)
             return lf.with_columns(base.str.replace_all(validated.pattern, validated.replacement or '').alias(target))
 
         if validated.method == 'extract':
             if not validated.pattern:
                 raise ValueError('string_transform extract requires pattern parameter')
+            validate_regex_pattern(validated.pattern)
             return lf.with_columns(base.str.extract(validated.pattern, validated.group_index or 0).alias(target))
 
         if validated.method == 'split':

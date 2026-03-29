@@ -73,7 +73,10 @@ class TimeseriesHandler(OperationHandler):
                 offset = f'-{validated.value}mo' if subtracting else f'{validated.value}mo'
                 return lf.with_columns(pl.col(validated.column).dt.offset_by(offset).alias(validated.new_column))
 
-            duration = get_duration(validated.unit, int(validated.value))
+            value_int = int(validated.value)
+            if not (-10_000_000 <= value_int <= 10_000_000):
+                raise ValueError('Timeseries value must be between -10000000 and 10000000')
+            duration = get_duration(validated.unit, value_int)
             expr = pl.col(validated.column) - duration if subtracting else pl.col(validated.column) + duration
             return lf.with_columns(expr.alias(validated.new_column))
 

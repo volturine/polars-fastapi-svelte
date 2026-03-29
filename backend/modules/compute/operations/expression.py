@@ -21,7 +21,7 @@ def parse_expression(expr_str: str) -> pl.Expr:
     if not expr_str or not expr_str.strip():
         raise ValueError('Expression cannot be empty')
 
-    # Basic security: block dangerous patterns
+    # Block dangerous patterns — defense in depth alongside __builtins__: {}
     dangerous = [
         'import ',
         '__import__',
@@ -32,9 +32,17 @@ def parse_expression(expr_str: str) -> pl.Expr:
         '__builtins__',
         '__class__',
         '__subclasses__',
+        '__mro__',
+        '__init__',
+        '__new__',
         'subprocess',
         'os.system',
         'os.popen',
+        'getattr(',
+        'setattr(',
+        'delattr(',
+        'vars(',
+        'dir(',
     ]
     if found := next((p for p in dangerous if p in expr_str), None):
         raise ValueError(f'Expression contains forbidden pattern: {found}')

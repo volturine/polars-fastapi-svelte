@@ -33,6 +33,8 @@ def _encrypt_password(password: str) -> str:
 def _decrypt_password(value: str) -> str:
     if not value:
         return ''
+    if not value.startswith(_ENCRYPTED_PREFIX):
+        raise ValueError('Stored SMTP password must use encrypted storage')
     key = _ensure_encryption_key().encode('utf-8')
     encrypted = bytes.fromhex(value.removeprefix(_ENCRYPTED_PREFIX))
     raw = _xor_bytes(encrypted, key)

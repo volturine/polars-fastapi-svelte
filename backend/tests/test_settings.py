@@ -696,6 +696,7 @@ class TestSettingsMigrations:
         cols = {c['name'] for c in inspector.get_columns('app_settings')}
         assert 'env_bootstrap_complete' in cols
 
+
 class TestSeedSettingsFromEnv:
     """seed_settings_from_env() writes ENV values to an empty DB row."""
 

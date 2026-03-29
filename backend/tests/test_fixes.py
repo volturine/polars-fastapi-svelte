@@ -958,8 +958,10 @@ class TestSafeBuiltinsUdf:
         # sandbox correctly blocks dangerous builtins. The code strings are
         # hard-coded in each test — no user input reaches this helper.
         from typing import Any
-        from modules.compute.operations.with_columns import _SAFE_BUILTINS
+
         import polars as pl
+
+        from modules.compute.operations.with_columns import _SAFE_BUILTINS
 
         scope: dict[str, Any] = {'pl': pl, '__builtins__': _SAFE_BUILTINS}
         local_scope: dict[str, Any] = {}
@@ -1045,8 +1047,9 @@ class TestParseDatetimeString:
     """_parse_datetime_string fallback format coverage."""
 
     def test_iso8601(self):
-        from modules.compute.operations.filter import _parse_datetime_string
         from datetime import datetime
+
+        from modules.compute.operations.filter import _parse_datetime_string
 
         dt = _parse_datetime_string('2024-06-15T12:30:00')
         assert dt == datetime(2024, 6, 15, 12, 30, 0)
@@ -1058,8 +1061,9 @@ class TestParseDatetimeString:
         assert dt.year == 2024 and dt.month == 6 and dt.day == 15
 
     def test_space_separated(self):
-        from modules.compute.operations.filter import _parse_datetime_string
         from datetime import datetime
+
+        from modules.compute.operations.filter import _parse_datetime_string
 
         dt = _parse_datetime_string('2024-06-15 12:30:00')
         assert dt == datetime(2024, 6, 15, 12, 30, 0)

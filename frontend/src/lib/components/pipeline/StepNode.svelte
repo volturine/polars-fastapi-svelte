@@ -73,9 +73,7 @@
 	const Icon = $derived(stepConfig.icon);
 	const label = $derived(stepConfig.label);
 	const summary = $derived(stepConfig.summary(step.config as Record<string, unknown>));
-	const isApplied = $derived(
-		(step as PipelineStep & { is_applied?: boolean }).is_applied !== false
-	);
+	const isApplied = $derived(step.is_applied !== false);
 
 	// Chart preview query (only for chart/plot steps) — run after apply
 	const chartPipeline = $derived(applySteps(allSteps));
@@ -195,7 +193,7 @@
 		const payload = JSON.stringify({
 			type: step.type,
 			config: step.config,
-			is_applied: (step as PipelineStep & { is_applied?: boolean }).is_applied
+			is_applied: step.is_applied
 		});
 		await navigator.clipboard.writeText(payload);
 		copyFeedback = true;
@@ -402,7 +400,7 @@
 				class={css({
 					flex: '1',
 					fontSize: 'xs',
-					fontWeight: '600',
+					fontWeight: 'semibold',
 					textTransform: 'uppercase',
 					letterSpacing: 'wide'
 				})}
@@ -473,7 +471,7 @@
 						border: 'none',
 						backgroundColor: 'transparent',
 						paddingY: '2.5',
-						fontWeight: '500',
+						fontWeight: 'medium',
 						textTransform: 'uppercase',
 						letterSpacing: 'widest',
 						fontSize: '3xs',
@@ -509,7 +507,7 @@
 						backgroundColor: 'transparent',
 						paddingY: '2.5',
 						fontSize: '3xs',
-						fontWeight: '500',
+						fontWeight: 'medium',
 						textTransform: 'uppercase',
 						letterSpacing: 'widest',
 						color: 'fg.muted',
@@ -533,7 +531,7 @@
 						backgroundColor: 'transparent',
 						paddingY: '2.5',
 						fontSize: '3xs',
-						fontWeight: '500',
+						fontWeight: 'medium',
 						textTransform: 'uppercase',
 						letterSpacing: 'widest',
 						color: 'fg.muted',

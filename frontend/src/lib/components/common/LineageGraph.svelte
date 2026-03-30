@@ -614,7 +614,7 @@
 								textOverflow: 'ellipsis',
 								whiteSpace: 'nowrap',
 								fontSize: 'sm',
-								fontWeight: '600',
+								fontWeight: 'semibold',
 								color: isInternal ? 'fg.tertiary' : 'fg.primary'
 							})}
 						>

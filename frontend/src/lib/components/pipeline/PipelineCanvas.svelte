@@ -411,7 +411,7 @@
 								class={css({
 									fontFamily: 'mono',
 									fontSize: 'sm',
-									fontWeight: '500',
+									fontWeight: 'medium',
 									textTransform: 'lowercase'
 								})}>{drag.type ?? 'step'}</span
 							>
@@ -550,7 +550,7 @@
 									class={css({
 										fontFamily: 'mono',
 										fontSize: 'sm',
-										fontWeight: '500',
+										fontWeight: 'medium',
 										textTransform: 'lowercase'
 									})}>{drag.type ?? 'step'}</span
 								>

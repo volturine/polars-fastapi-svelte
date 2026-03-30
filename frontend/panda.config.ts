@@ -1,6 +1,5 @@
 import { defineConfig } from '@pandacss/dev';
 import {
-	navLink,
 	iconButton,
 	button,
 	spinner,
@@ -140,7 +139,6 @@ export default defineConfig({
 				}
 			},
 			recipes: {
-				navLink,
 				iconButton,
 				button,
 				spinner,
@@ -311,7 +309,7 @@ export default defineConfig({
 					secondary: { value: { base: '#27272a', _dark: '#d4d4d4' } }
 				},
 				border: {
-					primary: { value: { base: '#e0e0e0', _dark: 'rgba(43, 43, 43, 0.663)' } },
+					primary: { value: { base: '#e0e0e0', _dark: '#2b2b2b' } },
 					error: { value: { base: '#dc2626', _dark: '#991b1b' } },
 					accent: { value: { base: '#09090b', _dark: '#fafafa' } },
 					success: { value: { base: '#16a34a', _dark: '#86efac' } },

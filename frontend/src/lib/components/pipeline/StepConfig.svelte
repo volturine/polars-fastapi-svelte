@@ -137,8 +137,7 @@
 
 	const hasChanges = $derived(
 		!!step &&
-			(JSON.stringify(step.config) !== JSON.stringify(draftConfig) ||
-				(step as PipelineStep & { is_applied?: boolean }).is_applied === false)
+			(JSON.stringify(step.config) !== JSON.stringify(draftConfig) || step.is_applied === false)
 	);
 
 	function handleRefreshPivotSchema() {
@@ -190,10 +189,8 @@
 	function handleApplyConfig() {
 		if (!step) return;
 		analysisStore.updateStepConfig(step.id, cloneConfig(draftConfig));
-		if ((step as PipelineStep & { is_applied?: boolean }).is_applied === false) {
-			analysisStore.updateStep(step.id, { is_applied: true } as Partial<PipelineStep> & {
-				is_applied: boolean;
-			});
+		if (step.is_applied === false) {
+			analysisStore.updateStep(step.id, { is_applied: true } as Partial<PipelineStep>);
 		}
 		onConfigApply?.();
 		if (step.type === 'expression' || step.type === 'with_columns') {
@@ -512,7 +509,7 @@
 					paddingY: '2.5',
 					fontFamily: 'mono',
 					fontSize: 'xs',
-					fontWeight: '600',
+					fontWeight: 'semibold',
 					textTransform: 'uppercase',
 					letterSpacing: 'wider',
 					color: 'fg.secondary',
@@ -535,7 +532,7 @@
 					paddingY: '2.5',
 					fontFamily: 'mono',
 					fontSize: 'xs',
-					fontWeight: '600',
+					fontWeight: 'semibold',
 					textTransform: 'uppercase',
 					letterSpacing: 'wider',
 					color: 'accent.primary',

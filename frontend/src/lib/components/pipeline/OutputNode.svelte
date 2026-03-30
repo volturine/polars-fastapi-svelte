@@ -437,7 +437,7 @@
 				<span
 					class={css({
 						fontSize: 'xs',
-						fontWeight: '600',
+						fontWeight: 'semibold',
 						textTransform: 'uppercase',
 						letterSpacing: 'wide'
 					})}
@@ -552,7 +552,7 @@
 						</button>
 					</div>
 				{:else}
-					<span class={css({ fontSize: 'sm', fontWeight: '500' })}>
+					<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>
 						{outputConfig.iceberg.table_name}
 					</span>
 					<button
@@ -612,7 +612,7 @@
 				})}
 			>
 				<div class={rowBetween}>
-					<span class={css({ fontSize: 'sm', fontWeight: '600' })}>
+					<span class={css({ fontSize: 'sm', fontWeight: 'semibold' })}>
 						{outputConfig.iceberg.table_name}
 					</span>
 					<button
@@ -801,7 +801,7 @@
 					paddingY: '2',
 					paddingX: '3',
 					fontSize: 'xs',
-					fontWeight: '500',
+					fontWeight: 'medium',
 					color: 'fg.secondary',
 					_hover: {
 						backgroundColor: 'bg.tertiary',

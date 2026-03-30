@@ -311,8 +311,7 @@
 
 		const targets = pipeline.filter(
 			(step) =>
-				(step.type === 'expression' || step.type === 'with_columns') &&
-				(step as PipelineStep & { is_applied?: boolean }).is_applied !== false
+				(step.type === 'expression' || step.type === 'with_columns') && step.is_applied !== false
 		);
 		for (const step of targets) {
 			getStepSchema({
@@ -442,12 +441,12 @@
 		};
 		const isChart = type === 'chart' || type.startsWith('plot_');
 		if (type === 'view') {
-			return { ...base, is_applied: true } as PipelineStep & { is_applied: boolean };
+			return { ...base, is_applied: true } as PipelineStep;
 		}
 		if (isChart) {
-			return { ...base, is_applied: false } as PipelineStep & { is_applied: boolean };
+			return { ...base, is_applied: false } as PipelineStep;
 		}
-		return { ...base, is_applied: false } as PipelineStep & { is_applied: boolean };
+		return { ...base, is_applied: false } as PipelineStep;
 	}
 
 	function markUnsaved() {
@@ -509,10 +508,8 @@
 	function handleToggleStep(stepId: string) {
 		const step = analysisStore.pipeline.find((item) => item.id === stepId);
 		if (!step) return;
-		const next = (step as PipelineStep & { is_applied?: boolean }).is_applied === false;
-		analysisStore.updateStep(stepId, { is_applied: next } as Partial<PipelineStep> & {
-			is_applied: boolean;
-		});
+		const next = step.is_applied === false;
+		analysisStore.updateStep(stepId, { is_applied: next } as Partial<PipelineStep>);
 		markUnsaved();
 	}
 

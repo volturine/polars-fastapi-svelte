@@ -11,7 +11,6 @@ from starlette.concurrency import run_in_threadpool
 from core.config import settings
 from core.database import get_db, run_db
 from core.error_handlers import handle_errors
-from core.exceptions import DataSourceNotFoundError, DataSourceValidationError
 from core.namespace import namespace_paths
 from core.validation import DataSourceId, PreflightId, parse_datasource_id, parse_preflight_id
 from modules.auth.dependencies import get_optional_user
@@ -616,17 +615,12 @@ def get_datasource(
     session: Session = Depends(get_db),
 ):
     """Get a single datasource by ID with full config and metadata. Use GET /datasource to find IDs."""
-    try:
-        response = service.get_datasource(session, parse_datasource_id(datasource_id))
-        if response.source_type == DataSourceType.ICEBERG:
-            metadata_path = response.config.get('metadata_path')
-            if isinstance(metadata_path, str):
-                response.config['branches'] = _list_export_branches(metadata_path)
-        return response
-    except DataSourceNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except DataSourceValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    response = service.get_datasource(session, parse_datasource_id(datasource_id))
+    if response.source_type == DataSourceType.ICEBERG:
+        metadata_path = response.config.get('metadata_path')
+        if isinstance(metadata_path, str):
+            response.config['branches'] = _list_export_branches(metadata_path)
+    return response
 
 
 @router.get('/{datasource_id}/schema', response_model=schemas.SchemaInfo, mcp=True)
@@ -642,12 +636,7 @@ def get_datasource_schema(
     For Excel files, pass sheet_name to select a specific sheet.
     Set refresh=true to re-read the schema from the source file.
     """
-    try:
-        return service.get_datasource_schema(session, parse_datasource_id(datasource_id), sheet_name=sheet_name, refresh=refresh)
-    except DataSourceNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except DataSourceValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return service.get_datasource_schema(session, parse_datasource_id(datasource_id), sheet_name=sheet_name, refresh=refresh)
 
 
 @router.post('/{datasource_id}/compare-snapshots', response_model=schemas.SnapshotCompareResponse, mcp=True)
@@ -662,18 +651,13 @@ def compare_snapshots(
     Returns row count deltas, schema differences, column stats, and data previews for both snapshots.
     Use GET /compute/iceberg/{id}/snapshots to find snapshot IDs.
     """
-    try:
-        return service.compare_iceberg_snapshots(
-            session,
-            parse_datasource_id(datasource_id),
-            payload.snapshot_a,
-            payload.snapshot_b,
-            payload.row_limit,
-        )
-    except DataSourceNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except DataSourceValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return service.compare_iceberg_snapshots(
+        session,
+        parse_datasource_id(datasource_id),
+        payload.snapshot_a,
+        payload.snapshot_b,
+        payload.row_limit,
+    )
 
 
 def _handle_column_stats(
@@ -708,12 +692,7 @@ def get_column_stats(
 
     Set sample=false for exact stats (slower on large datasets).
     """
-    try:
-        return _handle_column_stats(datasource_id, column_name, sample, None, session)
-    except DataSourceNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except DataSourceValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _handle_column_stats(datasource_id, column_name, sample, None, session)
 
 
 @router.post('/{datasource_id}/column/{column_name}/stats', response_model=schemas.ColumnStatsResponse, mcp=True)
@@ -726,12 +705,7 @@ def get_column_stats_with_config(
     session: Session = Depends(get_db),
 ):
     """Get column statistics with custom datasource config (e.g., different branch or snapshot)."""
-    try:
-        return _handle_column_stats(datasource_id, column_name, sample, payload, session)
-    except DataSourceNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except DataSourceValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _handle_column_stats(datasource_id, column_name, sample, payload, session)
 
 
 @router.get('/file/list', response_model=schemas.FileListResponse, mcp=True)
@@ -749,12 +723,7 @@ def update_datasource(
     session: Session = Depends(get_db),
 ):
     """Update a datasource's name or config. Use GET /datasource/{id} to see current values."""
-    try:
-        return service.update_datasource(session, parse_datasource_id(datasource_id), update)
-    except DataSourceNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except DataSourceValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return service.update_datasource(session, parse_datasource_id(datasource_id), update)
 
 
 @router.post('/{datasource_id}/refresh', response_model=schemas.DataSourceResponse, mcp=True)
@@ -764,12 +733,7 @@ def refresh_datasource(
     session: Session = Depends(get_db),
 ):
     """Refresh an external datasource (re-read schema from source). Useful after upstream data changes."""
-    try:
-        return service.refresh_external_datasource(session, parse_datasource_id(datasource_id))
-    except DataSourceNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except DataSourceValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return service.refresh_external_datasource(session, parse_datasource_id(datasource_id))
 
 
 @router.delete('/{datasource_id}', status_code=204, mcp=True)
@@ -779,9 +743,5 @@ def delete_datasource(
     session: Session = Depends(get_db),
 ):
     """Delete a datasource and its associated files. Use GET /datasource to find IDs."""
-    datasource_id_value = parse_datasource_id(datasource_id)
-    try:
-        service.delete_datasource(session, datasource_id_value)
-    except DataSourceNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    service.delete_datasource(session, parse_datasource_id(datasource_id))
     return None

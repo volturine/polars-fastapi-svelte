@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlmodel import Session, text
@@ -15,6 +16,8 @@ from sqlmodel import Session, text
 from api import router
 from core.config import settings
 from core.database import get_db, get_settings_db, init_db
+from core.error_handlers import app_error_handler, generic_error_handler, validation_error_handler
+from core.exceptions import AppError
 from core.logging import RequestLoggingMiddleware, configure_logging
 from core.namespace import list_namespaces, namespace_paths, reset_namespace, set_namespace_context
 from modules.compute.manager import ProcessManager
@@ -200,6 +203,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
+
+# Global exception handlers for consistent structured error responses
+app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
+app.add_exception_handler(RequestValidationError, validation_error_handler)  # type: ignore[arg-type]
+app.add_exception_handler(Exception, generic_error_handler)  # type: ignore[arg-type]
 
 
 @app.middleware('http')

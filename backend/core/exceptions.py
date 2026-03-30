@@ -189,6 +189,8 @@ class AnalysisValidationError(AnalysisError):
 
 
 class AnalysisVersionNotFoundError(AnalysisError):
+    """Raised when an analysis version is not found."""
+
     def __init__(self, analysis_id: str, version: int):
         super().__init__(
             message=f'Analysis version {version} not found for analysis {analysis_id}',
@@ -198,6 +200,8 @@ class AnalysisVersionNotFoundError(AnalysisError):
 
 
 class AnalysisCycleError(AnalysisError):
+    """Raised when a pipeline cycle is detected."""
+
     def __init__(self, message: str):
         super().__init__(message=message, error_code='ANALYSIS_CYCLE_ERROR', details={})
 
@@ -209,7 +213,7 @@ class FileError(AppError):
     pass
 
 
-class FileNotFoundError(FileError):
+class DataFileNotFoundError(FileError):
     """Raised when a file is not found."""
 
     def __init__(self, file_path: str):
@@ -271,6 +275,8 @@ class ScheduleValidationError(ScheduleError):
 
 
 class ScheduleNotFoundError(ScheduleError):
+    """Raised when a schedule is not found."""
+
     def __init__(self, schedule_id: str):
         super().__init__(
             message=f'Schedule {schedule_id} not found',
@@ -280,6 +286,8 @@ class ScheduleNotFoundError(ScheduleError):
 
 
 class AuthError(AppError):
+    """Base exception for authentication errors."""
+
     pass
 
 

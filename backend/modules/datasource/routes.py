@@ -565,6 +565,8 @@ def list_datasources(include_hidden: bool = False, session: Session = Depends(ge
 def get_lineage(
     target_datasource_id: DataSourceId | None = None,
     branch: str | None = None,
+    include_internals: bool = False,
+    mode: str = 'full',
     session: Session = Depends(get_db),
 ):
     """Get the dependency lineage graph for datasources.
@@ -584,7 +586,13 @@ def get_lineage(
         branch = branch.strip()
         if not branch:
             branch = None
-    return build_lineage(session, target_datasource_id=datasource_id, branch=branch)
+    return build_lineage(
+        session,
+        target_datasource_id=datasource_id,
+        branch=branch,
+        include_internals=include_internals,
+        mode=mode,
+    )
 
 
 @router.get('/{datasource_id}', response_model=schemas.DataSourceResponse, mcp=True)

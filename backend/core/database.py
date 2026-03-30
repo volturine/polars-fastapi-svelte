@@ -81,12 +81,16 @@ def init_db() -> None:
 
 
 def _init_settings_db() -> None:
+    from modules.auth.models import AuthProvider, User, UserSession
     from modules.chat.sessions import ChatSession
     from modules.settings.models import AppSettings
     from modules.settings.service import seed_settings_from_env
 
     AppSettings.metadata.create_all(settings_engine)
     ChatSession.metadata.create_all(settings_engine)
+    User.metadata.create_all(settings_engine)
+    AuthProvider.metadata.create_all(settings_engine)
+    UserSession.metadata.create_all(settings_engine)
     _run_settings_migrations(settings_engine)
     with Session(settings_engine) as session:
         seed_settings_from_env(session)
@@ -138,6 +142,18 @@ def _run_namespace_migrations(db_engine: Engine) -> None:
             pending.append('ALTER TABLE datasources ADD COLUMN is_hidden BOOLEAN NOT NULL DEFAULT 0')
         if 'created_by' not in ds_columns:
             pending.append("ALTER TABLE datasources ADD COLUMN created_by TEXT NOT NULL DEFAULT 'import'")
+        if 'owner_id' not in ds_columns:
+            pending.append('ALTER TABLE datasources ADD COLUMN owner_id TEXT')
+
+    if inspector.has_table('analyses'):
+        analysis_columns = {col['name'] for col in inspector.get_columns('analyses')}
+        if 'owner_id' not in analysis_columns:
+            pending.append('ALTER TABLE analyses ADD COLUMN owner_id TEXT')
+
+    if inspector.has_table('udfs'):
+        udf_columns = {col['name'] for col in inspector.get_columns('udfs')}
+        if 'owner_id' not in udf_columns:
+            pending.append('ALTER TABLE udfs ADD COLUMN owner_id TEXT')
 
     if inspector.has_table('schedules'):
         sched_columns = {col['name'] for col in inspector.get_columns('schedules')}

@@ -9,6 +9,7 @@ from typing import Any, Never
 from fastapi import HTTPException
 
 from core.exceptions import (
+    AccountDisabledError,
     AnalysisCycleError,
     AnalysisNotFoundError,
     AnalysisValidationError,
@@ -18,17 +19,22 @@ from core.exceptions import (
     DataSourceNotFoundError,
     DataSourceSnapshotError,
     DataSourceValidationError,
+    EmailAlreadyExistsError,
     EngineNotFoundError,
     EngineTimeoutError,
     FileNotFoundError,
     FileSizeExceededError,
     FileValidationError,
+    InvalidCredentialsError,
     JobNotFoundError,
     JobTimeoutError,
+    OAuthError,
     PipelineExecutionError,
     PipelineValidationError,
+    ProviderUnlinkError,
     ScheduleNotFoundError,
     ScheduleValidationError,
+    SessionExpiredError,
     StepNotFoundError,
     UnsupportedExportFormatError,
 )
@@ -56,6 +62,12 @@ EXCEPTION_STATUS_MAP = {
     AnalysisCycleError: 404,
     DataSourceConnectionError: 502,
     DataSourceSnapshotError: 409,
+    InvalidCredentialsError: 401,
+    EmailAlreadyExistsError: 409,
+    SessionExpiredError: 401,
+    AccountDisabledError: 403,
+    ProviderUnlinkError: 400,
+    OAuthError: 400,
     # 408 - Timeout errors
     EngineTimeoutError: 408,
     JobTimeoutError: 408,

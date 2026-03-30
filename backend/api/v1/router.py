@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from modules.ai import router as ai_router
 from modules.analysis import router as analysis_router
 from modules.analysis_versions import router as analysis_versions_router
+from modules.auth import router as auth_router
 from modules.chat import router as chat_router
 from modules.compute import router as compute_router
 from modules.config import router as config_router
@@ -24,6 +25,7 @@ router = APIRouter(prefix='/v1')
 router.include_router(ai_router)
 router.include_router(analysis_router)
 router.include_router(analysis_versions_router)
+router.include_router(auth_router)
 router.include_router(chat_router)
 router.include_router(compute_router)
 router.include_router(config_router)

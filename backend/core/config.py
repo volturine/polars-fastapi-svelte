@@ -189,6 +189,22 @@ class Settings(BaseSettings):
     openrouter_api_key: str = Field(default='', alias='OPENROUTER_API_KEY')
     openrouter_default_model: str = Field(default='', alias='OPENROUTER_DEFAULT_MODEL')
 
+    # Auth / OAuth
+    google_client_id: str = Field(default='', alias='GOOGLE_CLIENT_ID')
+    google_client_secret: str = Field(default='', alias='GOOGLE_CLIENT_SECRET')
+    google_redirect_uri: str = Field(
+        default='http://localhost:8000/api/v1/auth/google/callback',
+        alias='GOOGLE_REDIRECT_URI',
+    )
+    github_client_id: str = Field(default='', alias='GITHUB_CLIENT_ID')
+    github_client_secret: str = Field(default='', alias='GITHUB_CLIENT_SECRET')
+    github_redirect_uri: str = Field(
+        default='http://localhost:8000/api/v1/auth/github/callback',
+        alias='GITHUB_REDIRECT_URI',
+    )
+    auth_frontend_url: str = Field(default='http://localhost:5173', alias='AUTH_FRONTEND_URL')
+    session_max_age_days: int = Field(default=30, alias='SESSION_MAX_AGE_DAYS')
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""

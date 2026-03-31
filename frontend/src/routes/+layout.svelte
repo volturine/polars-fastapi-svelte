@@ -49,6 +49,11 @@
 	// Navigation: $derived can't redirect; side effect redirects unauthenticated users.
 	$effect(() => {
 		if (!authStore.resolved) return;
+		if (!configStore.config) return;
+		if (!configStore.authRequired) {
+			if (onAuthPage) void goto(resolve('/'));
+			return;
+		}
 		if (authStore.authenticated) return;
 		if (onAuthPage) return;
 		void goto(resolve('/login'));
@@ -186,7 +191,7 @@
 </svelte:head>
 
 <QueryClientProvider client={queryClient}>
-	{#if !authStore.resolved && !onAuthPage}
+	{#if (!authStore.resolved || !configStore.config) && !onAuthPage}
 		<div
 			class={css({
 				display: 'flex',
@@ -198,7 +203,7 @@
 		>
 			<div class={spinner()}></div>
 		</div>
-	{:else if onAuthPage}
+	{:else if onAuthPage && configStore.authRequired}
 		{@render children()}
 	{:else}
 		<div class={css({ display: 'flex', height: '100vh' })}>
@@ -213,6 +218,7 @@
 				onSignOut={handleSignOut}
 				namespace={namespaceDraft}
 				authenticated={authStore.authenticated}
+				authRequired={configStore.authRequired}
 				avatarUrl={authStore.user?.avatar_url ?? null}
 				bind:namespaceTrigger
 			/>

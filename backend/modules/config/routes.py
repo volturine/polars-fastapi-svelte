@@ -32,6 +32,7 @@ class FrontendConfig(BaseModel):
     smtp_enabled: bool
     telegram_enabled: bool
     default_namespace: str
+    auth_required: bool
 
 
 class UuidResponse(BaseModel):
@@ -67,6 +68,7 @@ def get_config(session: Session = Depends(get_settings_db)) -> FrontendConfig:
         log_client_flush_cooldown_ms=settings.log_client_flush_cooldown_ms,
         log_queue_max_size=settings.log_queue_max_size,
         public_idb_debug=db_settings.public_idb_debug,
+        auth_required=settings.auth_required,
         smtp_enabled=bool(db_settings.smtp_host and db_settings.smtp_user),
         telegram_enabled=bool(db_settings.telegram_bot_enabled and db_settings.telegram_bot_token),
         default_namespace=settings.default_namespace,

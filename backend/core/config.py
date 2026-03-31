@@ -190,6 +190,10 @@ class Settings(BaseSettings):
     openrouter_default_model: str = Field(default='', alias='OPENROUTER_DEFAULT_MODEL')
 
     # Auth / OAuth
+    auth_required: bool = Field(default=False, alias='AUTH_REQUIRED')
+    default_user_email: str = Field(default='default@example.com', alias='DEFAULT_USER_EMAIL')
+    default_user_password: str = Field(default='change-me-123', alias='DEFAULT_USER_PASSWORD')
+    default_user_name: str = Field(default='Default User', alias='DEFAULT_USER_NAME')
     google_client_id: str = Field(default='', alias='GOOGLE_CLIENT_ID')
     google_client_secret: str = Field(default='', alias='GOOGLE_CLIENT_SECRET')
     google_redirect_uri: str = Field(
@@ -268,6 +272,13 @@ class Settings(BaseSettings):
         if value.lower() not in valid:
             raise ValueError(f'log_queue_overflow must be one of {valid}, got {value}')
         return value.lower()
+
+    @field_validator('default_user_password')
+    @classmethod
+    def _validate_default_user_password(cls, value: str) -> str:
+        if len(value) < 8:
+            raise ValueError('DEFAULT_USER_PASSWORD must be at least 8 characters long')
+        return value
 
     @model_validator(mode='after')
     def _validate_numeric_constraints(self) -> 'Settings':

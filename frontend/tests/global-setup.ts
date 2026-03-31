@@ -11,16 +11,23 @@ export default async function globalSetup() {
 
 	const ctx = await request.newContext();
 
-	const reg = await ctx.post(`${API_BASE}/auth/register`, {
-		data: { email: E2E_EMAIL, password: E2E_PASSWORD, display_name: 'E2E Test' }
-	});
+	const configResp = await ctx.get(`${API_BASE}/config`);
+	const authRequired = configResp.ok()
+		? ((await configResp.json()) as { auth_required?: boolean }).auth_required !== false
+		: true;
 
-	if (!reg.ok()) {
-		const login = await ctx.post(`${API_BASE}/auth/login`, {
-			data: { email: E2E_EMAIL, password: E2E_PASSWORD }
+	if (authRequired) {
+		const reg = await ctx.post(`${API_BASE}/auth/register`, {
+			data: { email: E2E_EMAIL, password: E2E_PASSWORD, display_name: 'E2E Test' }
 		});
-		if (!login.ok()) {
-			throw new Error(`E2E auth failed: register=${reg.status()}, login=${login.status()}`);
+
+		if (!reg.ok()) {
+			const login = await ctx.post(`${API_BASE}/auth/login`, {
+				data: { email: E2E_EMAIL, password: E2E_PASSWORD }
+			});
+			if (!login.ok()) {
+				throw new Error(`E2E auth failed: register=${reg.status()}, login=${login.status()}`);
+			}
 		}
 	}
 

@@ -17,6 +17,7 @@ export interface FrontendConfig {
 	smtp_enabled: boolean;
 	telegram_enabled: boolean;
 	default_namespace: string;
+	auth_required: boolean;
 }
 
 export function getConfig(): ResultAsync<FrontendConfig, ApiError> {

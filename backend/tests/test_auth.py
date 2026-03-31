@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -15,12 +16,14 @@ from core.exceptions import (
     TokenInvalidError,
 )
 from main import app
-from modules.auth.models import AuthProvider, UserSession, VerificationToken
+from modules.auth.dependencies import get_current_user, get_optional_user
+from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
 from modules.auth.service import (
     change_password,
     create_session,
     create_user,
     create_verification_token,
+    ensure_default_user,
     find_or_create_oauth_user,
     get_user_by_email,
     get_user_by_id,
@@ -58,6 +61,7 @@ def auth_db_session(auth_engine):
 @pytest.fixture(scope='function')
 def auth_client(auth_db_session: Session, monkeypatch):
     monkeypatch.setattr('core.config.settings.debug', True)
+    ensure_default_user(auth_db_session)
 
     def override_get_settings_db():
         yield auth_db_session
@@ -98,6 +102,100 @@ class TestPasswordHashing:
 
 
 class TestUserService:
+    def test_init_settings_db_seeds_default_user(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from core import database
+
+        engine = create_engine(
+            'sqlite:///:memory:',
+            echo=False,
+            connect_args={'check_same_thread': False},
+            poolclass=StaticPool,
+        )
+        monkeypatch.setattr(database, 'settings_engine', engine, raising=False)
+        monkeypatch.setattr('core.config.settings.default_user_email', 'seeded@example.com')
+        monkeypatch.setattr('core.config.settings.default_user_password', 'seededpass123')
+        monkeypatch.setattr('core.config.settings.default_user_name', 'Seeded User')
+
+        database._init_settings_db()
+
+        with Session(engine) as session:
+            user = session.exec(select(User).where(User.email == 'seeded@example.com')).first()
+            assert user is not None
+            assert user.display_name == 'Seeded User'
+            provider = session.exec(
+                select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == 'password')
+            ).first()
+            assert provider is not None
+
+    def test_ensure_default_user_seeds_from_env(self, auth_db_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr('core.config.settings.default_user_email', 'guest@example.com')
+        monkeypatch.setattr('core.config.settings.default_user_password', 'guestpass123')
+        monkeypatch.setattr('core.config.settings.default_user_name', 'Guest User')
+
+        user = ensure_default_user(auth_db_session)
+
+        assert user.email == 'guest@example.com'
+        assert user.display_name == 'Guest User'
+        assert user.email_verified is True
+        assert user.has_password is True
+        provider = auth_db_session.exec(
+            select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == 'password')
+        ).first()
+        assert provider is not None
+        assert provider.provider_subject == 'guest@example.com'
+        assert isinstance(provider.provider_metadata, dict)
+        assert provider.provider_metadata['managed_by'] == 'env_default_user'
+        assert verify_password('guestpass123', provider.provider_metadata['password_hash']) is True
+
+    def test_ensure_default_user_updates_existing_account(self, auth_db_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr('core.config.settings.default_user_email', 'first@example.com')
+        monkeypatch.setattr('core.config.settings.default_user_password', 'firstpass123')
+        monkeypatch.setattr('core.config.settings.default_user_name', 'First User')
+        first = ensure_default_user(auth_db_session)
+
+        monkeypatch.setattr('core.config.settings.default_user_email', 'second@example.com')
+        monkeypatch.setattr('core.config.settings.default_user_password', 'secondpass123')
+        monkeypatch.setattr('core.config.settings.default_user_name', 'Second User')
+        updated = ensure_default_user(auth_db_session)
+
+        assert updated.id == first.id
+        assert updated.email == 'second@example.com'
+        assert updated.display_name == 'Second User'
+        provider = auth_db_session.exec(
+            select(AuthProvider).where(AuthProvider.user_id == updated.id, AuthProvider.provider == 'password')
+        ).first()
+        assert provider is not None
+        assert provider.provider_subject == 'second@example.com'
+        assert isinstance(provider.provider_metadata, dict)
+        assert verify_password('secondpass123', provider.provider_metadata['password_hash']) is True
+
+    def test_ensure_default_user_keeps_email_when_new_env_email_is_taken(
+        self,
+        auth_db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr('core.config.settings.default_user_email', 'default@example.com')
+        monkeypatch.setattr('core.config.settings.default_user_password', 'defaultpass123')
+        monkeypatch.setattr('core.config.settings.default_user_name', 'Default User')
+        user = ensure_default_user(auth_db_session)
+        create_user(auth_db_session, 'taken@example.com', 'password123', 'Taken User')
+
+        monkeypatch.setattr('core.config.settings.default_user_email', 'taken@example.com')
+        monkeypatch.setattr('core.config.settings.default_user_password', 'changedpass123')
+        monkeypatch.setattr('core.config.settings.default_user_name', 'Renamed Default')
+        updated = ensure_default_user(auth_db_session)
+
+        assert updated.id == user.id
+        assert updated.email == 'default@example.com'
+        assert updated.display_name == 'Renamed Default'
+        provider = auth_db_session.exec(
+            select(AuthProvider).where(AuthProvider.user_id == updated.id, AuthProvider.provider == 'password')
+        ).first()
+        assert provider is not None
+        assert provider.provider_subject == 'default@example.com'
+        assert isinstance(provider.provider_metadata, dict)
+        assert verify_password('changedpass123', provider.provider_metadata['password_hash']) is True
+
     def test_create_user_success(self, auth_db_session: Session) -> None:
         user = create_user(auth_db_session, 'test@example.com', 'password123', 'Test User')
 
@@ -392,6 +490,86 @@ class TestVerificationTokenService:
 
 
 class TestAuthRoutes:
+    def test_dependencies_resolve_default_user_when_auth_disabled(
+        self,
+        auth_db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('core.config.settings.default_user_email', 'guest@example.com')
+        monkeypatch.setattr('core.config.settings.default_user_password', 'guestpass123')
+        monkeypatch.setattr('core.config.settings.default_user_name', 'Guest User')
+        ensure_default_user(auth_db_session)
+
+        app = FastAPI()
+
+        def override_get_settings_db():
+            yield auth_db_session
+
+        @app.get('/current')
+        async def current(user: User = Depends(get_current_user)) -> dict[str, str]:
+            return {'email': user.email}
+
+        @app.get('/optional')
+        async def optional(user: User | None = Depends(get_optional_user)) -> dict[str, str | None]:
+            return {'email': user.email if user else None}
+
+        app.dependency_overrides[get_settings_db] = override_get_settings_db
+        with TestClient(app) as client:
+            resp_current = client.get('/current')
+            resp_optional = client.get('/optional')
+
+        assert resp_current.status_code == 200
+        assert resp_current.json()['email'] == 'guest@example.com'
+        assert resp_optional.status_code == 200
+        assert resp_optional.json()['email'] == 'guest@example.com'
+
+    def test_get_current_user_returns_401_when_auth_required(
+        self,
+        auth_db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr('core.config.settings.auth_required', True)
+
+        app = FastAPI()
+
+        def override_get_settings_db():
+            yield auth_db_session
+
+        @app.get('/current')
+        async def current(user: User = Depends(get_current_user)) -> dict[str, str]:
+            return {'email': user.email}
+
+        @app.get('/optional')
+        async def optional(user: User | None = Depends(get_optional_user)) -> dict[str, str | None]:
+            return {'email': user.email if user else None}
+
+        app.dependency_overrides[get_settings_db] = override_get_settings_db
+        with TestClient(app) as client:
+            resp_current = client.get('/current')
+            resp_optional = client.get('/optional')
+
+        assert resp_current.status_code == 401
+        assert resp_optional.status_code == 200
+        assert resp_optional.json()['email'] is None
+
+    def test_me_returns_default_user_when_auth_disabled(
+        self,
+        auth_client: TestClient,
+        auth_db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('core.config.settings.default_user_email', 'guest@example.com')
+        monkeypatch.setattr('core.config.settings.default_user_password', 'guestpass123')
+        monkeypatch.setattr('core.config.settings.default_user_name', 'Guest User')
+        ensure_default_user(auth_db_session)
+
+        response = auth_client.get('/api/v1/auth/me')
+
+        assert response.status_code == 200
+        assert response.json()['email'] == 'guest@example.com'
+
     def test_register_success(self, auth_client: TestClient) -> None:
         response = auth_client.post(
             '/api/v1/auth/register',
@@ -484,6 +662,13 @@ class TestAuthRoutes:
         assert response.json()['email'] == 'me@example.com'
 
     def test_me_unauthenticated(self, auth_client: TestClient) -> None:
+        response = auth_client.get('/api/v1/auth/me')
+
+        assert response.status_code == 401
+
+    def test_me_unauthenticated_when_auth_required(self, auth_client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr('core.config.settings.auth_required', True)
+
         response = auth_client.get('/api/v1/auth/me')
 
         assert response.status_code == 401

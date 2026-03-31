@@ -33,6 +33,8 @@ _PBKDF2_ITERATIONS = 200_000
 _EMAIL_VERIFY = 'email_verify'
 _PASSWORD_RESET = 'password_reset'
 _RESEND_COOLDOWN_MINUTES = 5
+_DEFAULT_USER_ID = uuid.uuid5(uuid.NAMESPACE_URL, 'data-forge-default-user').hex
+_DEFAULT_USER_MARKER = 'env_default_user'
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +71,140 @@ def validate_password(password: str) -> None:
     if len(password) >= 8:
         return
     raise ValueError('Password must be at least 8 characters long')
+
+
+def _normalize_default_user_email(email: str) -> str:
+    normalized = email.strip().lower()
+    if normalized:
+        return normalized
+    return 'default@example.com'
+
+
+def _normalize_default_user_name(name: str, email: str) -> str:
+    normalized = name.strip()
+    if normalized:
+        return normalized
+    return email.split('@')[0]
+
+
+def _get_password_provider(session: Session, user_id: str) -> AuthProvider | None:
+    stmt = select(AuthProvider).where(AuthProvider.user_id == user_id, AuthProvider.provider == _PASSWORD_PROVIDER)
+    return session.exec(stmt).first()
+
+
+def _build_default_provider_metadata(password: str) -> dict[str, str]:
+    return {
+        'managed_by': _DEFAULT_USER_MARKER,
+        'password_hash': hash_password(password),
+    }
+
+
+def get_default_user(session: Session) -> User | None:
+    return get_user_by_id(session, _DEFAULT_USER_ID)
+
+
+def ensure_default_user(session: Session) -> User:
+    desired_email = _normalize_default_user_email(settings.default_user_email)
+    desired_name = _normalize_default_user_name(settings.default_user_name, desired_email)
+    desired_password = settings.default_user_password
+    now = _utcnow()
+    user = get_default_user(session)
+    changed = False
+
+    if not user:
+        email_owner = get_user_by_email(session, desired_email)
+        user_email = desired_email
+        if email_owner:
+            user_email = f'{_DEFAULT_USER_ID}@default.local'
+            logger.warning('Default user email %s is already in use; using fallback email %s', desired_email, user_email)
+        user = User(
+            id=_DEFAULT_USER_ID,
+            email=user_email,
+            display_name=desired_name,
+            status='active',
+            email_verified=True,
+            has_password=True,
+            preferences={},
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(user)
+        session.add(
+            AuthProvider(
+                id=uuid.uuid4().hex,
+                user_id=user.id,
+                provider=_PASSWORD_PROVIDER,
+                provider_subject=user.email,
+                provider_metadata=_build_default_provider_metadata(desired_password),
+                created_at=now,
+            )
+        )
+        session.commit()
+        session.refresh(user)
+        return user
+
+    if user.display_name != desired_name:
+        user.display_name = desired_name
+        changed = True
+    if user.status != 'active':
+        user.status = 'active'
+        changed = True
+    if user.email_verified is not True:
+        user.email_verified = True
+        changed = True
+    if user.has_password is not True:
+        user.has_password = True
+        changed = True
+
+    email_owner = get_user_by_email(session, desired_email)
+    email_available = not email_owner or email_owner.id == user.id
+    if email_available and user.email != desired_email:
+        user.email = desired_email
+        changed = True
+    if not email_available and user.email != desired_email:
+        logger.warning('Skipping default user email update to %s because another account already uses it', desired_email)
+
+    provider = _get_password_provider(session, user.id)
+    password_changed = False
+    if not provider:
+        provider = AuthProvider(
+            id=uuid.uuid4().hex,
+            user_id=user.id,
+            provider=_PASSWORD_PROVIDER,
+            provider_subject=user.email,
+            provider_metadata=_build_default_provider_metadata(desired_password),
+            created_at=now,
+        )
+        session.add(provider)
+        changed = True
+        password_changed = True
+    if provider:
+        metadata = dict(provider.provider_metadata) if isinstance(provider.provider_metadata, dict) else {}
+        hashed = metadata.get('password_hash')
+        marker_changed = metadata.get('managed_by') != _DEFAULT_USER_MARKER
+        subject_changed = provider.provider_subject != user.email
+        if not isinstance(hashed, str) or not verify_password(desired_password, hashed):
+            metadata['password_hash'] = hash_password(desired_password)
+            password_changed = True
+        if marker_changed:
+            metadata['managed_by'] = _DEFAULT_USER_MARKER
+        if subject_changed:
+            provider.provider_subject = user.email
+        provider.provider_metadata = metadata
+        session.add(provider)
+        if password_changed or marker_changed or subject_changed:
+            changed = True
+
+    if not changed:
+        return user
+
+    user.updated_at = now
+    session.add(user)
+    session.commit()
+    if password_changed:
+        revoke_all_sessions(session, user.id)
+    session.refresh(user)
+    return user
 
 
 def create_user(session: Session, email: str, password: str, display_name: str) -> User:

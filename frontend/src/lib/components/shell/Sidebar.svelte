@@ -32,6 +32,7 @@
 		onSignOut: () => void;
 		namespace: string;
 		authenticated: boolean;
+		authRequired: boolean;
 		avatarUrl: string | null;
 		namespaceTrigger?: HTMLButtonElement;
 	}
@@ -47,6 +48,7 @@
 		onSignOut,
 		namespace,
 		authenticated,
+		authRequired,
 		avatarUrl,
 		namespaceTrigger = $bindable()
 	}: Props = $props();
@@ -362,18 +364,20 @@
 				<span class={labelClass}>Profile</span>
 			</a>
 
-			<button
-				class={sidebarBtnClass}
-				onclick={onSignOut}
-				title={collapsed ? 'Sign out' : 'Sign out'}
-				aria-label="Sign out"
-				type="button"
-			>
-				<span class={iconWrapClass}>
-					<LogOut size={16} />
-				</span>
-				<span class={labelClass}>Sign out</span>
-			</button>
+			{#if authRequired}
+				<button
+					class={sidebarBtnClass}
+					onclick={onSignOut}
+					title={collapsed ? 'Sign out' : 'Sign out'}
+					aria-label="Sign out"
+					type="button"
+				>
+					<span class={iconWrapClass}>
+						<LogOut size={16} />
+					</span>
+					<span class={labelClass}>Sign out</span>
+				</button>
+			{/if}
 		</div>
 	{/if}
 

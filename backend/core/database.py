@@ -82,6 +82,7 @@ def init_db() -> None:
 
 def _init_settings_db() -> None:
     from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
+    from modules.auth.service import ensure_default_user
     from modules.chat.sessions import ChatSession
     from modules.settings.models import AppSettings
     from modules.settings.service import seed_settings_from_env
@@ -95,6 +96,7 @@ def _init_settings_db() -> None:
     _run_settings_migrations(settings_engine)
     with Session(settings_engine) as session:
         seed_settings_from_env(session)
+        ensure_default_user(session)
 
 
 def _run_settings_migrations(db_engine: Engine) -> None:

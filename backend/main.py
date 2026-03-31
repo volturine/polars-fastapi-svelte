@@ -1,16 +1,15 @@
 import asyncio
 import contextlib
 import logging
-import os
 from collections import deque
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlmodel import Session, text
 
 from api import router
@@ -212,7 +211,7 @@ app.add_exception_handler(Exception, generic_error_handler)  # type: ignore[arg-
 
 
 @app.middleware('http')
-async def namespace_middleware(request: Request, call_next):
+async def namespace_middleware(request: Request, call_next) -> Response:
     token = set_namespace_context(request.headers.get('X-Namespace'))
     try:
         return await call_next(request)
@@ -228,18 +227,31 @@ app.add_middleware(
     allow_headers=['Content-Type', 'Authorization', 'X-Namespace', 'X-Session-Token'],
 )
 
+
+@app.middleware('http')
+async def security_headers(request: Request, call_next) -> Response:
+    response = await call_next(request)
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '0'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+    if not settings.debug:
+        response.headers['Strict-Transport-Security'] = 'max-age=63072000; includeSubDomains'
+    return response
+
+
 app.add_middleware(RequestLoggingMiddleware)
 
 # Include API Routers (prefix already defined in api/router.py)
 app.include_router(router)
 
 
-@app.get('/')
-async def root():
-    prod_mode_enabled = os.getenv('PROD_MODE_ENABLED', 'false').lower() in ['true', '1', 'yes']
+@app.get('/', response_model=None)
+async def root() -> FileResponse | dict[str, str]:
     index_path = frontend_build_dir / 'index.html'
 
-    if prod_mode_enabled and index_path.exists():
+    if settings.prod_mode_enabled and index_path.exists():
         return FileResponse(str(index_path))
 
     return {'message': 'Welcome to Svelte-FastAPI Template'}
@@ -247,19 +259,17 @@ async def root():
 
 # Health Check Endpoints
 @app.get('/health')
-async def health():
+async def health() -> dict[str, str]:
     """Basic liveness check - returns 200 if app is running."""
     return {'status': 'healthy', 'service': settings.app_name, 'version': settings.app_version}
 
 
 @app.get('/health/ready')
-def readiness(request: Request, session: Session = Depends(get_settings_db)):
+async def readiness(request: Request, session: Session = Depends(get_settings_db)) -> JSONResponse:
     """
     Readiness check - verifies app can handle requests.
     Checks database connectivity, engine manager, and filesystem.
     """
-    from fastapi.responses import JSONResponse
-
     checks = {}
     is_ready = True
 
@@ -299,7 +309,7 @@ def readiness(request: Request, session: Session = Depends(get_settings_db)):
 
 
 @app.get('/health/startup')
-async def startup():
+async def startup() -> dict[str, str]:
     """
     Startup probe - quick check for container startup.
     Returns 200 when app is initialized and ready to accept traffic.
@@ -311,12 +321,9 @@ async def startup():
         return {'status': 'error', 'message': str(e)}
 
 
-@app.get('/{full_path:path}', include_in_schema=False)
-async def serve_static_or_index(full_path: str):
-    prod_mode_enabled = os.getenv('PROD_MODE_ENABLED', 'false').lower() in ['true', '1', 'yes']
-    frontend_build_dir = Path(__file__).parent.parent / 'frontend' / 'build'
-
-    if not prod_mode_enabled:
+@app.get('/{full_path:path}', include_in_schema=False, response_model=None)
+async def serve_static_or_index(full_path: str) -> FileResponse:
+    if not settings.prod_mode_enabled:
         logger.info('Frontend build not served (development mode or build missing)')
         raise HTTPException(status_code=404, detail='Frontend build not found')
 
@@ -341,4 +348,4 @@ async def serve_static_or_index(full_path: str):
 if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run('main:app', host='0.0.0.0', port=8000, reload=True)
+    uvicorn.run('main:app', host='0.0.0.0', port=8000, reload=settings.debug)

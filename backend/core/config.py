@@ -85,6 +85,7 @@ class Settings(BaseSettings):
 
     # Debug mode - enables SQL echo, verbose logging
     debug: bool = False
+    prod_mode_enabled: bool = Field(default=False, alias='PROD_MODE_ENABLED')
 
     # CORS origins - comma-separated list of allowed origins
     cors_origins: str = 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173'
@@ -190,7 +191,7 @@ class Settings(BaseSettings):
     openrouter_default_model: str = Field(default='', alias='OPENROUTER_DEFAULT_MODEL')
 
     # Auth / OAuth
-    auth_required: bool = Field(default=False, alias='AUTH_REQUIRED')
+    auth_required: bool = Field(default=True, alias='AUTH_REQUIRED')
     default_user_email: str = Field(default='default@example.com', alias='DEFAULT_USER_EMAIL')
     default_user_password: str = Field(default='change-me-123', alias='DEFAULT_USER_PASSWORD')
     default_user_name: str = Field(default='Default User', alias='DEFAULT_USER_NAME')
@@ -297,6 +298,19 @@ class Settings(BaseSettings):
             dir_path = getattr(self, dir_name)
             if not os.access(dir_path, os.W_OK):
                 raise ValueError(f'{dir_name} is not writable: {dir_path}')
+        return self
+
+    @model_validator(mode='after')
+    def _validate_encryption_key(self) -> 'Settings':
+        if self.auth_required and not self.settings_encryption_key:
+            import warnings
+
+            warnings.warn(
+                'SETTINGS_ENCRYPTION_KEY is empty while AUTH_REQUIRED=True. '
+                'Stored secrets (SMTP passwords, API keys) will not be encrypted. '
+                'Set SETTINGS_ENCRYPTION_KEY to a strong random value for production.',
+                stacklevel=2,
+            )
         return self
 
 

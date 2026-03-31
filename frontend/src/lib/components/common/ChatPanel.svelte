@@ -270,10 +270,11 @@
 		return () => window.removeEventListener('keydown', onGlobalKey);
 	});
 
-	// Inject copy buttons into rendered code blocks
+	// DOM mutation: $derived can't inject buttons into rendered HTML.
 	$effect(() => {
 		void timelineLength;
 		if (!messagesEl) return;
+		const buttons: HTMLButtonElement[] = [];
 		requestAnimationFrame(() => {
 			const blocks = messagesEl?.querySelectorAll('.chat-markdown pre');
 			if (!blocks) return;
@@ -298,8 +299,14 @@
 					});
 				});
 				pre.appendChild(btn);
+				buttons.push(btn);
 			}
 		});
+		return () => {
+			for (const btn of buttons) {
+				btn.remove();
+			}
+		};
 	});
 
 	const connectionColor = $derived(

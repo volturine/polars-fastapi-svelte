@@ -207,6 +207,22 @@ class TestComputePreview:
         assert result['data']['step_id'] == 'step1'
         assert result['data']['total_rows'] == 1
 
+    def test_preview_step_websocket_internal_error_is_sanitized(self, client):
+        with (
+            patch('modules.compute.routes._run_compute_websocket_action', side_effect=RuntimeError('secret failure details')),
+            client.websocket_connect('/api/v1/compute/ws?namespace=default') as websocket,
+        ):
+            websocket.send_json({'action': 'preview', 'payload': {}})
+            started = websocket.receive_json()
+            error = websocket.receive_json()
+
+        assert started == {'type': 'started', 'action': 'preview'}
+        assert error['type'] == 'error'
+        assert error['action'] == 'preview'
+        assert error['error'] == 'An internal error occurred'
+        assert error['status_code'] == 500
+        assert 'secret failure details' not in str(error)
+
     def test_preview_step_failure(self, client, sample_datasource: DataSource):
         payload = {
             'analysis_id': 'analysis-id',

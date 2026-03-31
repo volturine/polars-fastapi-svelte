@@ -1,5 +1,6 @@
 import os
 import tempfile
+import warnings
 from pathlib import Path
 
 import pytest
@@ -49,6 +50,8 @@ class TestSettings:
         assert settings.engine_idle_timeout == 300
         assert settings.engine_pooling_interval == 30
         assert settings.public_idb_debug is False
+        assert settings.auth_required is True
+        assert settings.prod_mode_enabled is False
 
     def test_custom_settings_from_env(self, monkeypatch, tmp_path):
         data_dir = tmp_path / 'data'
@@ -182,3 +185,22 @@ class TestSettings:
 
         assert settings.app_name == 'Data-Forge Analysis Platform'
         assert settings.app_version == '1.0.0'
+
+    def test_warns_when_auth_required_without_encryption_key(self, monkeypatch, tmp_path):
+        _set_isolated_settings_env(monkeypatch, tmp_path)
+        monkeypatch.delenv('SETTINGS_ENCRYPTION_KEY', raising=False)
+
+        with pytest.warns(UserWarning, match='SETTINGS_ENCRYPTION_KEY is empty while AUTH_REQUIRED=True'):
+            Settings()
+
+    def test_no_warning_when_auth_disabled_without_encryption_key(self, monkeypatch, tmp_path):
+        _set_isolated_settings_env(monkeypatch, tmp_path)
+        monkeypatch.setenv('AUTH_REQUIRED', 'false')
+        monkeypatch.delenv('SETTINGS_ENCRYPTION_KEY', raising=False)
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            settings = Settings()
+
+        assert settings.auth_required is False
+        assert not caught

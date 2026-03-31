@@ -21,6 +21,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     os.environ.pop('POLARS_MAX_THREADS', None)
     os.environ.pop('POLARS_STREAMING_CHUNK_SIZE', None)
     os.environ.setdefault('ENV_FILE', '')
+    os.environ.setdefault('SETTINGS_ENCRYPTION_KEY', 'test-key')
 
 
 def _settings():

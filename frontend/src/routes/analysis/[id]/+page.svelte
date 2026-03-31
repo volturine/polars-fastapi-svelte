@@ -173,6 +173,9 @@
 		draftTimer = window.setTimeout(() => {
 			void idbSet(storageKey, JSON.stringify(payload));
 		}, 400);
+		return () => {
+			if (draftTimer) window.clearTimeout(draftTimer);
+		};
 	});
 
 	// Subscription: $derived can't sync store side effects.

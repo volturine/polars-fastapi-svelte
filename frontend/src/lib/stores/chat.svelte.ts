@@ -820,6 +820,13 @@ export class ChatStore {
 		void this.loadSessions();
 	}
 
+	destroy(): void {
+		if (typeof window !== 'undefined') {
+			window.removeEventListener('beforeunload', this._onUnload);
+		}
+		this.close();
+	}
+
 	close(): void {
 		this._disconnectStream();
 		this.open = false;

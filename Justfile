@@ -34,8 +34,7 @@ test-e2e:
     set -euo pipefail
 
     cleanup() {
-        kill "${BACKEND_PID}" "${FRONTEND_PID}" 2>/dev/null || true
-        wait "${BACKEND_PID}" "${FRONTEND_PID}" 2>/dev/null || true
+        lsof -ti tcp:8000,3000 | xargs kill 2>/dev/null || true
     }
 
     trap cleanup EXIT INT TERM

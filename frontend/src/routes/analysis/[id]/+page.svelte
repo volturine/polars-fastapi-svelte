@@ -77,7 +77,6 @@
 	let isDirty = $state(false);
 	let draftTimer: number | null = null;
 	let lastLoadedVersion = $state<string | null>(null);
-	let schemaRefreshTimer: number | null = null;
 	let hydratedGates = $state(new Set<string>());
 
 	const storageKey = $derived(analysisId ? `analysis-draft:${analysisId}` : null);
@@ -85,7 +84,6 @@
 	// Timer: $derived can't schedule schema refresh.
 	$effect(() => {
 		if (!analysisId) return;
-		if (schemaRefreshTimer) window.clearTimeout(schemaRefreshTimer);
 		if (lastAnalysisId !== analysisId) {
 			analysisStore.reset();
 			schemaStore.reset();
@@ -94,9 +92,6 @@
 			lastAnalysisId = analysisId;
 		}
 		draftLoaded = false;
-		schemaRefreshTimer = window.setTimeout(() => {
-			void datasourceStore.loadDatasources();
-		}, 1500);
 	});
 
 	// Storage: $derived can't hydrate from IndexedDB.
@@ -265,11 +260,17 @@
 			if (result.isErr()) {
 				throw new Error(result.error.message);
 			}
-			// Sync to store in query success instead of effect
 			datasourceStore.datasources = result.value;
 			return result.value;
 		}
 	}));
+
+	// Sync: $derived can't write to an external store.
+	$effect(() => {
+		if (datasourcesQuery.isSuccess || datasourcesQuery.isError) {
+			datasourceStore.loaded = true;
+		}
+	});
 
 	// Network: $derived can't fetch engine defaults.
 	$effect(() => {

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -35,16 +35,6 @@ from modules.auth.service import (
     validate_verification_token,
     verify_password,
 )
-
-
-@pytest.fixture(autouse=True, scope='function')
-def patch_auth_service_datetime(monkeypatch):
-    class _DateTime:
-        @staticmethod
-        def now(_tz=None):
-            return datetime.now()
-
-    monkeypatch.setattr('modules.auth.service.datetime', _DateTime)
 
 
 @pytest.fixture(scope='function')
@@ -193,7 +183,7 @@ class TestSessionService:
 
         assert user_session.user_id == user.id
         assert user_session.revoked is False
-        assert user_session.expires_at > datetime.now()
+        assert user_session.expires_at > datetime.now(UTC).replace(tzinfo=None)
 
     def test_validate_session_valid(self, auth_db_session: Session) -> None:
         user = create_user(auth_db_session, 'test@example.com', 'password123', 'Test User')
@@ -207,7 +197,7 @@ class TestSessionService:
 
     def test_validate_session_expired(self, auth_db_session: Session) -> None:
         user = create_user(auth_db_session, 'test@example.com', 'password123', 'Test User')
-        now = datetime.now()
+        now = datetime.now(UTC).replace(tzinfo=None)
         user_session = UserSession(
             user_id=user.id,
             device_info=None,
@@ -229,7 +219,7 @@ class TestSessionService:
 
     def test_validate_session_revoked(self, auth_db_session: Session) -> None:
         user = create_user(auth_db_session, 'test@example.com', 'password123', 'Test User')
-        now = datetime.now()
+        now = datetime.now(UTC).replace(tzinfo=None)
         user_session = UserSession(
             user_id=user.id,
             device_info=None,

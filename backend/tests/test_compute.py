@@ -1,5 +1,6 @@
 import asyncio
 import contextvars
+import os
 import threading
 import time
 import uuid
@@ -40,6 +41,18 @@ def test_safe_close_websocket_swallows_runtime_disconnect_race() -> None:
     asyncio.run(_safe_close_websocket(websocket))
 
     websocket.close.assert_awaited_once()
+
+
+def test_run_compute_clears_inherited_polars_env_for_auto_values(monkeypatch) -> None:
+    monkeypatch.setenv('POLARS_MAX_THREADS', '8')
+    monkeypatch.setenv('POLARS_STREAMING_CHUNK_SIZE', '100000')
+    command_queue = MagicMock()
+    command_queue.get.return_value = {'type': 'shutdown'}
+
+    PolarsComputeEngine._run_compute(command_queue, MagicMock(), max_threads=0, streaming_chunk_size=0)
+
+    assert 'POLARS_MAX_THREADS' not in os.environ
+    assert 'POLARS_STREAMING_CHUNK_SIZE' not in os.environ
 
 
 class TestComputePreview:

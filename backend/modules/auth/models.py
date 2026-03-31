@@ -5,6 +5,10 @@ from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, Strin
 from sqlmodel import Field, SQLModel
 
 
+def _utcnow() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 class User(SQLModel, table=True):  # type: ignore[call-arg]
     __tablename__ = 'users'
 
@@ -16,8 +20,8 @@ class User(SQLModel, table=True):  # type: ignore[call-arg]
     email_verified: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, server_default='0'))
     has_password: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, server_default='0'))
     preferences: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_column=Column(DateTime(timezone=True), nullable=False))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_column=Column(DateTime(timezone=True), nullable=False))
+    created_at: datetime = Field(default_factory=_utcnow, sa_column=Column(DateTime(timezone=True), nullable=False))
+    updated_at: datetime = Field(default_factory=_utcnow, sa_column=Column(DateTime(timezone=True), nullable=False))
     last_login_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
 
 
@@ -33,7 +37,7 @@ class AuthProvider(SQLModel, table=True):  # type: ignore[call-arg]
     provider: str = Field(sa_column=Column(String, nullable=False))
     provider_subject: str = Field(sa_column=Column(String, nullable=False))
     provider_metadata: dict | None = Field(default=None, sa_column=Column(JSON, nullable=True))
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_column=Column(DateTime(timezone=True), nullable=False))
+    created_at: datetime = Field(default_factory=_utcnow, sa_column=Column(DateTime(timezone=True), nullable=False))
 
 
 class UserSession(SQLModel, table=True):  # type: ignore[call-arg]
@@ -43,7 +47,7 @@ class UserSession(SQLModel, table=True):  # type: ignore[call-arg]
     user_id: str = Field(sa_column=Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True))
     device_info: str | None = Field(default=None, sa_column=Column(String, nullable=True))
     ip_address: str | None = Field(default=None, sa_column=Column(String, nullable=True))
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_column=Column(DateTime(timezone=True), nullable=False))
+    created_at: datetime = Field(default_factory=_utcnow, sa_column=Column(DateTime(timezone=True), nullable=False))
     expires_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
     revoked: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, server_default='0'))
 
@@ -56,6 +60,6 @@ class VerificationToken(SQLModel, table=True):  # type: ignore[call-arg]
     user_id: str = Field(sa_column=Column(String, ForeignKey('users.id', ondelete='CASCADE'), nullable=False))
     token: str = Field(sa_column=Column(String, nullable=False, unique=True, index=True))
     token_type: str = Field(sa_column=Column(String, nullable=False))
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_column=Column(DateTime(timezone=True), nullable=False))
+    created_at: datetime = Field(default_factory=_utcnow, sa_column=Column(DateTime(timezone=True), nullable=False))
     expires_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
     used: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, server_default='0'))

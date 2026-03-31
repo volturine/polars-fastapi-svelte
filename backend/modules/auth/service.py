@@ -22,6 +22,11 @@ from core.exceptions import (
 )
 from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
 
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 _PASSWORD_PROVIDER = 'password'
 _PBKDF2_ALG = 'sha256'
 _PBKDF2_ITERATIONS = 200_000
@@ -71,7 +76,7 @@ def create_user(session: Session, email: str, password: str, display_name: str) 
     if get_user_by_email(session, normalized_email):
         raise EmailAlreadyExistsError()
     validate_password(password)
-    now = datetime.now(UTC)
+    now = _utcnow()
     user = User(
         id=uuid.uuid4().hex,
         email=normalized_email,
@@ -130,7 +135,7 @@ def update_profile(
         user.avatar_url = avatar_url
     if preferences is not None:
         user.preferences = preferences
-    user.updated_at = datetime.now(UTC)
+    user.updated_at = _utcnow()
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -154,14 +159,14 @@ def change_password(session: Session, user_id: str, current_password: str, new_p
     if not user:
         raise InvalidCredentialsError()
     user.has_password = True
-    user.updated_at = datetime.now(UTC)
+    user.updated_at = _utcnow()
     session.add(provider)
     session.add(user)
     session.commit()
 
 
 def create_session(session: Session, user_id: str, device_info: str | None, ip_address: str | None) -> UserSession:
-    now = datetime.now(UTC)
+    now = _utcnow()
     expires_at = now + timedelta(days=settings.session_max_age_days)
     user_session = UserSession(
         id=uuid.uuid4().hex,
@@ -182,7 +187,7 @@ def validate_session(session: Session, session_id: str) -> User | None:
     user_session = session.get(UserSession, session_id)
     if not user_session:
         return None
-    now = datetime.now(UTC)
+    now = _utcnow()
     if user_session.revoked:
         return None
     if user_session.expires_at <= now:
@@ -242,7 +247,7 @@ def link_provider(
         if existing.user_id != user_id:
             raise OAuthError('OAuth identity is already linked to another account')
         return existing
-    now = datetime.now(UTC)
+    now = _utcnow()
     linked = AuthProvider(
         id=uuid.uuid4().hex,
         user_id=user_id,
@@ -290,12 +295,12 @@ def find_or_create_oauth_user(
             matched_email.avatar_url = avatar_url
         if not matched_email.display_name and display_name:
             matched_email.display_name = display_name
-        matched_email.updated_at = datetime.now(UTC)
+        matched_email.updated_at = _utcnow()
         session.add(matched_email)
         session.commit()
         session.refresh(matched_email)
         return matched_email
-    now = datetime.now(UTC)
+    now = _utcnow()
     user = User(
         id=uuid.uuid4().hex,
         email=normalized_email,
@@ -340,13 +345,13 @@ def unlink_provider(session: Session, user_id: str, provider: str) -> None:
         return
     has_password_provider = any(row.provider == _PASSWORD_PROVIDER and row.id != provider_row.id for row in providers)
     user.has_password = has_password_provider
-    user.updated_at = datetime.now(UTC)
+    user.updated_at = _utcnow()
     session.add(user)
     session.commit()
 
 
 def create_verification_token(session: Session, user_id: str, token_type: str, ttl_hours: int = 24) -> str:
-    now = datetime.now(UTC)
+    now = _utcnow()
     raw = secrets.token_urlsafe(32)
     token = VerificationToken(
         id=uuid.uuid4().hex,
@@ -372,7 +377,7 @@ def validate_verification_token(session: Session, token: str, token_type: str) -
         raise TokenInvalidError()
     if row.used:
         raise TokenInvalidError()
-    now = datetime.now(UTC)
+    now = _utcnow()
     if row.expires_at <= now:
         raise TokenExpiredError()
     row.used = True
@@ -429,7 +434,7 @@ def resend_verification(session: Session, user_id: str) -> None:
     rows = session.exec(stmt).all()
     last = max(rows, key=lambda row: row.created_at) if rows else None
     if last:
-        now = datetime.now(UTC)
+        now = _utcnow()
         if last.created_at + timedelta(minutes=_RESEND_COOLDOWN_MINUTES) > now:
             raise ValueError('Verification email was sent recently. Please wait before requesting again')
 
@@ -486,7 +491,7 @@ def reset_password(session: Session, token: str, new_password: str) -> None:
         raise TokenInvalidError()
     if row.used:
         raise TokenInvalidError()
-    now = datetime.now(UTC)
+    now = _utcnow()
     if row.expires_at <= now:
         raise TokenExpiredError()
     user = get_user_by_id(session, row.user_id)

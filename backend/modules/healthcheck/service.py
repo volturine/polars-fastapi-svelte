@@ -161,7 +161,11 @@ def _build_expressions(checks: list[HealthCheck], schema_names: set[str]) -> tup
             threshold = float(config.get('threshold', 0))
             if threshold < 0:
                 continue
-            nulls = pl.lit(0.0) if not sorted_names else sum(pl.col(name).null_count().cast(pl.Float64) for name in sorted_names)
+            if not sorted_names:
+                exprs.append(pl.lit(0.0).alias(f'{check.id}__null_pct'))
+                valid.append(check)
+                continue
+            nulls = sum(pl.col(name).null_count().cast(pl.Float64) for name in sorted_names)
             total = pl.len().cast(pl.Float64) * float(len(sorted_names))
             pct = (nulls / total * 100.0).fill_nan(0.0)
             exprs.append(pct.alias(f'{check.id}__null_pct'))

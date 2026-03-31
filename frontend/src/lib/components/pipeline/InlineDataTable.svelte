@@ -136,7 +136,7 @@
 
 	// Network: $derived can't persist preview run state.
 	$effect(() => {
-		if (!isActiveStep || hasRun) return;
+		if (!isActiveStep || hasRun || !analysisPipeline) return;
 		analysisStore.setPreviewRun(runKey, true);
 	});
 

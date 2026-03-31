@@ -382,7 +382,15 @@ test.describe('Datasources – config tab interactions', () => {
 			await expect(config.getByRole('button', { name: 'Save Changes' })).toBeVisible({
 				timeout: 5_000
 			});
-			await config.getByRole('button', { name: 'Save Changes' }).click();
+
+			// Wait for save API call to complete before reloading
+			const [saveResponse] = await Promise.all([
+				page.waitForResponse(
+					(resp) => resp.url().includes('/api/v1/datasource/') && resp.request().method() === 'PUT'
+				),
+				config.getByRole('button', { name: 'Save Changes' }).click()
+			]);
+			expect(saveResponse.ok()).toBeTruthy();
 
 			// After save, reload page and verify renamed datasource appears
 			await page.reload();

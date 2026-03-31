@@ -265,7 +265,7 @@
 		if (event.cancelable) {
 			event.preventDefault();
 		}
-		drag.startMove(step.id, step.type, event.pointerId, event.clientX, event.clientY);
+		drag.startMove(step.id, step.type, event.pointerId, event.clientX, event.clientY, onTouchMove);
 		if (event.currentTarget instanceof HTMLElement) {
 			event.currentTarget.setPointerCapture(event.pointerId);
 			drag.setCapturedElement(event.currentTarget, event.pointerId);
@@ -299,10 +299,7 @@
 
 	function finishDrag(): void {
 		if (dragging && drag.active) {
-			if (drag.target && drag.stepId && drag.valid) {
-				onTouchMove(drag.stepId, drag.target);
-			}
-			drag.end();
+			drag.commit();
 		}
 		const wasDragging = dragging;
 		dragging = false;

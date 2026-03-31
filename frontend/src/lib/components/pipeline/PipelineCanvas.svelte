@@ -247,6 +247,17 @@
 		drag.setTarget(target, valid);
 	});
 
+	// Lifecycle: register synchronous target resolver so commit() can
+	// resolve the drop target even if the reactive $effect above hasn't run yet.
+	$effect(() => {
+		drag.setTargetResolver((x: number, y: number) => {
+			const target = resolveTargetFromPoint(x, y);
+			if (!target) return null;
+			return { target, valid: isValidTarget(target.index) };
+		});
+		return () => drag.setTargetResolver(null);
+	});
+
 	const scrollThreshold = 60;
 	const scrollSpeed = 15;
 

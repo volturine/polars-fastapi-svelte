@@ -1,20 +1,32 @@
+from __future__ import annotations
+
+import os
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-from core.config import settings
-from core.database import clear_engine_override, get_db, set_engine_override
-from main import app
-from modules.analysis.models import Analysis, AnalysisDataSource
-from modules.auth.dependencies import get_current_user
-from modules.auth.models import User
-from modules.datasource.models import DataSource
+if TYPE_CHECKING:
+    from modules.analysis.models import Analysis
+    from modules.auth.models import User
+    from modules.datasource.models import DataSource
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    os.environ.pop('POLARS_MAX_THREADS', None)
+    os.environ.pop('POLARS_STREAMING_CHUNK_SIZE', None)
+    os.environ.setdefault('ENV_FILE', '')
+
+
+def _settings():
+    from core.config import settings
+
+    return settings
 
 
 @pytest.fixture(scope='function')
@@ -31,6 +43,8 @@ def test_engine():
 
 @pytest.fixture(scope='function')
 def test_db_session(test_engine):
+    from core.database import clear_engine_override, set_engine_override
+
     # Set the engine override so run_db uses the test engine
     set_engine_override(test_engine)
     with Session(test_engine) as session:
@@ -41,6 +55,8 @@ def test_db_session(test_engine):
 
 @pytest.fixture(scope='function')
 def test_user() -> User:
+    from modules.auth.models import User
+
     now = datetime.now(UTC)
     return User(
         id=uuid.uuid4().hex,
@@ -57,6 +73,10 @@ def test_user() -> User:
 
 @pytest.fixture(scope='function')
 def client(test_db_session, test_user):
+    from core.database import get_db
+    from main import app
+    from modules.auth.dependencies import get_current_user
+
     def override_get_db():
         yield test_db_session
 
@@ -78,6 +98,7 @@ def temp_upload_dir(tmp_path: Path) -> Path:
 
 @pytest.fixture(autouse=True, scope='function')
 def isolate_data_dir(tmp_path: Path, monkeypatch):
+    settings = _settings()
     data_dir = tmp_path / 'data'
     data_dir.mkdir(parents=True, exist_ok=True)
     log_dir = data_dir / 'logs'
@@ -94,6 +115,7 @@ def isolate_settings_engine(isolate_data_dir, monkeypatch):
     from core.database import _run_settings_migrations
     from modules.settings.models import AppSettings
 
+    settings = _settings()
     settings_db_path = settings.data_dir / 'app.db'
     settings_url = f'sqlite:///{settings_db_path}'
     engine = create_engine(
@@ -126,6 +148,8 @@ def cleanup_namespace_engines():
 
 @pytest.fixture(scope='function')
 def sample_csv_file(temp_upload_dir: Path) -> Path:
+    import polars as pl
+
     csv_path = temp_upload_dir / 'sample.csv'
     df = pl.DataFrame(
         {
@@ -141,6 +165,8 @@ def sample_csv_file(temp_upload_dir: Path) -> Path:
 
 @pytest.fixture(scope='function')
 def sample_parquet_file(temp_upload_dir: Path) -> Path:
+    import polars as pl
+
     parquet_path = temp_upload_dir / 'sample.parquet'
     df = pl.DataFrame(
         {
@@ -156,6 +182,8 @@ def sample_parquet_file(temp_upload_dir: Path) -> Path:
 
 @pytest.fixture(scope='function')
 def sample_ndjson_file(temp_upload_dir: Path) -> Path:
+    import polars as pl
+
     ndjson_path = temp_upload_dir / 'sample.ndjson'
     df = pl.DataFrame(
         {
@@ -170,6 +198,8 @@ def sample_ndjson_file(temp_upload_dir: Path) -> Path:
 
 @pytest.fixture(scope='function')
 def sample_json_file(temp_upload_dir: Path) -> Path:
+    import polars as pl
+
     json_path = temp_upload_dir / 'sample.json'
     df = pl.DataFrame(
         {
@@ -184,6 +214,8 @@ def sample_json_file(temp_upload_dir: Path) -> Path:
 
 @pytest.fixture(scope='function')
 def sample_datasource(test_db_session: Session, sample_csv_file: Path) -> DataSource:
+    from modules.datasource.models import DataSource
+
     datasource_id = str(uuid.uuid4())
 
     config = {
@@ -209,6 +241,8 @@ def sample_datasource(test_db_session: Session, sample_csv_file: Path) -> DataSo
 
 @pytest.fixture(scope='function')
 def sample_datasources(test_db_session: Session, sample_csv_file: Path, sample_parquet_file: Path) -> list[DataSource]:
+    from modules.datasource.models import DataSource
+
     datasources = []
 
     for _idx, (file_path, file_type, name) in enumerate(
@@ -245,6 +279,8 @@ def sample_datasources(test_db_session: Session, sample_csv_file: Path, sample_p
 
 @pytest.fixture(scope='function')
 def sample_analysis(test_db_session: Session, sample_datasource: DataSource) -> Analysis:
+    from modules.analysis.models import Analysis, AnalysisDataSource
+
     analysis_id = str(uuid.uuid4())
     tab1_result_id = str(uuid.uuid4())
 
@@ -304,6 +340,8 @@ def sample_analysis(test_db_session: Session, sample_datasource: DataSource) -> 
 
 @pytest.fixture(scope='function')
 def sample_analyses(test_db_session: Session, sample_datasources: list[DataSource]) -> list[Analysis]:
+    from modules.analysis.models import Analysis, AnalysisDataSource
+
     analyses = []
 
     for idx in range(3):

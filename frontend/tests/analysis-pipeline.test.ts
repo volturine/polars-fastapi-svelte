@@ -582,6 +582,7 @@ test.describe('Pipeline data verification', () => {
 				type: 'join',
 				config: {
 					how: 'inner',
+					right_source: dsId,
 					join_columns: [{ id: 'jc1', left_column: 'city', right_column: 'city' }],
 					suffix: '_right'
 				}

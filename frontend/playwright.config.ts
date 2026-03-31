@@ -13,6 +13,7 @@ export default defineConfig({
 	reporter: [['html', { open: 'never', outputFolder: 'tests/playwright-report' }], ['line']],
 	use: {
 		baseURL: 'http://localhost:3000',
+		storageState: 'tests/.auth/state.json',
 		trace: 'on-first-retry',
 		screenshot: 'only-on-failure'
 	},

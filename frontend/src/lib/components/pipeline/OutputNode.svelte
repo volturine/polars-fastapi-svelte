@@ -264,7 +264,13 @@
 	}
 
 	function ensureOutputConfig(): void {
-		return;
+		const tab = activeTab;
+		if (!tab) return;
+		const defaults = outputDefaults;
+		if (!defaults) return;
+		const currentOutput = tab.output as Record<string, unknown>;
+		const merged = { ...defaults, ...currentOutput };
+		analysisStore.updateTab(tab.id, { output: merged as unknown as AnalysisTabOutput });
 	}
 
 	function startNameEdit() {
@@ -349,7 +355,9 @@
 			datasourceStore.datasources
 		);
 		if (!pipeline) {
-			error = 'Unable to build analysis payload.';
+			error = datasourceStore.loaded
+				? 'Unable to build analysis payload.'
+				: 'Datasources are still loading. Please try again.';
 			building = false;
 			return;
 		}

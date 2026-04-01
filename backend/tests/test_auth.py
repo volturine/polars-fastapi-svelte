@@ -459,6 +459,26 @@ class TestOAuthService:
         with pytest.raises(ProviderUnlinkError):
             unlink_provider(auth_db_session, user.id, 'google')
 
+    def test_unlink_provider_preserves_row_when_user_missing(self, auth_db_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        user = create_user(auth_db_session, 'missing-user@example.com', 'Password123', 'Missing User')
+        find_or_create_oauth_user(
+            session=auth_db_session,
+            provider='google',
+            provider_subject='google-subject-5',
+            email='missing-user@example.com',
+            display_name='Missing User',
+            avatar_url=None,
+        )
+
+        monkeypatch.setattr('modules.auth.service.get_user_by_id', lambda _session, _user_id: None)
+
+        with pytest.raises(ProviderUnlinkError, match='missing account'):
+            unlink_provider(auth_db_session, user.id, 'google')
+
+        providers = auth_db_session.exec(select(AuthProvider).where(AuthProvider.user_id == user.id)).all()
+        names = {item.provider for item in providers}
+        assert names == {'password', 'google'}
+
 
 class TestVerificationTokenService:
     def test_create_verification_token_returns_valid_token(self, auth_db_session: Session) -> None:

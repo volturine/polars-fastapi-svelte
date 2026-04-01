@@ -488,11 +488,10 @@ def unlink_provider(session: Session, user_id: str, provider: str) -> None:
         return
     if provider_row.provider == _PASSWORD_PROVIDER:
         raise ProviderUnlinkError('Password login cannot be unlinked')
-    session.delete(provider_row)
     user = get_user_by_id(session, user_id)
     if not user:
-        session.commit()
-        return
+        raise ProviderUnlinkError('Cannot unlink provider for a missing account')
+    session.delete(provider_row)
     has_password_provider = any(row.provider == _PASSWORD_PROVIDER and row.id != provider_row.id for row in providers)
     user.has_password = has_password_provider
     user.updated_at = _utcnow()

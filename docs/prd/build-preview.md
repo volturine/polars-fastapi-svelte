@@ -40,13 +40,13 @@ Currently, builds execute as a black box. Users trigger a build (`POST /compute/
 | G-3 | Per-step timing shown live as steps complete | Timing appears within 1 second of step completion |
 | G-4 | Query plan visible before and during execution | Plan shown within 2 seconds of build start |
 | G-5 | Resource usage visible during build | CPU/memory updated every 5 seconds |
+| G-6 | Remote build monitoring from any device | Any authenticated user can view currently running builds in the build monitor with filtering for active builds |
 
 ## Non-Goals
 
 - Cancelling individual steps mid-execution (cancellation is whole-build only)
 - Step-level retry during execution
 - Real-time data preview for intermediate steps during build
-- Remote build monitoring from a different device (same session only)
 
 ## User Stories
 
@@ -110,6 +110,19 @@ Currently, builds execute as a black box. Users trigger a build (`POST /compute/
 3. Filterable by level (show errors only, show warnings + errors, show all).
 4. Log auto-scrolls to bottom; user can scroll up to pause auto-scroll.
 5. Copy log to clipboard action.
+
+### US-6: Remote Build Monitoring
+
+> As a user, I want to view and monitor currently running builds from any device, with filtering to see active builds started by any user.
+
+**Acceptance Criteria:**
+
+1. Build monitor page shows all currently running builds across all users.
+2. Each running build shows: analysis name, user who started it, current step, progress percentage, elapsed time.
+3. Filter panel to filter by: status (running, completed, failed), user, analysis, date range.
+4. Builds carry the user who started them — visible in the build list and detail view.
+5. Live progress updates via WebSocket for all visible running builds (not just the user's own).
+6. Accessible from any authenticated session — no restriction to the session that started the build.
 
 ## Technical Design
 

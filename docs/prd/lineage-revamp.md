@@ -38,10 +38,10 @@ service_lineage.py (136 lines)
 | G-3 | Impact analysis ("what breaks if I change X?") | Downstream dependency tree computed in < 2 seconds |
 | G-4 | Scalable graph visualization for 100+ nodes | Clustering, search, minimap, zoom-to-fit for large graphs |
 | G-5 | Historical lineage comparison | Users can compare lineage between two points in time |
+| G-6 | Real-time lineage updates during builds | Lineage graph updates live when datasets are built, with build status coloring on nodes and inline progress indicators |
 
 ## Non-Goals
 
-- Real-time lineage updates during build execution (build preview handles this)
 - Lineage for external systems (e.g., tracking data after export to S3)
 - Automated lineage inference from SQL queries
 - Cross-workspace lineage
@@ -124,6 +124,20 @@ service_lineage.py (136 lines)
 2. Diff view: added nodes (green), removed nodes (red), modified edges (yellow).
 3. Summary of changes: "3 datasources added, 1 analysis removed, 5 edges changed".
 4. Side-by-side or overlay comparison modes.
+
+### US-7: Live Build Status on Lineage Nodes
+
+> As a user, I want lineage nodes to visually reflect when a dataset is currently being built, so I can see build activity across the graph.
+
+**Acceptance Criteria:**
+
+1. Lineage graph updates in real time when a build starts, progresses, or completes.
+2. Datasource nodes show build status via color coding: idle (default), building (animated/pulsing accent), succeeded (green flash then default), failed (red).
+3. Analysis nodes that are currently executing show a building indicator.
+4. Clicking a node that is currently building shows an expanded inline progress view: current step, progress percentage, elapsed time.
+5. Build status coloring is available as a toggle option in the lineage toolbar (can be enabled/disabled).
+6. When a build completes, the node updates its metadata (row count, last updated) without requiring a page refresh.
+7. Multiple simultaneous builds across different analyses are all reflected in the graph concurrently.
 
 ## Technical Design
 

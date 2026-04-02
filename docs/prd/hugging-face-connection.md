@@ -17,13 +17,13 @@ Data-Forge currently supports AI operations (per-row LLM transformations) via Ol
 | G-3 | Use HF models as a provider for AI operations and chat | HF models selectable in AI step config and chat settings |
 | G-4 | Track model provenance and versions | Model metadata (repo, revision, size) recorded |
 | G-5 | Support Hugging Face Inference API (remote) | Users can call hosted models without local GPU |
+| G-6 | Ingest Hugging Face datasets as datasources | Users can browse, search, and import HF datasets directly into Data-Forge |
 
 ## Non-Goals
 
 - Fine-tuning or training models within Data-Forge
 - Publishing models to Hugging Face
 - Hugging Face Spaces integration
-- Dataset ingestion from Hugging Face (separate feature, can follow same pattern as Kaggle)
 
 ## User Stories
 
@@ -98,6 +98,30 @@ Data-Forge currently supports AI operations (per-row LLM transformations) via Ol
 3. Automatic rate limiting and retry logic.
 4. Cost awareness: show if model is free-tier or paid.
 
+### US-7: Browse and Search Hugging Face Datasets
+
+> As a user, I want to search Hugging Face datasets by keyword, task, or size and preview metadata before importing.
+
+**Acceptance Criteria:**
+
+1. "Hugging Face" tab in the datasource creation flow (`/datasources/new`) alongside existing options.
+2. Search with filters: task (e.g., text-classification, question-answering), size category, sort (downloads, trending, recently updated).
+3. Results show: dataset name, author, downloads, size, task tags, last modified.
+4. Detail view shows: dataset card summary, available splits (train/test/validation), column schema, sample rows.
+
+### US-8: Ingest Hugging Face Dataset as Datasource
+
+> As a user, I want to import a Hugging Face dataset (or a specific split) as a Data-Forge datasource.
+
+**Acceptance Criteria:**
+
+1. After selecting a dataset, user sees available splits and configurations.
+2. User can select which split(s) to import (each becomes a separate datasource).
+3. Import triggers background download via HF Hub API → saved to `DATA_DIR/uploads/<namespace>/`.
+4. Datasource created with `source_type: 'huggingface'` and metadata containing `hf_dataset_ref`, `hf_split`, `hf_revision`.
+5. Progress indicator during download.
+6. On completion, datasource appears in datasource list with schema auto-detected.
+
 ## Technical Design
 
 ### Backend
@@ -128,6 +152,10 @@ modules/huggingface/
 | `POST` | `/api/v1/huggingface/registry/{model_id}/unload` | Unload model from GPU |
 | `DELETE` | `/api/v1/huggingface/registry/{model_id}` | Delete pulled model |
 | `POST` | `/api/v1/huggingface/inference` | Run inference (local or remote) |
+| `GET` | `/api/v1/huggingface/datasets` | Search datasets (query, task, sort, page) |
+| `GET` | `/api/v1/huggingface/datasets/{repo_id}` | Get dataset metadata, splits, schema |
+| `POST` | `/api/v1/huggingface/datasets/ingest` | Download and register dataset split as datasource |
+| `GET` | `/api/v1/huggingface/datasets/ingest/{job_id}/status` | Poll dataset ingest progress |
 
 #### HF API Integration
 

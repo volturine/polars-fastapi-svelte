@@ -32,8 +32,19 @@ Data-Forge writes build outputs to Iceberg tables, which natively support time-t
 
 - Partial rollback (e.g., rollback only certain columns or rows)
 - Cross-datasource transactional rollback (atomic rollback of multiple datasources)
-- Automatic rollback triggers (e.g., rollback if build fails quality checks)
 - Rollback of analysis pipeline definition (that's version history, separate feature)
+
+## Health Check Integration
+
+The platform has a two-tier health check system that interacts with snapshot transactions:
+
+1. **Critical health checks** (`critical: true`) — These **block** the transaction commit. If a critical health check fails during a build, the data write to the Iceberg table is prevented entirely via a `PipelineExecutionError`. The rolled-back data is never persisted. This is enforced in `compute/service.py` where critical failures are evaluated after health check execution and before the Iceberg write.
+
+2. **Warning health checks** (`critical: false`) — These **allow** the transaction to proceed but mark the build status as `'warning'` instead of `'success'`. The data is written, notifications include the health check summary and details, but no blocking occurs.
+
+Health check results are always persisted to the database for audit purposes regardless of whether the build proceeds or is blocked.
+
+**Rollback and health checks:** When a rollback writes a new snapshot (restoring previous data), the same health check pipeline runs against the restored data. A rollback can be blocked by critical health checks if the historical data no longer passes current health check rules. Users should be warned about this in the rollback confirmation dialog.
 
 ## User Stories
 

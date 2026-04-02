@@ -139,6 +139,6 @@ test.describe('Lineage – error state', () => {
 		// Navigate home — shell should still work
 		await page.locator('a[href="/"]').first().click();
 		await expect(page).toHaveURL('/');
-		await expect(page.getByRole('heading', { name: 'Analyses' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Analyses', exact: true })).toBeVisible();
 	});
 });

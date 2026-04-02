@@ -69,6 +69,7 @@ export async function deleteUdfViaUI(page: Page, name: string): Promise<void> {
 			.waitFor({ state: 'hidden', timeout: 8_000 });
 	} catch (e: unknown) {
 		console.warn(`[ui-cleanup] deleteUdfViaUI failed for "${name}":`, e);
+		await deleteByName(page, '/api/v1/udf', (id) => `/api/v1/udf/${id}`, name);
 	}
 }
 

@@ -1,6 +1,7 @@
 import logging
 import uuid
 from collections import deque
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 import croniter  # type: ignore[import-untyped]
@@ -45,8 +46,12 @@ def _resolve_schedule_target(session: Session, datasource_id: str) -> tuple[str,
     return 'datasource', None, None
 
 
-def _enrich_schedule_response(session: Session, schedule: Schedule) -> ScheduleResponse:
-    """Enrich schedule with resolved analysis/tab info from datasource provenance."""
+def _build_schedule_response(
+    schedule: Schedule,
+    datasource: DataSource | None,
+    analysis: Analysis | None,
+) -> ScheduleResponse:
+    """Build a schedule response from preloaded related models."""
     data = {
         'id': schedule.id,
         'datasource_id': schedule.datasource_id,
@@ -59,27 +64,47 @@ def _enrich_schedule_response(session: Session, schedule: Schedule) -> ScheduleR
         'created_at': schedule.created_at,
     }
 
-    # Resolve provenance from datasource
-    datasource = session.get(DataSource, schedule.datasource_id)
     if datasource:
         data['analysis_id'] = datasource.created_by_analysis_id
 
         tab_id = datasource.config.get('analysis_tab_id') if isinstance(datasource.config, dict) else None
         data['tab_id'] = tab_id
 
-        # Get analysis name
-        if datasource.created_by_analysis_id:
-            analysis = session.get(Analysis, datasource.created_by_analysis_id)
-            if analysis:
-                data['analysis_name'] = analysis.name
+        if analysis:
+            data['analysis_name'] = analysis.name
 
-                if tab_id and isinstance(analysis.pipeline_definition, dict):
-                    for tab in analysis.pipeline_definition.get('tabs', []):
-                        if tab.get('id') == tab_id:
-                            data['tab_name'] = tab.get('name', 'unnamed')
-                            break
+            if tab_id and isinstance(analysis.pipeline_definition, dict):
+                for tab in analysis.pipeline_definition.get('tabs', []):
+                    if tab.get('id') == tab_id:
+                        data['tab_name'] = tab.get('name', 'unnamed')
+                        break
 
     return ScheduleResponse.model_validate(data)
+
+
+def _enrich_schedule_response(session: Session, schedule: Schedule) -> ScheduleResponse:
+    """Enrich schedule with resolved analysis/tab info from datasource provenance."""
+    datasource = session.get(DataSource, schedule.datasource_id)
+    analysis = None
+    if datasource and datasource.created_by_analysis_id:
+        analysis = session.get(Analysis, datasource.created_by_analysis_id)
+    return _build_schedule_response(schedule, datasource, analysis)
+
+
+def _enrich_schedule_response_batch(
+    schedules: Sequence[Schedule],
+    ds_map: dict[str, DataSource],
+    analysis_map: dict[str, Analysis],
+) -> list[ScheduleResponse]:
+    """Enrich schedules using preloaded datasource and analysis maps."""
+    responses: list[ScheduleResponse] = []
+    for schedule in schedules:
+        datasource = ds_map.get(schedule.datasource_id)
+        analysis = None
+        if datasource and datasource.created_by_analysis_id:
+            analysis = analysis_map.get(datasource.created_by_analysis_id)
+        responses.append(_build_schedule_response(schedule, datasource, analysis))
+    return responses
 
 
 def list_schedules(
@@ -89,10 +114,24 @@ def list_schedules(
     """List schedules with optional filtering by target datasource."""
     query = select(Schedule)
     if datasource_id:
-        query = query.where(Schedule.datasource_id == datasource_id)  # type: ignore[arg-type]
+        query = query.where(col(Schedule.datasource_id) == datasource_id)
     result = session.execute(query)
     schedules = result.scalars().all()
-    return [_enrich_schedule_response(session, schedule) for schedule in schedules]
+    datasource_ids = {schedule.datasource_id for schedule in schedules}
+
+    ds_map: dict[str, DataSource] = {}
+    if datasource_ids:
+        datasources = session.execute(select(DataSource).where(col(DataSource.id).in_(list(datasource_ids)))).scalars().all()
+        ds_map = {str(datasource.id): datasource for datasource in datasources}
+
+    analysis_ids = {datasource.created_by_analysis_id for datasource in ds_map.values() if datasource.created_by_analysis_id}
+
+    analysis_map: dict[str, Analysis] = {}
+    if analysis_ids:
+        analyses = session.execute(select(Analysis).where(col(Analysis.id).in_(list(analysis_ids)))).scalars().all()
+        analysis_map = {str(analysis.id): analysis for analysis in analyses}
+
+    return _enrich_schedule_response_batch(schedules, ds_map, analysis_map)
 
 
 def create_schedule(session: Session, payload: ScheduleCreate) -> ScheduleResponse:

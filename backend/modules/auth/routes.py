@@ -1,4 +1,5 @@
 import secrets
+import time
 from urllib.parse import urlencode
 
 import httpx
@@ -7,7 +8,7 @@ from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 
 from core.config import settings
-from core.database import get_settings_db
+from core.database import get_settings_db, run_settings_db
 from core.error_handlers import handle_errors
 from core.exceptions import AccountDisabledError, InvalidCredentialsError, OAuthError
 from modules.auth.dependencies import get_current_user
@@ -30,6 +31,7 @@ from modules.auth.service import (
     create_session,
     create_user,
     create_verification_token,
+    ensure_default_user,
     find_or_create_oauth_user,
     get_user_by_email,
     get_user_by_id,
@@ -41,11 +43,36 @@ from modules.auth.service import (
     send_password_reset_email,
     send_verification_email,
     unlink_provider,
+    validate_session,
     validate_verification_token,
     verify_password,
 )
 
 router = APIRouter(prefix='/auth', tags=['auth'])
+
+_me_cache: dict[str, tuple[float, UserPublic]] = {}
+_ME_CACHE_TTL: float = 10.0
+_ME_CACHE_MAX_SIZE: int = 200
+
+
+def _evict_me_cache() -> None:
+    """Remove expired entries if cache exceeds max size."""
+    if len(_me_cache) <= _ME_CACHE_MAX_SIZE:
+        return
+    now = time.monotonic()
+    expired = [k for k, (ts, _) in _me_cache.items() if now - ts >= _ME_CACHE_TTL]
+    for k in expired:
+        del _me_cache[k]
+
+
+def invalidate_me_cache(token: str | None = None) -> None:
+    """Clear cached /me response. If token given, clear only that entry."""
+    if token:
+        _me_cache.pop(token, None)
+    else:
+        _me_cache.clear()
+
+
 _OAUTH_STATE_MAX_AGE_SECONDS = 600
 
 
@@ -179,6 +206,7 @@ async def logout(request: Request, response: Response, session: Session = Depend
     token = request.cookies.get('session_token') or request.headers.get('X-Session-Token')
     if token:
         revoke_session(session, token)
+        invalidate_me_cache(token)
     _clear_session_cookie(response)
     return {'success': True}
 
@@ -222,10 +250,38 @@ async def reset_password_route(body: ResetPasswordRequest, session: Session = De
     return MessageResponse(message='Password reset successful')
 
 
+def _resolve_me(session: Session, token: str | None) -> UserPublic:
+    """Resolve the current user inside a settings DB session (runs in threadpool on cache miss)."""
+    if token:
+        user = validate_session(session, token)
+        if user:
+            return _build_user_public(session, user)
+    if not settings.auth_required:
+        user = ensure_default_user(session)
+        return _build_user_public(session, user)
+    raise HTTPException(status_code=401, detail='Not authenticated')
+
+
 @router.get('/me', response_model=UserPublic)
 @handle_errors(operation='get current user')
-async def me(current_user: User = Depends(get_current_user), session: Session = Depends(get_settings_db)) -> UserPublic:
-    return _build_user_public(session, current_user)
+async def me(request: Request) -> UserPublic:
+    token = request.cookies.get('session_token') or request.headers.get('X-Session-Token')
+
+    if token:
+        cached = _me_cache.get(token)
+        if cached is not None:
+            ts, result = cached
+            if time.monotonic() - ts < _ME_CACHE_TTL:
+                return result
+            del _me_cache[token]
+
+    result = run_settings_db(_resolve_me, token)
+
+    if token:
+        _evict_me_cache()
+        _me_cache[token] = (time.monotonic(), result)
+
+    return result
 
 
 @router.put('/profile', response_model=UserPublic)
@@ -244,6 +300,7 @@ async def update_profile_route(
         avatar_url=body.avatar_url,
         preferences=body.preferences,
     )
+    invalidate_me_cache()
     return _build_user_public(session, updated)
 
 
@@ -255,6 +312,7 @@ async def change_password_route(
     session: Session = Depends(get_settings_db),
 ) -> dict[str, bool]:
     change_password(session, current_user.id, body.current_password, body.new_password)
+    invalidate_me_cache()
     return {'success': True}
 
 
@@ -270,6 +328,7 @@ async def revoke_all_sessions_route(
     revoke_all_sessions(session, current_user.id)
     if current_token:
         revoke_session(session, current_token)
+    invalidate_me_cache()
     _clear_session_cookie(response)
     return {'success': True}
 

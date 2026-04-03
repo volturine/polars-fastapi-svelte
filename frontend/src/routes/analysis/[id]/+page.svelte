@@ -290,6 +290,7 @@
 	const analysisQuery = createQuery(() => ({
 		queryKey: ['analysis', analysisId],
 		enabled: !!analysisId,
+		staleTime: 0,
 		queryFn: async () => {
 			if (!analysisId) throw new Error('Analysis ID is required');
 			const result = await getAnalysisWithHeaders(analysisId);
@@ -304,14 +305,13 @@
 			isDirty = false;
 			return result.value.analysis;
 		},
-		staleTime: 0,
-		refetchOnMount: 'always',
 		retry: false
 	}));
 
 	const versionsQuery = createQuery(() => ({
 		queryKey: ['analysis-versions', analysisId],
-		enabled: false,
+		enabled: showVersionModal,
+		staleTime: 0,
 		queryFn: async () => {
 			if (!analysisId) throw new Error('Analysis ID is required');
 			const result = await listAnalysisVersions(analysisId);
@@ -827,9 +827,6 @@
 	function openVersionModal() {
 		versionError = null;
 		showVersionModal = true;
-		versionsQuery.refetch().catch(() => {
-			versionError = 'Failed to load version history';
-		});
 	}
 
 	function closeVersionModal() {

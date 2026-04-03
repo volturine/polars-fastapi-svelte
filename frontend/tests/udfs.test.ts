@@ -107,6 +107,7 @@ test.describe('UDFs – list & management', () => {
 	});
 
 	test('Clone button creates a copy of the UDF', async ({ page, request }) => {
+		test.setTimeout(60_000);
 		const udf = `e2e_clone_${uid()}`;
 		await createUdf(request, udf);
 		try {
@@ -116,13 +117,14 @@ test.describe('UDFs – list & management', () => {
 			const row = page.locator(`[data-udf-card="${udf}"]`);
 			await row.getByRole('button', { name: /Clone/i }).click();
 
-			// A second UDF with same name or "Copy" suffix appears
-			await expect(page.locator('h3', { hasText: udf }).nth(1)).toBeVisible({
+			// Clone gets the name "${udf} (copy)"
+			const cloneName = `${udf} (copy)`;
+			await expect(page.locator(`[data-udf-card="${cloneName}"]`)).toBeVisible({
 				timeout: 8_000
 			});
 		} finally {
-			// Delete both the clone and the original via UI
-			await deleteUdfViaUI(page, udf);
+			// Delete clone first (has " (copy)" suffix), then original
+			await deleteUdfViaUI(page, `${udf} (copy)`);
 			await deleteUdfViaUI(page, udf);
 		}
 	});

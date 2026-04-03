@@ -2,6 +2,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import delete, select
+from sqlalchemy.orm import defer
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, col
 
@@ -209,7 +210,14 @@ def get_analysis(
 def list_analyses(
     session: Session,  # type: ignore[type-arg]
 ) -> list[AnalysisGalleryItemSchema]:
-    return [AnalysisGalleryItemSchema.model_validate(a) for a in session.execute(select(Analysis)).scalars()]
+    stmt = select(Analysis).options(
+        defer(Analysis.pipeline_definition),  # type: ignore[arg-type]
+        defer(Analysis.description),  # type: ignore[arg-type]
+        defer(Analysis.status),  # type: ignore[arg-type]
+        defer(Analysis.result_path),  # type: ignore[arg-type]
+        defer(Analysis.owner_id),  # type: ignore[arg-type]
+    )
+    return [AnalysisGalleryItemSchema.model_validate(a) for a in session.execute(stmt).scalars()]
 
 
 def update_analysis(

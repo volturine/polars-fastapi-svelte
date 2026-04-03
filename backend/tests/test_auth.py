@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from core.database import get_settings_db
+from core.database import clear_settings_engine_override, get_settings_db, set_settings_engine_override
 from core.exceptions import (
     EmailAlreadyExistsError,
     InvalidCredentialsError,
@@ -18,6 +18,7 @@ from core.exceptions import (
 from main import app
 from modules.auth.dependencies import get_current_user, get_optional_user
 from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
+from modules.auth.routes import invalidate_me_cache
 from modules.auth.service import (
     change_password,
     create_session,
@@ -59,9 +60,10 @@ def auth_db_session(auth_engine):
 
 
 @pytest.fixture(scope='function')
-def auth_client(auth_db_session: Session, monkeypatch):
+def auth_client(auth_db_session: Session, auth_engine, monkeypatch):
     monkeypatch.setattr('core.config.settings.debug', True)
     ensure_default_user(auth_db_session)
+    invalidate_me_cache()
 
     def override_get_settings_db():
         yield auth_db_session
@@ -69,9 +71,12 @@ def auth_client(auth_db_session: Session, monkeypatch):
     if hasattr(app.state, 'mcp_registry'):
         del app.state.mcp_registry
     app.dependency_overrides[get_settings_db] = override_get_settings_db
+    set_settings_engine_override(auth_engine)
     with TestClient(app) as client:
         yield client
     app.dependency_overrides.clear()
+    clear_settings_engine_override()
+    invalidate_me_cache()
 
 
 class TestPasswordHashing:

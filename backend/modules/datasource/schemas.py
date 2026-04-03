@@ -203,6 +203,22 @@ class DataSourceResponse(BaseModel):
     output_of_tab_id: str | None = None
 
 
+class DataSourceListItem(BaseModel):
+    """Lightweight schema for list endpoints — excludes heavy schema_cache."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    source_type: DataSourceType
+    config: dict
+    created_by_analysis_id: str | None = None
+    created_by: str = 'import'
+    is_hidden: bool = False
+    created_at: datetime
+    output_of_tab_id: str | None = None
+
+
 class DataSourceUpdate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

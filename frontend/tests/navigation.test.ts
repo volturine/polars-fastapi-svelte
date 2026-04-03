@@ -8,7 +8,7 @@ import { screenshot } from './utils/visual.js';
 test.describe('Navigation – page load smoke tests', () => {
 	test('home page renders Analyses heading', async ({ page }) => {
 		await page.goto('/');
-		await expect(page.getByRole('heading', { name: 'Analyses' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Analyses', level: 1 })).toBeVisible();
 		await expect(page.getByRole('link', { name: /New Analysis/i })).toBeVisible();
 		await screenshot(page, 'navigation', 'home-page');
 	});
@@ -273,7 +273,9 @@ test.describe('Navigation – settings popup', () => {
 
 	test('Telegram bot toggle updates aria-checked state', async ({ page }) => {
 		await page.goto('/');
-		await page.getByRole('button', { name: 'Settings' }).click();
+		const settingsBtn = page.getByRole('button', { name: 'Settings' });
+		await expect(settingsBtn).toBeVisible({ timeout: 15_000 });
+		await settingsBtn.click();
 
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });

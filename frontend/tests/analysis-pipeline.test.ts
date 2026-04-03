@@ -1,7 +1,11 @@
 import { test, expect } from '@playwright/test';
 import type { Page, APIRequestContext } from '@playwright/test';
 import { createDatasource, createDatasourceWithDates, API_BASE } from './utils/api.js';
-import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
+import {
+	createCleanupPage,
+	deleteAnalysisViaUI,
+	deleteDatasourceViaUI
+} from './utils/ui-cleanup.js';
 import { uid } from './utils/uid.js';
 import { screenshot } from './utils/visual.js';
 
@@ -154,9 +158,10 @@ test.describe('Pipeline data verification', () => {
 	});
 
 	test.afterAll(async ({ browser }) => {
-		const page = await browser.newPage();
+		const { page, context } = await createCleanupPage(browser);
 		await deleteDatasourceViaUI(page, dsName);
 		await page.close();
+		await context.close();
 	});
 
 	// ── Baseline ──────────────────────────────────────────────────────────────
@@ -750,9 +755,10 @@ test.describe('Pipeline data – pass-through operations', () => {
 	});
 
 	test.afterAll(async ({ browser }) => {
-		const page = await browser.newPage();
+		const { page, context } = await createCleanupPage(browser);
 		await deleteDatasourceViaUI(page, dsName);
 		await page.close();
+		await context.close();
 	});
 
 	test('chart (plot_bar) computes aggregated visualization data', async ({ page, request }) => {
@@ -939,9 +945,10 @@ test.describe('Pipeline data – timeseries', () => {
 	});
 
 	test.afterAll(async ({ browser }) => {
-		const page = await browser.newPage();
+		const { page, context } = await createCleanupPage(browser);
 		await deleteDatasourceViaUI(page, dateDsName);
 		await page.close();
+		await context.close();
 	});
 
 	test('timeseries extracts month from date column', async ({ page, request }) => {
@@ -1009,10 +1016,11 @@ test.describe('Pipeline data – union by name', () => {
 	});
 
 	test.afterAll(async ({ browser }) => {
-		const page = await browser.newPage();
+		const { page, context } = await createCleanupPage(browser);
 		await deleteDatasourceViaUI(page, dsName1);
 		await deleteDatasourceViaUI(page, dsName2);
 		await page.close();
+		await context.close();
 	});
 
 	test('union_by_name combines rows from two datasources', async ({ page, request }) => {

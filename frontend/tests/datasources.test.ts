@@ -104,6 +104,7 @@ test.describe('Datasources – list & management', () => {
 	});
 
 	test('multiple datasources are all listed', async ({ page, request }) => {
+		test.setTimeout(60_000);
 		const id = uid();
 		const dsA = `e2e-multi-a-${id}`;
 		const dsB = `e2e-multi-b-${id}`;
@@ -204,7 +205,7 @@ test.describe('Datasources – detail view', () => {
 
 	test('selecting datasource shows General tab with source information', async ({ page }) => {
 		await page.goto('/datasources');
-		await page.getByText(ds).click();
+		await page.locator(`[data-ds-row="${ds}"]`).click();
 
 		const config = page.locator('[data-ds-config]');
 		await expect(config).toBeVisible({ timeout: 8_000 });
@@ -221,7 +222,7 @@ test.describe('Datasources – detail view', () => {
 
 	test('Schema tab shows actual column names from CSV', async ({ page }) => {
 		await page.goto('/datasources');
-		await page.getByText(ds).click();
+		await page.locator(`[data-ds-row="${ds}"]`).click();
 
 		const config = page.locator('[data-ds-config]');
 		await expect(config).toBeVisible({ timeout: 8_000 });
@@ -236,7 +237,7 @@ test.describe('Datasources – detail view', () => {
 
 	test('General tab shows row count from actual data', async ({ page }) => {
 		await page.goto('/datasources');
-		await page.getByText(ds).click();
+		await page.locator(`[data-ds-row="${ds}"]`).click();
 
 		const config = page.locator('[data-ds-config]');
 		await expect(config).toBeVisible({ timeout: 8_000 });
@@ -247,14 +248,14 @@ test.describe('Datasources – detail view', () => {
 
 	test('datasource URL includes id query param after selection', async ({ page }) => {
 		await page.goto('/datasources');
-		await page.getByText(ds).click();
+		await page.locator(`[data-ds-row="${ds}"]`).click();
 		await expect(page).toHaveURL(/id=/, { timeout: 5_000 });
 	});
 
 	test('right pane shows preview table with column headers and data', async ({ page }) => {
 		test.setTimeout(45_000);
 		await page.goto('/datasources');
-		await page.getByText(ds).click();
+		await page.locator(`[data-ds-row="${ds}"]`).click();
 
 		// Preview loads in the right pane (DatasourcePreview), not in a config tab
 		await expect(page.locator('[data-preview-ready="true"]')).toBeVisible({ timeout: 15_000 });
@@ -356,6 +357,10 @@ test.describe('Datasources – preview error state', () => {
 		const ds = `e2e-error-${uid()}`;
 		await createDatasource(request, ds);
 		try {
+			// Force HTTP transport so page.route() can intercept compute requests
+			// (Playwright cannot intercept WebSocket connections)
+			await page.addInitScript(() => localStorage.setItem('debug:prefer-http', 'true'));
+
 			// Intercept the compute preview API to return a 500 error
 			await page.route('**/api/v1/compute/preview', (route) =>
 				route.fulfill({

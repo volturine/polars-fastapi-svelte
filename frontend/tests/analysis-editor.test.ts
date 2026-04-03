@@ -1,7 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { createDatasource, createAnalysis } from './utils/api.js';
 import { addStepAndOpenConfig } from './utils/analysis.js';
-import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
+import {
+	createCleanupPage,
+	deleteAnalysisViaUI,
+	deleteDatasourceViaUI
+} from './utils/ui-cleanup.js';
 import { screenshot } from './utils/visual.js';
 import { uid } from './utils/uid.js';
 
@@ -142,10 +146,11 @@ test.describe('Analyses – step library labels', () => {
 	});
 
 	test.afterAll(async ({ browser }) => {
-		const page = await browser.newPage();
+		const { page, context } = await createCleanupPage(browser);
 		await deleteAnalysisViaUI(page, aName);
 		await deleteDatasourceViaUI(page, dsName);
 		await page.close();
+		await context.close();
 	});
 
 	// All 25 step types that appear in StepLibrary.svelte (read-only checks)
@@ -544,10 +549,13 @@ test.describe('Analyses – step reorder persistence', () => {
 				timeout: 10_000
 			});
 
-			// Reload
+			// Reload and wait for the editor to fully hydrate before asserting steps
 			await page.reload();
-			await expect(page.locator('[data-step-type="filter"]')).toBeVisible({ timeout: 15_000 });
-			await expect(page.locator('[data-step-type="limit"]')).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByRole('heading', { name: 'Operations' })).toBeVisible({
+				timeout: 15_000
+			});
+			await expect(page.locator('[data-step-type="filter"]')).toBeVisible({ timeout: 10_000 });
+			await expect(page.locator('[data-step-type="limit"]')).toBeVisible({ timeout: 5_000 });
 
 			// Verify step order is preserved
 			const reloadedNodes = page.locator('[data-step-type]');
@@ -629,8 +637,10 @@ test.describe('Analyses – multi-tab flow', () => {
 		const ds1 = `e2e-multitab-ds1-${id}`;
 		const ds2 = `e2e-multitab-ds2-${id}`;
 		const analysis = `E2E Multi Tab ${id}`;
-		const ds1Id = await createDatasource(request, ds1);
-		const ds2Id = await createDatasource(request, ds2);
+		const [ds1Id, ds2Id] = await Promise.all([
+			createDatasource(request, ds1),
+			createDatasource(request, ds2)
+		]);
 		const aId = await createAnalysis(request, analysis, ds1Id);
 		void ds2Id;
 		try {

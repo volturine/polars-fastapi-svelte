@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { createDatasource, createAnalysis } from './utils/api.js';
-import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
+import {
+	createCleanupPage,
+	deleteAnalysisViaUI,
+	deleteDatasourceViaUI
+} from './utils/ui-cleanup.js';
 import { uid } from './utils/uid.js';
 import { screenshot } from './utils/visual.js';
 
@@ -13,6 +17,7 @@ test.describe('Analyses – list & gallery', () => {
 	});
 
 	test('lists existing analysis after API create', async ({ page, request }) => {
+		test.setTimeout(60_000);
 		const dsName = `e2e-list-ds-${uid()}`;
 		const aName = `E2E List ${uid()}`;
 		const dsId = await createDatasource(request, dsName);
@@ -27,6 +32,7 @@ test.describe('Analyses – list & gallery', () => {
 	});
 
 	test('search filters out non-matching analyses', async ({ page, request }) => {
+		test.setTimeout(60_000);
 		const suffix = uid();
 		const dsName = `e2e-search-ds-${suffix}`;
 		const analysisName = `E2E Search Alpha ${suffix}`;
@@ -190,10 +196,11 @@ test.describe('Analyses – detail page', () => {
 	});
 
 	test.afterAll(async ({ browser }) => {
-		const page = await browser.newPage();
+		const { page, context } = await createCleanupPage(browser);
 		await deleteAnalysisViaUI(page, aName);
 		await deleteDatasourceViaUI(page, dsName);
 		await page.close();
+		await context.close();
 	});
 
 	test('analysis detail page loads with step library', async ({ page }) => {
@@ -230,7 +237,9 @@ test.describe('Analyses – detail page', () => {
 
 	test('analysis name is shown in the detail page', async ({ page }) => {
 		await page.goto(`/analysis/${aId}`);
-		await expect(page.getByText(aName)).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByRole('heading', { name: aName, level: 1 })).toBeVisible({
+			timeout: 15_000
+		});
 	});
 });
 

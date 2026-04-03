@@ -218,6 +218,10 @@ class PolarsComputeEngine:
             result_job = result.get('job_id')
             if expected and result_job and result_job != expected:
                 self._pending_results[result_job] = result
+                if len(self._pending_results) > 100:
+                    excess = len(self._pending_results) - 100
+                    for _ in range(excess):
+                        self._pending_results.pop(next(iter(self._pending_results)))
                 continue
             if expected == self.current_job_id and (result.get('data') is not None or result.get('error')):
                 self.current_job_id = None

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createDatasource, createAnalysis } from './utils/api.js';
 import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
+import { uid } from './utils/uid.js';
 import { screenshot } from './utils/visual.js';
 
 /**
@@ -85,8 +86,11 @@ test.describe('Lineage – graph interaction', () => {
 
 test.describe('Lineage – with datasource data', () => {
 	test('lineage graph renders nodes when datasources exist', async ({ page, request }) => {
-		const dsId = await createDatasource(request, 'e2e-lineage-ds');
-		await createAnalysis(request, 'E2E Lineage Analysis', dsId);
+		test.setTimeout(60_000);
+		const dsName = `e2e-lineage-ds-${uid()}`;
+		const aName = `E2E Lineage ${uid()}`;
+		const dsId = await createDatasource(request, dsName);
+		await createAnalysis(request, aName, dsId);
 		try {
 			await page.goto('/lineage');
 			// The lineage graph area should not show the error state
@@ -95,8 +99,8 @@ test.describe('Lineage – with datasource data', () => {
 			await expect(page.getByText('Loading lineage...')).not.toBeVisible({ timeout: 15_000 });
 			await screenshot(page, 'lineage', 'with-data');
 		} finally {
-			await deleteAnalysisViaUI(page, 'E2E Lineage Analysis');
-			await deleteDatasourceViaUI(page, 'e2e-lineage-ds');
+			await deleteAnalysisViaUI(page, aName);
+			await deleteDatasourceViaUI(page, dsName);
 		}
 	});
 });

@@ -80,12 +80,20 @@ _EVERY_MAP: dict[DurationUnit, str] = {
 }
 
 
-def get_extractor(component: TimeComponent) -> str:
-    return _COMPONENT_ALIAS.get(component, component)
+def get_extractor(component: str | TimeComponent) -> str:
+    try:
+        component_enum = component if isinstance(component, TimeComponent) else TimeComponent(component)
+    except ValueError as exc:
+        raise ValueError(f'Unsupported time component: {component}') from exc
+    return _COMPONENT_ALIAS.get(component_enum, component_enum)
 
 
-def get_duration(unit: DurationUnit, value: int) -> pl.Expr:
-    builder = _DURATION_BUILDERS.get(unit)
+def get_duration(unit: str | DurationUnit, value: int) -> pl.Expr:
+    try:
+        unit_enum = unit if isinstance(unit, DurationUnit) else DurationUnit(unit)
+    except ValueError as exc:
+        raise ValueError(f'Unsupported duration unit: {unit}') from exc
+    builder = _DURATION_BUILDERS.get(unit_enum)
     if not builder:
         raise ValueError(f'Unsupported duration unit: {unit}')
     return builder(value)

@@ -9,7 +9,7 @@ class AnalysisPipelineStep(TypedDict, total=False):
     id: Required[str]
     type: Required[StepType]
     config: Required[dict[str, object]]
-    depends_on: Required[list[str]]
+    depends_on: NotRequired[list[str]]
     is_applied: NotRequired[bool | None]
 
 

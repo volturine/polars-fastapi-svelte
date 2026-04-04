@@ -702,8 +702,8 @@ class TestSettingsMigrations:
                     "smtp_password TEXT NOT NULL DEFAULT '', "
                     "telegram_bot_token TEXT NOT NULL DEFAULT '', "
                     'public_idb_debug BOOLEAN NOT NULL DEFAULT 0'
-                    ')'
-                )
+                    ')',
+                ),
             )
             conn.execute(text('INSERT INTO app_settings (id) VALUES (1)'))
             conn.commit()

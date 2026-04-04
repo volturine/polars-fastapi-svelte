@@ -27,7 +27,9 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
     'json': ExportFormat('.json', 'application/json', lambda df, path: df.write_json(path)),
     'ndjson': ExportFormat('.ndjson', 'application/x-ndjson', lambda df, path: df.write_ndjson(path)),
     'excel': ExportFormat(
-        '.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', lambda df, path: df.write_excel(path)
+        '.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        lambda df, path: df.write_excel(path),
     ),
     'duckdb': ExportFormat('.duckdb', 'application/octet-stream', _write_duckdb),
 }

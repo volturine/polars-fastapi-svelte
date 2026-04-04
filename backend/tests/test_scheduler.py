@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,7 +11,6 @@ from sqlmodel import Session
 
 from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, ScheduleNotFoundError
 from modules.analysis.models import Analysis, AnalysisDataSource, AnalysisStatus
-from modules.analysis.pipeline_types import AnalysisPipelineDefinition
 from modules.datasource.models import DataSource
 from modules.engine_runs.models import EngineRun
 from modules.scheduler.models import Schedule
@@ -62,7 +62,7 @@ def output_datasource(test_db_session: Session, sample_analysis: Analysis) -> Da
 def analysis_with_output(test_db_session: Session, sample_datasource: DataSource) -> Analysis:
     """Analysis with a tab that has output configuration (for build testing)."""
     analysis_id = str(uuid.uuid4())
-    pipeline_definition: AnalysisPipelineDefinition = {
+    pipeline_definition: dict[str, Any] = {
         'tabs': [
             {
                 'id': 'tab-1',
@@ -191,7 +191,11 @@ class TestScheduleCrud:
         assert len(result) == 2
 
     def test_list_schedules_batch_enrichment(
-        self, test_db_session: Session, sample_analysis: Analysis, sample_analyses: list[Analysis], output_datasource: DataSource
+        self,
+        test_db_session: Session,
+        sample_analysis: Analysis,
+        sample_analyses: list[Analysis],
+        output_datasource: DataSource,
     ):
         """Batch enrichment resolves analysis_name and analysis_id for multiple schedules."""
         ds2 = DataSource(
@@ -223,7 +227,10 @@ class TestScheduleCrud:
         assert r2.analysis_name == sample_analyses[1].name
 
     def test_list_schedules_filter_by_datasource(
-        self, test_db_session: Session, sample_analyses: list[Analysis], output_datasource: DataSource
+        self,
+        test_db_session: Session,
+        sample_analyses: list[Analysis],
+        output_datasource: DataSource,
     ):
         # Create second output datasource for filtering test
         ds2 = DataSource(
@@ -508,8 +515,8 @@ class TestGetBuildOrder:
                             'filename': 'scheduled_source',
                         },
                         'steps': [],
-                    }
-                ]
+                    },
+                ],
             },
             status=AnalysisStatus.DRAFT,
             created_at=now,
@@ -541,8 +548,8 @@ class TestGetBuildOrder:
                             'filename': 'scheduled_source',
                         },
                         'steps': [],
-                    }
-                ]
+                    },
+                ],
             },
             status=AnalysisStatus.DRAFT,
             created_at=now,
@@ -621,7 +628,12 @@ class TestRunAnalysisBuild:
     @patch('modules.compute.service.preview_step')
     @patch('modules.compute.service.export_data')
     def test_export_failure_captured(
-        self, mock_export, mock_preview, mock_notify, test_db_session: Session, analysis_with_output: Analysis
+        self,
+        mock_export,
+        mock_preview,
+        mock_notify,
+        test_db_session: Session,
+        analysis_with_output: Analysis,
     ):
         """Failed export should be recorded but not crash the build; other tabs still run."""
         call_count = {'i': 0}
@@ -630,7 +642,6 @@ class TestRunAnalysisBuild:
             call_count['i'] += 1
             if call_count['i'] == 1:
                 raise RuntimeError('Export failed')
-            return None
 
         mock_export.side_effect = _side_effect
         mock_preview.return_value = None
@@ -647,7 +658,12 @@ class TestRunAnalysisBuild:
     @patch('modules.compute.service.preview_step')
     @patch('modules.compute.service.export_data')
     def test_export_called_only_for_output_tabs(
-        self, mock_export, mock_preview, mock_notify, test_db_session: Session, analysis_with_output: Analysis
+        self,
+        mock_export,
+        mock_preview,
+        mock_notify,
+        test_db_session: Session,
+        analysis_with_output: Analysis,
     ):
         """export_data is called for tabs with output config."""
         mock_export.return_value = None
@@ -662,7 +678,12 @@ class TestRunAnalysisBuild:
     @patch('modules.compute.service.preview_step')
     @patch('modules.compute.service.export_data')
     def test_build_only_matching_datasource_tab(
-        self, mock_export, mock_preview, mock_notify, test_db_session: Session, sample_datasource: DataSource
+        self,
+        mock_export,
+        mock_preview,
+        mock_notify,
+        test_db_session: Session,
+        sample_datasource: DataSource,
     ):
         """When datasource_id is provided, only the tab with that output runs."""
         other_ds_id = str(uuid.uuid4())
@@ -670,7 +691,7 @@ class TestRunAnalysisBuild:
         output_b = str(uuid.uuid4())
         analysis_id = str(uuid.uuid4())
         now = datetime.now(UTC)
-        pipeline: AnalysisPipelineDefinition = {
+        pipeline: dict[str, Any] = {
             'tabs': [
                 {
                     'id': 'tab-a',
@@ -792,7 +813,7 @@ class TestExecuteSchedule:
 
         runs = (
             test_db_session.execute(
-                select(EngineRun).where(EngineRun.datasource_id == sample_datasource.id)  # type: ignore[arg-type]
+                select(EngineRun).where(EngineRun.datasource_id == sample_datasource.id),  # type: ignore[arg-type]
             )
             .scalars()
             .all()
@@ -932,7 +953,11 @@ class TestScheduleRoutes:
         assert response.status_code == 404
 
     def test_list_filtered_by_datasource_id(
-        self, client, test_db_session: Session, sample_analysis: Analysis, output_datasource: DataSource
+        self,
+        client,
+        test_db_session: Session,
+        sample_analysis: Analysis,
+        output_datasource: DataSource,
     ):
         ds_id = output_datasource.id
         # Create a second output datasource

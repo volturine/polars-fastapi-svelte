@@ -29,7 +29,11 @@
 	import { getStepSchema, type StepSchemaResponse } from '$lib/api/compute';
 	import { track } from '$lib/utils/audit-log';
 	import { normalizeConfig } from '$lib/utils/step-config-defaults';
-	import type { NotificationConfigData, AIConfigData } from '$lib/types/operation-config';
+	import type {
+		NotificationConfigData,
+		AIConfigData,
+		OperationConfig
+	} from '$lib/types/operation-config';
 	import { buildAnalysisPipelinePayload } from '$lib/utils/analysis-pipeline';
 	import { applySteps } from '$lib/utils/pipeline';
 	import { hashPipeline } from '$lib/utils/hash';
@@ -95,7 +99,7 @@
 	const stepLabel = $derived(step ? getStepTypeConfig(step.type).label : '');
 	let fetchingPivotSchema = $state(false);
 	let draftStepId = $state<string | null>(null);
-	let draftConfig = $state<Record<string, unknown>>({});
+	let draftConfig = $state<OperationConfig | Record<string, unknown>>({});
 	// True when draftConfig has been synchronized with the current step.
 	// Prevents config components from rendering with stale/empty config before
 	// the $effect below runs (which fires after the first render frame).
@@ -370,79 +374,53 @@
 					<p class={css({ margin: '0', fontSize: 'xs' })}>Loading schema...</p>
 				</div>
 			{:else if step.type === 'filter'}
-				<FilterConfig
-					schema={inputSchema}
-					bind:config={draftConfig as unknown as FilterConfigData}
-				/>
+				<FilterConfig schema={inputSchema} bind:config={draftConfig as FilterConfigData} />
 			{:else if step.type === 'select'}
-				<SelectConfig
-					schema={inputSchema}
-					bind:config={draftConfig as unknown as SelectConfigData}
-				/>
+				<SelectConfig schema={inputSchema} bind:config={draftConfig as SelectConfigData} />
 			{:else if step.type === 'groupby'}
-				<GroupByConfig
-					schema={inputSchema}
-					bind:config={draftConfig as unknown as GroupByConfigData}
-				/>
+				<GroupByConfig schema={inputSchema} bind:config={draftConfig as GroupByConfigData} />
 			{:else if step.type === 'sort'}
-				<SortConfig schema={inputSchema} bind:config={draftConfig as unknown as SortConfigData} />
+				<SortConfig schema={inputSchema} bind:config={draftConfig as SortConfigData} />
 			{:else if step.type === 'rename'}
-				<RenameConfig
-					schema={inputSchema}
-					bind:config={draftConfig as unknown as RenameConfigData}
-				/>
+				<RenameConfig schema={inputSchema} bind:config={draftConfig as RenameConfigData} />
 			{:else if step.type === 'drop'}
-				<DropConfig schema={inputSchema} bind:config={draftConfig as unknown as DropConfigData} />
+				<DropConfig schema={inputSchema} bind:config={draftConfig as DropConfigData} />
 			{:else if step.type === 'join'}
-				<JoinConfig schema={inputSchema} bind:config={draftConfig as unknown as JoinConfigData} />
+				<JoinConfig schema={inputSchema} bind:config={draftConfig as JoinConfigData} />
 			{:else if step.type === 'expression'}
-				<ExpressionConfig
-					schema={inputSchema}
-					bind:config={draftConfig as unknown as ExpressionConfigData}
-				/>
+				<ExpressionConfig schema={inputSchema} bind:config={draftConfig as ExpressionConfigData} />
 			{:else if step.type === 'with_columns'}
 				<WithColumnsConfig
 					schema={inputSchema}
-					bind:config={draftConfig as unknown as WithColumnsConfigShape}
+					bind:config={draftConfig as WithColumnsConfigShape}
 				/>
 			{:else if step.type === 'deduplicate'}
 				<DeduplicateConfig
 					schema={inputSchema}
-					bind:config={draftConfig as unknown as DeduplicateConfigData}
+					bind:config={draftConfig as DeduplicateConfigData}
 				/>
 			{:else if step.type === 'fill_null'}
-				<FillNullConfig
-					schema={inputSchema}
-					bind:config={draftConfig as unknown as FillNullConfigData}
-				/>
+				<FillNullConfig schema={inputSchema} bind:config={draftConfig as FillNullConfigData} />
 			{:else if step.type === 'explode'}
-				<ExplodeConfig
-					schema={inputSchema}
-					bind:config={draftConfig as unknown as ExplodeConfigData}
-				/>
+				<ExplodeConfig schema={inputSchema} bind:config={draftConfig as ExplodeConfigData} />
 			{:else if step.type === 'pivot'}
 				<PivotConfig
 					schema={inputSchema}
-					bind:config={draftConfig as unknown as PivotConfigData}
+					bind:config={draftConfig as PivotConfigData}
 					onRefreshSchema={handleRefreshPivotSchema}
 					isRefreshing={fetchingPivotSchema}
 				/>
 			{:else if step.type === 'timeseries'}
-				<TimeSeriesConfig
-					schema={inputSchema}
-					bind:config={draftConfig as unknown as TimeSeriesConfigData}
-				/>
+				<TimeSeriesConfig schema={inputSchema} bind:config={draftConfig as TimeSeriesConfigData} />
 			{:else if step.type === 'string_transform'}
 				<StringMethodsConfig
 					schema={inputSchema}
-					bind:config={draftConfig as unknown as StringMethodsConfigData}
+					bind:config={draftConfig as StringMethodsConfigData}
 				/>
 			{:else if step.type === 'view'}
-				<ViewConfig schema={inputSchema} bind:config={draftConfig as unknown as ViewConfigData} />
+				<ViewConfig schema={inputSchema} bind:config={draftConfig as ViewConfigData} />
 			{:else if step.type === 'download'}
-				<DownloadConfig
-					bind:config={draftConfig as unknown as { format: string; filename: string }}
-				/>
+				<DownloadConfig bind:config={draftConfig as { format: string; filename: string }} />
 			{:else if step.type === 'datasource'}
 				<div class={css({ backgroundColor: 'bg.primary', padding: '10', textAlign: 'center' })}>
 					<p class={css({ margin: '0', fontSize: 'xs', color: 'fg.muted' })}>
@@ -450,31 +428,28 @@
 					</p>
 				</div>
 			{:else if step.type === 'sample'}
-				<SampleConfig bind:config={draftConfig as unknown as SampleConfigData} />
+				<SampleConfig bind:config={draftConfig as SampleConfigData} />
 			{:else if step.type === 'limit'}
-				<LimitConfig bind:config={draftConfig as unknown as LimitConfigData} />
+				<LimitConfig bind:config={draftConfig as LimitConfigData} />
 			{:else if step.type === 'topk'}
-				<TopKConfig schema={inputSchema} bind:config={draftConfig as unknown as TopKConfigData} />
+				<TopKConfig schema={inputSchema} bind:config={draftConfig as TopKConfigData} />
 			{:else if step.type === 'unpivot'}
-				<UnpivotConfig
-					schema={inputSchema}
-					bind:config={draftConfig as unknown as UnpivotConfigData}
-				/>
+				<UnpivotConfig schema={inputSchema} bind:config={draftConfig as UnpivotConfigData} />
 			{:else if step.type === 'union_by_name'}
 				<UnionByNameConfig
 					schema={inputSchema}
-					bind:config={draftConfig as unknown as { sources: string[]; allow_missing: boolean }}
+					bind:config={draftConfig as { sources: string[]; allow_missing: boolean }}
 				/>
 			{:else if step.type === 'chart'}
 				<PlotConfig schema={inputSchema} bind:config={draftConfig} />
 			{:else if step.type === 'notification'}
 				<NotificationConfig
 					schema={inputSchema}
-					bind:config={draftConfig as unknown as NotificationConfigData}
+					bind:config={draftConfig as NotificationConfigData}
 					{configFlags}
 				/>
 			{:else if step.type === 'ai'}
-				<AIConfig schema={inputSchema} bind:config={draftConfig as unknown as AIConfigData} />
+				<AIConfig schema={inputSchema} bind:config={draftConfig as AIConfigData} />
 			{:else}
 				<div class={css({ backgroundColor: 'bg.primary', padding: '10', textAlign: 'center' })}>
 					<p class={css({ margin: '0', marginBottom: '4', fontSize: 'xs', color: 'fg.muted' })}>

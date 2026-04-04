@@ -24,7 +24,7 @@ def _frame() -> pl.LazyFrame:
             'name': ['Alice', 'Bob', 'Charlie'],
             'age': [30, 25, 40],
             'group': ['a', 'a', 'b'],
-        }
+        },
     )
     return frame.with_columns(
         pl.datetime(2024, 1, 1).alias('date'),
@@ -82,7 +82,7 @@ def test_filter_handler_contains_list_or():
                     'operator': 'contains',
                     'value': ['Ali', 'Bob'],
                     'value_type': 'string',
-                }
+                },
             ],
             'logic': 'AND',
         },
@@ -101,7 +101,7 @@ def test_filter_handler_equals_list_or():
                     'operator': '=',
                     'value': ['a', 'b'],
                     'value_type': 'string',
-                }
+                },
             ],
             'logic': 'AND',
         },
@@ -120,7 +120,7 @@ def test_filter_handler_not_contains_list_and():
                     'operator': 'not_contains',
                     'value': ['Ali', 'Bob'],
                     'value_type': 'string',
-                }
+                },
             ],
             'logic': 'AND',
         },
@@ -139,7 +139,7 @@ def test_filter_handler_in_list():
                     'operator': 'in',
                     'value': ['a'],
                     'value_type': 'string',
-                }
+                },
             ],
             'logic': 'AND',
         },
@@ -158,7 +158,7 @@ def test_filter_handler_not_in_list():
                     'operator': 'not_in',
                     'value': ['a'],
                     'value_type': 'string',
-                }
+                },
             ],
             'logic': 'AND',
         },
@@ -177,7 +177,7 @@ def test_filter_handler_empty_regex():
                     'operator': 'regex',
                     'value': '',
                     'value_type': 'string',
-                }
+                },
             ],
             'logic': 'AND',
         },
@@ -197,7 +197,7 @@ def test_filter_handler_placeholder_conditions_are_noop() -> None:
                     'operator': '=',
                     'value': '',
                     'value_type': 'string',
-                }
+                },
             ],
             'logic': 'AND',
         },
@@ -496,8 +496,8 @@ def test_with_columns_zero_arg_udf_uses_row_count(monkeypatch: pytest.MonkeyPatc
                     'name': 'udf_col',
                     'type': 'udf',
                     'code': 'def udf():\n    return 1',
-                }
-            ]
+                },
+            ],
         },
     )
 

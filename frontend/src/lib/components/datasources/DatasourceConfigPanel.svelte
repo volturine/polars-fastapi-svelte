@@ -24,6 +24,8 @@
 	} from 'lucide-svelte';
 	import type {
 		DataSource,
+		FileDataSource,
+		IcebergDataSource,
 		SchemaInfo,
 		ColumnSchema,
 		FileDataSourceConfig,
@@ -254,14 +256,12 @@
 
 	function getFileSource(ds: DataSource): FileDataSourceConfig | null {
 		if (ds.source_type === 'file') {
-			return ds.config as unknown as FileDataSourceConfig;
+			return ds.config;
 		}
 		if (ds.source_type === 'iceberg') {
-			const source = (ds.config as Record<string, unknown>)?.source as
-				| Record<string, unknown>
-				| undefined;
+			const source = ds.config.source as Record<string, unknown> | undefined;
 			if (source?.source_type === 'file') {
-				return source as unknown as FileDataSourceConfig;
+				return source as FileDataSourceConfig;
 			}
 		}
 		return null;
@@ -728,7 +728,7 @@
 									})}>Type</span
 								>
 								{#if isFile(ds)}
-									{@const config = ds.config as unknown as FileDataSourceConfig}
+									{@const config = (ds as FileDataSource).config}
 									<FileTypeBadge path={config.file_path} size="sm" />
 								{:else}
 									<FileTypeBadge sourceType={ds.source_type} size="sm" />
@@ -807,7 +807,7 @@
 						</div>
 
 						{#if isFile(ds)}
-							{@const config = ds.config as unknown as FileDataSourceConfig}
+							{@const config = (ds as FileDataSource).config}
 							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 								<span
 									class={css({
@@ -849,7 +849,7 @@
 						{/if}
 
 						{#if isIceberg(ds)}
-							{@const config = ds.config as unknown as IcebergDataSourceConfig}
+							{@const config = (ds as IcebergDataSource).config}
 							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 								<span
 									class={css({

@@ -270,8 +270,7 @@ async def health() -> dict[str, str]:
 
 @app.get('/health/ready')
 async def readiness(request: Request, session: Session = Depends(get_settings_db)) -> JSONResponse:
-    """
-    Readiness check - verifies app can handle requests.
+    """Readiness check - verifies app can handle requests.
     Checks database connectivity, engine manager, and filesystem.
     """
     checks = {}
@@ -282,7 +281,7 @@ async def readiness(request: Request, session: Session = Depends(get_settings_db
         session.execute(text('SELECT 1'))
         checks['database'] = 'ok'
     except Exception as e:
-        checks['database'] = f'error: {str(e)}'
+        checks['database'] = f'error: {e!s}'
         is_ready = False
 
     # Check engine manager
@@ -292,7 +291,7 @@ async def readiness(request: Request, session: Session = Depends(get_settings_db
         checks['engine_manager'] = 'ok'
         checks['active_engines'] = str(engine_count)
     except Exception as e:
-        checks['engine_manager'] = f'error: {str(e)}'
+        checks['engine_manager'] = f'error: {e!s}'
         is_ready = False
 
     # Check filesystem (data directories)
@@ -305,7 +304,7 @@ async def readiness(request: Request, session: Session = Depends(get_settings_db
         if not all(d.exists() for d in [paths.upload_dir, paths.clean_dir, paths.exports_dir]):
             is_ready = False
     except Exception as e:
-        checks['filesystem'] = f'error: {str(e)}'
+        checks['filesystem'] = f'error: {e!s}'
         is_ready = False
 
     status_code = 200 if is_ready else 503
@@ -314,8 +313,7 @@ async def readiness(request: Request, session: Session = Depends(get_settings_db
 
 @app.get('/health/startup')
 async def startup() -> dict[str, str]:
-    """
-    Startup probe - quick check for container startup.
+    """Startup probe - quick check for container startup.
     Returns 200 when app is initialized and ready to accept traffic.
     """
     try:

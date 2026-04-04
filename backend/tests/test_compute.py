@@ -87,7 +87,7 @@ class TestComputePreview:
                                 'config': {'columns': ['name', 'age']},
                             },
                         ],
-                    }
+                    },
                 ],
                 'sources': {
                     sample_datasource.id: {
@@ -157,9 +157,9 @@ class TestComputePreview:
                                 'id': 'step1',
                                 'type': 'filter',
                                 'config': {'column': 'age', 'operator': '>', 'value': 25},
-                            }
+                            },
                         ],
-                    }
+                    },
                 ],
                 'sources': {
                     sample_datasource.id: {
@@ -247,9 +247,9 @@ class TestComputePreview:
                                 'id': 'step1',
                                 'type': 'invalid_operation',
                                 'config': {},
-                            }
+                            },
                         ],
-                    }
+                    },
                 ],
                 'sources': {
                     sample_datasource.id: {
@@ -308,7 +308,7 @@ class TestComputePreview:
                             'filename': 'out',
                         },
                         'steps': [],
-                    }
+                    },
                 ],
                 'sources': {
                     missing_id: {
@@ -352,7 +352,7 @@ class TestComputePreview:
                             {'id': 'step2', 'type': 'select', 'config': {}},
                             {'id': 'step3', 'type': 'sort', 'config': {}},
                         ],
-                    }
+                    },
                 ],
                 'sources': {
                     sample_datasource.id: {
@@ -413,9 +413,9 @@ class TestComputePreview:
                                 'id': 'step1',
                                 'type': 'filter',
                                 'config': {'column': 'age', 'operator': '>', 'value': 25},
-                            }
+                            },
                         ],
-                    }
+                    },
                 ],
                 'sources': {
                     sample_datasource.id: {
@@ -497,9 +497,9 @@ class TestComputeExport:
                                 'id': 'step1',
                                 'type': 'select',
                                 'config': {'columns': ['name']},
-                            }
+                            },
                         ],
-                    }
+                    },
                 ],
                 'sources': {
                     sample_datasource.id: {
@@ -581,9 +581,9 @@ class TestComputeRowCount:
                                 'id': 'step1',
                                 'type': 'select',
                                 'config': {'columns': ['name']},
-                            }
+                            },
                         ],
-                    }
+                    },
                 ],
                 'sources': {
                     sample_datasource.id: {
@@ -983,7 +983,7 @@ class TestBuildAnalysisPipelinePayloadDerived:
                         'output': {'result_id': tab2_result_id, 'format': 'parquet', 'filename': 'derived'},
                         'steps': [],
                     },
-                ]
+                ],
             },
             status=AnalysisStatus.DRAFT,
         )

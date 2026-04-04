@@ -1,10 +1,9 @@
 """Extended tests for analysis module."""
 
 import uuid
-from typing import cast
+from typing import Any, cast
 
 from modules.analysis.models import Analysis
-from modules.analysis.pipeline_types import AnalysisPipelineStep
 from modules.analysis.step_types import StepType
 from modules.datasource.models import DataSource
 
@@ -33,7 +32,7 @@ class TestAnalysisValidation:
                         'filename': 'source_a',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 
@@ -63,7 +62,7 @@ class TestAnalysisValidation:
                         'filename': 'source_b',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 
@@ -93,7 +92,7 @@ class TestAnalysisValidation:
                         'filename': 'source_c',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 
@@ -124,7 +123,7 @@ class TestAnalysisValidation:
                         'filename': 'source_d',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 
@@ -157,7 +156,7 @@ class TestAnalysisValidation:
                         'filename': 'source_e',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 
@@ -206,7 +205,7 @@ class TestAnalysisPipeline:
                         'filename': 'source_f',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 
@@ -254,7 +253,7 @@ class TestAnalysisPipeline:
                             'depends_on': ['step2'],
                         },
                     ],
-                }
+                },
             ],
         }
 
@@ -266,13 +265,13 @@ class TestAnalysisPipeline:
 
     def test_update_analysis_pipeline(self, client, sample_analysis: Analysis):
         """Test updating analysis pipeline."""
-        new_steps: list[AnalysisPipelineStep] = [
+        new_steps: list[dict[str, Any]] = [
             {
                 'id': 'new_step',
                 'type': cast(StepType, 'filter'),
                 'config': {'column': 'id', 'operator': '=', 'value': 1},
                 'depends_on': [],
-            }
+            },
         ]
         tabs = sample_analysis.pipeline_definition['tabs']
         tabs[0]['steps'] = new_steps
@@ -311,7 +310,7 @@ class TestAnalysisPipeline:
                         {'id': 'step1', 'type': 'filter', 'config': {}, 'depends_on': ['step2']},
                         {'id': 'step2', 'type': 'filter', 'config': {}, 'depends_on': ['step1']},
                     ],
-                }
+                },
             ],
         }
 
@@ -446,7 +445,7 @@ class TestAnalysisMetadata:
                         'filename': 'source_i',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 

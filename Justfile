@@ -10,6 +10,13 @@ install:
     @echo "Installing frontend dependencies..."
     cd frontend && bun install
 
+# Update dependencies to latest available versions
+update-deps:
+    @echo "Updating backend dependencies to latest..."
+    cd backend && uv lock --upgrade && uv sync
+    @echo "Updating frontend dependencies to latest..."
+    cd frontend && bun update --latest
+
 # Run development servers concurrently
 dev:
     @echo "Starting servers..."

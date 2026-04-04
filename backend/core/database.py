@@ -151,9 +151,7 @@ def _run_settings_migrations(db_engine: Engine) -> None:
         if 'huggingface_api_token' not in settings_columns:
             pending.append("ALTER TABLE app_settings ADD COLUMN huggingface_api_token TEXT NOT NULL DEFAULT ''")
         if 'huggingface_default_model' not in settings_columns:
-            pending.append(
-                "ALTER TABLE app_settings ADD COLUMN huggingface_default_model TEXT NOT NULL DEFAULT 'google/flan-t5-base'"
-            )
+            pending.append("ALTER TABLE app_settings ADD COLUMN huggingface_default_model TEXT NOT NULL DEFAULT 'google/flan-t5-base'")
         if 'env_bootstrap_complete' not in settings_columns:
             pending.append('ALTER TABLE app_settings ADD COLUMN env_bootstrap_complete BOOLEAN NOT NULL DEFAULT 1')
 

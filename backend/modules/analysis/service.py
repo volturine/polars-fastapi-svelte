@@ -1,6 +1,6 @@
 import uuid
 from datetime import UTC, datetime
-from typing import cast
+from typing import Any, cast
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import defer
@@ -9,7 +9,7 @@ from sqlmodel import Session, col
 
 from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError
 from modules.analysis.models import Analysis, AnalysisDataSource, AnalysisStatus
-from modules.analysis.pipeline_types import AnalysisPipelineDefinition, AnalysisPipelineStep, AnalysisTab
+from modules.analysis.pipeline_types import PipelineDefinition, PipelineStep, PipelineTab, TabDatasource, TabOutput
 from modules.analysis.schemas import (
     AnalysisCreateSchema,
     AnalysisGalleryItemSchema,
@@ -26,78 +26,59 @@ def _to_response(analysis: Analysis) -> AnalysisResponseSchema:
     return AnalysisResponseSchema.model_validate(analysis)
 
 
-def _find_tab(tabs: list[AnalysisTab], tab_id: str) -> AnalysisTab:
-    """Find a tab by ID or raise ValueError."""
-    tab = next((t for t in tabs if t.get('id') == tab_id), None)
-    if not tab:
-        raise ValueError(f'Tab {tab_id} not found')
-    return tab
-
-
 def _validate_analysis_payload(
     session: Session,  # type: ignore[type-arg]
     data: AnalysisCreateSchema | AnalysisUpdateSchema,
     analysis_id: str | None = None,
-) -> tuple[list[AnalysisTab], list[str]]:
+) -> tuple[list[PipelineTab], list[str]]:
     if not data.tabs:
         raise ValueError('Analysis requires at least one tab')
-    tabs_payload = cast(list[AnalysisTab], [tab.model_dump() for tab in data.tabs])
+    tabs_payload = [PipelineTab.from_dict(tab.model_dump()) for tab in data.tabs]
     for tab in tabs_payload:
-        output = tab['output']
-        output_id = output['result_id']
-        if not output_id:
+        if not tab.output.result_id:
             raise ValueError('Analysis tab missing output.result_id')
-        if not output['filename']:
+        if not tab.output.filename:
             raise ValueError('Analysis tab missing output.filename')
-        if not output['format']:
+        if not tab.output.format:
             raise ValueError('Analysis tab missing output.format')
 
-    tab_output_map = {
-        str(tab.get('id')): str((tab.get('output') or {}).get('result_id') or '')
-        for tab in tabs_payload
-        if tab.get('id') and (tab.get('output') or {}).get('result_id')
-    }
-
-    datasource_ids = []
+    tab_output_map: dict[str, str] = {}
     for tab in tabs_payload:
-        datasource = tab.get('datasource')
-        if not isinstance(datasource, dict):
-            raise ValueError('Analysis tab datasource must be a dict')
-        config = datasource.get('config')
-        if not isinstance(config, dict):
-            raise ValueError('Analysis tab datasource.config must be a dict')
-        branch = config.get('branch')
+        if tab.id and tab.output.result_id:
+            tab_output_map[tab.id] = tab.output.result_id
+
+    datasource_ids: list[str] = []
+    for tab in tabs_payload:
+        ds = tab.datasource
+        branch = ds.config.get('branch')
         if not isinstance(branch, str) or not branch.strip():
             raise ValueError('Analysis tab datasource.config.branch is required')
-        config['branch'] = branch.strip()
-        datasource['config'] = config
-        tab['datasource'] = datasource
-        datasource_id = datasource.get('id')
-        if not datasource_id:
+        ds.config['branch'] = branch.strip()
+
+        if not ds.id:
             raise ValueError('Analysis tab missing datasource.id')
-        analysis_tab_id = datasource.get('analysis_tab_id')
-        if analysis_tab_id is not None:
-            expected = tab_output_map.get(str(analysis_tab_id))
-            if expected != str(datasource_id):
-                raise ValueError(f"Datasource id '{datasource_id}' does not match output.result_id of tab '{analysis_tab_id}'")
-            datasource_ids.append(str(datasource_id))
+
+        if ds.analysis_tab_id is not None:
+            expected = tab_output_map.get(str(ds.analysis_tab_id))
+            if expected != ds.id:
+                raise ValueError(f"Datasource id '{ds.id}' does not match output.result_id of tab '{ds.analysis_tab_id}'")
+            datasource_ids.append(ds.id)
             continue
-        datasource_row = session.get(DataSource, datasource_id)
+        datasource_row = session.get(DataSource, ds.id)
         if datasource_row:
-            datasource_ids.append(str(datasource_id))
+            datasource_ids.append(ds.id)
             if datasource_row.source_type == 'analysis' and analysis_id:
                 source_id = _get_analysis_source_id(datasource_row)
                 _ensure_no_cycle(session, analysis_id, source_id)
             continue
-        raise DataSourceNotFoundError(str(datasource_id))
+        raise DataSourceNotFoundError(ds.id)
 
-    tab_ids = {str(tab['id']) for tab in tabs_payload if tab['id']}
+    tab_ids = {tab.id for tab in tabs_payload if tab.id}
 
-    # Collect all source references from step configs (union sources, join right_source)
     referenced_source_ids: set[str] = set()
     for tab in tabs_payload:
-        for step in tab['steps']:
-            cfg = step['config']
+        for step in tab.steps:
+            cfg = step.config
             rs = cfg.get('right_source')
             if isinstance(rs, str) and rs:
                 referenced_source_ids.add(rs)
@@ -107,7 +88,6 @@ def _validate_analysis_payload(
                     if isinstance(src, str) and src:
                         referenced_source_ids.add(src)
 
-    # Validate referenced sources exist as tab IDs or datasources in the DB
     unknown = referenced_source_ids - tab_ids
     for src_id in unknown:
         if not session.get(DataSource, src_id):
@@ -115,19 +95,13 @@ def _validate_analysis_payload(
         datasource_ids.append(src_id)
 
     for tab in tabs_payload:
-        steps = tab['steps']
         step_ids: set[str] = set()
-        for step in steps:
-            step_type = step['type']
-            config = step['config']
-            validate_step(str(step_type), config)
-
-            step_id = step['id']
-            if step_id:
-                step_ids.add(str(step_id))
-
-            for dep_id in step['depends_on']:
-                if str(dep_id) not in step_ids:
+        for step in tab.steps:
+            validate_step(step.type, step.config)
+            if step.id:
+                step_ids.add(step.id)
+            for dep_id in step.depends_on:
+                if dep_id not in step_ids:
                     raise ValueError(f"Step depends on unknown step '{dep_id}'")
 
     return tabs_payload, datasource_ids
@@ -136,10 +110,10 @@ def _validate_analysis_payload(
 def validate_analysis(
     session: Session,  # type: ignore[type-arg]
     data: AnalysisCreateSchema,
-) -> dict:
+) -> dict[str, Any]:
     """Validate analysis payload without persisting."""
     tabs_payload, _ = _validate_analysis_payload(session, data)
-    return {'valid': True, 'payload': {'tabs': tabs_payload}}
+    return {'valid': True, 'payload': {'tabs': [t.to_dict() for t in tabs_payload]}}
 
 
 def create_analysis(
@@ -151,9 +125,7 @@ def create_analysis(
 
     tabs_payload, datasource_ids = _validate_analysis_payload(session, data, analysis_id)
 
-    pipeline_definition: AnalysisPipelineDefinition = {
-        'tabs': tabs_payload,
-    }
+    pipeline_definition = PipelineDefinition(tabs=tabs_payload).to_dict()
 
     now = datetime.now(UTC).replace(tzinfo=None)
     analysis = Analysis(
@@ -233,7 +205,7 @@ def update_analysis(
 
     if data.tabs is not None:
         tabs_payload, datasource_ids = _validate_analysis_payload(session, data, analysis_id)
-        analysis.pipeline_definition = {'tabs': tabs_payload}
+        analysis.pipeline_definition = PipelineDefinition(tabs=tabs_payload).to_dict()
 
         session.execute(delete(AnalysisDataSource).where(col(AnalysisDataSource.analysis_id) == analysis_id))
         for ds_id in set(datasource_ids):
@@ -241,7 +213,7 @@ def update_analysis(
                 AnalysisDataSource(
                     analysis_id=analysis_id,
                     datasource_id=ds_id,
-                )
+                ),
             )
 
     if data.status is not None:
@@ -267,7 +239,7 @@ def delete_analysis(
 
     created_datasources = (
         session.execute(
-            select(DataSource).where(col(DataSource.created_by_analysis_id) == analysis_id)  # type: ignore[arg-type]
+            select(DataSource).where(col(DataSource.created_by_analysis_id) == analysis_id),  # type: ignore[arg-type]
         )
         .scalars()
         .all()
@@ -309,7 +281,7 @@ def _detect_cycle(session: Session, analysis_id: str, source_analysis_id: str) -
         visited.add(target_id)
         links = (
             session.execute(
-                select(AnalysisDataSource).where(col(AnalysisDataSource.analysis_id) == target_id)  # type: ignore[arg-type]
+                select(AnalysisDataSource).where(col(AnalysisDataSource.analysis_id) == target_id),  # type: ignore[arg-type]
             )
             .scalars()
             .all()
@@ -335,26 +307,26 @@ def add_step(
     analysis_id: str,
     tab_id: str,
     step_type: str,
-    config: dict,
+    config: dict[str, object],
     position: int | None = None,
     depends_on: list[str] | None = None,
-) -> AnalysisPipelineStep:
+) -> PipelineStep:
     analysis = session.get(Analysis, analysis_id)
     if not analysis:
         raise AnalysisNotFoundError(analysis_id)
 
     version_service.create_version(session, analysis, commit=False)
 
-    tabs = analysis.pipeline_definition.get('tabs', [])
-    tab = _find_tab(tabs, tab_id)
+    pipeline = analysis.pipeline
+    tab = pipeline.find_tab(tab_id)
 
-    existing_step_ids = {str(s.get('id')) for s in tab.get('steps', []) if s.get('id')}
+    existing_step_ids = {s.id for s in tab.steps if s.id}
     for dep_id in depends_on or []:
-        if str(dep_id) not in existing_step_ids:
+        if dep_id not in existing_step_ids:
             raise ValueError(f"depends_on references unknown step '{dep_id}'")
 
-    tab_ids = {str(t.get('id')) for t in tabs if t.get('id')}
-    ds_ids = {str(t['datasource']['id']) for t in tabs if isinstance(t.get('datasource'), dict) and t['datasource'].get('id')}
+    tab_ids = {t.id for t in pipeline.tabs if t.id}
+    ds_ids = {t.datasource.id for t in pipeline.tabs if t.datasource.id}
     valid_source_ids = tab_ids | ds_ids
 
     def _is_valid_source(src_id: str) -> bool:
@@ -371,22 +343,21 @@ def add_step(
             if isinstance(src, str) and not _is_valid_source(src):
                 raise ValueError(f"Step references unknown source '{src}'")
 
-    step_id = str(uuid.uuid4())
-    step: AnalysisPipelineStep = {
-        'id': step_id,
-        'type': cast(StepType, step_type),
-        'config': config,
-        'depends_on': depends_on or [],
-        'is_applied': True,
-    }
+    step = PipelineStep(
+        id=str(uuid.uuid4()),
+        type=cast(StepType, step_type),
+        config=config,
+        depends_on=depends_on or [],
+        is_applied=True,
+    )
 
-    steps = tab['steps']
     if position is None:
-        steps.append(step)
+        tab.steps.append(step)
     else:
-        pos = max(0, min(position, len(steps)))
-        steps.insert(pos, step)
+        pos = max(0, min(position, len(tab.steps)))
+        tab.steps.insert(pos, step)
 
+    analysis.pipeline_definition = pipeline.to_dict()
     flag_modified(analysis, 'pipeline_definition')
     analysis.updated_at = datetime.now(UTC).replace(tzinfo=None)
     session.commit()
@@ -399,14 +370,14 @@ def get_step(
     analysis_id: str,
     tab_id: str,
     step_id: str,
-) -> AnalysisPipelineStep:
+) -> PipelineStep:
     """Get a step by ID from an analysis tab."""
     analysis = session.get(Analysis, analysis_id)
     if not analysis:
         raise AnalysisNotFoundError(analysis_id)
-    tabs = analysis.pipeline_definition.get('tabs', [])
-    tab = _find_tab(tabs, tab_id)
-    step = next((s for s in tab['steps'] if s['id'] == step_id), None)
+    pipeline = analysis.pipeline
+    tab = pipeline.find_tab(tab_id)
+    step = next((s for s in tab.steps if s.id == step_id), None)
     if not step:
         raise ValueError(f'Step {step_id} not found')
     return step
@@ -417,27 +388,28 @@ def update_step(
     analysis_id: str,
     tab_id: str,
     step_id: str,
-    config: dict | None = None,
+    config: dict[str, object] | None = None,
     step_type: str | None = None,
-) -> AnalysisPipelineStep:
+) -> PipelineStep:
     analysis = session.get(Analysis, analysis_id)
     if not analysis:
         raise AnalysisNotFoundError(analysis_id)
 
     version_service.create_version(session, analysis, commit=False)
 
-    tabs = analysis.pipeline_definition.get('tabs', [])
-    tab = _find_tab(tabs, tab_id)
+    pipeline = analysis.pipeline
+    tab = pipeline.find_tab(tab_id)
 
-    step = next((s for s in tab['steps'] if s['id'] == step_id), None)
+    step = next((s for s in tab.steps if s.id == step_id), None)
     if not step:
         raise ValueError(f'Step {step_id} not found')
 
     if step_type is not None:
-        step['type'] = cast(StepType, step_type)
+        step.type = cast(StepType, step_type)
     if config is not None:
-        step['config'] = config
+        step.config = config
 
+    analysis.pipeline_definition = pipeline.to_dict()
     flag_modified(analysis, 'pipeline_definition')
     analysis.updated_at = datetime.now(UTC).replace(tzinfo=None)
     session.commit()
@@ -457,21 +429,20 @@ def remove_step(
 
     version_service.create_version(session, analysis, commit=False)
 
-    tabs = analysis.pipeline_definition.get('tabs', [])
-    tab = _find_tab(tabs, tab_id)
+    pipeline = analysis.pipeline
+    tab = pipeline.find_tab(tab_id)
 
-    steps = tab['steps']
-    idx = next((i for i, s in enumerate(steps) if s['id'] == step_id), None)
+    idx = next((i for i, s in enumerate(tab.steps) if s.id == step_id), None)
     if idx is None:
         raise ValueError(f'Step {step_id} not found')
 
-    steps.pop(idx)
+    tab.steps.pop(idx)
 
-    for s in steps:
-        deps = s['depends_on']
-        if step_id in deps:
-            deps.remove(step_id)
+    for s in tab.steps:
+        if step_id in s.depends_on:
+            s.depends_on.remove(step_id)
 
+    analysis.pipeline_definition = pipeline.to_dict()
     flag_modified(analysis, 'pipeline_definition')
     analysis.updated_at = datetime.now(UTC).replace(tzinfo=None)
     session.commit()
@@ -482,50 +453,48 @@ def derive_tab(
     analysis_id: str,
     tab_id: str,
     name: str | None = None,
-) -> AnalysisTab:
+) -> PipelineTab:
     """Create a new tab whose datasource is the given tab's output result_id."""
     analysis = session.get(Analysis, analysis_id)
     if not analysis:
         raise AnalysisNotFoundError(analysis_id)
 
-    tabs = analysis.pipeline_definition.get('tabs', [])
-    source = _find_tab(tabs, tab_id)
+    pipeline = analysis.pipeline
+    source = pipeline.find_tab(tab_id)
 
-    output = source['output']
-    result_id = output['result_id']
-    if not result_id:
+    if not source.output.result_id:
         raise ValueError(f'Tab {tab_id} has no output.result_id')
 
-    tab_name = name or f'Derived {len(tabs) + 1}'
-    new_tab_id = f'tab-{str(uuid.uuid4())}'
-    new_result_id = str(uuid.uuid4())
-    derived_step: AnalysisPipelineStep = {
-        'id': str(uuid.uuid4()),
-        'type': cast(StepType, 'view'),
-        'config': {'rowLimit': 100},
-        'depends_on': [],
-        'is_applied': True,
-    }
+    tab_name = name or f'Derived {len(pipeline.tabs) + 1}'
+    new_tab_id = f'tab-{uuid.uuid4()!s}'
 
-    new_tab: AnalysisTab = {
-        'id': new_tab_id,
-        'name': tab_name,
-        'parent_id': tab_id,
-        'datasource': {
-            'id': result_id,
-            'analysis_tab_id': tab_id,
-            'config': {'branch': 'master'},
-        },
-        'output': {
-            'result_id': new_result_id,
-            'format': output.get('format', 'parquet'),
-            'filename': tab_name,
-        },
-        'steps': [derived_step],
-    }
+    derived_step = PipelineStep(
+        id=str(uuid.uuid4()),
+        type=cast(StepType, 'view'),
+        config={'rowLimit': 100},
+        depends_on=[],
+        is_applied=True,
+    )
 
-    tabs.append(new_tab)
-    analysis.pipeline_definition['tabs'] = tabs
+    new_tab = PipelineTab(
+        id=new_tab_id,
+        name=tab_name,
+        parent_id=tab_id,
+        datasource=TabDatasource(
+            id=source.output.result_id,
+            config={'branch': 'master'},
+            analysis_tab_id=tab_id,
+        ),
+        output=TabOutput(
+            result_id=str(uuid.uuid4()),
+            format=source.output.format or 'parquet',
+            filename=tab_name,
+        ),
+        steps=[derived_step],
+    )
+
+    pipeline.tabs.append(new_tab)
+    analysis.pipeline_definition = pipeline.to_dict()
     flag_modified(analysis, 'pipeline_definition')
     analysis.updated_at = datetime.now(UTC).replace(tzinfo=None)
     session.commit()

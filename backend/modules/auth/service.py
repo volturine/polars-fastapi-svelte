@@ -57,7 +57,7 @@ def _clear_owned_resources(session: Session, user_id: str) -> None:
     from modules.udf.models import Udf
 
     tables = set(inspect(session.get_bind()).get_table_names())
-    ownership_models: dict[str, type[DataSource] | type[Analysis] | type[Udf]] = {
+    ownership_models: dict[str, type[DataSource | Analysis | Udf]] = {
         'datasources': DataSource,
         'analyses': Analysis,
         'udfs': Udf,
@@ -146,7 +146,7 @@ def _normalize_default_user_name(name: str, email: str) -> str:
     normalized = name.strip()
     if normalized:
         return normalized
-    return email.split('@')[0]
+    return email.split('@', maxsplit=1)[0]
 
 
 def _get_password_provider(session: Session, user_id: str) -> AuthProvider | None:
@@ -211,7 +211,7 @@ def ensure_default_user(session: Session) -> User:
                 provider_subject=user.email,
                 provider_metadata=_build_default_provider_metadata(desired_password),
                 created_at=now,
-            )
+            ),
         )
         session.commit()
         session.refresh(user)
@@ -469,7 +469,7 @@ def link_provider(
         select(AuthProvider).where(
             AuthProvider.provider == provider,
             AuthProvider.provider_subject == provider_subject,
-        )
+        ),
     ).first()
     if existing:
         if existing.user_id != user_id:
@@ -504,7 +504,7 @@ def find_or_create_oauth_user(
         select(AuthProvider).where(
             AuthProvider.provider == provider_name,
             AuthProvider.provider_subject == provider_subject,
-        )
+        ),
     ).first()
     if existing:
         user = get_user_by_id(session, existing.user_id)
@@ -730,7 +730,7 @@ def reset_password(session: Session, token: str, new_password: str) -> None:
     if not user:
         raise TokenInvalidError()
     provider = session.exec(
-        select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == _PASSWORD_PROVIDER)
+        select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == _PASSWORD_PROVIDER),
     ).first()
     if provider:
         provider.provider_metadata = {'password_hash': hash_password(new_password)}
@@ -744,7 +744,7 @@ def reset_password(session: Session, token: str, new_password: str) -> None:
                 provider_subject=user.email,
                 provider_metadata={'password_hash': hash_password(new_password)},
                 created_at=now,
-            )
+            ),
         )
     user.has_password = True
     user.updated_at = now

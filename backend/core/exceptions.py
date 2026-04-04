@@ -16,8 +16,6 @@ class AppError(Exception):
 class DataSourceError(AppError):
     """Base exception for datasource-related errors."""
 
-    pass
-
 
 class DataSourceNotFoundError(DataSourceError):
     """Raised when a datasource is not found."""
@@ -55,8 +53,6 @@ class DataSourceConnectionError(DataSourceError):
 class PipelineError(AppError):
     """Base exception for pipeline-related errors."""
 
-    pass
-
 
 class PipelineValidationError(PipelineError):
     """Raised when pipeline validation fails."""
@@ -93,8 +89,6 @@ class StepNotFoundError(PipelineError):
 class ComputeError(AppError):
     """Base exception for compute engine errors."""
 
-    pass
-
 
 class EngineNotFoundError(ComputeError):
     """Raised when an engine is not found."""
@@ -126,8 +120,6 @@ class EngineTimeoutError(ComputeError):
 # Job Exceptions
 class JobError(AppError):
     """Base exception for job-related errors."""
-
-    pass
 
 
 class JobNotFoundError(JobError):
@@ -166,8 +158,6 @@ class JobTimeoutError(JobError):
 # Analysis Exceptions
 class AnalysisError(AppError):
     """Base exception for analysis-related errors."""
-
-    pass
 
 
 class AnalysisNotFoundError(AnalysisError):
@@ -210,8 +200,6 @@ class AnalysisCycleError(AnalysisError):
 class FileError(AppError):
     """Base exception for file-related errors."""
 
-    pass
-
 
 class DataFileNotFoundError(FileError):
     """Raised when a file is not found."""
@@ -246,8 +234,6 @@ class FileSizeExceededError(FileError):
 class ExportError(AppError):
     """Base exception for export-related errors."""
 
-    pass
-
 
 class UnsupportedExportFormatError(ExportError):
     """Raised when an unsupported export format is requested."""
@@ -263,8 +249,6 @@ class UnsupportedExportFormatError(ExportError):
 # Schedule Exceptions
 class ScheduleError(AppError):
     """Base exception for schedule-related errors."""
-
-    pass
 
 
 class ScheduleValidationError(ScheduleError):
@@ -287,8 +271,6 @@ class ScheduleNotFoundError(ScheduleError):
 
 class AuthError(AppError):
     """Base exception for authentication errors."""
-
-    pass
 
 
 class InvalidCredentialsError(AuthError):
@@ -340,8 +322,6 @@ class TokenInvalidError(AuthError):
 class UdfError(AppError):
     """Base exception for UDF-related errors."""
 
-    pass
-
 
 class UdfNotFoundError(UdfError):
     """Raised when a UDF is not found."""
@@ -365,8 +345,6 @@ class UdfValidationError(UdfError):
 class HealthcheckError(AppError):
     """Base exception for healthcheck-related errors."""
 
-    pass
-
 
 class HealthcheckNotFoundError(HealthcheckError):
     """Raised when a healthcheck is not found."""
@@ -389,8 +367,6 @@ class HealthcheckValidationError(HealthcheckError):
 # Settings Exceptions
 class SettingsError(AppError):
     """Base exception for settings-related errors."""
-
-    pass
 
 
 class SettingsConfigurationError(SettingsError):

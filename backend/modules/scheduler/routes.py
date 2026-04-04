@@ -48,4 +48,3 @@ def update_schedule(schedule_id: ScheduleId, payload: schemas.ScheduleUpdate, se
 def delete_schedule(schedule_id: ScheduleId, session: Session = Depends(get_db)):
     """Delete a schedule by ID. Use GET /schedules to find schedule IDs."""
     service.delete_schedule(session, parse_schedule_id(schedule_id))
-    return None

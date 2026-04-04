@@ -29,7 +29,7 @@ _DANGEROUS_BUILTINS = frozenset(
         'delattr',
         'vars',
         'dir',
-    }
+    },
 )
 _SAFE_BUILTINS: dict[str, Any] = {name: getattr(builtins, name) for name in dir(builtins) if name not in _DANGEROUS_BUILTINS}
 

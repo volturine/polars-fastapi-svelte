@@ -219,7 +219,9 @@
 		testingSmtp = false;
 	}
 
-	async function handleTestAIProvider(provider: 'openrouter' | 'openai' | 'ollama' | 'huggingface') {
+	async function handleTestAIProvider(
+		provider: 'openrouter' | 'openai' | 'ollama' | 'huggingface'
+	) {
 		testingProvider = provider;
 		feedback = null;
 		const endpoint =
@@ -354,7 +356,15 @@
 
 			<SectionHeader>AI Providers</SectionHeader>
 
-			<div class={css({ display: 'flex', flexDirection: 'column', gap: '2', borderWidth: '1', padding: '3' })}>
+			<div
+				class={css({
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '2',
+					borderWidth: '1',
+					padding: '3'
+				})}
+			>
 				<div class={cx(rowBetween, css({ alignItems: 'center' }))}>
 					<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>OpenRouter</span>
 					<button
@@ -367,6 +377,7 @@
 						})}
 						onclick={() => void handleTestAIProvider('openrouter')}
 						disabled={testingProvider === 'openrouter'}
+						aria-label="Test OpenRouter"
 						type="button"
 					>
 						{testingProvider === 'openrouter' ? 'Testing…' : 'Test'}
@@ -384,11 +395,24 @@
 				</label>
 				<label class={label({ variant: 'wrapper' })}>
 					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Default model</span>
-					<input type="text" class={input()} bind:value={openrouter_default_model} placeholder="openai/gpt-4o-mini" />
+					<input
+						type="text"
+						class={input()}
+						bind:value={openrouter_default_model}
+						placeholder="openai/gpt-4o-mini"
+					/>
 				</label>
 			</div>
 
-			<div class={css({ display: 'flex', flexDirection: 'column', gap: '2', borderWidth: '1', padding: '3' })}>
+			<div
+				class={css({
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '2',
+					borderWidth: '1',
+					padding: '3'
+				})}
+			>
 				<div class={cx(rowBetween, css({ alignItems: 'center' }))}>
 					<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>OpenAI</span>
 					<button
@@ -401,6 +425,7 @@
 						})}
 						onclick={() => void handleTestAIProvider('openai')}
 						disabled={testingProvider === 'openai'}
+						aria-label="Test OpenAI"
 						type="button"
 					>
 						{testingProvider === 'openai' ? 'Testing…' : 'Test'}
@@ -416,7 +441,13 @@
 						placeholder={MASKED_PLACEHOLDER}
 					/>
 				</label>
-				<div class={css({ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '2' })}>
+				<div
+					class={css({
+						display: 'grid',
+						gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+						gap: '2'
+					})}
+				>
 					<label class={label({ variant: 'wrapper' })}>
 						<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Endpoint URL</span>
 						<input type="text" class={input()} bind:value={openai_endpoint_url} />
@@ -427,12 +458,22 @@
 					</label>
 				</div>
 				<label class={label({ variant: 'wrapper' })}>
-					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Organization ID (optional)</span>
+					<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}
+						>Organization ID (optional)</span
+					>
 					<input type="text" class={input()} bind:value={openai_organization_id} />
 				</label>
 			</div>
 
-			<div class={css({ display: 'flex', flexDirection: 'column', gap: '2', borderWidth: '1', padding: '3' })}>
+			<div
+				class={css({
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '2',
+					borderWidth: '1',
+					padding: '3'
+				})}
+			>
 				<div class={cx(rowBetween, css({ alignItems: 'center' }))}>
 					<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>Ollama</span>
 					<button
@@ -445,12 +486,19 @@
 						})}
 						onclick={() => void handleTestAIProvider('ollama')}
 						disabled={testingProvider === 'ollama'}
+						aria-label="Test Ollama"
 						type="button"
 					>
 						{testingProvider === 'ollama' ? 'Testing…' : 'Test'}
 					</button>
 				</div>
-				<div class={css({ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '2' })}>
+				<div
+					class={css({
+						display: 'grid',
+						gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+						gap: '2'
+					})}
+				>
 					<label class={label({ variant: 'wrapper' })}>
 						<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Endpoint URL</span>
 						<input type="text" class={input()} bind:value={ollama_endpoint_url} />
@@ -462,7 +510,15 @@
 				</div>
 			</div>
 
-			<div class={css({ display: 'flex', flexDirection: 'column', gap: '2', borderWidth: '1', padding: '3' })}>
+			<div
+				class={css({
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '2',
+					borderWidth: '1',
+					padding: '3'
+				})}
+			>
 				<div class={cx(rowBetween, css({ alignItems: 'center' }))}>
 					<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>Hugging Face</span>
 					<button
@@ -475,6 +531,7 @@
 						})}
 						onclick={() => void handleTestAIProvider('huggingface')}
 						disabled={testingProvider === 'huggingface'}
+						aria-label="Test Hugging Face"
 						type="button"
 					>
 						{testingProvider === 'huggingface' ? 'Testing…' : 'Test'}
@@ -582,6 +639,7 @@
 					})}
 					onclick={handleTestSmtp}
 					disabled={testingSmtp || !smtpTestTo}
+					aria-label="Test SMTP"
 					type="button"
 				>
 					{#if testingSmtp}

@@ -164,7 +164,7 @@ class Settings(BaseSettings):
     log_client_flush_cooldown_ms: int = Field(default=3000, alias='LOG_CLIENT_FLUSH_COOLDOWN_MS')
 
     # Server-side log directory for SQLite logs
-    log_sqlite_path: Path = Field(default=Path('.'), alias='LOG_SQLITE_PATH')
+    log_sqlite_path: Path = Field(default=Path(), alias='LOG_SQLITE_PATH')
 
     # SQLite log flush interval in seconds
     log_sqlite_flush_interval_seconds: int = Field(default=5, alias='LOG_SQLITE_FLUSH_INTERVAL_SECONDS')
@@ -185,7 +185,17 @@ class Settings(BaseSettings):
 
     # AI configuration
     ollama_base_url: str = Field(default='http://localhost:11434', alias='OLLAMA_BASE_URL')
+    ollama_default_model: str = Field(default='llama3.2', alias='OLLAMA_DEFAULT_MODEL')
     openai_api_key: str = Field(default='', alias='OPENAI_API_KEY')
+    openai_base_url: str = Field(default='https://api.openai.com', alias='OPENAI_BASE_URL')
+    openai_default_model: str = Field(default='gpt-4o-mini', alias='OPENAI_DEFAULT_MODEL')
+    openai_organization_id: str = Field(default='', alias='OPENAI_ORGANIZATION_ID')
+    huggingface_api_token: str = Field(default='', alias='HUGGINGFACE_API_TOKEN')
+    huggingface_default_model: str = Field(default='google/flan-t5-base', alias='HUGGINGFACE_DEFAULT_MODEL')
+    huggingface_api_base_url: str = Field(
+        default='https://api-inference.huggingface.co',
+        alias='HUGGINGFACE_API_BASE_URL',
+    )
 
     # DB-persisted settings — seeded into app_settings on first run if the DB field is empty.
     # Users may later override these via the UI; ENV values are never re-applied after that.
@@ -197,6 +207,12 @@ class Settings(BaseSettings):
     telegram_bot_enabled: bool = Field(default=False, alias='TELEGRAM_BOT_ENABLED')
     openrouter_api_key: str = Field(default='', alias='OPENROUTER_API_KEY')
     openrouter_default_model: str = Field(default='', alias='OPENROUTER_DEFAULT_MODEL')
+    openai_default_model_db: str = Field(default='', alias='OPENAI_DEFAULT_MODEL_DB')
+    openai_endpoint_url_db: str = Field(default='', alias='OPENAI_ENDPOINT_URL_DB')
+    openai_organization_id_db: str = Field(default='', alias='OPENAI_ORGANIZATION_ID_DB')
+    ollama_endpoint_url_db: str = Field(default='', alias='OLLAMA_ENDPOINT_URL_DB')
+    ollama_default_model_db: str = Field(default='', alias='OLLAMA_DEFAULT_MODEL_DB')
+    huggingface_default_model_db: str = Field(default='', alias='HUGGINGFACE_DEFAULT_MODEL_DB')
 
     # Auth / OAuth
     auth_required: bool = Field(default=False, alias='AUTH_REQUIRED')

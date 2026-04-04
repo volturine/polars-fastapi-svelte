@@ -58,23 +58,58 @@ export interface IcebergDataSourceConfig {
 	refresh?: Record<string, unknown> | null;
 }
 
-export type SourceType = 'file' | 'database' | 'iceberg' | 'analysis';
-
-export interface DataSourceCreate {
-	name: string;
-	source_type: SourceType;
-	config: Record<string, unknown>;
+export interface AnalysisDataSourceConfig {
+	analysis_id: string;
+	analysis_tab_id?: string | null;
 }
 
-export interface DataSource {
+export type SourceType = 'file' | 'database' | 'iceberg' | 'analysis';
+
+export type DataSourceConfig =
+	| FileDataSourceConfig
+	| DatabaseDataSourceConfig
+	| IcebergDataSourceConfig
+	| AnalysisDataSourceConfig;
+
+interface DataSourceBase {
 	id: string;
 	name: string;
-	source_type: SourceType;
-	config: Record<string, unknown>;
 	schema_cache?: Record<string, unknown> | null;
 	created_by_analysis_id?: string | null;
 	created_by: string;
 	is_hidden: boolean;
 	created_at: string;
 	output_of_tab_id?: string | null;
+}
+
+export interface FileDataSource extends DataSourceBase {
+	source_type: 'file';
+	config: FileDataSourceConfig;
+}
+
+export interface DatabaseDataSource extends DataSourceBase {
+	source_type: 'database';
+	config: DatabaseDataSourceConfig;
+}
+
+export interface IcebergDataSource extends DataSourceBase {
+	source_type: 'iceberg';
+	config: IcebergDataSourceConfig;
+}
+
+export interface AnalysisDataSource extends DataSourceBase {
+	source_type: 'analysis';
+	config: AnalysisDataSourceConfig;
+}
+
+export type DataSource =
+	| FileDataSource
+	| DatabaseDataSource
+	| IcebergDataSource
+	| AnalysisDataSource;
+
+export interface DataSourceCreate {
+	name: string;
+	source_type: SourceType;
+	config: DataSourceConfig;
 }

@@ -26,7 +26,7 @@ def _parse_datetime_string(s: str) -> datetime:
         except ValueError:
             continue
     raise ValueError(
-        f"Cannot parse datetime string '{s}'. Accepted formats: ISO 8601 (YYYY-MM-DDTHH:MM:SS), YYYY-MM-DD HH:MM:SS, MM/DD/YYYY"
+        f"Cannot parse datetime string '{s}'. Accepted formats: ISO 8601 (YYYY-MM-DDTHH:MM:SS), YYYY-MM-DD HH:MM:SS, MM/DD/YYYY",
     )
 
 

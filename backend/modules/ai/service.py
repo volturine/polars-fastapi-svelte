@@ -31,7 +31,6 @@ class AIClient:
         raise NotImplementedError
 
 
-
 def _retry_request(
     method: str,
     url: str,
@@ -318,8 +317,11 @@ def get_ai_client(
         from modules.settings.service import get_resolved_openai_settings
 
         resolved = get_resolved_openai_settings()
+        resolved_key = api_key if api_key is not None else resolved['api_key'] or settings.openai_api_key
+        if not resolved_key:
+            raise ValueError('OPENAI_API_KEY not configured')
         return OpenAIClient(
-            api_key=api_key if api_key is not None else resolved['api_key'] or settings.openai_api_key,
+            api_key=resolved_key,
             base_url=endpoint_url or resolved['endpoint_url'] or settings.openai_base_url,
             organization_id=organization_id if organization_id is not None else resolved['organization_id'],
         )

@@ -288,8 +288,8 @@ class TestColumnStats:
                     'file_path': str(sample_csv_file),
                     'file_type': 'csv',
                     'options': {},
-                }
-            }
+                },
+            },
         }
 
         response = client.post(

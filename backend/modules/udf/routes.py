@@ -102,4 +102,3 @@ def clone_udf(
 def delete_udf(udf_id: UdfId, session: Session = Depends(get_db)):
     """Delete a UDF by ID. This will not affect analyses that reference the UDF by name in their step configs."""
     service.delete_udf(session, parse_udf_id(udf_id))
-    return None

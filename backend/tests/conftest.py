@@ -45,7 +45,7 @@ def test_engine():
         poolclass=StaticPool,
     )
     SQLModel.metadata.create_all(engine)
-    yield engine
+    return engine
 
 
 @pytest.fixture(scope='function')
@@ -178,7 +178,7 @@ def sample_csv_file(temp_upload_dir: Path) -> Path:
             'name': ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
             'age': [25, 30, 35, 40, 45],
             'city': ['NYC', 'LA', 'Chicago', 'Houston', 'Phoenix'],
-        }
+        },
     )
     df.write_csv(csv_path)
     return csv_path
@@ -195,7 +195,7 @@ def sample_parquet_file(temp_upload_dir: Path) -> Path:
             'product_name': ['Widget A', 'Widget B', 'Widget C'],
             'price': [10.99, 20.99, 30.99],
             'stock': [100, 50, 75],
-        }
+        },
     )
     df.write_parquet(parquet_path)
     return parquet_path
@@ -211,7 +211,7 @@ def sample_ndjson_file(temp_upload_dir: Path) -> Path:
             'user_id': [1, 2, 3],
             'username': ['user1', 'user2', 'user3'],
             'email': ['user1@test.com', 'user2@test.com', 'user3@test.com'],
-        }
+        },
     )
     df.write_ndjson(ndjson_path)
     return ndjson_path
@@ -227,7 +227,7 @@ def sample_json_file(temp_upload_dir: Path) -> Path:
             'user_id': [1, 2, 3],
             'username': ['user1', 'user2', 'user3'],
             'email': ['user1@test.com', 'user2@test.com', 'user3@test.com'],
-        }
+        },
     )
     df.write_json(json_path)
     return json_path
@@ -270,7 +270,7 @@ def sample_datasources(test_db_session: Session, sample_csv_file: Path, sample_p
         [
             (sample_csv_file, 'csv', 'CSV DataSource'),
             (sample_parquet_file, 'parquet', 'Parquet DataSource'),
-        ]
+        ],
     ):
         datasource_id = str(uuid.uuid4())
         config = {
@@ -328,9 +328,9 @@ def sample_analysis(test_db_session: Session, sample_datasource: DataSource) -> 
                         'type': 'filter',
                         'config': {'column': 'age', 'operator': '>', 'value': 30},
                         'depends_on': [],
-                    }
+                    },
                 ],
-            }
+            },
         ],
     }
 
@@ -391,9 +391,9 @@ def sample_analyses(test_db_session: Session, sample_datasources: list[DataSourc
                             'type': 'filter',
                             'config': {'column': 'id', 'operator': '>', 'value': idx},
                             'depends_on': [],
-                        }
+                        },
                     ],
-                }
+                },
             ],
         }
 

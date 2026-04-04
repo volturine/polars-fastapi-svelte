@@ -252,7 +252,7 @@ class TestTelegramBot:
             'message': {
                 'text': '/subscribe',
                 'chat': {'id': 42, 'first_name': 'TestUser'},
-            }
+            },
         }
 
         with patch.object(bot, '_send_message') as mock_send:
@@ -275,7 +275,7 @@ class TestTelegramBot:
             'message': {
                 'text': '/unsubscribe',
                 'chat': {'id': 43, 'first_name': 'Unsub'},
-            }
+            },
         }
 
         with patch.object(bot, '_send_message'):
@@ -293,7 +293,7 @@ class TestTelegramBot:
             'message': {
                 'text': '/start',
                 'chat': {'id': 44, 'first_name': 'Starter'},
-            }
+            },
         }
 
         with patch.object(bot, '_send_message') as mock_send:
@@ -336,7 +336,7 @@ class TestTelegramBot:
             bot._handle_update(
                 {
                     'message': {'text': '/subscribe', 'chat': {'id': 50, 'first_name': 'Cycler'}},
-                }
+                },
             )
         test_db_session.expire_all()
         sub = get_subscriber_by_chat(test_db_session, '50', 'tok-cycle')
@@ -349,7 +349,7 @@ class TestTelegramBot:
             bot._handle_update(
                 {
                     'message': {'text': '/unsubscribe', 'chat': {'id': 50, 'first_name': 'Cycler'}},
-                }
+                },
             )
         test_db_session.expire_all()
         sub = get_subscriber_by_chat(test_db_session, '50', 'tok-cycle')
@@ -361,7 +361,7 @@ class TestTelegramBot:
             bot._handle_update(
                 {
                     'message': {'text': '/subscribe', 'chat': {'id': 50, 'first_name': 'Cycler'}},
-                }
+                },
             )
         test_db_session.expire_all()
         sub = get_subscriber_by_chat(test_db_session, '50', 'tok-cycle')

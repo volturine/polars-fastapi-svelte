@@ -1,10 +1,11 @@
 import time
+from typing import Any
 
 import polars as pl
 
 from core.config import settings
 from core.exceptions import EngineTimeoutError, StepNotFoundError
-from modules.compute.core.base import ComputeEngine
+from modules.compute.core.base import ComputeEngine, EngineResult
 
 
 def find_step_index(steps: list[dict], target_step_id: str) -> int:
@@ -102,6 +103,28 @@ def resolve_applied_target(steps: list[dict], target_step_id: str) -> str:
         current = parent_id
 
 
+def _engine_result_to_dict(result: EngineResult | dict[str, Any]) -> dict[str, Any]:
+    """Normalize compute engine result payloads for service-layer consumption."""
+    if isinstance(result, dict):
+        raw_step_timings = result.get('step_timings')
+        raw_query_plan = result.get('query_plan')
+        return {
+            'job_id': result.get('job_id'),
+            'data': result.get('data'),
+            'error': result.get('error'),
+            'step_timings': raw_step_timings if isinstance(raw_step_timings, dict) else {},
+            'query_plan': raw_query_plan if isinstance(raw_query_plan, str) else None,
+        }
+
+    return {
+        'job_id': result.job_id,
+        'data': result.data,
+        'error': result.error,
+        'step_timings': result.step_timings,
+        'query_plan': result.query_plan,
+    }
+
+
 def await_engine_result(engine: ComputeEngine, timeout: int, job_id: str | None = None) -> dict:
     deadline = time.monotonic() + timeout
     while True:
@@ -116,9 +139,9 @@ def await_engine_result(engine: ComputeEngine, timeout: int, job_id: str | None 
             raise EngineTimeoutError(f'Operation timed out after {timeout} seconds', timeout)
 
         poll_timeout = min(0.1, max(0.01, remaining))
-        result_data = engine.get_result(timeout=poll_timeout, job_id=job_id)
-        if result_data:
-            return result_data
+        result = engine.get_result(timeout=poll_timeout, job_id=job_id)
+        if result is not None:
+            return _engine_result_to_dict(result)
 
 
 def build_datasource_config(datasource, overrides: dict | None = None) -> dict:

@@ -60,4 +60,3 @@ def update_healthcheck(
 def delete_healthcheck(healthcheck_id: HealthcheckId, session: Session = Depends(get_db)):
     """Delete a healthcheck by ID. Use GET /healthchecks?datasource_id=... to find healthcheck IDs."""
     service.delete_healthcheck(session, parse_healthcheck_id(healthcheck_id))
-    return None

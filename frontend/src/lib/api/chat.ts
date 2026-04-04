@@ -13,41 +13,93 @@ export interface ChatHistoryResponse {
 	history: ChatEvent[];
 }
 
-export interface ChatEvent {
-	type:
-		| 'message'
-		| 'tool_call'
-		| 'tool_start'
-		| 'tool_result'
-		| 'tool_error'
-		| 'tool_confirm'
-		| 'turn_start'
-		| 'ui_patch'
-		| 'usage'
-		| 'done'
-		| 'error';
-	role?: 'user' | 'assistant';
-	content?: string;
-	tool_id?: string;
-	method?: string;
-	path?: string;
-	args?: Record<string, unknown>;
-	token?: string;
+export interface ChatMessageEvent {
+	type: 'message';
+	role: 'user' | 'assistant';
+	content: string;
+	ts?: number;
+}
+
+export interface ChatToolCallEvent {
+	type: 'tool_call';
+	tool_id: string;
+	method: string;
+	path: string;
+	args: Record<string, unknown>;
 	confirm_required?: boolean;
-	result?: { status: number; body: unknown; ok: boolean };
-	errors?: { path: string; message: string }[];
+}
+
+export interface ChatToolStartEvent {
+	type: 'tool_start';
+	tool_id: string;
+	ts?: number;
+}
+
+export interface ChatToolResultEvent {
+	type: 'tool_result';
+	tool_id: string;
+	result: { status: number; body: unknown; ok: boolean };
+	duration_ms?: number;
+}
+
+export interface ChatToolErrorEvent {
+	type: 'tool_error';
+	tool_id: string;
+	errors: { path: string; message: string }[];
+	ts?: number;
+	duration_ms?: number;
+}
+
+export interface ChatToolConfirmEvent {
+	type: 'tool_confirm';
+	tool_id: string;
+	method: string;
+	path: string;
+	args: Record<string, unknown>;
+}
+
+export interface ChatTurnStartEvent {
+	type: 'turn_start';
+	turn: number;
+	max_turns: number | null;
+}
+
+export interface ChatUiPatchEvent {
+	type: 'ui_patch';
 	resource?: string;
 	action?: string;
 	id?: string;
 	data?: unknown;
-	prompt_tokens?: number;
-	completion_tokens?: number;
-	total_tokens?: number;
-	ts?: number;
-	turn?: number;
-	max_turns?: number;
-	duration_ms?: number;
 }
+
+export interface ChatUsageEvent {
+	type: 'usage';
+	prompt_tokens: number;
+	completion_tokens: number;
+	total_tokens: number;
+}
+
+export interface ChatDoneEvent {
+	type: 'done';
+}
+
+export interface ChatErrorEvent {
+	type: 'error';
+	content: string;
+}
+
+export type ChatEvent =
+	| ChatMessageEvent
+	| ChatToolCallEvent
+	| ChatToolStartEvent
+	| ChatToolResultEvent
+	| ChatToolErrorEvent
+	| ChatToolConfirmEvent
+	| ChatTurnStartEvent
+	| ChatUiPatchEvent
+	| ChatUsageEvent
+	| ChatDoneEvent
+	| ChatErrorEvent;
 
 export interface SessionActionResponse {
 	status: string;

@@ -16,13 +16,13 @@ class EngineRun(SQLModel, table=True):  # type: ignore[call-arg, assignment]
         sa_column=Column(
             SAEnum(EngineRunKind, native_enum=False, values_callable=lambda enum_cls: [item.value for item in enum_cls]),
             nullable=False,
-        )
+        ),
     )
     status: EngineRunStatus = Field(
         sa_column=Column(
             SAEnum(EngineRunStatus, native_enum=False, values_callable=lambda enum_cls: [item.value for item in enum_cls]),
             nullable=False,
-        )
+        ),
     )
     request_json: dict[str, object] = Field(sa_column=Column(JSON, nullable=False))
     result_json: dict[str, object] | None = Field(default=None, sa_column=Column(JSON, nullable=True))

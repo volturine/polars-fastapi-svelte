@@ -558,7 +558,7 @@ def create_database_datasource(
                 'source_type': DataSourceType.DATABASE,
                 'connection_string': connection_string,
                 'query': query,
-            }
+            },
         )
     except Exception as exc:
         if connection_string.startswith('postgresql://'):
@@ -630,7 +630,7 @@ def create_iceberg_datasource(
                     'source_type': DataSourceType.DATABASE,
                     'connection_string': connection_string,
                     'query': query,
-                }
+                },
             )
         except Exception as exc:
             raise DataSourceConnectionError(
@@ -723,7 +723,7 @@ def refresh_external_datasource(session: Session, datasource_id: str) -> DataSou
                     'source_type': DataSourceType.DATABASE,
                     'connection_string': connection_string,
                     'query': query,
-                }
+                },
             )
         except Exception as exc:
             raise DataSourceConnectionError(
@@ -939,7 +939,7 @@ def get_datasource_schema(
         session.execute(
             update(DataSource)
             .where(DataSource.id == datasource_id)  # type: ignore[arg-type]
-            .values(schema_cache=schema_cache)
+            .values(schema_cache=schema_cache),
         )
         session.commit()
         datasource.schema_cache = schema_cache
@@ -953,7 +953,7 @@ def _get_first_non_null_samples(lazy: pl.LazyFrame, max_rows: int = 1000) -> dic
     exprs = [pl.col(col).drop_nulls().first().alias(col) for col in columns]
     result = lazy.head(max_rows).select(exprs).collect()
     if result.height == 0:
-        return {col: None for col in columns}
+        return dict.fromkeys(columns)
     return {col: (str(result[col][0]) if result[col][0] is not None else None) for col in columns}
 
 
@@ -1231,7 +1231,7 @@ def _build_snapshot_stats(lazy: pl.LazyFrame, schema: pl.Schema) -> list[ColumnS
                 unique_count=unique_count,
                 min=min_val,
                 max=max_val,
-            )
+            ),
         )
     return results
 
@@ -1248,7 +1248,7 @@ def _build_schema_diff(schema_a: pl.Schema, schema_b: pl.Schema) -> list[SchemaD
                 status=SchemaDiffStatus.REMOVED,
                 type_a=str(schema_a[name]),
                 type_b=None,
-            )
+            ),
         )
 
     for name in sorted(cols_b - cols_a):
@@ -1258,7 +1258,7 @@ def _build_schema_diff(schema_a: pl.Schema, schema_b: pl.Schema) -> list[SchemaD
                 status=SchemaDiffStatus.ADDED,
                 type_a=None,
                 type_b=str(schema_b[name]),
-            )
+            ),
         )
 
     for name in sorted(cols_a & cols_b):
@@ -1272,7 +1272,7 @@ def _build_schema_diff(schema_a: pl.Schema, schema_b: pl.Schema) -> list[SchemaD
                 status=SchemaDiffStatus.TYPE_CHANGED,
                 type_a=dtype_a,
                 type_b=dtype_b,
-            )
+            ),
         )
 
     return diffs
@@ -1555,7 +1555,7 @@ def get_column_stats(
                 'q25': series.quantile(0.25),
                 'q75': series.quantile(0.75),
                 'histogram': _compute_histogram(non_null),
-            }
+            },
         )
         return ColumnStatsResponse.model_validate(stats)
 
@@ -1568,7 +1568,7 @@ def get_column_stats(
                 'max_length': length_series.max(),
                 'avg_length': length_series.mean(),
                 'top_values': (series.value_counts().sort('count', descending=True).head(5).to_dicts()),
-            }
+            },
         )
         return ColumnStatsResponse.model_validate(stats)
 
@@ -1577,7 +1577,7 @@ def get_column_stats(
             {
                 'min': series.min(),
                 'max': series.max(),
-            }
+            },
         )
         return ColumnStatsResponse.model_validate(stats)
 
@@ -1595,7 +1595,7 @@ def get_column_stats(
             {
                 'true_count': true_count,
                 'false_count': false_count,
-            }
+            },
         )
         return ColumnStatsResponse.model_validate(stats)
 

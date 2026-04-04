@@ -359,8 +359,8 @@ class TestChatRoutes:
                 {
                     'message': {'content': 'Hello!', 'tool_calls': None},
                     'finish_reason': 'stop',
-                }
-            ]
+                },
+            ],
         }
 
         with patch('modules.chat.routes.chat_with_tools', new=AsyncMock(return_value=mock_response)):
@@ -402,8 +402,8 @@ class TestChatRoutes:
                 {
                     'message': {'content': 'Hello!', 'tool_calls': None},
                     'finish_reason': 'stop',
-                }
-            ]
+                },
+            ],
         }
 
         with patch('modules.chat.routes.chat_with_tools', new=AsyncMock(return_value=mock_response)):
@@ -428,8 +428,8 @@ class TestChatRoutes:
                 {
                     'message': {'content': 'Reply', 'tool_calls': None},
                     'finish_reason': 'stop',
-                }
-            ]
+                },
+            ],
         }
 
         with patch('modules.chat.routes.chat_with_tools', new=AsyncMock(return_value=mock_response)):
@@ -455,7 +455,7 @@ class TestChatRoutes:
                 {
                     'message': {'content': 'Hi!', 'tool_calls': None},
                     'finish_reason': 'stop',
-                }
+                },
             ],
             'usage': {
                 'prompt_tokens': 10,
@@ -745,7 +745,7 @@ TOOL_CALL_RESPONSE_INVALID = {
                 'tool_calls': [{'id': 'tc1', 'function': {'name': 'mutating_tool_with_required', 'arguments': json.dumps({})}}],
             },
             'finish_reason': 'tool_calls',
-        }
+        },
     ],
     'usage': {'prompt_tokens': 5, 'completion_tokens': 3, 'total_tokens': 8},
 }
@@ -758,7 +758,7 @@ TOOL_CALL_RESPONSE_VALID = {
                 'tool_calls': [{'id': 'tc2', 'function': {'name': 'safe_tool', 'arguments': json.dumps({})}}],
             },
             'finish_reason': 'tool_calls',
-        }
+        },
     ],
     'usage': {'prompt_tokens': 5, 'completion_tokens': 3, 'total_tokens': 8},
 }
@@ -882,7 +882,7 @@ TOOL_CALL_UNSUPPORTED = {
                 'tool_calls': [{'id': 'tc3', 'function': {'name': 'tool_with_bad_schema', 'arguments': json.dumps({})}}],
             },
             'finish_reason': 'tool_calls',
-        }
+        },
     ],
     'usage': {'prompt_tokens': 5, 'completion_tokens': 3, 'total_tokens': 8},
 }
@@ -1125,7 +1125,7 @@ class TestToolSystemMessage:
                             'required': True,
                             'description': 'Path id',
                             'schema': {'type': 'string'},
-                        }
+                        },
                     ],
                     'query': [
                         {
@@ -1133,7 +1133,7 @@ class TestToolSystemMessage:
                             'required': False,
                             'description': 'Response mode',
                             'schema': {'type': 'string', 'enum': ['full', 'summary'], 'default': 'summary'},
-                        }
+                        },
                     ],
                     'payload': None,
                 },
@@ -1188,7 +1188,7 @@ class TestToolSystemMessage:
                     'additionalProperties': False,
                 },
                 'arg_metadata': None,
-            }
+            },
         ]
 
         msg = _build_tool_system_message(tools)
@@ -1222,7 +1222,7 @@ class TestToolSystemMessage:
                         },
                     },
                 },
-            }
+            },
         ]
 
         msg = _build_tool_system_message(tools)
@@ -1404,7 +1404,7 @@ MALFORMED_ARGS_RESPONSE = {
                 'tool_calls': [{'id': 'tc1', 'function': {'name': 'safe_tool', 'arguments': '{not valid json}'}}],
             },
             'finish_reason': 'tool_calls',
-        }
+        },
     ],
     'usage': {'prompt_tokens': 5, 'completion_tokens': 3, 'total_tokens': 8},
 }
@@ -1547,7 +1547,7 @@ class TestBugFixes:
                                 'tool_calls': [{'id': 'tc1', 'function': {'name': 'safe_tool', 'arguments': '{}'}}],
                             },
                             'finish_reason': 'stop',
-                        }
+                        },
                     ],
                     'usage': {'prompt_tokens': 5, 'completion_tokens': 3, 'total_tokens': 8},
                 }

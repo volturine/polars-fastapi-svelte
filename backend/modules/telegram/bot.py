@@ -104,7 +104,10 @@ class TelegramBot:
                 if resp.status_code != 200:
                     consecutive_errors += 1
                     logger.warning(
-                        'Telegram getUpdates failed: %s (error %d/%d)', resp.status_code, consecutive_errors, max_consecutive_errors
+                        'Telegram getUpdates failed: %s (error %d/%d)',
+                        resp.status_code,
+                        consecutive_errors,
+                        max_consecutive_errors,
                     )
                     if consecutive_errors >= max_consecutive_errors:
                         logger.error('Telegram bot hit %d consecutive errors — stopping', max_consecutive_errors)

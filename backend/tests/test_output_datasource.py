@@ -198,7 +198,10 @@ class TestUpdateAnalysisOutputDatasource:
     """update_analysis requires result_id and does not create datasources."""
 
     def test_keeps_output_id_without_creating_datasource(
-        self, test_db_session: Session, sample_analysis: Analysis, sample_datasource: DataSource
+        self,
+        test_db_session: Session,
+        sample_analysis: Analysis,
+        sample_datasource: DataSource,
     ):
         tabs = [
             TabSchema(
@@ -360,7 +363,7 @@ class TestRunAnalysisBuildOutputDatasource:
                             'config': {'branch': 'master'},
                         },
                         'steps': [
-                            {'id': 's1', 'type': 'filter', 'config': {'column': 'age', 'operator': '>', 'value': 30}, 'depends_on': []}
+                            {'id': 's1', 'type': 'filter', 'config': {'column': 'age', 'operator': '>', 'value': 30}, 'depends_on': []},
                         ],
                         'output': {
                             'result_id': output_ds_id,
@@ -368,7 +371,7 @@ class TestRunAnalysisBuildOutputDatasource:
                             'filename': 'test_out',
                             'iceberg': {'namespace': 'ns', 'table_name': 'tbl'},
                         },
-                    }
+                    },
                 ],
             },
             status=AnalysisStatus.DRAFT,
@@ -423,7 +426,7 @@ class TestRunAnalysisBuildOutputDatasource:
                             'filename': 'test_out',
                             'iceberg': {'namespace': 'ns', 'table_name': 'tbl'},
                         },
-                    }
+                    },
                 ],
             },
             status=AnalysisStatus.DRAFT,
@@ -478,13 +481,13 @@ class TestRunAnalysisBuildOutputDatasource:
                                 'iceberg': {'namespace': 'ns', 'table_name': 'tbl'},
                             },
                             'steps': [],
-                        }
+                        },
                     ],
                     'sources': {
                         sample_datasource.id: {
                             'source_type': sample_datasource.source_type,
                             **sample_datasource.config,
-                        }
+                        },
                     },
                 },
                 filename='test_out',
@@ -529,7 +532,7 @@ class TestRunAnalysisBuildOutputDatasource:
                             'format': 'parquet',
                         },
                         'steps': [],
-                    }
+                    },
                 ],
             },
             status=AnalysisStatus.DRAFT,
@@ -628,7 +631,10 @@ class TestSourceTypeCreatedBy:
         assert ds.created_by == 'import'
 
     def test_update_analysis_does_not_create_output_datasource(
-        self, test_db_session: Session, sample_analysis: Analysis, sample_datasource: DataSource
+        self,
+        test_db_session: Session,
+        sample_analysis: Analysis,
+        sample_datasource: DataSource,
     ):
         """update_analysis does not create output datasources."""
         tabs = [

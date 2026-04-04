@@ -67,12 +67,12 @@ def test_chart_preview_metadata_includes_overlays_and_reference_lines(test_db_se
                         'y_column': 'value2',
                         'aggregation': 'sum',
                         'y_axis_position': 'right',
-                    }
+                    },
                 ],
                 'reference_lines': [{'axis': 'y', 'value': 5.0, 'label': 'target', 'color': '#ff0000'}],
             },
             'depends_on': [],
-        }
+        },
     ]
 
     result = PolarsComputeEngine._execute_preview(

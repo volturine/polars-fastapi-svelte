@@ -205,7 +205,7 @@ async def upload_bulk(
                     name=file.filename,
                     success=False,
                     error='File content does not match extension',
-                )
+                ),
             )
             continue
         file_type = _FILE_TYPE_MAPPING[file_extension]
@@ -223,7 +223,7 @@ async def upload_bulk(
         except Exception as e:
             if file_path.exists():
                 file_path.unlink()
-            results.append(schemas.BulkUploadResult(name=file.filename, success=False, error=f'Failed to save file: {str(e)}'))
+            results.append(schemas.BulkUploadResult(name=file.filename, success=False, error=f'Failed to save file: {e!s}'))
             continue
 
         file_csv_options = csv_options if file_type == 'csv' else None
@@ -242,7 +242,7 @@ async def upload_bulk(
         except Exception as e:
             if file_path.exists():
                 file_path.unlink()
-            results.append(schemas.BulkUploadResult(name=file.filename, success=False, error=f'Failed to create datasource: {str(e)}'))
+            results.append(schemas.BulkUploadResult(name=file.filename, success=False, error=f'Failed to create datasource: {e!s}'))
 
     successful = sum(1 for r in results if r.success)
     failed = len(results) - successful
@@ -751,4 +751,3 @@ def delete_datasource(
     preview_key = f'__preview__{datasource_id_value}'
     if manager.get_engine(preview_key):
         manager.shutdown_engine(preview_key)
-    return None

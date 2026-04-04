@@ -6,7 +6,7 @@ import { resolve } from 'path';
 const stub = resolve(__dirname, 'src/lib/test-utils/stubs');
 
 export default defineConfig({
-	plugins: [svelte({ hot: false, compilerOptions: { runes: true } }), svelteTesting()],
+	plugins: [svelte({ compilerOptions: { runes: true } }), svelteTesting()],
 	resolve: {
 		alias: {
 			$lib: resolve(__dirname, 'src/lib'),

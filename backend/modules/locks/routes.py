@@ -60,7 +60,7 @@ async def _send_error(websocket: WebSocket, error: str, status_code: int) -> Non
         schemas.LockWebsocketErrorMessage(
             error=error,
             status_code=status_code,
-        ).model_dump(mode='json')
+        ).model_dump(mode='json'),
     )
 
 

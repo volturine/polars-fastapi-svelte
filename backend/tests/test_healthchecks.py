@@ -71,7 +71,7 @@ SAMPLE_LF = pl.LazyFrame(
         'id': [1, 2, 3, 4, 5],
         'name': ['a', 'b', None, 'd', 'e'],
         'value': [10.0, 20.0, 30.0, 40.0, 50.0],
-    }
+    },
 )
 
 
@@ -324,7 +324,7 @@ class TestBuildSubscriberMessage:
                 'duration_ms': '500',
                 'healthcheck_summary': None,
                 'healthcheck_details': None,
-            }
+            },
         )
         assert 'Status: success' in msg
         assert 'Rows: 100' in msg
@@ -339,7 +339,7 @@ class TestBuildSubscriberMessage:
                 'duration_ms': '500',
                 'healthcheck_summary': '2/2 passed',
                 'healthcheck_details': None,
-            }
+            },
         )
         assert 'Status: success' in msg
         assert '2/2 passed' in msg
@@ -356,7 +356,7 @@ class TestBuildSubscriberMessage:
                     {'name': 'check-1', 'passed': True, 'message': 'ok'},
                     {'name': 'check-2', 'passed': False, 'message': 'bad'},
                 ],
-            }
+            },
         )
         assert 'built successfully, health checks failed' in msg
         assert '1/2 failed' in msg
@@ -371,7 +371,7 @@ class TestBuildSubscriberMessage:
                 'duration_ms': '500',
                 'healthcheck_summary': '300/300 failed',
                 'healthcheck_details': details,
-            }
+            },
         )
         assert len(msg) <= 3815
 
@@ -441,7 +441,7 @@ def test_healthcheck_update_duplicate_row_count(test_db_session, client):
             enabled=True,
             critical=False,
             created_at=datetime.now(UTC),
-        )
+        ),
     )
     test_db_session.commit()
 

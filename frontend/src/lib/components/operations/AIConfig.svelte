@@ -144,7 +144,13 @@
 	<div class={css({ marginTop: '5', display: 'grid', gap: '3', gridTemplateColumns: '1fr 1fr' })}>
 		<div>
 			<label class={label()} for="ai-batch-size">Batch Size</label>
-			<input id="ai-batch-size" type="number" min="1" class={input()} bind:value={config.batch_size} />
+			<input
+				id="ai-batch-size"
+				type="number"
+				min="1"
+				class={input()}
+				bind:value={config.batch_size}
+			/>
 		</div>
 		<div>
 			<label class={label()} for="ai-max-retries">Max Retries</label>

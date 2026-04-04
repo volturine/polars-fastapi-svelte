@@ -30,7 +30,7 @@ class TestNotificationParams:
                 'method': 'email',
                 'recipient': 'user@example.com',
                 'input_columns': ['body'],
-            }
+            },
         )
         assert params.method == 'email'
         assert params.recipient == 'user@example.com'
@@ -47,7 +47,7 @@ class TestNotificationParams:
                 'method': 'telegram',
                 'recipient': '12345',
                 'input_columns': ['col'],
-            }
+            },
         )
         assert params.method == 'telegram'
 
@@ -58,7 +58,7 @@ class TestNotificationParams:
                     'method': 'slack',
                     'recipient': 'test',
                     'input_columns': ['col'],
-                }
+                },
             )
 
     def test_empty_recipient_rejected(self):
@@ -68,7 +68,7 @@ class TestNotificationParams:
                     'method': 'email',
                     'recipient': '',
                     'input_columns': ['col'],
-                }
+                },
             )
 
     def test_missing_recipient_rejected(self):
@@ -77,7 +77,7 @@ class TestNotificationParams:
                 {
                     'method': 'email',
                     'input_columns': ['col'],
-                }
+                },
             )
 
     def test_recipient_column_allows_missing_recipient(self):
@@ -86,7 +86,7 @@ class TestNotificationParams:
                 'method': 'telegram',
                 'recipient_column': 'chat_id',
                 'input_columns': ['body'],
-            }
+            },
         )
         assert params.recipient_column == 'chat_id'
 
@@ -97,7 +97,7 @@ class TestNotificationParams:
                     'method': 'email',
                     'recipient': 'test@test.com',
                     'input_columns': [],
-                }
+                },
             )
 
     def test_no_input_columns_rejected(self):
@@ -106,7 +106,7 @@ class TestNotificationParams:
                 {
                     'method': 'email',
                     'recipient': 'test@test.com',
-                }
+                },
             )
 
     def test_multi_columns(self):
@@ -115,7 +115,7 @@ class TestNotificationParams:
                 'method': 'email',
                 'recipient': 'test@test.com',
                 'input_columns': ['title', 'body', 'status'],
-            }
+            },
         )
         assert params.input_columns == ['title', 'body', 'status']
 
@@ -127,7 +127,7 @@ class TestNotificationParams:
                     'recipient': 'test@test.com',
                     'input_columns': ['col'],
                     'unknown_field': True,
-                }
+                },
             )
 
     def test_custom_batch_size(self):
@@ -137,7 +137,7 @@ class TestNotificationParams:
                 'recipient': 'test@test.com',
                 'input_columns': ['col'],
                 'batch_size': 50,
-            }
+            },
         )
         assert params.batch_size == 50
 
@@ -147,7 +147,7 @@ class TestNotificationParams:
                 'method': 'telegram',
                 'recipient': '123',
                 'input_columns': ['col'],
-            }
+            },
         )
         assert params.bot_token == ''
 
@@ -158,7 +158,7 @@ class TestNotificationParams:
                 'recipient': '123',
                 'input_columns': ['col'],
                 'bot_token': '123456:ABC-DEF',
-            }
+            },
         )
         assert params.bot_token == '123456:ABC-DEF'
 
@@ -260,7 +260,7 @@ class TestNotificationHandler:
             {
                 'name': ['Alice', 'Bob'],
                 'amount': [100, 200],
-            }
+            },
         ).lazy()
 
         with patch('modules.compute.operations.notification.notification_service') as mock_svc:
@@ -515,7 +515,7 @@ class TestConvertNotificationConfig:
                 'input_columns': ['col1', 'col2'],
                 'output_column': 'status',
                 'message_template': '{{col1}} — {{col2}}',
-            }
+            },
         )
         assert result['method'] == 'telegram'
         assert result['recipient'] == '12345'
@@ -545,7 +545,7 @@ class TestConvertNotificationConfig:
                 'outputColumn': 'stat',
                 'messageTemplate': 'tpl',
                 'subjectTemplate': 'sub',
-            }
+            },
         )
         assert result['input_columns'] == ['a', 'b']
         assert result['output_column'] == 'stat'
@@ -563,7 +563,7 @@ class TestConvertNotificationConfig:
                 'recipient': '123, 456',
                 'bot_token': 'my-token',
                 'input_columns': ['col'],
-            }
+            },
         )
         assert result['bot_token'] == 'my-token'
         assert result['recipient'] == '123, 456'

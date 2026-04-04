@@ -223,7 +223,7 @@ def _load_result_summary(result_json: dict[str, Any] | None) -> EngineRunResultS
             'schema': schema,
             'data': data,
             'metadata': metadata,
-        }
+        },
     )
 
 
@@ -247,7 +247,7 @@ def _compute_schema_diff(
                     status=SchemaDiffStatus.TYPE_CHANGED,
                     type_a=schema_a[col],
                     type_b=schema_b[col],
-                )
+                ),
             )
     return diffs
 

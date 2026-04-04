@@ -63,9 +63,9 @@ class TestAnalysisCreate:
                             'type': 'filter',
                             'config': {'column': 'age', 'operator': '>', 'value': 25},
                             'depends_on': [],
-                        }
+                        },
                     ],
-                }
+                },
             ],
         }
 
@@ -114,7 +114,7 @@ class TestAnalysisCreate:
                             'type': 'join',
                             'config': {'left': datasource_ids[0], 'right': datasource_ids[1], 'on': 'id'},
                             'depends_on': [],
-                        }
+                        },
                     ],
                 },
                 {
@@ -166,7 +166,7 @@ class TestAnalysisCreate:
                         'filename': 'source_2',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 
@@ -195,7 +195,7 @@ class TestAnalysisCreate:
                         'filename': 'source_3',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 
@@ -248,7 +248,7 @@ class TestAnalysisCreate:
                             'depends_on': ['step2'],
                         },
                     ],
-                }
+                },
             ],
         }
 
@@ -282,7 +282,7 @@ class TestAnalysisCreate:
                         'filename': 'source_legacy',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 
@@ -368,7 +368,7 @@ class TestAnalysisCreate:
                         'filename': 'owned_source',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 
@@ -548,9 +548,9 @@ class TestAnalysisUpdate:
                             'type': 'groupby',
                             'config': {'column': 'age', 'operation': 'mean'},
                             'depends_on': [],
-                        }
+                        },
                     ],
-                }
+                },
             ],
         }
 
@@ -999,7 +999,7 @@ class TestAnalysisValidate:
                         'filename': 'out_validate',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 
@@ -1032,7 +1032,7 @@ class TestAnalysisValidate:
                         'filename': 'out_validate_bad',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 
@@ -1061,7 +1061,7 @@ class TestAnalysisValidate:
                         'filename': 'out_no_persist',
                     },
                     'steps': [],
-                }
+                },
             ],
         }
 
@@ -1094,7 +1094,7 @@ class TestStepValidation:
                         'filename': 'test_out',
                     },
                     'steps': steps,
-                }
+                },
             ],
         }
 
@@ -1131,7 +1131,7 @@ class TestStepValidation:
                     'type': 'join',
                     'config': {'right_source': 'nonexistent_tab', 'how': 'inner', 'join_columns': []},
                     'depends_on': [],
-                }
+                },
             ],
         )
         response = client.post('/api/v1/analysis', json=payload)

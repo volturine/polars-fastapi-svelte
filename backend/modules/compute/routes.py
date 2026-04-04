@@ -265,7 +265,6 @@ def shutdown_engine(analysis_id: AnalysisId, manager: ProcessManager = Depends(g
     if not engine:
         raise EngineNotFoundError(analysis_id_value)
     manager.shutdown_engine(analysis_id_value)
-    return None
 
 
 @router.get('/engines', response_model=schemas.EngineListSchema, mcp=True)
@@ -302,7 +301,7 @@ async def compute_websocket(
             schemas.ComputeWebsocketErrorMessage(
                 error=str(exc),
                 status_code=400,
-            ).model_dump(mode='json')
+            ).model_dump(mode='json'),
         )
     except HTTPException as exc:
         await websocket.send_json(
@@ -310,7 +309,7 @@ async def compute_websocket(
                 action=action,
                 error=str(exc.detail),
                 status_code=exc.status_code,
-            ).model_dump(mode='json')
+            ).model_dump(mode='json'),
         )
     except Exception as exc:
         logger.error('WebSocket error: %s', exc, exc_info=True)
@@ -318,7 +317,7 @@ async def compute_websocket(
             schemas.ComputeWebsocketErrorMessage(
                 action=action,
                 error='An internal error occurred',
-            ).model_dump(mode='json')
+            ).model_dump(mode='json'),
         )
     finally:
         await _safe_close_websocket(websocket)

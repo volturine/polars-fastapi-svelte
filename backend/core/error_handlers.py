@@ -141,16 +141,15 @@ def handle_errors(operation: str = 'operation', value_error_status: int | None =
                     _raise_http(e, operation, value_error_status)
 
             return async_wrapper
-        else:
 
-            @wraps(func)
-            def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    _raise_http(e, operation, value_error_status)
+        @wraps(func)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                _raise_http(e, operation, value_error_status)
 
-            return sync_wrapper
+        return sync_wrapper
 
     return decorator
 

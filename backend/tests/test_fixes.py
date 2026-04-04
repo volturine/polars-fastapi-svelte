@@ -109,7 +109,7 @@ class TestNotificationHandler:
                     'recipient': 'test@test.com',
                     'input_columns': ['a'],
                     'unknown_field': 'bad',
-                }
+                },
             )
 
     def test_defaults(self):
@@ -119,7 +119,7 @@ class TestNotificationHandler:
                 'method': 'email',
                 'recipient': 'test@test.com',
                 'input_columns': ['col'],
-            }
+            },
         )
         assert params.subject_template == 'Notification'
         assert params.output_column == 'notification_status'
@@ -143,7 +143,7 @@ def _chart_frame() -> pl.LazyFrame:
             'value': [10.0, 20.0, 30.0, 40.0, 50.0],
             'group': ['x', 'y', 'x', 'y', 'x'],
             'group_rank': ['b', 'a', 'b', 'a', 'b'],
-        }
+        },
     ).lazy()
 
 
@@ -153,7 +153,7 @@ class TestChartParams:
             {
                 'chart_type': 'bar',
                 'x_column': 'category',
-            }
+            },
         )
         assert params.aggregation == 'sum'
         assert params.bins == 10
@@ -174,7 +174,7 @@ class TestChartParams:
                     'chart_type': 'bar',
                     'x_column': 'category',
                     'unknown': True,
-                }
+                },
             )
 
     def test_group_sort_fields(self):
@@ -185,7 +185,7 @@ class TestChartParams:
                 'group_column': 'group',
                 'group_sort_by': 'value',
                 'group_sort_order': 'desc',
-            }
+            },
         )
         assert params.group_sort_by == 'value'
         assert params.group_sort_order == 'desc'
@@ -203,9 +203,9 @@ class TestChartParams:
                             'aggregation': 'sum',
                             'y_axis_position': 'left',
                             'extra': True,
-                        }
+                        },
                     ],
-                }
+                },
             )
 
     def test_reference_line_validation(self):
@@ -218,9 +218,9 @@ class TestChartParams:
                         {
                             'axis': 'z',
                             'value': 1,
-                        }
+                        },
                     ],
-                }
+                },
             )
 
     def test_reference_line_value_optional(self):
@@ -232,9 +232,9 @@ class TestChartParams:
                     {
                         'axis': 'y',
                         'value': None,
-                    }
+                    },
                 ],
-            }
+            },
         )
         assert params.reference_lines[0].value is None
 
@@ -243,7 +243,7 @@ class TestChartParams:
             {
                 'chart_type': 'bar',
                 'x_column': 'category',
-            }
+            },
         )
         assert params.pan_zoom_enabled is False
         assert params.selection_enabled is False
@@ -369,7 +369,7 @@ class TestChartDataBar:
             {
                 'category': ['A', 'A', 'A', 'B', 'B', 'B'],
                 'value': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
-            }
+            },
         ).lazy()
         result = (
             compute_chart_data(
@@ -392,7 +392,7 @@ class TestChartDataBar:
             {
                 'category': ['A', 'A', 'A', 'B', 'B', 'B'],
                 'value': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
-            }
+            },
         ).lazy()
         result = (
             compute_chart_data(
@@ -466,7 +466,7 @@ class TestChartDataBar:
                     '2024-02-01T00:00:00',
                 ],
                 'value': [1, 2, 3],
-            }
+            },
         ).lazy()
         result = (
             compute_chart_data(
@@ -637,7 +637,7 @@ class TestChartDataPie:
                     '2024-01-08T00:00:00',
                 ],
                 'value': [5, 7],
-            }
+            },
         ).lazy()
         result = compute_chart_data(
             lf,
@@ -758,7 +758,7 @@ class TestChartDataScatter:
             {
                 'x': list(range(10000)),
                 'y': list(range(10000)),
-            }
+            },
         ).lazy()
         result = compute_chart_data(
             lf,
@@ -778,7 +778,7 @@ class TestChartDataBoxplot:
             {
                 'cat': ['A'] * 100 + ['B'] * 100,
                 'val': list(range(100)) + list(range(50, 150)),
-            }
+            },
         ).lazy()
         result = (
             compute_chart_data(

@@ -1,11 +1,12 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, String
 from sqlalchemy.ext.mutable import MutableDict
 from sqlmodel import Field, SQLModel
 
-from modules.analysis.pipeline_types import AnalysisPipelineDefinition
+from modules.analysis.pipeline_types import PipelineDefinition, parse_pipeline
 
 
 class AnalysisStatus(StrEnum):
@@ -21,7 +22,13 @@ class Analysis(SQLModel, table=True):  # type: ignore[call-arg]
     id: str = Field(sa_column=Column(String, primary_key=True))
     name: str = Field(sa_column=Column(String, nullable=False))
     description: str | None = Field(default=None, sa_column=Column(String, nullable=True))
-    pipeline_definition: AnalysisPipelineDefinition = Field(sa_column=Column(MutableDict.as_mutable(JSON), nullable=False))
+    pipeline_definition: dict[str, Any] = Field(sa_column=Column(MutableDict.as_mutable(JSON), nullable=False))
+
+    @property
+    def pipeline(self) -> PipelineDefinition:
+        """Parse the raw JSON pipeline_definition into typed dataclasses."""
+        return parse_pipeline(self.pipeline_definition)
+
     status: AnalysisStatus = Field(default=AnalysisStatus.DRAFT, sa_column=Column(String, nullable=False))
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
     updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))

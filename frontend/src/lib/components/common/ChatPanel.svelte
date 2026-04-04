@@ -34,7 +34,7 @@
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import { chatStore } from '$lib/stores/chat.svelte';
 	import type { MCPTool } from '$lib/api/mcp';
-	import type { ChatEvent } from '$lib/api/chat';
+	import type { ChatUiPatchEvent } from '$lib/api/chat';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import { renderMarkdown, timeAgo } from '$lib/utils/markdown';
 
@@ -211,7 +211,7 @@
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 		function onPatch(e: Event) {
-			const detail = (e as CustomEvent<ChatEvent>).detail;
+			const detail = (e as CustomEvent<ChatUiPatchEvent>).detail;
 			const resource = detail.resource;
 			if (!resource) return;
 			if (resource === 'analysis' || resource === 'analyses') {
@@ -508,9 +508,7 @@
 	}
 
 	async function saveConfig() {
-		chatStore.setProvider(
-			providerDraft as 'openrouter' | 'openai' | 'ollama' | 'huggingface'
-		);
+		chatStore.setProvider(providerDraft as 'openrouter' | 'openai' | 'ollama' | 'huggingface');
 		chatStore.model = modelDraft;
 		chatStore.systemPrompt = systemPromptDraft;
 		await chatStore.configure(apiKeyDraft);
@@ -518,9 +516,7 @@
 	}
 
 	function handleLoadModels() {
-		chatStore.setProvider(
-			providerDraft as 'openrouter' | 'openai' | 'ollama' | 'huggingface'
-		);
+		chatStore.setProvider(providerDraft as 'openrouter' | 'openai' | 'ollama' | 'huggingface');
 		chatStore.apiKey = apiKeyDraft;
 		void chatStore.loadModels();
 	}

@@ -86,7 +86,7 @@ describe('getDefaultConfig', () => {
 	test('returns ai defaults', () => {
 		const config = getDefaultConfig('ai');
 		expect(config).toHaveProperty('provider', 'ollama');
-		expect(config).toHaveProperty('model', 'llama2');
+		expect(config).toHaveProperty('model', 'llama3.2');
 		expect(config).toHaveProperty('batch_size', 10);
 	});
 });

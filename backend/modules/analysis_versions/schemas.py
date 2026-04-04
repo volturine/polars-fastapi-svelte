@@ -1,8 +1,7 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
-
-from modules.analysis.pipeline_types import AnalysisPipelineDefinition
 
 
 class AnalysisVersionSummary(BaseModel):
@@ -21,7 +20,7 @@ class AnalysisVersionSummary(BaseModel):
 class AnalysisVersionResponse(AnalysisVersionSummary):
     """Full version response including pipeline_definition."""
 
-    pipeline_definition: AnalysisPipelineDefinition
+    pipeline_definition: dict[str, Any]
 
 
 class AnalysisVersionUpdate(BaseModel):

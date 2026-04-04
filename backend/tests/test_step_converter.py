@@ -18,7 +18,7 @@ def test_convert_groupby_config_prefers_group_by() -> None:
             'group_by': ['team'],
             'groupBy': ['legacy_team'],
             'aggregations': [{'column': 'score', 'function': 'sum', 'alias': 'total'}],
-        }
+        },
     )
     assert result['group_by'] == ['team']
     assert result['aggregations'] == [{'column': 'score', 'function': 'sum', 'alias': 'total'}]
@@ -29,7 +29,7 @@ def test_convert_groupby_config_falls_back_to_legacy_groupby() -> None:
         {
             'groupBy': ['team'],
             'aggregations': [{'column': 'score', 'function': 'sum'}],
-        }
+        },
     )
     assert result['group_by'] == ['team']
     assert result['aggregations'] == [{'column': 'score', 'function': 'sum', 'alias': None}]
@@ -52,10 +52,10 @@ def test_convert_filter_config_ignores_blank_placeholder_conditions() -> None:
                     'operator': '=',
                     'value': '',
                     'value_type': 'string',
-                }
+                },
             ],
             'logic': 'AND',
-        }
+        },
     )
 
     assert result == {'conditions': [], 'logic': 'AND'}
@@ -79,7 +79,7 @@ def test_convert_filter_config_keeps_valid_conditions_when_placeholders_present(
                 },
             ],
             'logic': 'AND',
-        }
+        },
     )
 
     assert result == {
@@ -89,7 +89,7 @@ def test_convert_filter_config_keeps_valid_conditions_when_placeholders_present(
                 'operator': '>',
                 'value': 30,
                 'value_type': 'number',
-            }
+            },
         ],
         'logic': 'AND',
     }
@@ -103,7 +103,7 @@ def test_convert_step_format_returns_frozen_backend_step_dataclass() -> None:
             'config': {'x_column': 'age', 'y_column': 'score'},
             'depends_on': ['step-0'],
             'is_applied': True,
-        }
+        },
     )
 
     assert isinstance(step, BackendStep)

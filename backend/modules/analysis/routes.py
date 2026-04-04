@@ -163,7 +163,6 @@ async def delete_analysis(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     if manager.get_engine(analysis_id_value):
         manager.shutdown_engine(analysis_id_value)
-    return None
 
 
 @router.post('/{analysis_id}/preview', mcp=True)
@@ -295,10 +294,10 @@ async def update_step(
         existing = service.get_step(session, analysis_id_value, tab_id, step_id)
         model = get_config_model(data.type)
         if model:
-            model.model_validate(existing.get('config', {}))
+            model.model_validate(existing.config)
     elif data.config and not data.type:
         existing = service.get_step(session, analysis_id_value, tab_id, step_id)
-        existing_type = existing.get('type')
+        existing_type = existing.type
         if existing_type:
             model = get_config_model(existing_type)
             if model:
@@ -329,7 +328,6 @@ async def remove_step(
         tab_id,
         step_id,
     )
-    return None
 
 
 class DeriveTabBody(BaseModel):

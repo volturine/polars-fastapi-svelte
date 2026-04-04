@@ -88,7 +88,7 @@ def auth_engine():
         poolclass=StaticPool,
     )
     SQLModel.metadata.create_all(engine)
-    yield engine
+    return engine
 
 
 @pytest.fixture(scope='function')
@@ -178,7 +178,7 @@ class TestUserService:
             assert user is not None
             assert user.display_name == 'Seeded User'
             provider = session.exec(
-                select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == AuthProviderName.PASSWORD)
+                select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == AuthProviderName.PASSWORD),
             ).first()
             assert provider is not None
 
@@ -194,7 +194,7 @@ class TestUserService:
         assert user.email_verified is True
         assert user.has_password is True
         provider = auth_db_session.exec(
-            select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == AuthProviderName.PASSWORD)
+            select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == AuthProviderName.PASSWORD),
         ).first()
         assert provider is not None
         assert provider.provider_subject == 'guest@example.com'
@@ -217,7 +217,7 @@ class TestUserService:
         assert updated.email == 'second@example.com'
         assert updated.display_name == 'Second User'
         provider = auth_db_session.exec(
-            select(AuthProvider).where(AuthProvider.user_id == updated.id, AuthProvider.provider == AuthProviderName.PASSWORD)
+            select(AuthProvider).where(AuthProvider.user_id == updated.id, AuthProvider.provider == AuthProviderName.PASSWORD),
         ).first()
         assert provider is not None
         assert provider.provider_subject == 'second@example.com'
@@ -244,7 +244,7 @@ class TestUserService:
         assert updated.email == 'default@example.com'
         assert updated.display_name == 'Renamed Default'
         provider = auth_db_session.exec(
-            select(AuthProvider).where(AuthProvider.user_id == updated.id, AuthProvider.provider == AuthProviderName.PASSWORD)
+            select(AuthProvider).where(AuthProvider.user_id == updated.id, AuthProvider.provider == AuthProviderName.PASSWORD),
         ).first()
         assert provider is not None
         assert provider.provider_subject == 'default@example.com'
@@ -259,7 +259,7 @@ class TestUserService:
         assert user.has_password is True
 
         provider = auth_db_session.exec(
-            select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == AuthProviderName.PASSWORD)
+            select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == AuthProviderName.PASSWORD),
         ).first()
         assert provider is not None
         assert provider.provider_subject == 'test@example.com'
@@ -312,7 +312,7 @@ class TestUserService:
         change_password(auth_db_session, user.id, 'Password123', 'Newpassword123')
 
         provider = auth_db_session.exec(
-            select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == AuthProviderName.PASSWORD)
+            select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == AuthProviderName.PASSWORD),
         ).first()
         assert provider is not None
         assert isinstance(provider.provider_metadata, dict)
@@ -359,7 +359,7 @@ class TestUserService:
                         is_hidden=False,
                         owner_id=user.id,
                         created_at=now,
-                    )
+                    ),
                 )
                 namespace_session.add(
                     Analysis(
@@ -373,7 +373,7 @@ class TestUserService:
                         result_path=None,
                         thumbnail=None,
                         owner_id=user.id,
-                    )
+                    ),
                 )
                 namespace_session.add(
                     Udf(
@@ -387,7 +387,7 @@ class TestUserService:
                         owner_id=user.id,
                         created_at=now,
                         updated_at=now,
-                    )
+                    ),
                 )
                 namespace_session.commit()
 
@@ -505,7 +505,7 @@ class TestOAuthService:
         assert user.email == 'oauth@example.com'
         assert user.has_password is False
         provider = auth_db_session.exec(
-            select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == AuthProviderName.GOOGLE)
+            select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == AuthProviderName.GOOGLE),
         ).first()
         assert provider is not None
 
@@ -996,7 +996,7 @@ class TestAuthRoutes:
             select(VerificationToken).where(
                 VerificationToken.user_id == user.id,
                 VerificationToken.token_type == VerificationTokenType.PASSWORD_RESET,
-            )
+            ),
         ).first()
         assert row is not None
         assert row.used is False
@@ -1011,7 +1011,7 @@ class TestAuthRoutes:
         assert response.status_code == 200
         assert response.json()['message'] == 'If the email exists, a password reset link has been sent'
         rows = auth_db_session.exec(
-            select(VerificationToken).where(VerificationToken.token_type == VerificationTokenType.PASSWORD_RESET)
+            select(VerificationToken).where(VerificationToken.token_type == VerificationTokenType.PASSWORD_RESET),
         ).all()
         assert len(rows) == 0
 
@@ -1028,7 +1028,7 @@ class TestAuthRoutes:
         assert response.status_code == 200
         assert response.json()['message'] == 'Password reset successful'
         provider = auth_db_session.exec(
-            select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == AuthProviderName.PASSWORD)
+            select(AuthProvider).where(AuthProvider.user_id == user.id, AuthProvider.provider == AuthProviderName.PASSWORD),
         ).first()
         assert provider is not None
         assert isinstance(provider.provider_metadata, dict)

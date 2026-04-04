@@ -136,7 +136,7 @@ def restore_version(session: Session, analysis_id: str, version: int) -> Analysi
             AnalysisDataSource(
                 analysis_id=analysis_id,
                 datasource_id=datasource_id,
-            )
+            ),
         )
 
     session.commit()

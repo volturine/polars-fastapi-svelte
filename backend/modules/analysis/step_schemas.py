@@ -10,7 +10,7 @@ from modules.compute.operations.strings import StringTransformMethod
 from modules.compute.operations.timeseries import DurationUnit, TimeComponent, TimeDirection, TimeseriesOperationType
 from modules.compute.operations.with_columns import WithColumnsExprType
 
-__all__ = ['StepType', 'get_step_catalog', 'get_config_model', 'validate_step']
+__all__ = ['StepType', 'get_config_model', 'get_step_catalog', 'validate_step']
 
 
 class StepCategory(StrEnum):
@@ -530,8 +530,8 @@ STEP_CATALOG: dict[str, StepCatalogEntry] = {
     },
     'fill_null': {
         'description': (
-            'Fill null values using a strategy: literal value, forward fill, backward fill, '
-            'mean, min, or max. Optionally restrict to specific columns.'
+            'Fill null values using a strategy: literal value, forward fill, backward fill, mean, min, or max. '
+            'Optionally restrict to specific columns.'
         ),
         'category': 'transform',
         'config': FillNullConfig,
@@ -543,16 +543,16 @@ STEP_CATALOG: dict[str, StepCatalogEntry] = {
     },
     'string_transform': {
         'description': (
-            'Apply string methods to a column: uppercase, lowercase, trim, strip, slice, '
-            'replace, extract, split, contains, starts_with, ends_with.'
+            'Apply string methods to a column: uppercase, lowercase, trim, strip, slice, replace, '
+            'extract, split, contains, starts_with, ends_with.'
         ),
         'category': 'transform',
         'config': StringTransformConfig,
     },
     'timeseries': {
         'description': (
-            'Perform temporal operations on date/datetime columns: extract components, '
-            'add/subtract durations, compute differences, truncate, or round.'
+            'Perform temporal operations on date/datetime columns: extract components, add/subtract '
+            'durations, compute differences, truncate, or round.'
         ),
         'category': 'transform',
         'config': TimeSeriesConfig,
@@ -569,8 +569,8 @@ STEP_CATALOG: dict[str, StepCatalogEntry] = {
     },
     'groupby': {
         'description': (
-            'Group rows by columns and compute aggregations. Supported functions: '
-            'sum, mean, min, max, count, first, last, std, median, n_unique.'
+            'Group rows by columns and compute aggregations. Supported functions: sum, mean, min, max, '
+            'count, first, last, std, median, n_unique.'
         ),
         'category': 'aggregate',
         'config': GroupByConfig,
@@ -683,8 +683,8 @@ STEP_CATALOG: dict[str, StepCatalogEntry] = {
     },
     'ai': {
         'description': (
-            'Run AI inference on rows using Ollama or OpenAI. Configure input columns, '
-            'prompt template with {{column}} placeholders, and output column.'
+            'Run AI inference on rows using Ollama or OpenAI. Configure input columns, prompt template '
+            'with {{column}} placeholders, and output column.'
         ),
         'category': 'advanced',
         'config': AIConfig,
@@ -710,7 +710,7 @@ def get_step_catalog() -> list[StepCatalogItem]:
                 'description': cast(str, info['description']),
                 'category': cast(str, info['category']),
                 'config_schema': cast(dict[str, object], config_model.model_json_schema()),
-            }
+            },
         )
     return result
 

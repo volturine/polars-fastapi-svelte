@@ -28,9 +28,9 @@ from modules.compute.operations.view import ViewHandler
 from modules.compute.operations.with_columns import WithColumnsHandler
 
 __all__ = [
+    'HANDLERS',
     'OperationHandler',
     'OperationParams',
-    'HANDLERS',
 ]
 
 HANDLERS: dict[str, OperationHandler] = {

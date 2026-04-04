@@ -276,7 +276,7 @@ class TestValidationFormatAndDefaults:
                 'opts': {
                     'type': 'object',
                     'properties': {'verbose': {'type': 'boolean', 'default': False}},
-                }
+                },
             },
         }
         result = apply_defaults(schema, {'opts': {}})
@@ -291,7 +291,7 @@ class TestValidationFormatAndDefaults:
                 'opts': {
                     'type': 'object',
                     'properties': {'verbose': {'type': 'boolean', 'default': True}},
-                }
+                },
             },
         }
         result = apply_defaults(schema, {})
@@ -424,8 +424,8 @@ class TestOpenAPIToJsonSchema:
                     'properties': {'name': {'type': 'string'}},
                     'required': ['name'],
                     'additionalProperties': False,
-                }
-            }
+                },
+            },
         }
         schema = {'type': 'object', 'additionalProperties': {'$ref': '#/components/schemas/ExtraValue'}}
         result = _openapi_to_json_schema(schema, components)
@@ -516,10 +516,10 @@ class TestOpenAPIToJsonSchema:
                                 'type': 'object',
                                 'properties': {'ok': {'type': 'boolean'}},
                                 'required': ['ok'],
-                            }
-                        }
+                            },
+                        },
                     },
-                }
+                },
             },
         }
         tool = _build_tool(
@@ -612,7 +612,7 @@ class TestMCPContractGuardrails:
                 'input_schema': {'type': 'object', 'properties': {}, 'required': [], 'additionalProperties': False},
                 'arg_metadata': {'path': [], 'query': [], 'payload': None},
                 'tags': [],
-            }
+            },
         ]
 
         call_resp = client.post('/api/v1/mcp/call', json={'tool_id': 'broken_mutating_tool', 'args': {}})
@@ -945,7 +945,7 @@ class TestPathParameterReliability:
                 'input_schema': {'type': 'object', 'properties': {}, 'required': [], 'additionalProperties': False},
                 'arg_metadata': {'path': [], 'query': [], 'payload': None},
                 'tags': [],
-            }
+            },
         ]
         resp = client.post('/api/v1/mcp/call', json={'tool_id': 'broken_tool', 'args': {}})
         assert resp.status_code == 200
@@ -1157,10 +1157,10 @@ class TestBuildRegistryFailFast:
                                     'name': 'q',
                                     'in': 'query',
                                     'schema': {'type': 'string', 'x-vendor-ext': 'bad'},
-                                }
+                                },
                             ],
-                        }
-                    }
+                        },
+                    },
                 },
                 'components': {},
             }
@@ -1238,10 +1238,10 @@ class TestStartupEnforcement:
                                     'name': 'p',
                                     'in': 'query',
                                     'schema': {'type': 'string', 'x-bad-ext': True},
-                                }
+                                },
                             ],
-                        }
-                    }
+                        },
+                    },
                 },
                 'components': {},
             }

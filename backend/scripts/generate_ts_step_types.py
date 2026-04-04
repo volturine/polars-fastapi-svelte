@@ -15,7 +15,7 @@ from pydantic import BaseModel
 # Ensure backend package is importable when running from backend/
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from modules.analysis.step_schemas import (  # noqa: E402
+from modules.analysis.step_schemas import (
     AggregationSchema,
     AIConfig,
     ChartConfig,

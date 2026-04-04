@@ -1045,7 +1045,7 @@ def export_data(
 
         hc_datasource_id = str(result_id)
         db_result = session.execute(
-            select(HealthCheck).where(col(HealthCheck.datasource_id) == hc_datasource_id)  # type: ignore[arg-type]
+            select(HealthCheck).where(col(HealthCheck.datasource_id) == hc_datasource_id),  # type: ignore[arg-type]
         )
         hc_checks = [c for c in db_result.scalars().all() if c.enabled]
         hc_results: list[HealthCheckResult] = []
@@ -1555,7 +1555,7 @@ def list_iceberg_snapshots(session: Session, datasource_id: str, branch: str | N
                 parent_snapshot_id=str(snap.parent_snapshot_id) if snap.parent_snapshot_id is not None else None,
                 operation=operation,
                 is_current=str(snap.snapshot_id) == current_snapshot_id,
-            )
+            ),
         )
 
     snapshots.sort(key=lambda s: s.timestamp_ms, reverse=True)

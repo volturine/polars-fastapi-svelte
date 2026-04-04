@@ -182,7 +182,7 @@ async def login(body: LoginRequest, request: Request, response: Response, sessio
         select(AuthProvider).where(
             AuthProvider.user_id == user.id,
             AuthProvider.provider == AuthProviderName.PASSWORD,
-        )
+        ),
     ).first()
     if not password_provider:
         raise InvalidCredentialsError()

@@ -1,8 +1,8 @@
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from modules.analysis.models import Analysis, AnalysisStatus
-from modules.analysis.pipeline_types import AnalysisPipelineDefinition
 from modules.analysis_versions.models import AnalysisVersion
 from modules.analysis_versions.service import create_version, get_version
 from modules.datasource.models import DataSource
@@ -11,7 +11,7 @@ from modules.datasource.source_types import DataSourceType
 
 def test_list_versions_returns_versions(test_db_session, client, sample_datasource: DataSource):
     analysis_id = str(uuid.uuid4())
-    pipeline_definition: AnalysisPipelineDefinition = {
+    pipeline_definition: dict[str, Any] = {
         'steps': [],
         'tabs': [
             {
@@ -30,7 +30,7 @@ def test_list_versions_returns_versions(test_db_session, client, sample_datasour
                     'filename': 'version_output',
                 },
                 'steps': [],
-            }
+            },
         ],
     }
     analysis = Analysis(
@@ -65,7 +65,7 @@ def test_list_versions_returns_versions(test_db_session, client, sample_datasour
 
 def test_restore_version_updates_analysis(test_db_session, client, sample_datasource: DataSource):
     analysis_id = str(uuid.uuid4())
-    analysis_pipeline: AnalysisPipelineDefinition = {
+    analysis_pipeline: dict[str, Any] = {
         'steps': [],
         'tabs': [
             {
@@ -84,7 +84,7 @@ def test_restore_version_updates_analysis(test_db_session, client, sample_dataso
                     'filename': 'version_output',
                 },
                 'steps': [],
-            }
+            },
         ],
     }
     analysis = Analysis(
@@ -121,7 +121,7 @@ def test_restore_version_updates_analysis(test_db_session, client, sample_dataso
                         'filename': 'version_output',
                     },
                     'steps': [],
-                }
+                },
             ],
         },
         created_at=datetime.now(UTC),
@@ -139,7 +139,7 @@ def test_restore_version_updates_analysis(test_db_session, client, sample_dataso
 
 def test_rename_version(test_db_session, client, sample_datasource: DataSource):
     analysis_id = str(uuid.uuid4())
-    pipeline_definition: AnalysisPipelineDefinition = {
+    pipeline_definition: dict[str, Any] = {
         'steps': [],
         'tabs': [
             {
@@ -158,7 +158,7 @@ def test_rename_version(test_db_session, client, sample_datasource: DataSource):
                     'filename': 'version_output',
                 },
                 'steps': [],
-            }
+            },
         ],
     }
     analysis = Analysis(
@@ -196,7 +196,7 @@ def test_rename_version(test_db_session, client, sample_datasource: DataSource):
 
 def test_rename_version_not_found(test_db_session, client, sample_datasource: DataSource):
     analysis_id = str(uuid.uuid4())
-    pipeline_definition: AnalysisPipelineDefinition = {
+    pipeline_definition: dict[str, Any] = {
         'steps': [],
         'tabs': [
             {
@@ -215,7 +215,7 @@ def test_rename_version_not_found(test_db_session, client, sample_datasource: Da
                     'filename': 'version_output',
                 },
                 'steps': [],
-            }
+            },
         ],
     }
     analysis = Analysis(
@@ -240,7 +240,7 @@ def test_rename_version_not_found(test_db_session, client, sample_datasource: Da
 
 def test_create_version_increments(test_db_session, sample_datasource: DataSource):
     analysis_id = str(uuid.uuid4())
-    pipeline_definition: AnalysisPipelineDefinition = {
+    pipeline_definition: dict[str, Any] = {
         'steps': [],
         'tabs': [
             {
@@ -259,7 +259,7 @@ def test_create_version_increments(test_db_session, sample_datasource: DataSourc
                     'filename': 'version_output',
                 },
                 'steps': [],
-            }
+            },
         ],
     }
     analysis = Analysis(
@@ -282,7 +282,7 @@ def test_create_version_increments(test_db_session, sample_datasource: DataSourc
 
 def test_get_version_returns_none(test_db_session, sample_datasource: DataSource):
     analysis_id = str(uuid.uuid4())
-    pipeline_definition: AnalysisPipelineDefinition = {
+    pipeline_definition: dict[str, Any] = {
         'steps': [],
         'tabs': [
             {
@@ -301,7 +301,7 @@ def test_get_version_returns_none(test_db_session, sample_datasource: DataSource
                     'filename': 'version_output',
                 },
                 'steps': [],
-            }
+            },
         ],
     }
     analysis = Analysis(
@@ -335,7 +335,7 @@ def test_restore_version_cycle_detection(test_db_session, client, sample_datasou
         created_at=datetime.now(UTC),
     )
     test_db_session.add(cycle_ds)
-    pipeline_definition: AnalysisPipelineDefinition = {
+    pipeline_definition: dict[str, Any] = {
         'steps': [],
         'tabs': [
             {
@@ -354,7 +354,7 @@ def test_restore_version_cycle_detection(test_db_session, client, sample_datasou
                     'filename': 'version_output',
                 },
                 'steps': [],
-            }
+            },
         ],
     }
     analysis = Analysis(
@@ -407,7 +407,7 @@ def test_restore_version_requires_datasource(test_db_session, client):
                     'filename': 'version_output',
                 },
                 'steps': [],
-            }
+            },
         ],
     }
     analysis = Analysis(
@@ -469,7 +469,7 @@ def test_restore_version_relinks_analysis_datasource(test_db_session, client):
                     'filename': 'version_output',
                 },
                 'steps': [],
-            }
+            },
         ],
     }
     analysis = Analysis(

@@ -166,7 +166,7 @@ class TestLockWebsocket:
                     'resource_id': 'analysis-ws-2',
                     'lock_token': body['lock_token'],
                     'ttl_seconds': 30,
-                }
+                },
             )
             status = websocket.receive_json()
 

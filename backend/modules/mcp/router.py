@@ -36,7 +36,7 @@ def build_inputs(fn: Callable[..., Any]) -> list[dict[str, Any]]:
                 'required': not has_default,
                 'default': None if not has_default else p.default,
                 'annotation': ann_name,
-            }
+            },
         )
     return items
 

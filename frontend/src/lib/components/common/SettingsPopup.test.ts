@@ -127,12 +127,12 @@ describe('SettingsPopup', () => {
 
 		test('shows Test button', () => {
 			renderPopup();
-			expect(screen.getByText('Test')).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: 'Test SMTP' })).toBeInTheDocument();
 		});
 
 		test('test button is disabled without recipient', () => {
 			renderPopup();
-			const btn = screen.getByText('Test').closest('button');
+			const btn = screen.getByRole('button', { name: 'Test SMTP' });
 			expect(btn).toBeDisabled();
 		});
 	});

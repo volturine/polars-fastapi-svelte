@@ -25,7 +25,7 @@ class TestSyncIcebergSchema:
             [
                 NestedField(1, 'a', StringType()),
                 NestedField(2, 'b', StringType()),
-            ]
+            ],
         )
         new_schema = pa.schema([pa.field('a', pa.string()), pa.field('b', pa.string())])
 
@@ -40,7 +40,7 @@ class TestSyncIcebergSchema:
                 NestedField(1, 'a', StringType()),
                 NestedField(2, 'b', StringType()),
                 NestedField(3, 'c', StringType()),
-            ]
+            ],
         )
         new_schema = pa.schema([pa.field('a', pa.string())])
 
@@ -56,7 +56,7 @@ class TestSyncIcebergSchema:
         table, update = self._make_table(
             [
                 NestedField(1, 'a', StringType()),
-            ]
+            ],
         )
         new_schema = pa.schema([pa.field('a', pa.string()), pa.field('b', pa.int64()), pa.field('c', pa.float64())])
 
@@ -71,13 +71,13 @@ class TestSyncIcebergSchema:
             [
                 NestedField(1, 'keep', StringType()),
                 NestedField(2, 'remove', StringType()),
-            ]
+            ],
         )
         new_schema = pa.schema(
             [
                 pa.field('keep', pa.string()),
                 pa.field('new_col', pa.float64()),
-            ]
+            ],
         )
 
         result = _sync_iceberg_schema(table, new_schema)
@@ -92,7 +92,7 @@ class TestSyncIcebergSchema:
             [
                 NestedField(1, 'a', StringType()),
                 NestedField(2, 'b', StringType()),
-            ]
+            ],
         )
         new_schema = pa.schema([pa.field('a', pa.string())])
 
@@ -125,13 +125,13 @@ class TestBuildModeWiring:
                         'build_mode': build_mode,
                     },
                     'steps': [],
-                }
+                },
             ],
             'sources': {
                 datasource.id: {
                     'source_type': datasource.source_type,
                     **datasource.config,
-                }
+                },
             },
         }
 

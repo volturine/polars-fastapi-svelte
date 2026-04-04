@@ -5,7 +5,6 @@ from typing import Annotated, Any
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
 
 from modules.analysis.models import AnalysisStatus
-from modules.analysis.pipeline_types import AnalysisPipelineDefinition
 from modules.analysis.step_schemas import StepType
 
 
@@ -32,7 +31,7 @@ class TabDatasourceSchema(BaseModel):
         str,
         StringConstraints(min_length=1, strip_whitespace=True),
         Field(
-            description=('ID of an existing datasource from GET /api/v1/datasource. Must be a real datasource ID, not an invented value.')
+            description=('ID of an existing datasource from GET /api/v1/datasource. Must be a real datasource ID, not an invented value.'),
         ),
     ]
     analysis_tab_id: str | None = None
@@ -52,7 +51,7 @@ class TabOutputSchema(BaseModel):
             description=(
                 "UUID v4 for this tab's output. When creating a new analysis, call generate_uuid to get one. "
                 'When updating an existing analysis, reuse the current result_id from the analysis response.'
-            )
+            ),
         ),
     ]
     format: Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
@@ -109,7 +108,7 @@ class AnalysisResponseSchema(BaseModel):
     id: str
     name: str
     description: str | None
-    pipeline_definition: AnalysisPipelineDefinition
+    pipeline_definition: dict[str, Any]
     status: AnalysisStatus
     created_at: datetime
     updated_at: datetime

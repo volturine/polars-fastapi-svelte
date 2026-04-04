@@ -27,15 +27,15 @@ def test_preview_analysis_uses_pipeline_payload(client, sample_datasource: DataS
                         'type': 'filter',
                         'config': {'column': 'age', 'operator': '>', 'value': 25},
                         'depends_on': [],
-                    }
+                    },
                 ],
-            }
+            },
         ],
         'sources': {
             sample_datasource.id: {
                 'source_type': sample_datasource.source_type,
                 **sample_datasource.config,
-            }
+            },
         },
     }
 

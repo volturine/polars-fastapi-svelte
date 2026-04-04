@@ -169,7 +169,7 @@ def _build_tool_system_message(tools: list[dict]) -> str:
                     bool(item.get('required', True)),
                     'path',
                     item.get('description', ''),
-                )
+                ),
             )
         for item in query_meta:
             param_parts.append(
@@ -179,13 +179,13 @@ def _build_tool_system_message(tools: list[dict]) -> str:
                     bool(item.get('required', False)),
                     'query',
                     item.get('description', ''),
-                )
+                ),
             )
         if payload_meta is not None:
             payload_schema = schema.get('properties', {}).get('payload', {})
             payload_desc = payload_meta.get('description', '')
             param_parts.append(
-                _format_param_details('payload', payload_schema, bool(payload_meta.get('required', False)), 'body', payload_desc)
+                _format_param_details('payload', payload_schema, bool(payload_meta.get('required', False)), 'body', payload_desc),
             )
             if payload_meta.get('content_type'):
                 param_parts.append(f'      content_type: {payload_meta["content_type"]}')
@@ -220,14 +220,14 @@ def _push_tool_error(
             'path': path,
             'args': args,
             'errors': [{'path': '$', 'message': message}],
-        }
+        },
     )
     session.append_message(
         {
             'role': 'tool',
             'tool_call_id': tc.get('id', tool_id),
             'content': json.dumps({'status': 'error', 'message': message}),
-        }
+        },
     )
 
 
@@ -271,7 +271,7 @@ def _parse_text_tool_calls(content: str) -> tuple[str, list[dict]]:
                     'name': call['name'],
                     'arguments': json.dumps(call.get('arguments', {})),
                 },
-            }
+            },
         )
     cleaned = re.sub(r'TOOLCALL>.*', '', content, flags=re.DOTALL).strip()
     return cleaned, tool_calls
@@ -307,11 +307,11 @@ async def _run_agent_turn(
     try:
         if provider_name != 'openrouter':
             prompt_lines: list[str] = []
-            for msg in session.messages:
-                role = str(msg.get('role', 'user')).lower()
+            for history_msg in session.messages:
+                role = str(history_msg.get('role', 'user')).lower()
                 if role not in {'system', 'user', 'assistant'}:
                     continue
-                content = str(msg.get('content') or '')
+                content = str(history_msg.get('content') or '')
                 if not content:
                     continue
                 prompt_lines.append(f'{role}: {content}')
@@ -413,14 +413,14 @@ async def _run_agent_turn(
                 valid, errors, normalized = validate_args(tool['input_schema'], args)
                 if not valid:
                     session.push_event(
-                        {'type': 'tool_error', 'tool_id': tool_id, 'method': method, 'path': path, 'args': args, 'errors': errors}
+                        {'type': 'tool_error', 'tool_id': tool_id, 'method': method, 'path': path, 'args': args, 'errors': errors},
                     )
                     session.append_message(
                         {
                             'role': 'tool',
                             'tool_call_id': tc.get('id', tool_id),
                             'content': json.dumps({'status': 'validation_error', 'errors': errors}),
-                        }
+                        },
                     )
                     continue
 
@@ -432,7 +432,7 @@ async def _run_agent_turn(
                             'method': method,
                             'path': path,
                             'args': normalized,
-                        }
+                        },
                     )
                     approved = await session.wait_for_confirm()
                     if not approved:
@@ -459,7 +459,7 @@ async def _run_agent_turn(
                         'role': 'tool',
                         'tool_call_id': tc.get('id', tool_id),
                         'content': tool_result_str,
-                    }
+                    },
                 )
 
         session.push_event({'type': 'usage', **turn_usage})
@@ -542,7 +542,7 @@ async def send_message(request: Request, body: MessageRequest, user: User = Depe
         {
             'X-Session-Token': request.headers.get('X-Session-Token') or request.cookies.get('session_token') or '',
             'X-Namespace': request.headers.get('X-Namespace') or get_namespace(),
-        }
+        },
     )
     task = asyncio.create_task(_run_agent_turn(session, request.app, body.content, body.tool_ids or None, context))
     session.set_task(task)

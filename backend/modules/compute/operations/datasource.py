@@ -550,7 +550,7 @@ def _read_excel_bounds(config: DatasourceParams) -> pl.LazyFrame:
             min_col=start_col + 1,
             max_col=end_col + 1,
             values_only=True,
-        )
+        ),
     )
 
     if not rows:

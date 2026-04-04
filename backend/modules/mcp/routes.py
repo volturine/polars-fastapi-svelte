@@ -22,7 +22,7 @@ def _request_tool_context(request: Request) -> dict[str, dict[str, str]]:
         {
             'X-Session-Token': request.headers.get('X-Session-Token') or request.cookies.get('session_token') or '',
             'X-Namespace': request.headers.get('X-Namespace') or get_namespace(),
-        }
+        },
     )
 
 

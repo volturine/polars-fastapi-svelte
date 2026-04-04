@@ -9,7 +9,7 @@ import {
 	listSessions,
 	confirmTool
 } from '$lib/api/chat';
-import type { ChatEvent, ChatModel, ChatSessionInfo } from '$lib/api/chat';
+import type { ChatEvent, ChatUiPatchEvent, ChatModel, ChatSessionInfo } from '$lib/api/chat';
 import { getSettings, updateSettings, isMasked } from '$lib/api/settings';
 import type { AppSettings } from '$lib/api/settings';
 import { listTools } from '$lib/api/mcp';
@@ -374,7 +374,8 @@ export class ChatStore {
 		}
 		if (this.provider === 'openrouter') {
 			this.model = s.openrouter_default_model || this.model || 'openai/gpt-4o-mini';
-			this.apiKey = s.openrouter_api_key && !isMasked(s.openrouter_api_key) ? s.openrouter_api_key : '';
+			this.apiKey =
+				s.openrouter_api_key && !isMasked(s.openrouter_api_key) ? s.openrouter_api_key : '';
 			this.endpointUrl = 'https://openrouter.ai/api/v1';
 			this.organizationId = '';
 		} else if (this.provider === 'openai') {
@@ -520,124 +521,132 @@ export class ChatStore {
 	}
 
 	private _handleEvent(event: ChatEvent): void {
-		if (event.type === 'message' && event.role && event.content !== undefined) {
-			const displayContent =
-				event.role === 'user'
-					? ChatStore._stripPageContext(event.content ?? '')
-					: (event.content ?? '');
-			const msg: ChatMessage = {
-				id: this._id(),
-				role: event.role,
-				content: displayContent,
-				ts: event.ts ?? Date.now()
-			};
-			this.messages.push(msg);
-			this.timeline.push({ kind: 'message', item: msg });
-		}
-		if (event.type === 'tool_call' && event.tool_id) {
-			const tc: ToolCall = {
-				tool_id: event.tool_id,
-				method: event.method ?? '',
-				path: event.path ?? '',
-				args: event.args ?? {},
-				status: 'running',
-				expanded: false
-			};
-			this.toolCalls.push(tc);
-			this.timeline.push({ kind: 'tool', item: tc });
-		}
-		if (event.type === 'tool_result' && event.tool_id) {
-			this._updateToolStatus(event.tool_id, 'done', event.result, undefined, event.duration_ms);
-		}
-		if (event.type === 'tool_error' && event.tool_id) {
-			const errors = event.errors ?? [];
-			this._updateToolStatus(event.tool_id, 'error', undefined, errors);
-			const summary =
-				event.errors && event.errors.length > 0
-					? event.errors.map((e) => `${e.path}: ${e.message}`).join('\n')
-					: 'Validation failed';
-			const msg: ChatMessage = {
-				id: this._id(),
-				role: 'tool',
-				content: summary,
-				ts: event.ts ?? Date.now()
-			};
-			this.messages.push(msg);
-			this.timeline.push({ kind: 'message', item: msg });
-			this.loading = false;
-		}
-		if (event.type === 'turn_start') {
-			this.currentTurn = event.turn ?? 0;
-			this.maxTurns = event.max_turns ?? null;
-		}
-		if (event.type === 'tool_start' && event.tool_id) {
-			// Update the matching running tool call with start timestamp
-			const tc = this.toolCalls.findLast(
-				(t) => t.tool_id === event.tool_id && t.status === 'running'
-			);
-			if (tc) {
-				tc.startedAt = Date.now();
+		switch (event.type) {
+			case 'message': {
+				const displayContent =
+					event.role === 'user' ? ChatStore._stripPageContext(event.content) : event.content;
+				const msg: ChatMessage = {
+					id: this._id(),
+					role: event.role,
+					content: displayContent,
+					ts: event.ts ?? Date.now()
+				};
+				this.messages.push(msg);
+				this.timeline.push({ kind: 'message', item: msg });
+				break;
 			}
-			for (let i = this.timeline.length - 1; i >= 0; i--) {
-				const entry = this.timeline[i];
-				if (
-					entry.kind === 'tool' &&
-					entry.item.tool_id === event.tool_id &&
-					entry.item.status === 'running'
-				) {
-					entry.item.startedAt = Date.now();
-					break;
+			case 'tool_call': {
+				const tc: ToolCall = {
+					tool_id: event.tool_id,
+					method: event.method,
+					path: event.path,
+					args: event.args,
+					status: 'running',
+					expanded: false
+				};
+				this.toolCalls.push(tc);
+				this.timeline.push({ kind: 'tool', item: tc });
+				break;
+			}
+			case 'tool_result': {
+				this._updateToolStatus(event.tool_id, 'done', event.result, undefined, event.duration_ms);
+				break;
+			}
+			case 'tool_error': {
+				this._updateToolStatus(event.tool_id, 'error', undefined, event.errors);
+				const summary =
+					event.errors.length > 0
+						? event.errors.map((e) => `${e.path}: ${e.message}`).join('\n')
+						: 'Validation failed';
+				const errMsg: ChatMessage = {
+					id: this._id(),
+					role: 'tool',
+					content: summary,
+					ts: event.ts ?? Date.now()
+				};
+				this.messages.push(errMsg);
+				this.timeline.push({ kind: 'message', item: errMsg });
+				this.loading = false;
+				break;
+			}
+			case 'turn_start': {
+				this.currentTurn = event.turn;
+				this.maxTurns = event.max_turns;
+				break;
+			}
+			case 'tool_start': {
+				const startTc = this.toolCalls.findLast(
+					(t) => t.tool_id === event.tool_id && t.status === 'running'
+				);
+				if (startTc) {
+					startTc.startedAt = Date.now();
 				}
-			}
-		}
-		if (event.type === 'tool_confirm' && event.tool_id) {
-			this.pendingConfirm = {
-				tool_id: event.tool_id,
-				method: event.method ?? '',
-				path: event.path ?? '',
-				args: event.args ?? {}
-			};
-			// Update tool status to confirming
-			const tc = this.toolCalls.findLast(
-				(t) => t.tool_id === event.tool_id && t.status === 'running'
-			);
-			if (tc) tc.status = 'confirming';
-			for (let i = this.timeline.length - 1; i >= 0; i--) {
-				const entry = this.timeline[i];
-				if (
-					entry.kind === 'tool' &&
-					entry.item.tool_id === event.tool_id &&
-					entry.item.status === 'running'
-				) {
-					entry.item.status = 'confirming';
-					break;
+				for (let i = this.timeline.length - 1; i >= 0; i--) {
+					const entry = this.timeline[i];
+					if (
+						entry.kind === 'tool' &&
+						entry.item.tool_id === event.tool_id &&
+						entry.item.status === 'running'
+					) {
+						entry.item.startedAt = Date.now();
+						break;
+					}
 				}
+				break;
 			}
-		}
-		if (event.type === 'ui_patch') {
-			this._applyUiPatch(event);
-		}
-		if (event.type === 'usage') {
-			const turn: UsageInfo = {
-				prompt_tokens: event.prompt_tokens ?? 0,
-				completion_tokens: event.completion_tokens ?? 0,
-				total_tokens: event.total_tokens ?? 0
-			};
-			this.lastTurnUsage = turn;
-			this.sessionUsage = {
-				prompt_tokens: this.sessionUsage.prompt_tokens + turn.prompt_tokens,
-				completion_tokens: this.sessionUsage.completion_tokens + turn.completion_tokens,
-				total_tokens: this.sessionUsage.total_tokens + turn.total_tokens
-			};
-		}
-		if (event.type === 'error' && event.content) {
-			this.error = event.content;
-		}
-		if (event.type === 'done') {
-			this.loading = false;
-			this.currentTurn = 0;
-			this.maxTurns = null;
-			this.pendingConfirm = null;
+			case 'tool_confirm': {
+				this.pendingConfirm = {
+					tool_id: event.tool_id,
+					method: event.method,
+					path: event.path,
+					args: event.args
+				};
+				const confirmTc = this.toolCalls.findLast(
+					(t) => t.tool_id === event.tool_id && t.status === 'running'
+				);
+				if (confirmTc) confirmTc.status = 'confirming';
+				for (let i = this.timeline.length - 1; i >= 0; i--) {
+					const entry = this.timeline[i];
+					if (
+						entry.kind === 'tool' &&
+						entry.item.tool_id === event.tool_id &&
+						entry.item.status === 'running'
+					) {
+						entry.item.status = 'confirming';
+						break;
+					}
+				}
+				break;
+			}
+			case 'ui_patch': {
+				this._applyUiPatch(event);
+				break;
+			}
+			case 'usage': {
+				const turn: UsageInfo = {
+					prompt_tokens: event.prompt_tokens,
+					completion_tokens: event.completion_tokens,
+					total_tokens: event.total_tokens
+				};
+				this.lastTurnUsage = turn;
+				this.sessionUsage = {
+					prompt_tokens: this.sessionUsage.prompt_tokens + turn.prompt_tokens,
+					completion_tokens: this.sessionUsage.completion_tokens + turn.completion_tokens,
+					total_tokens: this.sessionUsage.total_tokens + turn.total_tokens
+				};
+				break;
+			}
+			case 'error': {
+				this.error = event.content;
+				break;
+			}
+			case 'done': {
+				this.loading = false;
+				this.currentTurn = 0;
+				this.maxTurns = null;
+				this.pendingConfirm = null;
+				break;
+			}
 		}
 	}
 
@@ -675,7 +684,7 @@ export class ChatStore {
 		}
 	}
 
-	private _applyUiPatch(event: ChatEvent): void {
+	private _applyUiPatch(event: ChatUiPatchEvent): void {
 		if (typeof window === 'undefined') return;
 		window.dispatchEvent(new CustomEvent('chat:ui_patch', { detail: event }));
 	}

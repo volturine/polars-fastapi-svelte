@@ -242,7 +242,7 @@ def compute_overlay_datasets(
                 'y_column': overlay.y_column,
                 'aggregation': overlay.aggregation.value,
                 'data': overlay_df.to_dicts(),
-            }
+            },
         )
 
     return datasets
@@ -498,7 +498,7 @@ def _build_histogram(lf: pl.LazyFrame, p: ChartParams) -> pl.LazyFrame:
                 'bin_start': [fmin],
                 'bin_end': [fmax],
                 'count': [len(df)],
-            }
+            },
         )
 
     bin_width = (fmax - fmin) / bins
@@ -517,7 +517,7 @@ def _build_histogram(lf: pl.LazyFrame, p: ChartParams) -> pl.LazyFrame:
             'bin_start': bin_starts,
             'bin_end': bin_ends,
             'count': counts,
-        }
+        },
     )
     if p.sort_by == SortBy.X:
         return result.sort('bin_start', descending=p.sort_order == SortOrder.DESC)
@@ -532,7 +532,7 @@ def _build_scatter(lf: pl.LazyFrame, p: ChartParams) -> pl.LazyFrame:
     return lf.select(
         [pl.col(p.x_column).alias('x')]
         + ([pl.col(p.y_column).alias('y')] if p.y_column else [])
-        + ([pl.col(p.group_column).alias('group')] if p.group_column else [])
+        + ([pl.col(p.group_column).alias('group')] if p.group_column else []),
     ).limit(5000)
 
 

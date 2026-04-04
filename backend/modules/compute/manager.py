@@ -3,7 +3,7 @@ import threading
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from modules.compute.core.base import ComputeEngine
+from modules.compute.core.base import ComputeEngine, EngineStatusInfo
 from modules.compute.engine import PolarsComputeEngine
 from modules.compute.schemas import EngineStatus
 
@@ -44,8 +44,7 @@ class ProcessManager:
         self._engine_factory = engine_factory
 
     def spawn_engine(self, analysis_id: str, resource_config: dict | None = None) -> EngineInfo:
-        """
-        Spawn a new compute engine for an analysis or return existing one.
+        """Spawn a new compute engine for an analysis or return existing one.
 
         This method is thread-safe and will reuse an existing engine if one
         is already running for the given analysis_id with the same config.
@@ -108,18 +107,18 @@ class ProcessManager:
                     if idle_id and idle_info:
                         logger.warning(
                             f'Max concurrent engines limit reached ({settings.max_concurrent_engines}), '
-                            f'evicting idle engine {idle_id} to spawn {analysis_id}'
+                            f'evicting idle engine {idle_id} to spawn {analysis_id}',
                         )
                         idle_info.engine.shutdown()
                         del self._engines[idle_id]
                     else:
                         logger.warning(
                             f'Max concurrent engines limit reached ({settings.max_concurrent_engines}), '
-                            f'cannot spawn engine for {analysis_id}'
+                            f'cannot spawn engine for {analysis_id}',
                         )
                         raise RuntimeError(
                             f'Maximum concurrent engines limit ({settings.max_concurrent_engines}) reached. '
-                            f'Please wait for existing analyses to complete or increase MAX_CONCURRENT_ENGINES.'
+                            f'Please wait for existing analyses to complete or increase MAX_CONCURRENT_ENGINES.',
                         )
 
                 logger.info(f'Spawning new engine for analysis {analysis_id} ({len(self._engines) + 1}/{settings.max_concurrent_engines})')
@@ -198,7 +197,7 @@ class ProcessManager:
             'streaming_chunk_size': settings.polars_streaming_chunk_size,
         }
 
-    def get_engine_status(self, analysis_id: str, *, defaults: dict | None = None) -> dict:
+    def get_engine_status(self, analysis_id: str, *, defaults: dict | None = None) -> EngineStatusInfo:
         """Get status info for an engine - non-blocking."""
         if defaults is None:
             defaults = self._get_defaults()
@@ -206,16 +205,16 @@ class ProcessManager:
         with self._engines_lock:
             info = self._engines.get(analysis_id)
             if not info:
-                return {
-                    'analysis_id': analysis_id,
-                    'status': EngineStatus.TERMINATED,
-                    'process_id': None,
-                    'last_activity': None,
-                    'current_job_id': None,
-                    'resource_config': None,
-                    'effective_resources': None,
-                    'defaults': defaults,
-                }
+                return EngineStatusInfo(
+                    analysis_id=analysis_id,
+                    status=EngineStatus.TERMINATED,
+                    process_id=None,
+                    last_activity=None,
+                    current_job_id=None,
+                    resource_config=None,
+                    effective_resources=None,
+                    defaults=defaults,
+                )
 
             engine = info.engine
             engine.check_health()
@@ -224,16 +223,16 @@ class ProcessManager:
             resource_config = (self._normalize_config(engine.resource_config) or None) if engine.resource_config else None
             effective_resources = engine.effective_resources or None
 
-            return {
-                'analysis_id': analysis_id,
-                'status': EngineStatus.HEALTHY if is_alive else EngineStatus.TERMINATED,
-                'process_id': engine.process_id,
-                'last_activity': info.last_activity.isoformat(),
-                'current_job_id': engine.current_job_id,
-                'resource_config': resource_config,
-                'effective_resources': effective_resources,
-                'defaults': defaults,
-            }
+            return EngineStatusInfo(
+                analysis_id=analysis_id,
+                status=EngineStatus.HEALTHY if is_alive else EngineStatus.TERMINATED,
+                process_id=engine.process_id,
+                last_activity=info.last_activity.isoformat(),
+                current_job_id=engine.current_job_id,
+                resource_config=resource_config,
+                effective_resources=effective_resources,
+                defaults=defaults,
+            )
 
     def shutdown_engine(self, analysis_id: str) -> None:
         """Shutdown and remove an engine."""
@@ -285,7 +284,7 @@ class ProcessManager:
         with self._engines_lock:
             return list(self._engines.keys())
 
-    def list_all_engine_statuses(self) -> list[dict]:
+    def list_all_engine_statuses(self) -> list[EngineStatusInfo]:
         """Get status info for all engines."""
         defaults = self._get_defaults()
         with self._engines_lock:

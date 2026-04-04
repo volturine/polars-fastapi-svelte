@@ -250,7 +250,7 @@ class SessionStore:
                         'provider': row.provider,
                         'created_at': row.created_at,
                         'preview': preview,
-                    }
+                    },
                 )
         return sorted(sessions, key=lambda s: s['created_at'], reverse=True)
 

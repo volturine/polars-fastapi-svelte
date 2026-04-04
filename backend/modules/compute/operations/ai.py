@@ -14,7 +14,7 @@ from enum import StrEnum
 import polars as pl
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
-from modules.ai.service import get_ai_client, parse_request_options
+from modules.ai.service import AIError, get_ai_client, parse_request_options
 from modules.compute.core.base import OperationHandler, OperationParams
 
 logger = logging.getLogger(__name__)
@@ -164,9 +164,7 @@ class AIHandler(OperationHandler):
                         )
                         last_call_ts = time.monotonic()
                         if len(outputs) != len(batch_rows):
-                            raise AIError(
-                                f'AI output length mismatch for batch: got {len(outputs)}, expected {len(batch_rows)}'
-                            )
+                            raise AIError(f'AI output length mismatch for batch: got {len(outputs)}, expected {len(batch_rows)}')
                         results.extend(outputs)
                         errors.extend([''] * len(batch_rows))
                         success = True
@@ -181,8 +179,10 @@ class AIHandler(OperationHandler):
                                 attempt + 1,
                                 exc,
                             )
-                            results.extend([''] * len(batch_rows))
-                            errors.extend([str(exc)] * len(batch_rows))
+                            detail = str(exc) or exc.__class__.__name__
+                            marker = f'[error: {detail}]'
+                            results.extend([marker] * len(batch_rows))
+                            errors.extend([detail] * len(batch_rows))
                             break
                         backoff_sec = min(2**attempt, 30)
                         logger.warning(

@@ -21,7 +21,7 @@ def list_healthchecks(session: Session, datasource_id: str) -> list[HealthCheckR
     if not datasource:
         return []
     result = session.execute(
-        select(HealthCheck).where(HealthCheck.datasource_id == datasource_id)  # type: ignore[arg-type]
+        select(HealthCheck).where(HealthCheck.datasource_id == datasource_id),  # type: ignore[arg-type]
     )
     checks = result.scalars().all()
     return [HealthCheckResponse.model_validate(check) for check in checks]
@@ -78,7 +78,7 @@ def list_results(session: Session, datasource_id: str, limit: int = 10) -> list[
     if not datasource:
         return []
     checks = session.execute(
-        select(HealthCheck.id).where(HealthCheck.datasource_id == datasource_id)  # type: ignore[arg-type, call-overload]
+        select(HealthCheck.id).where(HealthCheck.datasource_id == datasource_id),  # type: ignore[arg-type, call-overload]
     )
     check_ids = checks.scalars().all()
     if not check_ids:
@@ -87,7 +87,7 @@ def list_results(session: Session, datasource_id: str, limit: int = 10) -> list[
         select(HealthCheckResult)
         .where(HealthCheckResult.healthcheck_id.in_(check_ids))  # type: ignore[union-attr, attr-defined]
         .order_by(HealthCheckResult.checked_at.desc())  # type: ignore[union-attr, attr-defined]
-        .limit(limit)
+        .limit(limit),
     )
     return [HealthCheckResultResponse.model_validate(r) for r in results.scalars().all()]
 
@@ -101,7 +101,7 @@ def list_results_for_check(session: Session, healthcheck_id: str, limit: int = 1
         select(HealthCheckResult)
         .where(HealthCheckResult.healthcheck_id == healthcheck_id)  # type: ignore[arg-type]
         .order_by(HealthCheckResult.checked_at.desc())  # type: ignore[union-attr, attr-defined]
-        .limit(limit)
+        .limit(limit),
     )
     return [HealthCheckResultResponse.model_validate(r) for r in results.scalars().all()]
 

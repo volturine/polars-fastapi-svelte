@@ -63,7 +63,7 @@ class TestAIParams:
             {
                 'input_column': 'text',
                 'output_column': 'result',
-            }
+            },
         )
         assert params.provider == 'ollama'
         assert params.model == 'llama2'
@@ -78,7 +78,7 @@ class TestAIParams:
             {
                 'input_columns': ['title', 'body'],
                 'output_column': 'result',
-            }
+            },
         )
         assert params.input_columns == ['title', 'body']
 
@@ -87,7 +87,7 @@ class TestAIParams:
             {
                 'input_column': 'text',
                 'output_column': 'result',
-            }
+            },
         )
         assert params.input_columns == ['text']
         assert params.input_column is None
@@ -97,7 +97,7 @@ class TestAIParams:
             AIParams.model_validate(
                 {
                     'output_column': 'result',
-                }
+                },
             )
 
     def test_request_options_string_to_dict(self):
@@ -106,7 +106,7 @@ class TestAIParams:
                 'input_column': 'text',
                 'output_column': 'result',
                 'request_options': '{"temperature": 0.3}',
-            }
+            },
         )
         assert params.request_options == {'temperature': 0.3}
 
@@ -116,7 +116,7 @@ class TestAIParams:
                 'input_column': 'text',
                 'output_column': 'result',
                 'request_options': {'temperature': 0.3},
-            }
+            },
         )
         assert params.request_options == {'temperature': 0.3}
 
@@ -126,7 +126,7 @@ class TestAIParams:
                 'input_column': 'text',
                 'output_column': 'result',
                 'request_options': None,
-            }
+            },
         )
         assert params.request_options is None
 
@@ -136,7 +136,7 @@ class TestAIParams:
                 'input_column': 'text',
                 'output_column': 'result',
                 'request_options': '',
-            }
+            },
         )
         assert params.request_options is None
 
@@ -147,7 +147,7 @@ class TestAIParams:
                     'provider': 'invalid',
                     'input_column': 'text',
                     'output_column': 'result',
-                }
+                },
             )
 
     def test_extra_fields_forbidden(self):
@@ -157,7 +157,7 @@ class TestAIParams:
                     'input_column': 'text',
                     'output_column': 'result',
                     'unknown_field': 'value',
-                }
+                },
             )
 
 
@@ -246,7 +246,7 @@ class TestOllamaClient:
             'models': [
                 {'name': 'llama2', 'size': 3800000000},
                 {'name': 'mistral', 'size': 4100000000},
-            ]
+            ],
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -328,7 +328,7 @@ class TestOpenAIClient:
             'data': [
                 {'id': 'gpt-4o', 'owned_by': 'openai'},
                 {'id': 'gpt-3.5-turbo', 'owned_by': 'openai'},
-            ]
+            ],
         }
         mock_response.raise_for_status = MagicMock()
 

@@ -48,7 +48,6 @@ def delete_version(
 ):
     """Delete a specific version of an analysis by version number."""
     service.delete_version(session, parse_analysis_id(analysis_id), version)
-    return None
 
 
 @router.patch('/{analysis_id}/versions/{version}', response_model=schemas.AnalysisVersionResponse, mcp=True)

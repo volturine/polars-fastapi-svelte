@@ -31,13 +31,13 @@ def test_performance_baseline(test_db_session, sample_datasource, sample_analysi
                     'filename': 'perf_out',
                 },
                 'steps': [],
-            }
+            },
         ],
         'sources': {
             sample_datasource.id: {
                 'source_type': sample_datasource.source_type,
                 **sample_datasource.config,
-            }
+            },
         },
     }
 
@@ -89,6 +89,6 @@ def test_performance_baseline(test_db_session, sample_datasource, sample_analysi
                 'schema_duration_ms': schema_ms,
                 'export_duration_ms': export_ms,
                 'preview_rows': preview_result.total_rows,
-            }
-        )
+            },
+        ),
     )

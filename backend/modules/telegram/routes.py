@@ -47,7 +47,6 @@ def get_subscribers(session: Session = Depends(get_db)) -> list[SubscriberRespon
 def delete_subscriber(subscriber_id: int, session: Session = Depends(get_db)) -> None:
     """Remove a Telegram subscriber by ID. Use GET /telegram/subscribers to find subscriber IDs."""
     service.delete_subscriber(session, subscriber_id)
-    return None
 
 
 @router.get('/listeners', response_model=list[ListenerResponse], mcp=True)
@@ -80,4 +79,3 @@ def create_listener(payload: ListenerCreate, session: Session = Depends(get_db))
 def delete_listener(listener_id: int, session: Session = Depends(get_db)) -> None:
     """Remove a notification listener by ID. Use GET /telegram/listeners to find listener IDs."""
     service.remove_listener(session, listener_id)
-    return None

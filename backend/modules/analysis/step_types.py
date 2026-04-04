@@ -101,7 +101,7 @@ _CANONICAL_STEP_TYPES: Final[frozenset[str]] = frozenset(
         CanonicalStepType.DEDUPLICATE,
         CanonicalStepType.STRING_TRANSFORM,
         CanonicalStepType.TIMESERIES,
-    }
+    },
 )
 
 

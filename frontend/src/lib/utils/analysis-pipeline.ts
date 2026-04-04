@@ -134,7 +134,7 @@ export function buildAnalysisPipelinePayload(
 			name: tab.name,
 			datasource: {
 				id: datasourceId,
-				analysis_tab_id: analysisTabId,
+				analysis_tab_id: analysisTabId ?? null,
 				config
 			},
 			output: { ...tab.output, result_id: outputId },

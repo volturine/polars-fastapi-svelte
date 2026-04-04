@@ -59,13 +59,15 @@ test.describe('Analyses – output node interactions', () => {
 
 			// Click mode trigger to open dropdown
 			await modeTrigger.click();
-			const dropdown = page.locator('[role="listbox"]');
+			const dropdown = page.locator('[data-testid="output-mode-listbox"]');
 			await expect(dropdown).toBeVisible({ timeout: 3_000 });
 
 			// Check mode options are present
-			await expect(dropdown.locator('[role="option"]', { hasText: 'full' })).toBeVisible();
-			await expect(dropdown.locator('[role="option"]', { hasText: 'incremental' })).toBeVisible();
-			await expect(dropdown.locator('[role="option"]', { hasText: 'recreate' })).toBeVisible();
+			await expect(dropdown.locator('[data-testid="output-mode-option-full"]')).toBeVisible();
+			await expect(
+				dropdown.locator('[data-testid="output-mode-option-incremental"]')
+			).toBeVisible();
+			await expect(dropdown.locator('[data-testid="output-mode-option-recreate"]')).toBeVisible();
 
 			await screenshot(page, 'analysis/output', 'output-node-mode-dropdown');
 		} finally {
@@ -93,9 +95,9 @@ test.describe('Analyses – output node interactions', () => {
 
 			// Select "incremental"
 			await modeTrigger.click();
-			const dropdown = page.locator('[role="listbox"]');
+			const dropdown = page.locator('[data-testid="output-mode-listbox"]');
 			await expect(dropdown).toBeVisible({ timeout: 3_000 });
-			await dropdown.locator('[role="option"]', { hasText: 'incremental' }).click();
+			await dropdown.locator('[data-testid="output-mode-option-incremental"]').click();
 
 			// Dropdown should close and trigger should show "incremental"
 			await expect(dropdown).not.toBeVisible({ timeout: 3_000 });
@@ -103,11 +105,10 @@ test.describe('Analyses – output node interactions', () => {
 
 			// Select "recreate"
 			await modeTrigger.click();
-			await expect(page.locator('[role="listbox"]')).toBeVisible({ timeout: 3_000 });
-			await page
-				.locator('[role="listbox"]')
-				.locator('[role="option"]', { hasText: 'recreate' })
-				.click();
+			await expect(page.locator('[data-testid="output-mode-listbox"]')).toBeVisible({
+				timeout: 3_000
+			});
+			await page.locator('[data-testid="output-mode-option-recreate"]').click();
 
 			await expect(modeTrigger).toContainText('recreate');
 
@@ -193,7 +194,10 @@ test.describe('Analyses – output node interactions', () => {
 			await nameInput.press('Enter');
 
 			// After commit, the new name should appear in the output card
-			await expect(page.getByText('my_custom_table').first()).toBeVisible({ timeout: 3_000 });
+			await expect(page.locator('[data-testid="output-table-name-inline"]')).toHaveText(
+				'my_custom_table',
+				{ timeout: 3_000 }
+			);
 
 			await screenshot(page, 'analysis/output', 'output-table-renamed');
 		} finally {
@@ -226,7 +230,10 @@ test.describe('Analyses – output node table name edit', () => {
 
 			await page.locator('button[aria-label="Save"]').click();
 
-			await expect(page.getByText('my_custom_export').first()).toBeVisible({ timeout: 5_000 });
+			await expect(page.locator('[data-testid="output-table-name-inline"]')).toHaveText(
+				'my_custom_export',
+				{ timeout: 5_000 }
+			);
 
 			await screenshot(page, 'analysis/output', 'output-name-edited');
 		} finally {
@@ -255,9 +262,9 @@ test.describe('Analyses – output node persistence', () => {
 
 			// Select incremental mode
 			await modeTrigger.click();
-			const dropdown = page.locator('[role="listbox"]');
+			const dropdown = page.locator('[data-testid="output-mode-listbox"]');
 			await expect(dropdown).toBeVisible({ timeout: 3_000 });
-			await dropdown.locator('[role="option"]', { hasText: 'incremental' }).click();
+			await dropdown.locator('[data-testid="output-mode-option-incremental"]').click();
 			await expect(modeTrigger).toContainText('incremental');
 
 			// Save the analysis
@@ -301,7 +308,10 @@ test.describe('Analyses – output node persistence', () => {
 			await nameInput.press('Enter');
 
 			// Verify the new name appears
-			await expect(page.getByText('persisted_table').first()).toBeVisible({ timeout: 3_000 });
+			await expect(page.locator('[data-testid="output-table-name-inline"]')).toHaveText(
+				'persisted_table',
+				{ timeout: 3_000 }
+			);
 
 			// Save
 			await page.getByRole('button', { name: 'Save' }).click();
@@ -310,7 +320,10 @@ test.describe('Analyses – output node persistence', () => {
 			// Reload and verify table name persisted
 			await page.reload();
 			await waitForEditorReload(page);
-			await expect(page.getByText('persisted_table').first()).toBeVisible({ timeout: 10_000 });
+			await expect(page.locator('[data-testid="output-table-name-inline"]')).toHaveText(
+				'persisted_table',
+				{ timeout: 10_000 }
+			);
 
 			await screenshot(page, 'analysis/output', 'output-tablename-persisted');
 		} finally {
@@ -427,7 +440,7 @@ test.describe('Analyses – row count action', () => {
 			await gotoAnalysisEditor(page, aId);
 
 			const viewNode = page.locator('[data-step-type="view"]').first();
-			const countBtn = viewNode.locator('[data-action="count-rows"]');
+			const countBtn = viewNode.locator('[data-testid="step-row-count-button"]');
 			await expect(countBtn).toBeVisible();
 
 			await countBtn.click();
@@ -466,7 +479,7 @@ test.describe('Analyses – row count action', () => {
 			);
 
 			const viewNode = page.locator('[data-step-type="view"]').first();
-			const countBtn = viewNode.locator('[data-action="count-rows"]');
+			const countBtn = viewNode.locator('[data-testid="step-row-count-button"]');
 			await countBtn.click();
 
 			await expect(viewNode.locator('[data-testid="step-row-count-error"]')).toBeVisible({
@@ -515,7 +528,7 @@ test.describe('Analyses – row count on non-view steps', () => {
 			});
 
 			// Click count-rows on the filter node
-			const countBtn = filterNode.locator('[data-action="count-rows"]');
+			const countBtn = filterNode.locator('[data-testid="step-row-count-button"]');
 			await expect(countBtn).toBeVisible();
 			await countBtn.click();
 
@@ -555,12 +568,12 @@ test.describe('Analyses – row count on non-view steps', () => {
 			});
 
 			// Click count-rows on the limit node
-			const countBtn = limitNode.locator('[data-action="count-rows"]');
+			const countBtn = limitNode.locator('[data-testid="step-row-count-button"]');
 			await expect(countBtn).toBeVisible({ timeout: 5_000 });
 			await countBtn.click();
 
 			// Wait for loading spinner to disappear before asserting badge
-			await expect(limitNode.locator('[data-action="count-rows"]')).not.toBeVisible({
+			await expect(limitNode.locator('[data-testid="step-row-count-button"]')).not.toBeVisible({
 				timeout: 15_000
 			});
 
@@ -611,7 +624,7 @@ test.describe('Analyses – row count on non-view steps', () => {
 				})
 			);
 
-			const countBtn = sortNode.locator('[data-action="count-rows"]');
+			const countBtn = sortNode.locator('[data-testid="step-row-count-button"]');
 			await expect(countBtn).toBeVisible();
 			await countBtn.click();
 

@@ -551,7 +551,10 @@
 						</button>
 					</div>
 				{:else}
-					<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>
+					<span
+						class={css({ fontSize: 'sm', fontWeight: 'medium' })}
+						data-testid="output-table-name-inline"
+					>
 						{outputConfig.iceberg.table_name}
 					</span>
 					<button
@@ -611,7 +614,10 @@
 				})}
 			>
 				<div class={rowBetween}>
-					<span class={css({ fontSize: 'sm', fontWeight: 'semibold' })}>
+					<span
+						class={css({ fontSize: 'sm', fontWeight: 'semibold' })}
+						data-testid="output-table-name-card"
+					>
 						{outputConfig.iceberg.table_name}
 					</span>
 					<button
@@ -722,6 +728,7 @@
 									gap: '2'
 								})}
 								role="listbox"
+								data-testid="output-mode-listbox"
 							>
 								<div
 									class={css({
@@ -766,6 +773,7 @@
 											}}
 											role="option"
 											aria-selected={outputConfig.build_mode === mode}
+											data-testid={`output-mode-option-${mode}`}
 										>
 											<span>{mode}</span>
 										</button>

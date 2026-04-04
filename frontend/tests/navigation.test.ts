@@ -238,8 +238,8 @@ test.describe('Navigation – settings popup', () => {
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-		await dialog.locator('#smtp-test-to').fill('test@example.com');
-		await dialog.getByRole('button', { name: 'Test' }).click();
+		await dialog.locator('[data-testid="settings-smtp-test-recipient"]').fill('test@example.com');
+		await dialog.locator('[data-testid="settings-smtp-test-button"]').click();
 
 		await expect(dialog.getByText('Test email sent successfully')).toBeVisible({ timeout: 5_000 });
 		await screenshot(page, 'navigation', 'settings-smtp-test-success');
@@ -264,8 +264,8 @@ test.describe('Navigation – settings popup', () => {
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-		await dialog.locator('#smtp-test-to').fill('test@example.com');
-		await dialog.getByRole('button', { name: 'Test' }).click();
+		await dialog.locator('[data-testid="settings-smtp-test-recipient"]').fill('test@example.com');
+		await dialog.locator('[data-testid="settings-smtp-test-button"]').click();
 
 		await expect(dialog.getByText('Connection refused')).toBeVisible({ timeout: 5_000 });
 	});
@@ -278,7 +278,7 @@ test.describe('Navigation – settings popup', () => {
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-		const testBtn = dialog.getByRole('button', { name: 'Test' });
+		const testBtn = dialog.locator('[data-testid="settings-smtp-test-button"]');
 		await expect(testBtn).toBeDisabled();
 	});
 

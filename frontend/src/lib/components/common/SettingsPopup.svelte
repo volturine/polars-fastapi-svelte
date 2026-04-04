@@ -616,6 +616,7 @@
 						type="email"
 						class={input()}
 						id="smtp-test-to"
+						data-testid="settings-smtp-test-recipient"
 						bind:value={smtpTestTo}
 						placeholder="test@example.com"
 					/>
@@ -640,6 +641,7 @@
 					onclick={handleTestSmtp}
 					disabled={testingSmtp || !smtpTestTo}
 					aria-label="Test SMTP"
+					data-testid="settings-smtp-test-button"
 					type="button"
 				>
 					{#if testingSmtp}

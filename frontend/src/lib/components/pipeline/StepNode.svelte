@@ -695,6 +695,7 @@
 					type="button"
 					aria-label="Calculate row count"
 					data-action="count-rows"
+					data-testid="step-row-count-button"
 				>
 					{#if isLoadingRowCount}
 						<RefreshCw size={9} class={css({ animation: 'spin 1s linear infinite' })} />

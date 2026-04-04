@@ -57,9 +57,9 @@ class TabDatasource:
         result: dict[str, Any] = {
             'id': self.id,
             'config': self.config,
+            # Keep explicit null for stable API contracts and downstream validators.
+            'analysis_tab_id': self.analysis_tab_id,
         }
-        if self.analysis_tab_id is not None:
-            result['analysis_tab_id'] = self.analysis_tab_id
         return result
 
 
@@ -70,13 +70,16 @@ class TabOutput:
     result_id: str
     format: str
     filename: str
+    extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> TabOutput:
+        extra = {k: v for k, v in data.items() if k not in {'result_id', 'format', 'filename'}}
         return cls(
             result_id=str(data.get('result_id', '')),
             format=str(data.get('format', '')),
             filename=str(data.get('filename', '')),
+            extra=extra,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -84,6 +87,7 @@ class TabOutput:
             'result_id': self.result_id,
             'format': self.format,
             'filename': self.filename,
+            **self.extra,
         }
 
 

@@ -55,13 +55,13 @@ function makeDatasource(overrides: Partial<DataSource> = {}): DataSource {
 		id: 'ds-1',
 		name: 'Test DS',
 		source_type: 'iceberg',
-		config: {},
+		config: { metadata_path: '/tmp/metadata.json' },
 		schema_cache: null,
 		created_at: '2024-01-01',
 		created_by: 'test',
 		is_hidden: false,
 		...overrides
-	};
+	} as DataSource;
 }
 
 function makeRun(overrides: Partial<EngineRun> = {}): EngineRun {

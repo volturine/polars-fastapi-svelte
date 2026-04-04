@@ -11,7 +11,7 @@ import { isRecord } from '$lib/utils/json';
 type PipelineSourceConfig = {
 	source_type: DataSource['source_type'];
 	analysis_id?: string;
-	analysis_tab_id?: string;
+	analysis_tab_id?: string | null;
 } & Record<string, unknown>;
 
 type PipelineTab = {

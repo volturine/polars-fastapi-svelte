@@ -5,7 +5,9 @@
 		listHealthChecks,
 		listHealthCheckResults,
 		updateHealthCheck,
+		type CheckType,
 		type HealthCheck,
+		type HealthCheckConfig,
 		type HealthCheckCreate,
 		type HealthCheckResult
 	} from '$lib/api/healthcheck';
@@ -204,7 +206,7 @@
 	let creating = $state(false);
 	let search = $state('');
 	let name = $state('');
-	let checkType = $state('row_count');
+	let checkType = $state<CheckType>('row_count');
 	let config = $state<Record<string, unknown>>({});
 	let critical = $state(false);
 	let duplicateColumns = $state('');
@@ -239,8 +241,8 @@
 		expandedId = expandedId === id ? null : id;
 	}
 
-	function formatConfig(cfg: Record<string, unknown>): string {
-		const entries = Object.entries(cfg);
+	function formatConfig(cfg: HealthCheckConfig): string {
+		const entries = Object.entries(cfg as Record<string, unknown>);
 		if (entries.length === 0) return 'Default';
 		return entries
 			.map(([key, value]) => {

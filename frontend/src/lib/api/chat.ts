@@ -137,6 +137,9 @@ export interface ChatModel {
 	context_length: number;
 }
 
+// Backward-compatible alias used by store tests and older call sites.
+export type OpenRouterModel = ChatModel;
+
 export interface ChatSessionInfo {
 	id: string;
 	model: string;

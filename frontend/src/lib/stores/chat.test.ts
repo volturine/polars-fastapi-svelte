@@ -347,7 +347,7 @@ describe('ChatStore — pure local logic', () => {
 		});
 
 		test('tool_result updates tool status to done', () => {
-			handle({ type: 'tool_call', tool_id: 'tool-1', method: 'GET', path: '/test' });
+			handle({ type: 'tool_call', tool_id: 'tool-1', method: 'GET', path: '/test', args: {} });
 			handle({
 				type: 'tool_result',
 				tool_id: 'tool-1',
@@ -359,7 +359,7 @@ describe('ChatStore — pure local logic', () => {
 		});
 
 		test('tool_error updates tool status and adds error message', () => {
-			handle({ type: 'tool_call', tool_id: 'tool-1', method: 'POST', path: '/test' });
+			handle({ type: 'tool_call', tool_id: 'tool-1', method: 'POST', path: '/test', args: {} });
 			handle({
 				type: 'tool_error',
 				tool_id: 'tool-1',
@@ -414,7 +414,7 @@ describe('ChatStore — pure local logic', () => {
 		});
 
 		test('tool_confirm sets pendingConfirm and updates tool status', () => {
-			handle({ type: 'tool_call', tool_id: 'tool-1', method: 'POST', path: '/action' });
+			handle({ type: 'tool_call', tool_id: 'tool-1', method: 'POST', path: '/action', args: {} });
 			handle({
 				type: 'tool_confirm',
 				tool_id: 'tool-1',

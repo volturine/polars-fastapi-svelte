@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import type { AnalysisTab } from '$lib/types/analysis';
-import type { DataSource, SourceType } from '$lib/types/datasource';
+import type { DataSource } from '$lib/types/datasource';
 import {
 	buildAnalysisPipelinePayload,
 	buildDatasourceConfig,
@@ -33,14 +33,14 @@ function datasource(overrides: Partial<DataSource> = {}): DataSource {
 	return {
 		id: 'ds-1',
 		name: 'Test DS',
-		source_type: 'file' as SourceType,
+		source_type: 'file',
 		config: { file_path: '/data/test.csv', file_type: 'csv' },
 		schema_cache: null,
 		created_by: 'user-1',
 		is_hidden: false,
 		created_at: '2024-01-01T00:00:00Z',
 		...overrides
-	};
+	} as DataSource;
 }
 
 // ── buildAnalysisPipelinePayload ────────────────────────────────────────────

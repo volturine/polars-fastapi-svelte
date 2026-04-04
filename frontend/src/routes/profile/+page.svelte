@@ -3,7 +3,7 @@
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { configStore } from '$lib/stores/config.svelte';
 	import { updateProfile, changePassword, unlinkProvider, getMe } from '$lib/api/auth';
-	import { Github } from 'lucide-svelte';
+	import { GitBranch } from 'lucide-svelte';
 
 	const editable = $derived(configStore.authRequired);
 
@@ -308,7 +308,7 @@
 
 				<div class={cx(row, css({ justifyContent: 'space-between', paddingY: '2' }))}>
 					<div class={cx(row, css({ gap: '3' }))}>
-						<Github size={16} />
+						<GitBranch size={16} />
 						<span class={css({ color: 'fg.primary', fontSize: 'sm' })}>GitHub</span>
 						{#if connected('github')}
 							<span
@@ -339,7 +339,7 @@
 						</button>
 					{:else}
 						<button type="button" class={button({ size: 'sm' })} onclick={() => oauth('github')}>
-							<Github size={14} />
+							<GitBranch size={14} />
 							Connect
 						</button>
 					{/if}

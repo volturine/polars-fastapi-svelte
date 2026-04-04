@@ -3,7 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { css, cx, button, input, label, spinner, row } from '$lib/styles/panda';
 	import { authStore } from '$lib/stores/auth.svelte';
-	import { Github } from 'lucide-svelte';
+	import { GitBranch } from 'lucide-svelte';
 
 	let email = $state('');
 	let password = $state('');
@@ -112,7 +112,7 @@
 			Google
 		</button>
 		<button type="button" class={cx(button(), css({ flex: '1' }))} onclick={() => oauth('github')}>
-			<Github size={16} />
+			<GitBranch size={16} />
 			GitHub
 		</button>
 	</div>

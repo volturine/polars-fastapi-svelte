@@ -20,13 +20,13 @@ function makeDatasource(overrides: Partial<DataSource> = {}): DataSource {
 		id: `ds-${crypto.randomUUID().slice(0, 8)}`,
 		name: 'test-ds',
 		source_type: 'file',
-		config: {},
+		config: { file_path: '/tmp/test.csv', file_type: 'csv' },
 		schema_cache: null,
 		created_by: 'test',
 		is_hidden: false,
 		created_at: new Date().toISOString(),
 		...overrides
-	};
+	} as DataSource;
 }
 
 function makeSchema(overrides: Partial<SchemaInfo> = {}): SchemaInfo {

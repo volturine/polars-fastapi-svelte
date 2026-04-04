@@ -28,8 +28,7 @@
 		IcebergDataSource,
 		SchemaInfo,
 		ColumnSchema,
-		FileDataSourceConfig,
-		IcebergDataSourceConfig
+		FileDataSourceConfig
 	} from '$lib/types/datasource';
 	import FileTypeBadge from '$lib/components/common/FileTypeBadge.svelte';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';

@@ -20,6 +20,7 @@ export interface CSVOptions {
 }
 
 export interface FileDataSourceConfig {
+	[key: string]: unknown;
 	file_path: string;
 	file_type: string;
 	options?: Record<string, unknown>;
@@ -36,12 +37,14 @@ export interface FileDataSourceConfig {
 }
 
 export interface DatabaseDataSourceConfig {
+	[key: string]: unknown;
 	connection_string: string;
 	query: string;
 	branch?: string | null;
 }
 
 export interface IcebergDataSourceConfig {
+	[key: string]: unknown;
 	metadata_path: string;
 	branch?: string | null;
 	branches?: string[] | null;
@@ -59,6 +62,7 @@ export interface IcebergDataSourceConfig {
 }
 
 export interface AnalysisDataSourceConfig {
+	[key: string]: unknown;
 	analysis_id: string;
 	analysis_tab_id?: string | null;
 }

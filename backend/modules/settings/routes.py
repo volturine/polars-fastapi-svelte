@@ -3,10 +3,10 @@
 import logging
 from email.message import EmailMessage
 
-import httpx
 from fastapi import Depends, HTTPException
 from sqlmodel import Session
 
+from core import http as http_client
 from core.database import get_settings_db
 from core.error_handlers import handle_errors
 from core.smtp import send_smtp_message
@@ -108,7 +108,7 @@ def test_telegram(body: TestTelegramRequest, user: User = Depends(get_current_us
         return TestResult(success=False, message='Telegram bot token not configured')
 
     try:
-        resp = httpx.post(
+        resp = http_client.post(
             f'https://api.telegram.org/bot{token}/sendMessage',
             json={
                 'chat_id': body.chat_id,

@@ -330,7 +330,7 @@ class TestTestTelegram:
         assert data['success'] is False
         assert 'not configured' in data['message'].lower()
 
-    @patch('modules.settings.routes.httpx.post')
+    @patch('modules.settings.routes.http_client.post')
     def test_success(self, mock_post: MagicMock, client: TestClient, monkeypatch) -> None:
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         mock_resp = MagicMock()
@@ -355,7 +355,7 @@ class TestTestTelegram:
         data = resp.json()
         assert data['success'] is True
 
-    @patch('modules.settings.routes.httpx.post')
+    @patch('modules.settings.routes.http_client.post')
     def test_api_error(self, mock_post: MagicMock, client: TestClient, monkeypatch) -> None:
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         mock_resp = MagicMock()
@@ -382,7 +382,7 @@ class TestTestTelegram:
         assert data['success'] is False
         assert 'chat not found' in data['message'].lower()
 
-    @patch('modules.settings.routes.httpx.post')
+    @patch('modules.settings.routes.http_client.post')
     def test_transport_failure(self, mock_post: MagicMock, client: TestClient, monkeypatch) -> None:
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         mock_post.side_effect = httpx.ConnectError('Connection refused')
@@ -509,7 +509,7 @@ class TestDetectTelegramChat:
         assert 'not configured' in data['message'].lower()
         assert data['chats'] == []
 
-    @patch('modules.settings.routes.httpx.get')
+    @patch('modules.telegram.bot.http_client.get')
     def test_success_with_chats(self, mock_get: MagicMock, client: TestClient, monkeypatch) -> None:
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         mock_resp = MagicMock()
@@ -555,7 +555,7 @@ class TestDetectTelegramChat:
         ids = {c['chat_id'] for c in data['chats']}
         assert ids == {'123', '456'}
 
-    @patch('modules.settings.routes.httpx.get')
+    @patch('modules.telegram.bot.http_client.get')
     def test_no_updates(self, mock_get: MagicMock, client: TestClient, monkeypatch) -> None:
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         mock_resp = MagicMock()
@@ -581,7 +581,7 @@ class TestDetectTelegramChat:
         assert data['success'] is True
         assert len(data['chats']) == 0
 
-    @patch('modules.settings.routes.httpx.get')
+    @patch('modules.telegram.bot.http_client.get')
     def test_deduplicates_chats(self, mock_get: MagicMock, client: TestClient, monkeypatch) -> None:
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         mock_resp = MagicMock()
@@ -626,7 +626,7 @@ class TestDetectTelegramChat:
         assert len(data['chats']) == 1
         assert data['chats'][0]['chat_id'] == '123'
 
-    @patch('modules.settings.routes.httpx.get')
+    @patch('modules.telegram.bot.http_client.get')
     def test_channel_post(self, mock_get: MagicMock, client: TestClient, monkeypatch) -> None:
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         mock_resp = MagicMock()
@@ -664,7 +664,7 @@ class TestDetectTelegramChat:
         assert len(data['chats']) == 1
         assert data['chats'][0]['title'] == 'My Channel'
 
-    @patch('modules.settings.routes.httpx.get')
+    @patch('modules.telegram.bot.http_client.get')
     def test_api_error(self, mock_get: MagicMock, client: TestClient, monkeypatch) -> None:
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         mock_resp = MagicMock()
@@ -691,7 +691,7 @@ class TestDetectTelegramChat:
         assert 'error' in data['message'].lower()
         assert data['chats'] == []
 
-    @patch('modules.settings.routes.httpx.get')
+    @patch('modules.telegram.bot.http_client.get')
     def test_transport_failure(self, mock_get: MagicMock, client: TestClient, monkeypatch) -> None:
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         mock_get.side_effect = httpx.ConnectError('Connection refused')

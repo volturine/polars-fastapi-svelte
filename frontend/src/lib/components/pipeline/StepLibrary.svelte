@@ -12,9 +12,10 @@
 	interface Props {
 		onAddStep: (type: string) => void;
 		onInsertStep: (type: string, target: DropTarget) => void;
+		readOnly?: boolean;
 	}
 
-	let { onAddStep, onInsertStep }: Props = $props();
+	let { onAddStep, onInsertStep, readOnly = false }: Props = $props();
 
 	let dragImageEl = $state<HTMLImageElement | null>(null);
 	let dragging = $state(false);
@@ -27,6 +28,7 @@
 	const dragThreshold = 8;
 
 	function handleClick(stepType: string) {
+		if (readOnly) return;
 		if (dragging || clickConsumed) {
 			clickConsumed = false;
 			return;
@@ -35,6 +37,7 @@
 	}
 
 	function startDrag(event: PointerEvent, stepType: string) {
+		if (readOnly) return;
 		const target = event.currentTarget as HTMLElement | null;
 		const handle = target?.closest('[data-drag-handle]');
 		if (!handle) return;
@@ -295,7 +298,7 @@
 				class={css({
 					position: 'relative',
 					display: 'flex',
-					cursor: 'grab',
+					cursor: readOnly ? 'not-allowed' : 'grab',
 					alignItems: 'center',
 					justifyContent: 'flex-start',
 					gap: '3',
@@ -306,7 +309,7 @@
 					paddingY: '2.5',
 					textAlign: 'left',
 					_hover: { backgroundColor: 'bg.hover' },
-					_active: { cursor: 'grabbing' },
+					_active: { cursor: readOnly ? 'not-allowed' : 'grabbing' },
 					...(dragging ? { userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'none' } : {})
 				})}
 				onclick={() => handleClick(stepType.type)}
@@ -317,6 +320,7 @@
 				type="button"
 				data-step={stepType.type}
 				data-drag-handle="true"
+				disabled={readOnly}
 			>
 				<stepType.icon
 					size={15}

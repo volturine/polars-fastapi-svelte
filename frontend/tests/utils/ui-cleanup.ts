@@ -1,5 +1,5 @@
 import type { Browser, Page } from '@playwright/test';
-import { waitForDatasourceList, waitForUdfList } from './readiness.js';
+import { gotoAnalysesGallery, waitForDatasourceList, waitForUdfList } from './readiness.js';
 
 /**
  * UI-based cleanup helpers. Each function navigates to the relevant page,
@@ -69,21 +69,14 @@ export async function deleteAnalysisViaUI(
 ): Promise<void> {
 	try {
 		if (!options?.skipNavigation) {
-			await page.goto('/', { waitUntil: 'domcontentloaded' });
-		}
-		// The analysis page persists search to IndexedDB. A previous test may have
-		// left a non-empty search filter that hides the card we want to delete.
-		// Clear the search input if it has a value.
-		const searchBox = page.getByRole('textbox').first();
-		try {
-			await searchBox.waitFor({ state: 'visible', timeout: 5_000 });
-			const value = await searchBox.inputValue();
-			if (value) await searchBox.fill('');
-		} catch {
-			// Search box may not exist yet if page is still loading — proceed
+			await gotoAnalysesGallery(page, ELEMENT_VISIBLE_TIMEOUT);
 		}
 		const card = page.locator(`[data-analysis-card="${name}"]`).first();
-		await card.waitFor({ state: 'visible', timeout: ELEMENT_VISIBLE_TIMEOUT });
+		try {
+			await card.waitFor({ state: 'visible', timeout: ELEMENT_VISIBLE_TIMEOUT });
+		} catch {
+			return;
+		}
 		await card.getByRole('button', { name: /Delete analysis/ }).click();
 		const dialog = page.getByRole('dialog');
 		await dialog.getByRole('button', { name: /^Delete$/ }).click();

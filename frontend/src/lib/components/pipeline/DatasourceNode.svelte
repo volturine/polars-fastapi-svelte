@@ -35,6 +35,7 @@
 		activeTab?: AnalysisTab | null;
 		onChangeDatasource?: () => void;
 		onRenameTab?: (name: string) => void;
+		readOnly?: boolean;
 	}
 
 	let {
@@ -44,7 +45,8 @@
 		analysisId,
 		activeTab: activeTabRaw,
 		onChangeDatasource,
-		onRenameTab
+		onRenameTab,
+		readOnly = false
 	}: Props = $props();
 
 	const activeTab = $derived(activeTabRaw);
@@ -63,6 +65,7 @@
 	const effectiveThreads = $derived(threadsOverride || defaults?.max_threads || 0);
 	const isUsingDefaultThreads = $derived(threadsOverride === 0);
 	function setThreads(value: number) {
+		if (readOnly) return;
 		const current = analysisStore.resourceConfig ?? {};
 		// If set to the default value, treat as "use default" (store undefined)
 		const defaultThreads = defaults?.max_threads ?? 0;
@@ -79,6 +82,7 @@
 	);
 	const isUsingDefaultMemory = $derived(memoryGbOverride === 0);
 	function setMemoryGb(value: number) {
+		if (readOnly) return;
 		const current = analysisStore.resourceConfig ?? {};
 		// If set to the default value, treat as "use default" (store undefined)
 		const defaultMemoryGb = Math.floor((defaults?.max_memory_mb ?? 0) / 1024);
@@ -126,6 +130,7 @@
 	}
 
 	function updateTimeTravelUi(updates: { open?: boolean; month?: string; day?: string }) {
+		if (readOnly) return;
 		const active = activeTab;
 		if (!active) return;
 		const branch = active.datasource.config.branch;
@@ -142,6 +147,7 @@
 	}
 
 	function updateSnapshotConfig(nextConfig: Record<string, unknown>) {
+		if (readOnly) return;
 		const active = activeTab;
 		if (!active) return;
 		const branch = active.datasource.config.branch;
@@ -179,6 +185,7 @@
 	}
 
 	function startEdit() {
+		if (readOnly) return;
 		if (!onRenameTab) return;
 		isEditing = true;
 		draftName = tabName ?? datasourceLabel ?? datasource?.name ?? '';
@@ -190,6 +197,10 @@
 	}
 
 	function commitEdit() {
+		if (readOnly) {
+			cancelEdit();
+			return;
+		}
 		if (!onRenameTab) {
 			cancelEdit();
 			return;
@@ -224,6 +235,10 @@
 	);
 	const isDragActive = $derived(drag.active);
 	const snapshotConfig = $derived(activeTab?.datasource?.config ?? {});
+	const readOnlySnapshotId = $derived.by(() => {
+		const snapshotId = (snapshotConfig as Record<string, unknown>)['time_travel_snapshot_id'];
+		return typeof snapshotId === 'string' ? snapshotId : null;
+	});
 	const snapshotBranch = $derived.by((): string | null => {
 		const branch = activeTab?.datasource?.config?.branch;
 		return typeof branch === 'string' ? branch : null;
@@ -231,6 +246,7 @@
 	const branchValue = $derived(activeTab?.datasource?.config?.branch ?? '');
 
 	function applyBranchValue(next: string) {
+		if (readOnly) return;
 		const active = activeTab;
 		if (!active) return;
 		if (!next.trim()) return;
@@ -422,7 +438,7 @@
 					<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}
 						>{tabName ?? datasourceLabel ?? datasource?.name ?? 'Untitled'}</span
 					>
-					{#if onRenameTab}
+					{#if onRenameTab && !readOnly}
 						<button
 							class={css({
 								display: 'inline-flex',
@@ -525,25 +541,69 @@
 							)}
 						>
 							<div class={css({ minWidth: '0', flex: '1' })}>
-								<SnapshotPicker
-									datasourceId={datasource.id}
-									datasourceConfig={snapshotConfig}
-									label="Time Travel"
-									persistOpen
-									branch={snapshotBranch}
-									showBuildPreviews={!isOutputSource}
-									onConfigChange={updateSnapshotConfig}
-									onUiChange={updateTimeTravelUi}
-									onSelect={handleSnapshotSelect}
-								/>
+								{#if readOnly}
+									<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+										<span
+											class={css({
+												fontSize: '2xs',
+												textTransform: 'uppercase',
+												color: 'fg.muted'
+											})}
+										>
+											Time Travel
+										</span>
+										<span class={css({ fontSize: 'xs', color: 'fg.primary' })}>
+											{readOnlySnapshotId ?? 'Latest'}
+										</span>
+									</div>
+								{:else}
+									<SnapshotPicker
+										datasourceId={datasource.id}
+										datasourceConfig={snapshotConfig}
+										label="Time Travel"
+										persistOpen
+										branch={snapshotBranch}
+										showBuildPreviews={!isOutputSource}
+										onConfigChange={updateSnapshotConfig}
+										onUiChange={updateTimeTravelUi}
+										onSelect={handleSnapshotSelect}
+									/>
+								{/if}
 							</div>
 							<div class={css({ minWidth: 'colMd', flexShrink: '0' })}>
-								<BranchPicker
-									branches={getDatasourceBranches(resolvedDatasource)}
-									value={branchValue}
-									placeholder="master"
-									onChange={applyBranchValue}
-								/>
+								{#if readOnly}
+									<div
+										class={css({
+											display: 'flex',
+											flexDirection: 'column',
+											gap: '1',
+											borderWidth: '1',
+											backgroundColor: 'bg.secondary',
+											paddingX: '3',
+											paddingY: '2'
+										})}
+									>
+										<span
+											class={css({
+												fontSize: '2xs',
+												textTransform: 'uppercase',
+												color: 'fg.muted'
+											})}
+										>
+											Branch
+										</span>
+										<span class={css({ fontSize: 'sm', color: 'fg.primary' })}>
+											{branchValue || 'master'}
+										</span>
+									</div>
+								{:else}
+									<BranchPicker
+										branches={getDatasourceBranches(resolvedDatasource)}
+										value={branchValue}
+										placeholder="master"
+										onChange={applyBranchValue}
+									/>
+								{/if}
 							</div>
 						</div>
 					{/if}
@@ -660,6 +720,7 @@
 								max="64"
 								value={effectiveThreads}
 								onchange={(e) => setThreads(parseInt(e.currentTarget.value) || 0)}
+								disabled={readOnly}
 							/>
 							{#if isUsingDefaultThreads}
 								<span
@@ -698,6 +759,7 @@
 								)}
 								value={effectiveMemoryGb}
 								onchange={(e) => setMemoryGb(parseInt(e.currentTarget.value) || 0)}
+								disabled={readOnly}
 							>
 								{#each memoryOptions as gb (gb)}
 									<option value={gb}>{gb} GB</option>
@@ -752,6 +814,7 @@
 				)}
 				onclick={onChangeDatasource}
 				type="button"
+				disabled={readOnly}
 			>
 				<RefreshCw size={14} class={css({ opacity: '0.7' })} />
 				<span>change source</span>

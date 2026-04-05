@@ -32,6 +32,7 @@
 		onMoveStep: (stepId: string, target: DropTarget) => void;
 		onChangeDatasource?: () => void;
 		onRenameTab?: (name: string) => void;
+		readOnly?: boolean;
 	}
 
 	let {
@@ -49,10 +50,11 @@
 		onPasteStep,
 		onMoveStep,
 		onChangeDatasource: _onChangeDatasource,
-		onRenameTab: _onRenameTab
+		onRenameTab: _onRenameTab,
+		readOnly = false
 	}: Props = $props();
 
-	const canDrop = $derived(drag.active);
+	const canDrop = $derived(!readOnly && drag.active);
 	const hoverIndex = $derived(drag.target?.index ?? null);
 	const activeTabId = $derived(activeTab?.id ?? null);
 
@@ -96,6 +98,7 @@
 	}
 
 	async function handlePaste(index: number) {
+		if (readOnly) return;
 		try {
 			const text = await navigator.clipboard.readText();
 			const parsed: unknown = JSON.parse(text);
@@ -115,6 +118,7 @@
 	}
 
 	function handleInsertView(index: number) {
+		if (readOnly) return;
 		const target = buildTarget(index);
 		onInsertStep('view', target);
 	}
@@ -159,7 +163,7 @@
 	}
 
 	function handleDragEnter(event: DragEvent, index: number) {
-		if (!drag.active) return;
+		if (readOnly || !drag.active) return;
 		event.preventDefault();
 		const target = buildTarget(index);
 		const valid = isValidTarget(index);
@@ -167,7 +171,7 @@
 	}
 
 	function handleDragOver(event: DragEvent) {
-		if (drag.active) {
+		if (!readOnly && drag.active) {
 			event.preventDefault();
 			if (event.dataTransfer) {
 				event.dataTransfer.dropEffect = drag.isReorder ? 'move' : 'copy';
@@ -185,7 +189,7 @@
 
 	function handleDrop(event: DragEvent, index: number) {
 		event.preventDefault();
-		if (!drag.active) return;
+		if (readOnly || !drag.active) return;
 
 		const target = buildTarget(index);
 		const valid = isValidTarget(index);
@@ -363,6 +367,7 @@
 			{activeTab}
 			onChangeDatasource={_onChangeDatasource}
 			onRenameTab={_onRenameTab}
+			{readOnly}
 		/>
 		{#if shouldShowInsert(0)}
 			<div
@@ -460,17 +465,19 @@
 								highlighted={false}
 							/>
 						{/if}
-						<div class={insertControls}>
-							<button class={insertBtn} title="Insert view" onclick={() => handleInsertView(0)}>
-								<Eye size={14} />
-							</button>
-							<div class={inertPlus} aria-hidden="true">
-								<Plus size={14} />
+						{#if !readOnly}
+							<div class={insertControls}>
+								<button class={insertBtn} title="Insert view" onclick={() => handleInsertView(0)}>
+									<Eye size={14} />
+								</button>
+								<div class={inertPlus} aria-hidden="true">
+									<Plus size={14} />
+								</div>
+								<button class={insertBtn} title="Paste step" onclick={() => handlePaste(0)}>
+									<ClipboardPaste size={14} />
+								</button>
 							</div>
-							<button class={insertBtn} title="Paste step" onclick={() => handlePaste(0)}>
-								<ClipboardPaste size={14} />
-							</button>
-						</div>
+						{/if}
 					</div>
 				{/if}
 			</div>
@@ -498,6 +505,7 @@
 				onDelete={onStepDelete}
 				onToggleApply={onStepToggle}
 				onTouchMove={onMoveStep}
+				{readOnly}
 			/>
 			{#if shouldShowInsert(i + 1)}
 				<div
@@ -594,21 +602,23 @@
 								totalSteps={steps.length}
 								highlighted={false}
 							/>
-							<div class={insertControls}>
-								<button
-									class={insertBtn}
-									title="Insert view"
-									onclick={() => handleInsertView(i + 1)}
-								>
-									<Eye size={14} />
-								</button>
-								<div class={inertPlus} aria-hidden="true">
-									<Plus size={14} />
+							{#if !readOnly}
+								<div class={insertControls}>
+									<button
+										class={insertBtn}
+										title="Insert view"
+										onclick={() => handleInsertView(i + 1)}
+									>
+										<Eye size={14} />
+									</button>
+									<div class={inertPlus} aria-hidden="true">
+										<Plus size={14} />
+									</div>
+									<button class={insertBtn} title="Paste step" onclick={() => handlePaste(i + 1)}>
+										<ClipboardPaste size={14} />
+									</button>
 								</div>
-								<button class={insertBtn} title="Paste step" onclick={() => handlePaste(i + 1)}>
-									<ClipboardPaste size={14} />
-								</button>
-							</div>
+							{/if}
 						</div>
 					{/if}
 				</div>
@@ -639,7 +649,7 @@
 				<ConnectionLine fromStepIndex={-1} toStepIndex={0} totalSteps={1} />
 			</div>
 		{/if}
-		<OutputNode {analysisId} {datasourceId} {activeTab} />
+		<OutputNode {analysisId} {datasourceId} {activeTab} {readOnly} />
 	</div>
 	{#if pasteError}
 		<div

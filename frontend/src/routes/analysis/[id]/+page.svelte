@@ -94,9 +94,13 @@
 	let lastLoadedVersion = $state<string | null>(null);
 	let hydratedGates = $state(new Set<string>());
 
+	let lockMode = $state<'pending' | 'owned' | 'other'>('pending');
 	let lockOwner = $state<string | null>(null);
 	const userId = $derived(authStore.user?.id ?? null);
-	let lockedByOther = $derived(lockOwner !== null && (userId === null || lockOwner !== userId));
+	let lockedByOther = $derived(
+		lockMode === 'other' && lockOwner !== null && (userId === null || lockOwner !== userId)
+	);
+	const editorReadOnly = $derived(lockMode !== 'owned');
 
 	function releaseCurrentLock(id: string, token: string): void {
 		releaseLock('analysis', id, token).match(
@@ -121,6 +125,7 @@
 		const id = validAnalysisId;
 		if (!id) return;
 
+		lockMode = 'pending';
 		lockOwner = null;
 
 		let token: string | null = null;
@@ -134,12 +139,14 @@
 					return;
 				}
 				token = status.lock_token;
+				lockMode = 'owned';
 				lockOwner = status.owner_id;
 				watcher = startWatcher(id, token);
 			},
 			(error) => {
 				if (!alive) return;
 				if (error.status === 409) {
+					lockMode = 'other';
 					watcher = startWatcher(id, null);
 				}
 			}
@@ -149,6 +156,7 @@
 			alive = false;
 			watcher?.close();
 			if (token) releaseCurrentLock(id, token);
+			lockMode = 'pending';
 			lockOwner = null;
 		};
 	});
@@ -170,7 +178,7 @@
 
 	// Storage: $derived can't hydrate from IndexedDB.
 	$effect(() => {
-		if (!storageKey || draftLoaded) return;
+		if (!storageKey || draftLoaded || editorReadOnly) return;
 		if (!analysisStore.tabs.length) return;
 		const serverVersion = lastLoadedVersion ?? analysisStore.current?.version ?? null;
 		if (!serverVersion) {
@@ -228,7 +236,7 @@
 
 	// Timer: $derived can't debounce draft persistence.
 	$effect(() => {
-		if (!storageKey || !draftLoaded) return;
+		if (!storageKey || !draftLoaded || editorReadOnly) return;
 		if (!analysisStore.tabs.length) return;
 		const payload = {
 			analysisId,
@@ -310,6 +318,34 @@
 		},
 		retry: false
 	}));
+
+	let resetForRemoteLock = $state(false);
+
+	// Locking: another owner means this view must snap back to persisted backend state.
+	$effect(() => {
+		if (!lockedByOther) {
+			resetForRemoteLock = false;
+			return;
+		}
+		if (resetForRemoteLock) return;
+		resetForRemoteLock = true;
+
+		showDatasourceModal = false;
+		showVersionModal = false;
+		versionError = null;
+		editingVersionId = null;
+		saveError = '';
+		tabError = '';
+		isDirty = false;
+		analysisStore.setResourceConfig(null);
+
+		if (storageKey) {
+			void idbDelete(storageKey);
+		}
+		if (analysisQuery.data) {
+			void analysisQuery.refetch();
+		}
+	});
 
 	const versionsQuery = createQuery(() => ({
 		queryKey: ['analysis-versions', analysisId],
@@ -534,10 +570,12 @@
 	}
 
 	function markUnsaved() {
+		if (editorReadOnly) return;
 		isDirty = true;
 	}
 
 	function handleAddStep(type: string) {
+		if (editorReadOnly) return;
 		const step = buildStep(type);
 		analysisStore.addStep(step);
 		selectedStepId = step.id;
@@ -546,6 +584,7 @@
 	}
 
 	function handleInsertStep(type: string, target: DropTarget) {
+		if (editorReadOnly) return;
 		const step = buildStep(type);
 		const inserted = analysisStore.insertStep(step, target.index, target.parentId, target.nextId);
 		if (inserted) {
@@ -556,6 +595,7 @@
 	}
 
 	function handlePasteStep(payload: ClipboardStep, target: DropTarget) {
+		if (editorReadOnly) return;
 		const step: PipelineStep = {
 			id: crypto.randomUUID(),
 			type: payload.type,
@@ -572,6 +612,7 @@
 	}
 
 	function handleMoveStep(stepId: string, target: DropTarget) {
+		if (editorReadOnly) return;
 		analysisStore.moveStep(stepId, target.index, target.parentId, target.nextId);
 		markUnsaved();
 	}
@@ -582,6 +623,7 @@
 	}
 
 	function handleDeleteStep(stepId: string) {
+		if (editorReadOnly) return;
 		analysisStore.removeStep(stepId);
 		if (selectedStepId === stepId) {
 			selectedStepId = null;
@@ -590,6 +632,7 @@
 	}
 
 	function handleToggleStep(stepId: string) {
+		if (editorReadOnly) return;
 		const step = analysisStore.pipeline.find((item) => item.id === stepId);
 		if (!step) return;
 		const next = step.is_applied === false;
@@ -598,7 +641,7 @@
 	}
 
 	async function handleSave() {
-		if (isSaving || lockedByOther) return;
+		if (isSaving || editorReadOnly) return;
 
 		isSaving = true;
 		saveError = '';
@@ -636,7 +679,7 @@
 
 	async function discardChanges() {
 		if (!analysisId) return;
-		if (isSaving) return;
+		if (isSaving || editorReadOnly) return;
 		if (storageKey) {
 			void idbDelete(storageKey);
 		}
@@ -691,6 +734,7 @@
 	}
 
 	function handleAddTab(datasourceId: string, name: string) {
+		if (editorReadOnly) return;
 		const tabId = `tab-${datasourceId}-${Date.now()}`;
 		const output = buildOutputConfig({
 			outputId: crypto.randomUUID(),
@@ -720,6 +764,7 @@
 		name: string,
 		sourceTabId: string | null
 	) {
+		if (editorReadOnly) return;
 		if (
 			modalMode === 'change' &&
 			analysisId &&
@@ -756,6 +801,7 @@
 	}
 
 	function handleChangeDatasource(datasourceId: string) {
+		if (editorReadOnly) return;
 		const active = activeTab;
 		if (!active) return;
 		analysisStore.updateTab(active.id, {
@@ -771,6 +817,7 @@
 		name: string,
 		source: 'datasource' | 'analysis'
 	) {
+		if (editorReadOnly) return;
 		if (source === 'analysis') {
 			if (!analysisId) return;
 			const analysisTabId = datasourceId;
@@ -807,11 +854,13 @@
 	}
 
 	function handleRemoveTab(tabId: string) {
+		if (editorReadOnly) return;
 		analysisStore.removeTab(tabId);
 		markUnsaved();
 	}
 
 	function handleRenameSourceTab(nextName: string) {
+		if (editorReadOnly) return;
 		const active = activeTab;
 		if (!active) return;
 		const trimmed = nextName.trim();
@@ -821,6 +870,7 @@
 	}
 
 	function openDatasourceModal(mode: 'add' | 'change' = 'add') {
+		if (editorReadOnly) return;
 		modalMode = mode;
 		const sourceType = activeTab?.datasource.analysis_tab_id ? 'analysis' : 'datasource';
 		modalSource = sourceType;
@@ -856,7 +906,7 @@
 	}
 
 	async function handleRestoreVersion(version: number) {
-		if (!analysisId) return;
+		if (!analysisId || editorReadOnly) return;
 		versionError = null;
 		const result = await restoreAnalysisVersion(analysisId, version);
 		if (result.isErr()) {
@@ -873,12 +923,13 @@
 	}
 
 	function startRenameVersion(id: string, name: string) {
+		if (editorReadOnly) return;
 		editingVersionId = id;
 		editingVersionName = name;
 	}
 
 	async function commitRenameVersion(version: number) {
-		if (!analysisId || !editingVersionId) return;
+		if (!analysisId || !editingVersionId || editorReadOnly) return;
 		const trimmed = editingVersionName.trim();
 		if (!trimmed) {
 			editingVersionId = null;
@@ -895,7 +946,7 @@
 	}
 
 	async function handleDeleteVersion(version: number) {
-		if (!analysisId) return;
+		if (!analysisId || editorReadOnly) return;
 		versionError = null;
 		const result = await deleteAnalysisVersion(analysisId, version);
 		if (result.isErr()) {
@@ -1006,7 +1057,7 @@
 					})}
 				>
 					<h1
-						contenteditable="true"
+						contenteditable={!editorReadOnly}
 						class={css({
 							margin: '0',
 							fontSize: 'xs',
@@ -1017,7 +1068,7 @@
 							textOverflow: 'ellipsis',
 							outline: 'none',
 							letterSpacing: 'wide2',
-							cursor: 'text',
+							cursor: editorReadOnly ? 'default' : 'text',
 							_focus: {
 								backgroundColor: 'bg.hover',
 
@@ -1026,6 +1077,10 @@
 							}
 						})}
 						onblur={(e) => {
+							if (editorReadOnly) {
+								e.currentTarget.textContent = analysisQuery.data.name;
+								return;
+							}
 							const newName = e.currentTarget.textContent?.trim();
 							if (newName && newName !== analysisQuery.data.name) {
 								analysisStore.update({ name: newName });
@@ -1141,6 +1196,7 @@
 										onclick={() => handleRemoveTab(tab.id)}
 										type="button"
 										aria-label="Remove tab"
+										disabled={editorReadOnly}
 									>
 										<X size={10} />
 									</button>
@@ -1163,6 +1219,7 @@
 								onclick={() => openDatasourceModal('add')}
 								type="button"
 								title="Add datasource tab"
+								disabled={editorReadOnly}
 							>
 								<Plus size={12} />
 							</button>
@@ -1252,7 +1309,7 @@
 							_disabled: { opacity: '0.5', cursor: 'not-allowed' }
 						})}
 						onclick={discardChanges}
-						disabled={!isDirty || isSaving || analysisStore.loading || lockedByOther}
+						disabled={!isDirty || isSaving || analysisStore.loading || editorReadOnly}
 						type="button"
 					>
 						Discard
@@ -1279,9 +1336,9 @@
 								...(isDirty ? { color: 'fg.warning' } : { color: 'fg.success' })
 							})}
 							onclick={handleSave}
-							disabled={isSaving || analysisStore.loading || lockedByOther}
+							disabled={isSaving || analysisStore.loading || editorReadOnly}
 							type="button"
-							data-save-state={lockedByOther
+							data-save-state={editorReadOnly
 								? 'locked'
 								: isSaving
 									? 'saving'
@@ -1289,7 +1346,7 @@
 										? 'dirty'
 										: 'clean'}
 						>
-							{lockedByOther ? 'Locked' : isSaving ? 'Saving...' : isDirty ? 'Save' : 'Saved'}
+							{editorReadOnly ? 'Locked' : isSaving ? 'Saving...' : isDirty ? 'Save' : 'Saved'}
 						</button>
 						<button
 							class={css({
@@ -1361,7 +1418,11 @@
 						: {})
 				})}
 			>
-				<StepLibrary onAddStep={handleAddStep} onInsertStep={handleInsertStep} />
+				<StepLibrary
+					onAddStep={handleAddStep}
+					onInsertStep={handleInsertStep}
+					readOnly={editorReadOnly}
+				/>
 			</div>
 
 			<div
@@ -1399,6 +1460,7 @@
 						onMoveStep={handleMoveStep}
 						onChangeDatasource={() => openDatasourceModal('change')}
 						onRenameTab={handleRenameSourceTab}
+						readOnly={editorReadOnly}
 					/>
 				</div>
 
@@ -1441,6 +1503,7 @@
 							{isLoadingSchema}
 							onClose={handleCloseConfig}
 							onConfigApply={markUnsaved}
+							readOnly={editorReadOnly}
 						/>
 					</div>
 				{/if}
@@ -1471,6 +1534,7 @@
 						{isLoadingSchema}
 						onClose={handleCloseConfig}
 						onConfigApply={markUnsaved}
+						readOnly={editorReadOnly}
 					/>
 				</div>
 			{/if}
@@ -1686,6 +1750,7 @@
 										id="version-name-{version.id}"
 										aria-label="Version name"
 										bind:value={editingVersionName}
+										disabled={editorReadOnly}
 										onblur={() => commitRenameVersion(version.version)}
 										onkeydown={(e) => {
 											if (e.key === 'Enter') commitRenameVersion(version.version);
@@ -1708,6 +1773,7 @@
 											title="Rename version"
 											data-testid="version-rename-{version.version}"
 											onclick={() => startRenameVersion(version.id, version.name)}
+											disabled={editorReadOnly}
 										>
 											<Pencil size={12} />
 										</button>
@@ -1734,6 +1800,7 @@
 									title="Delete version"
 									data-testid="version-delete-{version.version}"
 									onclick={() => handleDeleteVersion(version.version)}
+									disabled={editorReadOnly}
 								>
 									<Trash2 size={14} />
 								</button>
@@ -1742,6 +1809,7 @@
 									data-testid="version-restore-{version.version}"
 									onclick={() => handleRestoreVersion(version.version)}
 									type="button"
+									disabled={editorReadOnly}
 								>
 									Restore
 								</button>

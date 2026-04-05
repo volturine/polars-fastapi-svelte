@@ -94,7 +94,9 @@ test.describe('Navigation – settings popup', () => {
 		await expect(dialog.getByRole('heading', { name: 'Settings' })).toBeVisible();
 		await waitForSettingsForm(dialog);
 
-		// Verify all three sections render
+		// Wait for async settings load to complete before asserting section content.
+		await expect(dialog.locator('#smtp-host')).toBeVisible();
+		await expect(dialog.locator('#smtp-port')).toBeVisible();
 		await expect(dialog.getByText('SMTP', { exact: true })).toBeVisible();
 		await expect(dialog.getByText('Telegram', { exact: true })).toBeVisible();
 		await expect(dialog.getByText('Debug', { exact: true })).toBeVisible();

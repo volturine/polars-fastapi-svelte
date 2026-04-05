@@ -74,9 +74,12 @@ function renderPopup(props: Record<string, unknown> = {}) {
 	});
 }
 
-async function renderPopupExpanded(props: Record<string, unknown> = {}) {
+async function renderPopupWithExpandedSections(
+	sectionNames: readonly string[],
+	props: Record<string, unknown> = {}
+) {
 	const view = renderPopup(props);
-	for (const name of ['AI Providers', 'SMTP', 'Telegram', 'Debug'] as const) {
+	for (const name of sectionNames) {
 		const toggle = screen.getByRole('button', { name });
 		if (toggle.getAttribute('aria-expanded') === 'false') {
 			await fireEvent.click(toggle);
@@ -166,22 +169,22 @@ describe('SettingsPopup', () => {
 		});
 
 		test('shows Host input', async () => {
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['SMTP']);
 			expect(screen.getByPlaceholderText('smtp.example.com')).toBeInTheDocument();
 		});
 
 		test('shows Port input', async () => {
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['SMTP']);
 			expect(screen.getByDisplayValue('587')).toBeInTheDocument();
 		});
 
 		test('shows Test button', async () => {
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['SMTP']);
 			expect(screen.getByRole('button', { name: 'Test SMTP' })).toBeInTheDocument();
 		});
 
 		test('test button is disabled without recipient', async () => {
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['SMTP']);
 			const btn = screen.getByRole('button', { name: 'Test SMTP' });
 			expect(btn).toBeDisabled();
 		});
@@ -194,25 +197,25 @@ describe('SettingsPopup', () => {
 		});
 
 		test('shows Bot token input', async () => {
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['Telegram']);
 			const el = document.getElementById('telegram-bot-token');
 			expect(el).toBeInTheDocument();
 			expect(el).toHaveAttribute('type', 'password');
 		});
 
 		test('shows Enable Bot toggle', async () => {
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['Telegram']);
 			expect(screen.getByLabelText('Toggle Telegram bot')).toBeInTheDocument();
 		});
 
 		test('toggle has switch role', async () => {
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['Telegram']);
 			const toggle = screen.getByLabelText('Toggle Telegram bot');
 			expect(toggle).toHaveAttribute('role', 'switch');
 		});
 
 		test('toggle shows unchecked by default', async () => {
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['Telegram']);
 			const toggle = screen.getByLabelText('Toggle Telegram bot');
 			expect(toggle).toHaveAttribute('aria-checked', 'false');
 		});
@@ -230,7 +233,7 @@ describe('SettingsPopup', () => {
 				isLoading: false,
 				isFetching: false
 			};
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['Telegram']);
 			expect(screen.getByText(/Subscribers appear here after users send/)).toBeInTheDocument();
 		});
 
@@ -241,7 +244,7 @@ describe('SettingsPopup', () => {
 				isLoading: false,
 				isFetching: false
 			};
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['Telegram']);
 			expect(screen.getByText('Bot running')).toBeInTheDocument();
 			expect(screen.getByText('3 subscribers')).toBeInTheDocument();
 		});
@@ -253,7 +256,7 @@ describe('SettingsPopup', () => {
 				isLoading: false,
 				isFetching: false
 			};
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['Telegram']);
 			expect(screen.getByText('Bot stopped')).toBeInTheDocument();
 			expect(screen.getByText('1 subscriber')).toBeInTheDocument();
 		});
@@ -266,12 +269,12 @@ describe('SettingsPopup', () => {
 		});
 
 		test('shows IndexedDB Inspector toggle', async () => {
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['Debug']);
 			expect(screen.getByLabelText('Toggle IndexedDB inspector')).toBeInTheDocument();
 		});
 
 		test('IDB toggle has switch role', async () => {
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['Debug']);
 			const toggle = screen.getByLabelText('Toggle IndexedDB inspector');
 			expect(toggle).toHaveAttribute('role', 'switch');
 			expect(toggle).toHaveAttribute('aria-checked', 'false');
@@ -322,7 +325,7 @@ describe('SettingsPopup', () => {
 
 	describe('Telegram toggle interaction', () => {
 		test('clicking toggle flips aria-checked', async () => {
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['Telegram']);
 			const toggle = screen.getByLabelText('Toggle Telegram bot');
 			expect(toggle).toHaveAttribute('aria-checked', 'false');
 			await fireEvent.click(toggle);
@@ -337,7 +340,7 @@ describe('SettingsPopup', () => {
 					onOk({ success: true, message: 'Test email sent successfully' });
 				}
 			});
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['SMTP']);
 			const recipient = screen.getByTestId('settings-smtp-test-recipient');
 			await fireEvent.input(recipient, { target: { value: 'test@example.com' } });
 			await fireEvent.click(screen.getByRole('button', { name: 'Test SMTP' }));
@@ -352,7 +355,7 @@ describe('SettingsPopup', () => {
 					onOk({ success: false, message: 'Connection refused' });
 				}
 			});
-			await renderPopupExpanded();
+			await renderPopupWithExpandedSections(['SMTP']);
 			const recipient = screen.getByTestId('settings-smtp-test-recipient');
 			await fireEvent.input(recipient, { target: { value: 'test@example.com' } });
 			await fireEvent.click(screen.getByRole('button', { name: 'Test SMTP' }));

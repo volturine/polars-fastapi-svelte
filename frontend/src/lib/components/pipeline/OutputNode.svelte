@@ -42,9 +42,10 @@
 		analysisId?: string;
 		datasourceId?: string;
 		activeTab?: AnalysisTab | null;
+		readOnly?: boolean;
 	}
 
-	let { analysisId, datasourceId, activeTab = null }: Props = $props();
+	let { analysisId, datasourceId, activeTab = null, readOnly = false }: Props = $props();
 
 	const queryClient = useQueryClient();
 	let toggling = $state(false);
@@ -235,6 +236,7 @@
 	const selectedCount = $derived(activeSubscribers.length);
 
 	function updateOutputConfig(patch: Partial<AnalysisTabOutput>) {
+		if (readOnly) return;
 		const tab = activeTab;
 		if (!tab) return;
 		const currentOutput = tab.output;
@@ -252,11 +254,13 @@
 	}
 
 	function updateIcebergConfig(patch: Partial<AnalysisTabIcebergConfig>) {
+		if (readOnly) return;
 		const current = outputConfig.iceberg ?? {};
 		updateOutputConfig({ iceberg: { ...current, ...patch } });
 	}
 
 	function ensureOutputConfig(): void {
+		if (readOnly) return;
 		const tab = activeTab;
 		if (!tab) return;
 		const defaults = outputDefaults;
@@ -269,11 +273,16 @@
 	}
 
 	function startNameEdit() {
+		if (readOnly) return;
 		draftName = outputConfig.iceberg.table_name;
 		editingName = true;
 	}
 
 	function commitNameEdit() {
+		if (readOnly) {
+			editingName = false;
+			return;
+		}
 		if (draftName.trim()) {
 			updateIcebergConfig({ table_name: draftName.trim() });
 		}
@@ -285,6 +294,7 @@
 	}
 
 	function applyGlobalBranchValue(next: string) {
+		if (readOnly) return;
 		const tab = activeTab;
 		if (!tab) return;
 		const output = tab.output ?? {};
@@ -295,6 +305,7 @@
 	}
 
 	function toggleNotification() {
+		if (readOnly) return;
 		if (notifyConfig.enabled) {
 			updateOutputConfig({ notification: null });
 			return;
@@ -309,11 +320,13 @@
 	}
 
 	function updateNotification(patch: Partial<AnalysisTabNotificationConfig>) {
+		if (readOnly) return;
 		const current = outputConfig.notification ?? {};
 		updateOutputConfig({ notification: { ...current, ...patch } });
 	}
 
 	async function toggleHidden() {
+		if (readOnly) return;
 		if (!outputDatasourceId || toggling) return;
 		if (!hasOutputDatasource) {
 			probeOutputDatasource = true;
@@ -335,7 +348,7 @@
 	}
 
 	async function handleManualBuild() {
-		if (!analysisId || building) return;
+		if (!analysisId || building || readOnly) return;
 		building = true;
 		error = null;
 		ensureOutputConfig();
@@ -574,31 +587,33 @@
 					>
 						{outputConfig.iceberg.table_name}
 					</span>
-					<button
-						class={css({
-							display: 'inline-flex',
-							height: 'iconMd',
-							width: 'iconMd',
-							cursor: 'pointer',
-							alignItems: 'center',
-							justifyContent: 'center',
-							borderWidth: '1',
-							color: 'fg.muted',
-							backgroundColor: 'bg.primary',
-							padding: '0',
-							opacity: '0.5',
-							lineHeight: '1',
-							_hover: {
-								backgroundColor: 'bg.tertiary',
-								opacity: '1'
-							}
-						})}
-						onclick={startNameEdit}
-						type="button"
-						aria-label="Edit export name"
-					>
-						<Pencil size={12} class={css({ flexShrink: '0' })} />
-					</button>
+					{#if !readOnly}
+						<button
+							class={css({
+								display: 'inline-flex',
+								height: 'iconMd',
+								width: 'iconMd',
+								cursor: 'pointer',
+								alignItems: 'center',
+								justifyContent: 'center',
+								borderWidth: '1',
+								color: 'fg.muted',
+								backgroundColor: 'bg.primary',
+								padding: '0',
+								opacity: '0.5',
+								lineHeight: '1',
+								_hover: {
+									backgroundColor: 'bg.tertiary',
+									opacity: '1'
+								}
+							})}
+							onclick={startNameEdit}
+							type="button"
+							aria-label="Edit export name"
+						>
+							<Pencil size={12} class={css({ flexShrink: '0' })} />
+						</button>
+					{/if}
 				{/if}
 			</div>
 		</div>
@@ -652,7 +667,7 @@
 							_hover: { color: 'fg.primary' }
 						})}
 						onclick={toggleHidden}
-						disabled={toggling || !hasOutputDatasource}
+						disabled={readOnly || toggling || !hasOutputDatasource}
 						data-testid="output-visibility-toggle"
 						title={hidden
 							? 'Hidden from other analyses — click to make visible'
@@ -676,136 +691,169 @@
 						paddingTop: '2'
 					})}
 				>
-					<div
-						class={cx(
-							css({
-								position: 'relative',
+					{#if readOnly}
+						<div
+							class={css({
 								display: 'flex',
-								flexDirection: 'column',
-								gap: '2',
-								minWidth: 'inputSm'
-							}),
-							css({ position: 'relative' })
-						)}
-						bind:this={modeMenuRef}
-					>
-						<button
-							type="button"
+								alignItems: 'center',
+								justifyContent: 'space-between',
+								borderWidth: '1',
+								backgroundColor: 'bg.secondary',
+								paddingX: '3',
+								paddingY: '2',
+								fontSize: 'sm'
+							})}
+						>
+							<span class={css({ color: 'fg.muted' })}>Build mode</span>
+							<span>{outputConfig.build_mode}</span>
+						</div>
+						<div
+							class={css({
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'space-between',
+								borderWidth: '1',
+								backgroundColor: 'bg.secondary',
+								paddingX: '3',
+								paddingY: '2',
+								fontSize: 'sm'
+							})}
+						>
+							<span class={css({ color: 'fg.muted' })}>Branch</span>
+							<span>{branchValue || 'master'}</span>
+						</div>
+					{:else}
+						<div
 							class={cx(
 								css({
-									display: 'flex',
-									alignItems: 'center',
-									gap: '2',
-									paddingX: '3',
-									paddingY: '2',
-									borderWidth: '1',
-									backgroundColor: 'bg.secondary',
-									cursor: 'pointer',
-									justifyContent: 'space-between',
-									fontSize: 'sm',
-									_focusVisible: {
-										outline: '2px solid {colors.accent.secondary}',
-										outlineOffset: '2px'
-									}
-								}),
-								css({ width: '100%' })
-							)}
-							onclick={() => (modeMenuOpen = !modeMenuOpen)}
-							aria-expanded={modeMenuOpen}
-							bind:this={modeTriggerRef}
-							data-testid="output-mode-trigger"
-						>
-							<span
-								class={css({
-									flex: '1',
-									textAlign: 'left',
-									minWidth: '0',
-									overflow: 'hidden',
-									textOverflow: 'ellipsis',
-									whiteSpace: 'nowrap'
-								})}>{outputConfig.build_mode}</span
-							>
-							<ChevronDown size={14} class={muted} />
-						</button>
-						{#if modeMenuOpen}
-							<div
-								class={css({
-									position: 'absolute',
-									zIndex: 'dropdown',
-									top: 'calc(100% + 6px)',
-									left: '0',
-									minWidth: '100%',
-									width: '100%',
-									maxWidth: '100%',
-									backgroundColor: 'bg.primary',
-									borderWidth: '1',
-									padding: '2',
+									position: 'relative',
 									display: 'flex',
 									flexDirection: 'column',
-									gap: '2'
-								})}
-								role="listbox"
-								data-testid="output-mode-listbox"
+									gap: '2',
+									minWidth: 'inputSm'
+								}),
+								css({ position: 'relative' })
+							)}
+							bind:this={modeMenuRef}
+						>
+							<button
+								type="button"
+								class={cx(
+									css({
+										display: 'flex',
+										alignItems: 'center',
+										gap: '2',
+										paddingX: '3',
+										paddingY: '2',
+										borderWidth: '1',
+										backgroundColor: 'bg.secondary',
+										cursor: 'pointer',
+										justifyContent: 'space-between',
+										fontSize: 'sm',
+										_focusVisible: {
+											outline: '2px solid {colors.accent.secondary}',
+											outlineOffset: '2px'
+										}
+									}),
+									css({ width: '100%' })
+								)}
+								onclick={() => (modeMenuOpen = !modeMenuOpen)}
+								aria-expanded={modeMenuOpen}
+								bind:this={modeTriggerRef}
+								data-testid="output-mode-trigger"
 							>
+								<span
+									class={css({
+										flex: '1',
+										textAlign: 'left',
+										minWidth: '0',
+										overflow: 'hidden',
+										textOverflow: 'ellipsis',
+										whiteSpace: 'nowrap'
+									})}>{outputConfig.build_mode}</span
+								>
+								<ChevronDown size={14} class={muted} />
+							</button>
+							{#if modeMenuOpen}
 								<div
 									class={css({
+										position: 'absolute',
+										zIndex: 'dropdown',
+										top: 'calc(100% + 6px)',
+										left: '0',
+										minWidth: '100%',
+										width: '100%',
+										maxWidth: '100%',
+										backgroundColor: 'bg.primary',
+										borderWidth: '1',
+										padding: '2',
 										display: 'flex',
 										flexDirection: 'column',
-										gap: '2',
-										maxHeight: 'dropdown',
-										overflowY: 'auto',
-										overflowX: 'hidden',
-										padding: '2',
-										scrollbarWidth: 'thin',
-										scrollbarColor: '{colors.border.primary} transparent'
+										gap: '2'
 									})}
+									role="listbox"
+									data-testid="output-mode-listbox"
 								>
-									{#each ['full', 'incremental', 'recreate'] as mode (mode)}
-										<button
-											type="button"
-											class={cx(
-												css({
-													minWidth: '0',
-													width: '100%',
-													paddingX: '3',
-													paddingY: '2',
-													borderWidth: '1',
-													borderColor: 'transparent',
-													background: 'transparent',
-													textAlign: 'left',
-													display: 'flex',
-													alignItems: 'center',
-													justifyContent: 'flex-start',
-													gap: '2',
-													cursor: 'pointer',
-													fontSize: 'sm',
-													'& span': { minWidth: '0', overflowWrap: 'anywhere' },
-													_hover: { backgroundColor: 'bg.hover' }
-												}),
-												outputConfig.build_mode === mode && css({ backgroundColor: 'bg.hover' })
-											)}
-											onclick={() => {
-												updateOutputConfig({ build_mode: mode });
-												modeMenuOpen = false;
-											}}
-											role="option"
-											aria-selected={outputConfig.build_mode === mode}
-											data-testid={`output-mode-option-${mode}`}
-										>
-											<span>{mode}</span>
-										</button>
-									{/each}
+									<div
+										class={css({
+											display: 'flex',
+											flexDirection: 'column',
+											gap: '2',
+											maxHeight: 'dropdown',
+											overflowY: 'auto',
+											overflowX: 'hidden',
+											padding: '2',
+											scrollbarWidth: 'thin',
+											scrollbarColor: '{colors.border.primary} transparent'
+										})}
+									>
+										{#each ['full', 'incremental', 'recreate'] as mode (mode)}
+											<button
+												type="button"
+												class={cx(
+													css({
+														minWidth: '0',
+														width: '100%',
+														paddingX: '3',
+														paddingY: '2',
+														borderWidth: '1',
+														borderColor: 'transparent',
+														background: 'transparent',
+														textAlign: 'left',
+														display: 'flex',
+														alignItems: 'center',
+														justifyContent: 'flex-start',
+														gap: '2',
+														cursor: 'pointer',
+														fontSize: 'sm',
+														'& span': { minWidth: '0', overflowWrap: 'anywhere' },
+														_hover: { backgroundColor: 'bg.hover' }
+													}),
+													outputConfig.build_mode === mode && css({ backgroundColor: 'bg.hover' })
+												)}
+												onclick={() => {
+													updateOutputConfig({ build_mode: mode });
+													modeMenuOpen = false;
+												}}
+												role="option"
+												aria-selected={outputConfig.build_mode === mode}
+												data-testid={`output-mode-option-${mode}`}
+											>
+												<span>{mode}</span>
+											</button>
+										{/each}
+									</div>
 								</div>
-							</div>
-						{/if}
-					</div>
-					<BranchPicker
-						branches={branchOptions}
-						value={branchValue}
-						placeholder="Branch"
-						allowCreate={true}
-						onChange={applyGlobalBranchValue}
-					/>
+							{/if}
+						</div>
+						<BranchPicker
+							branches={branchOptions}
+							value={branchValue}
+							placeholder="Branch"
+							allowCreate={true}
+							onChange={applyGlobalBranchValue}
+						/>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -834,7 +882,7 @@
 					_disabled: { cursor: 'not-allowed', opacity: '0.5' }
 				})}
 				onclick={handleManualBuild}
-				disabled={!analysisId || building}
+				disabled={!analysisId || building || readOnly}
 				title="Run analysis build"
 				type="button"
 				data-testid="output-build-button"
@@ -914,6 +962,7 @@
 								type="checkbox"
 								checked={notifyConfig.enabled}
 								onchange={toggleNotification}
+								disabled={readOnly}
 							/>
 							<span>Notify subscribers on build</span>
 						</label>
@@ -1049,6 +1098,7 @@
 										id={`${idPrefix}-notify-body`}
 										rows="3"
 										value={notifyConfig.body_template}
+										disabled={readOnly}
 										oninput={(e) =>
 											updateNotification({
 												body_template: e.currentTarget.value
@@ -1113,7 +1163,21 @@
 				</button>
 
 				{#if healthOpen}
-					{#if canQueryOutput && hasOutputDatasource}
+					{#if readOnly}
+						<div
+							class={css({
+								marginTop: '2',
+								borderWidth: '1',
+								borderStyle: 'dashed',
+								padding: '3',
+								textAlign: 'center',
+								fontSize: 'xs',
+								color: 'fg.tertiary'
+							})}
+						>
+							Analysis is locked. Health checks are read-only from this view.
+						</div>
+					{:else if canQueryOutput && hasOutputDatasource}
 						<div
 							class={css({
 								marginTop: '2',
@@ -1183,7 +1247,21 @@
 					{/if}
 				</button>
 
-				{#if scheduleOpen && canQueryOutput && hasOutputDatasource}
+				{#if scheduleOpen && readOnly}
+					<div
+						class={css({
+							marginTop: '2',
+							borderWidth: '1',
+							borderStyle: 'dashed',
+							padding: '3',
+							textAlign: 'center',
+							fontSize: 'xs',
+							color: 'fg.tertiary'
+						})}
+					>
+						Analysis is locked. Schedules are read-only from this view.
+					</div>
+				{:else if scheduleOpen && canQueryOutput && hasOutputDatasource}
 					<div
 						class={css({
 							marginTop: '2',

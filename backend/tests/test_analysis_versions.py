@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from modules.analysis.models import Analysis, AnalysisStatus
@@ -7,6 +7,7 @@ from modules.analysis_versions.models import AnalysisVersion
 from modules.analysis_versions.service import create_version, get_version
 from modules.datasource.models import DataSource
 from modules.datasource.source_types import DataSourceType
+from modules.locks.models import ResourceLock
 
 
 def test_list_versions_returns_versions(test_db_session, client, sample_datasource: DataSource):
@@ -135,6 +136,75 @@ def test_restore_version_updates_analysis(test_db_session, client, sample_dataso
     assert response.status_code == 200
     payload = response.json()
     assert payload['name'] == 'Restored'
+
+
+def test_restore_version_rejects_when_analysis_locked_by_other_owner(
+    test_db_session,
+    client,
+    sample_datasource: DataSource,
+    monkeypatch,
+):
+    monkeypatch.setattr('core.config.settings.auth_required', False)
+    analysis_id = str(uuid.uuid4())
+    now = datetime.now(UTC)
+    analysis_pipeline: dict[str, Any] = {
+        'steps': [],
+        'tabs': [
+            {
+                'id': 'tab-1',
+                'name': 'Source',
+                'parent_id': None,
+                'datasource': {
+                    'id': sample_datasource.id,
+                    'analysis_tab_id': None,
+                    'config': {'branch': 'master'},
+                },
+                'output': {
+                    'result_id': str(uuid.uuid4()),
+                    'datasource_type': 'iceberg',
+                    'format': 'parquet',
+                    'filename': 'version_output',
+                },
+                'steps': [],
+            },
+        ],
+    }
+    analysis = Analysis(
+        id=analysis_id,
+        name='Original',
+        description=None,
+        pipeline_definition=analysis_pipeline,
+        status=AnalysisStatus.DRAFT,
+        created_at=now,
+        updated_at=now,
+    )
+    version = AnalysisVersion(
+        id='version-locked-restore',
+        analysis_id=analysis_id,
+        version=1,
+        name='Locked Restore',
+        description=None,
+        pipeline_definition=analysis_pipeline,
+        created_at=now,
+    )
+    lock = ResourceLock(
+        resource_type='analysis',
+        resource_id=analysis_id,
+        owner_id='other-owner',
+        lock_token='locked-token',
+        acquired_at=now.replace(tzinfo=None),
+        expires_at=(now + timedelta(minutes=5)).replace(tzinfo=None),
+        last_heartbeat=now.replace(tzinfo=None),
+    )
+    test_db_session.add(analysis)
+    test_db_session.add(version)
+    test_db_session.add(lock)
+    test_db_session.commit()
+
+    response = client.post(f'/api/v1/analysis/{analysis_id}/versions/1/restore')
+
+    assert response.status_code == 409
+    assert response.json()['detail'] == f'analysis {analysis_id} is locked by another owner'
 
 
 def test_rename_version(test_db_session, client, sample_datasource: DataSource):

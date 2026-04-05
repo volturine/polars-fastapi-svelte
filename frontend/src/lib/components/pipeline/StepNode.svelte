@@ -33,6 +33,7 @@
 		onDelete: (id: string) => void;
 		onToggleApply: (id: string) => void;
 		onTouchMove: (stepId: string, target: DropTarget) => void;
+		readOnly?: boolean;
 	}
 
 	let {
@@ -44,7 +45,8 @@
 		onEdit,
 		onDelete,
 		onToggleApply,
-		onTouchMove
+		onTouchMove,
+		readOnly = false
 	}: Props = $props();
 
 	const isChart = $derived(isChartStep(step.type));
@@ -242,6 +244,7 @@
 	}
 
 	function startDrag(event: PointerEvent) {
+		if (readOnly) return;
 		const target = event.currentTarget as HTMLElement | null;
 		const handle = target?.closest('[data-drag-handle]');
 		if (!handle) return;
@@ -362,7 +365,7 @@
 					css({
 						display: 'flex',
 						flexShrink: '0',
-						cursor: 'grab',
+						cursor: readOnly ? 'not-allowed' : 'grab',
 						alignItems: 'center',
 						justifyContent: 'center',
 						border: 'none',
@@ -372,7 +375,7 @@
 						userSelect: 'none',
 						color: 'fg.muted',
 						_hover: { opacity: '1', backgroundColor: 'bg.hover' },
-						_active: { cursor: 'grabbing' },
+						_active: { cursor: readOnly ? 'not-allowed' : 'grabbing' },
 						...(dragging
 							? {
 									WebkitUserSelect: 'none',
@@ -390,6 +393,7 @@
 				onpointercancel={finishDrag}
 				onclick={handleClick}
 				data-drag-handle="true"
+				disabled={readOnly}
 			>
 				<GripVertical size={14} />
 			</button>
@@ -492,6 +496,7 @@
 				type="button"
 				title={isApplied ? 'Disable step' : 'Enable step'}
 				data-action="toggle"
+				disabled={readOnly}
 			>
 				{isApplied ? 'disable' : 'enable'}
 			</button>
@@ -516,6 +521,7 @@
 				onclick={() => onEdit(step.id)}
 				type="button"
 				data-action="edit"
+				disabled={readOnly}
 			>
 				edit
 			</button>
@@ -540,6 +546,7 @@
 				onclick={() => onDelete(step.id)}
 				type="button"
 				data-action="delete"
+				disabled={readOnly}
 			>
 				delete
 			</button>

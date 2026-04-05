@@ -83,6 +83,7 @@
 		isLoadingSchema?: boolean;
 		onClose?: () => void;
 		onConfigApply?: () => void;
+		readOnly?: boolean;
 	}
 
 	let {
@@ -90,7 +91,8 @@
 		schema,
 		isLoadingSchema = false,
 		onClose,
-		onConfigApply
+		onConfigApply,
+		readOnly = false
 	}: Props = $props();
 	const stepLabel = $derived(step ? getStepTypeConfig(step.type).label : '');
 	let fetchingPivotSchema = $state(false);
@@ -111,6 +113,7 @@
 		smtpEnabled: configStore.smtpEnabled,
 		telegramEnabled: configStore.telegramEnabled
 	});
+	const readOnlyConfigJson = $derived(JSON.stringify(draftConfig, null, 2));
 
 	function cloneConfig(
 		config: Record<string, unknown> | null | undefined
@@ -187,6 +190,7 @@
 	}
 
 	function handleApplyConfig() {
+		if (readOnly) return;
 		if (!step) return;
 		analysisStore.updateStepConfig(step.id, cloneConfig(draftConfig));
 		if (step.is_applied === false) {
@@ -229,6 +233,7 @@
 	}
 
 	function handleCancelConfig() {
+		if (readOnly) return;
 		if (!step) return;
 		draftConfig = cloneConfig(step.config as Record<string, unknown>);
 	}
@@ -369,6 +374,21 @@
 					<div class={spinner({ size: 'md' })}></div>
 					<p class={css({ margin: '0', fontSize: 'xs' })}>Loading schema...</p>
 				</div>
+			{:else if readOnly}
+				<div class={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
+					<Callout tone="warn">This analysis is locked. Step configuration is read-only.</Callout>
+					<pre
+						class={css({
+							margin: '0',
+							overflowX: 'auto',
+							borderWidth: '1',
+							backgroundColor: 'bg.secondary',
+							padding: '3',
+							fontSize: 'xs',
+							color: 'fg.primary'
+						})}>
+{readOnlyConfigJson}</pre>
+				</div>
 			{:else if step.type === 'filter'}
 				<FilterConfig
 					schema={inputSchema}
@@ -498,53 +518,55 @@
 				</div>
 			{/if}
 		</div>
-		<PanelFooter>
-			<button
-				class={css({
-					flex: '1',
-					cursor: 'pointer',
-					borderWidth: '1',
-					backgroundColor: 'transparent',
-					paddingX: '4',
-					paddingY: '2.5',
-					fontFamily: 'mono',
-					fontSize: 'xs',
-					fontWeight: 'semibold',
-					textTransform: 'uppercase',
-					letterSpacing: 'wider',
-					color: 'fg.secondary',
-					_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
-					_disabled: { cursor: 'not-allowed', opacity: '0.4' }
-				})}
-				onclick={handleCancelConfig}
-				disabled={!hasChanges}
-				type="button"
-			>
-				Cancel
-			</button>
-			<button
-				class={css({
-					flex: '1',
-					cursor: 'pointer',
-					borderWidth: '1',
-					backgroundColor: 'bg.accent',
-					paddingX: '4',
-					paddingY: '2.5',
-					fontFamily: 'mono',
-					fontSize: 'xs',
-					fontWeight: 'semibold',
-					textTransform: 'uppercase',
-					letterSpacing: 'wider',
-					color: 'accent.primary',
-					_hover: { opacity: '0.9' },
-					_disabled: { cursor: 'not-allowed', opacity: '0.4' }
-				})}
-				onclick={handleApplyConfig}
-				disabled={!hasChanges}
-				type="button"
-			>
-				Apply
-			</button>
-		</PanelFooter>
+		{#if !readOnly}
+			<PanelFooter>
+				<button
+					class={css({
+						flex: '1',
+						cursor: 'pointer',
+						borderWidth: '1',
+						backgroundColor: 'transparent',
+						paddingX: '4',
+						paddingY: '2.5',
+						fontFamily: 'mono',
+						fontSize: 'xs',
+						fontWeight: 'semibold',
+						textTransform: 'uppercase',
+						letterSpacing: 'wider',
+						color: 'fg.secondary',
+						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
+						_disabled: { cursor: 'not-allowed', opacity: '0.4' }
+					})}
+					onclick={handleCancelConfig}
+					disabled={!hasChanges}
+					type="button"
+				>
+					Cancel
+				</button>
+				<button
+					class={css({
+						flex: '1',
+						cursor: 'pointer',
+						borderWidth: '1',
+						backgroundColor: 'bg.accent',
+						paddingX: '4',
+						paddingY: '2.5',
+						fontFamily: 'mono',
+						fontSize: 'xs',
+						fontWeight: 'semibold',
+						textTransform: 'uppercase',
+						letterSpacing: 'wider',
+						color: 'accent.primary',
+						_hover: { opacity: '0.9' },
+						_disabled: { cursor: 'not-allowed', opacity: '0.4' }
+					})}
+					onclick={handleApplyConfig}
+					disabled={!hasChanges}
+					type="button"
+				>
+					Apply
+				</button>
+			</PanelFooter>
+		{/if}
 	</div>
 {/if}

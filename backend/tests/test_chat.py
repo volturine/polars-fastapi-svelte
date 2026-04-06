@@ -192,7 +192,8 @@ class TestSessionStore:
 
     def test_delete_unknown_returns_false(self) -> None:
         store = SessionStore()
-        assert store.delete('nonexistent') is False
+        result = store.delete('nonexistent')
+        assert result is False
 
     def test_db_persistence_survives_eviction(self) -> None:
         store = SessionStore()

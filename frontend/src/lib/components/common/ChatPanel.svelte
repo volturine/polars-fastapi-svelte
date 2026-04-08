@@ -590,7 +590,7 @@
 	function methodColor(method: string): string {
 		if (method === 'GET') return 'fg.success';
 		if (method === 'DELETE') return 'fg.error';
-		if (method === 'POST') return 'fg.accent';
+		if (method === 'POST') return 'fg.primary';
 		return 'fg.warning';
 	}
 
@@ -687,7 +687,7 @@
 				cursor: 'ew-resize',
 				zIndex: '1',
 				touchAction: 'none',
-				_hover: { backgroundColor: 'border.default' }
+				_hover: { backgroundColor: 'border.primary' }
 			})}
 			onpointerdown={startResizeWidth}
 		></div>
@@ -712,7 +712,7 @@
 					right: '0',
 					bottom: '-4px'
 				},
-				_hover: { backgroundColor: 'border.default' }
+				_hover: { backgroundColor: 'border.primary' }
 			})}
 			onpointerdown={startResize}
 		></div>
@@ -757,8 +757,8 @@
 								border: 'none',
 								cursor: 'pointer',
 								backgroundColor: chatStore.mode === 'plan' ? 'bg.accent' : 'transparent',
-								color: chatStore.mode === 'plan' ? 'fg.onAccent' : 'fg.muted',
-								_hover: chatStore.mode === 'plan' ? {} : { backgroundColor: 'bg.subtle' }
+								color: chatStore.mode === 'plan' ? 'fg.primary' : 'fg.muted',
+								_hover: chatStore.mode === 'plan' ? {} : { backgroundColor: 'bg.tertiary' }
 							})}
 							onclick={() => chatStore.setMode('plan')}
 							type="button"
@@ -779,9 +779,9 @@
 								border: 'none',
 								borderLeftWidth: '1',
 								cursor: 'pointer',
-								backgroundColor: chatStore.mode === 'execute' ? 'fg.default' : 'transparent',
+								backgroundColor: chatStore.mode === 'execute' ? 'fg.primary' : 'transparent',
 								color: chatStore.mode === 'execute' ? 'bg.panel' : 'fg.muted',
-								_hover: chatStore.mode === 'execute' ? {} : { backgroundColor: 'bg.subtle' }
+								_hover: chatStore.mode === 'execute' ? {} : { backgroundColor: 'bg.tertiary' }
 							})}
 							onclick={() => chatStore.setMode('execute')}
 							type="button"
@@ -800,7 +800,7 @@
 				</div>
 				<div class={css({ display: 'flex', gap: '0.5', flexShrink: '0' })}>
 					<button
-						class={cx(iconButton(), css({ color: toolsOpen ? 'fg.default' : undefined }))}
+						class={cx(iconButton(), css({ color: toolsOpen ? 'fg.primary' : undefined }))}
 						onclick={() => togglePanel('tools')}
 						title="Tools"
 						aria-label="Tools"
@@ -808,7 +808,7 @@
 						<Wrench size={13} />
 					</button>
 					<button
-						class={cx(iconButton(), css({ color: sessionsOpen ? 'fg.default' : undefined }))}
+						class={cx(iconButton(), css({ color: sessionsOpen ? 'fg.primary' : undefined }))}
 						onclick={() => togglePanel('sessions')}
 						title="Sessions"
 						aria-label="Sessions"
@@ -816,7 +816,7 @@
 						<History size={13} />
 					</button>
 					<button
-						class={cx(iconButton(), css({ color: configOpen ? 'fg.default' : undefined }))}
+						class={cx(iconButton(), css({ color: configOpen ? 'fg.primary' : undefined }))}
 						onclick={openConfig}
 						title="Configure"
 						aria-label="Configure"
@@ -946,7 +946,7 @@
 												fontSize: 'xs',
 												border: 'none',
 												backgroundColor: m.id === modelDraft ? 'bg.accent' : 'transparent',
-												color: m.id === modelDraft ? 'fg.onAccent' : 'fg.default',
+												color: m.id === modelDraft ? 'fg.primary' : 'fg.primary',
 												cursor: 'pointer',
 												_hover: { backgroundColor: 'bg.hover' }
 											})}
@@ -1120,7 +1120,7 @@
 											paddingY: '1',
 											fontSize: '11px',
 											textAlign: 'left',
-											color: enabled ? 'fg.default' : 'fg.muted',
+											color: enabled ? 'fg.primary' : 'fg.muted',
 											_hover: { backgroundColor: 'bg.hover' }
 										})}
 										onclick={() => chatStore.toggleTool(tool.id)}
@@ -1152,7 +1152,7 @@
 												paddingX: '1',
 												paddingY: '0.5',
 												borderRadius: 'xs',
-												backgroundColor: 'bg.subtle',
+												backgroundColor: 'bg.tertiary',
 												color: methodColor(tool.method),
 												flexShrink: '0'
 											})}
@@ -1291,7 +1291,7 @@
 										overflow: 'hidden',
 										textOverflow: 'ellipsis',
 										whiteSpace: 'nowrap',
-										color: session.preview ? 'fg.default' : 'fg.muted'
+										color: session.preview ? 'fg.primary' : 'fg.muted'
 									})}
 								>
 									{session.preview || 'Empty session'}
@@ -1404,7 +1404,7 @@
 											backgroundColor: 'transparent',
 											color: 'fg.secondary',
 											cursor: 'pointer',
-											_hover: { backgroundColor: 'bg.subtle' }
+											_hover: { backgroundColor: 'bg.tertiary' }
 										})}
 										onclick={() => void handleSendPrompt(prompt)}
 										type="button"
@@ -1480,7 +1480,7 @@
 													overflow: 'hidden',
 													textOverflow: 'ellipsis',
 													whiteSpace: 'nowrap',
-													color: session.preview ? 'fg.default' : 'fg.muted'
+													color: session.preview ? 'fg.primary' : 'fg.muted'
 												})}
 											>
 												{session.preview || 'Empty session'}
@@ -1543,7 +1543,7 @@
 								color: 'fg.muted',
 								fontSize: '10px',
 								fontFamily: 'mono',
-								_hover: { color: 'fg.default' }
+								_hover: { color: 'fg.primary' }
 							})}
 							onclick={() => {
 								const anyExpanded = chatStore.toolCalls.some((tc) => tc.expanded);
@@ -1633,7 +1633,7 @@
 												height: '22px',
 												borderRadius: 'full',
 												backgroundColor:
-													chatStore.mode === 'execute' ? 'accent.primary' : 'bg.subtle',
+													chatStore.mode === 'execute' ? 'accent.primary' : 'bg.tertiary',
 												display: 'flex',
 												alignItems: 'center',
 												justifyContent: 'center',
@@ -1666,8 +1666,8 @@
 												padding: '2',
 												borderRadius: 'md',
 												fontSize: 'sm',
-												backgroundColor: msg.role === 'user' ? 'bg.accent' : 'bg.subtle',
-												color: msg.role === 'user' ? 'fg.onAccent' : 'fg.default',
+												backgroundColor: msg.role === 'user' ? 'bg.accent' : 'bg.tertiary',
+												color: msg.role === 'user' ? 'fg.primary' : 'fg.primary',
 												wordBreak: 'break-word',
 												position: 'relative',
 												lineHeight: '1.5',
@@ -1740,7 +1740,7 @@
 								maxWidth: 'calc(100% - 30px)',
 								minWidth: '0',
 								flexShrink: '0',
-								backgroundColor: 'bg.canvas',
+								backgroundColor: 'bg.secondary',
 								borderWidth: '1',
 								borderColor:
 									tc.status === 'error'
@@ -1749,7 +1749,7 @@
 											? 'fg.warning'
 											: tc.status === 'done'
 												? 'border.subtle'
-												: 'border.default'
+												: 'border.primary'
 							})}
 						>
 							<button
@@ -1765,7 +1765,7 @@
 									backgroundColor: 'transparent',
 									cursor: 'pointer',
 									textAlign: 'left',
-									color: 'fg.default'
+									color: 'fg.primary'
 								})}
 								onclick={() => (tc.expanded = !tc.expanded)}
 								type="button"
@@ -1848,7 +1848,7 @@
 										padding: '2',
 										borderTopWidth: '1',
 										borderColor: 'border.warning',
-										backgroundColor: 'bg.subtle'
+										backgroundColor: 'bg.tertiary'
 									})}
 								>
 									<ShieldAlert size={12} class={css({ flexShrink: '0', color: 'fg.warning' })} />
@@ -1856,7 +1856,7 @@
 										class={css({
 											flex: '1',
 											fontSize: '11px',
-											color: 'fg.default'
+											color: 'fg.primary'
 										})}
 									>
 										This action will modify data. Allow?
@@ -1914,7 +1914,7 @@
 										overflow: 'auto',
 										maxHeight: '200px',
 										borderTopWidth: '1',
-										backgroundColor: 'bg.subtle',
+										backgroundColor: 'bg.tertiary',
 										wordBreak: 'break-word'
 									})}
 								>
@@ -1947,7 +1947,7 @@
 														paddingX: '1',
 														paddingY: '0.5',
 														borderRadius: 'xs',
-														backgroundColor: 'bg.canvas',
+														backgroundColor: 'bg.secondary',
 														fontWeight: 'medium',
 														color: 'fg.secondary'
 													})}
@@ -1987,7 +1987,7 @@
 													padding: '0',
 													cursor: 'pointer',
 													color: 'fg.muted',
-													_hover: { color: 'fg.default' }
+													_hover: { color: 'fg.primary' }
 												})}
 												onclick={() =>
 													void copyToClipboard(
@@ -2039,7 +2039,7 @@
 													padding: '0',
 													cursor: 'pointer',
 													color: 'fg.muted',
-													_hover: { color: 'fg.default' }
+													_hover: { color: 'fg.primary' }
 												})}
 												onclick={() =>
 													void copyToClipboard(
@@ -2078,7 +2078,7 @@
 								padding: '1.5',
 								paddingX: '3',
 								borderRadius: 'md',
-								backgroundColor: 'bg.subtle',
+								backgroundColor: 'bg.tertiary',
 								display: 'flex',
 								alignItems: 'center',
 								gap: '1'
@@ -2114,7 +2114,7 @@
 								fontSize: '11px',
 								fontWeight: 'medium',
 								cursor: 'pointer',
-								_hover: { backgroundColor: 'bg.accent', color: 'fg.onAccent' }
+								_hover: { backgroundColor: 'bg.accent', color: 'fg.primary' }
 							})}
 							onclick={() => void handleSendPrompt('Go ahead, execute the plan.')}
 							type="button"
@@ -2131,7 +2131,7 @@
 								color: 'fg.muted',
 								fontSize: '11px',
 								cursor: 'pointer',
-								_hover: { backgroundColor: 'bg.subtle' }
+								_hover: { backgroundColor: 'bg.tertiary' }
 							})}
 							onclick={() => inputEl?.focus()}
 							type="button"
@@ -2164,7 +2164,7 @@
 							cursor: 'pointer',
 							boxShadow: 'md',
 							zIndex: '1',
-							_hover: { backgroundColor: 'bg.subtle' }
+							_hover: { backgroundColor: 'bg.tertiary' }
 						})}
 						onclick={scrollToBottom}
 						type="button"
@@ -2218,7 +2218,7 @@
 								fontWeight: 'medium',
 								cursor: 'pointer',
 								flexShrink: '0',
-								_hover: { backgroundColor: 'bg.subtle' }
+								_hover: { backgroundColor: 'bg.tertiary' }
 							})}
 							onclick={() => void chatStore.retry()}
 							type="button"
@@ -2317,7 +2317,7 @@
 						fontSize: '10px',
 						fontFamily: 'mono',
 						flexShrink: '0',
-						_hover: { color: 'fg.default' }
+						_hover: { color: 'fg.primary' }
 					})}
 					onclick={toggleModelPicker}
 					type="button"
@@ -2352,7 +2352,7 @@
 								fontSize: '10px',
 								fontFamily: 'mono',
 								flexShrink: '0',
-								_hover: { color: 'fg.default' }
+								_hover: { color: 'fg.primary' }
 							})}
 							onclick={() => chatStore.reconnectNow()}
 							type="button"
@@ -2399,7 +2399,7 @@
 								flex: '1',
 								minWidth: '20px',
 								height: '3px',
-								backgroundColor: 'bg.canvas',
+								backgroundColor: 'bg.secondary',
 								borderRadius: 'full',
 								overflow: 'hidden'
 							})}
@@ -2486,7 +2486,7 @@
 										paddingX: '2',
 										border: 'none',
 										backgroundColor: m.id === chatStore.model ? 'bg.accent' : 'transparent',
-										color: m.id === chatStore.model ? 'fg.onAccent' : 'fg.default',
+										color: m.id === chatStore.model ? 'fg.primary' : 'fg.primary',
 										cursor: 'pointer',
 										_hover: { backgroundColor: 'bg.hover' }
 									})}
@@ -2497,7 +2497,7 @@
 									<span
 										class={css({
 											fontSize: '9px',
-											color: m.id === chatStore.model ? 'fg.onAccent' : 'fg.muted',
+											color: m.id === chatStore.model ? 'fg.primary' : 'fg.muted',
 											fontFamily: 'mono'
 										})}
 									>

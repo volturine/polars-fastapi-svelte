@@ -574,3 +574,427 @@ test.describe('Monitoring – Builds tab', () => {
 		}
 	});
 });
+
+// ── Active Builds ───────────────────────────────────────────────────────────
+
+test.describe('Monitoring – Active Builds section', () => {
+	test('shows "No active builds" when WebSocket returns empty snapshot', async ({ page }) => {
+		test.setTimeout(60_000);
+
+		// Mock the builds list WS to return empty snapshot
+		await page.routeWebSocket(/\/v1\/compute\/ws\/builds(\?|$)/, (ws) => {
+			ws.send(JSON.stringify({ type: 'snapshot', builds: [] }));
+		});
+
+		await page.goto('/monitoring?tab=builds');
+		await expect(page.getByRole('tab', { name: 'Builds' })).toHaveAttribute(
+			'aria-selected',
+			'true'
+		);
+
+		const activeBuilds = page.locator('[data-testid="active-builds"]');
+		await expect(activeBuilds).toBeVisible({ timeout: 10_000 });
+		await expect(activeBuilds.getByText('No active builds')).toBeVisible({ timeout: 10_000 });
+
+		await screenshot(page, 'monitoring', 'active-builds-empty');
+	});
+
+	test('shows active build when snapshot includes a running build', async ({ page }) => {
+		test.setTimeout(60_000);
+
+		const mockBuildId = 'abcd1234-5678-9abc-def0-123456789abc';
+
+		await page.routeWebSocket(/\/v1\/compute\/ws\/builds(\?|$)/, (ws) => {
+			ws.send(
+				JSON.stringify({
+					type: 'snapshot',
+					builds: [
+						{
+							build_id: mockBuildId,
+							analysis_id: 'analysis-001',
+							status: 'running',
+							progress: 35,
+							current_step: 'Loading source data',
+							started_at: new Date().toISOString(),
+							tab_count: 1
+						}
+					]
+				})
+			);
+		});
+
+		await page.goto('/monitoring?tab=builds');
+
+		const activeBuilds = page.locator('[data-testid="active-builds"]');
+		await expect(activeBuilds).toBeVisible({ timeout: 10_000 });
+
+		// Build button should be visible with the build ID prefix
+		const buildBtn = page.locator(`[data-testid="active-build-${mockBuildId}"]`);
+		await expect(buildBtn).toBeVisible({ timeout: 10_000 });
+		await expect(buildBtn).toContainText('abcd1234');
+		await expect(buildBtn).toContainText('Loading source data');
+		await expect(buildBtn).toContainText('35%');
+
+		// Count badge should show "1"
+		await expect(activeBuilds.getByText('1', { exact: true })).toBeVisible();
+
+		await screenshot(page, 'monitoring', 'active-builds-running');
+	});
+
+	test('active build updates progress from streamed events', async ({ page }) => {
+		test.setTimeout(60_000);
+
+		const mockBuildId = 'prog-update-5678-9abc-def0-123456789abc';
+		const now = new Date().toISOString();
+
+		await page.routeWebSocket(/\/v1\/compute\/ws\/builds(\?|$)/, (ws) => {
+			ws.send(
+				JSON.stringify({
+					type: 'snapshot',
+					builds: [
+						{
+							build_id: mockBuildId,
+							analysis_id: 'analysis-002',
+							status: 'running',
+							progress: 20,
+							current_step: 'Step 1',
+							started_at: now,
+							tab_count: 1
+						}
+					]
+				})
+			);
+
+			// Send progress update after initial snapshot
+			setTimeout(() => {
+				ws.send(
+					JSON.stringify({
+						type: 'progress',
+						build_id: mockBuildId,
+						analysis_id: 'analysis-002',
+						emitted_at: now,
+						progress: 75,
+						elapsed_ms: 3000,
+						estimated_remaining_ms: 1000,
+						current_step: 'Writing output',
+						current_step_index: 1,
+						total_steps: 2
+					})
+				);
+			}, 300);
+		});
+
+		await page.goto('/monitoring?tab=builds');
+
+		const buildBtn = page.locator(`[data-testid="active-build-${mockBuildId}"]`);
+		await expect(buildBtn).toBeVisible({ timeout: 10_000 });
+
+		// Initially should show 20%
+		await expect(buildBtn).toContainText('20%');
+
+		// After progress event, should update to 75%
+		await expect(buildBtn).toContainText('75%', { timeout: 5_000 });
+		await expect(buildBtn).toContainText('Writing output', { timeout: 5_000 });
+
+		await screenshot(page, 'monitoring', 'active-builds-progress-updated');
+	});
+
+	test('active build transitions to complete', async ({ page }) => {
+		test.setTimeout(60_000);
+
+		const mockBuildId = 'complete-build-9abc-def0-123456789abc';
+		const now = new Date().toISOString();
+
+		await page.routeWebSocket(/\/v1\/compute\/ws\/builds(\?|$)/, (ws) => {
+			ws.send(
+				JSON.stringify({
+					type: 'snapshot',
+					builds: [
+						{
+							build_id: mockBuildId,
+							analysis_id: 'analysis-003',
+							status: 'running',
+							progress: 90,
+							current_step: 'Finalizing',
+							started_at: now,
+							tab_count: 1
+						}
+					]
+				})
+			);
+
+			setTimeout(() => {
+				ws.send(
+					JSON.stringify({
+						type: 'complete',
+						build_id: mockBuildId,
+						analysis_id: 'analysis-003',
+						emitted_at: now,
+						duration_ms: 5000,
+						results: [{ tab_id: 'tab-1', tab_name: 'Source 1', status: 'success', error: null }]
+					})
+				);
+			}, 300);
+		});
+
+		await page.goto('/monitoring?tab=builds');
+
+		const buildBtn = page.locator(`[data-testid="active-build-${mockBuildId}"]`);
+		await expect(buildBtn).toBeVisible({ timeout: 10_000 });
+
+		// After complete event, progress should show 100%
+		await expect(buildBtn).toContainText('100%', { timeout: 5_000 });
+
+		await screenshot(page, 'monitoring', 'active-builds-complete');
+	});
+
+	test('clicking active build expands to show BuildPreview', async ({ page }) => {
+		test.setTimeout(60_000);
+
+		const mockBuildId = 'expand-build-1234-5678-def0-123456789abc';
+		const now = new Date().toISOString();
+
+		await page.routeWebSocket(/\/v1\/compute\/ws\/builds(\?|$)/, (ws) => {
+			ws.send(
+				JSON.stringify({
+					type: 'snapshot',
+					builds: [
+						{
+							build_id: mockBuildId,
+							analysis_id: 'analysis-004',
+							status: 'running',
+							progress: 50,
+							current_step: 'Processing',
+							started_at: now,
+							tab_count: 1
+						}
+					]
+				})
+			);
+		});
+
+		// Mock the build detail WS for expansion
+		await page.routeWebSocket(new RegExp(`/v1/compute/ws/builds/${mockBuildId}`), (ws) => {
+			ws.send(
+				JSON.stringify({
+					type: 'snapshot',
+					build: {
+						build_id: mockBuildId,
+						analysis_id: 'analysis-004',
+						status: 'running',
+						progress: 50,
+						current_step: 'Processing',
+						started_at: now,
+						tab_count: 1,
+						steps: [
+							{
+								index: 0,
+								name: 'Load data',
+								tabId: 'tab-1',
+								tabName: 'Source 1',
+								status: 'complete',
+								duration: 500,
+								error: null
+							},
+							{
+								index: 1,
+								name: 'Processing',
+								tabId: 'tab-1',
+								tabName: 'Source 1',
+								status: 'running',
+								duration: null,
+								error: null
+							}
+						],
+						logs: ['[info] Build started', '[info] Loading data...'],
+						plan: 'SELECT * FROM source',
+						resources: null,
+						results: [],
+						error: null
+					}
+				})
+			);
+		});
+
+		await page.goto('/monitoring?tab=builds');
+
+		const buildBtn = page.locator(`[data-testid="active-build-${mockBuildId}"]`);
+		await expect(buildBtn).toBeVisible({ timeout: 10_000 });
+
+		// Click to expand
+		await buildBtn.click();
+
+		// BuildPreview should be visible inside the expanded area
+		await expect(page.locator('[data-testid="build-preview"]')).toBeVisible({ timeout: 10_000 });
+
+		// Should show steps from the detail snapshot
+		await expect(page.locator('[data-testid="build-steps-panel"]')).toBeVisible({
+			timeout: 5_000
+		});
+		await expect(page.locator('[data-testid="build-step-0"]')).toBeVisible({ timeout: 5_000 });
+		await expect(page.locator('[data-testid="build-step-0"]')).toHaveAttribute(
+			'data-step-status',
+			'complete'
+		);
+		await expect(page.locator('[data-testid="build-step-1"]')).toHaveAttribute(
+			'data-step-status',
+			'running'
+		);
+
+		await screenshot(page, 'monitoring', 'active-builds-expanded');
+	});
+
+	test('clicking expanded active build collapses it', async ({ page }) => {
+		test.setTimeout(60_000);
+
+		const mockBuildId = 'collapse-build-1234-5678-def0-12345678';
+		const now = new Date().toISOString();
+
+		await page.routeWebSocket(/\/v1\/compute\/ws\/builds(\?|$)/, (ws) => {
+			ws.send(
+				JSON.stringify({
+					type: 'snapshot',
+					builds: [
+						{
+							build_id: mockBuildId,
+							analysis_id: 'analysis-005',
+							status: 'running',
+							progress: 25,
+							current_step: 'Loading',
+							started_at: now,
+							tab_count: 1
+						}
+					]
+				})
+			);
+		});
+
+		await page.routeWebSocket(new RegExp(`/v1/compute/ws/builds/${mockBuildId}`), (ws) => {
+			ws.send(
+				JSON.stringify({
+					type: 'snapshot',
+					build: {
+						build_id: mockBuildId,
+						analysis_id: 'analysis-005',
+						status: 'running',
+						progress: 25,
+						current_step: 'Loading',
+						started_at: now,
+						tab_count: 1,
+						steps: [],
+						logs: [],
+						plan: null,
+						resources: null,
+						results: [],
+						error: null
+					}
+				})
+			);
+		});
+
+		await page.goto('/monitoring?tab=builds');
+
+		const buildBtn = page.locator(`[data-testid="active-build-${mockBuildId}"]`);
+		await expect(buildBtn).toBeVisible({ timeout: 10_000 });
+
+		// Expand
+		await buildBtn.click();
+		await expect(page.locator('[data-testid="build-preview"]')).toBeVisible({ timeout: 10_000 });
+
+		// Collapse
+		await buildBtn.click();
+		await expect(page.locator('[data-testid="build-preview"]')).not.toBeVisible({
+			timeout: 5_000
+		});
+	});
+
+	test('search filters active builds', async ({ page }) => {
+		test.setTimeout(60_000);
+
+		const mockBuildA = 'search-aaaa-1234-5678-def0-12345678aaaa';
+		const mockBuildB = 'search-bbbb-1234-5678-def0-12345678bbbb';
+		const now = new Date().toISOString();
+
+		await page.routeWebSocket(/\/v1\/compute\/ws\/builds(\?|$)/, (ws) => {
+			ws.send(
+				JSON.stringify({
+					type: 'snapshot',
+					builds: [
+						{
+							build_id: mockBuildA,
+							analysis_id: 'analysis-search-a',
+							status: 'running',
+							progress: 30,
+							current_step: 'Loading alpha',
+							started_at: now,
+							tab_count: 1
+						},
+						{
+							build_id: mockBuildB,
+							analysis_id: 'analysis-search-b',
+							status: 'running',
+							progress: 60,
+							current_step: 'Loading beta',
+							started_at: now,
+							tab_count: 1
+						}
+					]
+				})
+			);
+		});
+
+		await page.goto('/monitoring?tab=builds');
+
+		const activeBuilds = page.locator('[data-testid="active-builds"]');
+		await expect(activeBuilds).toBeVisible({ timeout: 10_000 });
+
+		// Both builds visible
+		await expect(page.locator(`[data-testid="active-build-${mockBuildA}"]`)).toBeVisible({
+			timeout: 10_000
+		});
+		await expect(page.locator(`[data-testid="active-build-${mockBuildB}"]`)).toBeVisible();
+
+		// Search for build A by ID prefix
+		await page.getByLabel(/Search builds, schedules, or health checks/i).fill('search-aaaa');
+
+		// Only build A should be visible
+		await expect(page.locator(`[data-testid="active-build-${mockBuildA}"]`)).toBeVisible({
+			timeout: 5_000
+		});
+		await expect(page.locator(`[data-testid="active-build-${mockBuildB}"]`)).not.toBeVisible({
+			timeout: 5_000
+		});
+
+		// Clear search — both should return
+		await page.getByLabel(/Search builds, schedules, or health checks/i).fill('');
+		await expect(page.locator(`[data-testid="active-build-${mockBuildA}"]`)).toBeVisible({
+			timeout: 5_000
+		});
+		await expect(page.locator(`[data-testid="active-build-${mockBuildB}"]`)).toBeVisible({
+			timeout: 5_000
+		});
+
+		await screenshot(page, 'monitoring', 'active-builds-search');
+	});
+
+	test('shows error message when WebSocket connection fails', async ({ page }) => {
+		test.setTimeout(60_000);
+
+		// Close the WS immediately with error code to trigger error state
+		await page.routeWebSocket(/\/v1\/compute\/ws\/builds(\?|$)/, (ws) => {
+			ws.close({ code: 4000, reason: 'Server unavailable' });
+		});
+
+		await page.goto('/monitoring?tab=builds');
+
+		const activeBuilds = page.locator('[data-testid="active-builds"]');
+		await expect(activeBuilds).toBeVisible({ timeout: 10_000 });
+
+		// Error message should appear
+		await expect(activeBuilds.getByText(/Live build feed unavailable/)).toBeVisible({
+			timeout: 10_000
+		});
+
+		await screenshot(page, 'monitoring', 'active-builds-error');
+	});
+});

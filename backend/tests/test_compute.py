@@ -1,9 +1,11 @@
 import asyncio
+import concurrent.futures
 import contextvars
 import os
 import threading
 import time
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -14,11 +16,13 @@ from core.dependencies import get_manager
 from core.exceptions import PipelineValidationError
 from core.namespace import namespace_paths
 from main import app
+from modules.compute import service as compute_service
 from modules.compute.core.base import EngineResult
 from modules.compute.engine import PolarsComputeEngine
+from modules.compute.live import registry as active_build_registry
 from modules.compute.manager import ProcessManager
 from modules.compute.operations.datasource import _analysis_stack_var
-from modules.compute.routes import _safe_close_websocket
+from modules.compute.routes import _safe_close_websocket, _safe_send_json
 from modules.compute.utils import await_engine_result
 from modules.datasource.models import DataSource
 from modules.engine_runs.models import EngineRun
@@ -52,7 +56,7 @@ def test_run_compute_clears_inherited_polars_env_for_auto_values(monkeypatch) ->
     command_queue = MagicMock()
     command_queue.get.return_value = {'type': 'shutdown'}
 
-    PolarsComputeEngine._run_compute(command_queue, MagicMock(), max_threads=0, streaming_chunk_size=0)
+    PolarsComputeEngine._run_compute(command_queue, MagicMock(), MagicMock(), max_threads=0, streaming_chunk_size=0)
 
     assert 'POLARS_MAX_THREADS' not in os.environ
     assert 'POLARS_STREAMING_CHUNK_SIZE' not in os.environ
@@ -110,6 +114,9 @@ def test_await_engine_result_returns_immediate_result_before_poll_loop() -> None
                 return EngineResult(job_id=job_id, data={'ok': True}, error=None)
             raise AssertionError('poll loop should not run when result is already available')
 
+        def get_progress_event(self, timeout: float = 1.0, job_id: str | None = None):
+            raise AssertionError('progress queue should not be called')
+
         def shutdown(self) -> None:
             raise AssertionError('shutdown should not be called')
 
@@ -125,6 +132,117 @@ def test_await_engine_result_returns_immediate_result_before_poll_loop() -> None
         'query_plan': None,
     }
     assert calls == [('result', 0)]
+
+
+class ProgressReadyEngine:
+    analysis_id = 'analysis'
+    resource_config: dict[str, int] = {}
+    effective_resources: dict[str, int] = {}
+    current_job_id: str | None = 'job-1'
+
+    @property
+    def process_id(self) -> int | None:
+        return None
+
+    def start(self) -> None:
+        return None
+
+    def is_process_alive(self) -> bool:
+        return True
+
+    def check_health(self) -> bool:
+        return True
+
+    def preview(self, *_args, **_kwargs) -> str:
+        return 'job-1'
+
+    def export(self, *_args, **_kwargs) -> str:
+        return 'job-1'
+
+    def get_schema(self, *_args, **_kwargs) -> str:
+        return 'job-1'
+
+    def get_row_count(self, *_args, **_kwargs) -> str:
+        return 'job-1'
+
+    def get_result(self, timeout: float = 1.0, job_id: str | None = None) -> EngineResult | None:
+        return None
+
+    def get_progress_event(self, timeout: float = 1.0, job_id: str | None = None):
+        from modules.compute.core.base import EngineProgressEvent
+
+        self.current_job_id = None
+        return EngineProgressEvent(job_id=job_id or 'job-1', event={'type': 'progress'})
+
+    def shutdown(self) -> None:
+        return None
+
+
+def test_engine_progress_queue_returns_matching_event() -> None:
+    engine = ProgressReadyEngine()
+
+    event = engine.get_progress_event(job_id='job-1')
+
+    assert event is not None
+    assert event.job_id == 'job-1'
+    assert event.event['type'] == 'progress'
+
+
+def test_schedule_stream_tasks_runs_on_main_loop() -> None:
+    loop = asyncio.new_event_loop()
+    progress_task = None
+    resource_task = None
+
+    async def emitter(_payload: dict[str, object]) -> None:
+        return None
+
+    class FakeEngine:
+        def is_process_alive(self) -> bool:
+            return False
+
+        effective_resources: dict[str, int] = {}
+
+    def worker() -> tuple[asyncio.Task, asyncio.Task]:
+        future: concurrent.futures.Future[tuple[asyncio.Task, asyncio.Task]] = concurrent.futures.Future()
+
+        def assign() -> None:
+            from modules.compute.service import _schedule_stream_tasks
+
+            future.set_result(
+                _schedule_stream_tasks(
+                    loop,
+                    engine=FakeEngine(),
+                    job_id='job-1',
+                    build_step_base=0,
+                    total_steps=1,
+                    started_perf=time.perf_counter(),
+                    tab_id='tab1',
+                    tab_name='Tab 1',
+                    emitter=emitter,
+                )
+            )
+
+        loop.call_soon_threadsafe(assign)
+        return future.result(timeout=5)
+
+    def run_loop() -> None:
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
+
+    thread = threading.Thread(target=run_loop)
+    thread.start()
+    try:
+        progress_task, resource_task = worker()
+        assert progress_task.get_loop() is loop
+        assert resource_task.get_loop() is loop
+    finally:
+        if progress_task is not None:
+            loop.call_soon_threadsafe(progress_task.cancel)
+        if resource_task is not None:
+            loop.call_soon_threadsafe(resource_task.cancel)
+        loop.call_soon_threadsafe(loop.stop)
+        thread.join()
+        loop.close()
 
 
 class TestComputePreview:
@@ -653,6 +771,373 @@ class TestComputePreview:
         assert run.request_json['iceberg_options']['branch'] == 'master'
         assert 'data' not in run.result_json
         assert run.result_json['query_plans']['optimized'] == 'opt'
+
+
+def test_list_active_builds_returns_running_build(client, test_user) -> None:
+    build = asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-1',
+            analysis_name='Analysis 1',
+            namespace='default',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+    asyncio.run(
+        active_build_registry.apply_event(
+            build.build_id,
+            {
+                'type': 'progress',
+                'build_id': build.build_id,
+                'analysis_id': 'analysis-1',
+                'emitted_at': datetime.now(UTC).isoformat(),
+                'progress': 0.5,
+                'elapsed_ms': 1200,
+                'total_steps': 4,
+                'current_step': 'Filter rows',
+                'current_step_index': 1,
+            },
+        )
+    )
+
+    response = client.get('/api/v1/compute/builds/active')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['total'] == 1
+    assert payload['builds'][0]['build_id'] == build.build_id
+    assert payload['builds'][0]['status'] == 'running'
+    assert payload['builds'][0]['progress'] == 0.5
+    assert payload['builds'][0]['starter']['user_id'] == test_user.id
+
+
+def test_get_active_build_returns_detail(client, test_user) -> None:
+    build = asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-2',
+            analysis_name='Analysis 2',
+            namespace='default',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+    emitted_at = datetime.now(UTC).isoformat()
+    asyncio.run(
+        active_build_registry.apply_event(
+            build.build_id,
+            {
+                'type': 'step_start',
+                'build_id': build.build_id,
+                'analysis_id': 'analysis-2',
+                'emitted_at': emitted_at,
+                'build_step_index': 0,
+                'step_index': 0,
+                'step_id': 'step-1',
+                'step_name': 'Load source',
+                'step_type': 'source',
+                'total_steps': 1,
+            },
+        )
+    )
+    asyncio.run(
+        active_build_registry.apply_event(
+            build.build_id,
+            {
+                'type': 'log',
+                'build_id': build.build_id,
+                'analysis_id': 'analysis-2',
+                'emitted_at': emitted_at,
+                'level': 'info',
+                'message': 'Started build',
+            },
+        )
+    )
+
+    response = client.get(f'/api/v1/compute/builds/active/{build.build_id}')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['build_id'] == build.build_id
+    assert payload['steps'][0]['step_id'] == 'step-1'
+    assert payload['steps'][0]['state'] == 'running'
+    assert payload['logs'][0]['message'] == 'Started build'
+
+
+def test_build_stream_websocket_emits_snapshot_and_terminal_event(client, sample_datasource: DataSource, test_user) -> None:
+    payload = {
+        'analysis_pipeline': {
+            'analysis_id': 'analysis-stream',
+            'tabs': [
+                {
+                    'id': 'tab1',
+                    'name': 'Tab 1',
+                    'datasource': {
+                        'id': sample_datasource.id,
+                        'analysis_tab_id': None,
+                        'config': {'branch': 'master'},
+                    },
+                    'output': {
+                        'result_id': str(uuid.uuid4()),
+                        'datasource_type': 'iceberg',
+                        'format': 'parquet',
+                        'filename': 'out',
+                    },
+                    'steps': [
+                        {
+                            'id': 'step1',
+                            'type': 'filter',
+                            'config': {'column': 'age', 'operator': '>', 'value': 25},
+                        }
+                    ],
+                }
+            ],
+            'sources': {
+                sample_datasource.id: {
+                    'source_type': sample_datasource.source_type,
+                    **sample_datasource.config,
+                }
+            },
+        },
+        'tab_id': 'tab1',
+    }
+
+    async def fake_run_analysis_build_stream(session, manager, pipeline, *, build, emitter, triggered_by):
+        del session, manager, pipeline, triggered_by
+        await emitter(
+            {
+                'type': 'plan',
+                'optimized_plan': 'OPT PLAN',
+                'unoptimized_plan': 'RAW PLAN',
+                'tab_id': 'tab1',
+                'tab_name': 'Tab 1',
+            }
+        )
+        await emitter(
+            {
+                'type': 'step_start',
+                'build_step_index': 0,
+                'step_index': 0,
+                'step_id': 'step1',
+                'step_name': 'Filter rows',
+                'step_type': 'filter',
+                'total_steps': 1,
+                'tab_id': 'tab1',
+                'tab_name': 'Tab 1',
+            }
+        )
+        await emitter(
+            {
+                'type': 'resources',
+                'cpu_percent': 10.5,
+                'memory_mb': 128.0,
+                'memory_limit_mb': 512,
+                'active_threads': 4,
+                'max_threads': 8,
+                'tab_id': 'tab1',
+                'tab_name': 'Tab 1',
+            }
+        )
+        await emitter(
+            {
+                'type': 'log',
+                'level': 'info',
+                'message': 'Running filter',
+                'step_name': 'Filter rows',
+                'step_id': 'step1',
+                'tab_id': 'tab1',
+                'tab_name': 'Tab 1',
+            }
+        )
+        await emitter(
+            {
+                'type': 'step_complete',
+                'build_step_index': 0,
+                'step_index': 0,
+                'step_id': 'step1',
+                'step_name': 'Filter rows',
+                'step_type': 'filter',
+                'duration_ms': 42,
+                'row_count': 3,
+                'total_steps': 1,
+                'tab_id': 'tab1',
+                'tab_name': 'Tab 1',
+            }
+        )
+        await emitter(
+            {
+                'type': 'progress',
+                'progress': 1.0,
+                'elapsed_ms': 42,
+                'estimated_remaining_ms': 0,
+                'current_step': 'Filter rows',
+                'current_step_index': 0,
+                'total_steps': 1,
+                'tab_id': 'tab1',
+                'tab_name': 'Tab 1',
+            }
+        )
+        await emitter(
+            {
+                'type': 'complete',
+                'elapsed_ms': 50,
+                'total_steps': 1,
+                'tabs_built': 1,
+                'duration_ms': 50,
+                'results': [{'tab_id': 'tab1', 'tab_name': 'Tab 1', 'status': 'success'}],
+            }
+        )
+        return {
+            'analysis_id': build.analysis_id,
+            'tabs_built': 1,
+            'results': [{'tab_id': 'tab1', 'tab_name': 'Tab 1', 'status': 'success'}],
+        }
+
+    with (
+        patch('modules.compute.routes.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
+        patch('modules.compute.routes._build_analysis_name', return_value='Stream Analysis'),
+        client.websocket_connect('/api/v1/compute/ws/build?namespace=default') as websocket,
+    ):
+        websocket.send_json(payload)
+        snapshot = websocket.receive_json()
+        plan = websocket.receive_json()
+        step_start = websocket.receive_json()
+        resources = websocket.receive_json()
+        log = websocket.receive_json()
+        step_complete = websocket.receive_json()
+        progress = websocket.receive_json()
+        complete = websocket.receive_json()
+
+    assert snapshot['type'] == 'snapshot'
+    build_id = snapshot['build']['build_id']
+    assert snapshot['build']['starter']['user_id'] == test_user.id
+    assert plan['type'] == 'plan'
+    assert plan['build_id'] == build_id
+    assert step_start['type'] == 'step_start'
+    assert resources['type'] == 'resources'
+    assert log['type'] == 'log'
+    assert step_complete['type'] == 'step_complete'
+    assert progress['type'] == 'progress'
+    assert complete['type'] == 'complete'
+    assert complete['results'][0]['status'] == 'success'
+
+
+def test_active_build_monitor_websocket_sends_snapshot_and_updates(client, test_user) -> None:
+    build = asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-watch',
+            analysis_name='Watch Build',
+            namespace='default',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+
+    with client.websocket_connect(f'/api/v1/compute/ws/builds/{build.build_id}?namespace=default') as websocket:
+        snapshot = websocket.receive_json()
+        asyncio.run(
+            active_build_registry.publish(
+                build.build_id,
+                {
+                    'type': 'progress',
+                    'build_id': build.build_id,
+                    'analysis_id': build.analysis_id,
+                    'emitted_at': datetime.now(UTC).isoformat(),
+                    'progress': 0.75,
+                    'elapsed_ms': 3000,
+                    'total_steps': 4,
+                    'current_step': 'Sort',
+                    'current_step_index': 2,
+                },
+            )
+        )
+        update = websocket.receive_json()
+
+    assert snapshot['type'] == 'snapshot'
+    assert snapshot['build']['build_id'] == build.build_id
+    assert update['type'] == 'progress'
+    assert update['build_id'] == build.build_id
+
+
+def test_active_build_list_websocket_sends_snapshot_and_updates(client, test_user) -> None:
+    build = asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-list',
+            analysis_name='List Build',
+            namespace='default',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+
+    with client.websocket_connect('/api/v1/compute/ws/builds?namespace=default') as websocket:
+        snapshot = websocket.receive_json()
+        asyncio.run(
+            active_build_registry.publish(
+                build.build_id,
+                {
+                    'type': 'log',
+                    'build_id': build.build_id,
+                    'analysis_id': build.analysis_id,
+                    'emitted_at': datetime.now(UTC).isoformat(),
+                    'level': 'info',
+                    'message': 'hello',
+                },
+            )
+        )
+        update = websocket.receive_json()
+
+    assert snapshot['type'] == 'snapshot'
+    assert snapshot['builds'][0]['build_id'] == build.build_id
+    assert update['type'] == 'log'
+    assert update['build_id'] == build.build_id
+
+
+def test_active_build_registry_prunes_old_finished_builds(test_user) -> None:
+    old_build_ids: list[str] = []
+    for idx in range(105):
+        build = asyncio.run(
+            active_build_registry.create_build(
+                analysis_id=f'analysis-{idx}',
+                analysis_name=f'Analysis {idx}',
+                namespace='default',
+                starter=compute_service._build_starter(test_user),
+                total_tabs=1,
+            )
+        )
+        old_build_ids.append(build.build_id)
+        asyncio.run(
+            active_build_registry.apply_event(
+                build.build_id,
+                {
+                    'type': 'complete',
+                    'build_id': build.build_id,
+                    'analysis_id': build.analysis_id,
+                    'emitted_at': datetime.now(UTC).isoformat(),
+                    'elapsed_ms': 10,
+                    'total_steps': 1,
+                    'tabs_built': 1,
+                    'duration_ms': 10,
+                    'results': [{'tab_id': 'tab1', 'tab_name': 'Tab 1', 'status': 'success'}],
+                },
+            )
+        )
+
+    builds = asyncio.run(active_build_registry.list_builds())
+
+    assert len(builds) == 100
+    assert old_build_ids[0] not in {build.build_id for build in builds}
+
+
+def test_safe_send_json_returns_false_when_socket_disconnected() -> None:
+    websocket = MagicMock()
+    websocket.client_state = WebSocketState.DISCONNECTED
+    websocket.application_state = WebSocketState.CONNECTED
+    websocket.send_json = AsyncMock()
+
+    result = asyncio.run(_safe_send_json(websocket, {'type': 'error'}))
+
+    assert result is False
+    websocket.send_json.assert_not_called()
 
 
 class TestComputeExport:

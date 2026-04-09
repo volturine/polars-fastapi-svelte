@@ -6,14 +6,13 @@
 		AnalysisTabOutput
 	} from '$lib/types/analysis';
 	import type { Subscriber } from '$lib/api/settings';
-	import type { BuildResponse } from '$lib/api/compute';
 	import { getSubscribers } from '$lib/api/settings';
 	import { listDatasources, updateDatasource } from '$lib/api/datasource';
-	import { buildAnalysisWithPayload } from '$lib/api/compute';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { configStore } from '$lib/stores/config.svelte';
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
+	import { BuildStreamStore } from '$lib/stores/build-stream.svelte';
 	import { buildAnalysisPipelinePayload } from '$lib/utils/analysis-pipeline';
 	import { isUuid } from '$lib/utils/analysis-tab';
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
@@ -21,6 +20,8 @@
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
 	import { overlayStack } from '$lib/stores/overlay.svelte';
 	import type { OverlayConfig } from '$lib/stores/overlay.svelte';
+	import BuildPreview from '$lib/components/common/BuildPreview.svelte';
+	import BaseModal from '$lib/components/ui/BaseModal.svelte';
 	import { css, cx, chip, input, label } from '$lib/styles/panda';
 	import {
 		Bell,
@@ -50,14 +51,15 @@
 	let { analysisId, datasourceId, activeTab = null, readOnly = false }: Props = $props();
 
 	const queryClient = useQueryClient();
+	const buildStore = new BuildStreamStore();
 	let toggling = $state(false);
 	let building = $state(false);
+	let previewOpen = $state(false);
 	let error = $state<string | null>(null);
 	let notifyOpen = $state(false);
 	let scheduleOpen = $state(false);
 	let healthOpen = $state(false);
-	let probeOutputDatasource = $state(false);
-	let lastOutputDatasourceId = $state<string | null>(null);
+	let probeOutputDatasourceFor = $state<string | null>(null);
 	let editingName = $state(false);
 	let draftName = $state('');
 	let modeMenuOpen = $state(false);
@@ -131,7 +133,8 @@
 	});
 	const canQueryOutput = $derived(isUuid(outputDatasourceId));
 	const shouldQueryOutputDatasource = $derived(
-		canQueryOutput && (probeOutputDatasource || healthOpen || scheduleOpen)
+		canQueryOutput &&
+			(probeOutputDatasourceFor === outputDatasourceId || healthOpen || scheduleOpen)
 	);
 
 	const outputDatasourceQuery = createQuery(() => ({
@@ -331,7 +334,7 @@
 		if (readOnly) return;
 		if (!outputDatasourceId || toggling) return;
 		if (!hasOutputDatasource) {
-			probeOutputDatasource = true;
+			probeOutputDatasourceFor = outputDatasourceId;
 			return;
 		}
 		toggling = true;
@@ -355,7 +358,6 @@
 		error = null;
 		ensureOutputConfig();
 
-		// Save analysis first so backend sees the latest output config
 		const saveResult = await analysisStore.save();
 		if (saveResult.isErr()) {
 			error = saveResult.error.message;
@@ -375,30 +377,17 @@
 			building = false;
 			return;
 		}
-		const result = await buildAnalysisWithPayload({
+		previewOpen = true;
+		buildStore.start({
 			analysis_pipeline: pipeline,
 			tab_id: activeTab?.id ?? null
 		});
-		result.match(
-			(res: BuildResponse) => {
-				const failed = res.results.find(
-					(r: BuildResponse['results'][number]) => r.status === 'failed'
-				);
-				if (failed?.error) {
-					error = failed.error;
-				}
-				probeOutputDatasource = true;
-				queryClient.invalidateQueries({ queryKey: ['engine-runs', analysisId] });
-				queryClient.invalidateQueries({ queryKey: ['datasource', outputDatasourceId] });
-				queryClient.invalidateQueries({ queryKey: ['datasources'] });
-				void datasourceStore.loadDatasources();
-				building = false;
-			},
-			(err: { message: string }) => {
-				error = err.message;
-				building = false;
-			}
-		);
+	}
+
+	function closeBuildPreview() {
+		previewOpen = false;
+		buildStore.close();
+		building = false;
 	}
 
 	const modeMenuOverlayConfig = $derived<OverlayConfig>({
@@ -408,14 +397,6 @@
 			if (modeTriggerRef?.contains(target)) return;
 			modeMenuOpen = false;
 		}
-	});
-
-	// Reset datasource probing when tab/output target changes.
-	$effect(() => {
-		const currentOutputId = outputDatasourceId;
-		if (lastOutputDatasourceId === currentOutputId) return;
-		lastOutputDatasourceId = currentOutputId;
-		probeOutputDatasource = false;
 	});
 </script>
 
@@ -1310,3 +1291,50 @@
 		{/if}
 	</div>
 </div>
+
+<BaseModal
+	open={previewOpen}
+	onClose={closeBuildPreview}
+	panelClass={css({
+		width: '100%',
+		maxWidth: 'modalLg',
+		maxHeight: '90vh',
+		overflowY: 'auto',
+		borderWidth: '1',
+		backgroundColor: 'bg.primary'
+	})}
+>
+	{#snippet content()}
+		<div
+			class={css({
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'space-between',
+				paddingX: '4',
+				paddingY: '3',
+				borderBottomWidth: '1'
+			})}
+		>
+			<span class={css({ fontSize: 'sm', fontWeight: 'semibold' })}>Build Preview</span>
+			<button
+				type="button"
+				class={css({
+					display: 'inline-flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					cursor: 'pointer',
+					border: 'none',
+					backgroundColor: 'transparent',
+					color: 'fg.muted',
+					padding: '1',
+					_hover: { color: 'fg.primary' }
+				})}
+				onclick={closeBuildPreview}
+				aria-label="Close build preview"
+			>
+				<X size={14} />
+			</button>
+		</div>
+		<BuildPreview store={buildStore} />
+	{/snippet}
+</BaseModal>

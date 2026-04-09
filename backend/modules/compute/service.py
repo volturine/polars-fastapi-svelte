@@ -1,3 +1,6 @@
+import asyncio
+import concurrent.futures
+import contextlib
 import logging
 import os
 import re
@@ -5,7 +8,7 @@ import tempfile
 import time
 import uuid
 from collections import deque
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -19,22 +22,109 @@ from sqlalchemy import select
 from sqlmodel import Session, col
 
 from core.config import settings
+from core.database import get_db
 from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError, PipelineExecutionError, PipelineValidationError
 from core.namespace import get_namespace, namespace_paths
 from modules.analysis.models import Analysis
+from modules.compute import schemas as compute_schemas
+from modules.compute.live import ActiveBuild
 from modules.compute.manager import ProcessManager
+from modules.compute.monitor import monitor_engine_resources
 from modules.compute.operations.datasource import resolve_iceberg_branch_metadata_path, resolve_iceberg_metadata_path
 from modules.compute.schemas import BuildStatus, BuildTabStatus, ComputeRunStatus
 from modules.compute.utils import apply_steps, await_engine_result, find_step_index, resolve_applied_target
 from modules.datasource.models import DataSource
 from modules.datasource.source_types import DataSourceType
 from modules.engine_runs import service as engine_run_service
+from modules.engine_runs.schemas import EngineRunKind
 from modules.healthcheck import service as healthcheck_service
 from modules.healthcheck.models import HealthCheck, HealthCheckResult
 from modules.notification.service import notification_service, render_template
 from modules.udf.models import Udf
 
 logger = logging.getLogger(__name__)
+
+BuildEmitter = Callable[[dict[str, object]], Awaitable[None]]
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
+
+
+def _resource_summary(engine) -> dict[str, int | None]:
+    effective = engine.effective_resources if getattr(engine, 'effective_resources', None) else {}
+    max_threads = effective.get('max_threads')
+    max_memory_mb = effective.get('max_memory_mb')
+    return {
+        'max_threads': int(max_threads) if isinstance(max_threads, int) else None,
+        'max_memory_mb': int(max_memory_mb) if isinstance(max_memory_mb, int) else None,
+    }
+
+
+def _analysis_name(session: Session, analysis_id: str | None) -> str:
+    if not analysis_id:
+        return 'Build'
+    analysis = session.get(Analysis, analysis_id)
+    if analysis and analysis.name:
+        return analysis.name
+    return analysis_id
+
+
+def _build_starter(user) -> compute_schemas.BuildStarter:
+    if user is None:
+        return compute_schemas.BuildStarter(triggered_by='user')
+    return compute_schemas.BuildStarter(
+        user_id=getattr(user, 'id', None),
+        display_name=getattr(user, 'display_name', None),
+        email=getattr(user, 'email', None),
+        triggered_by='user',
+    )
+
+
+def _estimate_remaining(elapsed_ms: int, completed_steps: int, total_steps: int) -> int | None:
+    if completed_steps <= 0 or total_steps <= completed_steps:
+        return None
+    avg = elapsed_ms / completed_steps
+    remaining = max(total_steps - completed_steps, 0)
+    return int(avg * remaining)
+
+
+async def _emit_build_event(emitter: BuildEmitter | None, payload: dict[str, object]) -> None:
+    if emitter is None:
+        return
+    await emitter(payload)
+
+
+async def _emit_progress(
+    emitter: BuildEmitter | None,
+    *,
+    progress: float,
+    elapsed_ms: int,
+    completed_steps: int,
+    total_steps: int,
+    current_step: str | None,
+    current_step_index: int | None,
+    tab_id: str | None,
+    tab_name: str | None,
+) -> None:
+    await _emit_build_event(
+        emitter,
+        {
+            'type': 'progress',
+            'progress': progress,
+            'elapsed_ms': elapsed_ms,
+            'estimated_remaining_ms': _estimate_remaining(elapsed_ms, completed_steps, total_steps),
+            'current_step': current_step,
+            'current_step_index': current_step_index,
+            'total_steps': total_steps,
+            'tab_id': tab_id,
+            'tab_name': tab_name,
+        },
+    )
+
+
+def _result_kind(existing_output_ds: DataSource | None) -> EngineRunKind:
+    return EngineRunKind.DATASOURCE_UPDATE if existing_output_ds else EngineRunKind.DATASOURCE_CREATE
 
 
 @dataclass(frozen=True)
@@ -1046,6 +1136,7 @@ def export_data(
     triggered_by: str | None = None,
     result_id: str | None = None,
     build_mode: str = 'full',
+    job_started: Callable[[dict[str, object]], None] | None = None,
 ) -> ExportDatasourceResult:
     if result_id is None:
         raise ValueError('Output exports require result_id')
@@ -1074,7 +1165,7 @@ def export_data(
 
     branch = _resolve_branch_value(datasource_config)
     existing_output_ds = session.get(DataSource, result_id)
-    run_kind = 'datasource_update' if existing_output_ds else 'datasource_create'
+    run_kind = _result_kind(existing_output_ds)
 
     request_payload = _ensure_request_branch(
         request_json
@@ -1125,6 +1216,15 @@ def export_data(
             export_format='parquet',
             additional_datasources=additional_datasources,
         )
+        if job_started is not None:
+            job_started(
+                {
+                    'job_id': job_id,
+                    'engine': engine,
+                    'steps': export_steps,
+                    'tab_id': tab_id,
+                }
+            )
 
         result_data = await_engine_result(engine, timeout, job_id=job_id)
         step_timings = result_data.get('step_timings', {}) if isinstance(result_data, dict) else {}
@@ -1537,6 +1637,164 @@ def _resolve_upstream_tabs(tabs: list[dict], target_tab_id: str) -> set[str]:
     return required
 
 
+def _build_execution_tabs(pipeline: dict) -> tuple[list[dict], str | None]:
+    tabs = pipeline.get('tabs', [])
+    if not isinstance(tabs, list) or not tabs:
+        raise ValueError('analysis_pipeline missing tabs')
+
+    selected_tab_id = pipeline.get('tab_id')
+    required_tabs: set[str] | None = None
+    if selected_tab_id:
+        required_tabs = _resolve_upstream_tabs(tabs, str(selected_tab_id))
+
+    execution_tabs: list[dict] = []
+    for tab in tabs:
+        if required_tabs and tab.get('id') not in required_tabs:
+            continue
+        execution_tabs.append(tab)
+    return execution_tabs, str(selected_tab_id) if selected_tab_id is not None else None
+
+
+def _count_total_build_steps(tabs: list[dict], selected_tab_id: str | None) -> int:
+    total = 0
+    for tab in tabs:
+        output_config = tab.get('output') if isinstance(tab, dict) else None
+        steps = tab.get('steps', []) if isinstance(tab, dict) else []
+        if not isinstance(steps, list):
+            continue
+        if not isinstance(output_config, dict) or 'filename' not in output_config:
+            if selected_tab_id and str(tab.get('id')) != selected_tab_id:
+                continue
+            total += max(len(steps), 1)
+            continue
+        total += max(len(steps), 1)
+    return total
+
+
+async def _stream_engine_events(
+    *,
+    engine,
+    job_id: str,
+    build_step_base: int,
+    total_steps: int,
+    started_perf: float,
+    tab_id: str | None,
+    tab_name: str | None,
+    emitter: BuildEmitter | None,
+) -> None:
+    completed_steps = build_step_base
+    while True:
+        event = await asyncio.to_thread(engine.get_progress_event, 0.2, job_id)
+        if event is None:
+            if engine.current_job_id != job_id:
+                return
+            continue
+
+        payload = dict(event.event)
+        emitted_type = str(payload.get('type') or '')
+        step_index = payload.get('step_index')
+        if isinstance(step_index, int):
+            payload['build_step_index'] = build_step_base + step_index
+        payload['tab_id'] = tab_id
+        payload['tab_name'] = tab_name
+        await _emit_build_event(emitter, payload)
+
+        if emitted_type == 'step_complete':
+            completed_steps += 1
+            step_name = payload.get('step_name') if isinstance(payload.get('step_name'), str) else None
+            step_index_value = payload.get('build_step_index') if isinstance(payload.get('build_step_index'), int) else None
+            elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
+            await _emit_progress(
+                emitter,
+                progress=(completed_steps / total_steps) if total_steps else 1.0,
+                elapsed_ms=elapsed_ms,
+                completed_steps=completed_steps,
+                total_steps=total_steps,
+                current_step=step_name,
+                current_step_index=step_index_value,
+                tab_id=tab_id,
+                tab_name=tab_name,
+            )
+        if emitted_type == 'step_failed':
+            elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
+            step_name = payload.get('step_name') if isinstance(payload.get('step_name'), str) else None
+            step_index_value = payload.get('build_step_index') if isinstance(payload.get('build_step_index'), int) else None
+            await _emit_progress(
+                emitter,
+                progress=(completed_steps / total_steps) if total_steps else 0.0,
+                elapsed_ms=elapsed_ms,
+                completed_steps=completed_steps,
+                total_steps=total_steps,
+                current_step=step_name,
+                current_step_index=step_index_value,
+                tab_id=tab_id,
+                tab_name=tab_name,
+            )
+            return
+
+
+async def _stream_resource_events(
+    *,
+    engine,
+    emitter: BuildEmitter | None,
+    tab_id: str | None,
+    tab_name: str | None,
+) -> None:
+    async for resource in monitor_engine_resources(engine):
+        await _emit_build_event(
+            emitter,
+            {
+                'type': 'resources',
+                'tab_id': tab_id,
+                'tab_name': tab_name,
+                **resource,
+            },
+        )
+
+
+def _schedule_stream_tasks(
+    loop: asyncio.AbstractEventLoop,
+    *,
+    engine,
+    job_id: str,
+    build_step_base: int,
+    total_steps: int,
+    started_perf: float,
+    tab_id: str | None,
+    tab_name: str | None,
+    emitter: BuildEmitter | None,
+) -> tuple[asyncio.Task, asyncio.Task]:
+    progress_task = loop.create_task(
+        _stream_engine_events(
+            engine=engine,
+            job_id=job_id,
+            build_step_base=build_step_base,
+            total_steps=total_steps,
+            started_perf=started_perf,
+            tab_id=tab_id,
+            tab_name=tab_name,
+            emitter=emitter,
+        )
+    )
+    resource_task = loop.create_task(
+        _stream_resource_events(
+            engine=engine,
+            emitter=emitter,
+            tab_id=tab_id,
+            tab_name=tab_name,
+        )
+    )
+    return progress_task, resource_task
+
+
+async def _stop_resource_task(task: asyncio.Task | None) -> None:
+    if task is None:
+        return
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+
+
 def run_analysis_build_from_payload(session: Session, manager: ProcessManager, pipeline: dict | None) -> dict:
     if not isinstance(pipeline, dict):
         raise ValueError('analysis_pipeline is required')
@@ -1615,6 +1873,312 @@ def run_analysis_build_from_payload(session: Session, manager: ProcessManager, p
             results.append({'tab_id': tab_id, 'tab_name': tab_name, 'status': BuildTabStatus.FAILED, 'error': str(e)})
 
     return {'analysis_id': analysis_id or '', 'tabs_built': tabs_built, 'results': results}
+
+
+async def run_analysis_build_stream(
+    session: Session,
+    manager: ProcessManager,
+    pipeline: dict | None,
+    *,
+    build: ActiveBuild,
+    emitter: BuildEmitter | None,
+    triggered_by: str | None = None,
+) -> dict:
+    if not isinstance(pipeline, dict):
+        raise ValueError('analysis_pipeline is required')
+
+    execution_tabs, selected_tab_id = _build_execution_tabs(pipeline)
+    analysis_id = pipeline.get('analysis_id')
+    analysis_id_value = str(analysis_id) if analysis_id is not None else ''
+    total_steps = _count_total_build_steps(execution_tabs, selected_tab_id)
+    build.total_steps = total_steps
+    build.total_tabs = len(execution_tabs)
+    started_perf = time.perf_counter()
+
+    await _emit_build_event(
+        emitter,
+        {
+            'type': 'log',
+            'level': compute_schemas.BuildLogLevel.INFO.value,
+            'message': f'Starting build for {build.analysis_name}',
+        },
+    )
+    await _emit_progress(
+        emitter,
+        progress=0.0,
+        elapsed_ms=0,
+        completed_steps=0,
+        total_steps=total_steps,
+        current_step=None,
+        current_step_index=None,
+        tab_id=None,
+        tab_name=None,
+    )
+
+    results: list[dict] = []
+    tabs_built = 0
+    build_step_base = 0
+    has_failures = False
+    loop = asyncio.get_running_loop()
+
+    for tab in execution_tabs:
+        tab_id = str(tab.get('id', 'unknown'))
+        tab_name = str(tab.get('name', 'unnamed'))
+        datasource = tab.get('datasource') if isinstance(tab, dict) else None
+        tab_datasource_id = datasource.get('id') if isinstance(datasource, dict) else None
+        steps = tab.get('steps', []) if isinstance(tab, dict) else []
+        output_config = tab.get('output') if isinstance(tab, dict) else None
+
+        if not tab_datasource_id:
+            continue
+
+        if not isinstance(steps, list):
+            steps = []
+
+        target_step_id = steps[-1].get('id', 'source') if steps else 'source'
+        step_count = max(len(steps), 1)
+        build.current_tab_id = tab_id
+        build.current_tab_name = tab_name
+
+        if not isinstance(output_config, dict) or 'filename' not in output_config:
+            if selected_tab_id and tab_id != selected_tab_id:
+                tabs_built += 1
+                results.append({'tab_id': tab_id, 'tab_name': tab_name, 'status': BuildTabStatus.SUCCESS})
+                build_step_base += step_count
+                continue
+            error = f'Tab {tab_id} missing output configuration'
+            has_failures = True
+            results.append({'tab_id': tab_id, 'tab_name': tab_name, 'status': BuildTabStatus.FAILED, 'error': error})
+            await _emit_build_event(
+                emitter,
+                {
+                    'type': 'log',
+                    'level': compute_schemas.BuildLogLevel.ERROR.value,
+                    'message': error,
+                    'tab_id': tab_id,
+                    'tab_name': tab_name,
+                },
+            )
+            build_step_base += step_count
+            continue
+
+        filename = output_config.get('filename', f'{tab_name}_out')
+        result_id = output_config.get('result_id') if isinstance(output_config.get('result_id'), str) else None
+        iceberg_cfg = output_config.get('iceberg')
+        iceberg_options = (
+            {
+                'table_name': iceberg_cfg.get('table_name', 'exported_data'),
+                'namespace': iceberg_cfg.get('namespace', 'outputs'),
+                'branch': iceberg_cfg.get('branch', 'master'),
+            }
+            if isinstance(iceberg_cfg, dict)
+            else None
+        )
+        tab_build_mode = output_config.get('build_mode', 'full')
+
+        progress_task: asyncio.Task | None = None
+        resource_task: asyncio.Task | None = None
+        source_step_started_at: float | None = None
+
+        try:
+            await _emit_build_event(
+                emitter,
+                {
+                    'type': 'log',
+                    'level': compute_schemas.BuildLogLevel.INFO.value,
+                    'message': f'Starting tab {tab_name}',
+                    'tab_id': tab_id,
+                    'tab_name': tab_name,
+                },
+            )
+            if not steps:
+                source_step_started_at = time.perf_counter()
+                await _emit_build_event(
+                    emitter,
+                    {
+                        'type': 'step_start',
+                        'build_step_index': build_step_base,
+                        'step_index': 0,
+                        'step_id': 'source',
+                        'step_name': 'Source',
+                        'step_type': 'source',
+                        'total_steps': total_steps,
+                        'tab_id': tab_id,
+                        'tab_name': tab_name,
+                    },
+                )
+
+            def handle_job_started(
+                info: dict[str, object],
+                *,
+                current_build_step_base: int = build_step_base,
+                current_tab_id: str = tab_id,
+                current_tab_name: str = tab_name,
+            ) -> None:
+                nonlocal progress_task, resource_task
+                job_id = info.get('job_id')
+                engine = info.get('engine')
+                if not isinstance(job_id, str) or engine is None:
+                    return
+                future = concurrent.futures.Future[tuple[asyncio.Task, asyncio.Task]]()
+
+                def assign() -> None:
+                    try:
+                        future.set_result(
+                            _schedule_stream_tasks(
+                                loop,
+                                engine=engine,
+                                job_id=job_id,
+                                build_step_base=current_build_step_base,
+                                total_steps=total_steps,
+                                started_perf=started_perf,
+                                tab_id=current_tab_id,
+                                tab_name=current_tab_name,
+                                emitter=emitter,
+                            )
+                        )
+                    except Exception as exc:
+                        future.set_exception(exc)
+
+                loop.call_soon_threadsafe(assign)
+                next_progress_task, next_resource_task = future.result(timeout=5)
+                progress_task = next_progress_task
+                resource_task = next_resource_task
+
+            def run_export_job(
+                *,
+                current_target_step_id: str = target_step_id,
+                current_filename: str = filename,
+                current_iceberg_options: dict | None = iceberg_options,
+                current_tab_id: str = tab_id,
+                current_result_id: str | None = result_id,
+                current_build_mode: str = tab_build_mode,
+            ) -> None:
+                session_gen = get_db()
+                thread_session = next(session_gen)
+                try:
+                    export_data(
+                        session=thread_session,
+                        manager=manager,
+                        target_step_id=current_target_step_id,
+                        analysis_pipeline=pipeline,
+                        filename=current_filename,
+                        iceberg_options=current_iceberg_options,
+                        analysis_id=analysis_id_value,
+                        tab_id=current_tab_id,
+                        triggered_by=triggered_by,
+                        result_id=current_result_id,
+                        build_mode=current_build_mode,
+                        job_started=handle_job_started,
+                    )
+                finally:
+                    thread_session.close()
+                    session_gen.close()
+
+            await asyncio.to_thread(run_export_job)
+
+            if progress_task is not None:
+                await progress_task
+            await _stop_resource_task(resource_task)
+            if not steps:
+                duration_ms = int((time.perf_counter() - (source_step_started_at or started_perf)) * 1000)
+                await _emit_build_event(
+                    emitter,
+                    {
+                        'type': 'step_complete',
+                        'build_step_index': build_step_base,
+                        'step_index': 0,
+                        'step_id': 'source',
+                        'step_name': 'Source',
+                        'step_type': 'source',
+                        'duration_ms': duration_ms,
+                        'row_count': None,
+                        'total_steps': total_steps,
+                        'tab_id': tab_id,
+                        'tab_name': tab_name,
+                    },
+                )
+                elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
+                await _emit_progress(
+                    emitter,
+                    progress=((build_step_base + 1) / total_steps) if total_steps else 1.0,
+                    elapsed_ms=elapsed_ms,
+                    completed_steps=build_step_base + 1,
+                    total_steps=total_steps,
+                    current_step='Source',
+                    current_step_index=build_step_base,
+                    tab_id=tab_id,
+                    tab_name=tab_name,
+                )
+
+            tabs_built += 1
+            build_step_base += step_count
+            results.append({'tab_id': tab_id, 'tab_name': tab_name, 'status': BuildTabStatus.SUCCESS})
+        except Exception as exc:
+            has_failures = True
+            if progress_task is not None:
+                with contextlib.suppress(Exception):
+                    await progress_task
+            await _stop_resource_task(resource_task)
+            results.append({'tab_id': tab_id, 'tab_name': tab_name, 'status': BuildTabStatus.FAILED, 'error': str(exc)})
+            elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
+            if not steps:
+                await _emit_build_event(
+                    emitter,
+                    {
+                        'type': 'step_failed',
+                        'build_step_index': build_step_base,
+                        'step_index': 0,
+                        'step_id': 'source',
+                        'step_name': 'Source',
+                        'step_type': 'source',
+                        'error': str(exc),
+                        'total_steps': total_steps,
+                        'tab_id': tab_id,
+                        'tab_name': tab_name,
+                    },
+                )
+            await _emit_build_event(
+                emitter,
+                {
+                    'type': 'log',
+                    'level': compute_schemas.BuildLogLevel.ERROR.value,
+                    'message': str(exc),
+                    'tab_id': tab_id,
+                    'tab_name': tab_name,
+                },
+            )
+            build_step_base += step_count
+            continue
+
+    elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
+    if has_failures:
+        await _emit_build_event(
+            emitter,
+            {
+                'type': 'failed',
+                'progress': build.progress,
+                'elapsed_ms': elapsed_ms,
+                'total_steps': total_steps,
+                'tabs_built': tabs_built,
+                'results': results,
+                'duration_ms': elapsed_ms,
+                'error': 'One or more tabs failed',
+            },
+        )
+    else:
+        await _emit_build_event(
+            emitter,
+            {
+                'type': 'complete',
+                'elapsed_ms': elapsed_ms,
+                'total_steps': total_steps,
+                'tabs_built': tabs_built,
+                'results': results,
+                'duration_ms': elapsed_ms,
+            },
+        )
+    return {'analysis_id': analysis_id_value, 'tabs_built': tabs_built, 'results': results}
 
 
 def list_iceberg_snapshots(session: Session, datasource_id: str, branch: str | None = None):

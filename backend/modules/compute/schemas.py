@@ -1,5 +1,6 @@
+from datetime import datetime
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
@@ -335,6 +336,254 @@ class BuildRequest(BaseModel):
 
     analysis_pipeline: AnalysisPipelinePayload
     tab_id: str | None = None
+
+
+class ActiveBuildStatus(StrEnum):
+    RUNNING = 'running'
+    COMPLETED = 'completed'
+    FAILED = 'failed'
+
+
+class BuildStepState(StrEnum):
+    PENDING = 'pending'
+    RUNNING = 'running'
+    COMPLETED = 'completed'
+    FAILED = 'failed'
+    SKIPPED = 'skipped'
+
+
+class BuildLogLevel(StrEnum):
+    INFO = 'info'
+    WARNING = 'warning'
+    ERROR = 'error'
+
+
+class BuildStarter(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: str | None = None
+    display_name: str | None = None
+    email: str | None = None
+    triggered_by: str | None = None
+
+
+class BuildStepSnapshot(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    build_step_index: int
+    step_index: int
+    step_id: str
+    step_name: str
+    step_type: str
+    tab_id: str | None = None
+    tab_name: str | None = None
+    state: BuildStepState = BuildStepState.PENDING
+    duration_ms: int | None = None
+    row_count: int | None = None
+    error: str | None = None
+
+
+class BuildQueryPlanSnapshot(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    tab_id: str | None = None
+    tab_name: str | None = None
+    optimized_plan: str
+    unoptimized_plan: str
+
+
+class BuildResourceSnapshot(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    sampled_at: datetime
+    cpu_percent: float
+    memory_mb: float
+    memory_limit_mb: float | None = None
+    active_threads: int
+    max_threads: int | None = None
+
+
+class BuildLogEntry(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    timestamp: datetime
+    level: BuildLogLevel
+    message: str
+    step_name: str | None = None
+    step_id: str | None = None
+    tab_id: str | None = None
+    tab_name: str | None = None
+
+
+class ActiveBuildSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    build_id: str
+    analysis_id: str
+    analysis_name: str
+    namespace: str
+    status: ActiveBuildStatus
+    started_at: datetime
+    starter: BuildStarter
+    progress: float = 0.0
+    elapsed_ms: int = 0
+    estimated_remaining_ms: int | None = None
+    current_step: str | None = None
+    current_step_index: int | None = None
+    total_steps: int = 0
+    current_tab_id: str | None = None
+    current_tab_name: str | None = None
+    total_tabs: int = 0
+
+
+class ActiveBuildDetail(ActiveBuildSummary):
+    steps: list[BuildStepSnapshot] = Field(default_factory=list)
+    query_plans: list[BuildQueryPlanSnapshot] = Field(default_factory=list)
+    latest_resources: BuildResourceSnapshot | None = None
+    resources: list[BuildResourceSnapshot] = Field(default_factory=list)
+    logs: list[BuildLogEntry] = Field(default_factory=list)
+    results: list[BuildTabResult] = Field(default_factory=list)
+    duration_ms: int | None = None
+    error: str | None = None
+
+
+class ActiveBuildListResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    builds: list[ActiveBuildSummary]
+    total: int
+
+
+class BuildEventType(StrEnum):
+    PLAN = 'plan'
+    STEP_START = 'step_start'
+    STEP_COMPLETE = 'step_complete'
+    STEP_FAILED = 'step_failed'
+    PROGRESS = 'progress'
+    RESOURCES = 'resources'
+    LOG = 'log'
+    COMPLETE = 'complete'
+    FAILED = 'failed'
+
+
+class BuildStreamEvent(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    type: BuildEventType
+    build_id: str
+    analysis_id: str
+    emitted_at: datetime
+    tab_id: str | None = None
+    tab_name: str | None = None
+
+
+class BuildPlanEvent(BuildStreamEvent):
+    type: Literal[BuildEventType.PLAN] = BuildEventType.PLAN
+    optimized_plan: str
+    unoptimized_plan: str
+
+
+class BuildStepStartEvent(BuildStreamEvent):
+    type: Literal[BuildEventType.STEP_START] = BuildEventType.STEP_START
+    build_step_index: int
+    step_index: int
+    step_id: str
+    step_name: str
+    step_type: str
+    total_steps: int
+
+
+class BuildStepCompleteEvent(BuildStreamEvent):
+    type: Literal[BuildEventType.STEP_COMPLETE] = BuildEventType.STEP_COMPLETE
+    build_step_index: int
+    step_index: int
+    step_id: str
+    step_name: str
+    step_type: str
+    duration_ms: int
+    row_count: int | None = None
+    total_steps: int
+
+
+class BuildStepFailedEvent(BuildStreamEvent):
+    type: Literal[BuildEventType.STEP_FAILED] = BuildEventType.STEP_FAILED
+    build_step_index: int
+    step_index: int
+    step_id: str
+    step_name: str
+    step_type: str
+    error: str
+    total_steps: int
+
+
+class BuildProgressEvent(BuildStreamEvent):
+    type: Literal[BuildEventType.PROGRESS] = BuildEventType.PROGRESS
+    progress: float
+    elapsed_ms: int
+    estimated_remaining_ms: int | None = None
+    current_step: str | None = None
+    current_step_index: int | None = None
+    total_steps: int
+
+
+class BuildResourceEvent(BuildStreamEvent):
+    type: Literal[BuildEventType.RESOURCES] = BuildEventType.RESOURCES
+    cpu_percent: float
+    memory_mb: float
+    memory_limit_mb: float | None = None
+    active_threads: int
+    max_threads: int | None = None
+
+
+class BuildLogEvent(BuildStreamEvent):
+    type: Literal[BuildEventType.LOG] = BuildEventType.LOG
+    level: BuildLogLevel
+    message: str
+    step_name: str | None = None
+    step_id: str | None = None
+
+
+class BuildCompleteEvent(BuildStreamEvent):
+    type: Literal[BuildEventType.COMPLETE] = BuildEventType.COMPLETE
+    progress: float = 1.0
+    elapsed_ms: int
+    total_steps: int
+    tabs_built: int
+    results: list[BuildTabResult]
+    duration_ms: int
+
+
+class BuildFailedEvent(BuildStreamEvent):
+    type: Literal[BuildEventType.FAILED] = BuildEventType.FAILED
+    progress: float
+    elapsed_ms: int
+    total_steps: int
+    tabs_built: int
+    results: list[BuildTabResult]
+    duration_ms: int
+    error: str | None = None
+
+
+class BuildSnapshotMessage(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    type: Literal['snapshot'] = 'snapshot'
+    build: ActiveBuildDetail
+
+
+class BuildListSnapshotMessage(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    type: Literal['snapshot'] = 'snapshot'
+    builds: list[ActiveBuildSummary]
+
+
+class BuildWebsocketErrorMessage(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    type: Literal['error'] = 'error'
+    error: str
+    status_code: int = 500
 
 
 class ComputeWebsocketAction(StrEnum):

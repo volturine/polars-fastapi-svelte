@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
-	import { listEngineRuns, type EngineRun, type ListEngineRunsParams } from '$lib/api/engine-runs';
+	import { type EngineRun, type ListEngineRunsParams } from '$lib/api/engine-runs';
 	import { getDatasource, listDatasources } from '$lib/api/datasource';
 	import { listAnalyses } from '$lib/api/analysis';
 	import { page as pageState } from '$app/state';
@@ -25,6 +25,7 @@
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
 	import BuildPreview from '$lib/components/common/BuildPreview.svelte';
 	import { BuildStreamStore } from '$lib/stores/build-stream.svelte';
+	import { EngineRunsStreamStore } from '$lib/stores/engine-runs-stream.svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { css, cx, spinner, button, emptyText, input } from '$lib/styles/panda';
 	import {
@@ -35,6 +36,7 @@
 		engineRunOutputName,
 		engineRunStatus
 	} from '$lib/utils/engine-run-build-detail';
+	import { untrack } from 'svelte';
 
 	interface Props {
 		compact?: boolean;
@@ -77,15 +79,14 @@
 		offset: (page - 1) * limit
 	});
 
-	const query = createQuery(() => ({
-		queryKey: ['engine-runs', params],
-		queryFn: async () => {
-			const result = await listEngineRuns(params as ListEngineRunsParams);
-			if (result.isErr()) throw new Error(result.error.message);
-			return result.value;
-		},
-		refetchInterval: 1000
-	}));
+	const stream = new EngineRunsStreamStore();
+
+	// WS lifecycle: reconnect whenever filter/pagination params change, disconnect on destroy
+	$effect(() => {
+		const currentParams = params;
+		untrack(() => stream.connect(currentParams as ListEngineRunsParams));
+		return () => stream.disconnect();
+	});
 
 	const datasourcesQuery = createQuery(() => ({
 		queryKey: ['datasources-lookup'],
@@ -123,7 +124,7 @@
 		return map;
 	});
 
-	const runs = $derived(query.data ?? []);
+	const runs = $derived(stream.runs);
 
 	const datasourceId = $derived(
 		(pageState.url.searchParams.get('datasource_id') ?? undefined) || undefined
@@ -517,7 +518,7 @@
 		</div>
 	{/if}
 
-	{#if query.isLoading}
+	{#if !stream.connected && !stream.error && runs.length === 0}
 		<div
 			class={css({
 				display: 'flex',
@@ -528,7 +529,7 @@
 		>
 			<div class={spinner()}></div>
 		</div>
-	{:else if query.isError}
+	{:else if stream.error && runs.length === 0}
 		<div
 			class={css({
 				paddingX: '3',
@@ -545,7 +546,7 @@
 				color: 'fg.error'
 			})}
 		>
-			{query.error instanceof Error ? query.error.message : 'Error loading runs.'}
+			{stream.error}
 		</div>
 	{:else if !hasAnyBuildRows}
 		<div

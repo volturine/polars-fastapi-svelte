@@ -75,7 +75,8 @@ generate-step-types:
 # Full verification gate -- must pass before any task is declared done
 verify: format check
 
-# Build for production
+# Build for production (single-port: FastAPI serves the built frontend)
+# Setup: cp backend/.prod.env.example backend/.prod.env  then edit it.
 prod:
     @echo "Building frontend..."
     cd frontend && bun run build

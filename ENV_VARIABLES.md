@@ -6,17 +6,70 @@ This project uses environment variables for three different layers:
 2. **Frontend dev server** — loaded by Vite from `frontend/.env*`
 3. **Local e2e tooling** — optional overrides for Playwright
 
+## Deployment topologies
+
+Understanding the two topologies helps you know which variables matter and
+which are irrelevant for your context.
+
+### Production — single port
+
+```
+Browser  ──►  FastAPI (PORT 8000)
+                  │
+                  ├── /api/*     →  API handlers
+                  └── /*         →  Serves frontend/build static files
+```
+
+- `PROD_MODE_ENABLED=true` tells FastAPI to serve static files from
+  `frontend/build/`. Build the frontend first: `cd frontend && bun run build`.
+- Browser and API share the **same origin**, so cross-origin CORS is not needed
+  for regular browser traffic. `CORS_ORIGINS` only needs a value when you have
+  out-of-band clients (native apps, separate domains).
+- The frontend Vite dev server is **not running**. `FRONTEND_PORT`,
+  `VITE_BACKEND_HOST`, and `VITE_BACKEND_PORT` have no effect.
+- `AUTH_FRONTEND_URL` should be the same URL as the backend (e.g.
+  `http://your-server:8000`).
+
+**Templates for this topology:**
+
+- Docker / compose: copy `.env.example` → `.env`
+- Bare-metal (`just prod`): copy `backend/.prod.env.example` → `backend/.prod.env`
+
+### Development — two separate servers
+
+```
+Browser  ──►  Vite dev server (FRONTEND_PORT 3000)
+                  │
+                  └── /api/* proxy ──►  FastAPI (VITE_BACKEND_PORT 8000)
+```
+
+- `PROD_MODE_ENABLED=false` (default) — FastAPI does not serve static files; the
+  Vite dev server handles all browser requests and proxies `/api` to FastAPI.
+- Because the browser origin (`:3000`) differs from the API origin (`:8000`),
+  FastAPI's `CORS_ORIGINS` **must** include the dev-server origin.
+- `FRONTEND_PORT`, `VITE_BACKEND_HOST`, and `VITE_BACKEND_PORT` wire the Vite
+  proxy and dev WebSocket connections to the correct backend address.
+- `AUTH_FRONTEND_URL` should be the Vite dev-server URL (e.g.
+  `http://localhost:5173` or `http://localhost:3000`).
+
+**Templates for this topology:**
+
+- Backend: copy `backend/.env.example` → `backend/.env`
+- Frontend Vite: copy `frontend/.env.example` → `frontend/.env`
+
+---
+
 ## What to configure first
 
 If you only want the high-value knobs, start with these:
 
 - `DATA_DIR` — where app data, SQLite state, and logs live
 - `PORT` — backend port
-- `CORS_ORIGINS` — allowed browser origins
+- `CORS_ORIGINS` — allowed browser origins (only needed in dev or multi-origin setups)
 - `AUTH_REQUIRED` — turn login on/off
 - `SETTINGS_ENCRYPTION_KEY` — strongly recommended when auth is enabled
 - `POLARS_MAX_THREADS`, `POLARS_MAX_MEMORY_MB`, `MAX_CONCURRENT_ENGINES` — performance limits
-- `VITE_BACKEND_HOST`, `VITE_BACKEND_PORT`, `FRONTEND_PORT` — frontend local-dev wiring
+- **Dev-only:** `VITE_BACKEND_HOST`, `VITE_BACKEND_PORT`, `FRONTEND_PORT` — frontend local-dev wiring
 
 ## How configuration is loaded
 
@@ -33,47 +86,59 @@ If you only want the high-value knobs, start with these:
 - Vite reads `frontend/.env`, `frontend/.env.local`, and shell env vars.
 - Only variables prefixed with `VITE_` are exposed to browser code.
 - `FRONTEND_PORT` is used by Vite/Playwright tooling and does not go into browser code.
+- **These variables are only needed during development.** In production the Vite dev server is not running, so none of these vars have any effect.
 
 ## Setup examples
 
-### Backend local development
+### Production — Docker / compose
 
 ```bash
-cd backend
+# From the repository root
 cp .env.example .env
+# Edit .env with your host, secrets, resource limits
+docker compose up
 ```
 
-### Docker / compose from the repository root
+### Production — bare-metal (`just prod`)
 
 ```bash
-cp .env.example .env
+# Build the frontend first
+cd frontend && bun run build && cd ..
+# Configure the backend
+cp backend/.prod.env.example backend/.prod.env
+# Edit backend/.prod.env with your host, secrets, resource limits
+just prod
 ```
 
-### Frontend local development
+### Local development
 
 ```bash
-cd frontend
-cp .env.example .env
+# Backend
+cd backend && cp .env.example .env && cd ..
+# Frontend Vite dev server
+cd frontend && cp .env.example .env && cd ..
+# Start both
+just dev
 ```
 
 ## Backend variables
 
 ### Application and files
 
-| Variable                     | Default                                                                                   | Notes                                                                                |
-| ---------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `ENV_FILE`                   | `.env`                                                                                    | Path to the backend env file.                                                        |
-| `APP_NAME`                   | `Data-Forge Analysis Platform`                                                            | Application name for UI/logging metadata.                                            |
-| `APP_VERSION`                | `1.0.0`                                                                                   | Application version string.                                                          |
-| `DEBUG`                      | `false`                                                                                   | Enables verbose/debug behavior.                                                      |
-| `PROD_MODE_ENABLED`          | `false`                                                                                   | Production mode toggle used by deployment paths.                                     |
-| `PORT`                       | `8000`                                                                                    | Backend HTTP port.                                                                   |
-| `DATA_DIR`                   | system temp dir + `/data-forge`                                                           | Base writable directory for app data.                                                |
-| `DATABASE_URL`               | derived from `DATA_DIR`                                                                   | Present for compatibility, but current code rebuilds the SQLite URL from `DATA_DIR`. |
-| `DEFAULT_NAMESPACE`          | `default`                                                                                 | Namespace used when no namespace is selected.                                        |
-| `CORS_ORIGINS`               | `http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173` | Comma-separated allowed browser origins.                                             |
-| `UPLOAD_CHUNK_SIZE`          | `5242880`                                                                                 | Upload chunk size in bytes. Valid range: `1024` to `104857600`.                      |
-| `UPLOAD_MAX_FILE_SIZE_BYTES` | `2147483648`                                                                              | Maximum upload size in bytes.                                                        |
+| Variable                     | Default                                                                                   | Notes                                                                                                                                                         |
+| ---------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ENV_FILE`                   | `.env`                                                                                    | Path to the backend env file.                                                                                                                                 |
+| `APP_NAME`                   | `Data-Forge Analysis Platform`                                                            | Application name for UI/logging metadata.                                                                                                                     |
+| `APP_VERSION`                | `1.0.0`                                                                                   | Application version string.                                                                                                                                   |
+| `DEBUG`                      | `false`                                                                                   | Enables verbose/debug behavior.                                                                                                                               |
+| `PROD_MODE_ENABLED`          | `false`                                                                                   | Must be `true` in production. Enables static-file serving from `frontend/build/`. In dev, leave `false` so FastAPI does not try to serve the frontend.        |
+| `PORT`                       | `8000`                                                                                    | Backend HTTP port.                                                                                                                                            |
+| `DATA_DIR`                   | system temp dir + `/data-forge`                                                           | Base writable directory for app data.                                                                                                                         |
+| `DATABASE_URL`               | derived from `DATA_DIR`                                                                   | Present for compatibility, but current code rebuilds the SQLite URL from `DATA_DIR`.                                                                          |
+| `DEFAULT_NAMESPACE`          | `default`                                                                                 | Namespace used when no namespace is selected.                                                                                                                 |
+| `CORS_ORIGINS`               | `http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173` | Comma-separated allowed browser origins. Required in dev (Vite server is cross-origin). In prod (single port) same-origin applies and this can be left unset. |
+| `UPLOAD_CHUNK_SIZE`          | `5242880`                                                                                 | Upload chunk size in bytes. Valid range: `1024` to `104857600`.                                                                                               |
+| `UPLOAD_MAX_FILE_SIZE_BYTES` | `2147483648`                                                                              | Maximum upload size in bytes.                                                                                                                                 |
 
 ### Engine, scheduling, and resource limits
 
@@ -147,22 +212,27 @@ cp .env.example .env
 
 ### Authentication and OAuth
 
-| Variable                | Default                                             | Notes                                                          |
-| ----------------------- | --------------------------------------------------- | -------------------------------------------------------------- |
-| `AUTH_REQUIRED`         | `false`                                             | Enables authenticated routes.                                  |
-| `DEFAULT_USER_EMAIL`    | `default@example.com`                               | Default env-managed account email.                             |
-| `DEFAULT_USER_PASSWORD` | `ChangeMe123`                                       | Must contain upper, lower, and digit, and be at least 8 chars. |
-| `DEFAULT_USER_NAME`     | `Default User`                                      | Default env-managed account name.                              |
-| `AUTH_FRONTEND_URL`     | `http://localhost:5173`                             | Frontend URL used by auth redirects.                           |
-| `SESSION_MAX_AGE_DAYS`  | `30`                                                | Session lifetime in days.                                      |
-| `GOOGLE_CLIENT_ID`      | empty                                               | Google OAuth client id.                                        |
-| `GOOGLE_CLIENT_SECRET`  | empty                                               | Google OAuth client secret.                                    |
-| `GOOGLE_REDIRECT_URI`   | `http://localhost:8000/api/v1/auth/google/callback` | Google OAuth callback.                                         |
-| `GITHUB_CLIENT_ID`      | empty                                               | GitHub OAuth client id.                                        |
-| `GITHUB_CLIENT_SECRET`  | empty                                               | GitHub OAuth client secret.                                    |
-| `GITHUB_REDIRECT_URI`   | `http://localhost:8000/api/v1/auth/github/callback` | GitHub OAuth callback.                                         |
+| Variable                | Default                                             | Notes                                                                                                                             |
+| ----------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH_REQUIRED`         | `false`                                             | Enables authenticated routes.                                                                                                     |
+| `DEFAULT_USER_EMAIL`    | `default@example.com`                               | Default env-managed account email.                                                                                                |
+| `DEFAULT_USER_PASSWORD` | `ChangeMe123`                                       | Must contain upper, lower, and digit, and be at least 8 chars.                                                                    |
+| `DEFAULT_USER_NAME`     | `Default User`                                      | Default env-managed account name.                                                                                                 |
+| `AUTH_FRONTEND_URL`     | `http://localhost:5173`                             | Frontend URL used by auth redirects. In prod (single port) this equals the backend URL. In dev it equals the Vite dev-server URL. |
+| `SESSION_MAX_AGE_DAYS`  | `30`                                                | Session lifetime in days.                                                                                                         |
+| `GOOGLE_CLIENT_ID`      | empty                                               | Google OAuth client id.                                                                                                           |
+| `GOOGLE_CLIENT_SECRET`  | empty                                               | Google OAuth client secret.                                                                                                       |
+| `GOOGLE_REDIRECT_URI`   | `http://localhost:8000/api/v1/auth/google/callback` | Google OAuth callback.                                                                                                            |
+| `GITHUB_CLIENT_ID`      | empty                                               | GitHub OAuth client id.                                                                                                           |
+| `GITHUB_CLIENT_SECRET`  | empty                                               | GitHub OAuth client secret.                                                                                                       |
+| `GITHUB_REDIRECT_URI`   | `http://localhost:8000/api/v1/auth/github/callback` | GitHub OAuth callback.                                                                                                            |
 
 ## Frontend variables
+
+> **Development only.** These variables configure the Vite dev server and its
+> proxy to the backend. They are read from `frontend/.env` at dev-server startup.
+> In production the Vite dev server is not running, so none of these have any
+> effect on the deployed application.
 
 | Variable            | Default     | Notes                                                              |
 | ------------------- | ----------- | ------------------------------------------------------------------ |

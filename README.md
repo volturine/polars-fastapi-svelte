@@ -50,41 +50,54 @@ npm install
 just dev
 ```
 
-Frontend: http://localhost:5173
+Frontend: http://localhost:3000 (Vite dev server — proxies /api to backend)
 
-Backend: http://localhost:8000
+Backend API: http://localhost:8000
 
 ## Configuration
 
-The app can be configured with backend and frontend environment variables.
+The app supports two deployment topologies with different configuration needs.
 
-### Backend
+### Production (single port — `just prod` or Docker)
+
+FastAPI serves the pre-built frontend and the API on the same port.
 
 ```bash
-cd backend
+# Bare-metal
+cp backend/.prod.env.example backend/.prod.env
+# Edit backend/.prod.env with your host / secrets
+cd frontend && bun run build   # build the frontend first
+just prod
+
+# Docker / compose
 cp .env.example .env
+# Edit .env with your host / secrets
+docker compose up
 ```
 
-### Frontend (local dev only)
+### Development (two separate servers — `just dev`)
+
+Vite dev server (port 3000) proxies `/api` to FastAPI (port 8000).
 
 ```bash
-cd frontend
-cp .env.example .env
+cd backend && cp .env.example .env && cd ..
+cd frontend && cp .env.example .env && cd ..
+just dev
 ```
 
 ### Key Configuration Options
 
-| Variable                  | Default   | Description                                                |
-| ------------------------- | --------- | ---------------------------------------------------------- |
-| `DEBUG`                   | `false`   | Enable debug logging and SQL echo                          |
-| `ENGINE_IDLE_TIMEOUT`     | `60`      | Seconds before idle engines are cleaned up (reset on save) |
-| `ENGINE_POOLING_INTERVAL` | `30`      | Seconds between engine state checks                        |
-| `JOB_TIMEOUT`             | `300`     | Maximum job execution time in seconds                      |
-| `UPLOAD_CHUNK_SIZE`       | `5242880` | Upload chunk size in bytes (5MB)                           |
-| `AUTH_REQUIRED`           | `false`   | Require login before accessing authenticated routes        |
-| `VITE_BACKEND_PORT`       | `8000`    | Frontend dev websocket/proxy backend port                  |
+| Variable              | Dev default | Prod note                                                                     |
+| --------------------- | ----------- | ----------------------------------------------------------------------------- |
+| `DEBUG`               | `false`     | Enable debug logging and SQL echo                                             |
+| `PROD_MODE_ENABLED`   | `false`     | **Set to `true` in prod** — enables static-file serving from `frontend/build` |
+| `ENGINE_IDLE_TIMEOUT` | `60`        | Seconds before idle engines are cleaned up                                    |
+| `JOB_TIMEOUT`         | `300`       | Maximum job execution time in seconds                                         |
+| `AUTH_REQUIRED`       | `false`     | Require login before accessing authenticated routes                           |
+| `CORS_ORIGINS`        | dev origins | Not needed in prod (same-origin); required in dev for the Vite server         |
+| `VITE_BACKEND_PORT`   | `8000`      | **Dev only** — not used in production                                         |
 
-See **[ENV_VARIABLES.md](ENV_VARIABLES.md)** for the complete backend/frontend env reference and setup examples.
+See **[ENV_VARIABLES.md](ENV_VARIABLES.md)** for the complete reference, topology diagrams, and all variables.
 
 ## Architecture
 

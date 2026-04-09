@@ -8,13 +8,17 @@ from fastapi import HTTPException as FastAPIHTTPException
 from sqlalchemy import desc, select
 from sqlmodel import Session
 
+from core.namespace import get_namespace
 from modules.analysis.step_types import get_step_type_label
+from modules.engine_runs import watchers
 from modules.engine_runs.models import EngineRun
 from modules.engine_runs.schemas import (
     BuildComparisonResponse,
     ColumnDiff,
     EngineRunExecutionCategory,
     EngineRunExecutionEntry,
+    EngineRunListSnapshotMessage,
+    EngineRunListUpdateMessage,
     EngineRunKind,
     EngineRunResponseSchema,
     EngineRunResultSummary,
@@ -308,6 +312,35 @@ def _serialize_run(run: EngineRun) -> EngineRunResponseSchema:
     )
 
 
+def _broadcast_engine_run_change(session: Session, run: EngineRunResponseSchema) -> None:
+    namespace = get_namespace()
+    scheduled: list[tuple[watchers.EngineRunListWatcher, dict[str, Any]]] = []
+
+    for watcher in watchers.registry.watchers(namespace):
+        current_runs = list_engine_runs(
+            session,
+            analysis_id=watcher.params.analysis_id,
+            datasource_id=watcher.params.datasource_id,
+            kind=watcher.params.kind,
+            status=watcher.params.status,
+            limit=watcher.params.limit,
+            offset=watcher.params.offset,
+        )
+        current_ids = tuple(item.id for item in current_runs)
+
+        if current_ids != watcher.run_ids:
+            watchers.registry.set_run_ids(namespace, watcher.websocket, current_ids)
+            scheduled.append((watcher, EngineRunListSnapshotMessage(runs=current_runs).model_dump(mode='json')))
+            continue
+
+        if run.id not in current_ids:
+            continue
+
+        scheduled.append((watcher, EngineRunListUpdateMessage(run=run).model_dump(mode='json')))
+
+    watchers.registry.broadcast(namespace, scheduled)
+
+
 def _coerce_kind(kind: EngineRunKind | str) -> EngineRunKind:
     return kind if isinstance(kind, EngineRunKind) else EngineRunKind(kind)
 
@@ -348,7 +381,9 @@ def create_engine_run(
     session.add(run)
     session.commit()
     session.refresh(run)
-    return _serialize_run(run)
+    serialized = _serialize_run(run)
+    _broadcast_engine_run_change(session, serialized)
+    return serialized
 
 
 def update_engine_run(
@@ -423,7 +458,9 @@ def update_engine_run(
     session.add(run)
     session.commit()
     session.refresh(run)
-    return _serialize_run(run)
+    serialized = _serialize_run(run)
+    _broadcast_engine_run_change(session, serialized)
+    return serialized
 
 
 def apply_live_event(
@@ -548,7 +585,9 @@ def apply_live_event(
     session.add(run)
     session.commit()
     session.refresh(run)
-    return _serialize_run(run)
+    serialized = _serialize_run(run)
+    _broadcast_engine_run_change(session, serialized)
+    return serialized
 
 
 def create_engine_run_payload(

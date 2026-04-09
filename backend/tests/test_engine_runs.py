@@ -1,9 +1,13 @@
+import asyncio
 import uuid
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 from sqlmodel import Session
 
 from modules.engine_runs import service as engine_run_service
+from modules.engine_runs import schemas as engine_run_schemas
+from modules.engine_runs import watchers as engine_run_watchers
 from modules.engine_runs.models import EngineRun
 from modules.engine_runs.schemas import EngineRunKind, EngineRunStatus
 
@@ -292,3 +296,132 @@ def test_update_engine_run_preserves_live_metadata_from_other_session(test_db_se
     assert updated.result_json['steps'][0]['step_name'] == 'Initial Read'
     assert updated.result_json['resources'][0]['cpu_percent'] == 25
     assert updated.result_json['logs'][0]['message'] == 'Running build'
+
+
+def test_engine_run_list_websocket_sends_snapshot_and_updates(client, test_db_session) -> None:
+    with client.websocket_connect('/api/v1/engine-runs/ws?namespace=default') as websocket:
+        snapshot = websocket.receive_json()
+        created = engine_run_service.create_engine_run(
+            test_db_session,
+            engine_run_service.create_engine_run_payload(
+                analysis_id='analysis-ws',
+                datasource_id='ds-ws',
+                kind=EngineRunKind.PREVIEW,
+                status=EngineRunStatus.RUNNING,
+                request_json={'kind': 'preview'},
+                result_json={'row_count': 1},
+                created_at=datetime.now(UTC),
+            ),
+        )
+        created_message = websocket.receive_json()
+        engine_run_service.apply_live_event(
+            test_db_session,
+            created.id,
+            {
+                'type': 'progress',
+                'progress': 0.5,
+                'elapsed_ms': 150,
+                'current_step': 'Filter rows',
+                'current_step_index': 1,
+                'total_steps': 3,
+            },
+        )
+        live_message = websocket.receive_json()
+        engine_run_service.update_engine_run(
+            test_db_session,
+            created.id,
+            status=EngineRunStatus.SUCCESS,
+            progress=1.0,
+            duration_ms=300,
+            completed_at=datetime.now(UTC),
+            result_json={'row_count': 2},
+        )
+        terminal_message = websocket.receive_json()
+
+    assert snapshot == {'type': 'snapshot', 'runs': []}
+    assert created_message['type'] == 'snapshot'
+    assert created_message['runs'][0]['id'] == created.id
+    assert created_message['runs'][0]['status'] == 'running'
+    assert live_message['type'] == 'update'
+    assert live_message['run']['id'] == created.id
+    assert live_message['run']['progress'] == 0.5
+    assert live_message['run']['current_step'] == 'Filter rows'
+    assert terminal_message['type'] == 'update'
+    assert terminal_message['run']['id'] == created.id
+    assert terminal_message['run']['status'] == 'success'
+    assert terminal_message['run']['progress'] == 1.0
+
+
+def test_engine_run_list_websocket_refreshes_snapshot_when_filtered_membership_changes(client, test_db_session) -> None:
+    with client.websocket_connect('/api/v1/engine-runs/ws?namespace=default&status=running') as websocket:
+        initial = websocket.receive_json()
+        created = engine_run_service.create_engine_run(
+            test_db_session,
+            engine_run_service.create_engine_run_payload(
+                analysis_id='analysis-running',
+                datasource_id='ds-running',
+                kind=EngineRunKind.PREVIEW,
+                status=EngineRunStatus.RUNNING,
+                request_json={'kind': 'preview'},
+                result_json={'row_count': 1},
+                created_at=datetime.now(UTC),
+            ),
+        )
+        created_message = websocket.receive_json()
+        engine_run_service.update_engine_run(
+            test_db_session,
+            created.id,
+            status=EngineRunStatus.SUCCESS,
+            progress=1.0,
+            completed_at=datetime.now(UTC),
+            duration_ms=250,
+        )
+        completed_message = websocket.receive_json()
+
+    assert initial == {'type': 'snapshot', 'runs': []}
+    assert created_message['type'] == 'snapshot'
+    assert [run['id'] for run in created_message['runs']] == [created.id]
+    assert completed_message == {'type': 'snapshot', 'runs': []}
+
+
+def test_engine_run_broadcast_scopes_updates_by_namespace(test_db_session) -> None:
+    async def scenario() -> None:
+        default_socket = MagicMock()
+        default_socket.send_json = AsyncMock()
+        team_socket = MagicMock()
+        team_socket.send_json = AsyncMock()
+        params = engine_run_schemas.EngineRunListParams()
+
+        engine_run_watchers.registry.add(
+            'default',
+            default_socket,
+            loop=asyncio.get_running_loop(),
+            params=params,
+        )
+        engine_run_watchers.registry.add(
+            'team-a',
+            team_socket,
+            loop=asyncio.get_running_loop(),
+            params=params,
+        )
+
+        engine_run_service.create_engine_run(
+            test_db_session,
+            engine_run_service.create_engine_run_payload(
+                analysis_id='analysis-default',
+                datasource_id='ds-default',
+                kind=EngineRunKind.PREVIEW,
+                status=EngineRunStatus.RUNNING,
+                request_json={'kind': 'preview'},
+                result_json={'row_count': 1},
+                created_at=datetime.now(UTC),
+            ),
+        )
+
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
+        default_socket.send_json.assert_awaited_once()
+        team_socket.send_json.assert_not_awaited()
+
+    asyncio.run(scenario())

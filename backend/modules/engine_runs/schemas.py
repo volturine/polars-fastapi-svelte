@@ -1,6 +1,7 @@
 import datetime as dt
 from enum import StrEnum
 from typing import Any
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -76,6 +77,31 @@ class EngineRunBaseSchema(BaseModel):
 
 class EngineRunResponseSchema(EngineRunBaseSchema):
     id: str
+
+
+class EngineRunListParams(BaseModel):
+    analysis_id: str | None = None
+    datasource_id: str | None = None
+    kind: EngineRunKind | None = None
+    status: EngineRunStatus | None = None
+    limit: int = 100
+    offset: int = 0
+
+
+class EngineRunListSnapshotMessage(BaseModel):
+    type: Literal['snapshot'] = 'snapshot'
+    runs: list[EngineRunResponseSchema]
+
+
+class EngineRunListUpdateMessage(BaseModel):
+    type: Literal['update'] = 'update'
+    run: EngineRunResponseSchema
+
+
+class EngineRunWebsocketErrorMessage(BaseModel):
+    type: Literal['error'] = 'error'
+    error: str
+    status_code: int = 500
 
 
 class ColumnDiff(BaseModel):

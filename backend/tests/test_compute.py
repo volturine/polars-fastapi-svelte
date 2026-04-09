@@ -1035,7 +1035,7 @@ class TestComputePreview:
         assert run.request_json['analysis_pipeline']['tabs'][0]['datasource']['id'] == sample_datasource.id
         assert run.request_json['iceberg_options']['branch'] == 'master'
         assert 'data' not in run.result_json
-        assert run.result_json['query_plans']['optimized'] == 'opt'
+        assert run.result_json['query_plans'][0]['optimized_plan'] == 'opt'
         assert run.result_json['execution_entries'][0]['key'] == 'query_plan'
 
 

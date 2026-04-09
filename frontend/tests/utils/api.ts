@@ -190,6 +190,85 @@ export async function createAnalysis(
 	return ((await response.json()) as { id: string }).id;
 }
 
+export async function createMultiStepAnalysis(
+	request: APIRequestContext,
+	name: string,
+	datasourceId: string
+): Promise<string> {
+	const resultId = crypto.randomUUID();
+	const viewId = crypto.randomUUID();
+	const filterId = crypto.randomUUID();
+	const sortId = crypto.randomUUID();
+
+	const response = await request.post(`${API_BASE}/analysis`, {
+		data: {
+			name,
+			description: null,
+			tabs: [
+				{
+					id: crypto.randomUUID(),
+					name: 'Source 1',
+					parent_id: null,
+					datasource: {
+						id: datasourceId,
+						analysis_tab_id: null,
+						config: { branch: 'master' }
+					},
+					output: {
+						result_id: resultId,
+						datasource_type: 'iceberg',
+						format: 'parquet',
+						filename: 'source_1'
+					},
+					steps: [
+						{
+							id: viewId,
+							type: 'view',
+							config: {},
+							depends_on: [],
+							is_applied: true
+						},
+						{
+							id: filterId,
+							type: 'filter',
+							config: {
+								conditions: [
+									{
+										column: 'age',
+										operator: '>',
+										value: 10,
+										value_type: 'number',
+										dtype: 'Int64'
+									}
+								],
+								logic: 'AND'
+							},
+							depends_on: [viewId],
+							is_applied: true
+						},
+						{
+							id: sortId,
+							type: 'sort',
+							config: {
+								columns: ['name'],
+								descending: [false]
+							},
+							depends_on: [filterId],
+							is_applied: true
+						}
+					]
+				}
+			]
+		}
+	});
+	if (!response.ok()) {
+		throw new Error(
+			`createMultiStepAnalysis failed: ${response.status()} ${await response.text()}`
+		);
+	}
+	return ((await response.json()) as { id: string }).id;
+}
+
 // ── UDF ───────────────────────────────────────────────────────────────────────
 
 export async function createUdf(request: APIRequestContext, name: string): Promise<string> {

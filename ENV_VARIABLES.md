@@ -159,22 +159,22 @@ just dev
 
 ### Logging and time handling
 
-| Variable                            | Default            | Notes                                                                              |
-| ----------------------------------- | ------------------ | ---------------------------------------------------------------------------------- |
-| `LOG_LEVEL`                         | `info`             | One of `debug`, `info`, `warning`, `error`, `critical`.                            |
-| `UVICORN_ACCESS_LOG`                | `true`             | Enables uvicorn access logs.                                                       |
-| `TIMEZONE`                          | `UTC`              | Must be a valid IANA timezone.                                                     |
-| `NORMALIZE_TZ`                      | `false`            | Normalizes datetime values to `TIMEZONE`.                                          |
-| `LOG_CLIENT_BATCH_SIZE`             | `20`               | Client audit batch size.                                                           |
-| `LOG_CLIENT_FLUSH_INTERVAL_MS`      | `5000`             | Client audit flush interval.                                                       |
-| `LOG_CLIENT_DEDUPE_WINDOW_MS`       | `500`              | Dedupe window for repeated client events.                                          |
-| `LOG_CLIENT_FLUSH_COOLDOWN_MS`      | `3000`             | Cooldown before repeating client flush-failure logs.                               |
-| `LOG_SQLITE_PATH`                   | `${DATA_DIR}/logs` | Directory for SQLite-backed logs. Leave blank to use the default under `DATA_DIR`. |
-| `LOG_SQLITE_FLUSH_INTERVAL_SECONDS` | `5`                | Flush interval for SQLite logs.                                                    |
-| `LOG_QUEUE_MAX_SIZE`                | `2000`             | Max queued log batches.                                                            |
-| `LOG_QUEUE_OVERFLOW`                | `drop`             | One of `block` or `drop`.                                                          |
-| `LOG_MAX_BODY_SIZE`                 | `65536`            | Max request/response body bytes to log. `0` means unlimited.                       |
-| `PUBLIC_IDB_DEBUG`                  | `false`            | Enables IndexedDB debug panels in the frontend.                                    |
+| Variable                            | Default            | Notes                                                                                                                    |
+| ----------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `LOG_LEVEL`                         | `info`             | One of `debug`, `info`, `warning`, `error`, `critical`.                                                                  |
+| `UVICORN_ACCESS_LOG`                | `true`             | Enables uvicorn access logs.                                                                                             |
+| `TIMEZONE`                          | `UTC`              | Must be a valid IANA timezone.                                                                                           |
+| `NORMALIZE_TZ`                      | `false`            | Normalizes datetime values to `TIMEZONE`.                                                                                |
+| `LOG_CLIENT_BATCH_SIZE`             | `20`               | Client audit batch size.                                                                                                 |
+| `LOG_CLIENT_FLUSH_INTERVAL_MS`      | `5000`             | Client audit flush interval.                                                                                             |
+| `LOG_CLIENT_DEDUPE_WINDOW_MS`       | `500`              | Dedupe window for repeated client events.                                                                                |
+| `LOG_CLIENT_FLUSH_COOLDOWN_MS`      | `3000`             | Cooldown before repeating client flush-failure logs.                                                                     |
+| `LOG_SQLITE_PATH`                   | `${DATA_DIR}/logs` | Directory for SQLite-backed logs. Leave blank to use the default under `DATA_DIR`.                                       |
+| `LOG_SQLITE_FLUSH_INTERVAL_SECONDS` | `5`                | Flush interval for SQLite logs.                                                                                          |
+| `LOG_QUEUE_MAX_SIZE`                | `2000`             | Max queued log batches.                                                                                                  |
+| `LOG_QUEUE_OVERFLOW`                | `drop`             | One of `block` or `drop`.                                                                                                |
+| `LOG_MAX_BODY_SIZE`                 | `65536`            | Max request/response body bytes to log. `0` means unlimited.                                                             |
+| `PUBLIC_IDB_DEBUG`                  | `false`            | Enables IndexedDB debug panels in the frontend. Seeded via the backend config API endpoint — not a Vite/browser env var. |
 
 ### AI and provider settings
 
@@ -212,20 +212,20 @@ just dev
 
 ### Authentication and OAuth
 
-| Variable                | Default                                             | Notes                                                                                                                             |
-| ----------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `AUTH_REQUIRED`         | `false`                                             | Enables authenticated routes.                                                                                                     |
-| `DEFAULT_USER_EMAIL`    | `default@example.com`                               | Default env-managed account email.                                                                                                |
-| `DEFAULT_USER_PASSWORD` | `ChangeMe123`                                       | Must contain upper, lower, and digit, and be at least 8 chars.                                                                    |
-| `DEFAULT_USER_NAME`     | `Default User`                                      | Default env-managed account name.                                                                                                 |
-| `AUTH_FRONTEND_URL`     | `http://localhost:5173`                             | Frontend URL used by auth redirects. In prod (single port) this equals the backend URL. In dev it equals the Vite dev-server URL. |
-| `SESSION_MAX_AGE_DAYS`  | `30`                                                | Session lifetime in days.                                                                                                         |
-| `GOOGLE_CLIENT_ID`      | empty                                               | Google OAuth client id.                                                                                                           |
-| `GOOGLE_CLIENT_SECRET`  | empty                                               | Google OAuth client secret.                                                                                                       |
-| `GOOGLE_REDIRECT_URI`   | `http://localhost:8000/api/v1/auth/google/callback` | Google OAuth callback.                                                                                                            |
-| `GITHUB_CLIENT_ID`      | empty                                               | GitHub OAuth client id.                                                                                                           |
-| `GITHUB_CLIENT_SECRET`  | empty                                               | GitHub OAuth client secret.                                                                                                       |
-| `GITHUB_REDIRECT_URI`   | `http://localhost:8000/api/v1/auth/github/callback` | GitHub OAuth callback.                                                                                                            |
+| Variable                | Default                                             | Notes                                                                                                                                                                                                                     |
+| ----------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH_REQUIRED`         | `false`                                             | Enables authenticated routes.                                                                                                                                                                                             |
+| `DEFAULT_USER_EMAIL`    | `default@example.com`                               | Default env-managed account email.                                                                                                                                                                                        |
+| `DEFAULT_USER_PASSWORD` | `ChangeMe123`                                       | Must contain upper, lower, and digit, and be at least 8 chars.                                                                                                                                                            |
+| `DEFAULT_USER_NAME`     | `Default User`                                      | Default env-managed account name.                                                                                                                                                                                         |
+| `AUTH_FRONTEND_URL`     | `http://localhost:5173`                             | Frontend URL used by auth redirects. In prod (single port) set to the backend URL (e.g. `http://your-server:8000`). In dev set to the Vite dev-server URL — must match `FRONTEND_PORT` (default `http://localhost:3000`). |
+| `SESSION_MAX_AGE_DAYS`  | `30`                                                | Session lifetime in days.                                                                                                                                                                                                 |
+| `GOOGLE_CLIENT_ID`      | empty                                               | Google OAuth client id.                                                                                                                                                                                                   |
+| `GOOGLE_CLIENT_SECRET`  | empty                                               | Google OAuth client secret.                                                                                                                                                                                               |
+| `GOOGLE_REDIRECT_URI`   | `http://localhost:8000/api/v1/auth/google/callback` | Google OAuth callback.                                                                                                                                                                                                    |
+| `GITHUB_CLIENT_ID`      | empty                                               | GitHub OAuth client id.                                                                                                                                                                                                   |
+| `GITHUB_CLIENT_SECRET`  | empty                                               | GitHub OAuth client secret.                                                                                                                                                                                               |
+| `GITHUB_REDIRECT_URI`   | `http://localhost:8000/api/v1/auth/github/callback` | GitHub OAuth callback.                                                                                                                                                                                                    |
 
 ## Frontend variables
 

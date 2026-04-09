@@ -5,17 +5,20 @@ FastAPI backend with async SQLAlchemy, Alembic migrations, and SQLite database.
 ## Setup
 
 1. Install dependencies:
+
    ```bash
    uv sync --extra dev
    ```
 
 2. Configure environment (optional):
+
    ```bash
    cp .env.example .env
    # Edit .env if needed
    ```
 
 3. Run database migrations:
+
    ```bash
    ./migrate.sh upgrade
    # Or manually: uv run alembic -c database/alembic.ini upgrade head
@@ -93,10 +96,11 @@ backend/
 ### Adding New Models
 
 1. Create model in appropriate module (e.g., `modules/mymodule/models.py`):
+
    ```python
     from sqlalchemy import Column, String
     from sqlmodel import Field, SQLModel
-    
+
     class MyModel(SQLModel, table=True):
         __tablename__ = 'my_table'
         id: str = Field(primary_key=True, sa_column=Column(String, primary_key=True))
@@ -104,6 +108,7 @@ backend/
    ```
 
 2. Import model in `database/alembic/env.py`:
+
    ```python
    from modules.mymodule.models import MyModel
    ```
@@ -138,6 +143,7 @@ uv run mypy .
 ## API Documentation
 
 Once the server is running, visit:
+
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 
@@ -152,6 +158,7 @@ cp .env.example .env
 ```
 
 Common settings:
+
 - `DATA_DIR` - Base writable data directory
 - `PORT` - Backend HTTP port
 - `CORS_ORIGINS` - Allowed browser origins
@@ -167,12 +174,14 @@ See [`../ENV_VARIABLES.md`](../ENV_VARIABLES.md) for the complete reference, inc
 ## Production Deployment
 
 1. Set environment variables:
+
    ```bash
-export DATABASE_URL="sqlite:///${DATA_DIR}/app.db"
+   export DATABASE_URL="sqlite:///${DATA_DIR}/app.db"
    # ... other settings
    ```
 
 2. Run migrations:
+
    ```bash
    ./migrate.sh upgrade
    ```
@@ -195,6 +204,7 @@ If you encounter database errors:
 ### SQLite Locked
 
 SQLite can lock if another process is accessing it. Make sure:
+
 - Only one server instance is running
 - No SQLite browser tools are connected
 - Database file has proper permissions

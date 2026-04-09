@@ -1,5 +1,6 @@
 <script lang="ts">
 	import BuildsManager from '$lib/components/common/BuildsManager.svelte';
+	import ActiveBuilds from '$lib/components/common/ActiveBuilds.svelte';
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
 	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 	import { Search } from 'lucide-svelte';
@@ -124,8 +125,9 @@
 			id="panel-builds"
 			role="tabpanel"
 			aria-labelledby="tab-builds"
-			class={css({ marginTop: '4' })}
+			class={css({ marginTop: '4', display: 'flex', flexDirection: 'column', gap: '6' })}
 		>
+			<ActiveBuilds searchQuery={search} />
 			<BuildsManager searchQuery={search} {showPreviews} />
 		</div>
 	{:else if activeTab === 'schedules'}

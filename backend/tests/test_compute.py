@@ -1133,6 +1133,248 @@ class TestComputePreview:
 
 
 def test_start_active_build_returns_snapshot_and_detail_stream_updates(client, sample_datasource: DataSource, test_user) -> None:
+def test_list_active_builds_returns_running_build(client, test_user) -> None:
+    build = asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-1',
+            analysis_name='Analysis 1',
+            namespace='default',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+    asyncio.run(
+        active_build_registry.apply_event(
+            build.build_id,
+            {
+                'type': 'progress',
+                'build_id': build.build_id,
+                'analysis_id': 'analysis-1',
+                'emitted_at': datetime.now(UTC).isoformat(),
+                'progress': 0.5,
+                'elapsed_ms': 1200,
+                'total_steps': 4,
+                'current_step': 'Filter rows',
+                'current_step_index': 1,
+            },
+        )
+    )
+
+    response = client.get('/api/v1/compute/builds/active')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['total'] == 1
+    assert payload['builds'][0]['build_id'] == build.build_id
+    assert payload['builds'][0]['status'] == 'running'
+    assert payload['builds'][0]['progress'] == 0.5
+    assert payload['builds'][0]['starter']['user_id'] == test_user.id
+
+
+def test_get_active_build_returns_detail(client, test_user) -> None:
+    build = asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-2',
+            analysis_name='Analysis 2',
+            namespace='default',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+    emitted_at = datetime.now(UTC).isoformat()
+    asyncio.run(
+        active_build_registry.apply_event(
+            build.build_id,
+            {
+                'type': 'step_start',
+                'build_id': build.build_id,
+                'analysis_id': 'analysis-2',
+                'emitted_at': emitted_at,
+                'build_step_index': 0,
+                'step_index': 0,
+                'step_id': 'step-1',
+                'step_name': 'Load source',
+                'step_type': 'source',
+                'total_steps': 1,
+            },
+        )
+    )
+    asyncio.run(
+        active_build_registry.apply_event(
+            build.build_id,
+            {
+                'type': 'log',
+                'build_id': build.build_id,
+                'analysis_id': 'analysis-2',
+                'emitted_at': emitted_at,
+                'level': 'info',
+                'message': 'Started build',
+            },
+        )
+    )
+
+    response = client.get(f'/api/v1/compute/builds/active/{build.build_id}')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['build_id'] == build.build_id
+    assert payload['steps'][0]['step_id'] == 'step-1'
+    assert payload['steps'][0]['state'] == 'running'
+    assert payload['logs'][0]['message'] == 'Started build'
+
+
+def test_get_active_build_returns_resource_config_summary(client, test_user) -> None:
+    build = asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-config',
+            analysis_name='Analysis Config',
+            namespace='default',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+    registry_build = asyncio.run(active_build_registry.get_build(build.build_id))
+    assert registry_build is not None
+    registry_build.resource_config = compute_schemas.BuildResourceConfigSummary(
+        max_threads=6,
+        max_memory_mb=1024,
+        streaming_chunk_size=2000,
+    )
+
+    response = client.get(f'/api/v1/compute/builds/active/{build.build_id}')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['resource_config'] == {
+        'max_threads': 6,
+        'max_memory_mb': 1024,
+        'streaming_chunk_size': 2000,
+    }
+
+
+def test_cancel_build_marks_running_run_cancelled(client, test_db_session, test_user) -> None:
+    created = engine_run_service.create_engine_run(
+        test_db_session,
+        engine_run_service.create_engine_run_payload(
+            analysis_id='analysis-cancel',
+            datasource_id='output-ds-1',
+            kind='datasource_update',
+            status='running',
+            request_json={'kind': 'datasource_update'},
+            result_json={
+                'steps': [
+                    {
+                        'build_step_index': 0,
+                        'step_index': 0,
+                        'step_id': 'step-1',
+                        'step_name': 'Load source',
+                        'step_type': 'read',
+                        'state': 'completed',
+                    }
+                ],
+                'results': [{'tab_id': 'tab-1', 'tab_name': 'View', 'status': 'success'}],
+            },
+            created_at=datetime.now(UTC),
+            progress=0.42,
+            current_step='Filter rows',
+        ),
+    )
+    mock_manager = MagicMock()
+    app.dependency_overrides[get_manager] = lambda: mock_manager
+
+    response = client.post(f'/api/v1/compute/cancel/{created.id}')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['id'] == created.id
+    assert payload['status'] == 'cancelled'
+    assert payload['cancelled_by'] == test_user.email
+
+    run = test_db_session.get(EngineRun, created.id)
+    assert run is not None
+    test_db_session.refresh(run)
+    assert run.status == 'cancelled'
+    assert run.error_message == f'Cancelled by {test_user.email}'
+    assert isinstance(run.result_json, dict)
+    assert run.result_json['results'] == []
+    assert run.result_json['cancelled_by'] == test_user.email
+    assert run.result_json['last_completed_step'] == 'Load source'
+    mock_manager.shutdown_engine.assert_called_once_with('analysis-cancel')
+
+
+def test_cancel_build_requires_running_status(client, test_db_session) -> None:
+    created = engine_run_service.create_engine_run(
+        test_db_session,
+        engine_run_service.create_engine_run_payload(
+            analysis_id='analysis-not-running',
+            datasource_id='output-ds-2',
+            kind='datasource_update',
+            status='success',
+            request_json={'kind': 'datasource_update'},
+            result_json={},
+            created_at=datetime.now(UTC),
+        ),
+    )
+
+    response = client.post(f'/api/v1/compute/cancel/{created.id}')
+
+    assert response.status_code == 400
+    assert response.json()['detail'] == 'Only running builds can be cancelled'
+
+
+def test_cancel_build_updates_active_build_registry(client, test_db_session, test_user) -> None:
+    created = engine_run_service.create_engine_run(
+        test_db_session,
+        engine_run_service.create_engine_run_payload(
+            analysis_id='analysis-live-cancel',
+            datasource_id='output-ds-3',
+            kind='datasource_update',
+            status='running',
+            request_json={'kind': 'datasource_update'},
+            result_json={},
+            created_at=datetime.now(UTC),
+        ),
+    )
+    build = asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-live-cancel',
+            analysis_name='Live Cancel',
+            namespace='default',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+    asyncio.run(
+        active_build_registry.apply_event(
+            build.build_id,
+            {
+                'type': 'progress',
+                'build_id': build.build_id,
+                'analysis_id': 'analysis-live-cancel',
+                'emitted_at': datetime.now(UTC).isoformat(),
+                'engine_run_id': created.id,
+                'progress': 0.35,
+                'elapsed_ms': 1200,
+                'total_steps': 4,
+                'current_step': 'Sort',
+                'current_step_index': 1,
+            },
+        )
+    )
+    mock_manager = MagicMock()
+    app.dependency_overrides[get_manager] = lambda: mock_manager
+
+    response = client.post(f'/api/v1/compute/cancel/{created.id}')
+
+    assert response.status_code == 200
+    updated = asyncio.run(active_build_registry.get_build(build.build_id))
+    assert updated is not None
+    assert updated.status == compute_schemas.ActiveBuildStatus.CANCELLED
+    assert updated.cancelled_by == test_user.email
+    assert updated.current_engine_run_id == created.id
+
+
+def test_build_stream_websocket_emits_snapshot_and_terminal_event(client, sample_datasource: DataSource, test_user) -> None:
     payload = {
         'analysis_pipeline': {
             'analysis_id': 'analysis-stream',

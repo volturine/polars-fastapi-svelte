@@ -37,7 +37,7 @@ from modules.datasource.models import DataSource
 from modules.datasource.source_types import DataSourceType
 from modules.engine_runs import service as engine_run_service
 from modules.engine_runs.models import EngineRun
-from modules.engine_runs.schemas import EngineRunKind
+from modules.engine_runs.schemas import EngineRunKind, EngineRunStatus
 from modules.healthcheck import service as healthcheck_service
 from modules.healthcheck.models import HealthCheck, HealthCheckResult
 from modules.notification.service import notification_service, render_template
@@ -68,6 +68,20 @@ class _EngineRunFailureUpdateKwargs(TypedDict, total=False):
     execution_entries: list[dict[str, object]]
     progress: float
     current_step: str | None
+
+
+class BuildCancelledError(Exception):
+    def __init__(
+        self,
+        run_id: str,
+        *,
+        cancelled_at: str | None = None,
+        cancelled_by: str | None = None,
+    ) -> None:
+        super().__init__('Build cancelled')
+        self.run_id = run_id
+        self.cancelled_at = cancelled_at
+        self.cancelled_by = cancelled_by
 
 
 def _utcnow() -> datetime:
@@ -781,6 +795,101 @@ def _load_engine_run_result_json(session: Session, run_id: str) -> dict[str, obj
         return {}
     session.refresh(run)
     return _copy_json_dict(run.result_json)
+
+
+def _read_cancel_metadata(run: EngineRun) -> tuple[str | None, str | None]:
+    result_json = _copy_json_dict(run.result_json)
+    cancelled_at = result_json.get('cancelled_at')
+    cancelled_by = result_json.get('cancelled_by')
+    return (
+        cancelled_at if isinstance(cancelled_at, str) else None,
+        cancelled_by if isinstance(cancelled_by, str) else None,
+    )
+
+
+def _raise_if_engine_run_cancelled(session: Session, run_id: str) -> None:
+    session.expire_all()
+    latest = session.get(EngineRun, run_id)
+    if latest is None or latest.status != EngineRunStatus.CANCELLED:
+        return
+    cancelled_at, cancelled_by = _read_cancel_metadata(latest)
+    raise BuildCancelledError(run_id, cancelled_at=cancelled_at, cancelled_by=cancelled_by)
+
+
+def _latest_completed_step_name(run: EngineRun) -> str | None:
+    result_json = _copy_json_dict(run.result_json)
+    raw_steps = result_json.get('steps')
+    if not isinstance(raw_steps, list):
+        return None
+    completed_steps = [step for step in raw_steps if isinstance(step, dict) and step.get('state') == 'completed']
+    if not completed_steps:
+        return None
+
+    def step_sort_key(step: dict[str, object]) -> int:
+        index = step.get('build_step_index')
+        return index if isinstance(index, int) else -1
+
+    completed_steps.sort(key=step_sort_key)
+    latest = completed_steps[-1]
+    step_name = latest.get('step_name')
+    return step_name if isinstance(step_name, str) else None
+
+
+def cancel_engine_run(
+    session: Session,
+    manager: ProcessManager,
+    run_id: str,
+    *,
+    cancelled_by: str | None,
+) -> compute_schemas.CancelBuildResponse:
+    run = session.get(EngineRun, run_id)
+    if run is None:
+        raise ValueError('Engine run not found')
+    session.refresh(run)
+    if run.status != EngineRunStatus.RUNNING:
+        raise ValueError('Only running builds can be cancelled')
+
+    now = _utcnow()
+    reason = f'Cancelled by {cancelled_by}' if cancelled_by else 'Cancelled'
+    existing = _copy_json_dict(run.result_json)
+    existing.pop('data', None)
+    existing.pop('schema', None)
+    existing['results'] = []
+    existing['cancelled_at'] = now.isoformat()
+    existing['cancelled_by'] = cancelled_by
+    last_completed_step = _latest_completed_step_name(run)
+    if last_completed_step is not None:
+        existing['last_completed_step'] = last_completed_step
+    existing_logs = existing.get('logs')
+    logs = [entry for entry in existing_logs if isinstance(entry, dict)] if isinstance(existing_logs, list) else []
+    logs.append(_log_entry(message=reason, level='warning'))
+    existing['logs'] = logs
+
+    created_at = run.created_at if run.created_at.tzinfo is not None else run.created_at.replace(tzinfo=UTC)
+    duration_ms = max(int((now - created_at).total_seconds() * 1000), 0)
+    engine_run_service.update_engine_run(
+        session,
+        run_id,
+        status=EngineRunStatus.CANCELLED,
+        result_json=existing,
+        merge_result_json=False,
+        error_message=reason,
+        completed_at=now,
+        duration_ms=duration_ms,
+        progress=run.progress,
+        current_step=run.current_step,
+    )
+
+    if run.analysis_id:
+        manager.shutdown_engine(run.analysis_id)
+
+    return compute_schemas.CancelBuildResponse(
+        id=run_id,
+        status='cancelled',
+        duration_ms=duration_ms,
+        cancelled_at=now,
+        cancelled_by=cancelled_by,
+    )
 
 
 def _finalize_failed_engine_run(
@@ -1603,6 +1712,11 @@ def get_step_row_count(
 
         return StepRowCountResponse(step_id=target_step_id, row_count=row_count)
     except Exception as exc:
+        try:
+            _raise_if_engine_run_cancelled(session, run_response.id)
+        except BuildCancelledError as cancel_exc:
+            raise cancel_exc from exc
+
         completed_at = datetime.now(UTC)
         duration_ms = int((time.perf_counter() - started_perf) * 1000)
         execution_entries = _build_engine_run_execution_entries(result_data, duration_ms=duration_ms)
@@ -1771,6 +1885,7 @@ def export_data(
             datasource_id=datasource_id,
             failure_prefix='Export',
         )
+        _raise_if_engine_run_cancelled(session, run_response.id)
 
         data = result_data.get('data', {})
         row_count = data.get('row_count', 0)
@@ -1999,6 +2114,7 @@ def export_data(
                 )
             ],
         )
+        _raise_if_engine_run_cancelled(session, run_response.id)
         engine_run_service.update_engine_run(
             session,
             run_response.id,
@@ -2026,7 +2142,13 @@ def export_data(
             read_duration_ms=float(read_duration_ms) if isinstance(read_duration_ms, (int, float)) else None,
             write_duration_ms=write_duration_ms,
         )
+    except BuildCancelledError:
+        raise
     except Exception as exc:
+        try:
+            _raise_if_engine_run_cancelled(session, run_response.id)
+        except BuildCancelledError as cancel_exc:
+            raise cancel_exc from exc
         completed_at = datetime.now(UTC)
         duration_ms = int((time.perf_counter() - started_perf) * 1000)
         execution_entries = _build_engine_run_execution_entries(result_data, duration_ms=duration_ms)
@@ -2674,6 +2796,9 @@ async def run_analysis_build_stream(
     tabs_built = 0
     build_step_base = 0
     has_failures = False
+    was_cancelled = False
+    cancelled_at: str | None = None
+    cancelled_by: str | None = None
     loop = asyncio.get_running_loop()
 
     for tab in execution_tabs:
@@ -2994,6 +3119,27 @@ async def run_analysis_build_stream(
                     'output_name': export_result.datasource_name if export_result is not None else current_output_name,
                 }
             )
+        except BuildCancelledError as exc:
+            if progress_task is not None:
+                with contextlib.suppress(Exception):
+                    await progress_task
+            await _stop_stream_task(resource_task)
+            was_cancelled = True
+            cancelled_at = exc.cancelled_at
+            cancelled_by = exc.cancelled_by
+            await _emit_build_event(
+                emitter,
+                {
+                    'type': 'log',
+                    'level': compute_schemas.BuildLogLevel.WARNING.value,
+                    'message': 'Build cancellation requested',
+                    'tab_id': tab_id,
+                    'tab_name': tab_name,
+                    'current_output_id': current_output_id,
+                    'current_output_name': current_output_name,
+                },
+            )
+            break
         except Exception as exc:
             has_failures = True
             if progress_task is not None:
@@ -3063,7 +3209,25 @@ async def run_analysis_build_stream(
             continue
 
     elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
-    if has_failures:
+    if was_cancelled:
+        await _emit_build_event(
+            emitter,
+            {
+                'type': 'cancelled',
+                'progress': build.progress,
+                'elapsed_ms': elapsed_ms,
+                'total_steps': total_steps,
+                'tabs_built': tabs_built,
+                'results': results,
+                'duration_ms': elapsed_ms,
+                'cancelled_at': cancelled_at or _utcnow().isoformat(),
+                'cancelled_by': cancelled_by,
+                'engine_run_id': build.current_engine_run_id,
+                'current_output_id': build.current_output_id,
+                'current_output_name': build.current_output_name,
+            },
+        )
+    elif has_failures:
         await _emit_build_event(
             emitter,
             {

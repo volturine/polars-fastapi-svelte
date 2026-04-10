@@ -31,6 +31,7 @@ function wireStepState(raw: string): BuildStepState {
 export class BuildStreamStore {
 	status = $state<BuildStatus>('disconnected');
 	buildId = $state<string | null>(null);
+	engineRunId = $state<string | null>(null);
 	analysisId = $state<string | null>(null);
 	progress = $state(0);
 	elapsed = $state(0);
@@ -51,7 +52,9 @@ export class BuildStreamStore {
 
 	private connection: { close: () => void } | null = null;
 
-	done = $derived(this.status === 'completed' || this.status === 'failed');
+	done = $derived(
+		this.status === 'completed' || this.status === 'failed' || this.status === 'cancelled'
+	);
 	succeeded = $derived(this.status === 'completed');
 	memoryPercent = $derived(
 		this.latestResources &&
@@ -121,6 +124,7 @@ export class BuildStreamStore {
 		this.close();
 		this.status = 'disconnected';
 		this.buildId = null;
+		this.engineRunId = null;
 		this.analysisId = null;
 		this.progress = 0;
 		this.elapsed = 0;
@@ -142,6 +146,7 @@ export class BuildStreamStore {
 
 	applySnapshot(build: ActiveBuildDetail): void {
 		this.buildId = build.build_id;
+		this.engineRunId = build.current_engine_run_id ?? null;
 		this.analysisId = build.analysis_id;
 		this.progress = build.progress;
 		this.elapsed = build.elapsed_ms;
@@ -176,11 +181,18 @@ export class BuildStreamStore {
 		this.results = build.results ?? [];
 		this.duration = build.duration_ms ?? null;
 		this.error = build.error ?? null;
-		this.status = build.error ? 'failed' : build.status === 'completed' ? 'completed' : 'running';
+		if (build.status === 'cancelled') {
+			this.status = 'cancelled';
+		} else if (build.error) {
+			this.status = 'failed';
+		} else {
+			this.status = build.status === 'completed' ? 'completed' : 'running';
+		}
 	}
 
 	applyEvent(event: BuildEvent): void {
 		this.buildId = event.build_id;
+		if (event.engine_run_id) this.engineRunId = event.engine_run_id;
 		this.analysisId = event.analysis_id;
 
 		switch (event.type) {
@@ -298,6 +310,16 @@ export class BuildStreamStore {
 				this.totalSteps = event.total_steps;
 				this.results = event.results;
 				this.error = event.error;
+				break;
+
+			case 'cancelled':
+				this.status = 'cancelled';
+				this.progress = event.progress;
+				this.elapsed = event.elapsed_ms;
+				this.duration = event.duration_ms;
+				this.totalSteps = event.total_steps;
+				this.results = event.results;
+				this.error = `Cancelled${event.cancelled_by ? ` by ${event.cancelled_by}` : ''}`;
 				break;
 		}
 	}

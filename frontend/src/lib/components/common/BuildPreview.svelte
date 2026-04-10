@@ -28,9 +28,20 @@
 		title?: string;
 		requestJson?: Record<string, unknown> | null;
 		resultJson?: Record<string, unknown> | null;
+		onCancel?: (() => void) | null;
+		canCancel?: boolean;
+		cancelPending?: boolean;
 	}
 
-	const { store, title = 'Build', requestJson = null, resultJson = null }: Props = $props();
+	const {
+		store,
+		title = 'Build',
+		requestJson = null,
+		resultJson = null,
+		onCancel = null,
+		canCancel = false,
+		cancelPending = false
+	}: Props = $props();
 
 	type PreviewTab = 'steps' | 'plan' | 'config' | 'resources' | 'logs' | 'results' | 'payload';
 	let activeTab = $state<PreviewTab>('steps');
@@ -71,14 +82,17 @@
 		if (store.status === 'running') return store.currentStep ?? 'Running';
 		if (store.status === 'completed') return 'Complete';
 		if (store.status === 'failed') return 'Failed';
+		if (store.status === 'cancelled') return 'Cancelled';
 		return 'Disconnected';
 	});
 
 	const statusTone = $derived.by(() => {
 		if (store.status === 'completed') return 'success' as const;
+		if (store.status === 'cancelled') return 'warning' as const;
 		if (store.status === 'failed' || store.status === 'disconnected') return 'error' as const;
 		return 'accent' as const;
 	});
+	const showCancel = $derived(!!onCancel && canCancel && store.status === 'running');
 
 	const memoryWarning = $derived(store.memoryPercent > MEMORY_WARN_THRESHOLD);
 
@@ -213,6 +227,8 @@
 				<CircleCheckBig size={14} class={css({ color: 'fg.success' })} />
 			{:else if store.status === 'failed'}
 				<CircleX size={14} class={css({ color: 'fg.error' })} />
+			{:else if store.status === 'cancelled'}
+				<CirclePause size={14} class={css({ color: 'fg.warning' })} />
 			{:else}
 				<TriangleAlert size={14} class={css({ color: 'fg.warning' })} />
 			{/if}
@@ -227,7 +243,34 @@
 				{/if}
 			</span>
 		</div>
-		<span class={chip({ tone: statusTone })}>{statusLabel}</span>
+		<div class={cx(rowClass, css({ gap: '2' }))}>
+			{#if showCancel}
+				<button
+					type="button"
+					class={css({
+						display: 'inline-flex',
+						alignItems: 'center',
+						gap: '1',
+						paddingX: '2',
+						paddingY: '1',
+						fontSize: 'xs',
+						cursor: cancelPending ? 'not-allowed' : 'pointer',
+						borderWidth: '1',
+						borderColor: 'border.warning',
+						backgroundColor: 'bg.warning',
+						color: 'fg.warning',
+						opacity: cancelPending ? 0.6 : 1
+					})}
+					onclick={() => onCancel?.()}
+					disabled={cancelPending}
+					data-testid="build-cancel-button"
+				>
+					<PauseCircle size={12} />
+					{cancelPending ? 'Cancelling...' : 'Cancel'}
+				</button>
+			{/if}
+			<span class={chip({ tone: statusTone })}>{statusLabel}</span>
+		</div>
 	</div>
 
 	<div
@@ -249,6 +292,8 @@
 					Preparing...
 				{:else if store.status === 'failed'}
 					Build failed
+				{:else if store.status === 'cancelled'}
+					Build cancelled
 				{:else}
 					Disconnected
 				{/if}
@@ -286,7 +331,12 @@
 					top: '0',
 					left: '0',
 					bottom: '0',
-					backgroundColor: store.status === 'failed' ? 'fg.error' : 'accent.primary',
+					backgroundColor:
+						store.status === 'failed'
+							? 'fg.error'
+							: store.status === 'cancelled'
+								? 'fg.warning'
+								: 'accent.primary',
 					transitionProperty: 'width',
 					transitionDuration: '300ms',
 					transitionTimingFunction: 'ease'

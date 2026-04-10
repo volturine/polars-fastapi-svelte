@@ -57,8 +57,9 @@ function readBuildResults(
 	return [];
 }
 
-export function engineRunStatus(run: EngineRun): 'running' | 'completed' | 'failed' {
+export function engineRunStatus(run: EngineRun): 'running' | 'completed' | 'failed' | 'cancelled' {
 	if (run.status === 'running') return 'running';
+	if (run.status === 'cancelled') return 'cancelled';
 	return run.status === 'success' ? 'completed' : 'failed';
 }
 
@@ -210,7 +211,10 @@ export function engineRunBuildDetail(run: EngineRun): ActiveBuildDetail {
 		current_tab_name: readString(result?.current_tab_name),
 		current_output_id: readString(result?.current_output_id),
 		current_output_name: engineRunOutputName(run),
+		current_engine_run_id: run.id,
 		total_tabs: engineRunTotalTabs(run),
+		cancelled_at: readString(result?.cancelled_at),
+		cancelled_by: readString(result?.cancelled_by),
 		steps,
 		query_plans: queryPlans,
 		latest_resources: latestResources,

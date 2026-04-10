@@ -266,7 +266,10 @@ describe('BuildStreamStore', () => {
 				current_tab_name: 'Sheet 1',
 				current_output_id: 'output-1',
 				current_output_name: 'output_sheet_1',
+				current_engine_run_id: 'run-1',
 				total_tabs: 2,
+				cancelled_at: null,
+				cancelled_by: null,
 				steps: [
 					{
 						build_step_index: 0,
@@ -647,6 +650,31 @@ describe('BuildStreamStore', () => {
 		expect(store.succeeded).toBe(false);
 	});
 
+	test('applies cancelled event', () => {
+		const store = new BuildStreamStore();
+		store.start({});
+
+		const socket = MockWebSocket.instances[0];
+		socket.emit('open');
+
+		msg(socket, {
+			type: 'cancelled',
+			progress: 0.4,
+			elapsed_ms: 2100,
+			total_steps: 4,
+			tabs_built: 0,
+			results: [],
+			duration_ms: 2100,
+			cancelled_at: '2026-04-10T11:00:00Z',
+			cancelled_by: 'test@example.com'
+		});
+
+		expect(store.status).toBe('cancelled');
+		expect(store.error).toBe('Cancelled by test@example.com');
+		expect(store.done).toBe(true);
+		expect(store.succeeded).toBe(false);
+	});
+
 	test('reset clears all state', () => {
 		const store = new BuildStreamStore();
 		store.start(MINIMAL_BUILD_REQUEST);
@@ -819,7 +847,10 @@ describe('BuildStreamStore', () => {
 			current_tab_name: null,
 			current_output_id: null,
 			current_output_name: null,
+			current_engine_run_id: null,
 			total_tabs: 1,
+			cancelled_at: null,
+			cancelled_by: null,
 			steps: [],
 			query_plans: [],
 			latest_resources: null,
@@ -904,7 +935,10 @@ describe('BuildStreamStore', () => {
 			current_tab_name: null,
 			current_output_id: null,
 			current_output_name: null,
+			current_engine_run_id: null,
 			total_tabs: 1,
+			cancelled_at: null,
+			cancelled_by: null,
 			steps: [],
 			query_plans: [],
 			latest_resources: {

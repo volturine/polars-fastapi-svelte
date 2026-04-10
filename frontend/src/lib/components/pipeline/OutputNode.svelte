@@ -7,6 +7,7 @@
 	} from '$lib/types/analysis';
 	import type { Subscriber } from '$lib/api/settings';
 	import { getSubscribers } from '$lib/api/settings';
+	import { cancelBuild } from '$lib/api/compute';
 	import { listDatasources, updateDatasource } from '$lib/api/datasource';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
@@ -21,6 +22,7 @@
 	import { overlayStack } from '$lib/stores/overlay.svelte';
 	import type { OverlayConfig } from '$lib/stores/overlay.svelte';
 	import BuildPreview from '$lib/components/common/BuildPreview.svelte';
+	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
 	import { css, cx, chip, input, label } from '$lib/styles/panda';
 	import {
@@ -64,6 +66,9 @@
 	let buildStarting = $state(false);
 	let previewOpen = $state(false);
 	let error = $state<string | null>(null);
+	let cancelConfirmOpen = $state(false);
+	let cancelPending = $state(false);
+	let cancelToast = $state<string | null>(null);
 	let notifyOpen = $state(false);
 	let scheduleOpen = $state(false);
 	let healthOpen = $state(false);
@@ -73,6 +78,7 @@
 	let modeMenuOpen = $state(false);
 	let modeMenuRef = $state<HTMLElement>();
 	let modeTriggerRef = $state<HTMLButtonElement>();
+	let cancelToastTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const outputConfig = $derived.by(() => {
 		const tab = activeTab;
@@ -254,12 +260,17 @@
 		buildBusy ||
 			buildStore.buildId !== null ||
 			buildStore.status === 'completed' ||
-			buildStore.status === 'failed'
+			buildStore.status === 'failed' ||
+			buildStore.status === 'cancelled'
+	);
+	const canCancelRunningBuild = $derived(
+		buildStore.status === 'running' && !!buildStore.engineRunId
 	);
 	const buildSessionLabel = $derived.by(() => {
 		if (buildBusy) return 'Engine Run';
 		if (buildStore.status === 'completed') return 'Last Build';
 		if (buildStore.status === 'failed') return 'Last Build';
+		if (buildStore.status === 'cancelled') return 'Last Build';
 		return 'Build';
 	});
 	const buildSessionSummary = $derived.by(() => {
@@ -272,6 +283,9 @@
 		}
 		if (buildStore.status === 'failed') {
 			return buildStore.error ?? 'Build failed';
+		}
+		if (buildStore.status === 'cancelled') {
+			return buildStore.error ?? 'Build cancelled';
 		}
 		return 'No build data';
 	});
@@ -429,6 +443,45 @@
 		previewOpen = false;
 	}
 
+	function openCancelConfirm(): void {
+		if (!canCancelRunningBuild || cancelPending) return;
+		cancelConfirmOpen = true;
+	}
+
+	function closeCancelConfirm(): void {
+		if (cancelPending) return;
+		cancelConfirmOpen = false;
+	}
+
+	function showCancelToast(message: string): void {
+		cancelToast = message;
+		if (cancelToastTimer !== null) {
+			clearTimeout(cancelToastTimer);
+		}
+		cancelToastTimer = setTimeout(() => {
+			cancelToast = null;
+			cancelToastTimer = null;
+		}, 4000);
+	}
+
+	async function confirmCancelBuild(): Promise<void> {
+		const runId = buildStore.engineRunId;
+		if (!runId || cancelPending) return;
+		cancelPending = true;
+		error = null;
+		const result = await cancelBuild(runId);
+		result.match(
+			() => {
+				cancelConfirmOpen = false;
+				showCancelToast('Build cancelled');
+			},
+			(err) => {
+				error = err.message;
+			}
+		);
+		cancelPending = false;
+	}
+
 	const modeMenuOverlayConfig = $derived<OverlayConfig>({
 		onEscape: () => (modeMenuOpen = false),
 		onOutsideClick: (target: Node) => {
@@ -441,6 +494,10 @@
 	// Lifecycle: keep the build stream alive across modal toggles and close it when the node unmounts.
 	$effect(() => {
 		return () => {
+			if (cancelToastTimer !== null) {
+				clearTimeout(cancelToastTimer);
+				cancelToastTimer = null;
+			}
 			buildStore.close();
 		};
 	});
@@ -953,6 +1010,8 @@
 							/>
 						{:else if buildStore.status === 'completed'}
 							<Check size={14} class={css({ color: 'fg.success' })} />
+						{:else if buildStore.status === 'cancelled'}
+							<X size={14} class={css({ color: 'fg.warning' })} />
 						{:else}
 							<X size={14} class={css({ color: 'fg.error' })} />
 						{/if}
@@ -1464,6 +1523,43 @@
 				<X size={14} />
 			</button>
 		</div>
-		<BuildPreview store={buildStore} />
+		<BuildPreview
+			store={buildStore}
+			onCancel={openCancelConfirm}
+			canCancel={canCancelRunningBuild}
+			{cancelPending}
+		/>
 	{/snippet}
 </BaseModal>
+
+<ConfirmDialog
+	show={cancelConfirmOpen}
+	heading="Cancel this build?"
+	message="Cancel this build? Any partial results will be discarded."
+	confirmText={cancelPending ? 'Cancelling...' : 'Cancel Build'}
+	cancelText="Keep running"
+	onConfirm={confirmCancelBuild}
+	onCancel={closeCancelConfirm}
+/>
+
+{#if cancelToast}
+	<div
+		class={css({
+			position: 'fixed',
+			bottom: '4',
+			left: '50%',
+			transform: 'translateX(-50%)',
+			backgroundColor: 'bg.warning',
+			borderWidth: '1',
+			borderColor: 'border.warning',
+			color: 'fg.warning',
+			paddingX: '4',
+			paddingY: '2',
+			fontSize: 'sm',
+			zIndex: 'toast'
+		})}
+		data-testid="build-cancel-toast"
+	>
+		{cancelToast}
+	</div>
+{/if}

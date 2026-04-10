@@ -120,6 +120,8 @@ describe('engineRunBuildDetail', () => {
 		expect(detail.status).toBe('running');
 		expect(detail.current_output_name).toBe('output_salary_predictions');
 		expect(detail.steps).toHaveLength(3);
+		expect(detail.current_engine_run_id).toBe('run-1');
+		expect(detail.steps).toHaveLength(3);
 		expect(detail.steps[0]?.step_name).toBe('Initial Read');
 		expect(detail.steps[0]?.duration_ms).toBe(12);
 		expect(detail.steps[1]?.step_name).toBe('View');
@@ -132,6 +134,8 @@ describe('engineRunBuildDetail', () => {
 			streaming_chunk_size: 1000
 		});
 		expect(detail.results[0]?.output_name).toBe('output_salary_predictions');
+		expect(detail.cancelled_at).toBeNull();
+		expect(detail.cancelled_by).toBeNull();
 	});
 
 	it('maps failed rows to failed detail state', () => {
@@ -141,5 +145,24 @@ describe('engineRunBuildDetail', () => {
 		expect(engineRunStatus(run)).toBe('failed');
 		expect(detail.status).toBe('failed');
 		expect(detail.error).toBe('boom');
+	});
+
+	it('maps cancelled rows to cancelled detail state', () => {
+		const run = makeRun({
+			status: 'cancelled',
+			error_message: 'Cancelled by test@example.com',
+			result_json: {
+				cancelled_at: '2026-04-10T10:15:00Z',
+				cancelled_by: 'test@example.com',
+				last_completed_step: 'Filter rows',
+				results: []
+			}
+		});
+		const detail = engineRunBuildDetail(run);
+
+		expect(engineRunStatus(run)).toBe('cancelled');
+		expect(detail.status).toBe('cancelled');
+		expect(detail.cancelled_at).toBe('2026-04-10T10:15:00Z');
+		expect(detail.cancelled_by).toBe('test@example.com');
 	});
 });

@@ -345,6 +345,7 @@ class ActiveBuildStatus(StrEnum):
     RUNNING = 'running'
     COMPLETED = 'completed'
     FAILED = 'failed'
+    CANCELLED = 'cancelled'
 
 
 class BuildStepState(StrEnum):
@@ -449,7 +450,10 @@ class ActiveBuildSummary(BaseModel):
     current_tab_name: str | None = None
     current_output_id: str | None = None
     current_output_name: str | None = None
+    current_engine_run_id: str | None = None
     total_tabs: int = 0
+    cancelled_at: datetime | None = None
+    cancelled_by: str | None = None
 
 
 class ActiveBuildDetail(ActiveBuildSummary):
@@ -473,6 +477,7 @@ class BuildEventType(StrEnum):
     LOG = 'log'
     COMPLETE = 'complete'
     FAILED = 'failed'
+    CANCELLED = 'cancelled'
 
 
 class BuildStreamEvent(BaseModel):
@@ -488,6 +493,7 @@ class BuildStreamEvent(BaseModel):
     tab_name: str | None = None
     current_output_id: str | None = None
     current_output_name: str | None = None
+    engine_run_id: str | None = None
 
 
 class BuildPlanEvent(BuildStreamEvent):
@@ -575,6 +581,26 @@ class BuildFailedEvent(BuildStreamEvent):
     results: list[BuildTabResult]
     duration_ms: int
     error: str | None = None
+
+
+class BuildCancelledEvent(BuildStreamEvent):
+    type: Literal[BuildEventType.CANCELLED] = BuildEventType.CANCELLED
+    progress: float
+    elapsed_ms: int
+    total_steps: int
+    tabs_built: int
+    results: list[BuildTabResult]
+    duration_ms: int
+    cancelled_at: datetime
+    cancelled_by: str | None = None
+
+
+class CancelBuildResponse(BaseModel):
+    id: str
+    status: Literal['cancelled'] = 'cancelled'
+    duration_ms: int | None = None
+    cancelled_at: datetime
+    cancelled_by: str | None = None
 
 
 class BuildSnapshotMessage(BaseModel):

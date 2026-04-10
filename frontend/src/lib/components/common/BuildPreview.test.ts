@@ -46,7 +46,10 @@ function makeDetail(overrides: Partial<ActiveBuildDetail> = {}): ActiveBuildDeta
 		current_tab_name: null,
 		current_output_id: null,
 		current_output_name: null,
+		current_engine_run_id: null,
 		total_tabs: 1,
+		cancelled_at: null,
+		cancelled_by: null,
 		steps: [],
 		query_plans: [],
 		latest_resources: null,
@@ -97,6 +100,11 @@ describe('BuildPreview', () => {
 		test('shows Failed chip for failed build', () => {
 			renderPreview(makeDetail({ status: 'failed', error: 'Engine crashed' }));
 			expect(screen.getByText('Failed')).toBeInTheDocument();
+		});
+
+		test('shows Cancelled chip for cancelled build', () => {
+			renderPreview(makeDetail({ status: 'cancelled', error: 'Cancelled by test@example.com' }));
+			expect(screen.getByText('Cancelled')).toBeInTheDocument();
 		});
 	});
 

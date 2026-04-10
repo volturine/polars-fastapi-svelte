@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
 	import type { EngineRun } from '$lib/api/engine-runs';
+	import { cancelBuild } from '$lib/api/compute';
 	import { getDatasource, listDatasources } from '$lib/api/datasource';
 	import { listAnalyses } from '$lib/api/analysis';
 	import { EngineRunsStore } from '$lib/stores/engine-runs.svelte';
@@ -27,6 +28,7 @@
 	} from 'lucide-svelte';
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
 	import BuildPreview from '$lib/components/common/BuildPreview.svelte';
+	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import { BuildStreamStore } from '$lib/stores/build-stream.svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { css, cx, spinner, button, emptyText, input } from '$lib/styles/panda';
@@ -63,7 +65,10 @@
 	let search = $state('');
 	const effectiveSearch = $derived(searchQuery ?? search);
 	let kindFilter = $state<string>('');
-	let statusFilter = $state<'all' | 'running' | 'completed' | 'failed'>('all');
+	let statusFilter = $state<'all' | 'running' | 'completed' | 'failed' | 'cancelled'>('all');
+	let cancelTarget = $state<EngineRun | null>(null);
+	let cancelPending = $state(false);
+	let cancelError = $state<string | null>(null);
 	let dateFrom = $state('');
 	let dateTo = $state('');
 	let page = $state(1);
@@ -71,6 +76,7 @@
 	let expandedId = $state<string | null>(null);
 	let expandedActiveBuild = $state<ActiveBuildRow | null>(null);
 	let expandedStore = $state<BuildStreamStore | null>(null);
+	let resultExpanded = $state(false);
 	let sortColumn = $state<string>('created_at');
 	let sortDir = $state<'asc' | 'desc'>('desc');
 	const runDetailStores = new SvelteMap<string, BuildStreamStore>();
@@ -89,7 +95,9 @@
 					? ('success' as const)
 					: statusFilter === 'failed'
 						? ('failed' as const)
-						: undefined,
+						: statusFilter === 'cancelled'
+							? ('cancelled' as const)
+							: undefined,
 		limit,
 		offset: (page - 1) * limit
 	});
@@ -338,6 +346,7 @@
 
 	function toggleExpand(id: string) {
 		expandedId = expandedId === id ? null : id;
+		resultExpanded = false;
 		if (expandedId === null) expandedActiveBuild = null;
 	}
 
@@ -374,7 +383,58 @@
 		const status = engineRunStatus(run);
 		if (status === 'running') return 'Running';
 		if (status === 'completed') return 'Success';
+		if (status === 'cancelled') return 'Cancelled';
 		return 'Failed';
+	}
+
+	function readResultString(run: EngineRun, key: string): string | null {
+		if (!run.result_json) return null;
+		const value = run.result_json[key];
+		return typeof value === 'string' && value.length > 0 ? value : null;
+	}
+
+	function cancelledAt(run: EngineRun): string | null {
+		return readResultString(run, 'cancelled_at');
+	}
+
+	function cancelledBy(run: EngineRun): string | null {
+		return readResultString(run, 'cancelled_by');
+	}
+
+	function lastCompletedStep(run: EngineRun): string | null {
+		return readResultString(run, 'last_completed_step');
+	}
+
+	function canCancelRun(run: EngineRun): boolean {
+		return run.status === 'running';
+	}
+
+	function requestCancelRun(run: EngineRun): void {
+		if (!canCancelRun(run) || cancelPending) return;
+		cancelError = null;
+		cancelTarget = run;
+	}
+
+	function closeCancelDialog(): void {
+		if (cancelPending) return;
+		cancelTarget = null;
+	}
+
+	async function confirmCancelRun(): Promise<void> {
+		const target = cancelTarget;
+		if (!target || cancelPending) return;
+		cancelPending = true;
+		cancelError = null;
+		const result = await cancelBuild(target.id);
+		result.match(
+			() => {
+				cancelTarget = null;
+			},
+			(err) => {
+				cancelError = err.message;
+			}
+		);
+		cancelPending = false;
 	}
 
 	function runDetailStore(run: EngineRun): BuildStreamStore {
@@ -434,6 +494,16 @@
 	});
 
 	// Side effect: cleanup callback to close WebSocket stores on component destroy
+	$effect(() => {
+		const target = cancelTarget;
+		if (!target) return;
+		const latest = runs.find((run) => run.id === target.id);
+		if (!latest || latest.status !== 'running') {
+			cancelTarget = null;
+			cancelPending = false;
+		}
+	});
+
 	$effect(() => {
 		return () => {
 			for (const store of runDetailStores.values()) {
@@ -609,6 +679,7 @@
 				<option value="running">Running</option>
 				<option value="completed">Completed</option>
 				<option value="failed">Failed</option>
+				<option value="cancelled">Cancelled</option>
 			</select>
 			<BranchPicker
 				branches={branchOptions}
@@ -972,26 +1043,56 @@
 									paddingY: '2'
 								})}
 							>
-								<span
-									class={cx(
-										summaryCellClass,
-										css({ display: 'inline-flex', alignItems: 'center', gap: '1.5' })
-									)}
+								<div
+									class={css({
+										display: 'flex',
+										alignItems: 'center',
+										justifyContent: 'space-between',
+										gap: '2'
+									})}
 								>
-									{#if engineRunStatus(run) === 'running'}
-										<Loader
-											size={14}
-											class={css({ color: 'accent.primary', animation: 'spin 1s linear infinite' })}
-										/>
-										<span class={css({ color: 'accent.primary' })}>{runStatusLabel(run)}</span>
-									{:else if engineRunStatus(run) === 'completed'}
-										<CircleCheck size={14} class={css({ color: 'fg.success' })} />
-										<span class={css({ color: 'fg.success' })}>{runStatusLabel(run)}</span>
-									{:else}
-										<CircleX size={14} class={css({ color: 'fg.error' })} />
-										<span class={css({ color: 'fg.error' })}>{runStatusLabel(run)}</span>
+									<span
+										class={cx(
+											summaryCellClass,
+											css({ display: 'inline-flex', alignItems: 'center', gap: '1.5' })
+										)}
+									>
+										{#if engineRunStatus(run) === 'running'}
+											<Loader
+												size={14}
+												class={css({
+													color: 'accent.primary',
+													animation: 'spin 1s linear infinite'
+												})}
+											/>
+											<span class={css({ color: 'accent.primary' })}>{runStatusLabel(run)}</span>
+										{:else if engineRunStatus(run) === 'completed'}
+											<CircleCheck size={14} class={css({ color: 'fg.success' })} />
+											<span class={css({ color: 'fg.success' })}>{runStatusLabel(run)}</span>
+										{:else if engineRunStatus(run) === 'cancelled'}
+											<CircleX size={14} class={css({ color: 'fg.warning' })} />
+											<span class={css({ color: 'fg.warning' })}>{runStatusLabel(run)}</span>
+										{:else}
+											<CircleX size={14} class={css({ color: 'fg.error' })} />
+											<span class={css({ color: 'fg.error' })}>{runStatusLabel(run)}</span>
+										{/if}
+									</span>
+									{#if canCancelRun(run)}
+										<button
+											type="button"
+											class={button({ variant: 'ghost', size: 'sm' })}
+											onclick={(event) => {
+												event.stopPropagation();
+												requestCancelRun(run);
+											}}
+											disabled={cancelPending}
+											aria-label="Cancel build"
+											data-testid={`build-row-cancel-${run.id}`}
+										>
+											<CircleX size={12} />
+										</button>
 									{/if}
-								</span>
+								</div>
 							</td>
 							<td
 								class={css({
@@ -1078,6 +1179,89 @@
 										overflow: 'hidden'
 									})}
 								>
+									<div
+										class={css({
+											padding: '4',
+											display: 'flex',
+											flexDirection: 'column',
+											gap: '3'
+										})}
+									>
+										<div
+											class={css({ display: 'flex', flexWrap: 'wrap', gap: '4', fontSize: 'sm' })}
+										>
+											<span class={css({ color: 'fg.secondary' })}>
+												<strong>Run ID:</strong>
+												{run.id}
+											</span>
+											{#if engineRunStatus(run) === 'cancelled'}
+												<span class={css({ color: 'fg.warning' })}>
+													<strong>Cancelled At:</strong>
+													{cancelledAt(run) ? formatDate(cancelledAt(run) ?? '') : '-'}
+												</span>
+												<span class={css({ color: 'fg.warning' })}>
+													<strong>Cancelled By:</strong>
+													{cancelledBy(run) ?? '-'}
+												</span>
+												<span class={css({ color: 'fg.warning' })}>
+													<strong>Last Completed Step:</strong>
+													{lastCompletedStep(run) ?? '-'}
+												</span>
+											{/if}
+										</div>
+
+										<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+											<strong class={css({ fontSize: 'sm', color: 'fg.primary' })}
+												>Request Payload</strong
+											>
+											<pre
+												class={css({
+													fontSize: 'xs',
+													backgroundColor: 'bg.secondary',
+													padding: '2',
+													borderRadius: 'md',
+													overflow: 'auto',
+													maxHeight: '200px',
+													margin: '0'
+												})}>{JSON.stringify(run.request_json, null, 2)}</pre>
+										</div>
+
+										<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+											<button
+												type="button"
+												class={button({ variant: 'secondary', size: 'sm' })}
+												onclick={() => (resultExpanded = !resultExpanded)}
+											>
+												Result
+											</button>
+											{#if resultExpanded}
+												{#if engineRunStatus(run) === 'cancelled'}
+													<div class={css({ fontSize: 'sm', color: 'fg.tertiary' })}>
+														No result data available for cancelled build
+													</div>
+												{:else if run.result_json}
+													<div class={css({ fontSize: 'sm', color: 'fg.secondary' })}>
+														Result Metadata
+													</div>
+													<pre
+														class={css({
+															fontSize: 'xs',
+															backgroundColor: 'bg.secondary',
+															padding: '2',
+															borderRadius: 'md',
+															overflow: 'auto',
+															maxHeight: '200px',
+															margin: '0'
+														})}>{JSON.stringify(run.result_json, null, 2)}</pre>
+												{:else}
+													<div class={css({ fontSize: 'sm', color: 'fg.tertiary' })}>
+														No result data available
+													</div>
+												{/if}
+											{/if}
+										</div>
+										</div>
+
 									{#if expandedStore}
 										<div class={css({ width: '100%', overflowX: 'hidden' })}>
 											<BuildPreview
@@ -1131,3 +1315,31 @@
 		</div>
 	{/if}
 </div>
+
+<ConfirmDialog
+	show={cancelTarget !== null}
+	heading="Cancel this build?"
+	message="Cancel this build? Any partial results will be discarded."
+	confirmText={cancelPending ? 'Cancelling...' : 'Cancel Build'}
+	cancelText="Keep running"
+	onConfirm={confirmCancelRun}
+	onCancel={closeCancelDialog}
+/>
+
+{#if cancelError}
+	<div
+		class={css({
+			marginTop: '2',
+			borderWidth: '1',
+			borderColor: 'border.error',
+			backgroundColor: 'bg.error',
+			paddingX: '3',
+			paddingY: '2',
+			fontSize: 'xs',
+			color: 'fg.error'
+		})}
+		data-testid="build-cancel-error"
+	>
+		{cancelError}
+	</div>
+{/if}

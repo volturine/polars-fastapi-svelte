@@ -19,7 +19,7 @@ export interface EngineRun {
 	analysis_id: string | null;
 	datasource_id: string;
 	kind: string;
-	status: 'running' | 'success' | 'failed';
+	status: 'running' | 'success' | 'failed' | 'cancelled';
 	request_json: Record<string, unknown>;
 	result_json: Record<string, unknown> | null;
 	error_message: string | null;
@@ -38,7 +38,7 @@ export interface ListEngineRunsParams {
 	analysis_id?: string;
 	datasource_id?: string;
 	kind?: string;
-	status?: 'running' | 'success' | 'failed';
+	status?: 'running' | 'success' | 'failed' | 'cancelled';
 	limit?: number;
 	offset?: number;
 }

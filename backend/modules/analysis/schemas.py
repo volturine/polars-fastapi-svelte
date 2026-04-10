@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from enum import StrEnum
 from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
@@ -131,3 +132,25 @@ class AnalysisGalleryItemSchema(BaseModel):
     thumbnail: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class CodeExportFormat(StrEnum):
+    POLARS = 'polars'
+    SQL = 'sql'
+
+
+class CodeExportRequestSchema(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    format: CodeExportFormat
+    tab_id: str | None = None
+
+
+class CodeExportResponseSchema(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    code: str
+    warnings: list[str] = Field(default_factory=list)
+    filename: str
+    format: CodeExportFormat
+    tab_id: str | None = None

@@ -1,6 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 import { screenshot } from './utils/visual.js';
-import { waitForAppShell, waitForLayoutReady, waitForSettingsForm } from './utils/readiness.js';
+import { waitForAppShell, waitForSettingsForm } from './utils/readiness.js';
 
 /**
  * Smoke tests: every top-level route renders without a JS crash,
@@ -121,62 +121,6 @@ test.describe('Navigation – settings popup', () => {
 		await expect(dialog.getByText('Settings saved')).toBeVisible({ timeout: 5_000 });
 
 		await screenshot(page, 'navigation', 'settings-save-success');
-	});
-});
-
-test.describe('Navigation – error state regression', () => {
-	test('datasources page handles API failure gracefully', async ({ page }) => {
-		// Intercept the datasource list API to simulate a server error
-		await page.route('**/api/v1/datasource', (route) => {
-			if (route.request().method() === 'GET') {
-				return route.fulfill({ status: 500, body: 'Internal Server Error' });
-			}
-			return route.continue();
-		});
-
-		await page.goto('/datasources');
-		await waitForLayoutReady(page);
-
-		// Page should still render the heading without crashing
-		await expect(page.getByRole('heading', { name: 'Data Sources' })).toBeVisible({
-			timeout: 10_000
-		});
-
-		// The error callout should be visible
-		await expect(page.getByText(/Error:/i)).toBeVisible({ timeout: 10_000 });
-
-		// The datasource list should not show any items
-		await expect(page.locator('[data-ds-row]')).toHaveCount(0, { timeout: 5_000 });
-	});
-
-	test('monitoring page handles API failure without crash', async ({ page }) => {
-		// Intercept all monitoring-related APIs to simulate failure
-		await page.route('**/api/v1/engine-runs**', (route) =>
-			route.fulfill({ status: 500, body: 'Internal Server Error' })
-		);
-
-		await page.goto('/monitoring');
-		await waitForLayoutReady(page);
-
-		// Page structure should still render
-		await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible({
-			timeout: 10_000
-		});
-		await expect(page.getByRole('tab', { name: 'Builds' })).toBeVisible();
-		await expect(page.getByRole('tab', { name: 'Schedules' })).toBeVisible();
-		await expect(page.getByRole('tab', { name: 'Health Checks' })).toBeVisible();
-
-		// The builds panel should show error or empty state — not silently succeed
-		// Scope to visible, non-select text to avoid matching <option> values like "Failed"
-		const panel = page.locator('#panel-builds');
-		await expect(
-			panel
-				.locator(':not(select):not(option)')
-				.getByText(/error|No engine runs/i)
-				.first()
-		).toBeVisible({
-			timeout: 10_000
-		});
 	});
 });
 

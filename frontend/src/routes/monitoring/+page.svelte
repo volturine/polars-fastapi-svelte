@@ -1,5 +1,6 @@
 <script lang="ts">
 	import BuildsManager from '$lib/components/common/BuildsManager.svelte';
+	import ActiveBuilds from '$lib/components/common/ActiveBuilds.svelte';
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
 	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 	import { Search } from 'lucide-svelte';
@@ -50,7 +51,7 @@
 	}
 </script>
 
-<div class={css({ marginX: 'auto', maxWidth: 'page', paddingX: '6', paddingY: '7' })}>
+<div class={css({ marginX: 'auto', paddingX: '6', paddingY: '7' })}>
 	<header
 		class={css({
 			marginBottom: '6',
@@ -124,9 +125,10 @@
 			id="panel-builds"
 			role="tabpanel"
 			aria-labelledby="tab-builds"
-			class={css({ marginTop: '4' })}
+			class={css({ marginTop: '4', display: 'flex', flexDirection: 'column', gap: '4' })}
 		>
-			<BuildsManager searchQuery={search} {showPreviews} />
+			<ActiveBuilds searchQuery={search} />
+			<BuildsManager searchQuery={search} {showPreviews} embedded />
 		</div>
 	{:else if activeTab === 'schedules'}
 		<div

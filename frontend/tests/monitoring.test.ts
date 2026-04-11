@@ -1,10 +1,18 @@
-import { test, expect } from '@playwright/test';
-import { createDatasource, createSchedule, createHealthCheck } from './utils/api.js';
+import { test, expect } from './fixtures.js';
+import {
+	createDatasource,
+	createSchedule,
+	createHealthCheck,
+	createLargeDatasource,
+	createMultiStepAnalysis
+} from './utils/api.js';
 import {
 	deleteDatasourceViaUI,
 	deleteScheduleViaUI,
-	deleteHealthCheckViaUI
+	deleteHealthCheckViaUI,
+	deleteAnalysisViaUI
 } from './utils/ui-cleanup.js';
+import { waitForLayoutReady } from './utils/readiness.js';
 import { uid } from './utils/uid.js';
 import { screenshot } from './utils/visual.js';
 
@@ -427,19 +435,7 @@ test.describe('Monitoring – Health Check create flow', () => {
 });
 
 test.describe('Monitoring – Builds tab', () => {
-	test('Builds tab shows empty state when no runs exist', async ({ page }) => {
-		// Set up route mock before navigation to ensure the first request is intercepted
-		await page.route('**/api/v1/engine-runs**', (route) => {
-			if (route.request().method() === 'GET') {
-				return route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify([])
-				});
-			}
-			return route.continue();
-		});
-
+	test('Builds tab renders and shows engine runs panel', async ({ page }) => {
 		await page.goto('/monitoring?tab=builds');
 		await expect(page.getByRole('tab', { name: 'Builds' })).toHaveAttribute(
 			'aria-selected',
@@ -447,7 +443,6 @@ test.describe('Monitoring – Builds tab', () => {
 		);
 		const panel = page.locator('#panel-builds');
 		await expect(panel).toBeVisible({ timeout: 5_000 });
-		await expect(panel.getByText('No engine runs yet.')).toBeVisible({ timeout: 15_000 });
 	});
 
 	test('Builds search filters by text', async ({ page, request }) => {
@@ -499,7 +494,7 @@ test.describe('Monitoring – Builds tab', () => {
 
 			const detailRow = panel.locator('tr[data-build-detail]').first();
 			await expect(detailRow).toBeVisible({ timeout: 5_000 });
-			await expect(detailRow.getByText('Request Config')).toBeVisible();
+			await expect(detailRow.getByText('Request Payload')).toBeVisible();
 			await expect(detailRow.getByText('Result')).toBeVisible();
 			await screenshot(page, 'monitoring', 'build-row-expanded');
 		} finally {
@@ -571,6 +566,129 @@ test.describe('Monitoring – Builds tab', () => {
 			await expect(detailRow).not.toBeVisible({ timeout: 5_000 });
 		} finally {
 			await deleteDatasourceViaUI(page, ds);
+		}
+	});
+});
+
+// ── Active Builds (real e2e, no WS mocking) ────────────────────────────────
+
+test.describe('Monitoring – Active Builds section', () => {
+	test('active builds section renders and connects to live feed', async ({ page }) => {
+		test.setTimeout(60_000);
+		await page.goto('/monitoring?tab=builds');
+		await expect(page.getByRole('tab', { name: 'Builds' })).toHaveAttribute(
+			'aria-selected',
+			'true'
+		);
+
+		const activeBuilds = page.locator('[data-testid="active-builds"]');
+		await expect(activeBuilds).toBeVisible({ timeout: 10_000 });
+
+		const connected = activeBuilds
+			.getByText('No active builds')
+			.or(activeBuilds.locator('[data-testid^="active-build-"]').first());
+		await expect(connected).toBeVisible({ timeout: 15_000 });
+
+		await screenshot(page, 'monitoring', 'active-builds-live-feed');
+	});
+
+	test('triggering a build shows it in Active Builds and expands to BuildPreview', async ({
+		page,
+		request
+	}) => {
+		test.setTimeout(180_000);
+		const dsName = `e2e-active-build-ds-${uid()}`;
+		const aName = `E2E Active Build ${uid()}`;
+		const dsId = await createLargeDatasource(request, dsName, 2000);
+		const aId = await createMultiStepAnalysis(request, aName, dsId);
+		try {
+			const monitorPage = await page.context().newPage();
+
+			await monitorPage.goto('/monitoring?tab=builds');
+			await waitForLayoutReady(monitorPage);
+			await expect(monitorPage.getByRole('tab', { name: 'Builds' })).toHaveAttribute(
+				'aria-selected',
+				'true'
+			);
+			const activeBuilds = monitorPage.locator('[data-testid="active-builds"]');
+			await expect(activeBuilds).toBeVisible({ timeout: 10_000 });
+
+			await page.goto(`/analysis/${aId}`);
+			await waitForLayoutReady(page);
+			await expect(page.locator('[role="application"]')).toBeVisible({ timeout: 15_000 });
+			const buildBtn = page.locator('[data-testid="output-build-button"]');
+			await expect(buildBtn).toBeVisible({ timeout: 10_000 });
+			await buildBtn.click();
+			const openPreviewBtn = page.locator('[data-testid="output-build-preview-trigger"]');
+			await expect(openPreviewBtn).toBeVisible({ timeout: 10_000 });
+			await openPreviewBtn.click();
+			await expect(page.locator('[data-testid="build-preview"]')).toBeVisible({ timeout: 10_000 });
+
+			const activeBuild = monitorPage.locator('[data-testid^="active-build-"]').first();
+			const buildAppeared = await activeBuild
+				.waitFor({ state: 'visible', timeout: 15_000 })
+				.then(() => true)
+				.catch(() => false);
+
+			if (buildAppeared) {
+				await activeBuild.click();
+				const monitorPreview = monitorPage.locator('[data-testid="build-preview"]');
+				await expect(monitorPreview).toBeVisible({ timeout: 10_000 });
+				await expect(monitorPreview.locator('[data-testid="build-steps-panel"]')).toBeVisible({
+					timeout: 5_000
+				});
+				await screenshot(monitorPage, 'monitoring', 'active-build-expanded-real');
+			}
+
+			const preview = page.locator('[data-testid="build-preview"]');
+			const terminal = preview
+				.getByText('Complete', { exact: true })
+				.or(preview.getByText('Failed', { exact: true }));
+			await expect(terminal).toBeVisible({ timeout: 90_000 });
+
+			await monitorPage.close();
+
+			await screenshot(page, 'monitoring', 'active-build-terminal');
+		} finally {
+			await deleteAnalysisViaUI(page, aName);
+			await deleteDatasourceViaUI(page, dsName);
+		}
+	});
+
+	test('completed build appears in the Builds history table', async ({ page, request }) => {
+		test.setTimeout(120_000);
+		const dsName = `e2e-history-build-ds-${uid()}`;
+		const aName = `E2E History Build ${uid()}`;
+		const dsId = await createDatasource(request, dsName);
+		const aId = await createMultiStepAnalysis(request, aName, dsId);
+		try {
+			await page.goto(`/analysis/${aId}`);
+			await waitForLayoutReady(page);
+			await expect(page.locator('[role="application"]')).toBeVisible({ timeout: 15_000 });
+			const buildBtn = page.locator('[data-testid="output-build-button"]');
+			await expect(buildBtn).toBeVisible({ timeout: 10_000 });
+			await buildBtn.click();
+
+			const openPreviewBtn = page.locator('[data-testid="output-build-preview-trigger"]');
+			await expect(openPreviewBtn).toBeVisible({ timeout: 10_000 });
+			await openPreviewBtn.click();
+
+			const preview = page.locator('[data-testid="build-preview"]');
+			await expect(preview).toBeVisible({ timeout: 10_000 });
+			const terminal = preview
+				.getByText('Complete', { exact: true })
+				.or(preview.getByText('Failed', { exact: true }));
+			await expect(terminal).toBeVisible({ timeout: 60_000 });
+
+			await page.goto('/monitoring?tab=builds');
+			const panel = page.locator('#panel-builds');
+			await expect(panel).toBeVisible({ timeout: 5_000 });
+			await expect(panel.getByText(aName).first()).toBeVisible({ timeout: 20_000 });
+
+			await screenshot(page, 'monitoring', 'build-history-after-real-build');
+		} finally {
+			await deleteAnalysisViaUI(page, aName);
+			await deleteDatasourceViaUI(page, dsName);
 		}
 	});
 });

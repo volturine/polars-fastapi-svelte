@@ -446,6 +446,7 @@
 				onclick={() => onDelete(step.id)}
 				type="button"
 				title="Delete step"
+				data-action="delete"
 				disabled={readOnly}
 			>
 				<Trash2 size={11} />
@@ -557,7 +558,7 @@
 				<button
 					class={cx(button({ variant: 'primary' }), css({ width: '100%' }))}
 					onclick={() => handleDownload()}
-					disabled={!isApplied}
+					disabled={!isApplied || !analysisPipeline}
 				>
 					Download File
 				</button>
@@ -677,7 +678,7 @@
 						_disabled: { cursor: 'not-allowed', opacity: '0.7' }
 					})}
 					onclick={calculateRowCount}
-					disabled={isLoadingRowCount}
+					disabled={isLoadingRowCount || !analysisPipeline}
 					type="button"
 					aria-label="Calculate row count"
 					data-action="count-rows"

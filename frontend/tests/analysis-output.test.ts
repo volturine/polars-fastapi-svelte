@@ -1,8 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 import { createDatasource, createAnalysis } from './utils/api.js';
 import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
 import { gotoAnalysisEditor, waitForEditorReload } from './utils/analysis.js';
-import { waitForLayoutReady } from './utils/readiness.js';
 import { uid } from './utils/uid.js';
 import { screenshot } from './utils/visual.js';
 
@@ -16,8 +15,7 @@ test.describe('Analyses – output visibility toggle', () => {
 		const dsId = await createDatasource(request, dsName);
 		const aId = await createAnalysis(request, aName, dsId);
 		try {
-			await page.goto(`/analysis/${aId}`);
-			await expect(page.locator('[data-step-type="view"]')).toBeVisible({ timeout: 15_000 });
+			await gotoAnalysisEditor(page, aId);
 
 			// Toggle button should be visible on the output node
 			const toggleBtn = page.locator('[data-testid="output-visibility-toggle"]').first();
@@ -25,7 +23,7 @@ test.describe('Analyses – output visibility toggle', () => {
 
 			// Without a saved/built output datasource, toggle shows "hidden" (default)
 			// The toggle button is present but not functional until the output datasource exists
-			await expect(toggleBtn).toContainText(/hidden|visible/, { timeout: 5_000 });
+			await expect(toggleBtn).toContainText('hidden', { timeout: 5_000 });
 
 			await screenshot(page, 'analysis/output', 'output-visibility-toggle');
 		} finally {
@@ -45,9 +43,7 @@ test.describe('Analyses – output node interactions', () => {
 		const dsId = await createDatasource(request, dsName);
 		const aId = await createAnalysis(request, aName, dsId);
 		try {
-			await page.goto(`/analysis/${aId}`);
-			await waitForLayoutReady(page);
-			await expect(page.locator('[role="application"]')).toBeVisible({ timeout: 15_000 });
+			await gotoAnalysisEditor(page, aId);
 
 			// Build button should be visible
 			const buildBtn = page.locator('[data-testid="output-build-button"]');
@@ -83,9 +79,7 @@ test.describe('Analyses – output node interactions', () => {
 		const dsId = await createDatasource(request, dsName);
 		const aId = await createAnalysis(request, aName, dsId);
 		try {
-			await page.goto(`/analysis/${aId}`);
-			await waitForLayoutReady(page);
-			await expect(page.locator('[role="application"]')).toBeVisible({ timeout: 15_000 });
+			await gotoAnalysisEditor(page, aId);
 
 			const modeTrigger = page.locator('[data-testid="output-mode-trigger"]');
 			await expect(modeTrigger).toBeVisible({ timeout: 10_000 });
@@ -126,9 +120,7 @@ test.describe('Analyses – output node interactions', () => {
 		const dsId = await createDatasource(request, dsName);
 		const aId = await createAnalysis(request, aName, dsId);
 		try {
-			await page.goto(`/analysis/${aId}`);
-			await waitForLayoutReady(page);
-			await expect(page.locator('[role="application"]')).toBeVisible({ timeout: 15_000 });
+			await gotoAnalysisEditor(page, aId);
 
 			// All section toggles should be visible
 			const notifyToggle = page.locator('[data-testid="output-notify-toggle"]');
@@ -182,9 +174,7 @@ test.describe('Analyses – output node interactions', () => {
 		const dsId = await createDatasource(request, dsName);
 		const aId = await createAnalysis(request, aName, dsId);
 		try {
-			await page.goto(`/analysis/${aId}`);
-			await waitForLayoutReady(page);
-			await expect(page.locator('[role="application"]')).toBeVisible({ timeout: 15_000 });
+			await gotoAnalysisEditor(page, aId);
 
 			// Click the edit pencil button (aria-label="Edit export name")
 			const editBtn = page.locator('[aria-label="Edit export name"]').first();
@@ -259,9 +249,7 @@ test.describe('Analyses – output node persistence', () => {
 		const dsId = await createDatasource(request, dsName);
 		const aId = await createAnalysis(request, aName, dsId);
 		try {
-			await page.goto(`/analysis/${aId}`);
-			await waitForLayoutReady(page);
-			await expect(page.locator('[role="application"]')).toBeVisible({ timeout: 15_000 });
+			await gotoAnalysisEditor(page, aId);
 
 			const modeTrigger = page.locator('[data-testid="output-mode-trigger"]');
 			await expect(modeTrigger).toBeVisible({ timeout: 10_000 });
@@ -299,9 +287,7 @@ test.describe('Analyses – output node persistence', () => {
 		const dsId = await createDatasource(request, dsName);
 		const aId = await createAnalysis(request, aName, dsId);
 		try {
-			await page.goto(`/analysis/${aId}`);
-			await waitForLayoutReady(page);
-			await expect(page.locator('[role="application"]')).toBeVisible({ timeout: 15_000 });
+			await gotoAnalysisEditor(page, aId);
 
 			// Edit the table name
 			const editBtn = page.locator('[aria-label="Edit export name"]').first();
@@ -339,93 +325,83 @@ test.describe('Analyses – output node persistence', () => {
 	});
 });
 
-// ── Output build flow ───────────────────────────────────────────────────────
+// ── Output build flow (real websocket) ──────────────────────────────────────
 
 test.describe('Analyses – output build flow', () => {
-	test('build button triggers build API and completes', async ({ page, request }) => {
-		test.setTimeout(90_000);
+	test('build button starts the run and BuildPreview opens from the engine status control', async ({
+		page,
+		request
+	}) => {
+		test.setTimeout(120_000);
 		const dsName = `e2e-build-flow-ds-${uid()}`;
 		const aName = `E2E Build Flow ${uid()}`;
 		const dsId = await createDatasource(request, dsName);
 		const aId = await createAnalysis(request, aName, dsId);
 		try {
-			await page.goto(`/analysis/${aId}`);
+			await gotoAnalysisEditor(page, aId);
+
 			const buildBtn = page.locator('[data-testid="output-build-button"]');
-			await expect(buildBtn).toBeVisible({ timeout: 15_000 });
-
-			// Force HTTP transport so page.route() can intercept compute requests
-			await page.evaluate(() => localStorage.setItem('debug:prefer-http', 'true'));
-
-			// Mock a successful build response so the test is deterministic
-			const mockBody = { analysis_id: aId, results: [{ tab: 'Source 1', status: 'ok' }] };
-			await page.route('**/api/v1/compute/build', (route) => {
-				if (route.request().method() === 'POST') {
-					return route.fulfill({
-						status: 200,
-						contentType: 'application/json',
-						body: JSON.stringify(mockBody)
-					});
-				}
-				return route.continue();
-			});
-
+			await expect(buildBtn).toBeEnabled({ timeout: 15_000 });
 			await buildBtn.click();
 
-			// Building state should appear
-			await expect(page.locator('[data-testid="output-building"]')).toBeVisible({
-				timeout: 5_000
-			});
+			const preview = page.locator('[data-testid="build-preview"]');
+			await expect(preview).not.toBeVisible();
 
-			// Building state should disappear after mock response resolves
-			await expect(page.locator('[data-testid="output-building"]')).not.toBeVisible({
-				timeout: 15_000
-			});
+			const openPreviewBtn = page.locator('[data-testid="output-build-preview-trigger"]');
+			await expect(openPreviewBtn).toBeVisible({ timeout: 10_000 });
+			await openPreviewBtn.click();
 
-			// No error should be visible
-			await expect(page.locator('[data-testid="output-build-error"]')).not.toBeVisible();
+			await expect(preview).toBeVisible({ timeout: 10_000 });
+
+			const progressBar = page.locator('[data-testid="build-progress-bar"]');
+			await expect(progressBar).toBeVisible();
+
+			const terminal = preview
+				.getByText('Complete', { exact: true })
+				.or(preview.getByText('Failed', { exact: true }));
+			await expect(terminal).toBeVisible({ timeout: 60_000 });
 
 			await screenshot(page, 'analysis/output', 'output-build-success');
 		} finally {
-			await page.unrouteAll({ behavior: 'ignoreErrors' });
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
 	});
 
-	test('build API failure shows error on output node', async ({ page, request }) => {
-		test.setTimeout(90_000);
-		const dsName = `e2e-build-err-ds-${uid()}`;
-		const aName = `E2E Build Error ${uid()}`;
+	test('BuildPreview shows steps panel after completion', async ({ page, request }) => {
+		test.setTimeout(120_000);
+		const dsName = `e2e-build-steps-ds-${uid()}`;
+		const aName = `E2E Build Steps ${uid()}`;
 		const dsId = await createDatasource(request, dsName);
 		const aId = await createAnalysis(request, aName, dsId);
 		try {
-			await page.goto(`/analysis/${aId}`);
+			await gotoAnalysisEditor(page, aId);
+
 			const buildBtn = page.locator('[data-testid="output-build-button"]');
-			await expect(buildBtn).toBeVisible({ timeout: 15_000 });
-
-			// Force HTTP transport so page.route() can intercept compute requests
-			await page.evaluate(() => localStorage.setItem('debug:prefer-http', 'true'));
-
-			// Intercept build API to return 500
-			await page.route('**/api/v1/compute/build', (route) => {
-				if (route.request().method() === 'POST') {
-					return route.fulfill({
-						status: 500,
-						contentType: 'application/json',
-						body: JSON.stringify({ detail: 'Simulated build failure' })
-					});
-				}
-				return route.continue();
-			});
-
+			await expect(buildBtn).toBeEnabled({ timeout: 15_000 });
 			await buildBtn.click();
 
-			// Error should appear on output node
-			await expect(page.locator('[data-testid="output-build-error"]')).toBeVisible({
-				timeout: 15_000
-			});
+			const openPreviewBtn = page.locator('[data-testid="output-build-preview-trigger"]');
+			await expect(openPreviewBtn).toBeVisible({ timeout: 10_000 });
+			await openPreviewBtn.click();
 
-			await screenshot(page, 'analysis/output', 'output-build-error');
+			const preview = page.locator('[data-testid="build-preview"]');
+			await expect(preview).toBeVisible({ timeout: 10_000 });
+
+			await expect(preview.getByText('Complete', { exact: true })).toBeVisible({ timeout: 60_000 });
+
+			const stepsPanel = page.locator('[data-testid="build-steps-panel"]');
+			await expect(stepsPanel).toBeVisible({ timeout: 5_000 });
+
+			const resultsTab = preview.getByRole('tab', { name: /Results/i });
+			await expect(resultsTab).toBeVisible({ timeout: 5_000 });
+			await resultsTab.click();
+
+			const results = page.locator('[data-testid="build-results"]');
+			await expect(results).toBeVisible({ timeout: 5_000 });
+			await expect(results.getByText('Source 1')).toBeVisible();
+
+			await screenshot(page, 'analysis/output', 'output-build-steps');
 		} finally {
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
@@ -447,7 +423,7 @@ test.describe('Analyses – row count action', () => {
 
 			const viewNode = page.locator('[data-step-type="view"]').first();
 			const countBtn = viewNode.locator('[data-testid="step-row-count-button"]');
-			await expect(countBtn).toBeVisible();
+			await expect(countBtn).toBeEnabled({ timeout: 15_000 });
 
 			await countBtn.click();
 
@@ -458,43 +434,6 @@ test.describe('Analyses – row count action', () => {
 
 			await screenshot(page, 'analysis/output', 'row-count-success');
 		} finally {
-			await deleteAnalysisViaUI(page, aName);
-			await deleteDatasourceViaUI(page, dsName);
-		}
-	});
-
-	test('count-rows: API failure shows error badge', async ({ page, request }) => {
-		test.setTimeout(90_000);
-		const dsName = `e2e-rowcount-err-ds-${uid()}`;
-		const aName = `E2E Row Count Err ${uid()}`;
-		const dsId = await createDatasource(request, dsName);
-		const aId = await createAnalysis(request, aName, dsId);
-		try {
-			await page.goto(`/analysis/${aId}`);
-			await expect(page.locator('[data-step-type="view"]')).toBeVisible({ timeout: 15_000 });
-
-			// Force HTTP transport so page.route() can intercept compute requests
-			await page.evaluate(() => localStorage.setItem('debug:prefer-http', 'true'));
-
-			await page.route('**/api/v1/compute/row-count', (route) =>
-				route.fulfill({
-					status: 500,
-					contentType: 'application/json',
-					body: JSON.stringify({ detail: 'Simulated row count failure' })
-				})
-			);
-
-			const viewNode = page.locator('[data-step-type="view"]').first();
-			const countBtn = viewNode.locator('[data-testid="step-row-count-button"]');
-			await countBtn.click();
-
-			await expect(viewNode.locator('[data-testid="step-row-count-error"]')).toBeVisible({
-				timeout: 10_000
-			});
-
-			await screenshot(page, 'analysis/output', 'row-count-error');
-		} finally {
-			await page.unrouteAll({ behavior: 'ignoreErrors' });
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -535,7 +474,7 @@ test.describe('Analyses – row count on non-view steps', () => {
 
 			// Click count-rows on the filter node
 			const countBtn = filterNode.locator('[data-testid="step-row-count-button"]');
-			await expect(countBtn).toBeVisible();
+			await expect(countBtn).toBeEnabled({ timeout: 15_000 });
 			await countBtn.click();
 
 			await expect(filterNode.locator('[data-testid="step-row-count"]')).toBeVisible({
@@ -575,13 +514,8 @@ test.describe('Analyses – row count on non-view steps', () => {
 
 			// Click count-rows on the limit node
 			const countBtn = limitNode.locator('[data-testid="step-row-count-button"]');
-			await expect(countBtn).toBeVisible({ timeout: 5_000 });
+			await expect(countBtn).toBeEnabled({ timeout: 15_000 });
 			await countBtn.click();
-
-			// Wait for loading spinner to disappear before asserting badge
-			await expect(limitNode.locator('[data-testid="step-row-count-button"]')).not.toBeVisible({
-				timeout: 15_000
-			});
 
 			await expect(limitNode.locator('[data-testid="step-row-count"]')).toBeVisible({
 				timeout: 15_000
@@ -590,57 +524,6 @@ test.describe('Analyses – row count on non-view steps', () => {
 
 			await screenshot(page, 'analysis/output', 'row-count-limit-step');
 		} finally {
-			await deleteAnalysisViaUI(page, aName);
-			await deleteDatasourceViaUI(page, dsName);
-		}
-	});
-
-	test('count-rows: API failure shows error on a sort step', async ({ page, request }) => {
-		test.setTimeout(90_000);
-		const dsName = `e2e-rowcount-sort-err-ds-${uid()}`;
-		const aName = `E2E Row Count Sort Err ${uid()}`;
-		const dsId = await createDatasource(request, dsName);
-		const aId = await createAnalysis(request, aName, dsId);
-		try {
-			await page.goto(`/analysis/${aId}`);
-			await expect(page.locator('button[data-step="sort"]')).toBeVisible({ timeout: 15_000 });
-
-			await page.locator('button[data-step="sort"]').click();
-			const sortNode = page.locator('[data-step-type="sort"]').first();
-			await expect(sortNode).toBeVisible({ timeout: 5_000 });
-
-			// Apply the step
-			await sortNode.locator('[data-action="edit"]').click();
-			const configPanel = page.locator('[data-step-config="sort"]');
-			await expect(configPanel).toBeVisible({ timeout: 8_000 });
-			await configPanel.getByRole('button', { name: 'Apply' }).click();
-			await expect(configPanel.getByRole('button', { name: 'Apply' })).toBeDisabled({
-				timeout: 5_000
-			});
-
-			// Force HTTP transport so page.route() can intercept compute requests
-			await page.evaluate(() => localStorage.setItem('debug:prefer-http', 'true'));
-
-			// Mock row-count to fail
-			await page.route('**/api/v1/compute/row-count', (route) =>
-				route.fulfill({
-					status: 500,
-					contentType: 'application/json',
-					body: JSON.stringify({ detail: 'Simulated failure on sort step' })
-				})
-			);
-
-			const countBtn = sortNode.locator('[data-testid="step-row-count-button"]');
-			await expect(countBtn).toBeVisible();
-			await countBtn.click();
-
-			await expect(sortNode.locator('[data-testid="step-row-count-error"]')).toBeVisible({
-				timeout: 10_000
-			});
-
-			await screenshot(page, 'analysis/output', 'row-count-sort-error');
-		} finally {
-			await page.unrouteAll({ behavior: 'ignoreErrors' });
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}

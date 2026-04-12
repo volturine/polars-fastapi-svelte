@@ -10,7 +10,8 @@ vi.mock('$lib/stores/clientIdentity.svelte', () => ({
 }));
 
 vi.mock('$lib/stores/namespace.svelte', () => ({
-	getNamespace: () => 'default'
+	requireNamespace: () => 'default',
+	isNamespaceReady: () => true
 }));
 
 const mockApiRequest = vi.fn();
@@ -19,40 +20,17 @@ vi.mock('$lib/api/client', () => ({
 	BASE_URL: '/api'
 }));
 
-type Listener = (event?: { data?: string; code?: number; reason?: string }) => void;
+const mockListEngineRuns = vi.fn();
+vi.mock('$lib/api/engine-runs', async (importOriginal) => {
+	const original = await importOriginal<typeof import('$lib/api/engine-runs')>();
+	return {
+		...original,
+		listEngineRuns: (...args: unknown[]) => mockListEngineRuns(...args)
+	};
+});
 
-class MockWebSocket {
-	static instances: MockWebSocket[] = [];
-
-	url: string;
-	readyState = 1;
-	private listeners = new Map<string, Listener[]>();
-
-	static readonly OPEN = 1;
-	static readonly CONNECTING = 0;
-
-	constructor(url: string) {
-		this.url = url;
-		MockWebSocket.instances.push(this);
-	}
-
-	addEventListener(type: string, listener: Listener) {
-		this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
-	}
-
-	close(_code?: number) {
-		this.readyState = 3;
-	}
-
-	emit(type: string, event?: { data?: string; code?: number; reason?: string }) {
-		for (const listener of this.listeners.get(type) ?? []) {
-			listener(event);
-		}
-	}
-}
-
-function sendSnapshot(socket: MockWebSocket, runs: EngineRun[]) {
-	socket.emit('message', { data: JSON.stringify({ type: 'snapshot', runs }) });
+function mockOkRuns(runs: EngineRun[]) {
+	return { match: (onOk: (v: EngineRun[]) => void, _onErr: (e: unknown) => void) => onOk(runs) };
 }
 
 function renderPicker(props: Record<string, unknown> = {}) {
@@ -110,18 +88,15 @@ function makeRun(overrides: Partial<EngineRun> = {}): EngineRun {
 	};
 }
 
-function latestSocket(): MockWebSocket | undefined {
-	return MockWebSocket.instances[MockWebSocket.instances.length - 1];
-}
-
 beforeEach(() => {
-	MockWebSocket.instances = [];
-	vi.stubGlobal('WebSocket', MockWebSocket);
+	vi.useFakeTimers();
 	mockApiRequest.mockReset();
+	mockListEngineRuns.mockReset();
+	mockListEngineRuns.mockReturnValue(mockOkRuns([]));
 });
 
 afterEach(() => {
-	vi.unstubAllGlobals();
+	vi.useRealTimers();
 });
 
 describe('SnapshotPicker', () => {
@@ -672,10 +647,9 @@ describe('SnapshotPicker', () => {
 					])
 				)
 			);
+			mockListEngineRuns.mockReturnValue(mockOkRuns([makeRun({ id: 'run-1', result_json: null })]));
 			renderPicker({ showBuildPreviews: true });
 			await tick();
-			const socket = latestSocket()!;
-			sendSnapshot(socket, [makeRun({ id: 'run-1', result_json: null })]);
 			await fireEvent.click(screen.getByRole('button'));
 			await tick();
 
@@ -693,10 +667,9 @@ describe('SnapshotPicker', () => {
 			mockApiRequest.mockReturnValue(
 				okAsync(makeSnapshots([{ id: 'snap-a', ts: JUN15, current: true }]))
 			);
+			mockListEngineRuns.mockReturnValue(mockOkRuns([]));
 			renderPicker({ showBuildPreviews: true });
 			await tick();
-			const socket = latestSocket()!;
-			sendSnapshot(socket, []);
 			await fireEvent.click(screen.getByRole('button'));
 			await tick();
 
@@ -706,6 +679,8 @@ describe('SnapshotPicker', () => {
 		});
 
 		test('filters to matched snapshots when map has entries', async () => {
+			const runs = [makeRun({ id: 'run-1', result_json: { snapshot_id: 'snap-a' } })];
+			mockListEngineRuns.mockReturnValue(okAsync(runs));
 			mockApiRequest.mockReturnValue(
 				okAsync(
 					makeSnapshots([
@@ -715,16 +690,19 @@ describe('SnapshotPicker', () => {
 					])
 				)
 			);
+			vi.useRealTimers();
 			renderPicker({ showBuildPreviews: true });
 			await tick();
-			const socket = latestSocket()!;
-			sendSnapshot(socket, [makeRun({ id: 'run-1', result_json: { snapshot_id: 'snap-a' } })]);
+			await tick();
 			await fireEvent.click(screen.getByRole('button'));
+			await tick();
 			await tick();
 
 			const dayButton = screen.getByText('15').closest('button');
 			expect(dayButton).toBeTruthy();
 			await fireEvent.click(dayButton!);
+			await tick();
+			await tick();
 
 			const buttons = screen.getAllByRole('button');
 			const timeButtons = buttons.filter((btn) => btn.textContent?.match(/\d{2}:\d{2}:\d{2}/));
@@ -735,11 +713,10 @@ describe('SnapshotPicker', () => {
 			mockApiRequest.mockReturnValue(
 				okAsync(makeSnapshots([{ id: 'snap-a', ts: JUN20, current: true }]))
 			);
+			mockListEngineRuns.mockReturnValue(mockOkRuns([makeRun({ id: 'run-1', result_json: {} })]));
 			const onUiChange = vi.fn();
 			renderPicker({ showBuildPreviews: true, onUiChange });
 			await tick();
-			const socket = latestSocket()!;
-			sendSnapshot(socket, [makeRun({ id: 'run-1', result_json: {} })]);
 			await fireEvent.click(screen.getByRole('button'));
 			await tick();
 
@@ -757,11 +734,10 @@ describe('SnapshotPicker', () => {
 			mockApiRequest.mockReturnValue(
 				okAsync(makeSnapshots([{ id: 'snap-a', ts: JUN15, current: true }]))
 			);
+			mockListEngineRuns.mockReturnValue(mockOkRuns([makeRun({ id: 'run-1', result_json: null })]));
 			const onUiChange = vi.fn();
 			renderPicker({ showBuildPreviews: true, onUiChange });
 			await tick();
-			const socket = latestSocket()!;
-			sendSnapshot(socket, [makeRun({ id: 'run-1', result_json: null })]);
 			await fireEvent.click(screen.getByRole('button'));
 			await tick();
 

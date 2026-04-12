@@ -1,6 +1,14 @@
 import { test, expect } from './fixtures.js';
+import {
+	createAnalysis,
+	createDatasource,
+	shutdownEngine as shutdownEngineViaApi,
+	spawnEngine as spawnEngineViaApi
+} from './utils/api.js';
 import { screenshot } from './utils/visual.js';
 import { waitForAppShell, waitForSettingsForm } from './utils/readiness.js';
+import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
+import { uid } from './utils/uid.js';
 
 /**
  * Smoke tests: every top-level route renders without a JS crash,
@@ -124,6 +132,40 @@ test.describe('Navigation – settings popup', () => {
 	});
 });
 
+test.describe('Navigation – engines live monitor', () => {
+	test('sidebar badge and engines popup update in real time', async ({ page, request }) => {
+		test.setTimeout(60_000);
+		const dsName = `e2e-engines-ds-${uid()}`;
+		const analysisName = `E2E Engines ${uid()}`;
+		const datasourceId = await createDatasource(request, dsName);
+		const analysisId = await createAnalysis(request, analysisName, datasourceId);
+
+		try {
+			await page.goto('/');
+			await waitForAppShell(page);
+
+			const engineButton = page.getByRole('button', { name: 'Engine Monitor' });
+			const engineBadge = page.getByTestId('engine-monitor-count');
+
+			await spawnEngineViaApi(request, analysisId);
+			await expect(engineBadge).toBeVisible({ timeout: 10_000 });
+
+			await engineButton.click();
+			const dialog = page.getByRole('dialog', { name: 'Engines' });
+			await expect(dialog).toBeVisible({ timeout: 5_000 });
+			await expect(dialog.getByText(analysisId)).toBeVisible({ timeout: 10_000 });
+
+			await shutdownEngineViaApi(request, analysisId);
+
+			await expect(dialog.getByText(analysisId)).not.toBeVisible({ timeout: 10_000 });
+		} finally {
+			await shutdownEngineViaApi(request, analysisId);
+			await deleteAnalysisViaUI(page, analysisName);
+			await deleteDatasourceViaUI(page, dsName);
+		}
+	});
+});
+
 // ────────────────────────────────────────────────────────────────────────────────
 // Chat panel – minimal smoke tests
 // ────────────────────────────────────────────────────────────────────────────────
@@ -171,5 +213,34 @@ test.describe('Navigation – chat panel smoke', () => {
 		// Click trigger again to close
 		await trigger.click();
 		await expect(panel).not.toBeVisible({ timeout: 3_000 });
+	});
+});
+
+test.describe('Navigation – namespace persistence', () => {
+	test('selected namespace persists across page refresh', async ({ page }) => {
+		test.setTimeout(30_000);
+		const ns = `e2e-ns-${uid()}`;
+
+		await page.goto('/');
+		await waitForAppShell(page);
+
+		await page.getByRole('button', { name: 'Select namespace' }).click();
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible({ timeout: 5_000 });
+
+		const search = dialog.getByRole('textbox', { name: 'Search namespaces' });
+		await search.fill(ns);
+
+		await dialog.getByText(`Create "${ns}"`).click();
+		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+
+		const sidebar = page.locator('aside[aria-label="Main navigation"]');
+		await expect(sidebar.getByText(ns)).toBeVisible({ timeout: 5_000 });
+
+		await page.reload({ waitUntil: 'networkidle' });
+		await waitForAppShell(page);
+
+		await expect(sidebar.getByText(ns)).toBeVisible({ timeout: 10_000 });
+		await screenshot(page, 'navigation', 'namespace-persisted');
 	});
 });

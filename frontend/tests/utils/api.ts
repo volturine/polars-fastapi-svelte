@@ -195,8 +195,15 @@ export async function createDatasourceWithDates(
 	return ((await response.json()) as { id: string }).id;
 }
 
-export async function createDatasource(request: APIRequestContext, name: string): Promise<string> {
+export async function createDatasource(
+	request: APIRequestContext,
+	name: string,
+	namespace?: string
+): Promise<string> {
+	const headers: Record<string, string> = {};
+	if (namespace) headers['X-Namespace'] = namespace;
 	const response = await request.post(`${API_BASE}/datasource/upload`, {
+		headers,
 		multipart: {
 			file: {
 				name: `${name}.csv`,
@@ -232,6 +239,19 @@ export async function createLargeDatasource(
 		throw new Error(`createLargeDatasource failed: ${response.status()} ${await response.text()}`);
 	}
 	return ((await response.json()) as { id: string }).id;
+}
+
+export async function deleteDatasource(
+	request: APIRequestContext,
+	id: string,
+	namespace?: string
+): Promise<void> {
+	const headers: Record<string, string> = {};
+	if (namespace) headers['X-Namespace'] = namespace;
+	const response = await request.delete(`${API_BASE}/datasource/${id}`, { headers });
+	if (!response.ok() && response.status() !== 404) {
+		throw new Error(`deleteDatasource failed: ${response.status()} ${await response.text()}`);
+	}
 }
 
 // ── Analysis ──────────────────────────────────────────────────────────────────
@@ -286,6 +306,53 @@ export async function createAnalysis(
 		throw new Error(`createAnalysis failed: ${response.status()} ${await response.text()}`);
 	}
 	return ((await response.json()) as { id: string }).id;
+}
+
+export async function spawnEngine(
+	request: APIRequestContext,
+	analysisId: string,
+	resourceConfig?: Record<string, unknown>
+): Promise<void> {
+	const response = await request.post(`${API_BASE}/compute/engine/spawn/${analysisId}`, {
+		data: resourceConfig ? { resource_config: resourceConfig } : undefined
+	});
+	if (!response.ok()) {
+		throw new Error(`spawnEngine failed: ${response.status()} ${await response.text()}`);
+	}
+}
+
+export async function shutdownEngine(
+	request: APIRequestContext,
+	analysisId: string
+): Promise<void> {
+	const maxRetries = 5;
+	const delayMs = 500;
+	for (let attempt = 0; attempt < maxRetries; attempt++) {
+		const response = await request.delete(`${API_BASE}/compute/engine/${analysisId}`);
+		if (response.ok() || response.status() === 404) return;
+		if (response.status() === 409 && attempt < maxRetries - 1) {
+			await new Promise((r) => setTimeout(r, delayMs));
+			continue;
+		}
+		throw new Error(`shutdownEngine failed: ${response.status()} ${await response.text()}`);
+	}
+}
+
+export async function shutdownEngineByToken(token: string, analysisId: string): Promise<void> {
+	const maxRetries = 5;
+	const delayMs = 500;
+	for (let attempt = 0; attempt < maxRetries; attempt++) {
+		const resp = await fetch(`${API_BASE}/compute/engine/${analysisId}`, {
+			method: 'DELETE',
+			headers: { Cookie: `session_token=${token}` }
+		});
+		if (resp.ok || resp.status === 404) return;
+		if (resp.status === 409 && attempt < maxRetries - 1) {
+			await new Promise((r) => setTimeout(r, delayMs));
+			continue;
+		}
+		throw new Error(`shutdownEngineByToken failed: ${resp.status} ${await resp.text()}`);
+	}
 }
 
 export async function createMultiStepAnalysis(

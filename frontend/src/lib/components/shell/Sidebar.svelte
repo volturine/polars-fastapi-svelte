@@ -60,8 +60,8 @@
 
 	// Subscription: $derived can't manage polling lifecycle.
 	$effect(() => {
-		untrack(() => void enginesStore.startPolling());
-		return () => enginesStore.stopPolling();
+		untrack(() => enginesStore.startStream());
+		return () => enginesStore.stopStream();
 	});
 
 	const navItems = [
@@ -313,6 +313,7 @@
 				<Cpu size={16} />
 				{#if enginesStore.count > 0}
 					<span
+						data-testid="engine-monitor-count"
 						class={css({
 							position: 'absolute',
 							top: '-2px',

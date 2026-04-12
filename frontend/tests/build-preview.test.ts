@@ -3,7 +3,8 @@ import {
 	createDatasource,
 	createAnalysis,
 	createLargeDatasource,
-	createMultiStepAnalysis
+	createMultiStepAnalysis,
+	shutdownEngine
 } from './utils/api.js';
 import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
 import { waitForLayoutReady } from './utils/readiness.js';
@@ -54,6 +55,7 @@ test.describe('Build Preview – real build lifecycle', () => {
 
 			await screenshot(page, 'build-preview', 'real-build-terminal');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -99,6 +101,7 @@ test.describe('Build Preview – real build lifecycle', () => {
 			await expect(results).toBeVisible({ timeout: 5_000 });
 			await expect(results.getByText('Source 1')).toBeVisible();
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -134,6 +137,7 @@ test.describe('Build Preview – real build lifecycle', () => {
 
 			await screenshot(page, 'build-preview', 'real-build-modal-closed');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}

@@ -21,6 +21,7 @@ from core.exceptions import AppError
 from core.http import close_clients
 from core.logging import RequestLoggingMiddleware, configure_logging
 from core.namespace import list_namespaces, namespace_paths, reset_namespace, set_namespace_context
+from modules.compute.engine_live import create_snapshot_notifier
 from modules.compute.manager import ProcessManager
 from modules.scheduler import service as scheduler_service
 from modules.udf.seed import ensure_udf_seeds
@@ -187,7 +188,7 @@ def _topo_sort_schedules(
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     logger.info('Starting application...')
-    app.state.manager = ProcessManager()
+    app.state.manager = ProcessManager(on_snapshot=create_snapshot_notifier(asyncio.get_running_loop()))
     await init_db()
     await asyncio.to_thread(run_db, ensure_udf_seeds)
 

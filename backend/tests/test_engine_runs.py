@@ -1,13 +1,12 @@
-import asyncio
 import uuid
 from datetime import UTC, datetime
-from types import SimpleNamespace
-from typing import Any, cast
-from unittest.mock import AsyncMock
 
-from starlette.websockets import WebSocketState
+from fastapi.testclient import TestClient
 
-from modules.engine_runs import routes as engine_run_routes, service as engine_run_service
+from core.database import run_db
+from core.namespace import reset_namespace, set_namespace_context
+from main import app
+from modules.engine_runs import service as engine_run_service
 from modules.engine_runs.models import EngineRun
 from modules.engine_runs.schemas import EngineRunKind, EngineRunStatus
 
@@ -164,164 +163,99 @@ def test_update_engine_run_replaces_result_json_when_merge_disabled(test_db_sess
     assert 'logs' not in updated.result_json
 
 
-def test_engine_run_list_websocket_refreshes_snapshot_after_changes(client, test_db_session) -> None:
-    with client.websocket_connect('/api/v1/engine-runs/ws?namespace=default') as websocket:
-        initial = websocket.receive_json()
-        created = engine_run_service.create_engine_run(
-            test_db_session,
-            engine_run_service.create_engine_run_payload(
-                analysis_id='analysis-ws',
-                datasource_id='ds-ws',
-                kind=EngineRunKind.PREVIEW,
-                status=EngineRunStatus.RUNNING,
-                request_json={'kind': 'preview'},
-                result_json={'row_count': 1},
-                created_at=datetime.now(UTC),
-            ),
-        )
-        running = websocket.receive_json()
-        engine_run_service.update_engine_run(
-            test_db_session,
-            created.id,
+def test_list_engine_runs_http_returns_filtered_runs(client, test_db_session) -> None:
+    analysis_id = str(uuid.uuid4())
+    engine_run_service.create_engine_run(
+        test_db_session,
+        engine_run_service.create_engine_run_payload(
+            analysis_id=analysis_id,
+            datasource_id='ds-list',
+            kind=EngineRunKind.PREVIEW,
             status=EngineRunStatus.SUCCESS,
-            progress=1.0,
-            duration_ms=300,
-            completed_at=datetime.now(UTC),
+            request_json={'kind': 'preview'},
             result_json={'row_count': 2},
-            merge_result_json=False,
-        )
-        completed = websocket.receive_json()
+            created_at=datetime.now(UTC),
+        ),
+    )
+    engine_run_service.create_engine_run(
+        test_db_session,
+        engine_run_service.create_engine_run_payload(
+            analysis_id=str(uuid.uuid4()),
+            datasource_id='ds-other',
+            kind=EngineRunKind.DOWNLOAD,
+            status=EngineRunStatus.FAILED,
+            request_json={'kind': 'download'},
+            result_json={'row_count': 5},
+            created_at=datetime.now(UTC),
+        ),
+    )
 
-    assert initial == {'type': 'snapshot', 'runs': []}
-    assert running['type'] == 'snapshot'
-    assert running['runs'][0]['id'] == created.id
-    assert running['runs'][0]['status'] == 'running'
-    assert completed['type'] == 'snapshot'
-    assert completed['runs'][0]['id'] == created.id
-    assert completed['runs'][0]['status'] == 'success'
-    assert completed['runs'][0]['progress'] == 1.0
+    response = client.get(
+        '/api/v1/engine-runs',
+        params={'analysis_id': analysis_id, 'status': 'success'},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]['analysis_id'] == analysis_id
+    assert payload[0]['status'] == 'success'
 
 
-def test_engine_run_list_websocket_refreshes_filtered_membership(client, test_db_session) -> None:
-    with client.websocket_connect('/api/v1/engine-runs/ws?namespace=default&status=running') as websocket:
-        initial = websocket.receive_json()
-        created = engine_run_service.create_engine_run(
-            test_db_session,
-            engine_run_service.create_engine_run_payload(
-                analysis_id='analysis-running',
-                datasource_id='ds-running',
-                kind=EngineRunKind.PREVIEW,
-                status=EngineRunStatus.RUNNING,
-                request_json={'kind': 'preview'},
-                result_json={'row_count': 1},
-                created_at=datetime.now(UTC),
-            ),
-        )
-        running = websocket.receive_json()
-        engine_run_service.update_engine_run(
-            test_db_session,
-            created.id,
+def test_get_engine_run_http_returns_full_run(client, test_db_session) -> None:
+    created = engine_run_service.create_engine_run(
+        test_db_session,
+        engine_run_service.create_engine_run_payload(
+            analysis_id='analysis-detail',
+            datasource_id='ds-detail',
+            kind=EngineRunKind.ROW_COUNT,
             status=EngineRunStatus.SUCCESS,
-            progress=1.0,
-            completed_at=datetime.now(UTC),
-            duration_ms=250,
-        )
-        completed = websocket.receive_json()
-
-    assert initial == {'type': 'snapshot', 'runs': []}
-    assert running['type'] == 'snapshot'
-    assert [run['id'] for run in running['runs']] == [created.id]
-    assert completed == {'type': 'snapshot', 'runs': []}
-
-
-def test_engine_run_list_websocket_treats_disconnect_runtimeerror_on_receive_as_normal(monkeypatch) -> None:
-    websocket = SimpleNamespace(
-        headers={},
-        query_params={},
-        client_state=WebSocketState.CONNECTED,
-        application_state=WebSocketState.CONNECTED,
+            request_json={'kind': 'row_count'},
+            result_json={'row_count': 9, 'schema': {'value': 'Int64'}},
+            created_at=datetime.now(UTC),
+            duration_ms=42,
+        ),
     )
-    websocket.accept = AsyncMock()
-    websocket.send_json = AsyncMock()
-    websocket.close = AsyncMock()
 
-    async def receive_disconnect_race() -> dict[str, str]:
-        websocket.client_state = WebSocketState.DISCONNECTED
-        raise RuntimeError('Cannot call "receive" once a disconnect message has been received.')
+    response = client.get(f'/api/v1/engine-runs/{created.id}')
 
-    websocket.receive = AsyncMock(side_effect=receive_disconnect_race)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['id'] == created.id
+    assert payload['kind'] == 'row_count'
+    assert payload['result_json']['row_count'] == 9
 
-    watch = object()
-    monkeypatch.setattr(engine_run_routes, 'set_namespace_context', lambda *_args, **_kwargs: 'token')
-    monkeypatch.setattr(engine_run_routes, 'reset_namespace', lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(engine_run_routes, 'get_namespace', lambda: 'default')
-    monkeypatch.setattr(engine_run_routes, '_parse_list_params', lambda _websocket: engine_run_routes.schemas.EngineRunListParams())
-    monkeypatch.setattr(engine_run_routes.watchers.EngineRunWatch, 'from_params', lambda *_args, **_kwargs: watch)
-    add_mock = AsyncMock()
-    discard_mock = AsyncMock()
-    snapshot_mock = AsyncMock(return_value=SimpleNamespace(model_dump=lambda **_kwargs: {'type': 'snapshot', 'runs': []}))
-    monkeypatch.setattr(engine_run_routes.watchers.registry, 'add', add_mock)
-    monkeypatch.setattr(engine_run_routes.watchers.registry, 'discard', discard_mock)
-    monkeypatch.setattr(
-        engine_run_routes.watchers.registry,
-        'snapshot',
-        snapshot_mock,
+
+def test_get_engine_run_http_returns_404_for_missing_run(client) -> None:
+    response = client.get(f'/api/v1/engine-runs/{uuid.uuid4()}')
+
+    assert response.status_code == 404
+    assert response.json() == {'detail': 'Engine run not found'}
+
+
+def test_engine_runs_http_respects_namespace() -> None:
+    payload = engine_run_service.create_engine_run_payload(
+        analysis_id='analysis-default',
+        datasource_id='ds-default',
+        kind=EngineRunKind.PREVIEW,
+        status=EngineRunStatus.SUCCESS,
+        request_json={'kind': 'preview'},
+        result_json={'row_count': 1},
+        created_at=datetime.now(UTC),
     )
-    logger_error = AsyncMock()
-    monkeypatch.setattr(engine_run_routes.logger, 'error', logger_error)
 
-    asyncio.run(engine_run_routes.engine_run_list_websocket(cast(Any, websocket)))
+    default = set_namespace_context('default')
+    try:
+        run_db(engine_run_service.create_engine_run, payload)
+    finally:
+        reset_namespace(default)
 
-    websocket.accept.assert_awaited_once()
-    add_mock.assert_awaited_once_with(websocket, watch)
-    snapshot_mock.assert_awaited_once_with(watch)
-    websocket.send_json.assert_awaited_once_with({'type': 'snapshot', 'runs': []})
-    discard_mock.assert_awaited_once_with(websocket, watch)
-    logger_error.assert_not_called()
+    with TestClient(app) as client:
+        default_response = client.get('/api/v1/engine-runs')
+        beta_response = client.get('/api/v1/engine-runs', headers={'X-Namespace': 'beta'})
 
-
-def test_engine_run_list_websocket_treats_disconnect_runtimeerror_on_send_as_normal(monkeypatch) -> None:
-    websocket = SimpleNamespace(
-        headers={},
-        query_params={},
-        client_state=WebSocketState.CONNECTED,
-        application_state=WebSocketState.CONNECTED,
-    )
-    websocket.accept = AsyncMock()
-    websocket.receive = AsyncMock()
-    websocket.close = AsyncMock()
-
-    async def send_disconnect_race(_payload: dict[str, Any]) -> None:
-        websocket.application_state = WebSocketState.DISCONNECTED
-        raise RuntimeError('Cannot call "send" once a close message has been sent.')
-
-    websocket.send_json = AsyncMock(side_effect=send_disconnect_race)
-
-    watch = object()
-    monkeypatch.setattr(engine_run_routes, 'set_namespace_context', lambda *_args, **_kwargs: 'token')
-    monkeypatch.setattr(engine_run_routes, 'reset_namespace', lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(engine_run_routes, 'get_namespace', lambda: 'default')
-    monkeypatch.setattr(engine_run_routes, '_parse_list_params', lambda _websocket: engine_run_routes.schemas.EngineRunListParams())
-    monkeypatch.setattr(engine_run_routes.watchers.EngineRunWatch, 'from_params', lambda *_args, **_kwargs: watch)
-    add_mock = AsyncMock()
-    discard_mock = AsyncMock()
-    snapshot_mock = AsyncMock(return_value=SimpleNamespace(model_dump=lambda **_kwargs: {'type': 'snapshot', 'runs': []}))
-    monkeypatch.setattr(engine_run_routes.watchers.registry, 'add', add_mock)
-    monkeypatch.setattr(engine_run_routes.watchers.registry, 'discard', discard_mock)
-    monkeypatch.setattr(
-        engine_run_routes.watchers.registry,
-        'snapshot',
-        snapshot_mock,
-    )
-    logger_error = AsyncMock()
-    monkeypatch.setattr(engine_run_routes.logger, 'error', logger_error)
-
-    asyncio.run(engine_run_routes.engine_run_list_websocket(cast(Any, websocket)))
-
-    websocket.accept.assert_awaited_once()
-    add_mock.assert_awaited_once_with(websocket, watch)
-    snapshot_mock.assert_awaited_once_with(watch)
-    websocket.send_json.assert_awaited_once_with({'type': 'snapshot', 'runs': []})
-    websocket.receive.assert_not_called()
-    discard_mock.assert_awaited_once_with(websocket, watch)
-    logger_error.assert_not_called()
+    assert default_response.status_code == 200
+    assert len(default_response.json()) == 1
+    assert default_response.json()[0]['analysis_id'] == 'analysis-default'
+    assert beta_response.status_code == 200
+    assert beta_response.json() == []

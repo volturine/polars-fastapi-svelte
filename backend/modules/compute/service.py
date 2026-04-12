@@ -313,8 +313,14 @@ def _preflight_datasource_for_compute(
         )
     branch = config.get('branch')
     branch_value = str(branch) if isinstance(branch, str) and branch else None
+    namespace_name = config.get('namespace_name')
+    namespace_value = str(namespace_name) if isinstance(namespace_name, str) and namespace_name.strip() else None
     try:
-        resolved_metadata_path = resolve_iceberg_branch_metadata_path(metadata_path, branch_value)
+        resolved_metadata_path = resolve_iceberg_branch_metadata_path(
+            metadata_path,
+            branch_value,
+            namespace_name=namespace_value,
+        )
     except ValueError as exc:
         message = str(exc)
         if 'Iceberg metadata_path not found' in message:
@@ -2620,86 +2626,6 @@ async def _stop_stream_task(task: asyncio.Task | None) -> None:
     task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await task
-
-
-def run_analysis_build_from_payload(session: Session, manager: ProcessManager, pipeline: dict | None) -> dict:
-    if not isinstance(pipeline, dict):
-        raise ValueError('analysis_pipeline is required')
-
-    tabs = pipeline.get('tabs', [])
-    if not isinstance(tabs, list) or not tabs:
-        raise ValueError('analysis_pipeline missing tabs')
-
-    analysis_id = pipeline.get('analysis_id')
-    analysis_id = str(analysis_id) if analysis_id is not None else None
-
-    results: list[dict] = []
-    tabs_built = 0
-    selected_tab_id = pipeline.get('tab_id')
-    required_tabs: set[str] | None = None
-    if selected_tab_id:
-        required_tabs = _resolve_upstream_tabs(tabs, str(selected_tab_id))
-
-    for tab in tabs:
-        if required_tabs and tab.get('id') not in required_tabs:
-            continue
-        tab_id = tab.get('id', 'unknown')
-        tab_name = tab.get('name', 'unnamed')
-        datasource = tab.get('datasource') if isinstance(tab, dict) else None
-        tab_datasource_id = datasource.get('id') if isinstance(datasource, dict) else None
-        steps = tab.get('steps', [])
-
-        if not tab_datasource_id:
-            continue
-
-        output_config = tab.get('output') if isinstance(tab, dict) else None
-        if not isinstance(output_config, dict) or 'filename' not in output_config:
-            output_config = None
-
-        target_step_id = steps[-1].get('id', 'source') if steps else 'source'
-
-        try:
-            if output_config is not None:
-                filename = output_config.get('filename', f'{tab_name}_out')
-
-                iceberg_cfg = output_config.get('iceberg')
-                iceberg_options = (
-                    {
-                        'table_name': iceberg_cfg.get('table_name', 'exported_data'),
-                        'namespace': iceberg_cfg.get('namespace', 'outputs'),
-                        'branch': iceberg_cfg.get('branch', 'master'),
-                    }
-                    if isinstance(iceberg_cfg, dict)
-                    else None
-                )
-
-                tab_build_mode = output_config.get('build_mode', 'full')
-
-                export_data(
-                    session=session,
-                    manager=manager,
-                    target_step_id=target_step_id,
-                    analysis_pipeline=pipeline,
-                    filename=filename,
-                    iceberg_options=iceberg_options,
-                    analysis_id=analysis_id,
-                    tab_id=str(tab_id) if tab_id else None,
-                    result_id=output_config.get('result_id'),
-                    build_mode=tab_build_mode,
-                )
-            else:
-                if required_tabs and str(tab_id) != str(selected_tab_id):
-                    tabs_built += 1
-                    results.append({'tab_id': tab_id, 'tab_name': tab_name, 'status': BuildTabStatus.SUCCESS})
-                    continue
-                raise ValueError(f'Tab {tab_id} missing output configuration')
-
-            tabs_built += 1
-            results.append({'tab_id': tab_id, 'tab_name': tab_name, 'status': BuildTabStatus.SUCCESS})
-        except Exception as e:
-            results.append({'tab_id': tab_id, 'tab_name': tab_name, 'status': BuildTabStatus.FAILED, 'error': str(e)})
-
-    return {'analysis_id': analysis_id or '', 'tabs_built': tabs_built, 'results': results}
 
 
 async def run_analysis_build_stream(

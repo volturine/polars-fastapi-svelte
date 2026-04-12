@@ -23,7 +23,7 @@
 		deleteAnalysisVersion
 	} from '$lib/api/analysis';
 	import { getDatasourceSchema, listDatasources } from '$lib/api/datasource';
-	import { getStepSchema, spawnEngine } from '$lib/api/compute';
+	import { getEngineDefaults, getStepSchema } from '$lib/api/compute';
 	import { openLockSession, type LockSessionError } from '$lib/api/locks';
 	import type { PipelineStep, AnalysisTab } from '$lib/types/analysis';
 	import { getDefaultConfig } from '$lib/utils/step-config-defaults';
@@ -53,6 +53,7 @@
 	import {
 		Lock,
 		LockOpen,
+		Clock,
 		ChevronDown,
 		ChevronLeft,
 		ChevronRight,
@@ -412,16 +413,14 @@
 	// Network: $derived can't fetch engine defaults.
 	$effect(() => {
 		if (!validAnalysisId || analysisStore.engineDefaults) return;
-		spawnEngine(validAnalysisId).match(
-			(status) => {
-				if (status.defaults) {
-					analysisStore.setEngineDefaults(status.defaults);
-				}
+		getEngineDefaults().match(
+			(defaults) => {
+				analysisStore.setEngineDefaults(defaults);
 			},
 			(err) => {
 				track({
 					event: 'engine_error',
-					action: 'spawn',
+					action: 'defaults',
 					target: validAnalysisId,
 					meta: { message: err.message }
 				});
@@ -1335,10 +1334,12 @@
 					<button
 						class={css({
 							display: 'flex',
+							flexShrink: '0',
 							alignItems: 'center',
 							justifyContent: 'center',
+							width: '8',
 							height: '100%',
-							paddingX: '2',
+							padding: '0',
 							backgroundColor: 'transparent',
 							border: 'none',
 							cursor: 'pointer',
@@ -1361,7 +1362,7 @@
 					</button>
 					<button
 						class={css({
-							width: '1/2',
+							flex: '1 1 0',
 							minWidth: '0',
 							height: '100%',
 							backgroundColor: 'bg.tertiary',
@@ -1369,10 +1370,10 @@
 							fontSize: 'xs',
 							fontWeight: 'medium',
 							cursor: 'pointer',
-							color: 'fg.muted',
+							color: isDirty ? 'fg.primary' : 'fg.muted',
 							borderRadius: 'xs',
 							_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
-							_disabled: { opacity: '0.5', cursor: 'not-allowed' }
+							_disabled: { opacity: '1', color: 'fg.muted', cursor: 'not-allowed' }
 						})}
 						onclick={discardChanges}
 						disabled={!isDirty || isSaving || analysisStore.loading || editorReadOnly}
@@ -1380,58 +1381,50 @@
 					>
 						Discard
 					</button>
-					<div
+					<button
+						class={css({
+							flex: '1 1 0',
+							minWidth: '0',
+							height: '100%',
+							border: 'none',
+							borderRadius: 'xs',
+							backgroundColor: 'bg.tertiary',
+							fontSize: 'xs',
+							fontWeight: 'medium',
+							cursor: 'pointer',
+							color: 'fg.success',
+							_disabled: { opacity: '1', color: 'fg.success', cursor: 'not-allowed' }
+						})}
+						onclick={handleSave}
+						disabled={isSaving || analysisStore.loading || editorReadOnly}
+						type="button"
+						data-save-state={saveButtonState}
+					>
+						{saveButtonLabel}
+					</button>
+					<button
 						class={css({
 							display: 'flex',
-							width: '1/2',
-							minWidth: '0',
+							flexShrink: '0',
+							alignItems: 'center',
+							justifyContent: 'center',
+							width: '8',
+							height: '100%',
+							backgroundColor: 'transparent',
+							border: 'none',
 							borderRadius: 'xs',
-							overflow: 'hidden',
-							...(isDirty ? { backgroundColor: 'bg.warning' } : { backgroundColor: 'bg.tertiary' })
+							cursor: 'pointer',
+							padding: '0',
+							color: 'fg.warning',
+							_hover: { backgroundColor: 'bg.hover', color: 'fg.warning' }
 						})}
+						onclick={openVersionModal}
+						type="button"
+						title="Version history"
+						data-testid="version-history-trigger"
 					>
-						<button
-							class={css({
-								flex: '1',
-								height: '100%',
-								border: 'none',
-								backgroundColor: 'transparent',
-								fontSize: 'xs',
-								fontWeight: 'medium',
-								cursor: 'pointer',
-								_disabled: { opacity: '0.5', cursor: 'not-allowed' },
-								...(isDirty ? { color: 'fg.warning' } : { color: 'fg.success' })
-							})}
-							onclick={handleSave}
-							disabled={isSaving || analysisStore.loading || editorReadOnly}
-							type="button"
-							data-save-state={saveButtonState}
-						>
-							{saveButtonLabel}
-						</button>
-						<button
-							class={css({
-								display: 'flex',
-								alignItems: 'center',
-								height: '100%',
-								backgroundColor: 'transparent',
-								border: 'none',
-								borderLeftWidth: '1',
-								borderLeftColor: isDirty ? 'border.warning' : 'border.primary',
-								cursor: 'pointer',
-								paddingX: '1.5',
-								color: isDirty ? 'fg.warning' : 'fg.faint',
-								opacity: '0.6',
-								_hover: { opacity: '1' }
-							})}
-							onclick={openVersionModal}
-							type="button"
-							title="Rollback to previous version"
-							data-testid="version-history-trigger"
-						>
-							<ChevronDown size={12} />
-						</button>
-					</div>
+						<Clock size={14} />
+					</button>
 				</div>
 			</div>
 		</header>

@@ -12,8 +12,8 @@
 
 	// Subscription: $derived can't start/stop polling.
 	$effect(() => {
-		untrack(() => enginesStore.startPolling());
-		return () => enginesStore.stopPolling();
+		untrack(() => enginesStore.startStream());
+		return () => enginesStore.stopStream();
 	});
 
 	async function handleKill(analysisId: string) {
@@ -38,9 +38,6 @@
 
 	function toggleExpanded() {
 		expanded = !expanded;
-		if (expanded) {
-			enginesStore.fetch();
-		}
 	}
 
 	let dropdownRef = $state<HTMLElement>();

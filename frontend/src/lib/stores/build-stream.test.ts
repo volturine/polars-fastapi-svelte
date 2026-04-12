@@ -1,13 +1,25 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { BuildStreamStore } from './build-stream.svelte';
 import type { ActiveBuildDetail } from '$lib/types/build-stream';
+import type { BuildRequest } from '$lib/api/compute';
+
+const mockStartActiveBuild = vi.fn();
+
+vi.mock('$lib/api/build-stream', async () => {
+	const actual =
+		await vi.importActual<typeof import('$lib/api/build-stream')>('$lib/api/build-stream');
+	return {
+		...actual,
+		startActiveBuild: (...args: unknown[]) => mockStartActiveBuild(...args)
+	};
+});
 
 vi.mock('$lib/stores/clientIdentity.svelte', () => ({
 	getClientIdentity: () => ({ clientId: 'client-1', clientSignature: 'signature-1' })
 }));
 
 vi.mock('$lib/stores/namespace.svelte', () => ({
-	getNamespace: () => 'default'
+	requireNamespace: () => 'default',
+	isNamespaceReady: () => true
 }));
 
 type Listener = (event?: { data?: string; code?: number; reason?: string }) => void;
@@ -16,7 +28,6 @@ class MockWebSocket {
 	static instances: MockWebSocket[] = [];
 
 	url: string;
-	sentMessages: string[] = [];
 	readyState = 1;
 	private listeners = new Map<string, Listener[]>();
 
@@ -30,10 +41,6 @@ class MockWebSocket {
 
 	addEventListener(type: string, listener: Listener) {
 		this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
-	}
-
-	send(message: string) {
-		this.sentMessages.push(message);
 	}
 
 	close() {
@@ -55,9 +62,78 @@ function msg(socket: MockWebSocket, payload: Record<string, unknown>) {
 
 const STARTER = { user_id: null, display_name: null, email: null, triggered_by: null };
 
+const DETAIL_BASE: ActiveBuildDetail = {
+	build_id: 'build-1',
+	analysis_id: 'analysis-1',
+	analysis_name: 'My Analysis',
+	namespace: 'default',
+	status: 'running',
+	progress: 0.42,
+	started_at: '2025-01-01T00:00:00Z',
+	starter: STARTER,
+	resource_config: null,
+	elapsed_ms: 1200,
+	estimated_remaining_ms: 800,
+	current_step: 'Loading data',
+	current_step_index: 0,
+	total_steps: 3,
+	current_tab_id: 'tab-1',
+	current_tab_name: 'Sheet 1',
+	current_output_id: 'output-1',
+	current_output_name: 'output_sheet_1',
+	total_tabs: 2,
+	steps: [],
+	query_plans: [],
+	latest_resources: null,
+	resources: [],
+	logs: [],
+	results: [],
+	duration_ms: null,
+	error: null
+};
+
+const MINIMAL_BUILD_REQUEST = {
+	analysis_pipeline: {
+		analysis_id: 'analysis-1',
+		tabs: [],
+		sources: {}
+	}
+} satisfies BuildRequest;
+
+const BUILD_REQUEST_WITH_NULL_TAB = {
+	...MINIMAL_BUILD_REQUEST,
+	tab_id: null
+} satisfies BuildRequest;
+
+function makeDetail(overrides: Partial<ActiveBuildDetail> = {}): ActiveBuildDetail {
+	return { ...DETAIL_BASE, ...overrides };
+}
+
+function mockStartSuccess(detail: ActiveBuildDetail = makeDetail()) {
+	mockStartActiveBuild.mockReturnValue({
+		match: (onOk: (build: ActiveBuildDetail) => void) => {
+			onOk(detail);
+			return Promise.resolve();
+		}
+	});
+}
+
+function mockStartError(message: string) {
+	mockStartActiveBuild.mockReturnValue({
+		match: (_onOk: unknown, onErr: (err: { message: string }) => void) => {
+			onErr({ message });
+			return Promise.resolve();
+		}
+	});
+}
+
+const { BuildStreamStore } = await import('./build-stream.svelte');
+
 describe('BuildStreamStore', () => {
 	beforeEach(() => {
 		MockWebSocket.instances = [];
+		vi.clearAllMocks();
+		mockStartSuccess();
 		vi.stubGlobal('WebSocket', MockWebSocket);
 	});
 
@@ -80,24 +156,26 @@ describe('BuildStreamStore', () => {
 		expect(store.succeeded).toBe(false);
 	});
 
-	test('start sends request and connects', () => {
+	test('start requests a live build and connects to its detail stream', () => {
 		const store = new BuildStreamStore();
-		store.start({ analysis_pipeline: { tabs: [] }, tab_id: null });
+		store.start(BUILD_REQUEST_WITH_NULL_TAB);
 
-		expect(MockWebSocket.instances).toHaveLength(1);
-		const socket = MockWebSocket.instances[0];
-
-		socket.emit('open');
-		expect(socket.sentMessages).toHaveLength(1);
-		expect(JSON.parse(socket.sentMessages[0])).toEqual({
-			analysis_pipeline: { tabs: [] },
+		expect(mockStartActiveBuild).toHaveBeenCalledWith({
+			analysis_pipeline: {
+				analysis_id: 'analysis-1',
+				tabs: [],
+				sources: {}
+			},
 			tab_id: null
 		});
+		expect(MockWebSocket.instances).toHaveLength(1);
+		const socket = MockWebSocket.instances[0];
+		expect(socket.url).toContain('/v1/compute/ws/builds/build-1');
 	});
 
 	test('applies snapshot', () => {
 		const store = new BuildStreamStore();
-		store.start({ analysis_pipeline: { tabs: [] } });
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -199,7 +277,7 @@ describe('BuildStreamStore', () => {
 
 	test('applies plan event', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -218,7 +296,7 @@ describe('BuildStreamStore', () => {
 
 	test('upserts plan by tab identity', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -255,7 +333,7 @@ describe('BuildStreamStore', () => {
 
 	test('applies step_start event', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -284,7 +362,7 @@ describe('BuildStreamStore', () => {
 
 	test('applies step_complete event', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -317,7 +395,7 @@ describe('BuildStreamStore', () => {
 
 	test('applies step_failed event', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -339,7 +417,7 @@ describe('BuildStreamStore', () => {
 
 	test('applies progress event', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -365,7 +443,7 @@ describe('BuildStreamStore', () => {
 
 	test('progressPct clamps to 0-100', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -385,7 +463,7 @@ describe('BuildStreamStore', () => {
 
 	test('applies resources event', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -409,7 +487,7 @@ describe('BuildStreamStore', () => {
 
 	test('resources with null memory_limit_mb gives 0 memoryPercent', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -431,7 +509,7 @@ describe('BuildStreamStore', () => {
 
 	test('applies log event', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -453,7 +531,7 @@ describe('BuildStreamStore', () => {
 
 	test('applies complete event', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -480,7 +558,7 @@ describe('BuildStreamStore', () => {
 
 	test('applies failed event', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -506,7 +584,7 @@ describe('BuildStreamStore', () => {
 
 	test('reset clears all state', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -539,7 +617,7 @@ describe('BuildStreamStore', () => {
 
 	test('updateStep sorts by buildStepIndex', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -572,7 +650,7 @@ describe('BuildStreamStore', () => {
 
 	test('updateStep replaces existing by buildStepIndex', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -608,7 +686,7 @@ describe('BuildStreamStore', () => {
 
 	test('disconnected status on unexpected close', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -617,22 +695,18 @@ describe('BuildStreamStore', () => {
 		expect(store.status).toBe('disconnected');
 	});
 
-	test('times out if no snapshot or event arrives after start', () => {
-		vi.useFakeTimers();
+	test('surfaces HTTP build-start failures', () => {
+		mockStartError('Build start failed');
 		const store = new BuildStreamStore();
-		store.start({});
-
-		expect(store.status).toBe('connecting');
-
-		vi.advanceTimersByTime(10_000);
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		expect(store.status).toBe('disconnected');
-		expect(store.error).toBe('Timed out waiting for build updates');
+		expect(store.error).toBe('Build start failed');
 	});
 
 	test('does not change status on close after completed', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -711,7 +785,7 @@ describe('BuildStreamStore', () => {
 
 	test('resourceHistory accumulates from resource events', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');
@@ -799,7 +873,7 @@ describe('BuildStreamStore', () => {
 
 	test('reset clears resourceHistory and resourceConfig', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');

@@ -1,7 +1,8 @@
 import { test, expect } from './fixtures.js';
-import { deleteAccount } from './utils/api.js';
+import { deleteAccount, shutdownEngineByToken } from './utils/api.js';
 import { createAnalysisViaUi, registerViaUi, uploadDatasourceViaUi } from './utils/user-flows.js';
 import { gotoAnalysisEditor, gotoReadOnlyAnalysisEditor } from './utils/analysis.js';
+import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
 import type { BrowserContext } from '@playwright/test';
 
 async function getSessionToken(context: BrowserContext): Promise<string | undefined> {
@@ -53,9 +54,10 @@ test.describe('Analyses – multi-user locking', () => {
 			}
 		})();
 
+		let analysisId: string | undefined;
 		try {
 			await uploadDatasourceViaUi(ownerPage, datasourceName);
-			const analysisId = await createAnalysisViaUi(ownerPage, analysisName, datasourceName);
+			analysisId = await createAnalysisViaUi(ownerPage, analysisName, datasourceName);
 
 			await gotoAnalysisEditor(ownerPage, analysisId);
 			const ownerFilter = ownerPage.locator('button[data-step="filter"]').first();
@@ -103,10 +105,41 @@ test.describe('Analyses – multi-user locking', () => {
 				timeout: 10_000
 			});
 		} finally {
+			if (ownerToken && analysisId) {
+				await shutdownEngineByToken(ownerToken, analysisId).catch(() => {});
+			}
+
 			await ownerPage.close().catch(() => {});
 			await viewerPage.close().catch(() => {});
 			await ownerContext.close().catch(() => {});
 			await viewerContext.close().catch(() => {});
+
+			if (ownerToken) {
+				const cleanupCtx = await browser.newContext({
+					baseURL,
+					storageState: {
+						cookies: [
+							{
+								name: 'session_token',
+								value: ownerToken,
+								domain: 'localhost',
+								path: '/',
+								expires: -1,
+								httpOnly: true,
+								secure: false,
+								sameSite: 'Lax' as const
+							}
+						],
+						origins: []
+					}
+				});
+				const cleanupPage = await cleanupCtx.newPage();
+				await deleteAnalysisViaUI(cleanupPage, analysisName).catch(() => {});
+				await deleteDatasourceViaUI(cleanupPage, datasourceName).catch(() => {});
+				await cleanupPage.close().catch(() => {});
+				await cleanupCtx.close().catch(() => {});
+			}
+
 			if (viewerToken) {
 				await deleteAccount(viewerToken).catch(() => {});
 			}

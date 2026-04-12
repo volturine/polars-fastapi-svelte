@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures.js';
-import { createDatasource, createAnalysis } from './utils/api.js';
+import { createDatasource, createAnalysis, shutdownEngine } from './utils/api.js';
 import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
 import { gotoAnalysisEditor, waitForEditorReload } from './utils/analysis.js';
 import { uid } from './utils/uid.js';
@@ -27,6 +27,7 @@ test.describe('Analyses – output visibility toggle', () => {
 
 			await screenshot(page, 'analysis/output', 'output-visibility-toggle');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -67,6 +68,7 @@ test.describe('Analyses – output node interactions', () => {
 
 			await screenshot(page, 'analysis/output', 'output-node-mode-dropdown');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -108,6 +110,7 @@ test.describe('Analyses – output node interactions', () => {
 
 			await screenshot(page, 'analysis/output', 'output-mode-recreate');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -162,6 +165,7 @@ test.describe('Analyses – output node interactions', () => {
 				)
 			).not.toBeVisible({ timeout: 3_000 });
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -197,6 +201,7 @@ test.describe('Analyses – output node interactions', () => {
 
 			await screenshot(page, 'analysis/output', 'output-table-renamed');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -233,6 +238,7 @@ test.describe('Analyses – output node table name edit', () => {
 
 			await screenshot(page, 'analysis/output', 'output-name-edited');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -275,6 +281,7 @@ test.describe('Analyses – output node persistence', () => {
 
 			await screenshot(page, 'analysis/output', 'output-mode-persisted');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -319,6 +326,7 @@ test.describe('Analyses – output node persistence', () => {
 
 			await screenshot(page, 'analysis/output', 'output-tablename-persisted');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -363,6 +371,7 @@ test.describe('Analyses – output build flow', () => {
 
 			await screenshot(page, 'analysis/output', 'output-build-success');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -403,6 +412,7 @@ test.describe('Analyses – output build flow', () => {
 
 			await screenshot(page, 'analysis/output', 'output-build-steps');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -434,6 +444,7 @@ test.describe('Analyses – row count action', () => {
 
 			await screenshot(page, 'analysis/output', 'row-count-success');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -484,6 +495,7 @@ test.describe('Analyses – row count on non-view steps', () => {
 
 			await screenshot(page, 'analysis/output', 'row-count-filter-step');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}
@@ -524,6 +536,7 @@ test.describe('Analyses – row count on non-view steps', () => {
 
 			await screenshot(page, 'analysis/output', 'row-count-limit-step');
 		} finally {
+			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
 		}

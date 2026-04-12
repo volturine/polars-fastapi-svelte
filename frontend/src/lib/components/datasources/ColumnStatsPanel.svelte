@@ -5,6 +5,7 @@
 	import type { HistogramBin } from '$lib/api/datasource';
 	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
+	import { useNamespace } from '$lib/stores/namespace.svelte';
 	import { css } from '$lib/styles/panda';
 
 	interface Props {
@@ -17,8 +18,10 @@
 
 	let { datasourceId, columnName, open, datasourceConfig = null, onClose }: Props = $props();
 
+	const ns = useNamespace();
+
 	const query = createQuery(() => ({
-		queryKey: ['column-stats', datasourceId, columnName, datasourceConfig ?? null],
+		queryKey: ['column-stats', ns.value, datasourceId, columnName, datasourceConfig ?? null],
 		queryFn: async () => {
 			if (!columnName) {
 				throw new Error('Column name required');
@@ -30,7 +33,7 @@
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		},
-		enabled: open && !!columnName && !!datasourceId,
+		enabled: open && !!columnName && !!datasourceId && !ns.switching,
 		staleTime: 30000
 	}));
 

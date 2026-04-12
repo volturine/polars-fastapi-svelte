@@ -2,10 +2,9 @@ import asyncio
 import logging
 from urllib.parse import quote
 
-from fastapi import Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
-from pydantic import BaseModel, ValidationError
 from sqlmodel import Session
 from starlette.websockets import WebSocketState
 
@@ -18,6 +17,7 @@ from core.validation import AnalysisId, DataSourceId, parse_analysis_id, parse_d
 from modules.auth.dependencies import get_current_user
 from modules.auth.models import User
 from modules.compute import schemas, service
+from modules.compute.engine_live import registry as engine_registry
 from modules.compute.live import registry as build_registry
 from modules.compute.manager import ProcessManager
 from modules.mcp.router import MCPRouter
@@ -27,30 +27,56 @@ logger = logging.getLogger(__name__)
 router = MCPRouter(prefix='/compute', tags=['compute'])
 
 
+def _websocket_disconnected(websocket: WebSocket) -> bool:
+    return websocket.client_state is WebSocketState.DISCONNECTED or websocket.application_state is WebSocketState.DISCONNECTED
+
+
+def _is_disconnect_runtime_error(exc: RuntimeError) -> bool:
+    message = str(exc)
+    return (
+        'Cannot call "receive" once a disconnect message has been received' in message
+        or 'Cannot call "send" once a close message has been sent' in message
+        or 'Unexpected ASGI message "websocket.close"' in message
+    )
+
+
 async def _safe_close_websocket(websocket: WebSocket) -> None:
-    if websocket.client_state is WebSocketState.DISCONNECTED:
-        return
-    if websocket.application_state is WebSocketState.DISCONNECTED:
+    if _websocket_disconnected(websocket):
         return
     try:
         await websocket.close()
-    except RuntimeError:
-        # Client can disconnect between state checks and close(); avoid noisy ASGI double-close errors.
-        return
+    except RuntimeError as exc:
+        if _is_disconnect_runtime_error(exc):
+            return
+        raise
 
 
 async def _safe_send_json(websocket: WebSocket, payload: dict) -> bool:
-    if websocket.client_state is WebSocketState.DISCONNECTED:
-        return False
-    if websocket.application_state is WebSocketState.DISCONNECTED:
+    if _websocket_disconnected(websocket):
         return False
     try:
         await websocket.send_json(payload)
-    except RuntimeError:
-        return False
+    except RuntimeError as exc:
+        if _websocket_disconnected(websocket) or _is_disconnect_runtime_error(exc):
+            return False
+        raise
     except WebSocketDisconnect:
         return False
     return True
+
+
+async def _wait_for_websocket_disconnect(websocket: WebSocket) -> None:
+    while not _websocket_disconnected(websocket):
+        try:
+            message = await websocket.receive()
+        except WebSocketDisconnect:
+            return
+        except RuntimeError as exc:
+            if _websocket_disconnected(websocket) or _is_disconnect_runtime_error(exc):
+                return
+            raise
+        if message.get('type') == 'websocket.disconnect':
+            return
 
 
 def _get_websocket_manager(websocket: WebSocket) -> ProcessManager:
@@ -90,37 +116,6 @@ def _resolve_websocket_user(websocket: WebSocket) -> User | None:
         return None
 
     return run_settings_db(_lookup)
-
-
-def _run_compute_websocket_action(
-    message: schemas.ComputeWebsocketRequest,
-    manager: ProcessManager,
-    namespace: str | None,
-) -> dict:
-    token = set_namespace_context(namespace)
-    session_gen = get_db()
-    session = next(session_gen)
-    try:
-        response: BaseModel
-        if message.action == schemas.ComputeWebsocketAction.PREVIEW:
-            preview_request = schemas.StepPreviewRequest.model_validate(message.payload)
-            response = preview_step(request=preview_request, session=session, manager=manager)
-        elif message.action == schemas.ComputeWebsocketAction.SCHEMA:
-            schema_request = schemas.StepSchemaRequest.model_validate(message.payload)
-            response = get_step_schema(request=schema_request, session=session, manager=manager)
-        elif message.action == schemas.ComputeWebsocketAction.ROW_COUNT:
-            row_count_request = schemas.StepRowCountRequest.model_validate(message.payload)
-            response = get_step_row_count(request=row_count_request, session=session, manager=manager)
-        elif message.action == schemas.ComputeWebsocketAction.BUILD:
-            build_request = schemas.BuildRequest.model_validate(message.payload)
-            response = build_analysis_from_payload(request=build_request, session=session, manager=manager)
-        else:
-            raise ValueError(f'Unsupported websocket action: {message.action}')
-        return response.model_dump(mode='json')
-    finally:
-        session.close()
-        session_gen.close()
-        reset_namespace(token)
 
 
 async def _emit_active_build_event(build_id: str, analysis_id: str, payload: dict[str, object]) -> None:
@@ -165,6 +160,85 @@ async def _send_build_snapshot(websocket: WebSocket, build_id: str) -> None:
     if build is None:
         raise HTTPException(status_code=404, detail='Active build not found')
     await _safe_send_json(websocket, schemas.BuildSnapshotMessage(build=build.detail()).model_dump(mode='json'))
+
+
+async def _send_build_list_snapshot(websocket: WebSocket, namespace: str) -> None:
+    builds = await build_registry.list_builds(status=schemas.ActiveBuildStatus.RUNNING)
+    visible = [build for build in builds if build.namespace == namespace]
+    await _safe_send_json(websocket, schemas.BuildListSnapshotMessage(builds=visible).model_dump(mode='json'))
+
+
+async def _send_engine_snapshot(websocket: WebSocket, manager: ProcessManager) -> None:
+    statuses = manager.list_all_engine_statuses()
+    await _safe_send_json(
+        websocket,
+        schemas.EngineListSnapshotMessage(
+            engines=[schemas.EngineStatusSchema.model_validate(status) for status in statuses],
+            total=len(statuses),
+        ).model_dump(mode='json'),
+    )
+
+
+def _build_pipeline_payload(request: schemas.BuildRequest) -> dict:
+    pipeline = request.analysis_pipeline.model_dump(mode='json') if request.analysis_pipeline else None
+    if not isinstance(pipeline, dict):
+        raise ValueError('analysis_pipeline is required')
+    return {**pipeline, 'tab_id': request.tab_id}
+
+
+async def _run_active_build_task(
+    *,
+    manager: ProcessManager,
+    build_id: str,
+    analysis_id: str,
+    namespace: str,
+    pipeline: dict,
+    triggered_by: str | None,
+) -> None:
+    token = set_namespace_context(namespace)
+    session_gen = None
+    session = None
+    try:
+        build = await build_registry.get_build(build_id)
+        if build is None:
+            return
+        active_build = build
+        session_gen = get_db()
+        session = next(session_gen)
+        await service.run_analysis_build_stream(
+            session=session,
+            manager=manager,
+            pipeline=pipeline,
+            build=active_build,
+            emitter=lambda payload: _emit_active_build_event(active_build.build_id, analysis_id, payload),
+            triggered_by=triggered_by,
+        )
+    except Exception as exc:
+        logger.error('Active build task error: %s', exc, exc_info=True)
+        build = await build_registry.get_build(build_id)
+        if build is not None and build.status == schemas.ActiveBuildStatus.RUNNING:
+            await _emit_active_build_event(
+                build.build_id,
+                analysis_id,
+                {
+                    'type': 'failed',
+                    'progress': build.progress,
+                    'elapsed_ms': build.elapsed_ms,
+                    'total_steps': build.total_steps,
+                    'tabs_built': len(build.results),
+                    'results': [result.model_dump(mode='json') for result in build.results],
+                    'duration_ms': build.elapsed_ms,
+                    'error': 'Build failed due to an internal error',
+                    'current_output_id': build.current_output_id,
+                    'current_output_name': build.current_output_name,
+                },
+            )
+    finally:
+        if session is not None:
+            session.close()
+        if session_gen is not None:
+            session_gen.close()
+        reset_namespace(token)
 
 
 @router.post('/preview', response_model=schemas.StepPreviewResponse, mcp=True)
@@ -274,49 +348,37 @@ def delete_iceberg_snapshot(
     return service.delete_iceberg_snapshot(session, parse_datasource_id(datasource_id), str(snapshot_id))
 
 
-@router.post('/build', response_model=schemas.BuildResponse, mcp=True)
-@handle_errors(operation='build analysis')
-def build_analysis_from_payload(
+@router.post('/builds/active', response_model=schemas.ActiveBuildDetail)
+@handle_errors(operation='start active build')
+async def start_active_build(
     request: schemas.BuildRequest,
-    session: Session = Depends(get_db),
     manager: ProcessManager = Depends(get_manager),
+    user: User = Depends(get_current_user),
 ):
-    """Build (export) an analysis from a pipeline payload.
-
-    Executes the pipeline and writes results to output datasources.
-    Requires analysis_pipeline with tabs and optionally tab_id to build a specific tab.
-    """
-    pipeline = request.analysis_pipeline.model_dump(mode='json') if request.analysis_pipeline else None
-    if not isinstance(pipeline, dict):
-        raise ValueError('analysis_pipeline is required')
-    pipeline = {**pipeline, 'tab_id': request.tab_id}
-    result = service.run_analysis_build_from_payload(session, manager, pipeline)
-    return schemas.BuildResponse(**result)
-
-
-@router.get('/builds/active', response_model=schemas.ActiveBuildListResponse, mcp=True)
-@handle_errors(operation='list active builds')
-async def list_active_builds(
-    request: Request,
-    status: schemas.ActiveBuildStatus | None = None,
-    _user: User = Depends(get_current_user),
-):
-    del request
-    builds = await build_registry.list_builds(status=status or schemas.ActiveBuildStatus.RUNNING)
+    pipeline = _build_pipeline_payload(request)
+    analysis_id = str(pipeline.get('analysis_id') or '')
+    analysis_name = await run_in_threadpool(_build_analysis_name, pipeline)
     namespace = get_namespace()
-    visible = [build for build in builds if build.namespace == namespace]
-    return schemas.ActiveBuildListResponse(builds=visible, total=len(visible))
-
-
-@router.get('/builds/active/{build_id}', response_model=schemas.ActiveBuildDetail, mcp=True)
-@handle_errors(operation='get active build')
-async def get_active_build(
-    build_id: str,
-    _user: User = Depends(get_current_user),
-):
-    build = await build_registry.get_build(build_id)
-    if build is None or build.namespace != get_namespace():
-        raise HTTPException(status_code=404, detail='Active build not found')
+    build = await build_registry.create_build(
+        analysis_id=analysis_id,
+        analysis_name=analysis_name,
+        namespace=namespace,
+        starter=service._build_starter(user),
+        total_tabs=len(pipeline.get('tabs', [])) if isinstance(pipeline.get('tabs'), list) else 0,
+    )
+    await build_registry.publish_list_snapshot(namespace)
+    task = asyncio.create_task(
+        _run_active_build_task(
+            manager=manager,
+            build_id=build.build_id,
+            analysis_id=analysis_id,
+            namespace=namespace,
+            pipeline=pipeline,
+            triggered_by=_build_triggered_by(user),
+        ),
+        name=f'active-build:{build.build_id}',
+    )
+    await build_registry.track_task(build.build_id, task)
     return build.detail()
 
 
@@ -369,13 +431,6 @@ def configure_engine(
     return manager.get_engine_status(analysis_id_value)
 
 
-@router.get('/engine/status/{analysis_id}', response_model=schemas.EngineStatusSchema, mcp=True)
-@handle_errors(operation='get engine status')
-def get_engine_status(analysis_id: AnalysisId, manager: ProcessManager = Depends(get_manager)):
-    """Get the status of an analysis engine."""
-    return manager.get_engine_status(parse_analysis_id(analysis_id))
-
-
 @router.delete('/engine/{analysis_id}', status_code=204, mcp=True)
 @handle_errors(operation='shutdown engine')
 def shutdown_engine(analysis_id: AnalysisId, manager: ProcessManager = Depends(get_manager)):
@@ -384,123 +439,37 @@ def shutdown_engine(analysis_id: AnalysisId, manager: ProcessManager = Depends(g
     engine = manager.get_engine(analysis_id_value)
     if not engine:
         raise EngineNotFoundError(analysis_id_value)
+    if engine.current_job_id and engine.is_process_alive():
+        raise HTTPException(status_code=409, detail='Engine has an active job')
     manager.shutdown_engine(analysis_id_value)
 
 
-@router.get('/engines', response_model=schemas.EngineListSchema, mcp=True)
-@handle_errors(operation='list engines')
-def list_engines(manager: ProcessManager = Depends(get_manager)):
-    """List all active engines with their status."""
-    statuses = manager.list_all_engine_statuses()
-    return {'engines': statuses, 'total': len(statuses)}
-
-
-@router.websocket('/ws')
-async def compute_websocket(
-    websocket: WebSocket,
-):
+@router.websocket('/ws/engines')
+async def engine_list_stream(websocket: WebSocket) -> None:
+    token = set_namespace_context(websocket.headers.get('X-Namespace') or websocket.query_params.get('namespace'))
+    namespace = get_namespace()
     manager = _get_websocket_manager(websocket)
     await websocket.accept()
-    action: schemas.ComputeWebsocketAction | None = None
     try:
-        raw_message = await websocket.receive_json()
-        message = schemas.ComputeWebsocketRequest.model_validate(raw_message)
-        action = message.action
-        await websocket.send_json(schemas.ComputeWebsocketStartedMessage(action=message.action).model_dump(mode='json'))
-        result = await run_in_threadpool(
-            _run_compute_websocket_action,
-            message,
-            manager,
-            websocket.query_params.get('namespace'),
-        )
-        await websocket.send_json(schemas.ComputeWebsocketResultMessage(action=message.action, data=result).model_dump(mode='json'))
+        await _require_websocket_user(websocket)
+        await engine_registry.add_watcher(namespace, websocket)
+        await _send_engine_snapshot(websocket, manager)
+        await _wait_for_websocket_disconnect(websocket)
     except WebSocketDisconnect:
         return
-    except ValidationError as exc:
-        await websocket.send_json(
-            schemas.ComputeWebsocketErrorMessage(
-                error=str(exc),
-                status_code=400,
-            ).model_dump(mode='json'),
-        )
     except HTTPException as exc:
-        await websocket.send_json(
-            schemas.ComputeWebsocketErrorMessage(
-                action=action,
-                error=str(exc.detail),
-                status_code=exc.status_code,
-            ).model_dump(mode='json'),
-        )
-    except Exception as exc:
-        logger.error('WebSocket error: %s', exc, exc_info=True)
-        await websocket.send_json(
-            schemas.ComputeWebsocketErrorMessage(
-                action=action,
-                error='An internal error occurred',
-            ).model_dump(mode='json'),
-        )
-    finally:
-        await _safe_close_websocket(websocket)
-
-
-@router.websocket('/ws/build')
-async def build_stream(websocket: WebSocket) -> None:
-    token = set_namespace_context(websocket.headers.get('X-Namespace') or websocket.query_params.get('namespace'))
-    await websocket.accept()
-    build_id: str | None = None
-    session_gen = None
-    session = None
-    try:
-        user = await _require_websocket_user(websocket)
-        raw_request = await websocket.receive_json()
-        request = schemas.BuildRequest.model_validate(raw_request)
-        pipeline = request.analysis_pipeline.model_dump(mode='json')
-        pipeline = {**pipeline, 'tab_id': request.tab_id}
-        analysis_id = str(pipeline.get('analysis_id') or '')
-        analysis_name = await run_in_threadpool(_build_analysis_name, pipeline)
-        build = await build_registry.create_build(
-            analysis_id=analysis_id,
-            analysis_name=analysis_name,
-            namespace=get_namespace(),
-            starter=service._build_starter(user),
-            total_tabs=len(pipeline.get('tabs', [])) if isinstance(pipeline.get('tabs'), list) else 0,
-        )
-        build_id = build.build_id
-        await build_registry.add_watcher(build_id, websocket)
-        await _send_build_snapshot(websocket, build_id)
-
-        session_gen = get_db()
-        session = next(session_gen)
-
-        await service.run_analysis_build_stream(
-            session=session,
-            manager=_get_websocket_manager(websocket),
-            pipeline=pipeline,
-            build=build,
-            emitter=lambda payload: _emit_active_build_event(build.build_id, analysis_id, payload),
-            triggered_by=_build_triggered_by(user),
-        )
-    except WebSocketDisconnect:
-        return
-    except ValidationError as exc:
-        await _safe_send_json(websocket, schemas.BuildWebsocketErrorMessage(error=str(exc), status_code=400).model_dump(mode='json'))
-    except HTTPException as exc:
-        await _safe_send_json(
-            websocket, schemas.BuildWebsocketErrorMessage(error=str(exc.detail), status_code=exc.status_code).model_dump(mode='json')
-        )
-    except Exception as exc:
-        logger.error('Build websocket error: %s', exc, exc_info=True)
         await _safe_send_json(
             websocket,
-            schemas.BuildWebsocketErrorMessage(error='An internal error occurred').model_dump(mode='json'),
+            schemas.EngineWebsocketErrorMessage(error=str(exc.detail), status_code=exc.status_code).model_dump(mode='json'),
+        )
+    except Exception as exc:
+        logger.error('Engine websocket error: %s', exc, exc_info=True)
+        await _safe_send_json(
+            websocket,
+            schemas.EngineWebsocketErrorMessage(error='An internal error occurred').model_dump(mode='json'),
         )
     finally:
-        if build_id is not None:
-            await build_registry.remove_watcher(build_id, websocket)
-        if session is not None:
-            session.close()
-        if session_gen is not None:
-            session_gen.close()
+        await engine_registry.remove_watcher(namespace, websocket)
         reset_namespace(token)
         await _safe_close_websocket(websocket)
 
@@ -513,11 +482,8 @@ async def build_list_stream(websocket: WebSocket) -> None:
     try:
         await _require_websocket_user(websocket)
         await build_registry.add_list_watcher(namespace, websocket)
-        builds = await build_registry.list_builds(status=schemas.ActiveBuildStatus.RUNNING)
-        visible = [build for build in builds if build.namespace == namespace]
-        await websocket.send_json(schemas.BuildListSnapshotMessage(builds=visible).model_dump(mode='json'))
-        while True:
-            await asyncio.sleep(3600)
+        await _send_build_list_snapshot(websocket, namespace)
+        await _wait_for_websocket_disconnect(websocket)
     except WebSocketDisconnect:
         return
     except HTTPException as exc:
@@ -547,8 +513,7 @@ async def active_build_stream(websocket: WebSocket, build_id: str) -> None:
             raise HTTPException(status_code=404, detail='Active build not found')
         await build_registry.add_watcher(build_id, websocket)
         await _send_build_snapshot(websocket, build_id)
-        while True:
-            await asyncio.sleep(3600)
+        await _wait_for_websocket_disconnect(websocket)
     except WebSocketDisconnect:
         return
     except HTTPException as exc:

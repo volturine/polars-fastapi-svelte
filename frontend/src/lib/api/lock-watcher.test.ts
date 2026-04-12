@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { openLockSession } from './locks';
 
+vi.mock('$lib/stores/clientIdentity.svelte', () => ({
+	getClientIdentity: () => ({ clientId: 'client-1', clientSignature: 'signature-1' })
+}));
+
+vi.mock('$lib/stores/namespace.svelte', () => ({
+	requireNamespace: () => 'default',
+	isNamespaceReady: () => true
+}));
+
 type Listener = (event?: { data?: string; code?: number; reason?: string }) => void;
 
 class MockWebSocket {

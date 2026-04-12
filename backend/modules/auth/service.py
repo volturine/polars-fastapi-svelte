@@ -632,7 +632,7 @@ async def send_verification_email(user_email: str, token: str) -> bool:
     password = str(smtp.get('password', ''))
 
     if not host or not smtp_user:
-        logger.error('SMTP is not configured for verification email')
+        logger.debug('SMTP is not configured for verification email')
         return False
 
     verify_url = f'{settings.auth_frontend_url}/verify?token={token}'
@@ -692,7 +692,7 @@ async def send_password_reset_email(user_email: str, token: str) -> bool:
     smtp_user = str(smtp.get('user', ''))
     password = str(smtp.get('password', ''))
     if not host or not smtp_user:
-        logger.error('SMTP is not configured for password reset email')
+        logger.debug('SMTP is not configured for password reset email')
         return False
     reset_url = f'{settings.auth_frontend_url}/reset-password?token={token}'
     msg = EmailMessage()

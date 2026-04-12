@@ -258,6 +258,7 @@ class ActiveBuild:
 class ActiveBuildRegistry:
     def __init__(self) -> None:
         self._builds: dict[str, ActiveBuild] = {}
+        self._tasks: dict[str, asyncio.Task[None]] = {}
         self._watchers: dict[str, set[WebSocket]] = {}
         self._list_watchers: dict[str, set[WebSocket]] = {}
         self._lock = asyncio.Lock()
@@ -282,9 +283,61 @@ class ActiveBuildRegistry:
 
     async def clear(self) -> None:
         async with self._lock:
+            tasks = list(self._tasks.values())
+            self._tasks.clear()
             self._builds.clear()
             self._watchers.clear()
             self._list_watchers.clear()
+        await self._cancel_tasks(tasks)
+
+    async def _cancel_tasks(self, tasks: list[asyncio.Task[None]]) -> None:
+        if not tasks:
+            return
+        current = asyncio.get_running_loop()
+        local: list[asyncio.Task[None]] = []
+        for task in tasks:
+            if task.done():
+                continue
+            loop = task.get_loop()
+            if loop is current:
+                task.cancel()
+                local.append(task)
+                continue
+            if loop.is_closed():
+                continue
+            loop.call_soon_threadsafe(task.cancel)
+        if not local:
+            return
+        await asyncio.gather(*local, return_exceptions=True)
+
+    async def track_task(self, build_id: str, task: asyncio.Task[None]) -> None:
+        previous: asyncio.Task[None] | None = None
+        async with self._lock:
+            if build_id not in self._builds:
+                task.cancel()
+                return
+            previous = self._tasks.get(build_id)
+            self._tasks[build_id] = task
+            task.add_done_callback(lambda done: self._schedule_task_cleanup(build_id, done))
+        if previous is None or previous is task:
+            return
+        await self._cancel_tasks([previous])
+
+    async def get_task(self, build_id: str) -> asyncio.Task[None] | None:
+        async with self._lock:
+            return self._tasks.get(build_id)
+
+    def _schedule_task_cleanup(self, build_id: str, task: asyncio.Task[None]) -> None:
+        loop = task.get_loop()
+        if loop.is_closed():
+            return
+        loop.create_task(self._drop_task(build_id, task))
+
+    async def _drop_task(self, build_id: str, task: asyncio.Task[None]) -> None:
+        async with self._lock:
+            current = self._tasks.get(build_id)
+            if current is task:
+                self._tasks.pop(build_id, None)
 
     async def prune_finished(self) -> None:
         async with self._lock:
@@ -292,6 +345,7 @@ class ActiveBuildRegistry:
 
     async def get_build(self, build_id: str) -> ActiveBuild | None:
         async with self._lock:
+            self._prune_finished_locked()
             return self._builds.get(build_id)
 
     async def list_builds(self, status: schemas.ActiveBuildStatus | None = None) -> list[schemas.ActiveBuildSummary]:
@@ -369,6 +423,34 @@ class ActiveBuildRegistry:
             if not watchers:
                 return
             watchers.discard(websocket)
+
+    async def publish_list_snapshot(self, namespace: str) -> None:
+        async with self._lock:
+            self._prune_finished_locked()
+            builds = [
+                build.summary()
+                for build in self._builds.values()
+                if build.namespace == namespace and build.status == schemas.ActiveBuildStatus.RUNNING
+            ]
+            builds.sort(key=lambda item: item.started_at, reverse=True)
+            sockets = list(self._list_watchers.get(namespace, set()))
+        if not sockets:
+            return
+        payload = schemas.BuildListSnapshotMessage(builds=builds).model_dump(mode='json')
+        stale: list[WebSocket] = []
+        for websocket in sockets:
+            try:
+                await websocket.send_json(payload)
+            except Exception:
+                stale.append(websocket)
+        if not stale:
+            return
+        async with self._lock:
+            watchers = self._list_watchers.get(namespace)
+            if not watchers:
+                return
+            for websocket in stale:
+                watchers.discard(websocket)
 
     async def apply_event(self, build_id: str, payload: dict) -> ActiveBuild | None:
         async with self._lock:
@@ -518,6 +600,7 @@ class ActiveBuildRegistry:
 
         for build_id in removable:
             self._builds.pop(build_id, None)
+            self._tasks.pop(build_id, None)
             self._watchers.pop(build_id, None)
 
 

@@ -4,6 +4,7 @@
 	import { getDatasource, listDatasources } from '$lib/api/datasource';
 	import { listAnalyses } from '$lib/api/analysis';
 	import { EngineRunsStore } from '$lib/stores/engine-runs.svelte';
+	import { ActiveBuildsStore } from '$lib/stores/active-builds.svelte';
 	import { page as pageState } from '$app/state';
 	import {
 		Search,
@@ -21,13 +22,14 @@
 		CalendarClock,
 		Database,
 		RefreshCw,
-		Hash
+		Hash,
+		Activity
 	} from 'lucide-svelte';
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
 	import BuildPreview from '$lib/components/common/BuildPreview.svelte';
 	import { BuildStreamStore } from '$lib/stores/build-stream.svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
-	import { css, cx, spinner, button, emptyText, input } from '$lib/styles/panda';
+	import { css, cx, spinner, button, emptyText, input, badge } from '$lib/styles/panda';
 	import {
 		engineRunBuildDetail,
 		engineRunCurrentTabName,
@@ -79,11 +81,19 @@
 	});
 
 	const engineRunsStore = new EngineRunsStore();
-	// Side effect: WS connection depends on queryParams and must be cleaned up on destroy
+	const activeBuildsStore = new ActiveBuildsStore();
+
+	// Side effect: HTTP polling depends on queryParams and must be cleaned up on destroy
 	$effect(() => {
 		const params = queryParams;
 		engineRunsStore.start(params);
 		return () => engineRunsStore.close();
+	});
+
+	// Side effect: WS connection for live active builds, must be cleaned up on destroy
+	$effect(() => {
+		activeBuildsStore.start();
+		return () => activeBuildsStore.close();
 	});
 
 	const datasourcesQuery = createQuery(() => ({
@@ -326,6 +336,7 @@
 				store.close();
 			}
 			runDetailStores.clear();
+			activeBuildsStore.reset();
 		};
 	});
 
@@ -514,6 +525,76 @@
 					aria-label="To date"
 					bind:value={dateTo}
 				/>
+			</div>
+		</div>
+	{/if}
+
+	{#if activeBuildsStore.count > 0}
+		<div
+			data-testid="active-builds"
+			class={css({
+				marginBottom: '4',
+				borderWidth: '1',
+				borderColor: 'border.accent',
+				padding: '4'
+			})}
+		>
+			<div
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					gap: '2',
+					marginBottom: '3'
+				})}
+			>
+				<Activity size={14} class={css({ color: 'accent.primary' })} />
+				<span class={css({ fontWeight: 'medium', fontSize: 'sm' })}>Active Builds</span>
+				<span class={badge()}>{activeBuildsStore.count}</span>
+			</div>
+			<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+				{#each activeBuildsStore.builds as build (build.build_id)}
+					<div
+						data-testid="active-build-{build.build_id}"
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							gap: '3',
+							paddingX: '3',
+							paddingY: '2',
+							backgroundColor: 'bg.secondary',
+							fontSize: 'sm'
+						})}
+					>
+						<Loader
+							size={14}
+							class={css({ color: 'accent.primary', animation: 'spin 1s linear infinite' })}
+						/>
+						<span class={css({ fontWeight: 'medium', flex: '1', truncate: true })}>
+							{build.analysis_name}
+						</span>
+						{#if build.current_step}
+							<span class={css({ color: 'fg.secondary', truncate: true, maxWidth: 'panel' })}>
+								{build.current_step}
+							</span>
+						{/if}
+						<span class={css({ fontFamily: 'mono', fontSize: 'xs', color: 'fg.muted' })}>
+							{Math.round(build.progress * 100)}%
+						</span>
+						<div
+							class={css({
+								width: '80px',
+								height: '4px',
+								backgroundColor: 'bg.tertiary',
+								overflow: 'hidden'
+							})}
+						>
+							<div
+								class={css({ height: '100%', backgroundColor: 'accent.primary' })}
+								style="width: {Math.round(build.progress * 100)}%"
+							></div>
+						</div>
+					</div>
+				{/each}
 			</div>
 		</div>
 	{/if}

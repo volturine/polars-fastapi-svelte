@@ -5,7 +5,12 @@ import { BuildStreamStore } from '$lib/stores/build-stream.svelte';
 import type { ActiveBuildDetail } from '$lib/types/build-stream';
 
 vi.mock('$lib/api/build-stream', () => ({
-	connectBuildStream: () => ({ close: vi.fn() })
+	startActiveBuild: () => ({
+		match: async (onOk: (build: ActiveBuildDetail) => void) => {
+			onOk(makeDetail());
+		}
+	}),
+	connectBuildDetailStream: () => ({ close: vi.fn() })
 }));
 
 vi.mock('$lib/stores/clientIdentity.svelte', () => ({
@@ -13,7 +18,8 @@ vi.mock('$lib/stores/clientIdentity.svelte', () => ({
 }));
 
 vi.mock('$lib/stores/namespace.svelte', () => ({
-	getNamespace: () => 'default'
+	requireNamespace: () => 'default',
+	isNamespaceReady: () => true
 }));
 
 const STARTER = { user_id: null, display_name: null, email: null, triggered_by: null };

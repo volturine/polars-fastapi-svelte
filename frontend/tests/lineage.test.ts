@@ -113,4 +113,47 @@ test.describe('Lineage – with datasource data', () => {
 			await deleteDatasourceViaUI(page, dsName);
 		}
 	});
+
+	test('dragging the canvas pans visible lineage nodes', async ({ page, request }) => {
+		test.setTimeout(60_000);
+		const dsName = `e2e-lineage-pan-ds-${uid()}`;
+		const aName = `E2E Lineage Pan ${uid()}`;
+		const dsId = await createDatasource(request, dsName);
+		await createAnalysis(request, aName, dsId);
+
+		try {
+			await page.goto('/lineage');
+			await waitForLineageToolbar(page);
+			const graph = page.getByTestId('lineage-canvas');
+			await expect(graph).toBeVisible({ timeout: 15_000 });
+
+			const node = page.locator('.lineage-node').first();
+			await expect(node).toBeVisible({ timeout: 15_000 });
+
+			const before = await node.boundingBox();
+			const graphBox = await graph.boundingBox();
+			expect(before).not.toBeNull();
+			expect(graphBox).not.toBeNull();
+			if (!before || !graphBox) {
+				throw new Error('Expected lineage node and graph canvas bounding boxes');
+			}
+
+			await page.mouse.move(graphBox.x + 24, graphBox.y + 24);
+			await page.mouse.down();
+			await page.mouse.move(graphBox.x + 180, graphBox.y + 120, { steps: 12 });
+			await page.mouse.up();
+
+			const after = await node.boundingBox();
+			expect(after).not.toBeNull();
+			if (!after) {
+				throw new Error('Expected lineage node bounding box after panning');
+			}
+
+			expect(after.x).toBeGreaterThan(before.x + 60);
+			expect(after.y).toBeGreaterThan(before.y + 40);
+		} finally {
+			await deleteAnalysisViaUI(page, aName);
+			await deleteDatasourceViaUI(page, dsName);
+		}
+	});
 });

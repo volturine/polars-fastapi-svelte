@@ -101,12 +101,6 @@
 			window.removeEventListener('scroll', handleResize, true);
 		};
 	});
-
-	// Network: fetch engines when popup opens; $derived cannot trigger side effects.
-	$effect(() => {
-		if (!open) return;
-		enginesStore.fetch();
-	});
 </script>
 
 {#if open}

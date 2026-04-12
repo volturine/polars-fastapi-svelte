@@ -10,6 +10,7 @@
 	import type { DataSource } from '$lib/types/datasource';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
+	import { useNamespace } from '$lib/stores/namespace.svelte';
 	import {
 		buildAnalysisPipelinePayload,
 		buildDatasourcePipelinePayload
@@ -23,6 +24,8 @@
 	}
 
 	let { datasourceId, datasource, datasourceConfig = {} }: Props = $props();
+
+	const ns = useNamespace();
 
 	let page = $state(1);
 	let rowLimit = $state(100);
@@ -85,7 +88,15 @@
 	});
 
 	const query = createQuery(() => ({
-		queryKey: ['datasource-preview', datasourceId, page, rowLimit, configKey, pipelineKey],
+		queryKey: [
+			'datasource-preview',
+			ns.value,
+			datasourceId,
+			page,
+			rowLimit,
+			configKey,
+			pipelineKey
+		],
 		queryFn: async (): Promise<StepPreviewResponse> => {
 			const pipeline = analysisPipeline!;
 			const request = {
@@ -102,7 +113,7 @@
 			return result.value;
 		},
 		staleTime: 30000,
-		enabled: !!datasourceId && !!analysisPipeline
+		enabled: !!datasourceId && !!analysisPipeline && !ns.switching
 	}));
 
 	const data = $derived(query.data);

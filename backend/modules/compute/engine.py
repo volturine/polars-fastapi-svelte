@@ -93,11 +93,15 @@ class PolarsComputeEngine:
             return True  # Process is running fine
 
         # Process died unexpectedly - reset state
-        logger.warning(
-            f'Compute process for analysis {self.analysis_id} died unexpectedly '
-            f'(exit code: {self.process.exitcode if self.process else "unknown"}). '
-            f'Resetting engine state.',
-        )
+        exit_code = self.process.exitcode if self.process else None
+        if exit_code == 0:
+            logger.debug(f'Compute process for analysis {self.analysis_id} exited cleanly. Resetting engine state.')
+        else:
+            logger.warning(
+                f'Compute process for analysis {self.analysis_id} died unexpectedly '
+                f'(exit code: {exit_code if exit_code is not None else "unknown"}). '
+                f'Resetting engine state.',
+            )
         self._reset_state()
         return False
 
@@ -310,7 +314,7 @@ class PolarsComputeEngine:
         try:
             self.command_queue.put(ShutdownCommand(), timeout=1)
         except Exception as exc:
-            logger.warning(f'Failed to enqueue shutdown command: {exc}', exc_info=True)
+            logger.debug(f'Failed to enqueue shutdown command: {exc}', exc_info=True)
 
         if self.process and self.process.is_alive():
             self.process.join(timeout=5)

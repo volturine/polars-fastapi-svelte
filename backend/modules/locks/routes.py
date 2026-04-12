@@ -18,6 +18,16 @@ logger = logging.getLogger(__name__)
 router = MCPRouter(prefix='/locks', tags=['locks'])
 
 
+def _is_disconnect_runtime_error(exc: RuntimeError) -> bool:
+    message = str(exc)
+    return (
+        'Cannot call "receive" once a disconnect message has been received' in message
+        or 'Cannot call "send" once a close message has been sent' in message
+        or 'Unexpected ASGI message "websocket.close"' in message
+        or 'WebSocket is not connected. Need to call "accept" first.' in message
+    )
+
+
 async def _safe_close_websocket(websocket: WebSocket) -> None:
     if websocket.client_state is WebSocketState.DISCONNECTED:
         return
@@ -25,8 +35,10 @@ async def _safe_close_websocket(websocket: WebSocket) -> None:
         return
     try:
         await websocket.close()
-    except RuntimeError:
-        return
+    except RuntimeError as exc:
+        if _is_disconnect_runtime_error(exc):
+            return
+        raise
 
 
 def _resolve_websocket_session_token(websocket: WebSocket) -> str | None:
@@ -334,6 +346,11 @@ async def lock_websocket(websocket: WebSocket) -> None:
                 await _send_error(websocket, str(exc.detail), exc.status_code)
     except WebSocketDisconnect:
         return
+    except RuntimeError as exc:
+        if _is_disconnect_runtime_error(exc):
+            return
+        logger.error('Lock websocket error: %s', exc, exc_info=True)
+        await _send_error(websocket, 'An internal error occurred', 500)
     except Exception as exc:
         logger.error('Lock websocket error: %s', exc, exc_info=True)
         await _send_error(websocket, 'An internal error occurred', 500)

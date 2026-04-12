@@ -15,15 +15,15 @@ from starlette.websockets import WebSocketState
 
 from core.dependencies import get_manager
 from core.exceptions import PipelineValidationError
-from core.namespace import namespace_paths
+from core.namespace import namespace_paths, reset_namespace, set_namespace_context
 from main import app
 from modules.compute import schemas as compute_schemas, service as compute_service
-from modules.compute.core.base import EngineResult
+from modules.compute.core.base import ComputeEngine, EngineProgressEvent, EngineResult
 from modules.compute.engine import PolarsComputeEngine
 from modules.compute.live import ActiveBuild, registry as active_build_registry
 from modules.compute.manager import ProcessManager
 from modules.compute.operations.datasource import _analysis_stack_var
-from modules.compute.routes import _safe_close_websocket, _safe_send_json
+from modules.compute.routes import _safe_close_websocket, _safe_send_json, _wait_for_websocket_disconnect
 from modules.compute.utils import await_engine_result
 from modules.datasource.models import DataSource
 from modules.engine_runs import service as engine_run_service
@@ -52,6 +52,16 @@ def test_safe_close_websocket_swallows_runtime_disconnect_race() -> None:
     websocket.close.assert_awaited_once()
 
 
+def test_safe_close_websocket_reraises_unexpected_runtime_error() -> None:
+    websocket = MagicMock()
+    websocket.client_state = WebSocketState.CONNECTED
+    websocket.application_state = WebSocketState.CONNECTED
+    websocket.close = AsyncMock(side_effect=RuntimeError('boom'))
+
+    with pytest.raises(RuntimeError, match='boom'):
+        asyncio.run(_safe_close_websocket(websocket))
+
+
 def test_run_compute_clears_inherited_polars_env_for_auto_values(monkeypatch) -> None:
     monkeypatch.setenv('POLARS_MAX_THREADS', '8')
     monkeypatch.setenv('POLARS_STREAMING_CHUNK_SIZE', '100000')
@@ -73,6 +83,59 @@ def test_classify_engine_error_marks_missing_metadata_files_as_snapshot_unavaila
     kind, details = PolarsComputeEngine._classify_engine_error(exc)
     assert kind == 'datasource_metadata_missing'
     assert details == {}
+
+
+def test_preflight_datasource_for_compute_uses_datasource_namespace_when_ambient_differs() -> None:
+    alpha = set_namespace_context('alpha')
+    try:
+        beta_metadata_file = namespace_paths('beta').exports_dir / 'table' / 'metadata' / 'v1.metadata.json'
+        beta_metadata_file.parent.mkdir(parents=True, exist_ok=True)
+        beta_metadata_file.write_text('{}', encoding='utf-8')
+    finally:
+        reset_namespace(alpha)
+
+    ambient = set_namespace_context('default')
+    try:
+        config = {
+            'source_type': 'iceberg',
+            'metadata_path': str(beta_metadata_file.parent.parent),
+            'branch': 'master',
+            'namespace_name': 'beta',
+        }
+
+        compute_service._preflight_datasource_for_compute(
+            config,
+            operation='preview',
+            datasource_id='datasource-id',
+        )
+
+        assert config['metadata_path'] == str(beta_metadata_file)
+    finally:
+        reset_namespace(ambient)
+
+
+def test_preflight_datasource_for_compute_rejects_cross_namespace_path() -> None:
+    alpha = set_namespace_context('alpha')
+    try:
+        beta_metadata_file = namespace_paths('beta').exports_dir / 'table' / 'metadata' / 'v1.metadata.json'
+        beta_metadata_file.parent.mkdir(parents=True, exist_ok=True)
+        beta_metadata_file.write_text('{}', encoding='utf-8')
+    finally:
+        reset_namespace(alpha)
+
+    config = {
+        'source_type': 'iceberg',
+        'metadata_path': str(beta_metadata_file.parent.parent),
+        'branch': 'master',
+        'namespace_name': 'alpha',
+    }
+
+    with pytest.raises(ValueError, match='Iceberg metadata_path must be inside data directory'):
+        compute_service._preflight_datasource_for_compute(
+            config,
+            operation='preview',
+            datasource_id='datasource-id',
+        )
 
 
 def test_await_engine_result_returns_immediate_result_before_poll_loop() -> None:
@@ -678,97 +741,6 @@ class TestComputePreview:
         assert 'data' in result
         assert result['total_rows'] == 2
 
-    def test_preview_step_success_over_websocket(self, client, sample_datasource: DataSource):
-        payload = {
-            'analysis_id': 'analysis-id',
-            'analysis_pipeline': {
-                'analysis_id': 'analysis-id',
-                'tabs': [
-                    {
-                        'id': 'tab1',
-                        'datasource': {
-                            'id': sample_datasource.id,
-                            'analysis_tab_id': None,
-                            'config': {'branch': 'master'},
-                        },
-                        'output': {
-                            'result_id': 'out-1',
-                            'datasource_type': 'iceberg',
-                            'format': 'parquet',
-                            'filename': 'out',
-                        },
-                        'steps': [
-                            {
-                                'id': 'step1',
-                                'type': 'filter',
-                                'config': {'column': 'age', 'operator': '>', 'value': 25},
-                            },
-                        ],
-                    },
-                ],
-                'sources': {
-                    sample_datasource.id: {
-                        'source_type': sample_datasource.source_type,
-                        **sample_datasource.config,
-                    },
-                    'out-1': {
-                        'source_type': 'analysis',
-                        'analysis_id': 'analysis-id',
-                        'analysis_tab_id': 'tab1',
-                    },
-                },
-            },
-            'target_step_id': 'step1',
-        }
-
-        mock_manager = MagicMock()
-        mock_engine = MagicMock()
-
-        mock_engine.preview.return_value = 'preview-job-ws'
-        mock_engine.get_result.side_effect = [
-            None,
-            EngineResult(
-                job_id='preview-job-ws',
-                data={
-                    'schema': {'name': 'String'},
-                    'data': [{'name': 'Bob'}],
-                    'row_count': 1,
-                },
-                error=None,
-            ),
-        ]
-
-        mock_manager.get_engine.return_value = None
-        mock_manager.get_or_create_engine.return_value = mock_engine
-        app.dependency_overrides[get_manager] = lambda: mock_manager
-
-        with client.websocket_connect('/api/v1/compute/ws?namespace=default') as websocket:
-            websocket.send_json({'action': 'preview', 'payload': payload})
-            started = websocket.receive_json()
-            result = websocket.receive_json()
-
-        assert started == {'type': 'started', 'action': 'preview'}
-        assert result['type'] == 'result'
-        assert result['action'] == 'preview'
-        assert result['data']['step_id'] == 'step1'
-        assert result['data']['total_rows'] == 1
-
-    def test_preview_step_websocket_internal_error_is_sanitized(self, client):
-        with (
-            patch('modules.compute.routes._run_compute_websocket_action', side_effect=RuntimeError('secret failure details')),
-            client.websocket_connect('/api/v1/compute/ws?namespace=default') as websocket,
-        ):
-            websocket.send_json({'action': 'preview', 'payload': {}})
-            started = websocket.receive_json()
-            error = websocket.receive_json()
-
-        assert started == {'type': 'started', 'action': 'preview'}
-        assert error['type'] == 'error'
-        assert error['action'] == 'preview'
-        assert error['error'] == 'An internal error occurred'
-        assert error['status_code'] == 500
-        assert 'secret failure details' not in str(error)
-
     def test_preview_step_failure(self, client, sample_datasource: DataSource):
         payload = {
             'analysis_id': 'analysis-id',
@@ -935,6 +907,32 @@ class TestComputePreview:
         response = client.post('/api/v1/compute/preview', json=payload)
 
         assert response.status_code == 409
+
+    def test_engine_list_websocket_sends_snapshot_and_updates(self, client):
+        manager = app.state.manager
+        original_factory = manager._engine_factory
+        manager._engine_factory = FakeEngine
+        analysis_id = str(uuid.uuid4())
+        try:
+            with client.websocket_connect('/api/v1/compute/ws/engines?namespace=default') as websocket:
+                initial = websocket.receive_json()
+                assert initial == {'type': 'snapshot', 'engines': [], 'total': 0}
+
+                spawn = client.post(f'/api/v1/compute/engine/spawn/{analysis_id}')
+                assert spawn.status_code == 200
+                spawned = websocket.receive_json()
+                assert spawned['type'] == 'snapshot'
+                assert spawned['total'] == 1
+                assert spawned['engines'][0]['analysis_id'] == analysis_id
+                assert spawned['engines'][0]['status'] == 'healthy'
+
+                shutdown = client.delete(f'/api/v1/compute/engine/{analysis_id}')
+                assert shutdown.status_code == 204
+                cleared = websocket.receive_json()
+                assert cleared == {'type': 'snapshot', 'engines': [], 'total': 0}
+        finally:
+            manager._engine_factory = original_factory
+            manager.shutdown_all()
 
     def test_preview_step_missing_metadata_preflight_skips_engine(self, client):
         missing_id = str(uuid.uuid4())
@@ -1134,126 +1132,7 @@ class TestComputePreview:
         assert run.result_json['execution_entries'][0]['key'] == 'query_plan'
 
 
-def test_list_active_builds_returns_running_build(client, test_user) -> None:
-    build = asyncio.run(
-        active_build_registry.create_build(
-            analysis_id='analysis-1',
-            analysis_name='Analysis 1',
-            namespace='default',
-            starter=compute_service._build_starter(test_user),
-            total_tabs=1,
-        )
-    )
-    asyncio.run(
-        active_build_registry.apply_event(
-            build.build_id,
-            {
-                'type': 'progress',
-                'build_id': build.build_id,
-                'analysis_id': 'analysis-1',
-                'emitted_at': datetime.now(UTC).isoformat(),
-                'progress': 0.5,
-                'elapsed_ms': 1200,
-                'total_steps': 4,
-                'current_step': 'Filter rows',
-                'current_step_index': 1,
-            },
-        )
-    )
-
-    response = client.get('/api/v1/compute/builds/active')
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload['total'] == 1
-    assert payload['builds'][0]['build_id'] == build.build_id
-    assert payload['builds'][0]['status'] == 'running'
-    assert payload['builds'][0]['progress'] == 0.5
-    assert payload['builds'][0]['starter']['user_id'] == test_user.id
-
-
-def test_get_active_build_returns_detail(client, test_user) -> None:
-    build = asyncio.run(
-        active_build_registry.create_build(
-            analysis_id='analysis-2',
-            analysis_name='Analysis 2',
-            namespace='default',
-            starter=compute_service._build_starter(test_user),
-            total_tabs=1,
-        )
-    )
-    emitted_at = datetime.now(UTC).isoformat()
-    asyncio.run(
-        active_build_registry.apply_event(
-            build.build_id,
-            {
-                'type': 'step_start',
-                'build_id': build.build_id,
-                'analysis_id': 'analysis-2',
-                'emitted_at': emitted_at,
-                'build_step_index': 0,
-                'step_index': 0,
-                'step_id': 'step-1',
-                'step_name': 'Load source',
-                'step_type': 'source',
-                'total_steps': 1,
-            },
-        )
-    )
-    asyncio.run(
-        active_build_registry.apply_event(
-            build.build_id,
-            {
-                'type': 'log',
-                'build_id': build.build_id,
-                'analysis_id': 'analysis-2',
-                'emitted_at': emitted_at,
-                'level': 'info',
-                'message': 'Started build',
-            },
-        )
-    )
-
-    response = client.get(f'/api/v1/compute/builds/active/{build.build_id}')
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload['build_id'] == build.build_id
-    assert payload['steps'][0]['step_id'] == 'step-1'
-    assert payload['steps'][0]['state'] == 'running'
-    assert payload['logs'][0]['message'] == 'Started build'
-
-
-def test_get_active_build_returns_resource_config_summary(client, test_user) -> None:
-    build = asyncio.run(
-        active_build_registry.create_build(
-            analysis_id='analysis-config',
-            analysis_name='Analysis Config',
-            namespace='default',
-            starter=compute_service._build_starter(test_user),
-            total_tabs=1,
-        )
-    )
-    registry_build = asyncio.run(active_build_registry.get_build(build.build_id))
-    assert registry_build is not None
-    registry_build.resource_config = compute_schemas.BuildResourceConfigSummary(
-        max_threads=6,
-        max_memory_mb=1024,
-        streaming_chunk_size=2000,
-    )
-
-    response = client.get(f'/api/v1/compute/builds/active/{build.build_id}')
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload['resource_config'] == {
-        'max_threads': 6,
-        'max_memory_mb': 1024,
-        'streaming_chunk_size': 2000,
-    }
-
-
-def test_build_stream_websocket_emits_snapshot_and_terminal_event(client, sample_datasource: DataSource, test_user) -> None:
+def test_start_active_build_returns_snapshot_and_detail_stream_updates(client, sample_datasource: DataSource, test_user) -> None:
     payload = {
         'analysis_pipeline': {
             'analysis_id': 'analysis-stream',
@@ -1290,9 +1169,11 @@ def test_build_stream_websocket_emits_snapshot_and_terminal_event(client, sample
         },
         'tab_id': 'tab1',
     }
+    release = threading.Event()
 
     async def fake_run_analysis_build_stream(session, manager, pipeline, *, build, emitter, triggered_by):
         del session, manager, pipeline, triggered_by
+        await asyncio.to_thread(release.wait, 5)
         await emitter(
             {
                 'type': 'plan',
@@ -1385,21 +1266,26 @@ def test_build_stream_websocket_emits_snapshot_and_terminal_event(client, sample
     with (
         patch('modules.compute.routes.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
         patch('modules.compute.routes._build_analysis_name', return_value='Stream Analysis'),
-        client.websocket_connect('/api/v1/compute/ws/build?namespace=default') as websocket,
     ):
-        websocket.send_json(payload)
-        snapshot = websocket.receive_json()
-        plan = websocket.receive_json()
-        step_start = websocket.receive_json()
-        resources = websocket.receive_json()
-        log = websocket.receive_json()
-        step_complete = websocket.receive_json()
-        progress = websocket.receive_json()
-        complete = websocket.receive_json()
+        response = client.post('/api/v1/compute/builds/active', json=payload)
+        assert response.status_code == 200
+        started = response.json()
+        build_id = started['build_id']
+        assert started['starter']['user_id'] == test_user.id
+
+        with client.websocket_connect(f'/api/v1/compute/ws/builds/{build_id}?namespace=default') as websocket:
+            snapshot = websocket.receive_json()
+            release.set()
+            plan = websocket.receive_json()
+            step_start = websocket.receive_json()
+            resources = websocket.receive_json()
+            log = websocket.receive_json()
+            step_complete = websocket.receive_json()
+            progress = websocket.receive_json()
+            complete = websocket.receive_json()
 
     assert snapshot['type'] == 'snapshot'
-    build_id = snapshot['build']['build_id']
-    assert snapshot['build']['starter']['user_id'] == test_user.id
+    assert snapshot['build']['build_id'] == build_id
     assert plan['type'] == 'plan'
     assert plan['build_id'] == build_id
     assert step_start['type'] == 'step_start'
@@ -1409,6 +1295,63 @@ def test_build_stream_websocket_emits_snapshot_and_terminal_event(client, sample
     assert progress['type'] == 'progress'
     assert complete['type'] == 'complete'
     assert complete['results'][0]['status'] == 'success'
+
+
+def test_start_active_build_notifies_active_build_list_watchers(client, sample_datasource: DataSource, test_user) -> None:
+    payload = {
+        'analysis_pipeline': {
+            'analysis_id': 'analysis-list-watch',
+            'tabs': [
+                {
+                    'id': 'tab1',
+                    'name': 'Tab 1',
+                    'datasource': {
+                        'id': sample_datasource.id,
+                        'analysis_tab_id': None,
+                        'config': {'branch': 'master'},
+                    },
+                    'output': {
+                        'result_id': str(uuid.uuid4()),
+                        'datasource_type': 'iceberg',
+                        'format': 'parquet',
+                        'filename': 'out',
+                    },
+                    'steps': [],
+                }
+            ],
+            'sources': {
+                sample_datasource.id: {
+                    'source_type': sample_datasource.source_type,
+                    **sample_datasource.config,
+                }
+            },
+        },
+        'tab_id': 'tab1',
+    }
+    release = threading.Event()
+
+    async def fake_run_analysis_build_stream(session, manager, pipeline, *, build, emitter, triggered_by):
+        del session, manager, pipeline, build, emitter, triggered_by
+        await asyncio.to_thread(release.wait, 5)
+        return {'analysis_id': 'analysis-list-watch', 'tabs_built': 1, 'results': []}
+
+    with (
+        patch('modules.compute.routes.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
+        patch('modules.compute.routes._build_analysis_name', return_value='List Watch Analysis'),
+        client.websocket_connect('/api/v1/compute/ws/builds?namespace=default') as websocket,
+    ):
+        initial = websocket.receive_json()
+        assert initial == {'type': 'snapshot', 'builds': []}
+
+        response = client.post('/api/v1/compute/builds/active', json=payload)
+        assert response.status_code == 200
+
+        created = websocket.receive_json()
+        release.set()
+
+    assert created['type'] == 'snapshot'
+    assert len(created['builds']) == 1
+    assert created['builds'][0]['analysis_name'] == 'List Watch Analysis'
 
 
 def test_active_build_registry_sanitizes_logs_and_flushes_throttled_events(test_user) -> None:
@@ -1799,6 +1742,134 @@ def test_safe_send_json_returns_false_when_socket_disconnected() -> None:
     websocket.send_json.assert_not_called()
 
 
+def test_safe_send_json_reraises_unexpected_runtime_error() -> None:
+    websocket = MagicMock()
+    websocket.client_state = WebSocketState.CONNECTED
+    websocket.application_state = WebSocketState.CONNECTED
+    websocket.send_json = AsyncMock(side_effect=RuntimeError('boom'))
+
+    with pytest.raises(RuntimeError, match='boom'):
+        asyncio.run(_safe_send_json(websocket, {'type': 'error'}))
+
+
+def test_wait_for_websocket_disconnect_treats_receive_disconnect_runtimeerror_as_normal() -> None:
+    websocket = MagicMock()
+    websocket.client_state = WebSocketState.CONNECTED
+    websocket.application_state = WebSocketState.CONNECTED
+
+    async def receive_disconnect_race() -> dict[str, str]:
+        websocket.client_state = WebSocketState.DISCONNECTED
+        raise RuntimeError('Cannot call "receive" once a disconnect message has been received.')
+
+    websocket.receive = AsyncMock(side_effect=receive_disconnect_race)
+
+    asyncio.run(_wait_for_websocket_disconnect(websocket))
+
+
+def test_active_build_registry_tracks_and_drops_finished_task(test_user) -> None:
+    async def run() -> None:
+        build = await active_build_registry.create_build(
+            analysis_id='analysis-task',
+            analysis_name='Analysis Task',
+            namespace='default',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+
+        async def worker() -> None:
+            await asyncio.sleep(0)
+
+        task = asyncio.create_task(worker())
+        await active_build_registry.track_task(build.build_id, task)
+        assert await active_build_registry.get_task(build.build_id) is task
+
+        await task
+        await asyncio.sleep(0)
+
+        assert await active_build_registry.get_task(build.build_id) is None
+
+    asyncio.run(run())
+
+
+def test_active_build_detail_websocket_rejects_wrong_namespace(client, test_user) -> None:
+    build = asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-other',
+            analysis_name='Other Namespace Build',
+            namespace='alpha',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+
+    with client.websocket_connect(f'/api/v1/compute/ws/builds/{build.build_id}?namespace=beta') as websocket:
+        payload = websocket.receive_json()
+
+    assert payload == {'type': 'error', 'error': 'Active build not found', 'status_code': 404}
+
+
+def test_active_build_list_websocket_filters_namespace(client, test_user) -> None:
+    asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-alpha',
+            analysis_name='Alpha Build',
+            namespace='alpha',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+    beta = asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-beta',
+            analysis_name='Beta Build',
+            namespace='beta',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+
+    with client.websocket_connect('/api/v1/compute/ws/builds?namespace=beta') as websocket:
+        snapshot = websocket.receive_json()
+
+    assert snapshot['type'] == 'snapshot'
+    assert [item['build_id'] for item in snapshot['builds']] == [beta.build_id]
+
+
+def test_process_manager_isolates_same_analysis_id_by_namespace(monkeypatch) -> None:
+    manager = ProcessManager(engine_factory=fake_engine_factory)
+    monkeypatch.setattr(
+        ProcessManager,
+        '_get_defaults',
+        lambda self: {'max_threads': 0, 'max_memory_mb': 0, 'streaming_chunk_size': 0},
+    )
+
+    alpha = set_namespace_context('alpha')
+    try:
+        manager.spawn_engine('shared-analysis')
+        assert manager.get_engine('shared-analysis') is not None
+        assert manager.list_engines() == ['shared-analysis']
+    finally:
+        reset_namespace(alpha)
+
+    beta = set_namespace_context('beta')
+    try:
+        assert manager.get_engine('shared-analysis') is None
+        manager.spawn_engine('shared-analysis')
+        assert manager.get_engine('shared-analysis') is not None
+        assert manager.list_engines() == ['shared-analysis']
+    finally:
+        reset_namespace(beta)
+
+    alpha = set_namespace_context('alpha')
+    try:
+        assert manager.get_engine('shared-analysis') is not None
+        assert manager.list_engines() == ['shared-analysis']
+    finally:
+        reset_namespace(alpha)
+
+    manager.shutdown_all()
+
+
 class TestComputeExport:
     def test_export_logs_engine_run(self, client, sample_datasource: DataSource, test_db_session):
         payload = {
@@ -2089,7 +2160,12 @@ class FakeEngine:
     def get_row_count(self, *_args, **_kwargs) -> str:
         return 'job'
 
-    def get_result(self, timeout: float = 1.0, job_id: str | None = None) -> dict | None:
+    def get_result(self, timeout: float = 1.0, job_id: str | None = None) -> EngineResult | None:
+        del timeout, job_id
+        return None
+
+    def get_progress_event(self, timeout: float = 1.0, job_id: str | None = None) -> EngineProgressEvent | None:
+        del timeout, job_id
         return None
 
     def shutdown(self) -> None:
@@ -2099,9 +2175,17 @@ class FakeEngine:
         self._alive = False
 
 
-def test_spawn_engine_preserves_requested_config_during_conflicting_restarts():
-    manager = ProcessManager(engine_factory=FakeEngine)
-    manager._get_defaults = lambda: {'max_threads': 0, 'max_memory_mb': 0, 'streaming_chunk_size': 0}
+def fake_engine_factory(analysis_id: str, resource_config: dict | None = None) -> ComputeEngine:
+    return FakeEngine(analysis_id, resource_config)
+
+
+def test_spawn_engine_preserves_requested_config_during_conflicting_restarts(monkeypatch):
+    manager = ProcessManager(engine_factory=fake_engine_factory)
+    monkeypatch.setattr(
+        ProcessManager,
+        '_get_defaults',
+        lambda self: {'max_threads': 0, 'max_memory_mb': 0, 'streaming_chunk_size': 0},
+    )
     manager.spawn_engine('analysis', {'max_threads': 1})
 
     results: dict[str, dict[str, int]] = {}
@@ -2129,8 +2213,12 @@ def test_spawn_engine_evicts_oldest_idle_when_limit_reached(monkeypatch):
 
     from core.config import settings
 
-    manager = ProcessManager(engine_factory=FakeEngine)
-    manager._get_defaults = lambda: {'max_threads': 0, 'max_memory_mb': 0, 'streaming_chunk_size': 0}
+    manager = ProcessManager(engine_factory=fake_engine_factory)
+    monkeypatch.setattr(
+        ProcessManager,
+        '_get_defaults',
+        lambda self: {'max_threads': 0, 'max_memory_mb': 0, 'streaming_chunk_size': 0},
+    )
     monkeypatch.setattr(settings, 'max_concurrent_engines', 2)
     manager.spawn_engine('a')
     manager.spawn_engine('b')
@@ -2200,29 +2288,12 @@ class TestEngineLifecycle:
         result = response.json()
         assert result['analysis_id'] == analysis_id
 
-    def test_get_engine_status(self, client):
-        analysis_id = str(uuid.uuid4())
-        mock_manager = MagicMock()
-        mock_manager.get_engine_status.return_value = {
-            'analysis_id': analysis_id,
-            'status': 'healthy',
-            'process_id': 12345,
-            'last_activity': '2024-01-01T00:00:00',
-            'current_job_id': None,
-        }
-        app.dependency_overrides[get_manager] = lambda: mock_manager
-
-        response = client.get(f'/api/v1/compute/engine/status/{analysis_id}')
-
-        assert response.status_code == 200
-        result = response.json()
-        assert result['analysis_id'] == analysis_id
-        assert result['status'] == 'healthy'
-
     def test_shutdown_engine(self, client):
         analysis_id = str(uuid.uuid4())
         mock_manager = MagicMock()
         mock_engine = MagicMock()
+        mock_engine.current_job_id = None
+        mock_engine.is_process_alive.return_value = False
         mock_manager.get_engine.return_value = mock_engine
         app.dependency_overrides[get_manager] = lambda: mock_manager
 
@@ -2230,6 +2301,21 @@ class TestEngineLifecycle:
 
         assert response.status_code == 204
         mock_manager.shutdown_engine.assert_called_once_with(analysis_id)
+
+    def test_shutdown_engine_conflicts_with_active_job(self, client):
+        analysis_id = str(uuid.uuid4())
+        mock_manager = MagicMock()
+        mock_engine = MagicMock()
+        mock_engine.current_job_id = 'job-1'
+        mock_engine.is_process_alive.return_value = True
+        mock_manager.get_engine.return_value = mock_engine
+        app.dependency_overrides[get_manager] = lambda: mock_manager
+
+        response = client.delete(f'/api/v1/compute/engine/{analysis_id}')
+
+        assert response.status_code == 409
+        assert response.json() == {'detail': 'Engine has an active job'}
+        mock_manager.shutdown_engine.assert_not_called()
 
     def test_shutdown_engine_not_found(self, client):
         analysis_id = str(uuid.uuid4())
@@ -2240,33 +2326,6 @@ class TestEngineLifecycle:
         response = client.delete(f'/api/v1/compute/engine/{analysis_id}')
 
         assert response.status_code == 404
-
-    def test_list_engines(self, client):
-        mock_manager = MagicMock()
-        mock_manager.list_all_engine_statuses.return_value = [
-            {
-                'analysis_id': str(uuid.uuid4()),
-                'status': 'healthy',
-                'process_id': 12345,
-                'last_activity': '2024-01-01T00:00:00',
-                'current_job_id': None,
-            },
-            {
-                'analysis_id': str(uuid.uuid4()),
-                'status': 'healthy',
-                'process_id': 12346,
-                'last_activity': '2024-01-01T00:00:00',
-                'current_job_id': None,
-            },
-        ]
-        app.dependency_overrides[get_manager] = lambda: mock_manager
-
-        response = client.get('/api/v1/compute/engines')
-
-        assert response.status_code == 200
-        result = response.json()
-        assert result['total'] == 2
-        assert len(result['engines']) == 2
 
 
 class TestBuildAnalysisPipelinePayloadDerived:

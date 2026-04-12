@@ -127,11 +127,20 @@ class EngineStatusSchema(BaseModel):
     defaults: EngineDefaults | None = None  # Default values from env vars
 
 
-class EngineListSchema(BaseModel):
+class EngineListSnapshotMessage(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    type: Literal['snapshot'] = 'snapshot'
     engines: list[EngineStatusSchema]
     total: int
+
+
+class EngineWebsocketErrorMessage(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    type: Literal['error'] = 'error'
+    error: str
+    status_code: int = 500
 
 
 class SpawnEngineRequest(BaseModel):
@@ -325,14 +334,6 @@ class BuildTabResult(BaseModel):
     error: str | None = None
 
 
-class BuildResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    analysis_id: str
-    tabs_built: int
-    results: list[BuildTabResult]
-
-
 class BuildRequest(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -460,13 +461,6 @@ class ActiveBuildDetail(ActiveBuildSummary):
     results: list[BuildTabResult] = Field(default_factory=list)
     duration_ms: int | None = None
     error: str | None = None
-
-
-class ActiveBuildListResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    builds: list[ActiveBuildSummary]
-    total: int
 
 
 class BuildEventType(StrEnum):
@@ -601,49 +595,5 @@ class BuildWebsocketErrorMessage(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     type: Literal['error'] = 'error'
-    error: str
-    status_code: int = 500
-
-
-class ComputeWebsocketAction(StrEnum):
-    PREVIEW = 'preview'
-    SCHEMA = 'schema'
-    ROW_COUNT = 'row_count'
-    BUILD = 'build'
-
-
-class ComputeWebsocketRequest(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    action: ComputeWebsocketAction
-    payload: dict = Field(default_factory=dict)
-
-
-class ComputeWebsocketMessageType(StrEnum):
-    STARTED = 'started'
-    RESULT = 'result'
-    ERROR = 'error'
-
-
-class ComputeWebsocketStartedMessage(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    type: ComputeWebsocketMessageType = ComputeWebsocketMessageType.STARTED
-    action: ComputeWebsocketAction
-
-
-class ComputeWebsocketResultMessage(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    type: ComputeWebsocketMessageType = ComputeWebsocketMessageType.RESULT
-    action: ComputeWebsocketAction
-    data: dict
-
-
-class ComputeWebsocketErrorMessage(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    type: ComputeWebsocketMessageType = ComputeWebsocketMessageType.ERROR
-    action: ComputeWebsocketAction | None = None
     error: str
     status_code: int = 500

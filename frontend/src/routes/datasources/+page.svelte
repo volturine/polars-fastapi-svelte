@@ -22,8 +22,10 @@
 	import { goto } from '$app/navigation';
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import { css, cx, spinner, button, chip, input } from '$lib/styles/panda';
+	import { useNamespace } from '$lib/stores/namespace.svelte';
 
 	const queryClient = useQueryClient();
+	const ns = useNamespace();
 
 	let showHidden = $state(false);
 
@@ -33,28 +35,61 @@
 	let mutatingId = $state<string | null>(null);
 	let searchQuery = $state('');
 	let showComparison = $state(false);
+	let snapshotConfig = $state<Record<string, unknown> | null>(null);
+	let selectedBranch = $state<string | null>(null);
+
+	const urlId = $derived(page.url.searchParams.get('id'));
+	let lastNs = ns.value;
+
+	// Namespace switch: clear stale selection immediately when namespace changes.
+	$effect(() => {
+		const current = ns.value;
+		if (current === lastNs) return;
+		lastNs = current;
+		selectDatasource(null);
+	});
+
+	// Navigation: layout may strip ?id= on namespace switch; sync state from URL.
+	$effect(() => {
+		if (urlId === selectedId) return;
+		selectedId = urlId;
+		showConfig = urlId;
+		showComparison = false;
+		if (!urlId) {
+			snapshotConfig = null;
+			selectedBranch = null;
+		}
+	});
 
 	const query = createQuery(() => ({
-		queryKey: ['datasources', showHidden],
+		queryKey: ['datasources', ns.value, showHidden],
 		queryFn: async () => {
 			const result = await listDatasources(showHidden);
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
-		}
+		},
+		enabled: !ns.switching
 	}));
 
-	let snapshotConfig = $state<Record<string, unknown> | null>(null);
-	let selectedBranch = $state<string | null>(null);
+	const selectionValid = $derived(
+		!selectedId || !query.data || query.data.some((d) => d.id === selectedId)
+	);
+
+	// Navigation: clear stale selection when datasource list loads without the selected ID.
+	$effect(() => {
+		if (selectionValid) return;
+		selectDatasource(null);
+	});
 
 	const selectedDatasourceQuery = createQuery(() => ({
-		queryKey: ['datasource', selectedId, selectedBranch ?? ''],
+		queryKey: ['datasource', ns.value, selectedId, selectedBranch ?? ''],
 		queryFn: async () => {
 			if (!selectedId) return null;
 			const result = await getDatasource(selectedId);
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		},
-		enabled: !!selectedId
+		enabled: !!selectedId && selectionValid && !ns.switching
 	}));
 
 	const deleteMutation = createMutation(() => ({

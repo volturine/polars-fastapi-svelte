@@ -136,7 +136,12 @@
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		},
-		onSuccess: () => {
+		onSuccess: (created) => {
+			const listKey = ['healthchecks', datasourceId ?? 'all'];
+			queryClient.setQueryData<HealthCheckItem[]>(listKey, (current) => {
+				const next = current ?? [];
+				return [...next, { ...created, critical: !!(created as { critical?: boolean }).critical }];
+			});
 			queryClient.invalidateQueries({ queryKey: ['healthchecks'] });
 			queryClient.invalidateQueries({ queryKey: ['healthcheck-results'] });
 			creating = false;

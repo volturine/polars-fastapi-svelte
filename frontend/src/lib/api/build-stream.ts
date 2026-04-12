@@ -1,5 +1,10 @@
-import { buildWebsocketUrl } from './websocket';
+import type { BuildRequest } from './compute';
+import { apiRequest } from './client';
+import { createStream, type StreamHandle } from './websocket';
 import type { BuildEvent, BuildDetailSnapshot, BuildsSnapshot } from '$lib/types/build-stream';
+import type { ActiveBuildDetail } from '$lib/types/build-stream';
+import type { ResultAsync } from 'neverthrow';
+import type { ApiError } from './client';
 
 export type BuildStreamMessage =
 	| { type: 'snapshot'; build: BuildDetailSnapshot['build'] }
@@ -36,114 +41,35 @@ function parseBuildsMessage(data: string): BuildsListMessage | null {
 	}
 }
 
-export function connectBuildStream(
-	request: Record<string, unknown>,
-	callbacks: BuildStreamCallbacks
-): { close: () => void } {
-	const url = buildWebsocketUrl('/v1/compute/ws/build');
-	const socket = new WebSocket(url);
-
-	socket.addEventListener('open', () => {
-		socket.send(JSON.stringify(request));
+export function startActiveBuild(request: BuildRequest): ResultAsync<ActiveBuildDetail, ApiError> {
+	return apiRequest<ActiveBuildDetail>('/v1/compute/builds/active', {
+		method: 'POST',
+		body: JSON.stringify(request)
 	});
-
-	socket.addEventListener('message', (event) => {
-		const msg = parseBuildMessage(event.data as string);
-		if (!msg) return;
-		if (msg.type === 'snapshot') {
-			callbacks.onSnapshot((msg as BuildDetailSnapshot).build);
-			return;
-		}
-		callbacks.onEvent(msg as BuildEvent);
-	});
-
-	socket.addEventListener('error', () => {
-		callbacks.onError('WebSocket connection failed');
-	});
-
-	socket.addEventListener('close', (event) => {
-		if (event.code !== 1000 && event.code !== 1005) {
-			callbacks.onError(event.reason || `Connection closed (code ${event.code})`);
-		}
-		callbacks.onClose();
-	});
-
-	return {
-		close() {
-			if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-				socket.close(1000);
-			}
-		}
-	};
 }
 
-export function connectBuildsListStream(callbacks: BuildsListCallbacks): { close: () => void } {
-	const url = buildWebsocketUrl('/v1/compute/ws/builds');
-	const socket = new WebSocket(url);
-
-	socket.addEventListener('message', (event) => {
-		const msg = parseBuildsMessage(event.data as string);
-		if (!msg) return;
-		if (msg.type === 'snapshot') {
-			callbacks.onSnapshot((msg as BuildsSnapshot).builds);
-			return;
-		}
-		callbacks.onEvent(msg as BuildEvent);
+export function connectBuildsListStream(callbacks: BuildsListCallbacks): StreamHandle {
+	return createStream<BuildsSnapshot['builds'], BuildEvent>('/v1/compute/ws/builds', {
+		parse: parseBuildsMessage,
+		isSnapshot: (msg) => msg.type === 'snapshot',
+		extractSnapshot: (msg) => (msg as BuildsSnapshot).builds,
+		extractEvent: (msg) => msg as unknown as BuildEvent,
+		callbacks
 	});
-
-	socket.addEventListener('error', () => {
-		callbacks.onError('WebSocket connection failed');
-	});
-
-	socket.addEventListener('close', (event) => {
-		if (event.code !== 1000 && event.code !== 1005) {
-			callbacks.onError(event.reason || `Connection closed (code ${event.code})`);
-		}
-		callbacks.onClose();
-	});
-
-	return {
-		close() {
-			if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-				socket.close(1000);
-			}
-		}
-	};
 }
 
 export function connectBuildDetailStream(
 	buildId: string,
 	callbacks: BuildStreamCallbacks
-): { close: () => void } {
-	const url = buildWebsocketUrl(`/v1/compute/ws/builds/${buildId}`);
-	const socket = new WebSocket(url);
-
-	socket.addEventListener('message', (event) => {
-		const msg = parseBuildMessage(event.data as string);
-		if (!msg) return;
-		if (msg.type === 'snapshot') {
-			callbacks.onSnapshot((msg as BuildDetailSnapshot).build);
-			return;
+): StreamHandle {
+	return createStream<BuildDetailSnapshot['build'], BuildEvent>(
+		`/v1/compute/ws/builds/${buildId}`,
+		{
+			parse: parseBuildMessage,
+			isSnapshot: (msg) => msg.type === 'snapshot',
+			extractSnapshot: (msg) => (msg as BuildDetailSnapshot).build,
+			extractEvent: (msg) => msg as unknown as BuildEvent,
+			callbacks
 		}
-		callbacks.onEvent(msg as BuildEvent);
-	});
-
-	socket.addEventListener('error', () => {
-		callbacks.onError('WebSocket connection failed');
-	});
-
-	socket.addEventListener('close', (event) => {
-		if (event.code !== 1000 && event.code !== 1005) {
-			callbacks.onError(event.reason || `Connection closed (code ${event.code})`);
-		}
-		callbacks.onClose();
-	});
-
-	return {
-		close() {
-			if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-				socket.close(1000);
-			}
-		}
-	};
+	);
 }

@@ -1,9 +1,25 @@
-import type { Browser, Page } from '@playwright/test';
-import { workerAuthFile } from './api.js';
+import type { Browser, Locator, Page } from '@playwright/test';
+import { shutdownEngineByToken, workerAuthFile } from './api.js';
 import { gotoAnalysesGallery, waitForDatasourceList, waitForUdfList } from './readiness.js';
 
 const ELEMENT_VISIBLE_TIMEOUT = 10_000;
 const DIALOG_HIDDEN_TIMEOUT = 10_000;
+const ANALYSIS_HREF_RE = /\/analysis\/([0-9a-f-]+)/;
+
+async function bestEffortShutdownEngine(page: Page, card: Locator): Promise<void> {
+	try {
+		const href = await card.getAttribute('href');
+		const match = href?.match(ANALYSIS_HREF_RE);
+		if (!match) return;
+		const analysisId = match[1];
+		const state = await page.context().storageState();
+		const token = state.cookies.find((c) => c.name === 'session_token')?.value;
+		if (!token) return;
+		await shutdownEngineByToken(token, analysisId);
+	} catch (e: unknown) {
+		console.warn('[ui-cleanup] bestEffortShutdownEngine:', e);
+	}
+}
 
 export async function createCleanupPage(browser: Browser, workerIndex: number) {
 	const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
@@ -56,6 +72,7 @@ export async function deleteAnalysisViaUI(
 		} catch {
 			return;
 		}
+		await bestEffortShutdownEngine(page, card);
 		await card.getByRole('button', { name: /Delete analysis/ }).click();
 		const dialog = page.getByRole('dialog');
 		await dialog.getByRole('button', { name: /^Delete$/ }).click();

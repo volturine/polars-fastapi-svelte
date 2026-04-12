@@ -57,7 +57,26 @@
 	let deleteLoading = $state(false);
 	let deleteError = $state<string | null>(null);
 	const buildRunsStore = new EngineRunsStore();
-	// Side effect: WS connection depends on datasource/build-preview state and must be cleaned up
+	let lastDatasourceId = $state<string | null>(null);
+	// Subscription: $derived can't reset snapshot state on datasource switch.
+	$effect(() => {
+		if (datasourceId === lastDatasourceId) return;
+		lastDatasourceId = datasourceId;
+		snapshotList = [];
+		snapshotsError = null;
+		snapshotsLoading = false;
+		selectedDay = '';
+		timeTravelId = null;
+		timeTravelLabel = null;
+		snapshotMonth = '';
+		snapshotsOpen = false;
+		hasOpened = false;
+		deleteConfirmId = null;
+		deleteLoading = false;
+		deleteError = null;
+		buildRunsStore.reset();
+	});
+	// Side effect: polling connection depends on datasource/build-preview state and must be cleaned up
 	$effect(() => {
 		if (!showBuildPreviews || !datasourceId) return;
 		buildRunsStore.start({ datasource_id: datasourceId, limit: 50 });
@@ -132,26 +151,6 @@
 		}
 		const ts = datasourceConfig.time_travel_snapshot_timestamp_ms as number | null;
 		timeTravelLabel = timeTravelId && ts ? formatSnapshotLabel(ts) : null;
-	});
-
-	let lastDatasourceId = $state<string | null>(null);
-	// Subscription: $derived can't reset snapshot state on datasource switch.
-	$effect(() => {
-		if (datasourceId === lastDatasourceId) return;
-		lastDatasourceId = datasourceId;
-		snapshotList = [];
-		snapshotsError = null;
-		snapshotsLoading = false;
-		selectedDay = '';
-		timeTravelId = null;
-		timeTravelLabel = null;
-		snapshotMonth = '';
-		snapshotsOpen = false;
-		hasOpened = false;
-		deleteConfirmId = null;
-		deleteLoading = false;
-		deleteError = null;
-		buildRunsStore.reset();
 	});
 
 	function formatSnapshotKey(timestampMs: number) {

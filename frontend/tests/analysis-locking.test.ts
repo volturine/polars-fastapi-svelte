@@ -60,7 +60,7 @@ test.describe('Analyses – multi-user locking', () => {
 			analysisId = await createAnalysisViaUi(ownerPage, analysisName, datasourceName);
 
 			await gotoAnalysisEditor(ownerPage, analysisId);
-			const ownerFilter = ownerPage.locator('button[data-step="filter"]').first();
+			const ownerFilter = ownerPage.locator('button[data-step="filter"]');
 			await expect(ownerFilter).toBeEnabled({ timeout: 10_000 });
 			await ownerFilter.click();
 			await expect(ownerPage.locator('[data-step-type="filter"]')).toHaveCount(1, {
@@ -78,7 +78,7 @@ test.describe('Analyses – multi-user locking', () => {
 			);
 			await expect(viewerPage.getByTestId('lock-toggle-button')).toBeDisabled();
 			await expect(viewerPage.locator('[data-save-state="locked"]')).toBeVisible();
-			await expect(viewerPage.locator('button[data-step="filter"]').first()).toBeDisabled();
+			await expect(viewerPage.locator('button[data-step="filter"]')).toBeDisabled();
 
 			await ownerPage.getByTestId('lock-toggle-button').click();
 			await expect(ownerPage.locator('[role="application"]')).toHaveAttribute(
@@ -98,7 +98,7 @@ test.describe('Analyses – multi-user locking', () => {
 				timeout: 30_000
 			});
 
-			const viewerFilter = viewerPage.locator('button[data-step="filter"]').first();
+			const viewerFilter = viewerPage.locator('button[data-step="filter"]');
 			await expect(viewerFilter).toBeEnabled({ timeout: 10_000 });
 			await viewerFilter.click();
 			await expect(viewerPage.locator('[data-step-type="filter"]')).toHaveCount(1, {

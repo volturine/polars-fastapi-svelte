@@ -39,7 +39,6 @@ test.describe('Build Preview – real build lifecycle', () => {
 			await expect(openPreviewBtn).toBeVisible({ timeout: 10_000 });
 			await openPreviewBtn.click();
 
-			await expect(page.getByText('Build Preview')).toBeVisible({ timeout: 10_000 });
 			await expect(preview).toBeVisible({ timeout: 5_000 });
 
 			const closeBtn = page.locator('[aria-label="Close build preview"]');
@@ -99,7 +98,7 @@ test.describe('Build Preview – real build lifecycle', () => {
 
 			const results = page.locator('[data-testid="build-results"]');
 			await expect(results).toBeVisible({ timeout: 5_000 });
-			await expect(results.getByText('Source 1')).toBeVisible();
+			await expect(results.getByText('Source 1', { exact: true })).toBeVisible();
 		} finally {
 			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);

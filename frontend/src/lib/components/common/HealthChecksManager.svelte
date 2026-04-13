@@ -1190,6 +1190,9 @@
 						{#each visibleChecks as check (check.id)}
 							{@const latest = latestResults.get(check.id)}
 							<tr
+								data-healthcheck-row={check.id}
+								data-healthcheck-name={check.name}
+								data-datasource-id={check.datasource_id}
 								class={cx(
 									css({ cursor: 'pointer', _hover: { backgroundColor: 'bg.hover' } }),
 									expandedId === check.id ? css({ backgroundColor: 'bg.secondary' }) : ''

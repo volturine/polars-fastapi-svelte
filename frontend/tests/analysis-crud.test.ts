@@ -26,7 +26,7 @@ test.describe('Analyses – list & gallery', () => {
 		await createAnalysis(request, aName, dsId);
 		try {
 			await gotoAnalysesGallery(page);
-			await expect(page.getByText(aName)).toBeVisible();
+			await expect(page.locator(`[data-analysis-card="${aName}"]`)).toBeVisible();
 		} finally {
 			await deleteAnalysisViaUI(page, aName);
 			await deleteDatasourceViaUI(page, dsName);
@@ -45,8 +45,7 @@ test.describe('Analyses – list & gallery', () => {
 			const card = page.locator(`[data-analysis-card="${analysisName}"]`);
 			await expect(card).toBeVisible();
 
-			// The search box rendered by AnalysisFilters
-			await page.getByRole('textbox').first().fill('ZZZNOMATCH');
+			await page.getByRole('textbox', { name: 'Search analyses' }).fill('ZZZNOMATCH');
 			await expect(page.getByText(/No analyses match your search/i)).toBeVisible();
 		} finally {
 			await deleteAnalysisViaUI(page, analysisName);
@@ -62,13 +61,10 @@ test.describe('Analyses – list & gallery', () => {
 		try {
 			await page.goto('/');
 			const card = page.locator(`[data-analysis-card="${aName}"]`);
-			await expect(card.first()).toBeVisible();
+			await expect(card).toBeVisible();
 			const countBefore = await card.count();
 
-			await card
-				.first()
-				.getByRole('button', { name: /Delete analysis/ })
-				.click();
+			await card.getByRole('button', { name: /Delete analysis/ }).click();
 
 			// Confirm dialog appears
 			const dialog = page.getByRole('dialog');
@@ -131,7 +127,7 @@ test.describe('Analyses – create wizard', () => {
 			// Step 2 – pick datasource
 			await expect(page.getByRole('heading', { name: /Select Data Sources/i })).toBeVisible();
 			await page.getByPlaceholder('Search datasources...').click();
-			await page.locator('[role="option"]', { hasText: dsName }).first().click();
+			await page.locator(`[data-picker-option="${dsName}"]`).click();
 			// Close the dropdown by clicking outside
 			await page.getByRole('heading', { name: /Select Data Sources/i }).click();
 			await expect(page.getByRole('button', { name: /Next/i })).toBeEnabled();
@@ -139,7 +135,7 @@ test.describe('Analyses – create wizard', () => {
 
 			// Step 3 – review
 			await expect(page.getByRole('heading', { name: /Review/i })).toBeVisible();
-			await expect(page.getByText(aName).first()).toBeVisible();
+			await expect(page.locator('main')).toContainText(aName);
 			await page.getByRole('button', { name: /Create Analysis/i }).click();
 
 			// Redirects to an actual analysis editor, not back to /analysis/new
@@ -246,7 +242,7 @@ test.describe('Analyses – detail error state', () => {
 			timeout: 15_000
 		});
 
-		await page.locator('a[href="/"]').first().click();
+		await page.getByRole('link', { name: 'Analyses' }).click();
 		await expect(page).toHaveURL('/');
 		await expect(page.getByRole('heading', { name: 'Analyses', level: 1 })).toBeVisible();
 	});

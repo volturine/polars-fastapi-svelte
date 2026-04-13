@@ -48,27 +48,66 @@ export function startActiveBuild(request: BuildRequest): ResultAsync<ActiveBuild
 	});
 }
 
+function isBuildsSnapshot(msg: BuildsListMessage): msg is BuildsSnapshot {
+	return msg.type === 'snapshot';
+}
+
+function isBuildDetailSnapshot(msg: BuildStreamMessage): msg is BuildDetailSnapshot {
+	return msg.type === 'snapshot';
+}
+
+function toBuildsEvent(msg: BuildsListMessage): BuildEvent {
+	if (isBuildsSnapshot(msg)) {
+		throw new Error('Expected build event');
+	}
+	return msg;
+}
+
+function toBuildDetailEvent(msg: BuildStreamMessage): BuildEvent {
+	if (isBuildDetailSnapshot(msg)) {
+		throw new Error('Expected build event');
+	}
+	return msg;
+}
+
+function getBuildsSnapshot(msg: BuildsListMessage): BuildsSnapshot['builds'] {
+	if (!isBuildsSnapshot(msg)) {
+		throw new Error('Expected builds snapshot');
+	}
+	return msg.builds;
+}
+
+function getBuildDetailSnapshot(msg: BuildStreamMessage): BuildDetailSnapshot['build'] {
+	if (!isBuildDetailSnapshot(msg)) {
+		throw new Error('Expected build snapshot');
+	}
+	return msg.build;
+}
+
 export function connectBuildsListStream(callbacks: BuildsListCallbacks): StreamHandle {
-	return createStream<BuildsSnapshot['builds'], BuildEvent>('/v1/compute/ws/builds', {
-		parse: parseBuildsMessage,
-		isSnapshot: (msg) => msg.type === 'snapshot',
-		extractSnapshot: (msg) => (msg as BuildsSnapshot).builds,
-		extractEvent: (msg) => msg as unknown as BuildEvent,
-		callbacks
-	});
+	return createStream<BuildsSnapshot['builds'], BuildEvent, BuildsListMessage>(
+		'/v1/compute/ws/builds',
+		{
+			parse: parseBuildsMessage,
+			isSnapshot: isBuildsSnapshot,
+			extractSnapshot: getBuildsSnapshot,
+			extractEvent: toBuildsEvent,
+			callbacks
+		}
+	);
 }
 
 export function connectBuildDetailStream(
 	buildId: string,
 	callbacks: BuildStreamCallbacks
 ): StreamHandle {
-	return createStream<BuildDetailSnapshot['build'], BuildEvent>(
+	return createStream<BuildDetailSnapshot['build'], BuildEvent, BuildStreamMessage>(
 		`/v1/compute/ws/builds/${buildId}`,
 		{
 			parse: parseBuildMessage,
-			isSnapshot: (msg) => msg.type === 'snapshot',
-			extractSnapshot: (msg) => (msg as BuildDetailSnapshot).build,
-			extractEvent: (msg) => msg as unknown as BuildEvent,
+			isSnapshot: isBuildDetailSnapshot,
+			extractSnapshot: getBuildDetailSnapshot,
+			extractEvent: toBuildDetailEvent,
 			callbacks
 		}
 	);

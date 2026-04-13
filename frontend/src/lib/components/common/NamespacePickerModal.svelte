@@ -195,6 +195,7 @@
 				{:else}
 					{#if canCreate}
 						<button
+							data-namespace-create={normalizedCandidate}
 							class={css({
 								display: 'flex',
 								width: '100%',
@@ -229,6 +230,7 @@
 
 					{#each filteredNamespaces as name (name)}
 						<button
+							data-namespace-option={name}
 							class={css({
 								display: 'flex',
 								width: '100%',

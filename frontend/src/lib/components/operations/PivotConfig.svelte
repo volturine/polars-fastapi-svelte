@@ -36,8 +36,9 @@
 </script>
 
 <div class={stepConfig()} role="region" aria-label="Pivot configuration">
-	<div class={css({ marginBottom: '5' })}>
+	<div class={css({ marginBottom: '5' })} role="group" aria-labelledby="pivot-column-label">
 		<div
+			id="pivot-column-label"
 			class={css({
 				display: 'block',
 				fontSize: 'xs',

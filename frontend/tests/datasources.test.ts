@@ -18,7 +18,7 @@ test.describe('Datasources – list & management', () => {
 		await createDatasource(request, ds);
 		try {
 			await page.goto('/datasources');
-			await expect(page.getByText(ds)).toBeVisible();
+			await expect(page.locator(`[data-ds-row="${ds}"]`)).toBeVisible();
 			await screenshot(page, 'datasources', 'list-with-datasource');
 		} finally {
 			await deleteDatasourceViaUI(page, ds);
@@ -30,9 +30,10 @@ test.describe('Datasources – list & management', () => {
 		await createDatasource(request, ds);
 		try {
 			await page.goto('/datasources');
-			await expect(page.getByText(ds).first()).toBeVisible();
+			const row = page.locator(`[data-ds-row="${ds}"]`);
+			await expect(row).toBeVisible();
 			// uploaded files have "Import" badge
-			await expect(page.getByText('Import').first()).toBeVisible();
+			await expect(row.getByText('Import', { exact: true })).toBeVisible();
 		} finally {
 			await deleteDatasourceViaUI(page, ds);
 		}
@@ -43,10 +44,11 @@ test.describe('Datasources – list & management', () => {
 		await createDatasource(request, ds);
 		try {
 			await page.goto('/datasources');
-			await expect(page.getByText(ds)).toBeVisible();
+			const row = page.locator(`[data-ds-row="${ds}"]`);
+			await expect(row).toBeVisible();
 
 			await page.getByPlaceholder(/Search datasources/i).fill('ZZZNOMATCH');
-			await expect(page.getByText(ds)).not.toBeVisible();
+			await expect(row).not.toBeVisible();
 			await expect(page.getByText(/No datasources match/i)).toBeVisible();
 		} finally {
 			await deleteDatasourceViaUI(page, ds);
@@ -79,8 +81,8 @@ test.describe('Datasources – list & management', () => {
 		await createDatasource(request, dsB);
 		try {
 			await page.goto('/datasources');
-			await expect(page.getByText(dsA)).toBeVisible();
-			await expect(page.getByText(dsB)).toBeVisible();
+			await expect(page.locator(`[data-ds-row="${dsA}"]`)).toBeVisible();
+			await expect(page.locator(`[data-ds-row="${dsB}"]`)).toBeVisible();
 		} finally {
 			await deleteDatasourceViaUI(page, dsA);
 			await deleteDatasourceViaUI(page, dsB);
@@ -91,7 +93,7 @@ test.describe('Datasources – list & management', () => {
 		const ds = `e2e-delete-${uid()}`;
 		await createDatasource(request, ds);
 		await page.goto('/datasources');
-		await expect(page.getByText(ds).first()).toBeVisible();
+		await expect(page.locator(`[data-ds-row="${ds}"]`)).toBeVisible();
 
 		// The delete button has title="Delete" inside the datasource row container
 		const row = page.locator(`[data-ds-row="${ds}"]`);
@@ -152,7 +154,7 @@ test.describe('Datasources – upload page', () => {
 		// Wait for navigation away from /new, then verify the datasource exists in the list
 		await expect(page).toHaveURL((url) => !url.pathname.endsWith('/new'), { timeout: 30_000 });
 		await page.goto('/datasources');
-		await expect(page.getByText(dsName)).toBeVisible({ timeout: 15_000 });
+		await expect(page.locator(`[data-ds-row="${dsName}"]`)).toBeVisible({ timeout: 15_000 });
 
 		await deleteDatasourceViaUI(page, dsName);
 	});
@@ -231,9 +233,10 @@ test.describe('Datasources – detail view', () => {
 		await expect(page.locator('[data-column-id="city"]')).toBeVisible();
 
 		// Verify actual data values from the CSV
-		await expect(page.getByText('Alice', { exact: true }).first()).toBeVisible();
-		await expect(page.getByText('London', { exact: true }).first()).toBeVisible();
-		await expect(page.getByText('Berlin', { exact: true }).first()).toBeVisible();
+		const preview = page.locator('[data-preview-ready="true"]');
+		await expect(preview.getByText('Alice', { exact: true })).toBeVisible();
+		await expect(preview.getByText('London', { exact: true })).toBeVisible();
+		await expect(preview.getByText('Berlin', { exact: true })).toBeVisible();
 	});
 });
 
@@ -351,7 +354,7 @@ test.describe('Datasources – config tab interactions', () => {
 			const config = page.locator('[data-ds-config]');
 			await expect(config).toBeVisible({ timeout: 8_000 });
 
-			const nameInput = config.locator('input[type="text"]').first();
+			const nameInput = config.locator('[id^="datasource-name-"]');
 			await nameInput.fill(renamed);
 
 			await expect(config.getByRole('button', { name: 'Save Changes' })).toBeVisible({
@@ -369,7 +372,7 @@ test.describe('Datasources – config tab interactions', () => {
 
 			// After save, reload page and verify renamed datasource appears
 			await page.reload();
-			await expect(page.getByText(renamed)).toBeVisible({ timeout: 10_000 });
+			await expect(page.locator(`[data-ds-row="${renamed}"]`)).toBeVisible({ timeout: 10_000 });
 		} finally {
 			await deleteDatasourceViaUI(page, renamed);
 		}

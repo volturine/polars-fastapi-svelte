@@ -767,12 +767,13 @@ describe('AnalysisStore.normalizeSteps', () => {
 	});
 
 	test('infers depends_on when steps lack dependency metadata', () => {
+		const stepA = makeStep({ id: 'A' });
+		delete stepA.depends_on;
+		const stepB = makeStep({ id: 'B' });
+		delete stepB.depends_on;
 		const tab = makeTab({
 			id: 'tab-1',
-			steps: [
-				makeStep({ id: 'A', depends_on: undefined as unknown as string[] }),
-				makeStep({ id: 'B', depends_on: undefined as unknown as string[] })
-			]
+			steps: [stepA, stepB]
 		});
 		store.current = {
 			id: 'a-1',
@@ -791,14 +792,11 @@ describe('AnalysisStore.normalizeSteps', () => {
 	});
 
 	test('defaults is_applied to true when absent', () => {
+		const step = makeStep({ id: 'A' });
+		delete step.is_applied;
 		const tab = makeTab({
 			id: 'tab-1',
-			steps: [
-				makeStep({
-					id: 'A',
-					is_applied: undefined as unknown as boolean
-				})
-			]
+			steps: [step]
 		});
 		store.current = {
 			id: 'a-1',

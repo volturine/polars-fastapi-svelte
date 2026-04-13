@@ -23,8 +23,8 @@ from modules.auth.dependencies import get_current_user
 from modules.auth.models import User
 from modules.chat.openrouter import OpenRouterError, chat_with_tools, list_models
 from modules.chat.sessions import LiveSession, session_store
-from modules.chat.tool_contract import format_output_hint
 from modules.mcp.executor import build_tool_context, call_tool
+from modules.mcp.tool_output import format_output_hint
 from modules.mcp.validation import validate_args
 
 router = APIRouter(prefix='/ai/chat', tags=['ai-chat'])

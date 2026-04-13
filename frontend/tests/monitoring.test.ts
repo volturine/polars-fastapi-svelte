@@ -97,8 +97,9 @@ test.describe('Monitoring – Schedules tab', () => {
 		await createSchedule(request, dsId, '0 6 * * *');
 		try {
 			await page.goto('/monitoring?tab=schedules');
-			await expect(page.getByText(ds)).toBeVisible({ timeout: 8_000 });
-			await expect(page.getByText('Cron: 0 6 * * *')).toBeVisible({ timeout: 5_000 });
+			const schedRow = page.locator(`[data-datasource-name="${ds}"]`);
+			await expect(schedRow).toBeVisible({ timeout: 8_000 });
+			await expect(schedRow).toContainText('Cron: 0 6 * * *', { timeout: 5_000 });
 		} finally {
 			await deleteScheduleViaUI(page, ds);
 			await deleteDatasourceViaUI(page, ds);
@@ -114,11 +115,8 @@ test.describe('Monitoring – Schedules tab', () => {
 		try {
 			await page.goto('/monitoring?tab=schedules');
 
-			// Wait for the schedule delete button to appear
-			const deleteBtn = page
-				.locator('tr', { has: page.getByText(ds) })
-				.first()
-				.getByLabel('Delete schedule');
+			const schedRow = page.locator(`tr[data-datasource-id="${dsId}"]`);
+			const deleteBtn = schedRow.getByLabel('Delete schedule');
 			await expect(deleteBtn).toBeAttached({ timeout: 15_000 });
 
 			// Delete button is always visible in the table row
@@ -129,8 +127,7 @@ test.describe('Monitoring – Schedules tab', () => {
 			await expect(dialog.getByRole('heading', { name: /Delete Schedule/i })).toBeVisible();
 			await dialog.getByRole('button', { name: /^Delete$/ }).click();
 
-			// After deletion the datasource name should disappear from the table
-			await expect(page.getByText(ds)).not.toBeVisible({ timeout: 8_000 });
+			await expect(schedRow).toHaveCount(0, { timeout: 8_000 });
 		} finally {
 			await deleteDatasourceViaUI(page, ds);
 		}
@@ -143,10 +140,9 @@ test.describe('Monitoring – Schedules tab', () => {
 		await createSchedule(request, dsId, '0 8 * * *');
 		try {
 			await page.goto('/monitoring?tab=schedules');
-			await expect(page.getByText(ds)).toBeVisible({ timeout: 10_000 });
+			const schedRow = page.locator(`tr[data-datasource-id="${dsId}"]`);
+			await expect(schedRow).toBeVisible({ timeout: 10_000 });
 
-			// Find the toggle button in the schedule table row
-			const schedRow = page.locator('tr', { has: page.getByText(ds) }).first();
 			const toggleBtn = schedRow.locator('button[title="Click to disable"]');
 			await expect(toggleBtn).toBeAttached({ timeout: 5_000 });
 			await toggleBtn.click({ timeout: 5_000 });
@@ -185,11 +181,9 @@ test.describe('Monitoring – Schedule create flow', () => {
 			await createBtn.click();
 
 			// Schedule should appear in the list table (scope to table rows to avoid matching the form <option>)
-			const panel = page.locator('#panel-schedules');
-			await expect(panel.locator('tr', { hasText: ds })).toBeVisible({
-				timeout: 8_000
-			});
-			await expect(page.getByText('Every hour')).toBeVisible({ timeout: 5_000 });
+			const schedRow = page.locator(`[data-datasource-name="${ds}"]`);
+			await expect(schedRow).toBeVisible({ timeout: 8_000 });
+			await expect(schedRow).toContainText('Every hour', { timeout: 5_000 });
 		} finally {
 			await deleteScheduleViaUI(page, ds);
 			await deleteDatasourceViaUI(page, ds);
@@ -225,17 +219,16 @@ test.describe('Monitoring – Schedule inline cron edit', () => {
 		test.setTimeout(60_000);
 		const ds = `e2e-sched-cron-${uid()}`;
 		const dsId = await createDatasource(request, ds);
-		await createSchedule(request, dsId, '0 6 * * *');
+		const scheduleId = await createSchedule(request, dsId, '0 6 * * *');
 		try {
 			await page.goto('/monitoring?tab=schedules');
-			await expect(page.getByText(ds)).toBeVisible({ timeout: 10_000 });
 
 			// Expand the schedule row by clicking on it (table view uses <tr>)
-			const schedRow = page.locator('tr', { has: page.getByText(ds) }).first();
+			const schedRow = page.locator(`[data-schedule-row="${scheduleId}"]`);
+			await expect(schedRow).toBeVisible({ timeout: 10_000 });
 			await schedRow.click();
 
-			// Wait for expanded detail row (sibling <tr> with cron section)
-			const detailRow = schedRow.locator('+ tr');
+			const detailRow = page.locator(`[data-schedule-detail="${scheduleId}"]`);
 			await expect(detailRow.locator('code')).toBeVisible({ timeout: 5_000 });
 
 			// Click the pencil/edit button scoped to the expanded row
@@ -244,7 +237,7 @@ test.describe('Monitoring – Schedule inline cron edit', () => {
 			await editBtn.click();
 
 			// Cron input should appear
-			const cronInput = page.locator('input[aria-label="Cron expression"]').first();
+			const cronInput = detailRow.locator('input[aria-label="Cron expression"]');
 			await expect(cronInput).toBeVisible({ timeout: 3_000 });
 
 			// Clear and type new expression, then press Enter
@@ -252,9 +245,7 @@ test.describe('Monitoring – Schedule inline cron edit', () => {
 			await cronInput.press('Enter');
 
 			// After save, the new expression should appear (wait for mutation + refetch)
-			await expect(detailRow.locator('code', { hasText: '30 12 * * 1' })).toBeVisible({
-				timeout: 10_000
-			});
+			await expect(detailRow.locator('code')).toContainText('30 12 * * 1', { timeout: 10_000 });
 			// Input should be gone once the code element is back
 			await expect(cronInput).not.toBeVisible({ timeout: 5_000 });
 
@@ -269,20 +260,20 @@ test.describe('Monitoring – Schedule inline cron edit', () => {
 		test.setTimeout(60_000);
 		const ds = `e2e-sched-cron-esc-${uid()}`;
 		const dsId = await createDatasource(request, ds);
-		await createSchedule(request, dsId, '0 6 * * *');
+		const scheduleId = await createSchedule(request, dsId, '0 6 * * *');
 		try {
 			await page.goto('/monitoring?tab=schedules');
-			await expect(page.getByText(ds)).toBeVisible({ timeout: 10_000 });
 
 			// Expand (table view)
-			const schedRow = page.locator('tr', { has: page.getByText(ds) }).first();
+			const schedRow = page.locator(`[data-schedule-row="${scheduleId}"]`);
+			await expect(schedRow).toBeVisible({ timeout: 10_000 });
 			await schedRow.click();
-			const detailRow = schedRow.locator('+ tr');
+			const detailRow = page.locator(`[data-schedule-detail="${scheduleId}"]`);
 			await expect(detailRow.locator('code')).toBeVisible({ timeout: 5_000 });
 
 			// Enter edit mode scoped to expanded row
 			await detailRow.locator('button[title="Edit cron expression"]').click();
-			const cronInput = page.locator('input[aria-label="Cron expression"]').first();
+			const cronInput = detailRow.locator('input[aria-label="Cron expression"]');
 			await expect(cronInput).toBeVisible({ timeout: 3_000 });
 
 			// Type a different value then Escape
@@ -291,9 +282,7 @@ test.describe('Monitoring – Schedule inline cron edit', () => {
 
 			// Input should disappear, original expression should remain
 			await expect(cronInput).not.toBeVisible({ timeout: 3_000 });
-			await expect(page.locator('code', { hasText: '0 6 * * *' })).toBeVisible({
-				timeout: 5_000
-			});
+			await expect(detailRow.locator('code')).toContainText('0 6 * * *', { timeout: 5_000 });
 		} finally {
 			await deleteScheduleViaUI(page, ds);
 			await deleteDatasourceViaUI(page, ds);
@@ -325,7 +314,9 @@ test.describe('Monitoring – Health Checks tab', () => {
 		await createHealthCheck(request, dsId, hc);
 		try {
 			await page.goto('/monitoring?tab=health');
-			await expect(page.getByText(hc)).toBeVisible({ timeout: 8_000 });
+			await expect(page.locator(`[data-healthcheck-name="${hc}"]`)).toBeVisible({
+				timeout: 8_000
+			});
 		} finally {
 			await deleteHealthCheckViaUI(page, hc);
 			await deleteDatasourceViaUI(page, ds);
@@ -341,12 +332,8 @@ test.describe('Monitoring – Health Checks tab', () => {
 
 		try {
 			await page.goto('/monitoring?tab=health');
-			await expect(page.getByText(hc).first()).toBeVisible({
-				timeout: 8_000
-			});
-
-			// Scope the delete to the row containing our health check name
-			const row = page.locator('tr', { has: page.getByText(hc) }).first();
+			const row = page.locator(`[data-healthcheck-name="${hc}"]`);
+			await expect(row).toBeVisible({ timeout: 8_000 });
 			await row.getByLabel('Delete check').click({ timeout: 5_000 });
 
 			// Confirm in the dialog
@@ -354,9 +341,7 @@ test.describe('Monitoring – Health Checks tab', () => {
 			await expect(dialog.getByRole('heading', { name: /Delete Health Check/i })).toBeVisible();
 			await dialog.getByRole('button', { name: /^Delete$/ }).click();
 
-			await expect(page.getByText(hc)).not.toBeVisible({
-				timeout: 8_000
-			});
+			await expect(row).toHaveCount(0, { timeout: 8_000 });
 		} finally {
 			await deleteDatasourceViaUI(page, ds);
 		}
@@ -371,12 +356,8 @@ test.describe('Monitoring – Health Checks tab', () => {
 		await createHealthCheck(request, dsId, hc);
 		try {
 			await page.goto('/monitoring?tab=health');
-			await expect(page.getByText(hc).first()).toBeVisible({
-				timeout: 8_000
-			});
-
-			// Find the toggle button in the health check row — starts enabled (title "Click to disable")
-			const row = page.locator('tr', { has: page.getByText(hc) }).first();
+			const row = page.locator(`[data-healthcheck-name="${hc}"]`);
+			await expect(row).toBeVisible({ timeout: 8_000 });
 			const toggleBtn = row.locator('button[title="Click to disable"]');
 			await expect(toggleBtn).toBeAttached({ timeout: 5_000 });
 			await toggleBtn.click({ timeout: 5_000 });
@@ -384,7 +365,7 @@ test.describe('Monitoring – Health Checks tab', () => {
 			// After toggle the mutation refetches data, re-rendering the table.
 			// Wait for the visible "Off" text which is the stable end-state indicator;
 			// checking button[title] attachment is racy during row re-render.
-			const updatedRow = page.locator('tr', { has: page.getByText(hc) }).first();
+			const updatedRow = page.locator(`[data-healthcheck-name="${hc}"]`);
 			await expect(updatedRow.getByText('Off')).toBeVisible({ timeout: 10_000 });
 
 			await screenshot(page, 'monitoring', 'health-check-toggled-off');
@@ -426,7 +407,9 @@ test.describe('Monitoring – Health Check create flow', () => {
 			await saveBtn.click();
 
 			// Check should appear in the list
-			await expect(page.getByText(hc)).toBeVisible({ timeout: 8_000 });
+			await expect(page.locator(`[data-healthcheck-name="${hc}"]`)).toBeVisible({
+				timeout: 8_000
+			});
 		} finally {
 			await deleteHealthCheckViaUI(page, hc);
 			await deleteDatasourceViaUI(page, ds);
@@ -452,13 +435,14 @@ test.describe('Monitoring – Builds tab', () => {
 		try {
 			await page.goto('/monitoring?tab=builds');
 			const panel = page.locator('#panel-builds');
-			await expect(panel.getByText(ds).first()).toBeVisible({ timeout: 20_000 });
+			const buildRow = panel.locator(`[data-build-datasource-name="${ds}"]`);
+			await expect(buildRow).toBeVisible({ timeout: 20_000 });
 
 			await page.getByLabel(/Search builds, schedules, or health checks/i).fill('ZZZNOMATCH');
-			await expect(panel.getByText(ds)).not.toBeVisible({ timeout: 5_000 });
+			await expect(buildRow).not.toBeVisible({ timeout: 5_000 });
 
 			await page.getByLabel(/Search builds, schedules, or health checks/i).fill(ds);
-			await expect(panel.getByText(ds).first()).toBeVisible({ timeout: 5_000 });
+			await expect(buildRow).toBeVisible({ timeout: 5_000 });
 		} finally {
 			await deleteDatasourceViaUI(page, ds);
 		}
@@ -472,9 +456,9 @@ test.describe('Monitoring – Builds tab', () => {
 			await page.goto('/monitoring?tab=builds');
 			const panel = page.locator('#panel-builds');
 			await expect(panel).toBeVisible();
-			await expect(panel.getByText(ds).first()).toBeVisible({ timeout: 20_000 });
-			const cells = panel.locator('td');
-			await expect(cells.getByText('Success').first()).toBeVisible({ timeout: 5_000 });
+			const buildRow = panel.locator(`[data-build-datasource-name="${ds}"]`);
+			await expect(buildRow).toBeVisible({ timeout: 20_000 });
+			await expect(buildRow).toContainText('Success', { timeout: 5_000 });
 		} finally {
 			await deleteDatasourceViaUI(page, ds);
 		}
@@ -487,12 +471,14 @@ test.describe('Monitoring – Builds tab', () => {
 		try {
 			await page.goto('/monitoring?tab=builds');
 			const panel = page.locator('#panel-builds');
-			await expect(panel.getByText(ds).first()).toBeVisible({ timeout: 20_000 });
+			const buildRow = panel.locator(`[data-build-datasource-name="${ds}"]`);
+			await expect(buildRow).toBeVisible({ timeout: 20_000 });
 
-			const buildRow = panel.locator('tr[data-build-row]', { hasText: ds }).first();
 			await buildRow.click();
+			const buildRowId = await buildRow.getAttribute('data-build-row');
+			if (!buildRowId) throw new Error('Expected build row id');
 
-			const detailRow = panel.locator('tr[data-build-detail]').first();
+			const detailRow = panel.locator(`[data-build-detail="${buildRowId}"]`);
 			await expect(detailRow).toBeVisible({ timeout: 5_000 });
 			await expect(detailRow.locator('[data-testid="build-preview"]')).toBeVisible({
 				timeout: 5_000
@@ -513,12 +499,14 @@ test.describe('Monitoring – Builds tab', () => {
 		try {
 			await page.goto('/monitoring?tab=builds');
 			const panel = page.locator('#panel-builds');
-			await expect(panel.getByText(ds).first()).toBeVisible({ timeout: 20_000 });
+			const buildRow = panel.locator(`[data-build-datasource-name="${ds}"]`);
+			await expect(buildRow).toBeVisible({ timeout: 20_000 });
 
-			const buildRow = panel.locator('tr[data-build-row]', { hasText: ds }).first();
 			await buildRow.click();
+			const buildRowId = await buildRow.getAttribute('data-build-row');
+			if (!buildRowId) throw new Error('Expected build row id');
 
-			const detailRow = panel.locator('tr[data-build-detail]').first();
+			const detailRow = panel.locator(`[data-build-detail="${buildRowId}"]`);
 			await expect(detailRow).toBeVisible({ timeout: 5_000 });
 			await detailRow.getByRole('tab', { name: 'Payload' }).click();
 			const payloadPanel = detailRow.locator('[data-testid="build-payload-panel"]');
@@ -526,7 +514,9 @@ test.describe('Monitoring – Builds tab', () => {
 			await expect(payloadPanel.getByText('Request', { exact: true })).toBeVisible({
 				timeout: 5_000
 			});
-			await expect(payloadPanel.locator('pre').first()).toBeVisible({ timeout: 5_000 });
+			await expect(payloadPanel.locator('[data-testid="build-payload-request"]')).toBeVisible({
+				timeout: 5_000
+			});
 		} finally {
 			await deleteDatasourceViaUI(page, ds);
 		}
@@ -539,12 +529,14 @@ test.describe('Monitoring – Builds tab', () => {
 		try {
 			await page.goto('/monitoring?tab=builds');
 			const panel = page.locator('#panel-builds');
-			await expect(panel.getByText(ds).first()).toBeVisible({ timeout: 20_000 });
+			const buildRow = panel.locator(`[data-build-datasource-name="${ds}"]`);
+			await expect(buildRow).toBeVisible({ timeout: 20_000 });
 
-			const buildRow = panel.locator('tr[data-build-row]', { hasText: ds }).first();
 			await buildRow.click();
+			const buildRowId = await buildRow.getAttribute('data-build-row');
+			if (!buildRowId) throw new Error('Expected build row id');
 
-			const detailRow = panel.locator('tr[data-build-detail]').first();
+			const detailRow = panel.locator(`[data-build-detail="${buildRowId}"]`);
 			await expect(detailRow).toBeVisible({ timeout: 5_000 });
 			await detailRow.getByRole('tab', { name: 'Payload' }).click();
 			const payloadPanel = detailRow.locator('[data-testid="build-payload-panel"]');
@@ -552,7 +544,9 @@ test.describe('Monitoring – Builds tab', () => {
 			await expect(payloadPanel.getByText('Result', { exact: true })).toBeVisible({
 				timeout: 5_000
 			});
-			await expect(payloadPanel.locator('pre').last()).toBeVisible({ timeout: 5_000 });
+			await expect(payloadPanel.locator('[data-testid="build-payload-result"]')).toBeVisible({
+				timeout: 5_000
+			});
 		} finally {
 			await deleteDatasourceViaUI(page, ds);
 		}
@@ -565,11 +559,13 @@ test.describe('Monitoring – Builds tab', () => {
 		try {
 			await page.goto('/monitoring?tab=builds');
 			const panel = page.locator('#panel-builds');
-			await expect(panel.getByText(ds).first()).toBeVisible({ timeout: 20_000 });
+			const buildRow = panel.locator(`[data-build-datasource-name="${ds}"]`);
+			await expect(buildRow).toBeVisible({ timeout: 20_000 });
 
-			const buildRow = panel.locator('tr[data-build-row]', { hasText: ds }).first();
 			await buildRow.click();
-			const detailRow = panel.locator('tr[data-build-detail]').first();
+			const buildRowId = await buildRow.getAttribute('data-build-row');
+			if (!buildRowId) throw new Error('Expected build row id');
+			const detailRow = panel.locator(`[data-build-detail="${buildRowId}"]`);
 			await expect(detailRow).toBeVisible({ timeout: 5_000 });
 
 			// Click again to collapse
@@ -616,14 +612,16 @@ test.describe('Monitoring – live build history', () => {
 			await openPreviewBtn.click();
 			await expect(page.locator('[data-testid="build-preview"]')).toBeVisible({ timeout: 10_000 });
 
-			await expect(monitorPanel.getByText(aName).first()).toBeVisible({ timeout: 20_000 });
-
-			const monitorBuildRow = monitorPanel
-				.locator('tr[data-build-row]', { hasText: aName })
-				.first();
+			const monitorBuildRow = monitorPanel.locator(
+				`[data-build-analysis-name="${aName}"][data-build-kind="preview"]`
+			);
 			await expect(monitorBuildRow).toBeVisible({ timeout: 10_000 });
 			await monitorBuildRow.click();
-			const monitorPreview = monitorPanel.locator('[data-testid="build-preview"]').first();
+			const monitorBuildRowId = await monitorBuildRow.getAttribute('data-build-row');
+			if (!monitorBuildRowId) throw new Error('Expected monitor build row id');
+			const monitorPreview = monitorPanel
+				.locator(`[data-build-detail="${monitorBuildRowId}"]`)
+				.locator('[data-testid="build-preview"]');
 			await expect(monitorPreview).toBeVisible({ timeout: 10_000 });
 			await expect(monitorPreview.locator('[data-testid="build-steps-panel"]')).toBeVisible({
 				timeout: 5_000
@@ -676,9 +674,12 @@ test.describe('Monitoring – live build history', () => {
 			await expect(terminal).toBeVisible({ timeout: 60_000 });
 
 			await page.goto('/monitoring?tab=builds');
+			await waitForLayoutReady(page);
 			const panel = page.locator('#panel-builds');
 			await expect(panel).toBeVisible({ timeout: 5_000 });
-			await expect(panel.getByText(aName).first()).toBeVisible({ timeout: 20_000 });
+			await expect(
+				panel.locator(`[data-build-analysis-name="${aName}"][data-build-kind="preview"]`)
+			).toBeVisible({ timeout: 20_000 });
 
 			await screenshot(page, 'monitoring', 'build-history-after-real-build');
 		} finally {

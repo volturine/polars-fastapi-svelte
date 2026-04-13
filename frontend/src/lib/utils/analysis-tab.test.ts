@@ -140,7 +140,8 @@ describe('validatePipelineTabs', () => {
 
 	test('detects missing datasource', () => {
 		const tab = makeTab();
-		const broken = { ...tab, datasource: undefined } as unknown as AnalysisTab;
+		Object.defineProperty(tab, 'datasource', { value: undefined, configurable: true });
+		const broken = tab;
 		const errors = validatePipelineTabs([broken]);
 		expect(errors).toHaveLength(1);
 		expect(errors[0].field).toBe('datasource');
@@ -156,7 +157,8 @@ describe('validatePipelineTabs', () => {
 
 	test('detects missing output', () => {
 		const tab = makeTab();
-		const broken = { ...tab, output: undefined } as unknown as AnalysisTab;
+		Object.defineProperty(tab, 'output', { value: undefined, configurable: true });
+		const broken = tab;
 		const errors = validatePipelineTabs([broken]);
 		expect(errors).toHaveLength(1);
 		expect(errors[0].field).toBe('output');

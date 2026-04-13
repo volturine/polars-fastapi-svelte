@@ -82,12 +82,6 @@ just dev             # start both servers
 - `transition-[color,background-color,border-color,opacity]` for combined
 - Add `transform` to the list only when transform changes
 
-## Backend Development
-
-- FastAPI async patterns throughout — no blocking calls in route handlers
-- Pydantic V2 models for all request/response schemas
-- SQLAlchemy 2.0 async sessions — no sync DB calls
-- Polars for all data computation — avoid pandas
 
 ## Code Style
 

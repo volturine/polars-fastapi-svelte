@@ -226,6 +226,7 @@
 })}
 	{@const option = payload.option as PickerOption}
 	<button
+		data-picker-option={option.label}
 		class={cx(
 			menuItem(),
 			css({

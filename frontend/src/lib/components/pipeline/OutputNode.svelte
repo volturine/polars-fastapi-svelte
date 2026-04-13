@@ -632,6 +632,7 @@
 							onclick={startNameEdit}
 							type="button"
 							aria-label="Edit export name"
+							data-testid="output-table-name-inline-edit"
 						>
 							<Pencil size={12} class={css({ flexShrink: '0' })} />
 						</button>
@@ -1060,6 +1061,7 @@
 							gap: '2',
 							paddingLeft: '5'
 						})}
+						data-testid="output-notify-panel"
 					>
 						<label class={cx(label({ variant: 'checkbox' }), css({ gap: '2', fontSize: 'xs' }))}>
 							<input
@@ -1304,6 +1306,7 @@
 								fontSize: 'xs',
 								color: 'fg.tertiary'
 							})}
+							data-testid="output-health-empty-state"
 						>
 							{#if canQueryOutput}
 								Build this output once to materialize its datasource before adding health checks.

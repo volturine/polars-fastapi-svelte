@@ -144,31 +144,9 @@
 		return chatStore.tools.find((t) => t.id === toolId);
 	}
 
-	function outputFields(schema: Record<string, unknown> | boolean | null): string[] {
-		if (!schema || typeof schema !== 'object') return [];
-		if (schema.type === 'object') {
-			const props = schema.properties;
-			if (!props || typeof props !== 'object') return [];
-			return Object.keys(props as Record<string, unknown>);
-		}
-		if (schema.type === 'array') {
-			const items = schema.items;
-			if (!items || typeof items !== 'object') return [];
-			const itemSchema = items as Record<string, unknown>;
-			const props = itemSchema.properties;
-			if (!props || typeof props !== 'object') return [];
-			return Object.keys(props as Record<string, unknown>);
-		}
-		return [];
-	}
-
 	function outputHint(tool: MCPTool | undefined): string | null {
 		if (!tool?.output_schema) return null;
-		const out = tool.output_schema;
-		const parts: string[] = [];
-		if (out.response_model) parts.push(out.response_model);
-		if (out.status_code && out.status_code !== '200') parts.push(out.status_code);
-		return parts.length > 0 ? parts.join(' · ') : null;
+		return tool.output_schema.hint ?? null;
 	}
 
 	const EXAMPLE_PROMPTS = [
@@ -1929,7 +1907,7 @@
 									</div>
 									{#if toolDef?.output_schema}
 										{@const out = toolDef.output_schema}
-										{@const fields = outputFields(out.schema)}
+										{@const fields = out.fields ?? []}
 										<div
 											class={css({
 												display: 'flex',

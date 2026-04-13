@@ -64,6 +64,7 @@
 	{@const onPick = payload.onSelect}
 	<button
 		type="button"
+		data-column-option={item.label}
 		class={cx(
 			css({
 				minWidth: '0',

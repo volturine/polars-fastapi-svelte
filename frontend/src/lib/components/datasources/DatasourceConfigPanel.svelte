@@ -25,6 +25,7 @@
 	} from 'lucide-svelte';
 	import type {
 		DataSource,
+		DatabaseDataSource,
 		FileDataSource,
 		IcebergDataSource,
 		SchemaInfo,
@@ -161,14 +162,13 @@
 			};
 		}
 		if (isExcel(ds) && fileSource) {
-			const excelSource = fileSource as unknown as Record<string, unknown>;
-			const cellRangeValue = excelSource.cell_range;
+			const cellRangeValue = fileSource.cell_range;
 			const cellRange = typeof cellRangeValue === 'string' ? cellRangeValue : '';
-			const sheetValue = excelSource.sheet_name;
+			const sheetValue = fileSource.sheet_name;
 			const sheetName = typeof sheetValue === 'string' ? sheetValue : '';
-			const tableValue = excelSource.table_name;
+			const tableValue = fileSource.table_name;
 			const tableName = typeof tableValue === 'string' ? tableValue : '';
-			const rangeValue = excelSource.named_range;
+			const rangeValue = fileSource.named_range;
 			const namedRange = typeof rangeValue === 'string' ? rangeValue : '';
 			const endRowValue = fileSource.end_row ?? null;
 			excelConfig = {
@@ -264,6 +264,10 @@
 
 	function isFile(ds: DataSource): boolean {
 		return ds.source_type === 'file';
+	}
+
+	function isDatabase(ds: DataSource): ds is DatabaseDataSource {
+		return ds.source_type === 'database';
 	}
 
 	function isIceberg(ds: DataSource): boolean {
@@ -810,8 +814,8 @@
 							</div>
 						{/if}
 
-						{#if ds.source_type === 'database'}
-							{@const config = ds.config as unknown as { connection_string?: string }}
+						{#if isDatabase(ds)}
+							{@const config = ds.config}
 							{#if config.connection_string}
 								<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 									<span

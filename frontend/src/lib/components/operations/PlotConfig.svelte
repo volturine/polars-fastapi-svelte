@@ -20,6 +20,7 @@
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import { css, label, stepConfig, cx, input } from '$lib/styles/panda';
+	import { normalizeConfig } from '$lib/utils/step-config-defaults';
 
 	type PlotConfigData = Omit<PlotConfigBase, 'aggregation' | 'chart_type' | 'stack_mode'> & {
 		chart_type:
@@ -113,8 +114,31 @@
 
 	const configDefaults = defaultConfig satisfies Record<string, unknown>;
 
+	function toPlotConfig(value: Record<string, unknown>): PlotConfigData {
+		const normalized = normalizeConfig('chart', value);
+		return { ...defaultConfig, ...normalized } as PlotConfigData;
+	}
+
 	let { schema, config = $bindable(configDefaults) }: Props = $props();
-	const plotConfig = $derived(config as unknown as PlotConfigData);
+	const initialConfig = toPlotConfig(config);
+	let plotConfig = $state(initialConfig);
+	let syncedConfig = $state(JSON.stringify(initialConfig));
+
+	// Bindable config must receive chart edits back from the local form state.
+	$effect(() => {
+		const next = toPlotConfig(config);
+		const nextJson = JSON.stringify(next);
+		if (nextJson === syncedConfig) return;
+		plotConfig = next;
+		syncedConfig = nextJson;
+	});
+
+	$effect(() => {
+		const nextJson = JSON.stringify(plotConfig);
+		if (nextJson === syncedConfig) return;
+		config = plotConfig;
+		syncedConfig = nextJson;
+	});
 
 	let activeTab = $state<'data' | 'look'>('data');
 

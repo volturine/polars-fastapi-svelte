@@ -62,8 +62,7 @@ test.describe('Navigation – page load smoke tests', () => {
 
 	test('clicking Analyses nav link goes to /', async ({ page }) => {
 		await page.goto('/datasources');
-		// Nav link in header – look for it by href
-		await page.locator('a[href="/"]').first().click();
+		await page.getByRole('link', { name: 'Analyses' }).click();
 		await expect(page).toHaveURL('/');
 	});
 
@@ -153,11 +152,13 @@ test.describe('Navigation – engines live monitor', () => {
 			await engineButton.click();
 			const dialog = page.getByRole('dialog', { name: 'Engines' });
 			await expect(dialog).toBeVisible({ timeout: 5_000 });
-			await expect(dialog.getByText(analysisId)).toBeVisible({ timeout: 10_000 });
+			await expect(dialog.getByText(analysisId, { exact: true })).toBeVisible({ timeout: 10_000 });
 
 			await shutdownEngineViaApi(request, analysisId);
 
-			await expect(dialog.getByText(analysisId)).not.toBeVisible({ timeout: 10_000 });
+			await expect(dialog.getByText(analysisId, { exact: true })).not.toBeVisible({
+				timeout: 10_000
+			});
 		} finally {
 			await shutdownEngineViaApi(request, analysisId);
 			await deleteAnalysisViaUI(page, analysisName);
@@ -231,7 +232,7 @@ test.describe('Navigation – namespace persistence', () => {
 		const search = dialog.getByRole('textbox', { name: 'Search namespaces' });
 		await search.fill(ns);
 
-		await dialog.getByText(`Create "${ns}"`).click();
+		await dialog.locator(`[data-namespace-create="${ns}"]`).click();
 		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
 
 		const sidebar = page.locator('aside[aria-label="Main navigation"]');

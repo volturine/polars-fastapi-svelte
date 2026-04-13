@@ -1,5 +1,27 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
+async function waitForAnyVisible(locator: Locator, timeout: number): Promise<void> {
+	await expect
+		.poll(
+			async () => {
+				const count = await locator.count();
+				for (let index = 0; index < count; index += 1) {
+					if (
+						await locator
+							.nth(index)
+							.isVisible()
+							.catch(() => false)
+					) {
+						return true;
+					}
+				}
+				return false;
+			},
+			{ timeout }
+		)
+		.toBe(true);
+}
+
 /**
  * Wait for the app shell to finish hydrating by confirming the Settings
  * button in the sidebar is visible and enabled. The sidebar only renders
@@ -25,7 +47,7 @@ export async function waitForAppShell(page: Page, timeout = 15_000): Promise<voi
  */
 export async function waitForLayoutReady(page: Page, timeout = 30_000): Promise<void> {
 	await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible({ timeout });
-	await expect(page.getByRole('main').first()).toBeVisible({ timeout });
+	await waitForAnyVisible(page.locator('main'), timeout);
 }
 
 /**
@@ -45,7 +67,7 @@ export async function waitForDatasourceList(page: Page, timeout = 15_000): Promi
 	const terminal = page.locator(
 		'[data-ds-row], :text("No data sources yet"), :text("No datasources match"), [aria-live="polite"]'
 	);
-	await expect(terminal.first()).toBeVisible({ timeout });
+	await waitForAnyVisible(terminal, timeout);
 }
 
 /**
@@ -70,11 +92,11 @@ export async function gotoAnalysesGallery(page: Page, timeout = 15_000): Promise
 	const anyContent = page.locator(
 		'[data-analysis-card], :text("No analyses match"), :text("No analyses yet")'
 	);
-	await expect(anyContent.first()).toBeVisible({ timeout });
+	await waitForAnyVisible(anyContent, timeout);
 
 	// Wait for the search input to exist (only renders when analyses exist),
 	// then let IndexedDB hydration settle by polling until the value stabilizes.
-	const searchBox = page.getByRole('textbox').first();
+	const searchBox = page.getByRole('textbox', { name: 'Search analyses' });
 	const visible = await searchBox.isVisible().catch(() => false);
 	if (visible) {
 		// Poll until the search value stabilizes (IndexedDB hydration is async).
@@ -96,9 +118,10 @@ export async function gotoAnalysesGallery(page: Page, timeout = 15_000): Promise
 		if (value) {
 			await searchBox.fill('');
 			// After clearing, wait for gallery content to re-render
-			await expect(
-				page.locator('[data-analysis-card], :text("No analyses yet")').first()
-			).toBeVisible({ timeout });
+			await waitForAnyVisible(
+				page.locator('[data-analysis-card], :text("No analyses yet")'),
+				timeout
+			);
 		}
 	}
 }
@@ -152,7 +175,7 @@ export async function waitForUdfList(page: Page, timeout = 15_000): Promise<void
 	await expect(page.getByRole('heading', { name: 'UDF Library' })).toBeVisible({ timeout });
 
 	const terminal = page.locator('[data-udf-card], :text("No UDFs yet"), [aria-live="polite"]');
-	await expect(terminal.first()).toBeVisible({ timeout });
+	await waitForAnyVisible(terminal, timeout);
 }
 
 /**
@@ -184,12 +207,13 @@ export async function openSchemaTabAndWait(page: Page, timeout = 15_000): Promis
 	const schemaReady = config.locator(
 		'[data-schema-column], :text("No schema information available"), :text("Loading schema")'
 	);
-	await expect(schemaReady.first()).toBeVisible({ timeout });
+	await waitForAnyVisible(schemaReady, timeout);
 
 	// If schema is still loading, wait for it to finish
-	await expect(
-		config.locator('[data-schema-column], :text("No schema information available")').first()
-	).toBeVisible({ timeout });
+	await waitForAnyVisible(
+		config.locator('[data-schema-column], :text("No schema information available")'),
+		timeout
+	);
 }
 
 /**

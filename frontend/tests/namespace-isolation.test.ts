@@ -46,9 +46,10 @@ test.describe('Namespace – data isolation', () => {
 
 			// 4. Verify preview still works after round-trip
 			await page.locator(`[data-ds-row="${dsName}"]`).click();
-			await expect(page.locator('[data-preview-ready="true"]')).toBeVisible({ timeout: 30_000 });
+			const preview = page.locator('[data-preview-ready="true"]');
+			await expect(preview).toBeVisible({ timeout: 30_000 });
 			await expect(page.locator('[data-column-id="name"]')).toBeVisible({ timeout: 5_000 });
-			await expect(page.getByText('Alice', { exact: true }).first()).toBeVisible();
+			await expect(preview.getByText('Alice', { exact: true })).toBeVisible();
 			await screenshot(page, 'namespace', 'ds-preview-after-roundtrip');
 		} finally {
 			await deleteDatasource(request, dsId, nsA);

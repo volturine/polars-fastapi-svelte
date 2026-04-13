@@ -49,7 +49,7 @@ export async function createAnalysisViaUi(
 	await page.getByRole('button', { name: /Next/i }).click();
 	await expect(page.getByRole('heading', { name: /Select Data Sources/i })).toBeVisible();
 	await page.getByPlaceholder('Search datasources...').click();
-	await page.locator('[role="option"]', { hasText: datasourceName }).first().click();
+	await page.locator(`[data-picker-option="${datasourceName}"]`).click();
 	await page.getByRole('heading', { name: /Select Data Sources/i }).click();
 	await page.getByRole('button', { name: /Next/i }).click();
 	await expect(page.getByRole('heading', { name: /Review/i })).toBeVisible();

@@ -16,10 +16,8 @@ export async function switchNamespace(page: Page, name: string): Promise<void> {
 	const search = dialog.getByRole('textbox', { name: 'Search namespaces' });
 	await search.fill(name);
 
-	// NamespacePickerModal debounces input by 200ms and fetches namespaces async.
-	// Wait for either the exact namespace button or the "Create" option to appear.
-	const exact = dialog.getByRole('button', { name: name, exact: true });
-	const create = dialog.getByText(`Create "${name}"`);
+	const exact = dialog.locator(`[data-namespace-option="${name}"]`);
+	const create = dialog.locator(`[data-namespace-create="${name}"]`);
 	await expect(exact.or(create)).toBeVisible({ timeout: 8_000 });
 
 	if (await exact.isVisible()) {

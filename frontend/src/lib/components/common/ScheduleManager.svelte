@@ -1392,6 +1392,9 @@
 							{@const triggerDesc = getTriggerDescription(schedule)}
 							{@const provenanceDisplay = getProvenanceDisplay(schedule)}
 							<tr
+								data-schedule-row={schedule.id}
+								data-datasource-id={schedule.datasource_id}
+								data-datasource-name={resolveDatasource(schedule.datasource_id)}
 								class={css({
 									cursor: 'pointer',
 									_hover: { backgroundColor: 'bg.hover' },
@@ -1578,7 +1581,7 @@
 								</td>
 							</tr>
 							{#if expandedId === schedule.id}
-								<tr>
+								<tr data-schedule-detail={schedule.id}>
 									<td
 										colspan={colCount}
 										class={css({

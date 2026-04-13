@@ -9,6 +9,12 @@ import {
 import { screenshot } from './utils/visual.js';
 import { uid } from './utils/uid.js';
 
+async function latestNode(page: Parameters<typeof gotoAnalysisEditor>[0], stepType: string) {
+	const nodes = page.locator(`[data-step-type="${stepType}"]`);
+	await expect.poll(async () => await nodes.count(), { timeout: 5_000 }).toBeGreaterThan(0);
+	return nodes.nth((await nodes.count()) - 1);
+}
+
 // ── Save/discard dirty tracking ─────────────────────────────────────────────
 
 test.describe('Analyses – save/discard dirty tracking', () => {
@@ -47,9 +53,7 @@ test.describe('Analyses – save/discard dirty tracking', () => {
 			await gotoAnalysisEditor(page, aId);
 			await page.locator('button[data-step="select"]').click();
 
-			await expect(page.locator('[data-step-type="select"]').first()).toBeVisible({
-				timeout: 5_000
-			});
+			await expect(await latestNode(page, 'select')).toBeVisible({ timeout: 5_000 });
 
 			const saveBtn = page.getByRole('button', { name: 'Save' });
 			await expect(saveBtn).toBeVisible({ timeout: 5_000 });
@@ -72,9 +76,7 @@ test.describe('Analyses – save/discard dirty tracking', () => {
 		try {
 			await gotoAnalysisEditor(page, aId);
 			await page.locator('button[data-step="sort"]').click();
-			await expect(page.locator('[data-step-type="sort"]').first()).toBeVisible({
-				timeout: 5_000
-			});
+			await expect(await latestNode(page, 'sort')).toBeVisible({ timeout: 5_000 });
 
 			await expect(page.getByRole('button', { name: 'Save' })).toBeVisible({ timeout: 5_000 });
 
@@ -102,7 +104,7 @@ test.describe('Analyses – save/discard dirty tracking', () => {
 			await gotoAnalysisEditor(page, aId);
 			await page.locator('button[data-step="filter"]').click();
 
-			const canvasNode = page.locator('[data-step-type="filter"]').first();
+			const canvasNode = await latestNode(page, 'filter');
 			await expect(canvasNode).toBeVisible({ timeout: 5_000 });
 			await canvasNode.click();
 
@@ -147,39 +149,38 @@ test.describe('Analyses – step library labels', () => {
 		await context.close();
 	});
 
-	// All 25 step types that appear in StepLibrary.svelte (read-only checks)
-	const ALL_STEP_LABELS = [
-		'Filter',
-		'Select',
-		'Group By',
-		'Sort',
-		'Rename',
-		'Drop',
-		'Join',
-		'Expression',
-		'With Columns',
-		'Pivot',
-		'Unpivot',
-		'Fill Null',
-		'Deduplicate',
-		'Explode',
-		'Time Series',
-		'String Transform',
-		'Sample',
-		'Limit',
-		'Top K',
-		'Chart',
-		'Notify',
-		'AI',
-		'View',
-		'Union By Name',
-		'Download'
-	];
+	const ALL_STEP_TYPES = [
+		['filter', 'Filter'],
+		['select', 'Select'],
+		['groupby', 'Group By'],
+		['sort', 'Sort'],
+		['rename', 'Rename'],
+		['drop', 'Drop'],
+		['join', 'Join'],
+		['expression', 'Expression'],
+		['with_columns', 'With Columns'],
+		['pivot', 'Pivot'],
+		['unpivot', 'Unpivot'],
+		['fill_null', 'Fill Null'],
+		['deduplicate', 'Deduplicate'],
+		['explode', 'Explode'],
+		['timeseries', 'Time Series'],
+		['string_transform', 'String Transform'],
+		['sample', 'Sample'],
+		['limit', 'Limit'],
+		['topk', 'Top K'],
+		['chart', 'Chart'],
+		['notification', 'Notify'],
+		['ai', 'AI'],
+		['view', 'View'],
+		['union_by_name', 'Union By Name'],
+		['download', 'Download']
+	] as const;
 
-	for (const label of ALL_STEP_LABELS) {
+	for (const [stepType, label] of ALL_STEP_TYPES) {
 		test(`step type "${label}" is visible in library`, async ({ page }) => {
 			await gotoAnalysisEditor(page, aId);
-			await expect(page.locator('button[data-step]', { hasText: label }).first()).toBeVisible({
+			await expect(page.locator(`button[data-step="${stepType}"]`)).toBeVisible({
 				timeout: 10_000
 			});
 		});
@@ -231,7 +232,7 @@ test.describe('Analyses – step interaction', () => {
 			await gotoAnalysisEditor(page, aId);
 			await page.locator('button[data-step="filter"]').click();
 
-			const canvasNode = page.locator('[data-step-type="filter"]').first();
+			const canvasNode = await latestNode(page, 'filter');
 			await expect(canvasNode).toBeVisible({ timeout: 5_000 });
 			await canvasNode.click();
 
@@ -334,7 +335,7 @@ test.describe('Analyses – save persistence', () => {
 
 			// Add a filter step and open config
 			await page.locator('button[data-step="filter"]').click();
-			const canvasNode = page.locator('[data-step-type="filter"]').first();
+			const canvasNode = await latestNode(page, 'filter');
 			await expect(canvasNode).toBeVisible({ timeout: 5_000 });
 			await canvasNode.click();
 
@@ -374,7 +375,7 @@ test.describe('Analyses – node delete via action button', () => {
 
 			// Add a limit step
 			await page.locator('button[data-step="limit"]').click();
-			const limitNode = page.locator('[data-step-type="limit"]').first();
+			const limitNode = await latestNode(page, 'limit');
 			await expect(limitNode).toBeVisible({ timeout: 5_000 });
 
 			// Click the delete action button on the node
@@ -404,7 +405,7 @@ test.describe('Analyses – node toggle (enable/disable)', () => {
 
 			// Add a sort step
 			await page.locator('button[data-step="sort"]').click();
-			const sortNode = page.locator('[data-step-type="sort"]').first();
+			const sortNode = await latestNode(page, 'sort');
 			await expect(sortNode).toBeVisible({ timeout: 5_000 });
 
 			// By default new steps are not applied (is_applied=false),
@@ -470,7 +471,7 @@ test.describe('Analyses – save + reload config persistence', () => {
 			await waitForEditorReload(page);
 
 			// Limit node should still exist
-			const limitNode = page.locator('[data-step-type="limit"]').first();
+			const limitNode = await latestNode(page, 'limit');
 			await expect(limitNode).toBeVisible({ timeout: 10_000 });
 
 			// Open config again and verify value persisted
@@ -584,7 +585,7 @@ test.describe('Analyses – derived tab flow', () => {
 
 				// Search for our datasource (use the same one)
 				await modal.locator('#dsm-search').fill(ds);
-				await modal.getByText(ds).click({ timeout: 8_000 });
+				await modal.locator(`[data-datasource-option="${ds}"]`).click({ timeout: 8_000 });
 				await expect(modal).toBeHidden({ timeout: 5_000 });
 			}
 
@@ -633,7 +634,7 @@ test.describe('Analyses – multi-tab flow', () => {
 			await expect(modal).toBeVisible({ timeout: 5_000 });
 
 			await modal.locator('#dsm-search').fill(ds2);
-			await modal.getByText(ds2).click({ timeout: 8_000 });
+			await modal.locator(`[data-datasource-option="${ds2}"]`).click({ timeout: 8_000 });
 
 			await expect(modal).toBeHidden({ timeout: 5_000 });
 
@@ -952,7 +953,7 @@ test.describe('Analyses – pointer drag reorder', () => {
 			expect(limitIdx).toBeGreaterThanOrEqual(0);
 
 			// Locate drag handle on the limit node and the insert-zone above the filter node
-			const limitNode = page.locator('[data-step-type="limit"]').first();
+			const limitNode = await latestNode(page, 'limit');
 			const dragHandle = limitNode.locator('button[data-drag-handle="true"]');
 			await expect(dragHandle).toBeVisible({ timeout: 5_000 });
 

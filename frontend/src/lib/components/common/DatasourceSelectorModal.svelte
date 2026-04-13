@@ -257,6 +257,7 @@
 			{:else if activeSource === 'analysis' && allowAnalysis}
 				{#each filteredTabs as entry (entry.id)}
 					<button
+						data-analysis-tab-option={entry.name}
 						class={css({
 							display: 'flex',
 							cursor: 'pointer',
@@ -281,6 +282,7 @@
 			{:else}
 				{#each filteredDatasources as ds (ds.id)}
 					<button
+						data-datasource-option={ds.name}
 						class={css({
 							display: 'flex',
 							cursor: 'pointer',

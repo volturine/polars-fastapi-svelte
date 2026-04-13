@@ -37,6 +37,7 @@
 	import { track } from '$lib/utils/audit-log';
 	import { hashPipeline } from '$lib/utils/hash';
 	import { applySteps } from '$lib/utils/pipeline';
+	import { createAsyncGate } from '$lib/utils/async-gate';
 	import type { EngineResourceConfig, EngineDefaults } from '$lib/types/compute';
 	import type { DropTarget } from '$lib/stores/drag.svelte';
 	import StepLibrary from '$lib/components/pipeline/StepLibrary.svelte';
@@ -101,6 +102,9 @@
 	let draftTimer: number | null = null;
 	let lastLoadedVersion = $state<string | null>(null);
 	let hydratedGates = $state(new Set<string>());
+	const draftLoadGate = createAsyncGate();
+	const inferredSchemaGate = createAsyncGate();
+	const sourceSchemaGate = createAsyncGate();
 
 	let lockMode = $state<EditorLockMode>('pending');
 	let lockIntent = $state<'editing' | 'released'>('editing');
@@ -203,6 +207,8 @@
 	$effect(() => {
 		if (!storageKey || draftLoaded || editorReadOnly) return;
 		if (!analysisStore.tabs.length) return;
+		const currentStorageKey = storageKey;
+		const currentAnalysisId = analysisId;
 		const serverVersion = lastLoadedVersion ?? analysisStore.current?.version ?? null;
 		if (!serverVersion) {
 			draftLoaded = true;
@@ -215,7 +221,10 @@
 			return;
 		}
 
-		void idbGet<string>(storageKey).then((raw) => {
+		const token = draftLoadGate.issue();
+		void idbGet<string>(currentStorageKey).then((raw) => {
+			if (!draftLoadGate.isCurrent(token)) return;
+			if (storageKey !== currentStorageKey || analysisId !== currentAnalysisId) return;
 			if (!raw) {
 				draftLoaded = true;
 				return;
@@ -233,12 +242,12 @@
 				configPosition?: 'right' | 'bottom';
 				bottomPaneHeight?: number;
 			};
-			if (parsed.analysisId !== analysisId) {
+			if (parsed.analysisId !== currentAnalysisId) {
 				draftLoaded = true;
 				return;
 			}
 			if ((parsed.version ?? null) !== serverVersion) {
-				void idbDelete(storageKey);
+				void idbDelete(currentStorageKey);
 				draftLoaded = true;
 				return;
 			}
@@ -255,6 +264,10 @@
 			isDirty = true;
 			draftLoaded = true;
 		});
+
+		return () => {
+			draftLoadGate.invalidate();
+		};
 	});
 
 	// Timer: $derived can't debounce draft persistence.
@@ -445,6 +458,7 @@
 		const gate = `${validAnalysisId}:${tab.id}:${pipelineHash}`;
 		if (hydratedGates.has(gate)) return;
 		hydratedGates = new Set([...hydratedGates, gate]);
+		const requestToken = inferredSchemaGate.issue();
 
 		const targets = pipeline.filter(
 			(step) =>
@@ -457,8 +471,14 @@
 				tab_id: tab.id,
 				target_step_id: step.id
 			}).match(
-				(res) => schemaStore.syncPreviewSchema(step.id, res, pipelineHash),
+				(res) => {
+					if (!inferredSchemaGate.isCurrent(requestToken)) return;
+					if (analysisStore.activeTab?.id !== tab.id) return;
+					schemaStore.syncPreviewSchema(step.id, res, pipelineHash);
+				},
 				(err) => {
+					if (!inferredSchemaGate.isCurrent(requestToken)) return;
+					if (analysisStore.activeTab?.id !== tab.id) return;
 					track({
 						event: 'schema_error',
 						action: 'hydrate',
@@ -468,6 +488,10 @@
 				}
 			);
 		}
+
+		return () => {
+			inferredSchemaGate.invalidate();
+		};
 	});
 
 	const activeTab = $derived(analysisStore.activeTab);
@@ -495,6 +519,7 @@
 		const datasourceIdValue = datasourceId;
 		const schemaId = schemaKey;
 		if (!schemaId) return;
+		const activeTabId = activeTab?.id ?? null;
 
 		const existingSchema = analysisStore.sourceSchemas.get(schemaId);
 		if (existingSchema) return;
@@ -511,6 +536,7 @@
 		if (analysisTabId) {
 			if (!analysisPayload) return;
 			isLoadingSchema = true;
+			const requestToken = sourceSchemaGate.issue();
 			const targetTabId = analysisTabId ?? activeTab?.id ?? null;
 			getStepSchema({
 				analysis_id: validAnalysisId ?? undefined,
@@ -519,6 +545,8 @@
 				target_step_id: 'source'
 			}).match(
 				(payload) => {
+					if (!sourceSchemaGate.isCurrent(requestToken)) return;
+					if (schemaKey !== schemaId || activeTab?.id !== activeTabId) return;
 					const columns = payload.columns.map((name) => ({
 						name,
 						dtype: payload.column_types[name] ?? 'unknown',
@@ -531,6 +559,8 @@
 					isLoadingSchema = false;
 				},
 				(error) => {
+					if (!sourceSchemaGate.isCurrent(requestToken)) return;
+					if (schemaKey !== schemaId || activeTab?.id !== activeTabId) return;
 					track({
 						event: 'schema_error',
 						action: 'analysis_source_schema',
@@ -540,7 +570,9 @@
 					isLoadingSchema = false;
 				}
 			);
-			return;
+			return () => {
+				sourceSchemaGate.invalidate();
+			};
 		}
 
 		if (!datasourcesQuery.data || !datasourceIdValue) return;
@@ -548,12 +580,17 @@
 		const ds = datasourcesQuery.data.find((d) => d.id === datasourceIdValue);
 		if (ds?.source_type === 'analysis') return;
 		isLoadingSchema = true;
+		const requestToken = sourceSchemaGate.issue();
 		getDatasourceSchema(datasourceIdValue).match(
 			(schema) => {
+				if (!sourceSchemaGate.isCurrent(requestToken)) return;
+				if (schemaKey !== schemaId || activeTab?.id !== activeTabId) return;
 				analysisStore.setSourceSchema(schemaId, schema);
 				isLoadingSchema = false;
 			},
 			(err) => {
+				if (!sourceSchemaGate.isCurrent(requestToken)) return;
+				if (schemaKey !== schemaId || activeTab?.id !== activeTabId) return;
 				track({
 					event: 'schema_error',
 					action: 'load',
@@ -563,6 +600,9 @@
 				isLoadingSchema = false;
 			}
 		);
+		return () => {
+			sourceSchemaGate.invalidate();
+		};
 	});
 
 	const currentDatasource = $derived.by(() => {

@@ -43,14 +43,35 @@ class MockWebSocket {
 }
 
 type TestSnapshot = { items: string[] };
-type TestEvent = { type: string; action: string };
+type TestSnapshotMessage = { type: 'snapshot'; items: string[] };
+type TestEvent = { type: 'action'; action: string };
+type TestError = { type: 'error'; error: string };
+type TestMessage = TestSnapshotMessage | TestEvent | TestError;
 
-function parse(data: string): { type: string } | null {
+function parse(data: string): TestMessage | null {
 	try {
-		return JSON.parse(data) as { type: string };
+		return JSON.parse(data) as TestMessage;
 	} catch {
 		return null;
 	}
+}
+
+function isSnapshot(msg: TestMessage): msg is TestSnapshotMessage {
+	return msg.type === 'snapshot';
+}
+
+function extractSnapshot(msg: TestMessage): TestSnapshot {
+	if (!isSnapshot(msg)) {
+		throw new Error('Expected snapshot');
+	}
+	return { items: msg.items };
+}
+
+function extractEvent(msg: TestMessage): TestEvent {
+	if (msg.type !== 'action') {
+		throw new Error('Expected event');
+	}
+	return msg;
 }
 
 describe('createStream', () => {
@@ -77,11 +98,11 @@ describe('createStream', () => {
 			onError: overrides.onError ?? vi.fn(),
 			onClose: overrides.onClose ?? vi.fn()
 		};
-		const handle = createStream<TestSnapshot, TestEvent>('/v1/test/ws', {
+		const handle = createStream<TestSnapshot, TestEvent, TestMessage>('/v1/test/ws', {
 			parse,
-			isSnapshot: (msg) => msg.type === 'snapshot',
-			extractSnapshot: (msg) => msg as unknown as TestSnapshot,
-			extractEvent: (msg) => msg as unknown as TestEvent,
+			isSnapshot,
+			extractSnapshot,
+			extractEvent,
 			callbacks
 		});
 		const socket = MockWebSocket.instances[MockWebSocket.instances.length - 1];
@@ -186,10 +207,10 @@ describe('createStream', () => {
 			onError: vi.fn(),
 			onClose: vi.fn()
 		};
-		createStream<TestSnapshot>('/v1/test/ws', {
+		createStream<TestSnapshot, never, TestMessage>('/v1/test/ws', {
 			parse,
-			isSnapshot: (msg) => msg.type === 'snapshot',
-			extractSnapshot: (msg) => msg as unknown as TestSnapshot,
+			isSnapshot,
+			extractSnapshot: extractSnapshot,
 			callbacks
 		});
 		const socket = MockWebSocket.instances[MockWebSocket.instances.length - 1];

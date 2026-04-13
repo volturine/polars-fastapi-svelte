@@ -29,14 +29,14 @@
 
 	/* ── Enterprise color palette (Contour-inspired) ── */
 	const PALETTE = [
-		'#4A8FE7',
-		'#50B88E',
-		'#E8A838',
-		'#E0687A',
-		'#7F72B5',
-		'#3AB4A0',
-		'#EC8B56',
-		'#9B8EC4'
+		'var(--colors-indigo-500)',
+		'var(--colors-emerald-500)',
+		'var(--colors-amber-500)',
+		'var(--colors-rose-500)',
+		'var(--colors-violet-500)',
+		'var(--colors-teal-500)',
+		'var(--colors-orange-500)',
+		'var(--colors-purple-400)'
 	];
 
 	const HOVER_DIM = 0.25;

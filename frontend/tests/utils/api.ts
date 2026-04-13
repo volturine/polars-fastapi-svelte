@@ -2,6 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { APIRequestContext } from '@playwright/test';
 
+// Hybrid Playwright seed helpers.
+// These bypass the UI and should be treated as explicit state setup, not user-driven coverage.
+
 const apiPort = process.env.PORT || '8000';
 export const API_BASE = `http://localhost:${apiPort}/api/v1`;
 
@@ -67,15 +70,30 @@ export async function loginAs(email: string): Promise<LoginResult> {
 }
 
 export async function registerWorker(workerIndex: number): Promise<string> {
-	const resp = await fetch(`${API_BASE}/auth/register`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			email: workerEmail(workerIndex),
-			password: E2E_PASSWORD,
-			display_name: workerDisplayName(workerIndex)
-		})
-	});
+	const register = async (): Promise<Response> =>
+		fetch(`${API_BASE}/auth/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				email: workerEmail(workerIndex),
+				password: E2E_PASSWORD,
+				display_name: workerDisplayName(workerIndex)
+			})
+		});
+
+	let resp = await register();
+	if (resp.status === 409) {
+		await ensureWorkerClean(workerIndex);
+		resp = await register();
+	}
+
+	if (resp.status === 409) {
+		const login = await loginAs(workerEmail(workerIndex));
+		if (login.status === 'ok') {
+			return login.token;
+		}
+	}
+
 	if (!resp.ok) {
 		throw new Error(`Worker ${workerIndex} register failed: ${resp.status} ${await resp.text()}`);
 	}

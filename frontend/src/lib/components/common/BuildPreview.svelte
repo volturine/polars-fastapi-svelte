@@ -977,6 +977,7 @@
 								})}>Request</span
 							>
 							<pre
+								data-testid="build-payload-request"
 								class={css({
 									fontSize: 'xs',
 									backgroundColor: 'bg.tertiary',
@@ -1001,6 +1002,7 @@
 								})}>Result</span
 							>
 							<pre
+								data-testid="build-payload-result"
 								class={css({
 									fontSize: 'xs',
 									backgroundColor: 'bg.tertiary',

@@ -18,7 +18,7 @@ test.describe('Analyses – output visibility toggle', () => {
 			await gotoAnalysisEditor(page, aId);
 
 			// Toggle button should be visible on the output node
-			const toggleBtn = page.locator('[data-testid="output-visibility-toggle"]').first();
+			const toggleBtn = page.locator('[data-testid="output-visibility-toggle"]');
 			await expect(toggleBtn).toBeVisible({ timeout: 8_000 });
 
 			// Without a saved/built output datasource, toggle shows "hidden" (default)
@@ -135,35 +135,33 @@ test.describe('Analyses – output node interactions', () => {
 			await expect(scheduleToggle).toBeVisible();
 
 			// Sections should start collapsed — "Build Notification" content not visible
-			await expect(page.getByText('Notify subscribers on build')).not.toBeVisible();
+			const notifyPanel = page.locator('[data-testid="output-notify-panel"]');
+			const healthEmptyState = page.locator('[data-testid="output-health-empty-state"]');
+
+			await expect(notifyPanel).not.toBeVisible();
 
 			// Open Build Notification section
 			await notifyToggle.click();
-			await expect(page.getByText('Notify subscribers on build')).toBeVisible({ timeout: 3_000 });
+			await expect(notifyPanel).toBeVisible({ timeout: 3_000 });
 
 			// Close it again
 			await notifyToggle.click();
-			await expect(page.getByText('Notify subscribers on build')).not.toBeVisible({
-				timeout: 3_000
-			});
+			await expect(notifyPanel).not.toBeVisible({ timeout: 3_000 });
 
 			// Open Health Checks section — prompts to build first when output datasource is not materialized
 			await healthToggle.click();
-			await expect(
-				page.getByText(
-					/Build this output once to materialize its datasource before adding health checks/i
-				)
-			).toBeVisible({ timeout: 5_000 });
+			await expect(healthEmptyState).toContainText(
+				'Build this output once to materialize its datasource before adding health checks.',
+				{
+					timeout: 5_000
+				}
+			);
 
 			await screenshot(page, 'analysis/output', 'output-sections-health-open');
 
 			// Close Health Checks
 			await healthToggle.click();
-			await expect(
-				page.getByText(
-					/Build this output once to materialize its datasource before adding health checks/i
-				)
-			).not.toBeVisible({ timeout: 3_000 });
+			await expect(healthEmptyState).not.toBeVisible({ timeout: 3_000 });
 		} finally {
 			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);
@@ -181,7 +179,7 @@ test.describe('Analyses – output node interactions', () => {
 			await gotoAnalysisEditor(page, aId);
 
 			// Click the edit pencil button (aria-label="Edit export name")
-			const editBtn = page.locator('[aria-label="Edit export name"]').first();
+			const editBtn = page.locator('[data-testid="output-table-name-inline-edit"]');
 			await expect(editBtn).toBeVisible({ timeout: 10_000 });
 			await editBtn.click();
 
@@ -220,7 +218,7 @@ test.describe('Analyses – output node table name edit', () => {
 		try {
 			await gotoAnalysisEditor(page, aId);
 
-			const editBtn = page.locator('button[aria-label="Edit export name"]').first();
+			const editBtn = page.locator('[data-testid="output-table-name-inline-edit"]');
 			await expect(editBtn).toBeVisible({ timeout: 5_000 });
 			await editBtn.click();
 
@@ -297,7 +295,7 @@ test.describe('Analyses – output node persistence', () => {
 			await gotoAnalysisEditor(page, aId);
 
 			// Edit the table name
-			const editBtn = page.locator('[aria-label="Edit export name"]').first();
+			const editBtn = page.locator('[data-testid="output-table-name-inline-edit"]');
 			await expect(editBtn).toBeVisible({ timeout: 10_000 });
 			await editBtn.click();
 
@@ -408,7 +406,7 @@ test.describe('Analyses – output build flow', () => {
 
 			const results = page.locator('[data-testid="build-results"]');
 			await expect(results).toBeVisible({ timeout: 5_000 });
-			await expect(results.getByText('Source 1')).toBeVisible();
+			await expect(results.getByText('Source 1', { exact: true })).toBeVisible();
 
 			await screenshot(page, 'analysis/output', 'output-build-steps');
 		} finally {
@@ -431,7 +429,8 @@ test.describe('Analyses – row count action', () => {
 		try {
 			await gotoAnalysisEditor(page, aId);
 
-			const viewNode = page.locator('[data-step-type="view"]').first();
+			const viewNode = page.locator('[data-step-type="view"]');
+			await expect(viewNode).toHaveCount(1, { timeout: 15_000 });
 			const countBtn = viewNode.locator('[data-testid="step-row-count-button"]');
 			await expect(countBtn).toBeEnabled({ timeout: 15_000 });
 
@@ -462,7 +461,8 @@ test.describe('Analyses – row count on non-view steps', () => {
 			await gotoAnalysisEditor(page, aId);
 
 			await page.locator('button[data-step="filter"]').click();
-			const filterNode = page.locator('[data-step-type="filter"]').first();
+			const filterNode = page.locator('[data-step-type="filter"]');
+			await expect(filterNode).toHaveCount(1, { timeout: 5_000 });
 			await expect(filterNode).toBeVisible({ timeout: 5_000 });
 
 			// Configure the filter with a valid condition before applying
@@ -471,9 +471,10 @@ test.describe('Analyses – row count on non-view steps', () => {
 			await expect(configPanel).toBeVisible({ timeout: 8_000 });
 
 			// Select column 'id' in the first condition
-			const condColumnDropdown = configPanel.locator('button[aria-expanded]').first();
+			const condColumnDropdown = configPanel.locator('button[aria-expanded]');
+			await expect(condColumnDropdown).toHaveCount(1);
 			await condColumnDropdown.click();
-			await page.getByRole('option', { name: 'id' }).first().click();
+			await page.getByRole('option', { name: 'id', exact: true }).click();
 
 			// Set value
 			await configPanel.locator('[data-testid="filter-value-input-0"]').fill('0');
@@ -511,7 +512,8 @@ test.describe('Analyses – row count on non-view steps', () => {
 			await gotoAnalysisEditor(page, aId);
 
 			await page.locator('button[data-step="limit"]').click();
-			const limitNode = page.locator('[data-step-type="limit"]').first();
+			const limitNode = page.locator('[data-step-type="limit"]');
+			await expect(limitNode).toHaveCount(1, { timeout: 5_000 });
 			await expect(limitNode).toBeVisible({ timeout: 5_000 });
 
 			// Apply the step

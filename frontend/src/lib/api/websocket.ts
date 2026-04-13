@@ -37,13 +37,23 @@ export interface StreamHandle {
 	close: () => void;
 }
 
-export function createStream<TSnapshot, TEvent = never>(
+function isErrorMessage(msg: { type: string }): msg is { type: 'error'; error: string } {
+	if (msg.type !== 'error') return false;
+	const value = msg as Record<string, unknown>;
+	return typeof value.error === 'string';
+}
+
+export function createStream<
+	TSnapshot,
+	TEvent = never,
+	TMessage extends { type: string } = { type: string }
+>(
 	endpoint: string,
 	options: {
-		parse: (data: string) => { type: string } | null;
-		isSnapshot: (msg: { type: string }) => boolean;
-		extractSnapshot: (msg: { type: string }) => TSnapshot;
-		extractEvent?: (msg: { type: string }) => TEvent;
+		parse: (data: string) => TMessage | null;
+		isSnapshot: (msg: TMessage) => boolean;
+		extractSnapshot: (msg: TMessage) => TSnapshot;
+		extractEvent?: (msg: TMessage) => TEvent;
 		callbacks: StreamCallbacks<TSnapshot, TEvent>;
 	}
 ): StreamHandle {
@@ -56,9 +66,8 @@ export function createStream<TSnapshot, TEvent = never>(
 			options.callbacks.onSnapshot(options.extractSnapshot(msg));
 			return;
 		}
-		if (msg.type === 'error') {
-			const errorMsg = msg as { type: string; error: string };
-			options.callbacks.onError(errorMsg.error);
+		if (isErrorMessage(msg)) {
+			options.callbacks.onError(msg.error);
 			return;
 		}
 		if (options.extractEvent && options.callbacks.onEvent) {

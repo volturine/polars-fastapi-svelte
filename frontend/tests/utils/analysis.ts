@@ -3,6 +3,17 @@ import { waitForLayoutReady } from './readiness.js';
 
 type EditorAccessState = 'editable' | 'locked';
 
+async function findVisibleLocator(locator: Locator): Promise<Locator | null> {
+	const count = await locator.count();
+	for (let index = 0; index < count; index += 1) {
+		const candidate = locator.nth(index);
+		if (await candidate.isVisible().catch(() => false)) {
+			return candidate;
+		}
+	}
+	return null;
+}
+
 /**
  * Wait for the analysis editor to be fully interactive. Ensures:
  *  1. `[role="application"]` has mounted (analysis query resolved).
@@ -29,18 +40,29 @@ async function waitForAnalysisEditor(
 		timeout: remaining()
 	});
 
-	const anyStepButton = page.locator('button[data-step]').first();
-	const alreadyVisible = await anyStepButton.isVisible().catch(() => false);
+	const stepButtons = page.locator('button[data-step]');
+	let anyStepButton = await findVisibleLocator(stepButtons);
+	const alreadyVisible = anyStepButton !== null;
 
 	if (!alreadyVisible) {
-		const expandBtn = page.locator('button[title="Expand panels"]').first();
-		const canExpand = await expandBtn.isVisible().catch(() => false);
-		if (canExpand) {
+		const expandBtn = await findVisibleLocator(page.locator('button[title="Expand panels"]'));
+		if (expandBtn) {
 			await expandBtn.click();
 		}
 	}
 
-	await expect(anyStepButton).toBeVisible({ timeout: remaining() });
+	await expect
+		.poll(
+			async () => {
+				anyStepButton = await findVisibleLocator(stepButtons);
+				return anyStepButton !== null;
+			},
+			{ timeout: remaining() }
+		)
+		.toBe(true);
+	if (!anyStepButton) {
+		throw new Error('Analysis editor step library did not render a visible step button');
+	}
 	if (accessState === 'editable') {
 		await expect(anyStepButton).toBeEnabled({ timeout: remaining() });
 		return;
@@ -116,7 +138,9 @@ export async function addStepAndOpenConfig(
 	await expect(stepBtn).toBeEnabled({ timeout: 5_000 });
 	await stepBtn.click();
 
-	const canvasNode = page.locator(`[data-step-type="${stepType}"]`).first();
+	const canvasNodes = page.locator(`[data-step-type="${stepType}"]`);
+	await expect.poll(async () => await canvasNodes.count(), { timeout: 5_000 }).toBeGreaterThan(0);
+	const canvasNode = canvasNodes.nth((await canvasNodes.count()) - 1);
 	await expect(canvasNode).toBeVisible({ timeout: 5_000 });
 
 	const editBtn = canvasNode.locator('[data-action="edit"]');

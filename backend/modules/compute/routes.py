@@ -36,7 +36,7 @@ def _is_disconnect_runtime_error(exc: RuntimeError) -> bool:
     return (
         'Cannot call "receive" once a disconnect message has been received' in message
         or 'Cannot call "send" once a close message has been sent' in message
-        or 'Unexpected ASGI message "websocket.close"' in message
+        or ('Unexpected ASGI message' in message and 'websocket.close' in message)
     )
 
 

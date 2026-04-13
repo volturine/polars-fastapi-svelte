@@ -73,7 +73,7 @@ generate-step-types:
     cd backend && uv run python scripts/generate_ts_step_types.py
 
 # Full verification gate -- must pass before any task is declared done
-verify: format check
+verify: format check test
 
 # Build for production (single-port: FastAPI serves the built frontend)
 # Setup: cp backend/.prod.env.example backend/.prod.env  then edit it.

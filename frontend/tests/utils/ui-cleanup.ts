@@ -1,4 +1,5 @@
 import type { Browser, Locator, Page } from '@playwright/test';
+import fs from 'node:fs';
 import { shutdownEngineByToken, workerAuthFile } from './api.js';
 import { gotoAnalysesGallery, waitForDatasourceList, waitForUdfList } from './readiness.js';
 
@@ -23,9 +24,10 @@ async function bestEffortShutdownEngine(page: Page, card: Locator): Promise<void
 
 export async function createCleanupPage(browser: Browser, workerIndex: number) {
 	const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
+	const authFile = workerAuthFile(workerIndex);
 	const context = await browser.newContext({
 		baseURL: `http://localhost:${port}`,
-		storageState: workerAuthFile(workerIndex)
+		...(fs.existsSync(authFile) ? { storageState: authFile } : {})
 	});
 	const page = await context.newPage();
 	return { page, context };
@@ -66,7 +68,7 @@ export async function deleteAnalysisViaUI(
 		if (!options?.skipNavigation) {
 			await gotoAnalysesGallery(page, ELEMENT_VISIBLE_TIMEOUT);
 		}
-		const card = page.locator(`[data-analysis-card="${name}"]`).first();
+		const card = page.locator(`[data-analysis-card="${name}"]`);
 		try {
 			await card.waitFor({ state: 'visible', timeout: ELEMENT_VISIBLE_TIMEOUT });
 		} catch {
@@ -86,7 +88,7 @@ export async function deleteUdfViaUI(page: Page, name: string): Promise<void> {
 	try {
 		await page.goto('/udfs', { waitUntil: 'domcontentloaded' });
 		await waitForUdfList(page, ELEMENT_VISIBLE_TIMEOUT);
-		const card = page.locator(`[data-udf-card="${name}"]`).first();
+		const card = page.locator(`[data-udf-card="${name}"]`);
 		if (!(await card.isVisible())) return;
 		await card.getByRole('button', { name: /^Delete$/i }).click();
 		await card.getByRole('button', { name: /Confirm/i }).click();
@@ -98,7 +100,7 @@ export async function deleteUdfViaUI(page: Page, name: string): Promise<void> {
 export async function deleteScheduleViaUI(page: Page, cronOrName: string): Promise<void> {
 	try {
 		await page.goto('/monitoring?tab=schedules', { waitUntil: 'domcontentloaded' });
-		const row = page.locator('tr', { has: page.getByText(cronOrName) }).first();
+		const row = page.locator(`[data-datasource-name="${cronOrName}"]`);
 		await row.waitFor({ state: 'visible', timeout: ELEMENT_VISIBLE_TIMEOUT });
 		await row.getByLabel('Delete schedule').click();
 		const dialog = page.getByRole('dialog');
@@ -112,7 +114,7 @@ export async function deleteScheduleViaUI(page: Page, cronOrName: string): Promi
 export async function deleteHealthCheckViaUI(page: Page, name: string): Promise<void> {
 	try {
 		await page.goto('/monitoring?tab=health', { waitUntil: 'domcontentloaded' });
-		const row = page.locator('tr', { has: page.getByText(name) }).first();
+		const row = page.locator(`[data-healthcheck-name="${name}"]`);
 		await row.waitFor({ state: 'visible', timeout: ELEMENT_VISIBLE_TIMEOUT });
 		await row.getByLabel('Delete check').click();
 		const dialog = page.getByRole('dialog');

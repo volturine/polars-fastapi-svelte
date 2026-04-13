@@ -255,7 +255,7 @@
 					role="group"
 					aria-label={`Join column pair ${_index + 1}`}
 				>
-					<div class={css({ flex: '1' })}>
+					<div class={css({ flex: '1' })} role="group" aria-label="Left Column">
 						<label for={`join-left-${joinCol.id}`} class={cx(label(), css({ marginBottom: '1' }))}
 							>Left Column</label
 						>
@@ -266,7 +266,7 @@
 							placeholder="Select..."
 						/>
 					</div>
-					<div class={css({ flex: '1' })}>
+					<div class={css({ flex: '1' })} role="group" aria-label="Right Column">
 						<label for={`join-right-${joinCol.id}`} class={cx(label(), css({ marginBottom: '1' }))}
 							>Right Column</label
 						>

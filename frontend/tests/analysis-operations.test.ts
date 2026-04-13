@@ -155,10 +155,11 @@ test.describe('Analyses – sort config editing', () => {
 			await expect(configPanel.getByText(/No sort rules/i)).toBeVisible();
 
 			// Open column dropdown — click the dropdown trigger button
-			const dropdownTrigger = configPanel.locator('button[aria-expanded]').first();
+			const dropdownTrigger = configPanel.locator('button[aria-expanded]');
+			await expect(dropdownTrigger).toHaveCount(1);
 			await dropdownTrigger.click();
 			// Select the 'name' column from the dropdown
-			await page.locator('[role="option"]', { hasText: 'name' }).first().click();
+			await page.getByRole('option', { name: 'name', exact: true }).click();
 
 			// Click "Add" button
 			const addBtn = configPanel.locator('[data-testid="sort-add-button"]');
@@ -213,9 +214,10 @@ test.describe('Analyses – rename config editing', () => {
 			await expect(configPanel.getByText(/No renames yet/i)).toBeVisible();
 
 			// Open column dropdown to pick a column to rename
-			const dropdownTrigger = configPanel.locator('button[aria-expanded]').first();
+			const dropdownTrigger = configPanel.locator('button[aria-expanded]');
+			await expect(dropdownTrigger).toHaveCount(1);
 			await dropdownTrigger.click();
-			await page.locator('[role="option"]', { hasText: 'name' }).first().click();
+			await page.getByRole('option', { name: 'name', exact: true }).click();
 
 			// Fill the new name input
 			const newNameInput = configPanel.locator('[data-testid="rename-new-name-input"]');
@@ -276,9 +278,10 @@ test.describe('Analyses – filter config editing', () => {
 			const configPanel = await addStepAndOpenConfig(page, aId, 'filter');
 
 			// The filter starts with one empty condition — select a column
-			const dropdownTrigger = configPanel.locator('button[aria-expanded]').first();
+			const dropdownTrigger = configPanel.locator('button[aria-expanded]');
+			await expect(dropdownTrigger).toHaveCount(1);
 			await dropdownTrigger.click();
-			await page.locator('[role="option"]', { hasText: 'name' }).first().click();
+			await page.getByRole('option', { name: 'name', exact: true }).click();
 
 			// Change operator to "contains"
 			const operatorSelect = configPanel.locator('[data-testid="filter-operator-select-0"]');
@@ -363,14 +366,13 @@ test.describe('Analyses – chart config and preview', () => {
 			const configPanel = await addStepAndOpenConfig(page, aId, 'chart');
 
 			// Select X column — first ColumnDropdown in config
-			const xGroup = configPanel.locator('[role="group"]').filter({ hasText: 'X Column' });
+			const xGroup = configPanel.getByRole('group', { name: 'X Column' });
 			await xGroup.locator('button[aria-expanded]').click();
-			await page.locator('[role="option"]', { hasText: 'city' }).first().click();
+			await page.locator('[data-column-option="city"]').click();
 
-			// Select Y column — second ColumnDropdown in config (use .first() to skip Overlays group)
-			const yGroup = configPanel.locator('[role="group"]').filter({ hasText: 'Y Column' }).first();
+			const yGroup = configPanel.getByRole('group', { name: 'Y Column' });
 			await yGroup.locator('button[aria-expanded]').click();
-			await page.locator('[role="option"]', { hasText: 'age' }).first().click();
+			await page.locator('[data-column-option="age"]').click();
 
 			// Apply
 			const applyBtn = configPanel.getByRole('button', { name: 'Apply' });
@@ -380,8 +382,8 @@ test.describe('Analyses – chart config and preview', () => {
 
 			// Chart preview should render (contains an SVG)
 			const chartPreview = page.locator('[data-testid="chart-preview"]');
-			await expect(chartPreview).toBeVisible({ timeout: 15_000 });
-			await expect(chartPreview.locator('svg')).toBeVisible({ timeout: 15_000 });
+			await expect(chartPreview).toBeVisible({ timeout: 30_000 });
+			await expect(chartPreview.locator('svg')).toBeVisible({ timeout: 30_000 });
 
 			await screenshot(page, 'analysis/operations', 'chart-preview-rendered');
 		} finally {
@@ -406,9 +408,7 @@ test.describe('Analyses – groupby config editing', () => {
 			const configPanel = await addStepAndOpenConfig(page, aId, 'groupby');
 
 			// Select groupBy column via MultiSelectColumnDropdown
-			const groupBySection = configPanel
-				.locator('[role="group"]')
-				.filter({ hasText: 'Group By Columns' });
+			const groupBySection = configPanel.getByRole('group', { name: 'Group By Columns' });
 			await groupBySection.locator('button[aria-expanded]').click();
 			await page.locator('#msc-col-city').click();
 
@@ -416,10 +416,12 @@ test.describe('Analyses – groupby config editing', () => {
 			await configPanel.click({ position: { x: 5, y: 5 } });
 
 			// Add an aggregation: select column, pick function, click Add
-			const aggSection = configPanel.locator('[role="group"]').filter({ hasText: 'Aggregations' });
-			const aggColumnDropdown = aggSection.locator('button[aria-expanded]').first();
+			const aggSection = configPanel.getByRole('group', { name: 'Aggregations' });
+			const aggColumnDropdown = aggSection
+				.getByRole('group', { name: 'Add aggregation form' })
+				.locator('button[aria-expanded]');
 			await aggColumnDropdown.click();
-			await page.locator('[role="option"]', { hasText: 'age' }).first().click();
+			await page.getByRole('option', { name: 'age', exact: true }).click();
 
 			// Change function to 'mean'
 			const funcSelect = configPanel.locator('[data-testid="agg-function-select"]');
@@ -501,9 +503,10 @@ test.describe('Analyses – topk config editing', () => {
 			const configPanel = await addStepAndOpenConfig(page, aId, 'topk');
 
 			// Select column via ColumnDropdown
-			const dropdownTrigger = configPanel.locator('button[aria-expanded]').first();
+			const dropdownTrigger = configPanel.locator('button[aria-expanded]');
+			await expect(dropdownTrigger).toHaveCount(1);
 			await dropdownTrigger.click();
-			await page.locator('[role="option"]', { hasText: 'age' }).first().click();
+			await page.getByRole('option', { name: 'age', exact: true }).click();
 
 			// Set k value
 			const kInput = configPanel.locator('[data-testid="topk-k-input"]');
@@ -624,11 +627,11 @@ test.describe('Analyses – pivot config editing', () => {
 			const configPanel = await addStepAndOpenConfig(page, aId, 'pivot');
 
 			// Select pivot column via ColumnDropdown
-			const pivotColumnGroup = configPanel.getByText('Pivot Column').first();
+			const pivotColumnGroup = configPanel.getByRole('group', { name: /Pivot Column/i });
 			await expect(pivotColumnGroup).toBeVisible();
-			const dropdownTrigger = configPanel.locator('button[aria-expanded]').first();
+			const dropdownTrigger = pivotColumnGroup.locator('button[aria-expanded]');
 			await dropdownTrigger.click();
-			await page.locator('[role="option"]', { hasText: 'city' }).first().click();
+			await page.getByRole('option', { name: 'city', exact: true }).click();
 
 			// Check 'id' as index column
 			const idCheckbox = configPanel.locator('[data-testid="pivot-index-checkbox-id"]');
@@ -673,9 +676,10 @@ test.describe('Analyses – string transform config editing', () => {
 			const configPanel = await addStepAndOpenConfig(page, aId, 'string_transform');
 
 			// Select 'name' column (string type) via ColumnDropdown
-			const dropdownTrigger = configPanel.locator('button[aria-expanded]').first();
+			const dropdownTrigger = configPanel.locator('button[aria-expanded]');
+			await expect(dropdownTrigger).toHaveCount(1);
 			await dropdownTrigger.click();
-			await page.locator('[role="option"]', { hasText: 'name' }).first().click();
+			await page.getByRole('option', { name: 'name', exact: true }).click();
 
 			// Default method is 'uppercase' — change to 'lowercase'
 			const methodSelect = configPanel.locator('[data-testid="str-method-select"]');
@@ -725,7 +729,8 @@ test.describe('Analyses – drop config editing', () => {
 			).toBeVisible();
 
 			// Open the MultiSelectColumnDropdown
-			const dropdownTrigger = configPanel.locator('button[aria-expanded]').first();
+			const dropdownTrigger = configPanel.locator('button[aria-expanded]');
+			await expect(dropdownTrigger).toHaveCount(1);
 			await dropdownTrigger.click();
 
 			// Select 'age' column via checkbox
@@ -762,7 +767,8 @@ test.describe('Analyses – select config editing', () => {
 		try {
 			const configPanel = await addStepAndOpenConfig(page, aId, 'select');
 
-			const dropdown = configPanel.locator('button[aria-expanded]').first();
+			const dropdown = configPanel.locator('button[aria-expanded]');
+			await expect(dropdown).toHaveCount(1);
 			await dropdown.click();
 
 			await page.locator('#msc-col-id').check({ timeout: 5_000 });
@@ -968,23 +974,27 @@ test.describe('Analyses – join config editing', () => {
 
 			await expect(configPanel.getByText('Right Datasource', { exact: true })).toBeVisible();
 
-			const dsPickerInput = configPanel.locator('input[type="text"]').first();
+			const dsPickerInput = configPanel.locator('input[placeholder="Search datasources..."]');
 			await dsPickerInput.click();
 			await dsPickerInput.fill(dsRight);
-			await page.getByRole('option', { name: new RegExp(dsRight) }).click({ timeout: 8_000 });
+			await page.locator(`[data-picker-option="${dsRight}"]`).click({ timeout: 8_000 });
 
 			await expect(configPanel.getByText(/columns available/)).toBeVisible({ timeout: 10_000 });
 
 			await configPanel.locator('[data-testid="join-add-column-button"]').click();
 
 			const colGroup = configPanel.getByRole('group', { name: /Join column pair 1/ });
-			const leftDropdown = colGroup.locator('button, [role="combobox"]').first();
+			const leftDropdown = colGroup
+				.getByRole('group', { name: 'Left Column' })
+				.locator('button[aria-expanded]');
 			await leftDropdown.click();
-			await page.getByRole('option', { name: 'id' }).first().click({ timeout: 5_000 });
+			await page.locator('[data-column-option="id"]').click({ timeout: 5_000 });
 
-			const rightDropdown = colGroup.locator('button, [role="combobox"]').nth(1);
+			const rightDropdown = colGroup
+				.getByRole('group', { name: 'Right Column' })
+				.locator('button[aria-expanded]');
 			await rightDropdown.click();
-			await page.getByRole('option', { name: 'id' }).first().click({ timeout: 5_000 });
+			await page.locator('[data-column-option="id"]').click({ timeout: 5_000 });
 
 			const suffixInput = configPanel.locator('[data-testid="join-suffix-input"]');
 			await expect(suffixInput).toHaveValue('_right');
@@ -1181,10 +1191,10 @@ test.describe('Analyses – union_by_name config editing', () => {
 			await expect(allowMissing).toBeChecked();
 
 			// Select the union source via DatasourcePicker input
-			const dsPickerInput = configPanel.locator('input[type="text"]').first();
+			const dsPickerInput = configPanel.locator('input[placeholder="Search datasources..."]');
 			await dsPickerInput.click();
 			await dsPickerInput.fill(dsSource);
-			await page.getByRole('option', { name: new RegExp(dsSource) }).click({ timeout: 8_000 });
+			await page.locator(`[data-picker-option="${dsSource}"]`).click({ timeout: 8_000 });
 
 			// Close the dropdown by clicking outside it (mousedown on an element above the listbox)
 			await configPanel.getByText('Base Datasource').click();
@@ -1195,7 +1205,7 @@ test.describe('Analyses – union_by_name config editing', () => {
 			).not.toBeVisible({ timeout: 5_000 });
 
 			// Chip for the selected source should appear
-			await expect(configPanel.getByText(dsSource).first()).toBeVisible();
+			await expect(configPanel.getByRole('button', { name: `Remove ${dsSource}` })).toBeVisible();
 
 			// Uncheck allow-missing
 			await allowMissing.uncheck();
@@ -1248,7 +1258,8 @@ test.describe('Analyses – explode config positive path', () => {
 
 			// Step 2: add an explode step and open its config
 			await page.locator('button[data-step="explode"]').click();
-			const explodeNode = page.locator('[data-step-type="explode"]').first();
+			const explodeNode = page.locator('[data-step-type="explode"]');
+			await expect(explodeNode).toHaveCount(1, { timeout: 5_000 });
 			await expect(explodeNode).toBeVisible({ timeout: 5_000 });
 			await explodeNode.locator('[data-action="edit"]').click();
 

@@ -127,7 +127,7 @@ test.describe('Lineage – with datasource data', () => {
 			const graph = page.getByTestId('lineage-canvas');
 			await expect(graph).toBeVisible({ timeout: 15_000 });
 
-			const node = page.locator('.lineage-node').first();
+			const node = page.getByRole('button', { name: `source ${dsName}` });
 			await expect(node).toBeVisible({ timeout: 15_000 });
 
 			const before = await node.boundingBox();

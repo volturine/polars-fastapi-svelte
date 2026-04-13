@@ -718,6 +718,12 @@
 							data-build-row={run.id}
 							data-build-status={engineRunStatus(run)}
 							data-build-kind={run.kind}
+							data-build-datasource-name={engineRunDatasourceName(run) ??
+								resolveName(engineRunDatasourceId(run), dsNames)}
+							data-build-analysis-name={run.analysis_id
+								? resolveName(run.analysis_id, analysisNames)
+								: ''}
+							data-build-output-name={engineRunOutputName(run) ?? ''}
 							class={cx(
 								css({
 									cursor: 'pointer',

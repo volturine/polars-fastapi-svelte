@@ -90,6 +90,13 @@
 	// DOM: $derived can't track anchor position.
 	$effect(() => {
 		if (!open) return;
+		enginesStore.startStream();
+		return () => enginesStore.stopStream();
+	});
+
+	// DOM: $derived can't track anchor position.
+	$effect(() => {
+		if (!open) return;
 		lastAnchor = anchor;
 		if (!lastAnchor) return;
 		updatePopoverPosition();

@@ -196,10 +196,13 @@
 		const usableWidth = Math.max(1, viewWidth - panelOffset);
 		const sx = usableWidth / contentWidth;
 		const sy = viewHeight / contentHeight;
-		scale = clamp(Math.min(sx, sy, 1), 0.2, 3);
+		const nextScale = clamp(Math.min(sx, sy, 1), 0.2, 3);
+		const scaledWidth = contentWidth * nextScale;
+		const scaledHeight = contentHeight * nextScale;
+		scale = nextScale;
 		pan = {
-			x: padding - bounds.minX + panelOffset + (usableWidth - contentWidth) / 2,
-			y: padding - bounds.minY + (viewHeight - contentHeight) / 2
+			x: panelOffset + (usableWidth - scaledWidth) / 2 - (bounds.minX - padding) * nextScale,
+			y: (viewHeight - scaledHeight) / 2 - (bounds.minY - padding) * nextScale
 		};
 	}
 

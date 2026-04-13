@@ -20,7 +20,7 @@ vi.mock('$lib/stores/engine-runs.svelte', () => ({
 		get error() {
 			return mockStoreError;
 		}
-		start() {}
+		load() {}
 		close() {}
 		reset() {}
 	}

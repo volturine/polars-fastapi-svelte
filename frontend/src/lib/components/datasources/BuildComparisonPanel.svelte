@@ -25,9 +25,9 @@
 	let rowLimit = $state(100);
 
 	const engineRunsStore = new EngineRunsStore();
-	// Side effect: WS connection depends on datasource.id and must be cleaned up on destroy
+	// Network: fetch datasource build history when the datasource changes.
 	$effect(() => {
-		engineRunsStore.start({ datasource_id: datasource.id, limit: 50 });
+		engineRunsStore.load({ datasource_id: datasource.id, limit: 50 });
 		return () => engineRunsStore.close();
 	});
 

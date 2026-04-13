@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 router = MCPRouter(prefix='/locks', tags=['locks'])
 
 
+def _websocket_disconnected(websocket: WebSocket) -> bool:
+    return websocket.client_state is WebSocketState.DISCONNECTED or websocket.application_state is WebSocketState.DISCONNECTED
+
+
 def _is_disconnect_runtime_error(exc: RuntimeError) -> bool:
     message = str(exc)
     return (
@@ -29,9 +33,7 @@ def _is_disconnect_runtime_error(exc: RuntimeError) -> bool:
 
 
 async def _safe_close_websocket(websocket: WebSocket) -> None:
-    if websocket.client_state is WebSocketState.DISCONNECTED:
-        return
-    if websocket.application_state is WebSocketState.DISCONNECTED:
+    if _websocket_disconnected(websocket):
         return
     try:
         await websocket.close()
@@ -39,6 +41,20 @@ async def _safe_close_websocket(websocket: WebSocket) -> None:
         if _is_disconnect_runtime_error(exc):
             return
         raise
+
+
+async def _safe_send_json(websocket: WebSocket, payload: dict) -> bool:
+    if _websocket_disconnected(websocket):
+        return False
+    try:
+        await websocket.send_json(payload)
+    except RuntimeError as exc:
+        if _websocket_disconnected(websocket) or _is_disconnect_runtime_error(exc):
+            return False
+        raise
+    except WebSocketDisconnect:
+        return False
+    return True
 
 
 def _resolve_websocket_session_token(websocket: WebSocket) -> str | None:
@@ -64,11 +80,12 @@ def _status_payload(resource_type: str, resource_id: str, lock: schemas.LockStat
 
 
 async def _send_status(websocket: WebSocket, resource_type: str, resource_id: str, lock: schemas.LockStatusResponse | None) -> None:
-    await websocket.send_json(_status_payload(resource_type, resource_id, lock))
+    await _safe_send_json(websocket, _status_payload(resource_type, resource_id, lock))
 
 
 async def _send_error(websocket: WebSocket, error: str, status_code: int) -> None:
-    await websocket.send_json(
+    await _safe_send_json(
+        websocket,
         schemas.LockWebsocketErrorMessage(
             error=error,
             status_code=status_code,
@@ -82,8 +99,11 @@ async def _notify_watchers(resource_type: str, resource_id: str, lock: schemas.L
     namespace = get_namespace()
     for websocket in await watchers.registry.sockets(namespace, resource_type, resource_id):
         try:
-            await websocket.send_json(payload)
+            sent = await _safe_send_json(websocket, payload)
         except Exception:
+            stale.append(websocket)
+            continue
+        if not sent:
             stale.append(websocket)
     for websocket in stale:
         await watchers.registry.discard(websocket, namespace, resource_type, resource_id)
@@ -218,7 +238,7 @@ async def lock_websocket(websocket: WebSocket) -> None:
     watch_id: str | None = None
     watch_token: str | None = None
     await websocket.accept()
-    await websocket.send_json(schemas.LockWebsocketConnectedMessage().model_dump(mode='json'))
+    await _safe_send_json(websocket, schemas.LockWebsocketConnectedMessage().model_dump(mode='json'))
     try:
         while True:
             try:

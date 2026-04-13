@@ -78,9 +78,11 @@ async def chat_sweep_loop(stop_event: asyncio.Event) -> None:
 
 async def engine_cleanup_loop(stop_event: asyncio.Event, manager: ProcessManager) -> None:
     """Periodically check and clean up idle engines."""
+    idle_timeout = settings.engine_idle_timeout
     while not stop_event.is_set():
+        timeout = max(1.0, manager.next_idle_deadline_seconds(idle_timeout))
         with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(stop_event.wait(), timeout=settings.engine_pooling_interval)
+            await asyncio.wait_for(stop_event.wait(), timeout=timeout)
         if stop_event.is_set():
             break
         try:

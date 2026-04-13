@@ -9,25 +9,32 @@ export class EngineRunsStore {
 
 	private abortController: AbortController | null = null;
 	private params: ListEngineRunsParams | undefined;
-	private polling: ReturnType<typeof setInterval> | null = null;
-	private pollIntervalMs = 5000;
 
-	start(params?: ListEngineRunsParams): void {
-		this.close();
+	load(params?: ListEngineRunsParams): void {
+		if (
+			sameParams(this.params, params) &&
+			(this.status === 'connecting' || this.status === 'connected')
+		) {
+			return;
+		}
+		this.abortController?.abort();
 		this.params = params;
 		this.status = 'connecting';
 		this.error = null;
 		this.fetch();
-		this.polling = setInterval(() => this.fetch(), this.pollIntervalMs);
+	}
+
+	refresh(): void {
+		if (this.params === undefined && this.status === 'disconnected') return;
+		this.abortController?.abort();
+		this.status = 'connecting';
+		this.error = null;
+		this.fetch();
 	}
 
 	close(): void {
 		this.abortController?.abort();
 		this.abortController = null;
-		if (this.polling) {
-			clearInterval(this.polling);
-			this.polling = null;
-		}
 	}
 
 	reset(): void {
@@ -56,4 +63,17 @@ export class EngineRunsStore {
 			}
 		);
 	}
+}
+
+function sameParams(a?: ListEngineRunsParams, b?: ListEngineRunsParams): boolean {
+	if (a === b) return true;
+	if (!a || !b) return a === b;
+	return (
+		a.analysis_id === b.analysis_id &&
+		a.datasource_id === b.datasource_id &&
+		a.kind === b.kind &&
+		a.status === b.status &&
+		a.limit === b.limit &&
+		a.offset === b.offset
+	);
 }

@@ -58,7 +58,7 @@
 
 	const currentPath = $derived(page.url.pathname);
 
-	// Subscription: $derived can't manage polling lifecycle.
+	// Subscription: $derived can't manage the engines stream lifecycle.
 	$effect(() => {
 		untrack(() => enginesStore.startStream());
 		return () => enginesStore.stopStream();

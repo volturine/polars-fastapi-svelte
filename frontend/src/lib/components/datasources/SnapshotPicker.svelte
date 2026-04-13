@@ -76,10 +76,10 @@
 		deleteError = null;
 		buildRunsStore.reset();
 	});
-	// Side effect: polling connection depends on datasource/build-preview state and must be cleaned up
+	// Network: fetch build history on demand when snapshot build previews are enabled.
 	$effect(() => {
 		if (!showBuildPreviews || !datasourceId) return;
-		buildRunsStore.start({ datasource_id: datasourceId, limit: 50 });
+		buildRunsStore.load({ datasource_id: datasourceId, limit: 50 });
 		return () => buildRunsStore.close();
 	});
 	const buildRuns = $derived.by(() => {

@@ -113,7 +113,7 @@ def _log_app_error(exc: AppError, status: int) -> None:
     extra = {'error_code': exc.error_code, 'details': exc.details}
     if status >= 500:
         logger.error(msg, extra=extra, exc_info=True)
-    elif isinstance(
+    elif status == 404 or isinstance(
         exc,
         (InvalidIdError, DataSourceSnapshotError, PipelineValidationError, EngineNotFoundError, InvalidCredentialsError),
     ):

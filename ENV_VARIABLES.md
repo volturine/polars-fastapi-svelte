@@ -143,7 +143,6 @@ just dev
 | Variable                          | Default | Notes                                                           |
 | --------------------------------- | ------- | --------------------------------------------------------------- |
 | `ENGINE_IDLE_TIMEOUT`             | `60`    | Seconds before idle engines are cleaned up.                     |
-| `ENGINE_POOLING_INTERVAL`         | `30`    | Seconds between idle-engine cleanup passes.                     |
 | `SCHEDULER_CHECK_INTERVAL`        | `60`    | Seconds between scheduler polls.                                |
 | `JOB_TIMEOUT`                     | `300`   | Maximum job runtime in seconds.                                 |
 | `LOCK_TTL_SECONDS`                | `30`    | Lock lease duration.                                            |

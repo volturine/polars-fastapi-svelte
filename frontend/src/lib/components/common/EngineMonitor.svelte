@@ -10,7 +10,7 @@
 	let expanded = $state(false);
 	let killing = $state<string | null>(null);
 
-	// Subscription: $derived can't start/stop polling.
+	// Subscription: $derived can't start/stop the engines stream.
 	$effect(() => {
 		untrack(() => enginesStore.startStream());
 		return () => enginesStore.stopStream();

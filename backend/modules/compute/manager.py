@@ -37,6 +37,11 @@ class EngineInfo:
         elapsed = (datetime.now(UTC) - self.last_activity).total_seconds()
         return elapsed > seconds
 
+    def seconds_until_idle(self, seconds: int) -> float:
+        """Return seconds remaining before this engine becomes idle."""
+        elapsed = (datetime.now(UTC) - self.last_activity).total_seconds()
+        return max(0.0, seconds - elapsed)
+
 
 class ProcessManager:
     def __init__(
@@ -329,6 +334,13 @@ class ProcessManager:
             finally:
                 reset_namespace(token)
         return cleaned
+
+    def next_idle_deadline_seconds(self, idle_timeout: int) -> float:
+        """Return the nearest idle deadline across engines, or idle_timeout when none exist."""
+        with self._engines_lock:
+            if not self._engines:
+                return float(idle_timeout)
+            return min(info.seconds_until_idle(idle_timeout) for info in self._engines.values())
 
     def list_engines(self) -> list[str]:
         """List all active engine analysis_ids."""

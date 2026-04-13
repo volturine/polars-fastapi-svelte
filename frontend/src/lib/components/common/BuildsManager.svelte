@@ -82,12 +82,26 @@
 
 	const engineRunsStore = new EngineRunsStore();
 	const activeBuildsStore = new ActiveBuildsStore();
+	const activeBuildSignature = $derived(
+		activeBuildsStore.builds.map((build) => build.build_id).join('|')
+	);
+	let lastActiveBuildSignature = $state('');
 
-	// Side effect: HTTP polling depends on queryParams and must be cleaned up on destroy
+	// Network: fetch build history when filters change.
 	$effect(() => {
 		const params = queryParams;
-		engineRunsStore.start(params);
+		engineRunsStore.load(params);
 		return () => engineRunsStore.close();
+	});
+
+	// Network: refresh history when the live build set changes.
+	$effect(() => {
+		const signature = activeBuildSignature;
+		if (signature === lastActiveBuildSignature) return;
+		const hadActiveBuilds = lastActiveBuildSignature.length > 0;
+		lastActiveBuildSignature = signature;
+		if (!signature && !hadActiveBuilds) return;
+		engineRunsStore.refresh();
 	});
 
 	// Side effect: WS connection for live active builds, must be cleaned up on destroy

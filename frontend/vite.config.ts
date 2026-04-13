@@ -8,6 +8,9 @@ const apiHost = process.env.VITE_BACKEND_HOST || '127.0.0.1';
 const abortCodes = new Set(['EPIPE', 'ECONNRESET', 'ECONNREFUSED', 'ENOTFOUND']);
 
 export default defineConfig({
+	define: {
+		__BACKEND_PORT__: JSON.stringify(String(apiPort))
+	},
 	resolve: {
 		dedupe: [
 			'@codemirror/state',

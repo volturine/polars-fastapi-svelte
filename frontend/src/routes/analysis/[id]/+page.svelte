@@ -1516,104 +1516,104 @@
 						disabled={lockButtonDisabled}
 						type="button"
 						aria-label={lockButtonLabel}
-							title={lockButtonLabel}
-							data-testid="lock-toggle-button"
-						>
-							{#if editorAccessState === 'editable'}
-								<LockOpen size={14} />
-							{:else}
-								<Lock size={14} />
-							{/if}
-						</button>
-						<button
-							class={css({
-								flex: '1 1 0',
-								minWidth: '0',
-								height: '100%',
-								backgroundColor: 'bg.tertiary',
-								border: 'none',
-								fontSize: 'xs',
-								fontWeight: 'medium',
-								cursor: 'pointer',
-								color: 'fg.faint',
-								borderRadius: 'xs',
-								paddingX: '2.5',
-								_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
-							})}
-							onclick={() => openExportModal(null)}
-							type="button"
-							title="Export pipeline as code"
-							data-testid="analysis-export-toolbar-button"
-						>
-							Export
-						</button>
-						<button
-							class={css({
-								flex: '1 1 0',
-								minWidth: '0',
-								height: '100%',
-								backgroundColor: 'bg.tertiary',
-								border: 'none',
-								fontSize: 'xs',
-								fontWeight: 'medium',
-								cursor: 'pointer',
-								color: isDirty ? 'fg.primary' : 'fg.muted',
-								borderRadius: 'xs',
-								_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
-								_disabled: { opacity: '1', color: 'fg.muted', cursor: 'not-allowed' }
-							})}
-							onclick={discardChanges}
-							disabled={!isDirty || isSaving || analysisStore.loading || editorReadOnly}
-							type="button"
-						>
-							Discard
-						</button>
-						<button
-							class={css({
-								flex: '1 1 0',
-								minWidth: '0',
-								height: '100%',
-								border: 'none',
-								borderRadius: 'xs',
-								backgroundColor: 'bg.tertiary',
-								fontSize: 'xs',
-								fontWeight: 'medium',
-								cursor: 'pointer',
-								color: 'fg.success',
-								_disabled: { opacity: '1', color: 'fg.success', cursor: 'not-allowed' }
-							})}
-							onclick={handleSave}
-							disabled={isSaving || analysisStore.loading || editorReadOnly}
-							type="button"
-							data-save-state={saveButtonState}
-						>
-							{saveButtonLabel}
-						</button>
-						<button
-							class={css({
-								display: 'flex',
-								flexShrink: '0',
-								alignItems: 'center',
-								justifyContent: 'center',
-								width: '8',
-								height: '100%',
-								backgroundColor: 'transparent',
-								border: 'none',
-								borderRadius: 'xs',
-								cursor: 'pointer',
-								padding: '0',
-								color: 'fg.warning',
-								_hover: { backgroundColor: 'bg.hover', color: 'fg.warning' }
-							})}
-							onclick={openVersionModal}
-							type="button"
-							title="Version history"
-							data-testid="version-history-trigger"
-						>
-							<Clock size={14} />
-						</button>
-					</div>
+						title={lockButtonLabel}
+						data-testid="lock-toggle-button"
+					>
+						{#if editorAccessState === 'editable'}
+							<LockOpen size={14} />
+						{:else}
+							<Lock size={14} />
+						{/if}
+					</button>
+					<button
+						class={css({
+							flex: '1 1 0',
+							minWidth: '0',
+							height: '100%',
+							backgroundColor: 'bg.tertiary',
+							border: 'none',
+							fontSize: 'xs',
+							fontWeight: 'medium',
+							cursor: 'pointer',
+							color: 'fg.faint',
+							borderRadius: 'xs',
+							paddingX: '2.5',
+							_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+						})}
+						onclick={() => openExportModal(null)}
+						type="button"
+						title="Export pipeline as code"
+						data-testid="analysis-export-toolbar-button"
+					>
+						Export
+					</button>
+					<button
+						class={css({
+							flex: '1 1 0',
+							minWidth: '0',
+							height: '100%',
+							backgroundColor: 'bg.tertiary',
+							border: 'none',
+							fontSize: 'xs',
+							fontWeight: 'medium',
+							cursor: 'pointer',
+							color: isDirty ? 'fg.primary' : 'fg.muted',
+							borderRadius: 'xs',
+							_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
+							_disabled: { opacity: '1', color: 'fg.muted', cursor: 'not-allowed' }
+						})}
+						onclick={discardChanges}
+						disabled={!isDirty || isSaving || analysisStore.loading || editorReadOnly}
+						type="button"
+					>
+						Discard
+					</button>
+					<button
+						class={css({
+							flex: '1 1 0',
+							minWidth: '0',
+							height: '100%',
+							border: 'none',
+							borderRadius: 'xs',
+							backgroundColor: 'bg.tertiary',
+							fontSize: 'xs',
+							fontWeight: 'medium',
+							cursor: 'pointer',
+							color: 'fg.success',
+							_disabled: { opacity: '1', color: 'fg.success', cursor: 'not-allowed' }
+						})}
+						onclick={handleSave}
+						disabled={isSaving || analysisStore.loading || editorReadOnly}
+						type="button"
+						data-save-state={saveButtonState}
+					>
+						{saveButtonLabel}
+					</button>
+					<button
+						class={css({
+							display: 'flex',
+							flexShrink: '0',
+							alignItems: 'center',
+							justifyContent: 'center',
+							width: '8',
+							height: '100%',
+							backgroundColor: 'transparent',
+							border: 'none',
+							borderRadius: 'xs',
+							cursor: 'pointer',
+							padding: '0',
+							color: 'fg.warning',
+							_hover: { backgroundColor: 'bg.hover', color: 'fg.warning' }
+						})}
+						onclick={openVersionModal}
+						type="button"
+						title="Version history"
+						data-testid="version-history-trigger"
+					>
+						<Clock size={14} />
+					</button>
 				</div>
+			</div>
 		</header>
 
 		{#if saveError}

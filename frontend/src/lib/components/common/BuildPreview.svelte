@@ -265,7 +265,7 @@
 					disabled={cancelPending}
 					data-testid="build-cancel-button"
 				>
-					<PauseCircle size={12} />
+					<CirclePause size={12} />
 					{cancelPending ? 'Cancelling...' : 'Cancel'}
 				</button>
 			{/if}

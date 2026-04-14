@@ -83,7 +83,10 @@ const DETAIL_BASE: ActiveBuildDetail = {
 	current_tab_name: 'Sheet 1',
 	current_output_id: 'output-1',
 	current_output_name: 'output_sheet_1',
+	current_engine_run_id: null,
 	total_tabs: 2,
+	cancelled_at: null,
+	cancelled_by: null,
 	steps: [],
 	query_plans: [],
 	latest_resources: null,
@@ -652,7 +655,7 @@ describe('BuildStreamStore', () => {
 
 	test('applies cancelled event', () => {
 		const store = new BuildStreamStore();
-		store.start({});
+		store.start(MINIMAL_BUILD_REQUEST);
 
 		const socket = MockWebSocket.instances[0];
 		socket.emit('open');

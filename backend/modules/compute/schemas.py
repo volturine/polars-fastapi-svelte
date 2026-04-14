@@ -467,6 +467,13 @@ class ActiveBuildDetail(ActiveBuildSummary):
     error: str | None = None
 
 
+class ActiveBuildListResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    builds: list[ActiveBuildSummary]
+    total: int
+
+
 class BuildEventType(StrEnum):
     PLAN = 'plan'
     STEP_START = 'step_start'

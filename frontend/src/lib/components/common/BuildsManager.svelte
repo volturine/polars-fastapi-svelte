@@ -1260,7 +1260,7 @@
 												{/if}
 											{/if}
 										</div>
-										</div>
+									</div>
 
 									{#if expandedStore}
 										<div class={css({ width: '100%', overflowX: 'hidden' })}>

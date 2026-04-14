@@ -361,74 +361,6 @@ async def start_active_build(
     pipeline = _build_pipeline_payload(request)
     analysis_id = str(pipeline.get('analysis_id') or '')
     analysis_name = await run_in_threadpool(_build_analysis_name, pipeline)
-
-
-@router.post('/cancel/{engine_run_id}', response_model=schemas.CancelBuildResponse, mcp=True)
-@handle_errors(operation='cancel build')
-async def cancel_build(
-    engine_run_id: EngineRunId,
-    session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
-    user: User = Depends(get_current_user),
-):
-    run_id = parse_engine_run_id(engine_run_id)
-    run = engine_run_service.get_engine_run(session, run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail='Engine run not found')
-    if run.status != EngineRunStatus.RUNNING:
-        raise HTTPException(status_code=400, detail='Only running builds can be cancelled')
-
-    cancelled_by = user.email or user.display_name or user.id
-    cancelled = service.cancel_engine_run(
-        session,
-        manager,
-        run_id,
-        cancelled_by=cancelled_by,
-    )
-
-    active = await build_registry.list_builds()
-    match = next(
-        (
-            item
-            for item in active
-            if item.namespace == get_namespace()
-            and item.current_engine_run_id == run_id
-            and item.status == schemas.ActiveBuildStatus.RUNNING
-        ),
-        None,
-    )
-    if match is not None:
-        await _emit_active_build_event(
-            match.build_id,
-            match.analysis_id,
-            {
-                'type': 'cancelled',
-                'engine_run_id': run_id,
-                'progress': match.progress,
-                'elapsed_ms': cancelled.duration_ms or match.elapsed_ms,
-                'total_steps': match.total_steps,
-                'tabs_built': 0,
-                'results': [],
-                'duration_ms': cancelled.duration_ms or match.elapsed_ms,
-                'cancelled_at': cancelled.cancelled_at.isoformat(),
-                'cancelled_by': cancelled.cancelled_by,
-                'current_output_id': match.current_output_id,
-                'current_output_name': match.current_output_name,
-            },
-        )
-
-    return cancelled
-
-
-@router.get('/builds/active', response_model=schemas.ActiveBuildListResponse, mcp=True)
-@handle_errors(operation='list active builds')
-async def list_active_builds(
-    request: Request,
-    status: schemas.ActiveBuildStatus | None = None,
-    _user: User = Depends(get_current_user),
-):
-    del request
-    builds = await build_registry.list_builds(status=status or schemas.ActiveBuildStatus.RUNNING)
     namespace = get_namespace()
     raw_tabs = pipeline.get('tabs')
     tabs = raw_tabs if isinstance(raw_tabs, list) else []
@@ -546,6 +478,18 @@ async def list_active_builds(
     namespace = get_namespace()
     visible = [build for build in builds if build.namespace == namespace]
     return schemas.ActiveBuildListResponse(builds=visible, total=len(visible))
+
+
+@router.get('/builds/active/{build_id}', response_model=schemas.ActiveBuildDetail, mcp=True)
+@handle_errors(operation='get active build')
+async def get_active_build(
+    build_id: str,
+    _user: User = Depends(get_current_user),
+):
+    build = await build_registry.get_build(build_id)
+    if build is None or build.namespace != get_namespace():
+        raise HTTPException(status_code=404, detail='Active build not found')
+    return build.detail()
 
 
 # Engine lifecycle endpoints

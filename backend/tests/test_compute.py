@@ -1132,7 +1132,6 @@ class TestComputePreview:
         assert run.result_json['execution_entries'][0]['key'] == 'query_plan'
 
 
-def test_start_active_build_returns_snapshot_and_detail_stream_updates(client, sample_datasource: DataSource, test_user) -> None:
 def test_list_active_builds_returns_running_build(client, test_user) -> None:
     build = asyncio.run(
         active_build_registry.create_build(

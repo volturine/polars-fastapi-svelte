@@ -6,7 +6,7 @@ import {
 	spawnEngine as spawnEngineViaApi
 } from './utils/api.js';
 import { screenshot } from './utils/visual.js';
-import { waitForAppShell, waitForLayoutReady } from './utils/readiness.js';
+import { waitForAppShell } from './utils/readiness.js';
 import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
 import { uid } from './utils/uid.js';
 

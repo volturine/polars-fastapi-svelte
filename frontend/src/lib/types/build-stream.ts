@@ -14,6 +14,8 @@ export interface BuildEventBase {
 	build_id: string;
 	analysis_id: string;
 	emitted_at: string;
+	current_kind?: string | null;
+	current_datasource_id?: string | null;
 	tab_id?: string | null;
 	tab_name?: string | null;
 	current_output_id?: string | null;
@@ -199,6 +201,8 @@ export interface ActiveBuildSummary {
 	current_step: string | null;
 	current_step_index: number | null;
 	total_steps: number;
+	current_kind: string | null;
+	current_datasource_id: string | null;
 	current_tab_id: string | null;
 	current_tab_name: string | null;
 	current_output_id: string | null;

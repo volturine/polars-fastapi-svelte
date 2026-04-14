@@ -77,6 +77,8 @@ const DETAIL_BASE: ActiveBuildDetail = {
 	current_step: 'Loading data',
 	current_step_index: 0,
 	total_steps: 3,
+	current_kind: 'preview',
+	current_datasource_id: 'ds-1',
 	current_tab_id: 'tab-1',
 	current_tab_name: 'Sheet 1',
 	current_output_id: 'output-1',
@@ -173,6 +175,67 @@ describe('BuildStreamStore', () => {
 		expect(socket.url).toContain('/v1/compute/ws/builds/build-1');
 	});
 
+	test('watch connects to an existing build detail stream', () => {
+		const store = new BuildStreamStore();
+		store.watch('build-2');
+
+		expect(MockWebSocket.instances).toHaveLength(1);
+		expect(MockWebSocket.instances[0].url).toContain('/v1/compute/ws/builds/build-2');
+		expect(store.buildId).toBe('build-2');
+		expect(store.status).toBe('connecting');
+	});
+
+	test('watch replaces the previous connection', () => {
+		const store = new BuildStreamStore();
+		store.watch('build-1');
+		const first = MockWebSocket.instances[0];
+
+		store.watch('build-2');
+
+		expect(MockWebSocket.instances).toHaveLength(2);
+		expect(first.readyState).toBe(1);
+		expect(MockWebSocket.instances[1].url).toContain('/v1/compute/ws/builds/build-2');
+		expect(store.buildId).toBe('build-2');
+	});
+
+	test('watch applies snapshot, event, error, and close callbacks', () => {
+		const store = new BuildStreamStore();
+		store.watch('build-3');
+
+		const socket = MockWebSocket.instances[0];
+		socket.emit('open');
+		socket.emit('message', {
+			data: JSON.stringify({
+				type: 'snapshot',
+				build: makeDetail({ build_id: 'build-3', progress: 0.2, current_step: 'Load' })
+			})
+		});
+		msg(socket, {
+			build_id: 'build-3',
+			type: 'progress',
+			progress: 0.6,
+			elapsed_ms: 1500,
+			estimated_remaining_ms: 500,
+			current_step: 'Filter',
+			current_step_index: 1,
+			total_steps: 3
+		});
+
+		expect(store.buildId).toBe('build-3');
+		expect(store.progress).toBe(0.6);
+		expect(store.currentStep).toBe('Filter');
+
+		socket.emit('error');
+		expect(store.error).toBe('WebSocket connection failed');
+		expect(store.status).toBe('disconnected');
+
+		store.watch('build-4');
+		const next = MockWebSocket.instances[1];
+		next.emit('close', { code: 1006, reason: 'Connection lost' });
+		expect(store.status).toBe('disconnected');
+		expect(store.error).toBe('Connection lost');
+	});
+
 	test('applies snapshot', () => {
 		const store = new BuildStreamStore();
 		store.start(MINIMAL_BUILD_REQUEST);
@@ -197,6 +260,8 @@ describe('BuildStreamStore', () => {
 				current_step: 'Loading data',
 				current_step_index: 0,
 				total_steps: 3,
+				current_kind: 'preview',
+				current_datasource_id: 'ds-1',
 				current_tab_id: 'tab-1',
 				current_tab_name: 'Sheet 1',
 				current_output_id: 'output-1',
@@ -748,6 +813,8 @@ describe('BuildStreamStore', () => {
 			current_step: 'Loading',
 			current_step_index: 0,
 			total_steps: 2,
+			current_kind: 'preview',
+			current_datasource_id: 'ds-1',
 			current_tab_id: null,
 			current_tab_name: null,
 			current_output_id: null,
@@ -831,6 +898,8 @@ describe('BuildStreamStore', () => {
 			current_step: 'Loading',
 			current_step_index: 0,
 			total_steps: 2,
+			current_kind: 'preview',
+			current_datasource_id: 'ds-2',
 			current_tab_id: null,
 			current_tab_name: null,
 			current_output_id: null,

@@ -29,7 +29,7 @@
 	import BuildPreview from '$lib/components/common/BuildPreview.svelte';
 	import { BuildStreamStore } from '$lib/stores/build-stream.svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
-	import { css, cx, spinner, button, emptyText, input, badge } from '$lib/styles/panda';
+	import { css, cx, spinner, button, emptyText, input } from '$lib/styles/panda';
 	import {
 		engineRunBuildDetail,
 		engineRunCurrentTabName,
@@ -46,6 +46,18 @@
 		embedded?: boolean;
 	}
 
+	type ActiveBuildRow = {
+		build_id: string;
+		analysis_id: string;
+		analysis_name: string;
+		started_at: string;
+		elapsed_ms: number;
+		current_kind: string | null;
+		current_datasource_id: string | null;
+		current_output_name: string | null;
+		current_step: string | null;
+	};
+
 	let { compact = false, searchQuery, showPreviews = false, embedded = false }: Props = $props();
 
 	let search = $state('');
@@ -57,10 +69,12 @@
 	let page = $state(1);
 	let branchFilter = $state('');
 	let expandedId = $state<string | null>(null);
+	let expandedActiveBuild = $state<ActiveBuildRow | null>(null);
 	let expandedStore = $state<BuildStreamStore | null>(null);
 	let sortColumn = $state<string>('created_at');
 	let sortDir = $state<'asc' | 'desc'>('desc');
 	const runDetailStores = new SvelteMap<string, BuildStreamStore>();
+	const activeDetailStores = new SvelteMap<string, BuildStreamStore>();
 	const limit = 50;
 	const previewsVisible = $derived(!compact || showPreviews);
 
@@ -85,7 +99,16 @@
 	const activeBuildSignature = $derived(
 		activeBuildsStore.builds.map((build) => build.build_id).join('|')
 	);
+	const activeRunKeys = $derived.by(() => {
+		const keys = new SvelteSet<string>();
+		for (const build of activeBuildsStore.builds) {
+			keys.add(activeRunKey(build.analysis_id, build.current_kind ?? 'preview'));
+		}
+		return keys;
+	});
+	const activeBuildStatus = $derived(activeBuildsStore.status);
 	let lastActiveBuildSignature = $state('');
+	let hadActiveBuildConnection = $state(false);
 
 	// Network: fetch build history when filters change.
 	$effect(() => {
@@ -101,6 +124,18 @@
 		const hadActiveBuilds = lastActiveBuildSignature.length > 0;
 		lastActiveBuildSignature = signature;
 		if (!signature && !hadActiveBuilds) return;
+		engineRunsStore.refresh();
+	});
+
+	// Network: refresh history once the live-build websocket is connected.
+	$effect(() => {
+		const status = activeBuildStatus;
+		if (status !== 'connected') {
+			hadActiveBuildConnection = false;
+			return;
+		}
+		if (hadActiveBuildConnection) return;
+		hadActiveBuildConnection = true;
 		engineRunsStore.refresh();
 	});
 
@@ -174,6 +209,11 @@
 	const filteredRuns = $derived.by(() => {
 		let result = runs;
 
+		result = result.filter((run) => {
+			if (run.status !== 'running') return true;
+			return !activeRunKeys.has(activeRunKey(run.analysis_id, run.kind));
+		});
+
 		if (!previewsVisible && kindFilter !== 'preview') {
 			result = result.filter((run) => run.kind !== 'preview');
 		}
@@ -218,7 +258,16 @@
 		return sortRuns(result);
 	});
 
-	const hasAnyBuildRows = $derived(runs.length > 0);
+	const visibleActiveBuilds = $derived.by(() => {
+		const current = activeBuildsStore.builds;
+		const expanded = expandedActiveBuild;
+		if (!expanded) return current;
+		if (current.some((build) => build.build_id === expanded.build_id)) return current;
+		if (expandedId !== expanded.build_id) return current;
+		return [expanded, ...current];
+	});
+
+	const hasAnyBuildRows = $derived(activeBuildsStore.count > 0 || filteredRuns.length > 0);
 
 	function sortRuns(list: EngineRun[]): EngineRun[] {
 		const dir = sortDir === 'asc' ? 1 : -1;
@@ -289,6 +338,7 @@
 
 	function toggleExpand(id: string) {
 		expandedId = expandedId === id ? null : id;
+		if (expandedId === null) expandedActiveBuild = null;
 	}
 
 	function resolveName(id: string, map: Map<string, string>): string {
@@ -337,9 +387,49 @@
 		return store;
 	}
 
+	function activeRunKey(
+		analysisId: string | null | undefined,
+		kind: string | null | undefined
+	): string {
+		return `${analysisId ?? ''}|${kind ?? ''}`;
+	}
+
+	function activeDatasourceName(build: {
+		current_datasource_id: string | null;
+		current_output_name: string | null;
+	}): string {
+		if (build.current_datasource_id) {
+			return dsNames.get(build.current_datasource_id) ?? build.current_datasource_id;
+		}
+		return build.current_output_name ?? '-';
+	}
+
+	function activeDetailStore(id: string): BuildStreamStore {
+		let store = activeDetailStores.get(id);
+		if (!store) {
+			store = new BuildStreamStore();
+			activeDetailStores.set(id, store);
+		}
+		if (store.buildId !== id || store.status === 'disconnected') {
+			store.watch(id);
+		}
+		return store;
+	}
+
 	// Side effect: mutates expandedStore state and triggers store creation via runDetailStore
 	$effect(() => {
+		const live = activeBuildsStore.builds.find((build) => build.build_id === expandedId) ?? null;
+		if (live) {
+			expandedActiveBuild = live;
+			expandedStore = activeDetailStore(live.build_id);
+			return;
+		}
+		if (expandedActiveBuild && expandedActiveBuild.build_id === expandedId) {
+			expandedStore = activeDetailStore(expandedActiveBuild.build_id);
+			return;
+		}
 		const expandedRun = runs.find((run) => run.id === expandedId) ?? null;
+		if (!expandedRun) expandedActiveBuild = null;
 		expandedStore = expandedRun ? runDetailStore(expandedRun) : null;
 	});
 
@@ -349,7 +439,11 @@
 			for (const store of runDetailStores.values()) {
 				store.close();
 			}
+			for (const store of activeDetailStores.values()) {
+				store.close();
+			}
 			runDetailStores.clear();
+			activeDetailStores.clear();
 			activeBuildsStore.reset();
 		};
 	});
@@ -543,76 +637,6 @@
 		</div>
 	{/if}
 
-	{#if activeBuildsStore.count > 0}
-		<div
-			data-testid="active-builds"
-			class={css({
-				marginBottom: '4',
-				borderWidth: '1',
-				borderColor: 'border.accent',
-				padding: '4'
-			})}
-		>
-			<div
-				class={css({
-					display: 'flex',
-					alignItems: 'center',
-					gap: '2',
-					marginBottom: '3'
-				})}
-			>
-				<Activity size={14} class={css({ color: 'accent.primary' })} />
-				<span class={css({ fontWeight: 'medium', fontSize: 'sm' })}>Active Builds</span>
-				<span class={badge()}>{activeBuildsStore.count}</span>
-			</div>
-			<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-				{#each activeBuildsStore.builds as build (build.build_id)}
-					<div
-						data-testid="active-build-{build.build_id}"
-						class={css({
-							display: 'flex',
-							alignItems: 'center',
-							gap: '3',
-							paddingX: '3',
-							paddingY: '2',
-							backgroundColor: 'bg.secondary',
-							fontSize: 'sm'
-						})}
-					>
-						<Loader
-							size={14}
-							class={css({ color: 'accent.primary', animation: 'spin 1s linear infinite' })}
-						/>
-						<span class={css({ fontWeight: 'medium', flex: '1', truncate: true })}>
-							{build.analysis_name}
-						</span>
-						{#if build.current_step}
-							<span class={css({ color: 'fg.secondary', truncate: true, maxWidth: 'panel' })}>
-								{build.current_step}
-							</span>
-						{/if}
-						<span class={css({ fontFamily: 'mono', fontSize: 'xs', color: 'fg.muted' })}>
-							{Math.round(build.progress * 100)}%
-						</span>
-						<div
-							class={css({
-								width: '80px',
-								height: '4px',
-								backgroundColor: 'bg.tertiary',
-								overflow: 'hidden'
-							})}
-						>
-							<div
-								class={css({ height: '100%', backgroundColor: 'accent.primary' })}
-								style="width: {Math.round(build.progress * 100)}%"
-							></div>
-						</div>
-					</div>
-				{/each}
-			</div>
-		</div>
-	{/if}
-
 	{#if engineRunsStore.status === 'connecting'}
 		<div
 			class={css({
@@ -727,6 +751,136 @@
 					</tr>
 				</thead>
 				<tbody>
+					{#each visibleActiveBuilds as build (build.build_id)}
+						<tr
+							data-build-row={build.build_id}
+							data-build-status="running"
+							data-build-kind={build.current_kind ?? 'preview'}
+							data-build-datasource-name={activeDatasourceName(build)}
+							data-build-analysis-name={build.analysis_name}
+							data-build-output-name={build.current_output_name ?? ''}
+							class={cx(
+								css({
+									cursor: 'pointer',
+									backgroundColor: 'bg.secondary',
+									_hover: { backgroundColor: 'bg.hover' }
+								}),
+								expandedId === build.build_id && css({ backgroundColor: 'bg.secondary' })
+							)}
+							onclick={() => toggleExpand(build.build_id)}
+						>
+							<td class={css({ borderBottomWidth: '1', paddingX: '3', paddingY: '2' })}>
+								<ChevronDown
+									size={14}
+									class={expandedId === build.build_id
+										? undefined
+										: css({ transform: 'rotate(-90deg)' })}
+								/>
+							</td>
+							<td class={css({ borderBottomWidth: '1', paddingX: '3', paddingY: '2' })}>
+								<span
+									class={cx(
+										summaryCellClass,
+										css({ display: 'inline-flex', alignItems: 'center', gap: '1.5' })
+									)}
+								>
+									<Activity size={14} class={css({ color: 'accent.primary' })} />
+									<span>{getKindLabel(build.current_kind ?? 'preview')}</span>
+								</span>
+							</td>
+							<td class={css({ borderBottomWidth: '1', paddingX: '3', paddingY: '2' })}>
+								<span
+									class={cx(
+										summaryCellClass,
+										css({ display: 'inline-flex', alignItems: 'center', gap: '1.5' })
+									)}
+								>
+									<Loader
+										size={14}
+										class={css({ color: 'accent.primary', animation: 'spin 1s linear infinite' })}
+									/>
+									<span class={css({ color: 'accent.primary' })}>Running</span>
+								</span>
+							</td>
+							<td class={css({ borderBottomWidth: '1', paddingX: '3', paddingY: '2' })}>
+								<span class={cx(summaryCellClass, css({ fontSize: 'xs', color: 'fg.secondary' }))}>
+									{activeDatasourceName(build)}
+								</span>
+							</td>
+							<td class={css({ borderBottomWidth: '1', paddingX: '3', paddingY: '2' })}>
+								<span class={cx(summaryCellClass, css({ fontSize: 'xs', color: 'fg.secondary' }))}>
+									{build.analysis_name}
+								</span>
+							</td>
+							<td class={css({ borderBottomWidth: '1', paddingX: '3', paddingY: '2' })}>
+								<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+									<span
+										class={cx(summaryCellClass, css({ fontSize: 'xs', color: 'fg.secondary' }))}
+									>
+										{build.current_output_name ?? '-'}
+									</span>
+									{#if build.current_step}
+										<span
+											class={css({
+												fontSize: 'xs',
+												color: 'fg.tertiary',
+												overflow: 'hidden',
+												textOverflow: 'ellipsis',
+												whiteSpace: 'nowrap'
+											})}
+										>
+											{build.current_step}
+										</span>
+									{/if}
+								</div>
+							</td>
+							<td
+								class={css({
+									borderBottomWidth: '1',
+									paddingX: '3',
+									paddingY: '2',
+									fontFamily: 'mono',
+									fontSize: 'xs',
+									whiteSpace: 'nowrap'
+								})}
+							>
+								{formatDuration(build.elapsed_ms)}
+							</td>
+							<td
+								class={css({
+									borderBottomWidth: '1',
+									paddingX: '3',
+									paddingY: '2',
+									color: 'fg.secondary',
+									whiteSpace: 'nowrap'
+								})}
+							>
+								{formatDate(build.started_at)}
+							</td>
+						</tr>
+						{#if expandedId === build.build_id}
+							<tr data-build-detail={build.build_id}>
+								<td
+									colspan="8"
+									class={css({
+										borderBottomWidth: '1',
+										backgroundColor: 'bg.primary',
+										padding: '0',
+										overflow: 'hidden'
+									})}
+								>
+									{#if expandedStore}
+										<div class={css({ width: '100%', overflowX: 'hidden' })}>
+											<BuildPreview
+												store={expandedStore}
+												title={getKindLabel(build.current_kind ?? 'preview')}
+											/>
+										</div>
+									{/if}
+								</td>
+							</tr>
+						{/if}
+					{/each}
 					{#each filteredRuns as run (run.id)}
 						<tr
 							data-build-row={run.id}

@@ -1487,8 +1487,8 @@ def test_active_build_list_websocket_sends_snapshot_and_updates(client, test_use
 
     assert snapshot['type'] == 'snapshot'
     assert snapshot['builds'][0]['build_id'] == build.build_id
-    assert update['type'] == 'log'
-    assert update['build_id'] == build.build_id
+    assert update['type'] == 'snapshot'
+    assert update['builds'][0]['build_id'] == build.build_id
 
 
 def test_run_analysis_build_stream_tracks_output_target_and_read_write_stages(test_user) -> None:

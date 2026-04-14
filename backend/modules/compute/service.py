@@ -2692,6 +2692,8 @@ async def run_analysis_build_stream(
 
         target_step_id = steps[-1].get('id', 'source') if steps else 'source'
         execution_step_count = len(steps) + 2
+        build.current_kind = EngineRunKind.PREVIEW.value
+        build.current_datasource_id = str(tab_datasource_id)
         build.current_tab_id = tab_id
         build.current_tab_name = tab_name
 

@@ -18,8 +18,9 @@ from modules.auth.dependencies import get_current_user
 from modules.auth.models import User
 from modules.compute import schemas, service
 from modules.compute.engine_live import registry as engine_registry
-from modules.compute.live import registry as build_registry
+from modules.compute.live import ActiveBuildContext, registry as build_registry
 from modules.compute.manager import ProcessManager
+from modules.engine_runs.schemas import EngineRunKind
 from modules.mcp.router import MCPRouter
 
 logger = logging.getLogger(__name__)
@@ -123,9 +124,10 @@ async def _emit_active_build_event(build_id: str, analysis_id: str, payload: dic
     if not isinstance(emitted_at, str):
         emitted_at = service._utcnow().isoformat()
     normalized = {'build_id': build_id, 'analysis_id': analysis_id, 'emitted_at': emitted_at, **payload}
-    build = await build_registry.apply_event(build_id, normalized)
-    if build is None:
+    context = await build_registry.apply_event(build_id, normalized)
+    if context is None:
         return
+    normalized.update(context.payload())
     await build_registry.publish(build_id, normalized)
 
 
@@ -359,12 +361,36 @@ async def start_active_build(
     analysis_id = str(pipeline.get('analysis_id') or '')
     analysis_name = await run_in_threadpool(_build_analysis_name, pipeline)
     namespace = get_namespace()
+    raw_tabs = pipeline.get('tabs')
+    tabs = raw_tabs if isinstance(raw_tabs, list) else []
+    selected_tab = next(
+        (tab for tab in tabs if isinstance(tab, dict) and isinstance(tab.get('id'), str) and tab.get('id') == request.tab_id),
+        None,
+    )
+    active_tab = selected_tab if isinstance(selected_tab, dict) else next((tab for tab in tabs if isinstance(tab, dict)), None)
+    context = ActiveBuildContext(
+        current_kind=EngineRunKind.PREVIEW.value,
+        current_datasource_id=None,
+        current_tab_id=None,
+        current_tab_name=None,
+        current_output_id=None,
+        current_output_name=None,
+    )
+    if isinstance(active_tab, dict):
+        datasource = active_tab.get('datasource')
+        if isinstance(datasource, dict) and isinstance(datasource.get('id'), str):
+            context.current_datasource_id = datasource.get('id')
+        if isinstance(active_tab.get('id'), str):
+            context.current_tab_id = active_tab.get('id')
+        if isinstance(active_tab.get('name'), str):
+            context.current_tab_name = active_tab.get('name')
     build = await build_registry.create_build(
         analysis_id=analysis_id,
         analysis_name=analysis_name,
         namespace=namespace,
         starter=service._build_starter(user),
         total_tabs=len(pipeline.get('tabs', [])) if isinstance(pipeline.get('tabs'), list) else 0,
+        context=context,
     )
     await build_registry.publish_list_snapshot(namespace)
     task = asyncio.create_task(

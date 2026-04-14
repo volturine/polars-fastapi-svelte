@@ -9,7 +9,7 @@ import type { ApiError } from './client';
 export type BuildStreamMessage =
 	| { type: 'snapshot'; build: BuildDetailSnapshot['build'] }
 	| BuildEvent;
-export type BuildsListMessage = BuildsSnapshot | BuildEvent;
+export type BuildsListMessage = BuildsSnapshot;
 
 export interface BuildStreamCallbacks {
 	onSnapshot: (build: BuildDetailSnapshot['build']) => void;
@@ -20,7 +20,6 @@ export interface BuildStreamCallbacks {
 
 export interface BuildsListCallbacks {
 	onSnapshot: (builds: BuildsSnapshot['builds']) => void;
-	onEvent: (event: BuildEvent) => void;
 	onError: (error: string) => void;
 	onClose: () => void;
 }
@@ -56,13 +55,6 @@ function isBuildDetailSnapshot(msg: BuildStreamMessage): msg is BuildDetailSnaps
 	return msg.type === 'snapshot';
 }
 
-function toBuildsEvent(msg: BuildsListMessage): BuildEvent {
-	if (isBuildsSnapshot(msg)) {
-		throw new Error('Expected build event');
-	}
-	return msg;
-}
-
 function toBuildDetailEvent(msg: BuildStreamMessage): BuildEvent {
 	if (isBuildDetailSnapshot(msg)) {
 		throw new Error('Expected build event');
@@ -85,16 +77,12 @@ function getBuildDetailSnapshot(msg: BuildStreamMessage): BuildDetailSnapshot['b
 }
 
 export function connectBuildsListStream(callbacks: BuildsListCallbacks): StreamHandle {
-	return createStream<BuildsSnapshot['builds'], BuildEvent, BuildsListMessage>(
-		'/v1/compute/ws/builds',
-		{
-			parse: parseBuildsMessage,
-			isSnapshot: isBuildsSnapshot,
-			extractSnapshot: getBuildsSnapshot,
-			extractEvent: toBuildsEvent,
-			callbacks
-		}
-	);
+	return createStream<BuildsSnapshot['builds'], never, BuildsListMessage>('/v1/compute/ws/builds', {
+		parse: parseBuildsMessage,
+		isSnapshot: isBuildsSnapshot,
+		extractSnapshot: getBuildsSnapshot,
+		callbacks
+	});
 }
 
 export function connectBuildDetailStream(

@@ -60,6 +60,8 @@ function makeSummary(overrides: Partial<ActiveBuildSummary> = {}): ActiveBuildSu
 		current_step: 'Loading',
 		current_step_index: 0,
 		total_steps: 3,
+		current_kind: 'preview',
+		current_datasource_id: 'ds-1',
 		current_tab_id: null,
 		current_tab_name: null,
 		current_output_id: null,
@@ -71,17 +73,6 @@ function makeSummary(overrides: Partial<ActiveBuildSummary> = {}): ActiveBuildSu
 
 function snapshot(socket: MockWebSocket, builds: ActiveBuildSummary[]) {
 	socket.emit('message', { data: JSON.stringify({ type: 'snapshot', builds }) });
-}
-
-function msg(socket: MockWebSocket, payload: Record<string, unknown>) {
-	socket.emit('message', {
-		data: JSON.stringify({
-			build_id: 'build-1',
-			analysis_id: 'analysis-1',
-			emitted_at: '2025-01-01T00:00:00Z',
-			...payload
-		})
-	});
 }
 
 const { ActiveBuildsStore } = await import('./active-builds.svelte');
@@ -141,94 +132,6 @@ describe('ActiveBuildsStore', () => {
 		snapshot(socket, [makeSummary({ build_id: 'build-3' })]);
 		expect(store.builds).toHaveLength(1);
 		expect(store.builds[0].build_id).toBe('build-3');
-		store.close();
-	});
-
-	test('progress event updates matching build', () => {
-		const store = new ActiveBuildsStore();
-		store.start();
-		const socket = MockWebSocket.instances[0];
-
-		snapshot(socket, [makeSummary()]);
-		msg(socket, {
-			type: 'progress',
-			progress: 0.75,
-			elapsed_ms: 2000,
-			estimated_remaining_ms: 500,
-			current_step: 'Filtering',
-			current_step_index: 2,
-			total_steps: 3
-		});
-
-		expect(store.builds[0].progress).toBe(0.75);
-		expect(store.builds[0].current_step).toBe('Filtering');
-		expect(store.builds[0].current_step_index).toBe(2);
-		store.close();
-	});
-
-	test('progress event for unknown build is ignored', () => {
-		const store = new ActiveBuildsStore();
-		store.start();
-		const socket = MockWebSocket.instances[0];
-
-		snapshot(socket, [makeSummary()]);
-		msg(socket, {
-			type: 'progress',
-			build_id: 'unknown',
-			progress: 0.5,
-			elapsed_ms: 1000,
-			estimated_remaining_ms: 1000,
-			current_step: null,
-			current_step_index: null,
-			total_steps: 2
-		});
-
-		expect(store.builds).toHaveLength(1);
-		expect(store.builds[0].progress).toBe(0.3);
-		store.close();
-	});
-
-	test('complete event removes build from list', () => {
-		const store = new ActiveBuildsStore();
-		store.start();
-		const socket = MockWebSocket.instances[0];
-
-		snapshot(socket, [makeSummary(), makeSummary({ build_id: 'build-2' })]);
-		expect(store.builds).toHaveLength(2);
-
-		msg(socket, {
-			type: 'complete',
-			progress: 1.0,
-			elapsed_ms: 5000,
-			total_steps: 3,
-			tabs_built: 1,
-			results: [],
-			duration_ms: 4800
-		});
-
-		expect(store.builds).toHaveLength(1);
-		expect(store.builds[0].build_id).toBe('build-2');
-		store.close();
-	});
-
-	test('failed event removes build from list', () => {
-		const store = new ActiveBuildsStore();
-		store.start();
-		const socket = MockWebSocket.instances[0];
-
-		snapshot(socket, [makeSummary()]);
-		msg(socket, {
-			type: 'failed',
-			progress: 0.5,
-			elapsed_ms: 3000,
-			total_steps: 3,
-			tabs_built: 0,
-			results: [],
-			duration_ms: 2800,
-			error: 'crashed'
-		});
-
-		expect(store.builds).toHaveLength(0);
 		store.close();
 	});
 

@@ -40,6 +40,8 @@ function makeDetail(overrides: Partial<ActiveBuildDetail> = {}): ActiveBuildDeta
 		current_step: 'Loading',
 		current_step_index: 0,
 		total_steps: 4,
+		current_kind: 'preview',
+		current_datasource_id: 'ds-1',
 		current_tab_id: null,
 		current_tab_name: null,
 		current_output_id: null,

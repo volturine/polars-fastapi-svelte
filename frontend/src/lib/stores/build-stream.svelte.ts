@@ -91,6 +91,27 @@ export class BuildStreamStore {
 		);
 	}
 
+	watch(buildId: string): void {
+		this.reset();
+		this.buildId = buildId;
+		this.status = 'connecting';
+		this.connection = connectBuildDetailStream(buildId, {
+			onSnapshot: (build: ActiveBuildDetail) => {
+				this.applySnapshot(build);
+			},
+			onEvent: (event: BuildEvent) => {
+				this.applyEvent(event);
+			},
+			onError: (msg: string) => {
+				this.error = msg;
+				if (!this.done) this.status = 'disconnected';
+			},
+			onClose: () => {
+				if (!this.done) this.status = 'disconnected';
+			}
+		});
+	}
+
 	close(): void {
 		this.connection?.close();
 		this.connection = null;

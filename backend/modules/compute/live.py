@@ -6,7 +6,7 @@ import re
 import time
 import uuid
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 
 from fastapi import WebSocket
@@ -148,6 +148,8 @@ class ActiveBuild:
     estimated_remaining_ms: int | None = None
     current_step: str | None = None
     current_step_index: int | None = None
+    current_kind: str | None = None
+    current_datasource_id: str | None = None
     current_tab_id: str | None = None
     current_tab_name: str | None = None
     current_output_id: str | None = None
@@ -234,6 +236,8 @@ class ActiveBuild:
             current_step=self.current_step,
             current_step_index=self.current_step_index,
             total_steps=self.total_steps,
+            current_kind=self.current_kind,
+            current_datasource_id=self.current_datasource_id,
             current_tab_id=self.current_tab_id,
             current_tab_name=self.current_tab_name,
             current_output_id=self.current_output_id,
@@ -255,6 +259,27 @@ class ActiveBuild:
         )
 
 
+@dataclass(slots=True)
+class ActiveBuildContext:
+    current_kind: str | None
+    current_datasource_id: str | None
+    current_tab_id: str | None
+    current_tab_name: str | None
+    current_output_id: str | None
+    current_output_name: str | None
+
+    def apply(self, build: ActiveBuild) -> None:
+        build.current_kind = self.current_kind
+        build.current_datasource_id = self.current_datasource_id
+        build.current_tab_id = self.current_tab_id
+        build.current_tab_name = self.current_tab_name
+        build.current_output_id = self.current_output_id
+        build.current_output_name = self.current_output_name
+
+    def payload(self) -> dict[str, str | None]:
+        return asdict(self)
+
+
 class ActiveBuildRegistry:
     def __init__(self) -> None:
         self._builds: dict[str, ActiveBuild] = {}
@@ -264,7 +289,13 @@ class ActiveBuildRegistry:
         self._lock = asyncio.Lock()
 
     async def create_build(
-        self, analysis_id: str, analysis_name: str, namespace: str, starter: schemas.BuildStarter, total_tabs: int = 0
+        self,
+        analysis_id: str,
+        analysis_name: str,
+        namespace: str,
+        starter: schemas.BuildStarter,
+        total_tabs: int = 0,
+        context: ActiveBuildContext | None = None,
     ) -> ActiveBuild:
         build = ActiveBuild(
             build_id=str(uuid.uuid4()),
@@ -275,6 +306,8 @@ class ActiveBuildRegistry:
             started_at=_utcnow(),
             total_tabs=total_tabs,
         )
+        if context is not None:
+            context.apply(build)
         async with self._lock:
             self._prune_finished_locked()
             self._builds[build.build_id] = build
@@ -383,7 +416,8 @@ class ActiveBuildRegistry:
             queued = _consume_throttled(build, normalized)
             outbound = [*queued, normalized]
             sockets = list(self._watchers.get(build_id, set()))
-            list_sockets = list(self._list_watchers.get(build.namespace, set()))
+            namespace = build.namespace
+            event_type = _safe_str(normalized.get('type'))
         stale: list[WebSocket] = []
         for message in outbound:
             for websocket in sockets:
@@ -391,27 +425,17 @@ class ActiveBuildRegistry:
                     await websocket.send_json(message)
                 except Exception:
                     stale.append(websocket)
-        stale_lists: list[WebSocket] = []
-        for message in outbound:
-            for websocket in list_sockets:
-                try:
-                    await websocket.send_json(message)
-                except Exception:
-                    stale_lists.append(websocket)
-        if not stale and not stale_lists:
+        if stale:
+            async with self._lock:
+                watchers = self._watchers.get(build_id)
+                if watchers:
+                    for websocket in stale:
+                        watchers.discard(websocket)
+        await self.publish_list_snapshot(namespace)
+        if event_type not in {schemas.BuildEventType.COMPLETE.value, schemas.BuildEventType.FAILED.value}:
             return
         async with self._lock:
-            watchers = self._watchers.get(build_id)
-            if watchers:
-                for websocket in stale:
-                    watchers.discard(websocket)
-            list_watchers = self._list_watchers.get(build.namespace)
-            if list_watchers:
-                for websocket in stale_lists:
-                    list_watchers.discard(websocket)
-            event_type = _safe_str(normalized.get('type'))
-            if event_type in {schemas.BuildEventType.COMPLETE.value, schemas.BuildEventType.FAILED.value}:
-                self._prune_finished_locked()
+            self._prune_finished_locked()
 
     async def add_list_watcher(self, namespace: str, websocket: WebSocket) -> None:
         async with self._lock:
@@ -452,13 +476,15 @@ class ActiveBuildRegistry:
             for websocket in stale:
                 watchers.discard(websocket)
 
-    async def apply_event(self, build_id: str, payload: dict) -> ActiveBuild | None:
+    async def apply_event(self, build_id: str, payload: dict) -> ActiveBuildContext | None:
         async with self._lock:
             build = self._builds.get(build_id)
             if build is None:
                 return None
             normalized = _normalize_payload(payload)
             event_type = _safe_str(normalized.get('type'))
+            build.current_kind = _safe_str(normalized.get('current_kind')) or build.current_kind
+            build.current_datasource_id = _safe_str(normalized.get('current_datasource_id')) or build.current_datasource_id
             build.current_tab_id = _safe_str(normalized.get('tab_id')) or build.current_tab_id
             build.current_tab_name = _safe_str(normalized.get('tab_name')) or build.current_tab_name
             build.current_output_id = _safe_str(normalized.get('current_output_id')) or build.current_output_id
@@ -580,7 +606,14 @@ class ActiveBuildRegistry:
                     duration_ms=_safe_int(normalized.get('duration_ms')) or build.elapsed_ms,
                     error=_safe_str(normalized.get('error')),
                 )
-            return build
+            return ActiveBuildContext(
+                current_kind=build.current_kind,
+                current_datasource_id=build.current_datasource_id,
+                current_tab_id=build.current_tab_id,
+                current_tab_name=build.current_tab_name,
+                current_output_id=build.current_output_id,
+                current_output_name=build.current_output_name,
+            )
 
     def _prune_finished_locked(self) -> None:
         now = _utcnow()

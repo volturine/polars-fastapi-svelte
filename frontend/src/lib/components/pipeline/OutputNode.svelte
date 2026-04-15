@@ -13,7 +13,7 @@
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { configStore } from '$lib/stores/config.svelte';
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
-	import { BuildStreamStore } from '$lib/stores/build-stream.svelte';
+	import type { BuildStreamStore } from '$lib/stores/build-stream.svelte';
 	import { buildAnalysisPipelinePayload } from '$lib/utils/analysis-pipeline';
 	import { isUuid } from '$lib/utils/analysis-tab';
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
@@ -44,16 +44,22 @@
 	import { SvelteMap } from 'svelte/reactivity';
 
 	interface Props {
+		buildStore: BuildStreamStore;
 		analysisId?: string;
 		datasourceId?: string;
 		activeTab?: AnalysisTab | null;
 		readOnly?: boolean;
 	}
 
-	let { analysisId, datasourceId, activeTab = null, readOnly = false }: Props = $props();
+	let {
+		buildStore,
+		analysisId,
+		datasourceId,
+		activeTab = null,
+		readOnly = false
+	}: Props = $props();
 
 	const queryClient = useQueryClient();
-	const buildStore = new BuildStreamStore();
 	const analysisPipeline = $derived.by(() => {
 		if (!analysisId) return null;
 		return buildAnalysisPipelinePayload(
@@ -491,14 +497,12 @@
 		}
 	});
 
-	// Lifecycle: keep the build stream alive across modal toggles and close it when the node unmounts.
 	$effect(() => {
 		return () => {
 			if (cancelToastTimer !== null) {
 				clearTimeout(cancelToastTimer);
 				cancelToastTimer = null;
 			}
-			buildStore.close();
 		};
 	});
 </script>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PipelineStep, AnalysisTab } from '$lib/types/analysis';
 	import type { DataSource } from '$lib/types/datasource';
+	import type { BuildStreamStore } from '$lib/stores/build-stream.svelte';
 	import { drag, type DropTarget } from '$lib/stores/drag.svelte';
 	import StepNode from './StepNode.svelte';
 	import OutputNode from './OutputNode.svelte';
@@ -18,6 +19,7 @@
 
 	interface Props {
 		steps: PipelineStep[];
+		buildStore: BuildStreamStore;
 		analysisId?: string;
 		datasourceId?: string;
 		datasource?: DataSource | null;
@@ -38,6 +40,7 @@
 
 	let {
 		steps,
+		buildStore,
 		analysisId,
 		datasourceId,
 		datasource = null,
@@ -654,7 +657,7 @@
 				<ConnectionLine fromStepIndex={-1} toStepIndex={0} totalSteps={1} />
 			</div>
 		{/if}
-		<OutputNode {analysisId} {datasourceId} {activeTab} {readOnly} />
+		<OutputNode {buildStore} {analysisId} {datasourceId} {activeTab} {readOnly} />
 	</div>
 	{#if pasteError}
 		<div

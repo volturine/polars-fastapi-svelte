@@ -6,6 +6,7 @@
 	import { MediaQuery } from 'svelte/reactivity';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
+	import { BuildStreamStore } from '$lib/stores/build-stream.svelte';
 	import { buildAnalysisPipelinePayload } from '$lib/utils/analysis-pipeline';
 	import {
 		buildOutputConfig,
@@ -77,6 +78,7 @@
 	let lastAnalysisId = $state<string | null>(null);
 
 	let selectedStepId = $state<string | null>(null);
+	const buildStore = new BuildStreamStore();
 	const selectedStepState = $derived.by(() => {
 		if (!selectedStepId) return null;
 		return analysisStore.pipeline.find((step) => step.id === selectedStepId) || null;
@@ -99,6 +101,7 @@
 	$effect(() => {
 		return () => {
 			if (tabErrorTimer !== null) window.clearTimeout(tabErrorTimer);
+			buildStore.close();
 		};
 	});
 
@@ -1678,6 +1681,7 @@
 					})}
 				>
 					<PipelineCanvas
+						{buildStore}
 						steps={analysisStore.pipeline}
 						analysisId={analysisId || undefined}
 						datasourceId={previewDatasourceId || undefined}

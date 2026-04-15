@@ -216,9 +216,6 @@ def update_analysis(
                 ),
             )
 
-    if data.status is not None:
-        analysis.status = data.status
-
     analysis.updated_at = datetime.now(UTC).replace(tzinfo=None)
 
     session.commit()

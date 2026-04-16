@@ -4,6 +4,8 @@
 	import { listNamespaces } from '$lib/api/namespaces';
 	import { normalizeNamespace } from '$lib/utils/namespace';
 	import { css, cx, input } from '$lib/styles/panda';
+	import { overlayStack } from '$lib/stores/overlay.svelte';
+	import type { OverlayConfig } from '$lib/stores/overlay.svelte';
 
 	interface Props {
 		open: boolean;
@@ -46,6 +48,8 @@
 		!!normalizedCandidate && !rawNamespaces.some((name) => name === normalizedCandidate)
 	);
 
+	let popupRef = $state<HTMLElement | null>(null);
+
 	function handleClose() {
 		onClose();
 		searchQuery = '';
@@ -61,18 +65,14 @@
 		handleSelect(normalizedCandidate);
 	}
 
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape') {
+	const overlayConfig = $derived<OverlayConfig>({
+		onEscape: handleClose,
+		onOutsideClick: (target: Node) => {
+			if (popupRef?.contains(target)) return;
+			if (lastAnchor?.contains(target)) return;
 			handleClose();
 		}
-	}
-
-	function handleBackdropKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
-			handleClose();
-		}
-	}
+	});
 
 	function updatePopoverPosition() {
 		const node = lastAnchor;
@@ -127,15 +127,6 @@
 		};
 	});
 
-	// DOM: $derived can't lock scroll.
-	$effect(() => {
-		if (!open) return;
-		document.body.style.overflow = 'hidden';
-		return () => {
-			document.body.style.overflow = '';
-		};
-	});
-
 	// DOM: $derived can't focus the search input.
 	$effect(() => {
 		if (open && searchInput) {
@@ -144,23 +135,9 @@
 	});
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
 {#if open}
 	<div
-		class={css({
-			position: 'fixed',
-			inset: '0',
-			zIndex: 'popover',
-			backgroundColor: 'transparent'
-		})}
-		onclick={handleClose}
-		onkeydown={handleBackdropKeydown}
-		role="button"
-		tabindex="0"
-		aria-label="Close namespace menu"
-	></div>
-	<div
+		bind:this={popupRef}
 		class={css({
 			position: 'fixed',
 			zIndex: 'overlay',
@@ -177,8 +154,7 @@
 		aria-labelledby="namespace-picker-search"
 		tabindex="-1"
 		use:portal={popoverRect}
-		onclick={(e) => e.stopPropagation()}
-		onkeydown={(e) => e.stopPropagation()}
+		use:overlayStack.action={overlayConfig}
 	>
 		<div class={css({ display: 'flex', flexDirection: 'column', gap: '2', padding: '2' })}>
 			<input
@@ -219,6 +195,7 @@
 				{:else}
 					{#if canCreate}
 						<button
+							data-namespace-create={normalizedCandidate}
 							class={css({
 								display: 'flex',
 								width: '100%',
@@ -253,6 +230,7 @@
 
 					{#each filteredNamespaces as name (name)}
 						<button
+							data-namespace-option={name}
 							class={css({
 								display: 'flex',
 								width: '100%',

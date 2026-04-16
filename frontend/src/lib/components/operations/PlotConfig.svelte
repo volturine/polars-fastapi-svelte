@@ -6,20 +6,21 @@
 		ReferenceLineConfig
 	} from '$lib/types/operation-config';
 	import {
-		BarChart2,
-		LineChart,
-		AreaChart,
-		ScatterChart,
-		PieChart,
-		BarChart3,
+		ChartNoAxesColumn,
+		ChartLine,
+		ChartArea,
+		ChartScatter,
+		ChartPie,
+		ChartColumn,
 		LayoutGrid,
-		BoxSelect,
+		SquareDashed,
 		Plus,
 		X
 	} from 'lucide-svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
-	import { css, label, stepConfig, cx, divider, input } from '$lib/styles/panda';
+	import { css, label, stepConfig, cx, input } from '$lib/styles/panda';
+	import { normalizeConfig } from '$lib/utils/step-config-defaults';
 
 	type PlotConfigData = Omit<PlotConfigBase, 'aggregation' | 'chart_type' | 'stack_mode'> & {
 		chart_type:
@@ -73,7 +74,7 @@
 
 	interface Props {
 		schema: Schema;
-		config?: Record<string, unknown>;
+		config?: PlotConfigData;
 	}
 
 	const defaultConfig = {
@@ -113,26 +114,49 @@
 
 	const configDefaults = defaultConfig satisfies Record<string, unknown>;
 
+	function toPlotConfig(value: PlotConfigData | Record<string, unknown>): PlotConfigData {
+		const normalized = normalizeConfig('chart', value);
+		return { ...defaultConfig, ...normalized } as PlotConfigData;
+	}
+
 	let { schema, config = $bindable(configDefaults) }: Props = $props();
-	const plotConfig = $derived(config as unknown as PlotConfigData);
+	const initialConfig = toPlotConfig(config);
+	let plotConfig = $state(initialConfig);
+	let syncedConfig = $state(JSON.stringify(initialConfig));
+
+	// Bindable config must receive chart edits back from the local form state.
+	$effect(() => {
+		const next = toPlotConfig(config);
+		const nextJson = JSON.stringify(next);
+		if (nextJson === syncedConfig) return;
+		plotConfig = next;
+		syncedConfig = nextJson;
+	});
+
+	$effect(() => {
+		const nextJson = JSON.stringify(plotConfig);
+		if (nextJson === syncedConfig) return;
+		config = plotConfig;
+		syncedConfig = nextJson;
+	});
 
 	let activeTab = $state<'data' | 'look'>('data');
 
 	const chartTypeGrid: Array<{
 		value: PlotConfigData['chart_type'];
 		label: string;
-		icon: typeof BarChart2;
+		icon: typeof ChartNoAxesColumn;
 		rotate?: boolean;
 	}> = [
-		{ value: 'bar', label: 'Bar', icon: BarChart2 },
-		{ value: 'horizontal_bar', label: 'H. Bar', icon: BarChart2, rotate: true },
-		{ value: 'line', label: 'Line', icon: LineChart },
-		{ value: 'area', label: 'Area', icon: AreaChart },
-		{ value: 'scatter', label: 'Scatter', icon: ScatterChart },
-		{ value: 'pie', label: 'Pie', icon: PieChart },
-		{ value: 'histogram', label: 'Hist', icon: BarChart3 },
+		{ value: 'bar', label: 'Bar', icon: ChartNoAxesColumn },
+		{ value: 'horizontal_bar', label: 'H. Bar', icon: ChartNoAxesColumn, rotate: true },
+		{ value: 'line', label: 'Line', icon: ChartLine },
+		{ value: 'area', label: 'Area', icon: ChartArea },
+		{ value: 'scatter', label: 'Scatter', icon: ChartScatter },
+		{ value: 'pie', label: 'Pie', icon: ChartPie },
+		{ value: 'histogram', label: 'Hist', icon: ChartColumn },
 		{ value: 'heatgrid', label: 'Heat', icon: LayoutGrid },
-		{ value: 'boxplot', label: 'Box', icon: BoxSelect }
+		{ value: 'boxplot', label: 'Box', icon: SquareDashed }
 	];
 
 	const aggregations = [
@@ -925,17 +949,15 @@
 			{/if}
 
 			<div
-				class={cx(
-					divider,
-					css({
-						marginBottom: '0',
-						paddingBottom: '5',
-						paddingTop: '5',
-						backgroundColor: 'transparent',
+				class={css({
+					borderTopWidth: '1',
+					marginBottom: '0',
+					paddingBottom: '5',
+					paddingTop: '5',
+					backgroundColor: 'transparent',
 
-						border: 'none'
-					})
-				)}
+					border: 'none'
+				})}
 				role="group"
 				aria-labelledby={`${uid}-plot-overlays`}
 			>
@@ -1122,17 +1144,15 @@
 			</div>
 
 			<div
-				class={cx(
-					divider,
-					css({
-						marginBottom: '0',
-						paddingBottom: '5',
-						paddingTop: '5',
-						backgroundColor: 'transparent',
+				class={css({
+					borderTopWidth: '1',
+					marginBottom: '0',
+					paddingBottom: '5',
+					paddingTop: '5',
+					backgroundColor: 'transparent',
 
-						border: 'none'
-					})
-				)}
+					border: 'none'
+				})}
 				role="group"
 				aria-labelledby={`${uid}-plot-reference-lines`}
 			>
@@ -1547,17 +1567,15 @@
 			{/if}
 
 			<div
-				class={cx(
-					divider,
-					css({
-						marginBottom: '0',
-						paddingBottom: '5',
-						paddingTop: '5',
-						backgroundColor: 'transparent',
+				class={css({
+					borderTopWidth: '1',
+					marginBottom: '0',
+					paddingBottom: '5',
+					paddingTop: '5',
+					backgroundColor: 'transparent',
 
-						border: 'none'
-					})
-				)}
+					border: 'none'
+				})}
 				role="group"
 				aria-labelledby={`${uid}-plot-height`}
 			>

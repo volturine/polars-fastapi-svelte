@@ -427,7 +427,7 @@ result_queue.put({
 
 ### Cleanup
 
-- **Idle timeout**: Default 30 seconds (`engine_pooling_interval`)
+- **Idle timeout**: Engines are cleaned up after `engine_idle_timeout` seconds of inactivity
 - **Manual shutdown**: On app shutdown, all engines are terminated
 - **Unexpected death**: Health check detects dead process, resets state
 
@@ -484,8 +484,8 @@ def _write_iceberg_table(lazy: pl.LazyFrame, table_path: Path, build_mode: str) 
 Key settings in `backend/core/config.py`:
 
 ```python
-# Engine pooling
-engine_pooling_interval: int = Field(default=30)  # seconds
+# Engine lifecycle
+engine_idle_timeout: int = Field(default=60)  # seconds
 max_concurrent_engines: int = Field(default=10)
 
 # Resource limits

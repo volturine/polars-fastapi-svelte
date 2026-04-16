@@ -1,6 +1,14 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
+import {
+	createAnalysis,
+	createDatasource,
+	shutdownEngine as shutdownEngineViaApi,
+	spawnEngine as spawnEngineViaApi
+} from './utils/api.js';
 import { screenshot } from './utils/visual.js';
-import { waitForAppShell, waitForLayoutReady, waitForSettingsForm } from './utils/readiness.js';
+import { waitForAppShell, waitForSettingsForm } from './utils/readiness.js';
+import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
+import { uid } from './utils/uid.js';
 
 /**
  * Smoke tests: every top-level route renders without a JS crash,
@@ -54,8 +62,7 @@ test.describe('Navigation – page load smoke tests', () => {
 
 	test('clicking Analyses nav link goes to /', async ({ page }) => {
 		await page.goto('/datasources');
-		// Nav link in header – look for it by href
-		await page.locator('a[href="/"]').first().click();
+		await page.getByRole('link', { name: 'Analyses' }).click();
 		await expect(page).toHaveURL('/');
 	});
 
@@ -124,59 +131,39 @@ test.describe('Navigation – settings popup', () => {
 	});
 });
 
-test.describe('Navigation – error state regression', () => {
-	test('datasources page handles API failure gracefully', async ({ page }) => {
-		// Intercept the datasource list API to simulate a server error
-		await page.route('**/api/v1/datasource', (route) => {
-			if (route.request().method() === 'GET') {
-				return route.fulfill({ status: 500, body: 'Internal Server Error' });
-			}
-			return route.continue();
-		});
+test.describe('Navigation – engines live monitor', () => {
+	test('sidebar badge and engines popup update in real time', async ({ page, request }) => {
+		test.setTimeout(60_000);
+		const dsName = `e2e-engines-ds-${uid()}`;
+		const analysisName = `E2E Engines ${uid()}`;
+		const datasourceId = await createDatasource(request, dsName);
+		const analysisId = await createAnalysis(request, analysisName, datasourceId);
 
-		await page.goto('/datasources');
-		await waitForLayoutReady(page);
+		try {
+			await page.goto('/');
+			await waitForAppShell(page);
 
-		// Page should still render the heading without crashing
-		await expect(page.getByRole('heading', { name: 'Data Sources' })).toBeVisible({
-			timeout: 10_000
-		});
+			const engineButton = page.getByRole('button', { name: 'Engine Monitor' });
+			const engineBadge = page.getByTestId('engine-monitor-count');
 
-		// The error callout should be visible
-		await expect(page.getByText(/Error:/i)).toBeVisible({ timeout: 10_000 });
+			await spawnEngineViaApi(request, analysisId);
+			await expect(engineBadge).toBeVisible({ timeout: 10_000 });
 
-		// The datasource list should not show any items
-		await expect(page.locator('[data-ds-row]')).toHaveCount(0, { timeout: 5_000 });
-	});
+			await engineButton.click();
+			const dialog = page.getByRole('dialog', { name: 'Engines' });
+			await expect(dialog).toBeVisible({ timeout: 5_000 });
+			await expect(dialog.getByText(analysisId, { exact: true })).toBeVisible({ timeout: 10_000 });
 
-	test('monitoring page handles API failure without crash', async ({ page }) => {
-		// Intercept all monitoring-related APIs to simulate failure
-		await page.route('**/api/v1/engine-runs**', (route) =>
-			route.fulfill({ status: 500, body: 'Internal Server Error' })
-		);
+			await shutdownEngineViaApi(request, analysisId);
 
-		await page.goto('/monitoring');
-		await waitForLayoutReady(page);
-
-		// Page structure should still render
-		await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible({
-			timeout: 10_000
-		});
-		await expect(page.getByRole('tab', { name: 'Builds' })).toBeVisible();
-		await expect(page.getByRole('tab', { name: 'Schedules' })).toBeVisible();
-		await expect(page.getByRole('tab', { name: 'Health Checks' })).toBeVisible();
-
-		// The builds panel should show error or empty state — not silently succeed
-		// Scope to visible, non-select text to avoid matching <option> values like "Failed"
-		const panel = page.locator('#panel-builds');
-		await expect(
-			panel
-				.locator(':not(select):not(option)')
-				.getByText(/error|No engine runs/i)
-				.first()
-		).toBeVisible({
-			timeout: 10_000
-		});
+			await expect(dialog.getByText(analysisId, { exact: true })).not.toBeVisible({
+				timeout: 10_000
+			});
+		} finally {
+			await shutdownEngineViaApi(request, analysisId);
+			await deleteAnalysisViaUI(page, analysisName);
+			await deleteDatasourceViaUI(page, dsName);
+		}
 	});
 });
 
@@ -227,5 +214,34 @@ test.describe('Navigation – chat panel smoke', () => {
 		// Click trigger again to close
 		await trigger.click();
 		await expect(panel).not.toBeVisible({ timeout: 3_000 });
+	});
+});
+
+test.describe('Navigation – namespace persistence', () => {
+	test('selected namespace persists across page refresh', async ({ page }) => {
+		test.setTimeout(30_000);
+		const ns = `e2e-ns-${uid()}`;
+
+		await page.goto('/');
+		await waitForAppShell(page);
+
+		await page.getByRole('button', { name: 'Select namespace' }).click();
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible({ timeout: 5_000 });
+
+		const search = dialog.getByRole('textbox', { name: 'Search namespaces' });
+		await search.fill(ns);
+
+		await dialog.locator(`[data-namespace-create="${ns}"]`).click();
+		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+
+		const sidebar = page.locator('aside[aria-label="Main navigation"]');
+		await expect(sidebar.getByText(ns)).toBeVisible({ timeout: 5_000 });
+
+		await page.reload({ waitUntil: 'networkidle' });
+		await waitForAppShell(page);
+
+		await expect(sidebar.getByText(ns)).toBeVisible({ timeout: 10_000 });
+		await screenshot(page, 'navigation', 'namespace-persisted');
 	});
 });

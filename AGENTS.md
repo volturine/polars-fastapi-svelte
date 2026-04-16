@@ -82,12 +82,6 @@ just dev             # start both servers
 - `transition-[color,background-color,border-color,opacity]` for combined
 - Add `transform` to the list only when transform changes
 
-## Backend Development
-
-- FastAPI async patterns throughout — no blocking calls in route handlers
-- Pydantic V2 models for all request/response schemas
-- SQLAlchemy 2.0 async sessions — no sync DB calls
-- Polars for all data computation — avoid pandas
 
 ## Code Style
 
@@ -116,3 +110,11 @@ See [`STYLE_GUIDE.md`](STYLE_GUIDE.md)
 - When normalizing config objects, avoid duplicate-key object literals (for example `{ branch, ...normalized }`) because they hide overwrite order; build a single explicit normalized object first.
 - After broad enum/dataclass refactors, rerun focused schema-contract tests immediately; JSON schema often moves enum values under `$defs`/`$ref`, so tests that assert inline enums should resolve refs explicitly instead of assuming inlined `enum`.
 - In Svelte store modules, avoid native mutable collections like `Map`/`Set` in reactive code paths; prefer `SvelteMap`/`SvelteSet` (or plain objects/arrays) to satisfy `svelte/prefer-svelte-reactivity` and keep lint clean.
+- Playwright `page.routeWebSocket()` must be registered BEFORE `page.goto()` to reliably intercept WebSocket connections opened later by user actions (e.g., button clicks). Registering after navigation silently fails to intercept through Vite's dev proxy. This applies even when the WS isn't opened until well after page load.
+- When using `getByText()` in Playwright tests, beware that test resource names (datasource/analysis names) can contain the status words being asserted (e.g., "Complete", "Failed"). Scope assertions to a parent container (`preview.getByText(...)`) or use `{ exact: true }` to avoid strict mode violations.
+- Before claiming Playwright e2e coverage matches real user behavior, audit the suite for `tests/utils/api.ts` setup helpers; API seeding is not user-driven interaction and must be called out or redesigned explicitly.
+- Monitoring e2e assertions must track the current Builds UI: live build details are exposed through expandable history rows and `BuildPreview` tabs (`Steps`, `Logs`, `Payload`), not a separate `Active Builds` panel.
+- Engine-run websocket handlers should treat close-race `RuntimeError`s like `Cannot call "receive" once a disconnect message has been received` and `Cannot call "send" once a close message has been sent` as normal disconnects to avoid false backend error logs during Playwright teardown.
+- From the repo root, backend tool entrypoints should be run via `just` or from `backend/`; direct root-level `uv run pytest` / `uv run ruff` invocations can miss the backend environment and fail to resolve installed commands.
+- When tightening frontend request/store typings, replace placeholder test payloads with a shared minimal valid fixture right away; Vitest mocks can hide bad `{}` inputs that `svelte-check` will still reject.
+- Svelte 5 `$effect` blocks run in declaration order. When a "reset" effect (e.g., datasource switch) calls `.reset()` / `.close()` on a store, and a "start" effect calls `.start()` on that same store, the reset effect MUST be declared before the start effect. Otherwise the start effect fires first, begins an async fetch, and the reset effect fires second and aborts the in-flight request — leaving the store permanently empty.

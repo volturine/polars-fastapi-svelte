@@ -422,7 +422,8 @@ describe('buildDatasourcePipelinePayload', () => {
 	});
 
 	test('uses export as fallback name', () => {
-		const ds = datasource({ name: undefined as unknown as string });
+		const ds = datasource();
+		Object.defineProperty(ds, 'name', { value: undefined, configurable: true });
 		const result = buildDatasourcePipelinePayload({ datasource: ds });
 		expect(result.tabs[0].name).toBe('Datasource');
 		expect(result.tabs[0].output.filename).toBe('export');

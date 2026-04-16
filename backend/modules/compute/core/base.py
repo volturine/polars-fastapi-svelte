@@ -89,6 +89,14 @@ class EngineResult:
     error_details: dict[str, Any] | None = None
     step_timings: dict[str, float] = field(default_factory=dict)
     query_plan: str | None = None
+    read_duration_ms: float | None = None
+    write_duration_ms: float | None = None
+
+
+@dataclass(slots=True)
+class EngineProgressEvent:
+    job_id: str
+    event: dict[str, Any]
 
 
 # ---------------------------------------------------------------------------
@@ -164,5 +172,7 @@ class ComputeEngine(Protocol):
     ) -> str: ...
 
     def get_result(self, timeout: float = 1.0, job_id: str | None = None) -> EngineResult | None: ...
+
+    def get_progress_event(self, timeout: float = 1.0, job_id: str | None = None) -> EngineProgressEvent | None: ...
 
     def shutdown(self) -> None: ...

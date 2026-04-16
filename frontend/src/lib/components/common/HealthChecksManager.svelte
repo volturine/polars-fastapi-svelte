@@ -19,7 +19,7 @@
 		Trash2,
 		Check,
 		X,
-		AlertTriangle,
+		TriangleAlert,
 		HeartPulse,
 		Plus,
 		ChevronDown,
@@ -30,7 +30,7 @@
 	} from 'lucide-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-	import { css, cx, emptyText, input, label, row, rowBetween, muted } from '$lib/styles/panda';
+	import { css, cx, emptyText, input, label } from '$lib/styles/panda';
 
 	interface Props {
 		datasourceId?: string;
@@ -136,7 +136,12 @@
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		},
-		onSuccess: () => {
+		onSuccess: (created) => {
+			const listKey = ['healthchecks', datasourceId ?? 'all'];
+			queryClient.setQueryData<HealthCheckItem[]>(listKey, (current) => {
+				const next = current ?? [];
+				return [...next, { ...created, critical: !!(created as { critical?: boolean }).critical }];
+			});
 			queryClient.invalidateQueries({ queryKey: ['healthchecks'] });
 			queryClient.invalidateQueries({ queryKey: ['healthcheck-results'] });
 			creating = false;
@@ -820,7 +825,7 @@
 				<span class={css({ fontWeight: 'medium' })}>Critical Check (fails pipeline)</span>
 			</label>
 
-			<div class={cx(row, css({ gap: '2' }))}>
+			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 				<button
 					class={css({
 						borderWidth: '1',
@@ -859,7 +864,7 @@
 					onclick={addHealthCheck}
 				>
 					{#if createCheckMutation.isPending}
-						<div class={cx(row, css({ gap: '1' }))}>
+						<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
 							<Loader size={12} class={css({ animation: 'spin 1s linear infinite' })} />
 							<span>Saving...</span>
 						</div>
@@ -890,7 +895,7 @@
 				paddingBottom: '5'
 			})}
 		>
-			<div class={rowBetween}>
+			<div class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
 				<div>
 					<h1 class={css({ margin: '0', marginBottom: '2', fontSize: '2xl' })}>Health Checks</h1>
 					<p class={css({ margin: '0', color: 'fg.tertiary' })}>
@@ -967,8 +972,8 @@
 				justifyContent: 'space-between'
 			})}
 		>
-			<div class={cx(row, css({ gap: '2' }))}>
-				<HeartPulse size={14} class={muted} />
+			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+				<HeartPulse size={14} class={css({ color: 'fg.muted' })} />
 				<span
 					class={css({
 						fontSize: 'xs',
@@ -1185,6 +1190,9 @@
 						{#each visibleChecks as check (check.id)}
 							{@const latest = latestResults.get(check.id)}
 							<tr
+								data-healthcheck-row={check.id}
+								data-healthcheck-name={check.name}
+								data-datasource-id={check.datasource_id}
 								class={cx(
 									css({ cursor: 'pointer', _hover: { backgroundColor: 'bg.hover' } }),
 									expandedId === check.id ? css({ backgroundColor: 'bg.secondary' }) : ''
@@ -1252,7 +1260,7 @@
 												backgroundColor: 'bg.tertiary'
 											})}
 										>
-											<AlertTriangle size={12} class={muted} />
+											<TriangleAlert size={12} class={css({ color: 'fg.muted' })} />
 										</div>
 									{/if}
 								</td>
@@ -1282,7 +1290,7 @@
 											})}
 											title={check.datasource_id}
 										>
-											<Database size={10} class={muted} />
+											<Database size={10} class={css({ color: 'fg.muted' })} />
 											{resolveDatasource(check.datasource_id)}
 										</span>
 									</td>
@@ -1353,8 +1361,8 @@
 											<Power size={12} class={css({ color: 'fg.success' })} />
 											<span class={css({ color: 'fg.success' })}>On</span>
 										{:else}
-											<PowerOff size={12} class={muted} />
-											<span class={muted}>Off</span>
+											<PowerOff size={12} class={css({ color: 'fg.muted' })} />
+											<span class={css({ color: 'fg.muted' })}>Off</span>
 										{/if}
 									</button>
 								</td>
@@ -1441,7 +1449,7 @@
 													<span class={css({ fontSize: '2xs', color: 'fg.muted' })}
 														>Latest Result</span
 													>
-													<div class={cx(row, css({ gap: '1' }))}>
+													<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
 														{#if latest.passed}
 															<Check size={10} class={css({ color: 'fg.success' })} />
 															<span class={css({ fontSize: '2xs', color: 'fg.success' })}

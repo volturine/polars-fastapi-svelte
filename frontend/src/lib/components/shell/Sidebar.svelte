@@ -6,7 +6,7 @@
 		Database,
 		Activity,
 		GitBranch,
-		Code2,
+		CodeXml,
 		PanelLeftOpen,
 		Sun,
 		Moon,
@@ -58,10 +58,10 @@
 
 	const currentPath = $derived(page.url.pathname);
 
-	// Subscription: $derived can't manage polling lifecycle.
+	// Subscription: $derived can't manage the engines stream lifecycle.
 	$effect(() => {
-		untrack(() => void enginesStore.startPolling());
-		return () => enginesStore.stopPolling();
+		untrack(() => enginesStore.startStream());
+		return () => enginesStore.stopStream();
 	});
 
 	const navItems = [
@@ -69,7 +69,7 @@
 		{ href: '/datasources', label: 'Data Sources', icon: Database, prefix: '/datasources' },
 		{ href: '/monitoring', label: 'Monitoring', icon: Activity, prefix: '/monitoring' },
 		{ href: '/lineage', label: 'Lineage', icon: GitBranch, prefix: '/lineage' },
-		{ href: '/udfs', label: 'UDFs', icon: Code2, prefix: '/udfs' }
+		{ href: '/udfs', label: 'UDFs', icon: CodeXml, prefix: '/udfs' }
 	] as const;
 
 	function isActive(item: (typeof navItems)[number]): boolean {
@@ -313,6 +313,7 @@
 				<Cpu size={16} />
 				{#if enginesStore.count > 0}
 					<span
+						data-testid="engine-monitor-count"
 						class={css({
 							position: 'absolute',
 							top: '-2px',

@@ -6,11 +6,11 @@
 		MessageCircle,
 		Database,
 		ChevronDown,
-		CheckCircle,
-		XCircle,
+		CircleCheckBig,
+		CircleX,
 		Send,
 		Save,
-		Loader2,
+		LoaderCircle,
 		Trash2
 	} from 'lucide-svelte';
 	import {
@@ -29,7 +29,7 @@
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
 	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
-	import { css, input, cx, label, row, rowBetween, divider } from '$lib/styles/panda';
+	import { css, input, cx, label } from '$lib/styles/panda';
 
 	interface Props {
 		open: boolean;
@@ -180,14 +180,6 @@
 	const botRunning = $derived(statusQuery.data?.running ?? false);
 	const subscribers = $derived(subscribersQuery.data ?? []);
 
-	function handleKeydown(e: KeyboardEvent) {
-		if (!open) return;
-		if (e.key === 'Escape') {
-			e.preventDefault();
-			open = false;
-		}
-	}
-
 	async function save() {
 		saving = true;
 		feedback = null;
@@ -286,8 +278,6 @@
 	}
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
 <BaseModal
 	{open}
 	onClose={() => (open = false)}
@@ -347,7 +337,7 @@
 				color: 'fg.muted'
 			})}
 		>
-			<Loader2 size={14} class={css({ animation: 'spin 1s linear infinite' })} />
+			<LoaderCircle size={14} class={css({ animation: 'spin 1s linear infinite' })} />
 			Loading settings...
 		</div>
 	{:else}
@@ -371,9 +361,9 @@
 					})}
 				>
 					{#if feedback.type === 'success'}
-						<CheckCircle size={12} />
+						<CircleCheckBig size={12} />
 					{:else}
-						<XCircle size={12} />
+						<CircleX size={12} />
 					{/if}
 					{feedback.message}
 				</div>
@@ -416,7 +406,13 @@
 						padding: '3'
 					})}
 				>
-					<div class={cx(rowBetween, css({ alignItems: 'center' }))}>
+					<div
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between'
+						})}
+					>
 						<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>OpenRouter</span>
 						<button
 							class={css({
@@ -464,7 +460,13 @@
 						padding: '3'
 					})}
 				>
-					<div class={cx(rowBetween, css({ alignItems: 'center' }))}>
+					<div
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between'
+						})}
+					>
 						<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>OpenAI</span>
 						<button
 							class={css({
@@ -525,7 +527,13 @@
 						padding: '3'
 					})}
 				>
-					<div class={cx(rowBetween, css({ alignItems: 'center' }))}>
+					<div
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between'
+						})}
+					>
 						<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>Ollama</span>
 						<button
 							class={css({
@@ -570,7 +578,13 @@
 						padding: '3'
 					})}
 				>
-					<div class={cx(rowBetween, css({ alignItems: 'center' }))}>
+					<div
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between'
+						})}
+					>
 						<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>Hugging Face</span>
 						<button
 							class={css({
@@ -726,7 +740,7 @@
 						type="button"
 					>
 						{#if testingSmtp}
-							<Loader2 size={12} class={css({ animation: 'spin 1s linear infinite' })} />
+							<LoaderCircle size={12} class={css({ animation: 'spin 1s linear infinite' })} />
 						{:else}
 							<Send size={12} />
 						{/if}
@@ -752,7 +766,7 @@
 					<MessageCircle size={12} />
 					<SectionHeader>Telegram</SectionHeader>
 				</span>
-				<span class={cx(row, css({ gap: '2', alignItems: 'center' }))}>
+				<span class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 					{#if statusQuery.data}
 						<span
 							class={css({
@@ -796,7 +810,9 @@
 					/>
 				</label>
 
-				<div class={rowBetween}>
+				<div
+					class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}
+				>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '0.5' })}>
 						<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>Enable Bot</span>
 						<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>
@@ -847,7 +863,7 @@
 							backgroundColor: 'bg.tertiary'
 						})}
 					>
-						<span class={cx(row, css({ gap: '1.5' }))}>
+						<span class={css({ display: 'flex', alignItems: 'center', gap: '1.5' })}>
 							<span
 								class={css({
 									display: 'inline-block',
@@ -888,7 +904,7 @@
 									fontSize: 'xs'
 								})}
 							>
-								<div class={cx(row, css({ gap: '2' }))}>
+								<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 									<span
 										class={css({
 											display: 'inline-block',
@@ -961,7 +977,9 @@
 				aria-hidden={debugCollapsed}
 				class={debugCollapsed ? css({ display: 'none' }) : ''}
 			>
-				<div class={rowBetween}>
+				<div
+					class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}
+				>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '0.5' })}>
 						<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}> IndexedDB Inspector </span>
 						<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>
@@ -1002,15 +1020,13 @@
 		</div>
 
 		<div
-			class={cx(
-				divider,
-				css({
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'space-between',
-					padding: '4'
-				})
-			)}
+			class={css({
+				borderTopWidth: '1',
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'space-between',
+				padding: '4'
+			})}
 		>
 			<p class={css({ margin: '0', fontSize: 'xs', color: 'fg.tertiary' })}>
 				Settings are stored in the database.
@@ -1036,7 +1052,7 @@
 				type="button"
 			>
 				{#if saving}
-					<Loader2 size={12} class={css({ animation: 'spin 1s linear infinite' })} />
+					<LoaderCircle size={12} class={css({ animation: 'spin 1s linear infinite' })} />
 				{:else}
 					<Save size={12} />
 				{/if}

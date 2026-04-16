@@ -13,7 +13,17 @@
 	import ChatPanel from '$lib/components/common/ChatPanel.svelte';
 	import Sidebar from '$lib/components/shell/Sidebar.svelte';
 	import { chatStore } from '$lib/stores/chat.svelte';
-	import { initNamespace, setNamespace, useNamespace } from '$lib/stores/namespace.svelte';
+	import { enginesStore } from '$lib/stores/engines.svelte';
+	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { datasourceStore } from '$lib/stores/datasource.svelte';
+	import { schemaStore } from '$lib/stores/schema.svelte';
+	import { overlayStack } from '$lib/stores/overlay.svelte';
+	import {
+		initNamespace,
+		switchNamespace,
+		useNamespace,
+		isNamespaceReady
+	} from '$lib/stores/namespace.svelte';
 	import { configStore } from '$lib/stores/config.svelte';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { installAuditListeners, setAuditPage, track } from '$lib/utils/audit-log';
@@ -49,7 +59,9 @@
 	});
 
 	const ready = $derived(
-		configStore.config !== null && (!configStore.authRequired || authStore.resolved)
+		configStore.config !== null &&
+			(!configStore.authRequired || authStore.resolved) &&
+			isNamespaceReady()
 	);
 
 	// Navigation: $derived can't redirect; side effect redirects unauthenticated users.
@@ -108,6 +120,29 @@
 		return () => chatStore.destroy();
 	});
 
+	// DOM: global capture-phase arbiter for overlay Escape / outside-click.
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+		function onKeydown(event: KeyboardEvent) {
+			if (event.key !== 'Escape') return;
+			if (overlayStack.handleEscape()) {
+				event.preventDefault();
+				event.stopImmediatePropagation();
+			}
+		}
+		function onMousedown(event: MouseEvent) {
+			const target = event.target as Node | null;
+			if (!target) return;
+			overlayStack.handleOutsideClick(target);
+		}
+		window.addEventListener('keydown', onKeydown, true);
+		window.addEventListener('mousedown', onMousedown, true);
+		return () => {
+			window.removeEventListener('keydown', onKeydown, true);
+			window.removeEventListener('mousedown', onMousedown, true);
+		};
+	});
+
 	// Subscription: $derived can't update audit page.
 	$effect(() => {
 		if (!configStore.config) return;
@@ -157,8 +192,23 @@
 	const namespaceDraft = $derived(namespaceState.value);
 
 	async function handleNamespaceSelect(value: string) {
-		await setNamespace(value);
-		window.location.reload();
+		await switchNamespace(value, {
+			async beforeCommit() {
+				await queryClient.cancelQueries();
+				enginesStore.reset();
+				chatStore.reset();
+				analysisStore.reset();
+				datasourceStore.reset();
+				schemaStore.reset();
+			},
+			async afterCommit() {
+				await goto(resolve(currentPath as '/'), {
+					invalidateAll: true,
+					replaceState: true
+				});
+				await queryClient.resetQueries();
+			}
+		});
 		namespaceOpen = false;
 	}
 
@@ -230,7 +280,7 @@
 					{theme}
 					onToggleTheme={toggleTheme}
 					onOpenSettings={() => (settingsOpen = true)}
-					onOpenEngines={() => (enginesOpen = true)}
+					onOpenEngines={() => (enginesOpen = !enginesOpen)}
 					onOpenChat={handleOpenChat}
 					onOpenNamespace={openNamespace}
 					onSignOut={handleSignOut}

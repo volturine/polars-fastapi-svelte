@@ -21,13 +21,14 @@
 		Bug,
 		Play
 	} from 'lucide-svelte';
-	import { onClickOutside } from 'runed';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
-	import { css, cx, menuItem, divider, muted, input } from '$lib/styles/panda';
+	import { css, cx, menuItem, input } from '$lib/styles/panda';
 	import type { TableCellValue } from '$lib/types/api-responses';
 	import { resolveColumnType } from '$lib/utils/column-types';
 	import { formatDateTimeDisplay, formatDateDisplay } from '$lib/utils/datetime';
+	import { overlayStack } from '$lib/stores/overlay.svelte';
+	import type { OverlayConfig } from '$lib/stores/overlay.svelte';
 
 	interface Props {
 		columns: string[];
@@ -363,14 +364,15 @@
 		onPreview();
 	}
 
-	onClickOutside(
-		() => columnMenuRef,
-		() => {
-			if (activeColumn) {
-				activeColumn = null;
-			}
+	const columnMenuOverlayConfig = $derived<OverlayConfig>({
+		onEscape: () => {
+			activeColumn = null;
+		},
+		onOutsideClick: (target: Node) => {
+			if (columnMenuRef?.contains(target)) return;
+			activeColumn = null;
 		}
-	);
+	});
 
 	function getTemporalType(dtype: string | undefined): 'date' | 'datetime' | null {
 		if (!dtype) return null;
@@ -846,6 +848,7 @@
 												gap: '1'
 											})}
 											bind:this={columnMenuRef}
+											use:overlayStack.action={columnMenuOverlayConfig}
 										>
 											<button class={menuItem()} onclick={() => setSort(header.id, 'asc')}
 												>Sort A-Z</button
@@ -987,14 +990,12 @@
 
 	{#if showFooter && !loading && data.length > 0}
 		<div
-			class={cx(
-				divider,
-				css({
-					paddingX: '4',
-					paddingY: '3',
-					backgroundColor: 'bg.tertiary'
-				})
-			)}
+			class={css({
+				borderTopWidth: '1',
+				paddingX: '4',
+				paddingY: '3',
+				backgroundColor: 'bg.tertiary'
+			})}
 		>
 			<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>
 				Showing {data.length.toLocaleString()} row{data.length !== 1 ? 's' : ''}
@@ -1044,7 +1045,7 @@
 		style:left="{dragPointerX + 12}px"
 		style:top="{dragPointerY + 12}px"
 	>
-		<GripVertical size={12} class={muted} />
+		<GripVertical size={12} class={css({ color: 'fg.muted' })} />
 		<span class={css({ fontFamily: 'mono' })}>{dragLabel}</span>
 	</div>
 {/if}

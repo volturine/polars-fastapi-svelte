@@ -65,6 +65,7 @@ class DatasourceParams(OperationParams):
     read_only: bool = True
     metadata_path: str | None = None
     branch: str | None = None
+    namespace_name: str | None = None
     snapshot_id: str | None = None
     snapshot_timestamp_ms: int | None = None
     storage_options: dict | None = None
@@ -156,7 +157,11 @@ class DatasourceHandler(OperationHandler):
     def _load_iceberg(self, config: DatasourceParams) -> pl.LazyFrame:
         if not config.metadata_path:
             raise ValueError('Datasource Iceberg loading requires metadata_path')
-        metadata_path = resolve_iceberg_branch_metadata_path(config.metadata_path, config.branch)
+        metadata_path = resolve_iceberg_branch_metadata_path(
+            config.metadata_path,
+            config.branch,
+            namespace_name=config.namespace_name,
+        )
         snapshot_id = config.snapshot_id
         snapshot_value: int | None = None
         if snapshot_id is not None:
@@ -437,12 +442,17 @@ def _collect_analysis_sources(
     return additional
 
 
-def resolve_iceberg_metadata_path(metadata_path: str) -> str:
+def resolve_iceberg_metadata_path(
+    metadata_path: str,
+    *,
+    namespace_name: str | None = None,
+    data_root: str | Path | None = None,
+) -> str:
     normalized = _strip_file_scheme(metadata_path)
     path = Path(normalized)
     resolved = path.resolve()
-    data_root = Path(os.path.realpath(namespace_paths().base_dir.resolve()))
-    if data_root not in resolved.parents and data_root != resolved:
+    root = _resolve_iceberg_data_root(namespace_name=namespace_name, data_root=data_root)
+    if root not in resolved.parents and root != resolved:
         raise ValueError('Iceberg metadata_path must be inside data directory')
     if path.suffix == '.db':
         raise ValueError('Iceberg metadata_path must point to metadata.json, not catalog.db')
@@ -462,23 +472,35 @@ def resolve_iceberg_metadata_path(metadata_path: str) -> str:
     raise ValueError('Iceberg metadata_path must be a table directory containing metadata/')
 
 
-def resolve_iceberg_branch_metadata_path(metadata_path: str, branch: str | None) -> str:
+def resolve_iceberg_branch_metadata_path(
+    metadata_path: str,
+    branch: str | None,
+    *,
+    namespace_name: str | None = None,
+    data_root: str | Path | None = None,
+) -> str:
     normalized = _strip_file_scheme(metadata_path)
     path = Path(normalized)
     if path.suffix == '.metadata.json' or path.name == 'metadata' or path.is_file():
-        return resolve_iceberg_metadata_path(metadata_path)
+        return resolve_iceberg_metadata_path(metadata_path, namespace_name=namespace_name, data_root=data_root)
     if branch:
         branch_path = path / branch
         if branch_path.exists():
-            return resolve_iceberg_metadata_path(str(branch_path))
+            return resolve_iceberg_metadata_path(str(branch_path), namespace_name=namespace_name, data_root=data_root)
     metadata_dir = path / 'metadata'
     if metadata_dir.is_dir():
-        return resolve_iceberg_metadata_path(str(metadata_dir))
+        return resolve_iceberg_metadata_path(str(metadata_dir), namespace_name=namespace_name, data_root=data_root)
     if path.is_dir():
         children = [entry for entry in path.iterdir() if entry.is_dir()]
         if len(children) == 1:
-            return resolve_iceberg_metadata_path(str(children[0]))
-    return resolve_iceberg_metadata_path(metadata_path)
+            return resolve_iceberg_metadata_path(str(children[0]), namespace_name=namespace_name, data_root=data_root)
+    return resolve_iceberg_metadata_path(metadata_path, namespace_name=namespace_name, data_root=data_root)
+
+
+def _resolve_iceberg_data_root(*, namespace_name: str | None = None, data_root: str | Path | None = None) -> Path:
+    if data_root is not None:
+        return Path(os.path.realpath(Path(data_root).resolve()))
+    return Path(os.path.realpath(namespace_paths(namespace_name).base_dir.resolve()))
 
 
 def _read_excel(path: str, opts: dict) -> pl.LazyFrame:

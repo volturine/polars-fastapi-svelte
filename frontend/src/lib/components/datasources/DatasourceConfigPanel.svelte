@@ -7,7 +7,8 @@
 		refreshDatasource,
 		updateDatasource
 	} from '$lib/api/datasource';
-	import { listEngineRuns, type EngineRun } from '$lib/api/engine-runs';
+	import { type EngineRun } from '$lib/api/engine-runs';
+	import { EngineRunsStore } from '$lib/stores/engine-runs.svelte';
 	import { listHealthChecks, listHealthCheckResults } from '$lib/api/healthcheck';
 	import {
 		Save,
@@ -24,6 +25,7 @@
 	} from 'lucide-svelte';
 	import type {
 		DataSource,
+		DatabaseDataSource,
 		FileDataSource,
 		IcebergDataSource,
 		SchemaInfo,
@@ -39,17 +41,7 @@
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import { formatDateDisplay } from '$lib/utils/datetime';
 	import { resolveColumnType } from '$lib/utils/column-types';
-	import {
-		css,
-		cx,
-		button,
-		input,
-		label,
-		tabButton,
-		chip,
-		emptyText,
-		row
-	} from '$lib/styles/panda';
+	import { css, cx, button, input, label, tabButton, chip, emptyText } from '$lib/styles/panda';
 
 	interface Props {
 		datasource: DataSource;
@@ -81,16 +73,13 @@
 		staleTime: Infinity
 	}));
 
-	const runsQuery = createQuery(() => ({
-		queryKey: ['datasource-runs', datasource.id],
-		queryFn: async () => {
-			const result = await listEngineRuns({ datasource_id: datasource.id, limit: 50 });
-			if (result.isErr()) throw new Error(result.error.message);
-			return result.value;
-		},
-		enabled: !!datasource.id,
-		retry: false
-	}));
+	const engineRunsStore = new EngineRunsStore();
+	// Network: fetch datasource runs when the datasource changes.
+	$effect(() => {
+		if (!datasource.id) return;
+		engineRunsStore.load({ datasource_id: datasource.id, limit: 50 });
+		return () => engineRunsStore.close();
+	});
 
 	const healthChecksQuery = createQuery(() => ({
 		queryKey: ['datasource-healthchecks-count', datasource.id],
@@ -173,14 +162,13 @@
 			};
 		}
 		if (isExcel(ds) && fileSource) {
-			const excelSource = fileSource as unknown as Record<string, unknown>;
-			const cellRangeValue = excelSource.cell_range;
+			const cellRangeValue = fileSource.cell_range;
 			const cellRange = typeof cellRangeValue === 'string' ? cellRangeValue : '';
-			const sheetValue = excelSource.sheet_name;
+			const sheetValue = fileSource.sheet_name;
 			const sheetName = typeof sheetValue === 'string' ? sheetValue : '';
-			const tableValue = excelSource.table_name;
+			const tableValue = fileSource.table_name;
 			const tableName = typeof tableValue === 'string' ? tableValue : '';
-			const rangeValue = excelSource.named_range;
+			const rangeValue = fileSource.named_range;
 			const namedRange = typeof rangeValue === 'string' ? rangeValue : '';
 			const endRowValue = fileSource.end_row ?? null;
 			excelConfig = {
@@ -276,6 +264,10 @@
 
 	function isFile(ds: DataSource): boolean {
 		return ds.source_type === 'file';
+	}
+
+	function isDatabase(ds: DataSource): ds is DatabaseDataSource {
+		return ds.source_type === 'database';
 	}
 
 	function isIceberg(ds: DataSource): boolean {
@@ -411,7 +403,6 @@
 				queryClient.invalidateQueries({ queryKey: ['datasource-schema', ds.id] });
 				queryClient.invalidateQueries({ queryKey: ['datasource-preview', ds.id] });
 				queryClient.invalidateQueries({ queryKey: ['datasources'] });
-				queryClient.invalidateQueries({ queryKey: ['datasource-runs', ds.id] });
 			}
 		}
 	}
@@ -462,7 +453,6 @@
 			setSchema(nextSchema);
 			queryClient.invalidateQueries({ queryKey: ['datasource-schema', datasource.id] });
 			queryClient.invalidateQueries({ queryKey: ['datasource-preview', datasource.id] });
-			queryClient.invalidateQueries({ queryKey: ['datasource-runs', datasource.id] });
 		} catch (error) {
 			refreshError = error instanceof Error ? error.message : 'Failed to refresh schema';
 		} finally {
@@ -490,10 +480,10 @@
 	const ds = $derived(datasourceQuery.data ?? datasource);
 	const csv = $derived(isCsv(ds));
 	const excel = $derived(isExcel(ds));
-	const runs = $derived(runsQuery.data ?? []);
+	const runs = $derived(engineRunsStore.runs);
 	const filteredRuns = $derived.by(() => {
 		if (showPreviews) return runs;
-		return runs.filter((run) => run.kind !== 'preview');
+		return runs.filter((run: EngineRun) => run.kind !== 'preview');
 	});
 	const isOutputDatasource = $derived(ds.created_by === 'analysis');
 	const scheduleAnalysisId = $derived(
@@ -546,25 +536,24 @@
 
 	{#if updateMutation.isSuccess}
 		<div
-			class={cx(
-				row,
-				css({
-					margin: '4',
-					marginBottom: '0',
-					gap: '2',
-					paddingX: '3',
-					paddingY: '2.5',
-					border: 'none',
-					borderLeftWidth: '2',
-					fontSize: 'xs',
-					lineHeight: 'normal',
-					backgroundColor: 'transparent',
-					borderLeftColor: 'border.success',
-					color: 'fg.success',
-					borderWidth: '1',
-					borderColor: 'border.success'
-				})
-			)}
+			class={css({
+				display: 'flex',
+				alignItems: 'center',
+				margin: '4',
+				marginBottom: '0',
+				gap: '2',
+				paddingX: '3',
+				paddingY: '2.5',
+				border: 'none',
+				borderLeftWidth: '2',
+				fontSize: 'xs',
+				lineHeight: 'normal',
+				backgroundColor: 'transparent',
+				borderLeftColor: 'border.success',
+				color: 'fg.success',
+				borderWidth: '1',
+				borderColor: 'border.success'
+			})}
 		>
 			<p class={css({ margin: '0' })}>Changes saved successfully!</p>
 		</div>
@@ -717,8 +706,8 @@
 						Source Information
 					</h3>
 					<div class={css({ display: 'flex', flexDirection: 'column', gap: '3', fontSize: 'xs' })}>
-						<div class={cx(row, css({ gap: '4' }))}>
-							<div class={cx(row, css({ gap: '2' }))}>
+						<div class={css({ display: 'flex', alignItems: 'center', gap: '4' })}>
+							<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 								<span
 									class={css({
 										textTransform: 'uppercase',
@@ -734,13 +723,13 @@
 								{/if}
 							</div>
 							{#if ds.is_hidden}
-								<div class={cx(row, css({ gap: '1.5' }))}>
+								<div class={css({ display: 'flex', alignItems: 'center', gap: '1.5' })}>
 									<span class={chip({ tone: 'warning' })}> Hidden </span>
 								</div>
 							{/if}
 						</div>
 
-						<div class={cx(row, css({ gap: '2' }))}>
+						<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 							<span
 								class={css({
 									textTransform: 'uppercase',
@@ -825,8 +814,8 @@
 							</div>
 						{/if}
 
-						{#if ds.source_type === 'database'}
-							{@const config = ds.config as unknown as { connection_string?: string }}
+						{#if isDatabase(ds)}
+							{@const config = ds.config}
 							{#if config.connection_string}
 								<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 									<span
@@ -885,7 +874,7 @@
 											fontWeight: 'semibold'
 										})}>Original Source</span
 									>
-									<div class={cx(row, css({ gap: '2' }))}>
+									<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 										<span
 											class={css({
 												textTransform: 'uppercase',
@@ -920,8 +909,8 @@
 							{/if}
 						{/if}
 
-						<div class={cx(row, css({ gap: '4' }))}>
-							<div class={cx(row, css({ gap: '2' }))}>
+						<div class={css({ display: 'flex', alignItems: 'center', gap: '4' })}>
+							<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 								<span
 									class={css({
 										textTransform: 'uppercase',
@@ -933,7 +922,7 @@
 								>
 							</div>
 							{#if schemaQuery.data}
-								<div class={cx(row, css({ gap: '2' }))}>
+								<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 									<span
 										class={css({
 											textTransform: 'uppercase',
@@ -945,7 +934,7 @@
 										>{schemaQuery.data.row_count?.toLocaleString() ?? 'Unknown'}</span
 									>
 								</div>
-								<div class={cx(row, css({ gap: '2' }))}>
+								<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 									<span
 										class={css({
 											textTransform: 'uppercase',
@@ -962,9 +951,20 @@
 					</div>
 				</div>
 
-				<div class={cx(row, css({ paddingTop: '4', justifyContent: 'space-between', gap: '3' }))}>
+				<div
+					class={css({
+						display: 'flex',
+						alignItems: 'center',
+						paddingTop: '4',
+						justifyContent: 'space-between',
+						gap: '3'
+					})}
+				>
 					<button
-						class={cx(button({ variant: 'secondary' }), cx(row, css({ gap: '2' })))}
+						class={cx(
+							button({ variant: 'secondary' }),
+							css({ display: 'flex', alignItems: 'center', gap: '2' })
+						)}
 						onclick={handleRefresh}
 						disabled={isRefreshing || updateMutation.isPending}
 					>
@@ -978,7 +978,10 @@
 					</button>
 					{#if hasChanges}
 						<button
-							class={cx(button({ variant: 'primary' }), cx(row, css({ gap: '2' })))}
+							class={cx(
+								button({ variant: 'primary' }),
+								css({ display: 'flex', alignItems: 'center', gap: '2' })
+							)}
 							onclick={handleSave}
 							disabled={updateMutation.isPending}
 						>
@@ -1033,16 +1036,15 @@
 				{/if}
 				{#if schemaQuery.isLoading}
 					<div
-						class={cx(
-							row,
-							css({
-								flexDirection: 'column',
-								justifyContent: 'center',
-								gap: '3',
-								paddingY: '8',
-								color: 'fg.muted'
-							})
-						)}
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							flexDirection: 'column',
+							justifyContent: 'center',
+							gap: '3',
+							paddingY: '8',
+							color: 'fg.muted'
+						})}
 					>
 						<Loader size={24} class={css({ animation: 'spin 1s linear infinite' })} />
 						<p class={css({ fontSize: 'sm' })}>Loading schema...</p>
@@ -1198,7 +1200,7 @@
 					</div>
 				</div>
 
-				<div class={cx(row, css({ gap: '2' }))}>
+				<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 					<input
 						id="csv-header-{datasource.id}"
 						type="checkbox"
@@ -1216,7 +1218,13 @@
 					<button
 						class={cx(
 							button({ variant: 'primary' }),
-							cx(row, css({ width: '100%', justifyContent: 'center', gap: '2' }))
+							css({
+								display: 'flex',
+								alignItems: 'center',
+								width: '100%',
+								justifyContent: 'center',
+								gap: '2'
+							})
 						)}
 						onclick={handleSave}
 						disabled={updateMutation.isPending}
@@ -1245,7 +1253,13 @@
 					<button
 						class={cx(
 							button({ variant: 'primary' }),
-							cx(row, css({ width: '100%', justifyContent: 'center', gap: '2' }))
+							css({
+								display: 'flex',
+								alignItems: 'center',
+								width: '100%',
+								justifyContent: 'center',
+								gap: '2'
+							})
 						)}
 						onclick={handleSave}
 						disabled={updateMutation.isPending}
@@ -1287,30 +1301,29 @@
 						Show previews
 					{/if}
 				</button>
-				{#if runsQuery.isLoading}
+				{#if engineRunsStore.status === 'connecting'}
 					<div
-						class={cx(
-							row,
-							css({
-								flexDirection: 'column',
-								justifyContent: 'center',
-								gap: '3',
-								paddingY: '8',
-								color: 'fg.muted'
-							})
-						)}
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							flexDirection: 'column',
+							justifyContent: 'center',
+							gap: '3',
+							paddingY: '8',
+							color: 'fg.muted'
+						})}
 					>
 						<Loader size={24} class={css({ animation: 'spin 1s linear infinite' })} />
 						<p class={css({ fontSize: 'sm' })}>Loading runs...</p>
 					</div>
-				{:else if runsQuery.isError}
+				{:else if engineRunsStore.status === 'error'}
 					<Callout tone="error">
 						<div class={css({ display: 'flex', alignItems: 'flex-start', gap: '3' })}>
 							<CircleAlert size={20} />
 							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 								<p class={css({ margin: '0', fontWeight: 'semibold' })}>Failed to load runs</p>
 								<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>
-									{runsQuery.error instanceof Error ? runsQuery.error.message : 'Unknown error'}
+									{engineRunsStore.error ?? 'Unknown error'}
 								</p>
 							</div>
 						</div>
@@ -1369,7 +1382,9 @@
 										: ''
 								)}
 							>
-								<div class={cx(row, css({ gap: '2', fontSize: 'xs' }))}>
+								<div
+									class={css({ display: 'flex', alignItems: 'center', gap: '2', fontSize: 'xs' })}
+								>
 									{#if (run.kind as string) === 'preview'}
 										<Eye size={14} class={css({ flexShrink: '0', color: 'accent.primary' })} />
 										<span>Preview</span>
@@ -1399,7 +1414,9 @@
 										</span>
 									{/if}
 								</div>
-								<div class={cx(row, css({ gap: '1.5', fontSize: 'xs' }))}>
+								<div
+									class={css({ display: 'flex', alignItems: 'center', gap: '1.5', fontSize: 'xs' })}
+								>
 									{#if run.status === 'success'}
 										<CircleCheck size={14} class={css({ color: 'fg.success' })} />
 										<span class={css({ color: 'fg.success' })}>Success</span>

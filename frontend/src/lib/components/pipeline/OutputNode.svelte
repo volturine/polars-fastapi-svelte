@@ -6,20 +6,23 @@
 		AnalysisTabOutput
 	} from '$lib/types/analysis';
 	import type { Subscriber } from '$lib/api/settings';
-	import type { BuildResponse } from '$lib/api/compute';
 	import { getSubscribers } from '$lib/api/settings';
 	import { listDatasources, updateDatasource } from '$lib/api/datasource';
-	import { buildAnalysisWithPayload } from '$lib/api/compute';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { configStore } from '$lib/stores/config.svelte';
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
+	import { BuildStreamStore } from '$lib/stores/build-stream.svelte';
 	import { buildAnalysisPipelinePayload } from '$lib/utils/analysis-pipeline';
 	import { isUuid } from '$lib/utils/analysis-tab';
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
 	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
-	import { css, cx, chip, input, label, row, rowBetween, muted } from '$lib/styles/panda';
+	import { overlayStack } from '$lib/stores/overlay.svelte';
+	import type { OverlayConfig } from '$lib/stores/overlay.svelte';
+	import BuildPreview from '$lib/components/common/BuildPreview.svelte';
+	import BaseModal from '$lib/components/ui/BaseModal.svelte';
+	import { css, cx, chip, input, label } from '$lib/styles/panda';
 	import {
 		Bell,
 		CalendarClock,
@@ -48,14 +51,23 @@
 	let { analysisId, datasourceId, activeTab = null, readOnly = false }: Props = $props();
 
 	const queryClient = useQueryClient();
+	const buildStore = new BuildStreamStore();
+	const analysisPipeline = $derived.by(() => {
+		if (!analysisId) return null;
+		return buildAnalysisPipelinePayload(
+			analysisId,
+			analysisStore.tabs,
+			datasourceStore.datasources
+		);
+	});
 	let toggling = $state(false);
-	let building = $state(false);
+	let buildStarting = $state(false);
+	let previewOpen = $state(false);
 	let error = $state<string | null>(null);
 	let notifyOpen = $state(false);
 	let scheduleOpen = $state(false);
 	let healthOpen = $state(false);
-	let probeOutputDatasource = $state(false);
-	let lastOutputDatasourceId = $state<string | null>(null);
+	let probeOutputDatasourceFor = $state<string | null>(null);
 	let editingName = $state(false);
 	let draftName = $state('');
 	let modeMenuOpen = $state(false);
@@ -129,7 +141,8 @@
 	});
 	const canQueryOutput = $derived(isUuid(outputDatasourceId));
 	const shouldQueryOutputDatasource = $derived(
-		canQueryOutput && (probeOutputDatasource || healthOpen || scheduleOpen)
+		canQueryOutput &&
+			(probeOutputDatasourceFor === outputDatasourceId || healthOpen || scheduleOpen)
 	);
 
 	const outputDatasourceQuery = createQuery(() => ({
@@ -234,6 +247,39 @@
 	);
 
 	const selectedCount = $derived(activeSubscribers.length);
+	const buildBusy = $derived(
+		buildStarting || buildStore.status === 'connecting' || buildStore.status === 'running'
+	);
+	const hasBuildSession = $derived(
+		buildBusy ||
+			buildStore.buildId !== null ||
+			buildStore.status === 'completed' ||
+			buildStore.status === 'failed'
+	);
+	const buildSessionLabel = $derived.by(() => {
+		if (buildBusy) return 'Engine Run';
+		if (buildStore.status === 'completed') return 'Last Build';
+		if (buildStore.status === 'failed') return 'Last Build';
+		return 'Build';
+	});
+	const buildSessionSummary = $derived.by(() => {
+		if (buildBusy) return buildStore.currentStep ?? 'Preparing build';
+		if (buildStore.status === 'completed') {
+			if (buildStore.duration !== null) {
+				return `Completed in ${(buildStore.duration / 1000).toFixed(2)}s`;
+			}
+			return 'Completed';
+		}
+		if (buildStore.status === 'failed') {
+			return buildStore.error ?? 'Build failed';
+		}
+		return 'No build data';
+	});
+
+	function openBuildPreview(): void {
+		if (!hasBuildSession) return;
+		previewOpen = true;
+	}
 
 	function updateOutputConfig(patch: Partial<AnalysisTabOutput>) {
 		if (readOnly) return;
@@ -329,7 +375,7 @@
 		if (readOnly) return;
 		if (!outputDatasourceId || toggling) return;
 		if (!hasOutputDatasource) {
-			probeOutputDatasource = true;
+			probeOutputDatasourceFor = outputDatasourceId;
 			return;
 		}
 		toggling = true;
@@ -348,16 +394,15 @@
 	}
 
 	async function handleManualBuild() {
-		if (!analysisId || building || readOnly) return;
-		building = true;
+		if (!analysisId || buildBusy || readOnly) return;
+		buildStarting = true;
 		error = null;
 		ensureOutputConfig();
 
-		// Save analysis first so backend sees the latest output config
 		const saveResult = await analysisStore.save();
 		if (saveResult.isErr()) {
 			error = saveResult.error.message;
-			building = false;
+			buildStarting = false;
 			return;
 		}
 
@@ -370,57 +415,34 @@
 			error = datasourceStore.loaded
 				? 'Unable to build analysis payload.'
 				: 'Datasources are still loading. Please try again.';
-			building = false;
+			buildStarting = false;
 			return;
 		}
-		const result = await buildAnalysisWithPayload({
+		buildStore.start({
 			analysis_pipeline: pipeline,
 			tab_id: activeTab?.id ?? null
 		});
-		result.match(
-			(res: BuildResponse) => {
-				const failed = res.results.find(
-					(r: BuildResponse['results'][number]) => r.status === 'failed'
-				);
-				if (failed?.error) {
-					error = failed.error;
-				}
-				probeOutputDatasource = true;
-				queryClient.invalidateQueries({ queryKey: ['engine-runs', analysisId] });
-				queryClient.invalidateQueries({ queryKey: ['datasource', outputDatasourceId] });
-				queryClient.invalidateQueries({ queryKey: ['datasources'] });
-				void datasourceStore.loadDatasources();
-				building = false;
-			},
-			(err: { message: string }) => {
-				error = err.message;
-				building = false;
-			}
-		);
+		buildStarting = false;
 	}
 
-	// DOM: $derived can't close menu on outside click.
-	$effect(() => {
-		if (!modeMenuOpen) return;
-		const handleOutside = (event: MouseEvent) => {
-			const target = event.target as Node | null;
-			if (!target) return;
+	function closeBuildPreview() {
+		previewOpen = false;
+	}
+
+	const modeMenuOverlayConfig = $derived<OverlayConfig>({
+		onEscape: () => (modeMenuOpen = false),
+		onOutsideClick: (target: Node) => {
 			if (modeMenuRef?.contains(target)) return;
 			if (modeTriggerRef?.contains(target)) return;
 			modeMenuOpen = false;
-		};
-		window.addEventListener('mousedown', handleOutside, true);
-		return () => {
-			window.removeEventListener('mousedown', handleOutside, true);
-		};
+		}
 	});
 
-	// Reset datasource probing when tab/output target changes.
+	// Lifecycle: keep the build stream alive across modal toggles and close it when the node unmounts.
 	$effect(() => {
-		const currentOutputId = outputDatasourceId;
-		if (lastOutputDatasourceId === currentOutputId) return;
-		lastOutputDatasourceId = currentOutputId;
-		probeOutputDatasource = false;
+		return () => {
+			buildStore.close();
+		};
 	});
 </script>
 
@@ -449,7 +471,7 @@
 				borderBottomWidth: '1'
 			})}
 		>
-			<div class={cx(row, css({ gap: '2' }))}>
+			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 				<div
 					class={css({
 						display: 'flex',
@@ -515,9 +537,9 @@
 				<Pencil size={11} class={css({ opacity: '0.5' })} />
 				<span>Table name</span>
 			</div>
-			<div class={cx(row, css({ gap: '2' }))}>
+			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 				{#if editingName}
-					<div class={cx(row, css({ gap: '1' }))}>
+					<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
 						<input
 							class={cx(
 								input(),
@@ -610,6 +632,7 @@
 							onclick={startNameEdit}
 							type="button"
 							aria-label="Edit export name"
+							data-testid="output-table-name-inline-edit"
 						>
 							<Pencil size={12} class={css({ flexShrink: '0' })} />
 						</button>
@@ -645,7 +668,9 @@
 					padding: '3'
 				})}
 			>
-				<div class={rowBetween}>
+				<div
+					class={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}
+				>
 					<span
 						class={css({ fontSize: 'sm', fontWeight: 'semibold' })}
 						data-testid="output-table-name-card"
@@ -772,7 +797,7 @@
 										whiteSpace: 'nowrap'
 									})}>{outputConfig.build_mode}</span
 								>
-								<ChevronDown size={14} class={muted} />
+								<ChevronDown size={14} class={css({ color: 'fg.muted' })} />
 							</button>
 							{#if modeMenuOpen}
 								<div
@@ -793,6 +818,7 @@
 									})}
 									role="listbox"
 									data-testid="output-mode-listbox"
+									use:overlayStack.action={modeMenuOverlayConfig}
 								>
 									<div
 										class={css({
@@ -882,12 +908,12 @@
 					_disabled: { cursor: 'not-allowed', opacity: '0.5' }
 				})}
 				onclick={handleManualBuild}
-				disabled={!analysisId || building || readOnly}
+				disabled={!analysisId || buildBusy || readOnly || !analysisPipeline}
 				title="Run analysis build"
 				type="button"
 				data-testid="output-build-button"
 			>
-				{#if building}
+				{#if buildBusy}
 					<Loader size={14} class={css({ opacity: '0.7' })} />
 					<span data-testid="output-building">building...</span>
 				{:else}
@@ -896,6 +922,86 @@
 				{/if}
 			</button>
 		</div>
+
+		{#if hasBuildSession}
+			<div class={css({ marginX: '4', marginBottom: '3' })}>
+				<button
+					type="button"
+					class={css({
+						display: 'flex',
+						width: '100%',
+						alignItems: 'center',
+						justifyContent: 'space-between',
+						gap: '3',
+						cursor: 'pointer',
+						borderWidth: '1',
+						backgroundColor: buildBusy ? 'bg.accent' : 'bg.secondary',
+						paddingX: '3',
+						paddingY: '2.5',
+						textAlign: 'left',
+						_hover: { backgroundColor: 'bg.hover' }
+					})}
+					onclick={openBuildPreview}
+					data-testid="output-build-preview-trigger"
+					aria-label="Open build preview"
+				>
+					<div class={css({ display: 'flex', minWidth: '0', alignItems: 'center', gap: '2.5' })}>
+						{#if buildBusy}
+							<Loader
+								size={14}
+								class={css({ color: 'accent.primary', animation: 'spin 1s linear infinite' })}
+							/>
+						{:else if buildStore.status === 'completed'}
+							<Check size={14} class={css({ color: 'fg.success' })} />
+						{:else}
+							<X size={14} class={css({ color: 'fg.error' })} />
+						{/if}
+						<div
+							class={css({ display: 'flex', minWidth: '0', flexDirection: 'column', gap: '0.5' })}
+						>
+							<span
+								class={css({
+									fontSize: '2xs',
+									textTransform: 'uppercase',
+									letterSpacing: 'wide',
+									color: 'fg.muted'
+								})}
+							>
+								{buildSessionLabel}
+							</span>
+							<span
+								class={css({
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									whiteSpace: 'nowrap',
+									fontSize: 'sm',
+									fontWeight: 'medium'
+								})}
+								title={buildSessionSummary}
+							>
+								{buildSessionSummary}
+							</span>
+						</div>
+					</div>
+					<div
+						class={css({
+							display: 'flex',
+							flexShrink: '0',
+							alignItems: 'center',
+							gap: '2',
+							fontSize: 'xs',
+							color: 'fg.muted'
+						})}
+					>
+						{#if buildStore.buildId}
+							<span class={css({ fontFamily: 'mono' })}>{buildStore.buildId.slice(0, 8)}</span>
+						{/if}
+						<span>{buildBusy ? 'Open live view' : 'Open details'}</span>
+						<ChevronRight size={12} />
+					</div>
+				</button>
+			</div>
+		{/if}
 
 		<!-- Collapsible Sections -->
 		<div
@@ -930,7 +1036,7 @@
 					onclick={() => (notifyOpen = !notifyOpen)}
 					data-testid="output-notify-toggle"
 				>
-					<span class={cx(row, css({ gap: '2' }))}>
+					<span class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 						{#if notifyOpen}
 							<ChevronDown size={12} />
 						{:else}
@@ -955,6 +1061,7 @@
 							gap: '2',
 							paddingLeft: '5'
 						})}
+						data-testid="output-notify-panel"
 					>
 						<label class={cx(label({ variant: 'checkbox' }), css({ gap: '2', fontSize: 'xs' }))}>
 							<input
@@ -1136,7 +1243,7 @@
 					onclick={() => (healthOpen = !healthOpen)}
 					data-testid="output-health-toggle"
 				>
-					<span class={cx(row, css({ gap: '2' }))}>
+					<span class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 						{#if healthOpen}
 							<ChevronDown size={12} />
 						{:else}
@@ -1199,6 +1306,7 @@
 								fontSize: 'xs',
 								color: 'fg.tertiary'
 							})}
+							data-testid="output-health-empty-state"
 						>
 							{#if canQueryOutput}
 								Build this output once to materialize its datasource before adding health checks.
@@ -1231,7 +1339,7 @@
 					onclick={() => (scheduleOpen = !scheduleOpen)}
 					data-testid="output-schedule-toggle"
 				>
-					<span class={cx(row, css({ gap: '2' }))}>
+					<span class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 						{#if scheduleOpen}
 							<ChevronDown size={12} />
 						{:else}
@@ -1312,3 +1420,50 @@
 		{/if}
 	</div>
 </div>
+
+<BaseModal
+	open={previewOpen}
+	onClose={closeBuildPreview}
+	panelClass={css({
+		width: '100%',
+		maxWidth: 'modalLg',
+		maxHeight: '90vh',
+		overflowY: 'auto',
+		borderWidth: '1',
+		backgroundColor: 'bg.primary'
+	})}
+>
+	{#snippet content()}
+		<div
+			class={css({
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'space-between',
+				paddingX: '4',
+				paddingY: '3',
+				borderBottomWidth: '1'
+			})}
+		>
+			<span class={css({ fontSize: 'sm', fontWeight: 'semibold' })}>Build Preview</span>
+			<button
+				type="button"
+				class={css({
+					display: 'inline-flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					cursor: 'pointer',
+					border: 'none',
+					backgroundColor: 'transparent',
+					color: 'fg.muted',
+					padding: '1',
+					_hover: { color: 'fg.primary' }
+				})}
+				onclick={closeBuildPreview}
+				aria-label="Close build preview"
+			>
+				<X size={14} />
+			</button>
+		</div>
+		<BuildPreview store={buildStore} />
+	{/snippet}
+</BaseModal>

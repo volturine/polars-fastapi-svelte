@@ -2,7 +2,9 @@
 	import { Debounced } from 'runed';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { ChevronDown } from 'lucide-svelte';
-	import { css, cx, emptyText, input, muted } from '$lib/styles/panda';
+	import { css, cx, emptyText, input } from '$lib/styles/panda';
+	import { overlayStack } from '$lib/stores/overlay.svelte';
+	import type { OverlayConfig } from '$lib/stores/overlay.svelte';
 
 	import type { Snippet } from 'svelte';
 
@@ -53,7 +55,6 @@
 		showSelectedList?: boolean;
 		filter?: (option: OptionBase, query: string) => boolean;
 		menuClass?: string;
-		containerClass?: string;
 		triggerClass?: string;
 		inputClass?: string;
 		triggerType?: 'button' | 'input';
@@ -84,7 +85,6 @@
 		showSelectedList = false,
 		filter,
 		menuClass = '',
-		containerClass = '',
 		triggerClass = '',
 		inputClass = '',
 		triggerType = 'button',
@@ -215,36 +215,29 @@
 		triggerAction: setTriggerRef
 	});
 
-	// DOM: $derived can't detect outside clicks.
-	$effect(() => {
-		if (!menuOpen) return;
-		if (!closeOnOutside) return;
-		const handleOutside = (event: MouseEvent) => {
-			const target = event.target as Node | null;
-			if (!target) return;
-			if (menuRef?.contains(target)) return;
-			if (menuContainerRef?.contains(target)) return;
-			if (triggerRef?.contains(target)) return;
-			closeMenu();
-		};
-		window.addEventListener('mousedown', handleOutside, true);
-		return () => {
-			window.removeEventListener('mousedown', handleOutside, true);
-		};
-	});
+	const outsideClickOverlayConfig = $derived<OverlayConfig>(
+		closeOnOutside
+			? {
+					onEscape: closeMenu,
+					onOutsideClick: (target: Node) => {
+						if (menuRef?.contains(target)) return;
+						if (menuContainerRef?.contains(target)) return;
+						if (triggerRef?.contains(target)) return;
+						closeMenu();
+					}
+				}
+			: {}
+	);
 </script>
 
 <div
-	class={cx(
-		css({
-			position: 'relative',
-			display: 'flex',
-			flexDirection: 'column',
-			gap: '2',
-			minWidth: 'inputSm'
-		}),
-		containerClass
-	)}
+	class={css({
+		position: 'relative',
+		display: 'flex',
+		flexDirection: 'column',
+		gap: '2',
+		minWidth: 'inputSm'
+	})}
 	bind:this={menuRef}
 >
 	{#if triggerType === 'input'}
@@ -299,7 +292,7 @@
 							textOverflow: 'ellipsis',
 							whiteSpace: 'nowrap'
 						})
-					: muted}>{displayLabel}</span
+					: css({ color: 'fg.muted' })}>{displayLabel}</span
 			>
 			{#if clearable && selectedCount > 0}
 				<span
@@ -333,7 +326,7 @@
 					aria-label="Clear selection">✕</span
 				>
 			{:else}
-				<ChevronDown size={14} class={muted} />
+				<ChevronDown size={14} class={css({ color: 'fg.muted' })} />
 			{/if}
 		</button>
 	{/if}
@@ -360,6 +353,7 @@
 			aria-multiselectable={mode === 'multi'}
 			aria-label={listAriaLabel}
 			use:resolvedMenuAction={menuActionValue}
+			use:overlayStack.action={outsideClickOverlayConfig}
 			bind:this={menuContainerRef}
 		>
 			{#if triggerType === 'button'}

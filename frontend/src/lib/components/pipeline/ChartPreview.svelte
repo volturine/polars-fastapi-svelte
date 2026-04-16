@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as d3 from 'd3';
 	import { ChevronLeft, ChevronRight } from 'lucide-svelte';
-	import { css, cx, button, divider } from '$lib/styles/panda';
+	import { css, cx, button } from '$lib/styles/panda';
 	import { downloadBlob } from '$lib/api/compute';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 
@@ -29,14 +29,14 @@
 
 	/* ── Enterprise color palette (Contour-inspired) ── */
 	const PALETTE = [
-		'#4A8FE7',
-		'#50B88E',
-		'#E8A838',
-		'#E0687A',
-		'#7F72B5',
-		'#3AB4A0',
-		'#EC8B56',
-		'#9B8EC4'
+		'var(--colors-indigo-500)',
+		'var(--colors-emerald-500)',
+		'var(--colors-amber-500)',
+		'var(--colors-rose-500)',
+		'var(--colors-violet-500)',
+		'var(--colors-teal-500)',
+		'var(--colors-orange-500)',
+		'var(--colors-purple-400)'
 	];
 
 	const HOVER_DIM = 0.25;
@@ -3912,12 +3912,7 @@
 		justifyContent: 'flex-end'
 	});
 
-	const legendBottomCss = cx(
-		divider,
-		css({
-			borderBottom: 'none'
-		})
-	);
+	const legendBottomCss = css({ borderTopWidth: '1', borderBottom: 'none' });
 
 	const legendBottomCollapsedCss = css({ justifyContent: 'flex-start' });
 

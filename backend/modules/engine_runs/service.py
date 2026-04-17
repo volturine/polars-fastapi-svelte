@@ -1,3 +1,4 @@
+import logging
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -24,6 +25,10 @@ from modules.engine_runs.schemas import (
     TimingDiff,
 )
 from modules.engine_runs.utils import normalize_step_timings
+
+logger = logging.getLogger(__name__)
+
+_TERMINAL_STATUSES = frozenset({EngineRunStatus.SUCCESS, EngineRunStatus.FAILED, EngineRunStatus.CANCELLED})
 
 
 @dataclass(frozen=True, slots=True)
@@ -260,7 +265,11 @@ def update_engine_run(
     if not isinstance(kind, _UnsetType):
         run.kind = _coerce_kind(kind) if isinstance(kind, (EngineRunKind, str)) else run.kind
     if not isinstance(status, _UnsetType):
-        run.status = _coerce_status(status) if isinstance(status, (EngineRunStatus, str)) else run.status
+        new_status = _coerce_status(status) if isinstance(status, (EngineRunStatus, str)) else None
+        if new_status is not None and run.status in _TERMINAL_STATUSES and new_status != run.status:
+            logger.warning(f'Ignoring status transition from {run.status} to {new_status} for run {run_id}')
+        elif new_status is not None:
+            run.status = new_status
     if not isinstance(request_json, _UnsetType) and isinstance(request_json, dict):
         run.request_json = request_json
     if not isinstance(result_json, _UnsetType):

@@ -3,6 +3,7 @@ import logging
 import multiprocessing as mp
 import os
 import sys
+import threading
 import time
 import uuid
 from collections import deque
@@ -67,6 +68,7 @@ class PolarsComputeEngine:
         self.progress_queue: mp.Queue = self._mp_context.Queue()
         self.is_running = False
         self.current_job_id: str | None = None
+        self._command_lock = threading.Lock()
         self._pending_results: dict[str, EngineResult] = {}
         self._pending_progress: dict[str, deque[EngineProgressEvent]] = {}
 
@@ -156,12 +158,13 @@ class PolarsComputeEngine:
 
     def _send_command(self, command: PreviewCommand | ExportCommand | SchemaCommand | RowCountCommand) -> str:
         """Ensure process is alive and enqueue a typed command."""
-        self.current_job_id = command.job_id
-        self.check_health()
-        if not self.is_running:
-            self.start()
-        self.command_queue.put(command)
-        return command.job_id
+        with self._command_lock:
+            self.current_job_id = command.job_id
+            self.check_health()
+            if not self.is_running:
+                self.start()
+            self.command_queue.put(command)
+            return command.job_id
 
     def preview(
         self,

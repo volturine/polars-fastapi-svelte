@@ -16,6 +16,7 @@ import type { BuildRequest } from '$lib/api/compute';
 const MAX_LOGS = 500;
 const MAX_RESOURCE_HISTORY = 120;
 const RECONNECT_DELAY_MS = 1_000;
+const MAX_RECONNECT_ATTEMPTS = 5;
 
 function wireStepState(raw: string): BuildStepState {
 	if (
@@ -56,6 +57,7 @@ export class BuildStreamStore {
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	private shouldReconnect = false;
 	private targetBuildId: string | null = null;
+	private reconnectAttempts = 0;
 
 	done = $derived(
 		this.status === 'completed' || this.status === 'failed' || this.status === 'cancelled'
@@ -74,6 +76,7 @@ export class BuildStreamStore {
 		this.reset();
 		const generation = ++this.generation;
 		this.shouldReconnect = true;
+		this.reconnectAttempts = 0;
 		this.status = 'connecting';
 		void startActiveBuild(request).match(
 			(build) => {
@@ -95,6 +98,7 @@ export class BuildStreamStore {
 		this.reset();
 		const generation = ++this.generation;
 		this.shouldReconnect = true;
+		this.reconnectAttempts = 0;
 		this.targetBuildId = buildId;
 		this.buildId = buildId;
 		this.status = 'connecting';
@@ -140,10 +144,12 @@ export class BuildStreamStore {
 		this.connection = connectBuildDetailStream(buildId, {
 			onSnapshot: (build: ActiveBuildDetail) => {
 				if (generation !== this.generation) return;
+				this.reconnectAttempts = 0;
 				this.applySnapshot(build);
 			},
 			onEvent: (event: BuildEvent) => {
 				if (generation !== this.generation) return;
+				this.reconnectAttempts = 0;
 				this.applyEvent(event);
 				if (!this.done) this.error = null;
 			},
@@ -166,6 +172,12 @@ export class BuildStreamStore {
 
 	private scheduleReconnect(buildId: string, generation: number): void {
 		if (this.reconnectTimer !== null) return;
+		this.reconnectAttempts++;
+		if (this.reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+			this.shouldReconnect = false;
+			this.status = 'disconnected';
+			return;
+		}
 		this.reconnectTimer = setTimeout(() => {
 			this.reconnectTimer = null;
 			if (generation !== this.generation) return;

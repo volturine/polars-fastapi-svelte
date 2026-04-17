@@ -93,7 +93,9 @@
 			(user) => {
 				authStore.user = user;
 			},
-			() => {}
+			(err) => {
+				linkMessage = { text: err.message, kind: 'error' };
+			}
 		);
 		unlinking = null;
 	}

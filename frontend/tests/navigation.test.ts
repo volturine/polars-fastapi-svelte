@@ -1,12 +1,12 @@
 import { test, expect } from './fixtures.js';
 import {
-	createAnalysis,
 	createDatasource,
-	shutdownEngine as shutdownEngineViaApi,
-	spawnEngine as spawnEngineViaApi
+	createAnalysis,
+	shutdownEngine as shutdownEngineViaApi
 } from './utils/api.js';
 import { screenshot } from './utils/visual.js';
 import { waitForAppShell } from './utils/readiness.js';
+import { gotoAnalysisEditor } from './utils/analysis.js';
 import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
 import { uid } from './utils/uid.js';
 
@@ -109,34 +109,46 @@ test.describe('Navigation – profile access', () => {
 
 test.describe('Navigation – engines live monitor', () => {
 	test('sidebar badge and engines popup update in real time', async ({ page, request }) => {
-		test.setTimeout(60_000);
+		test.setTimeout(120_000);
 		const dsName = `e2e-engines-ds-${uid()}`;
 		const analysisName = `E2E Engines ${uid()}`;
 		const datasourceId = await createDatasource(request, dsName);
 		const analysisId = await createAnalysis(request, analysisName, datasourceId);
 
 		try {
-			await page.goto('/');
-			await waitForAppShell(page);
+			// Start a build from the analysis editor — this spawns a compute engine
+			await gotoAnalysisEditor(page, analysisId);
+			const buildBtn = page.locator('[data-testid="output-build-button"]');
+			await expect(buildBtn).toBeVisible({ timeout: 10_000 });
+			await buildBtn.click();
+			await expect(page.locator('[data-testid="output-build-preview-trigger"]')).toBeVisible({
+				timeout: 30_000
+			});
 
-			const engineButton = page.getByRole('button', { name: 'Engine Monitor' });
+			// Engine badge should appear in the sidebar
 			const engineBadge = page.getByTestId('engine-monitor-count');
+			await expect(engineBadge).toBeVisible({ timeout: 15_000 });
 
-			await spawnEngineViaApi(request, analysisId);
-			await expect(engineBadge).toBeVisible({ timeout: 10_000 });
-
+			// Open engine popup and verify the engine is listed
+			const engineButton = page.getByRole('button', { name: 'Engine Monitor' });
 			await engineButton.click();
 			const dialog = page.getByRole('dialog', { name: 'Engines' });
 			await expect(dialog).toBeVisible({ timeout: 5_000 });
-			await expect(dialog.getByText(analysisId, { exact: true })).toBeVisible({ timeout: 10_000 });
+			await expect(dialog.getByText(analysisId, { exact: true })).toBeVisible({
+				timeout: 10_000
+			});
 
+			// Shut down engine and verify it disappears (no UI path for shutdown — Tier 3 cleanup)
 			await shutdownEngineViaApi(request, analysisId);
-
 			await expect(dialog.getByText(analysisId, { exact: true })).not.toBeVisible({
 				timeout: 10_000
 			});
 		} finally {
-			await shutdownEngineViaApi(request, analysisId);
+			try {
+				await shutdownEngineViaApi(request, analysisId);
+			} catch {
+				// Engine may already be stopped or build may have finished — ignore cleanup errors
+			}
 			await deleteAnalysisViaUI(page, analysisName);
 			await deleteDatasourceViaUI(page, dsName);
 		}

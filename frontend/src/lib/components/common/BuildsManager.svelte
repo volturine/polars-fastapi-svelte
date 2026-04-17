@@ -397,8 +397,15 @@
 		);
 		if (expandedId !== runId) return;
 		if (!live) {
+			const persisted = await getEngineRun(run.id).match(
+				(r: EngineRun) => r,
+				() => null
+			);
+			if (expandedId !== runId) return;
+			const source = persisted ?? run;
+			if (persisted) replaceRun(persisted);
 			store.close();
-			store.applySnapshot(engineRunBuildDetail(run));
+			store.applySnapshot(engineRunBuildDetail(source));
 			expandedLiveId = null;
 			expandedStore = store;
 			return;
@@ -438,7 +445,32 @@
 				store.applySnapshot(engineRunBuildDetail(persisted));
 				expandedStore = store;
 			},
-			() => {}
+			(err) => {
+				console.warn('Failed to fetch persisted run after build done:', err.message);
+			}
+		);
+	});
+
+	// Side effect: when a live stream disconnects (WS endpoint gone), recover from persisted state.
+	$effect(() => {
+		const liveId = expandedLiveId;
+		const store = expandedStore;
+		if (!liveId || !store || store.status !== 'disconnected') return;
+		if (store.done) return;
+		expandedLiveId = null;
+		const engineRunId = store.engineRunId;
+		if (!engineRunId) return;
+		void getEngineRun(engineRunId).match(
+			(persisted) => {
+				if (expandedId !== liveId) return;
+				store.close();
+				replaceRun(persisted);
+				store.applySnapshot(engineRunBuildDetail(persisted));
+				expandedStore = store;
+			},
+			(err) => {
+				console.warn('Failed to fetch persisted run after WS disconnect:', err.message);
+			}
 		);
 	});
 

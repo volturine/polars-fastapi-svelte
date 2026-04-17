@@ -261,9 +261,6 @@
 		(buildStore.status === 'connecting' || buildStore.status === 'running') &&
 			!!buildStore.engineRunId
 	);
-	const canOpenCancel = $derived(
-		buildStore.status === 'connecting' || buildStore.status === 'running'
-	);
 	const buildSessionLabel = $derived.by(() => {
 		if (buildBusy) return 'Engine Run';
 		if (buildStore.status === 'completed') return 'Last Build';
@@ -457,23 +454,8 @@
 	}
 
 	function openCancelConfirm(): void {
-		if (cancelPending) return;
-		if (canCancelRunningBuild) {
-			cancelConfirmOpen = true;
-			return;
-		}
-		const buildId = buildStore.buildId;
-		if (!buildId) return;
-		void apiRequest<ActiveBuildDetail>(`/v1/compute/builds/active/${buildId}`).match(
-			(build: ActiveBuildDetail) => {
-				buildStore.applySnapshot(build);
-				if (!build.current_engine_run_id) return;
-				cancelConfirmOpen = true;
-			},
-			(err) => {
-				error = err.message;
-			}
-		);
+		if (cancelPending || !canCancelRunningBuild) return;
+		cancelConfirmOpen = true;
 	}
 
 	function closeCancelConfirm(): void {
@@ -1571,7 +1553,7 @@
 		<BuildPreview
 			store={buildStore}
 			onCancel={openCancelConfirm}
-			canCancel={canOpenCancel}
+			canCancel={canCancelRunningBuild}
 			{cancelPending}
 		/>
 	{/snippet}

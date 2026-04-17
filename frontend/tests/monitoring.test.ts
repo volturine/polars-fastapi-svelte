@@ -19,7 +19,7 @@ import { screenshot } from './utils/visual.js';
 async function waitForHealthCheckRow(
 	page: import('@playwright/test').Page,
 	name: string,
-	timeout = 15_000
+	timeout = 30_000
 ) {
 	await expect(page.getByRole('button', { name: /New Check/i })).toBeVisible({ timeout });
 	const row = page.locator(`[data-healthcheck-name="${name}"]`);

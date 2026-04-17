@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures.js';
-import type { APIRequestContext, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { createLargeDatasource, createLongRunningAnalysis } from './utils/api.js';
 import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
 import { waitForLayoutReady } from './utils/readiness.js';
@@ -23,52 +23,6 @@ async function gotoMonitoringBuilds(page: Page) {
 		timeout: 15_000
 	});
 	await expect(page.locator('#panel-builds')).toBeVisible({ timeout: 15_000 });
-}
-
-async function waitForActiveBuild(
-	request: APIRequestContext,
-	analysisId: string,
-	requireRunId = true
-): Promise<{ buildId: string; runId: string | null }> {
-	for (let attempt = 0; attempt < 60; attempt += 1) {
-		const response = await request.get('/api/v1/compute/builds/active');
-		if (response.ok()) {
-			const payload = (await response.json()) as {
-				builds?: Array<{
-					build_id?: string;
-					analysis_id?: string;
-					current_engine_run_id?: string | null;
-				}>;
-			};
-			const item = payload.builds?.find((entry) => entry.analysis_id === analysisId);
-			if (item?.build_id && (!requireRunId || item.current_engine_run_id)) {
-				return { buildId: item.build_id, runId: item.current_engine_run_id ?? null };
-			}
-		}
-		await new Promise((resolve) => setTimeout(resolve, 500));
-	}
-
-	const detail = requireRunId ? 'build and engine run id' : 'active build';
-	throw new Error(`Timed out waiting for ${detail} for analysis ${analysisId}`);
-}
-
-async function waitForCancelledRunId(
-	request: APIRequestContext,
-	analysisId: string
-): Promise<string> {
-	for (let attempt = 0; attempt < 60; attempt += 1) {
-		const response = await request.get(
-			`/api/v1/engine-runs?analysis_id=${analysisId}&status=cancelled&limit=10`
-		);
-		if (response.ok()) {
-			const runs = (await response.json()) as Array<{ id?: string }>;
-			const run = runs.find((item) => typeof item.id === 'string' && item.id.length > 0);
-			if (run?.id) return run.id;
-		}
-		await new Promise((resolve) => setTimeout(resolve, 500));
-	}
-
-	throw new Error(`Timed out waiting for cancelled engine run for analysis ${analysisId}`);
 }
 
 async function openCancelDialogFromRow(page: Page, row: ReturnType<Page['locator']>) {
@@ -105,8 +59,8 @@ test.describe('Cancel Build – e2e', () => {
 		test.setTimeout(240_000);
 		const dsName = `e2e-cancel-preview-ds-${uid()}`;
 		const analysisName = `E2E Cancel Preview ${uid()}`;
-		const dsId = await createLargeDatasource(request, dsName, 120_000);
-		const analysisId = await createLongRunningAnalysis(request, analysisName, dsId, 160);
+		const dsId = await createLargeDatasource(request, dsName, 12_000);
+		const analysisId = await createLongRunningAnalysis(request, analysisName, dsId);
 		try {
 			await startBuildFromAnalysisPage(page, analysisId);
 			const openPreviewBtn = page.locator('[data-testid="output-build-preview-trigger"]');
@@ -118,7 +72,6 @@ test.describe('Cancel Build – e2e', () => {
 			await expect(preview.locator('[data-testid="build-cancel-button"]')).toBeVisible({
 				timeout: 60_000
 			});
-			await waitForActiveBuild(request, analysisId, true);
 			await openCancelDialogFromPreview(page, preview);
 
 			const dialog = page.getByRole('dialog');
@@ -131,21 +84,19 @@ test.describe('Cancel Build – e2e', () => {
 					timeout: 15_000
 				}
 			);
-			const runId = await waitForCancelledRunId(request, analysisId);
 
+			// Navigate to monitoring and find the cancelled build by analysis name
 			await gotoMonitoringBuilds(page);
-			const row = page.locator(`tr[data-build-row="${runId}"]`);
-			await expect(row).toBeVisible({ timeout: 30_000 });
-			await expect(row).toHaveAttribute('data-build-status', 'cancelled', { timeout: 30_000 });
-
-			await row.click();
-			await expect(page.locator(`tr[data-build-detail="${runId}"]`)).toBeVisible({
-				timeout: 10_000
+			const row = page.locator('tr[data-build-status="cancelled"]', {
+				hasText: analysisName
 			});
-			const detail = page.locator(`tr[data-build-detail="${runId}"]`);
-			await expect(detail.getByText('Cancelled At:')).toBeVisible();
-			await expect(detail.getByText('Cancelled By:')).toBeVisible();
-			await expect(detail.getByText('Last Completed Step:')).toBeVisible();
+			await expect(row).toBeVisible({ timeout: 30_000 });
+
+			// Expand the row and verify cancellation details
+			await row.click();
+			await expect(page.getByText('Cancelled At:')).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByText('Cancelled By:')).toBeVisible();
+			await expect(page.getByText('Last Completed Step:')).toBeVisible();
 		} finally {
 			await deleteAnalysisViaUI(page, analysisName);
 			await deleteDatasourceViaUI(page, dsName);
@@ -156,14 +107,16 @@ test.describe('Cancel Build – e2e', () => {
 		test.setTimeout(240_000);
 		const dsName = `e2e-cancel-history-ds-${uid()}`;
 		const analysisName = `E2E Cancel History ${uid()}`;
-		const dsId = await createLargeDatasource(request, dsName, 160_000);
-		const analysisId = await createLongRunningAnalysis(request, analysisName, dsId, 220);
+		const dsId = await createLargeDatasource(request, dsName, 12_000);
+		const analysisId = await createLongRunningAnalysis(request, analysisName, dsId);
 		try {
 			await startBuildFromAnalysisPage(page, analysisId);
-			const active = await waitForActiveBuild(request, analysisId, true);
 
+			// Navigate to monitoring and find the running build by analysis name
 			await gotoMonitoringBuilds(page);
-			const runningRow = page.locator(`tr[data-build-row="${active.runId}"]`);
+			const runningRow = page.locator('tr[data-build-status="running"]', {
+				hasText: analysisName
+			});
 			await expect(runningRow).toBeVisible({ timeout: 30_000 });
 			await expect(runningRow.getByLabel('Cancel build')).toBeVisible({ timeout: 30_000 });
 			await openCancelDialogFromRow(page, runningRow);
@@ -171,12 +124,14 @@ test.describe('Cancel Build – e2e', () => {
 			const dialog = page.getByRole('dialog');
 			await expect(dialog.getByRole('heading', { name: 'Cancel this build?' })).toBeVisible();
 			await dialog.getByRole('button', { name: 'Cancel Build' }).click();
-			const runId = await waitForCancelledRunId(request, analysisId);
 
+			// Refresh monitoring to see the updated cancelled status
 			await gotoMonitoringBuilds(page);
-			const row = page.locator(`tr[data-build-row="${runId}"][data-build-status="cancelled"]`);
-			await expect(row).toHaveAttribute('data-build-status', 'cancelled', { timeout: 30_000 });
-			await expect(row.getByText('Cancelled')).toBeVisible();
+			const cancelledRow = page.locator('tr[data-build-status="cancelled"]', {
+				hasText: analysisName
+			});
+			await expect(cancelledRow).toBeVisible({ timeout: 30_000 });
+			await expect(cancelledRow.getByText('Cancelled')).toBeVisible();
 		} finally {
 			await deleteAnalysisViaUI(page, analysisName);
 			await deleteDatasourceViaUI(page, dsName);

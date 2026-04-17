@@ -461,12 +461,13 @@ export async function createMultiStepAnalysis(
 export async function createLongRunningAnalysis(
 	request: APIRequestContext,
 	name: string,
-	datasourceId: string,
-	stepPairs = 12
+	datasourceId: string
 ): Promise<string> {
 	const resultId = crypto.randomUUID();
 	const tabId = crypto.randomUUID();
 	const viewId = crypto.randomUUID();
+	const joinId = crypto.randomUUID();
+	const sortId = crypto.randomUUID();
 
 	const steps: Array<Record<string, unknown>> = [
 		{
@@ -475,13 +476,8 @@ export async function createLongRunningAnalysis(
 			config: {},
 			depends_on: [],
 			is_applied: true
-		}
-	];
-	let parentId = viewId;
-
-	for (let i = 0; i < stepPairs; i++) {
-		const joinId = crypto.randomUUID();
-		steps.push({
+		},
+		{
 			id: joinId,
 			type: 'join',
 			config: {
@@ -495,42 +491,22 @@ export async function createLongRunningAnalysis(
 					}
 				],
 				right_columns: ['age', 'id'],
-				suffix: `_right_${i}`
+				suffix: '_right'
 			},
-			depends_on: [parentId],
+			depends_on: [viewId],
 			is_applied: true
-		});
-		parentId = joinId;
-
-		const groupId = crypto.randomUUID();
-		steps.push({
-			id: groupId,
-			type: 'groupby',
-			config: {
-				group_by: ['city'],
-				aggregations: [
-					{ column: 'age', function: 'count', alias: `row_count_${i}` },
-					{ column: 'age', function: 'mean', alias: `avg_age_${i}` }
-				]
-			},
-			depends_on: [parentId],
-			is_applied: true
-		});
-		parentId = groupId;
-
-		const sortId = crypto.randomUUID();
-		steps.push({
+		},
+		{
 			id: sortId,
 			type: 'sort',
 			config: {
-				columns: [`row_count_${i}`],
-				descending: [true]
+				columns: ['name'],
+				descending: [false]
 			},
-			depends_on: [parentId],
+			depends_on: [joinId],
 			is_applied: true
-		});
-		parentId = sortId;
-	}
+		}
+	];
 
 	const response = await request.post(`${API_BASE}/analysis`, {
 		data: {

@@ -462,13 +462,16 @@ class PolarsComputeEngine:
 
                         read_duration_ms: float | None = None
                         write_duration_ms: float | None = None
+                        collect_duration_ms: float | None = None
                         if isinstance(result_data, dict):
                             step_timings = result_data.pop('step_timings', step_timings)
                             query_plan = result_data.pop('query_plan', query_plan)
                             raw_read = result_data.pop('read_duration_ms', None)
                             raw_write = result_data.pop('write_duration_ms', None)
+                            raw_collect = result_data.pop('collect_duration_ms', None)
                             read_duration_ms = float(raw_read) if isinstance(raw_read, (int, float)) else None
                             write_duration_ms = float(raw_write) if isinstance(raw_write, (int, float)) else None
+                            collect_duration_ms = float(raw_collect) if isinstance(raw_collect, (int, float)) else None
 
                         logger.debug(f'Job {job_id}: Completed successfully')
                         result_queue.put(
@@ -480,6 +483,7 @@ class PolarsComputeEngine:
                                 query_plan=query_plan,
                                 read_duration_ms=read_duration_ms,
                                 write_duration_ms=write_duration_ms,
+                                collect_duration_ms=collect_duration_ms,
                             )
                         )
 
@@ -840,7 +844,9 @@ class PolarsComputeEngine:
         preview_lf = normalize_timezones(preview_lf, schema_obj)
 
         # Collect only the rows we need for preview
+        collect_started = time.perf_counter()
         preview_df = preview_lf.slice(offset, row_limit).collect()
+        collect_duration_ms = (time.perf_counter() - collect_started) * 1000
 
         result: dict = {
             'schema': schema,
@@ -850,6 +856,7 @@ class PolarsComputeEngine:
             'query_plans': query_plans,
             'step_timings': step_timings,
             'read_duration_ms': read_duration_ms,
+            'collect_duration_ms': collect_duration_ms,
         }
 
         if metadata:
@@ -885,17 +892,18 @@ class PolarsComputeEngine:
                 }
             )
 
-        logger.debug(f'Job {job_id}: Writing export file')
-
-        # Collect full dataset and write to file
-        write_started = time.perf_counter()
-        df = lf.collect()
-        row_count = len(df)
-        schema = {col: str(dtype) for col, dtype in df.schema.items()}
-
         fmt = get_export_format(export_format)
-        fmt.writer(df, output_path)
+        schema = {col: str(dtype) for col, dtype in lf.collect_schema().items()}
+
+        if progress_callback is not None:
+            progress_callback({'type': 'compute_start'})
+
+        write_started = time.perf_counter()
+        row_count = fmt.write(lf, output_path)
         write_duration_ms = (time.perf_counter() - write_started) * 1000
+
+        if progress_callback is not None:
+            progress_callback({'type': 'compute_complete', 'duration_ms': write_duration_ms})
 
         return {
             'output_path': output_path,
@@ -976,7 +984,9 @@ class PolarsComputeEngine:
                 }
             )
 
+        collect_started = time.perf_counter()
         row_count = lf.select(pl.len()).collect().item()
+        collect_duration_ms = (time.perf_counter() - collect_started) * 1000
 
         return {
             'row_count': int(row_count),
@@ -984,6 +994,7 @@ class PolarsComputeEngine:
             'query_plan': query_plan,
             'query_plans': query_plans,
             'read_duration_ms': read_duration_ms,
+            'collect_duration_ms': collect_duration_ms,
         }
 
     @staticmethod

@@ -78,6 +78,7 @@ def build_execution_entries(
     query_plans: dict[str, Any] | None = None,
     query_plan: str | None = None,
     read_duration_ms: float | None = None,
+    collect_duration_ms: float | None = None,
     write_duration_ms: float | None = None,
     total_duration_ms: int | None = None,
 ) -> list[dict[str, Any]]:
@@ -85,6 +86,8 @@ def build_execution_entries(
     timed_total = sum(normalized_timings.values())
     if isinstance(read_duration_ms, (int, float)):
         timed_total += float(read_duration_ms)
+    if isinstance(collect_duration_ms, (int, float)):
+        timed_total += float(collect_duration_ms)
     if isinstance(write_duration_ms, (int, float)):
         timed_total += float(write_duration_ms)
     denominator = float(total_duration_ms) if total_duration_ms and total_duration_ms > 0 else timed_total
@@ -148,6 +151,14 @@ def build_execution_entries(
             category=EngineRunExecutionCategory.STEP,
             duration_ms=duration_ms,
             metadata={'step_type': base_key},
+        )
+
+    if isinstance(collect_duration_ms, (int, float)):
+        append_entry(
+            key='compute',
+            label='Compute',
+            category=EngineRunExecutionCategory.COMPUTE,
+            duration_ms=float(collect_duration_ms),
         )
 
     if isinstance(write_duration_ms, (int, float)):

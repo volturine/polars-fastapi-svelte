@@ -24,6 +24,7 @@ class EngineRunExecutionCategory(StrEnum):
     READ = 'read'
     STEP = 'step'
     PLAN = 'plan'
+    COMPUTE = 'compute'
     WRITE = 'write'
 
 

@@ -204,6 +204,7 @@ def test_await_engine_result_returns_immediate_result_before_poll_loop() -> None
         'query_plan': None,
         'read_duration_ms': None,
         'write_duration_ms': None,
+        'collect_duration_ms': None,
     }
     assert calls == [('result', 0)]
 

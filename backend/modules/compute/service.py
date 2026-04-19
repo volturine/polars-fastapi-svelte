@@ -619,11 +619,13 @@ def _build_engine_run_execution_entries(
         query_plan_value = data.get('query_plan')
     query_plan = query_plan_value if isinstance(query_plan_value, str) else None
     read_duration = payload.get('read_duration_ms')
+    collect_duration = payload.get('collect_duration_ms')
     return engine_run_service.build_execution_entries(
         step_timings=payload.get('step_timings') if isinstance(payload.get('step_timings'), dict) else None,
         query_plans=normalized_query_plans,
         query_plan=query_plan,
         read_duration_ms=float(read_duration) if isinstance(read_duration, (int, float)) else None,
+        collect_duration_ms=float(collect_duration) if isinstance(collect_duration, (int, float)) else None,
         write_duration_ms=write_duration_ms,
         total_duration_ms=duration_ms,
     )
@@ -2478,7 +2480,7 @@ def download_step(
         schema_types = {name: get_polars_type(dtype) or pl.Utf8() for name, dtype in schema.items()}
         df = pl.DataFrame(df_data, schema=schema_types)
         write_started = time.perf_counter()
-        export_fmt.writer(df, tmp_output)
+        export_fmt.write_df(df, tmp_output)
         write_duration_ms = (time.perf_counter() - write_started) * 1000
 
         with open(tmp_output, 'rb') as f:
@@ -2730,7 +2732,9 @@ async def _stream_engine_events(
         payload['current_output_id'] = current_output_id
         payload['current_output_name'] = current_output_name
         payload['engine_run_id'] = payload.get('engine_run_id') or engine_run_id
-        await _emit_build_event(emitter, payload)
+
+        if emitted_type not in {'compute_start', 'compute_complete'}:
+            await _emit_build_event(emitter, payload)
 
         if emitted_type == 'step_complete':
             completed_steps += 1
@@ -2745,6 +2749,22 @@ async def _stream_engine_events(
                 total_steps=total_steps,
                 current_step=step_name,
                 current_step_index=step_index_value,
+                tab_id=tab_id,
+                tab_name=tab_name,
+                current_output_id=current_output_id,
+                current_output_name=current_output_name,
+                engine_run_id=engine_run_id,
+            )
+        if emitted_type == 'compute_start':
+            elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
+            await _emit_progress(
+                emitter,
+                progress=(completed_steps / total_steps) if total_steps else 1.0,
+                elapsed_ms=elapsed_ms,
+                completed_steps=completed_steps,
+                total_steps=total_steps,
+                current_step='Computing',
+                current_step_index=None,
                 tab_id=tab_id,
                 tab_name=tab_name,
                 current_output_id=current_output_id,

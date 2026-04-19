@@ -5,7 +5,7 @@ import type { ResultAsync } from 'neverthrow';
 export interface EngineRunExecutionEntry {
 	key: string;
 	label: string;
-	category: 'read' | 'step' | 'plan' | 'write';
+	category: 'read' | 'step' | 'plan' | 'compute' | 'write';
 	order: number;
 	duration_ms: number | null;
 	share_pct: number | null;

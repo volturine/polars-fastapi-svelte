@@ -107,7 +107,7 @@ test.describe('Cancel Build – e2e', () => {
 		test.setTimeout(240_000);
 		const dsName = `e2e-cancel-history-ds-${uid()}`;
 		const analysisName = `E2E Cancel History ${uid()}`;
-		const dsId = await createLargeDatasource(request, dsName, 12_000);
+		const dsId = await createLargeDatasource(request, dsName, 20_000);
 		const analysisId = await createLongRunningAnalysis(request, analysisName, dsId);
 		try {
 			await startBuildFromAnalysisPage(page, analysisId);

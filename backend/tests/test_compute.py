@@ -2119,7 +2119,7 @@ def test_active_build_registry_tracks_and_drops_finished_task(test_user) -> None
         await active_build_registry.track_task(build.build_id, task)
         assert await active_build_registry.get_task(build.build_id) is task
 
-        await task
+        _ = await asyncio.gather(task)
         await asyncio.sleep(0)
 
         assert await active_build_registry.get_task(build.build_id) is None

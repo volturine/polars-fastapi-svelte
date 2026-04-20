@@ -16,7 +16,10 @@ async function bestEffortShutdownEngine(page: Page, card: Locator): Promise<void
 		const state = await page.context().storageState();
 		const token = state.cookies.find((c) => c.name === 'session_token')?.value;
 		if (!token) return;
-		await shutdownEngineByToken(token, analysisId);
+		await shutdownEngineByToken(token, analysisId, {
+			waitForIdleMs: 15_000,
+			ignoreActiveJob: true
+		});
 	} catch (e: unknown) {
 		console.warn('[ui-cleanup] bestEffortShutdownEngine:', e);
 	}

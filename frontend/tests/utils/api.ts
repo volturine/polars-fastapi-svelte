@@ -347,6 +347,18 @@ interface ActiveBuildListResponse {
 	total: number;
 }
 
+interface EngineStatusResponse {
+	current_job_id: string | null;
+}
+
+interface ShutdownEngineOptions {
+	waitForIdleMs?: number;
+	ignoreActiveJob?: boolean;
+}
+
+const SHUTDOWN_RETRY_DELAY_MS = 500;
+const DEFAULT_SHUTDOWN_WAIT_MS = 30_000;
+
 function delay(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -377,34 +389,110 @@ export async function waitForNoActiveBuild(
 	throw new Error(`Timed out waiting for active build to finish: ${lastError}`);
 }
 
+export async function waitForNoEngineJob(
+	request: APIRequestContext,
+	analysisId: string,
+	timeoutMs = DEFAULT_SHUTDOWN_WAIT_MS
+): Promise<void> {
+	const startedAt = Date.now();
+	let lastError = '';
+
+	while (Date.now() - startedAt < timeoutMs) {
+		const response = await request.post(`${API_BASE}/compute/engine/keepalive/${analysisId}`);
+		if (response.status() === 404) return;
+		if (response.ok()) {
+			const status = (await response.json()) as EngineStatusResponse;
+			if (!status.current_job_id) return;
+			lastError = `engine job ${status.current_job_id} still active for analysis ${analysisId}`;
+		} else {
+			lastError = `engine keepalive failed: ${response.status()} ${await response.text()}`;
+		}
+		await delay(SHUTDOWN_RETRY_DELAY_MS);
+	}
+
+	throw new Error(`Timed out waiting for engine job to finish: ${lastError}`);
+}
+
+async function waitForNoEngineJobByToken(
+	token: string,
+	analysisId: string,
+	timeoutMs = DEFAULT_SHUTDOWN_WAIT_MS
+): Promise<void> {
+	const startedAt = Date.now();
+	let lastError = '';
+
+	while (Date.now() - startedAt < timeoutMs) {
+		const response = await fetch(`${API_BASE}/compute/engine/keepalive/${analysisId}`, {
+			method: 'POST',
+			headers: { Cookie: `session_token=${token}` }
+		});
+		if (response.status === 404) return;
+		if (response.ok) {
+			const status = (await response.json()) as EngineStatusResponse;
+			if (!status.current_job_id) return;
+			lastError = `engine job ${status.current_job_id} still active for analysis ${analysisId}`;
+		} else {
+			lastError = `engine keepalive failed: ${response.status} ${await response.text()}`;
+		}
+		await delay(SHUTDOWN_RETRY_DELAY_MS);
+	}
+
+	throw new Error(`Timed out waiting for engine job to finish: ${lastError}`);
+}
+
 export async function shutdownEngine(
 	request: APIRequestContext,
-	analysisId: string
+	analysisId: string,
+	options: ShutdownEngineOptions = {}
 ): Promise<void> {
-	const maxRetries = 5;
-	const delayMs = 500;
-	for (let attempt = 0; attempt < maxRetries; attempt++) {
+	const deadline = Date.now() + (options.waitForIdleMs ?? DEFAULT_SHUTDOWN_WAIT_MS);
+	while (true) {
 		const response = await request.delete(`${API_BASE}/compute/engine/${analysisId}`);
 		if (response.ok() || response.status() === 404) return;
-		if (response.status() === 409 && attempt < maxRetries - 1) {
-			await new Promise((r) => setTimeout(r, delayMs));
+		if (response.status() === 409) {
+			const detail = await response.text();
+			const remainingMs = deadline - Date.now();
+			if (remainingMs <= 0) {
+				if (options.ignoreActiveJob) return;
+				throw new Error(`shutdownEngine failed: ${response.status()} ${detail}`);
+			}
+			try {
+				await waitForNoEngineJob(request, analysisId, remainingMs);
+			} catch (error) {
+				if (options.ignoreActiveJob) return;
+				throw error;
+			}
 			continue;
 		}
 		throw new Error(`shutdownEngine failed: ${response.status()} ${await response.text()}`);
 	}
 }
 
-export async function shutdownEngineByToken(token: string, analysisId: string): Promise<void> {
-	const maxRetries = 5;
-	const delayMs = 500;
-	for (let attempt = 0; attempt < maxRetries; attempt++) {
+export async function shutdownEngineByToken(
+	token: string,
+	analysisId: string,
+	options: ShutdownEngineOptions = {}
+): Promise<void> {
+	const deadline = Date.now() + (options.waitForIdleMs ?? DEFAULT_SHUTDOWN_WAIT_MS);
+	while (true) {
 		const resp = await fetch(`${API_BASE}/compute/engine/${analysisId}`, {
 			method: 'DELETE',
 			headers: { Cookie: `session_token=${token}` }
 		});
 		if (resp.ok || resp.status === 404) return;
-		if (resp.status === 409 && attempt < maxRetries - 1) {
-			await new Promise((r) => setTimeout(r, delayMs));
+		if (resp.status === 409) {
+			const detail = await resp.text();
+			const remainingMs = deadline - Date.now();
+			if (remainingMs <= 0) {
+				if (options.ignoreActiveJob) return;
+				throw new Error(`shutdownEngineByToken failed: ${resp.status} ${detail}`);
+			}
+			try {
+				await waitForNoEngineJobByToken(token, analysisId, remainingMs);
+			} catch (error) {
+				if (options.ignoreActiveJob) return;
+				throw error;
+			}
 			continue;
 		}
 		throw new Error(`shutdownEngineByToken failed: ${resp.status} ${await resp.text()}`);

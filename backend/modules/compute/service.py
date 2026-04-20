@@ -2928,7 +2928,7 @@ async def _stop_stream_task(task: asyncio.Task | None) -> None:
         return
     task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
-        await task
+        _ = await task
 
 
 async def run_analysis_build_stream(
@@ -3344,7 +3344,7 @@ async def run_analysis_build_stream(
             export_result = await asyncio.to_thread(run_export_job)
 
             if progress_task is not None:
-                await progress_task
+                _ = await progress_task
             await _stop_stream_task(resource_task)
 
             tabs_built += 1
@@ -3364,7 +3364,7 @@ async def run_analysis_build_stream(
         except BuildCancelledError as exc:
             if progress_task is not None:
                 with contextlib.suppress(Exception):
-                    await progress_task
+                    _ = await progress_task
             await _stop_stream_task(resource_task)
             was_cancelled = True
             cancelled_at = exc.cancelled_at
@@ -3386,7 +3386,7 @@ async def run_analysis_build_stream(
             has_failures = True
             if progress_task is not None:
                 with contextlib.suppress(Exception):
-                    await progress_task
+                    _ = await progress_task
             await _stop_stream_task(resource_task)
             if write_stage.started and not write_stage.completed:
                 await _emit_build_event(
@@ -3436,7 +3436,6 @@ async def run_analysis_build_stream(
                     'error': str(exc),
                 }
             )
-            elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
             await _emit_build_event(
                 emitter,
                 {

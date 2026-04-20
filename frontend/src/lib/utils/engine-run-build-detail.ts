@@ -2,10 +2,11 @@ import type { EngineRun, EngineRunExecutionEntry } from '$lib/api/engine-runs';
 import type {
 	ActiveBuildDetail,
 	BuildLogEntry,
-	BuildQueryPlanSnapshotWire,
+	BuildLogLevel,
+	BuildQueryPlanSnapshot,
 	BuildResourceConfigSummary,
 	BuildResourceSnapshot,
-	BuildStepSnapshotWire,
+	BuildStepSnapshot,
 	BuildTabResult
 } from '$lib/types/build-stream';
 
@@ -25,6 +26,11 @@ function readString(value: unknown): string | null {
 
 function readNumber(value: unknown): number | null {
 	return typeof value === 'number' ? value : null;
+}
+
+function readLogLevel(value: unknown): BuildLogLevel | null {
+	if (value === 'info' || value === 'warning' || value === 'error') return value;
+	return null;
 }
 
 function readResourceSnapshot(value: unknown): BuildResourceSnapshot | null {
@@ -142,10 +148,10 @@ function stepsFromExecutionEntries(
 	tabId: string | null,
 	tabName: string | null,
 	runStatus: string
-): BuildStepSnapshotWire[] {
+): BuildStepSnapshot[] {
 	const nonPlan = entries.filter((e) => e.category !== 'plan').sort((a, b) => a.order - b.order);
 	return nonPlan.map(
-		(entry, index): BuildStepSnapshotWire => ({
+		(entry, index): BuildStepSnapshot => ({
 			build_step_index: index,
 			step_index: index,
 			step_id: entry.key,
@@ -165,12 +171,12 @@ function queryPlansFromExecutionEntries(
 	entries: EngineRunExecutionEntry[],
 	tabId: string | null,
 	tabName: string | null
-): BuildQueryPlanSnapshotWire[] {
+): BuildQueryPlanSnapshot[] {
 	return entries
 		.filter((e) => e.category === 'plan')
 		.filter((e) => e.optimized_plan || e.unoptimized_plan)
 		.map(
-			(entry): BuildQueryPlanSnapshotWire => ({
+			(entry): BuildQueryPlanSnapshot => ({
 				tab_id: tabId,
 				tab_name: tabName,
 				optimized_plan: entry.optimized_plan ?? '',
@@ -195,7 +201,7 @@ export function engineRunBuildDetail(run: EngineRun): ActiveBuildDetail {
 	const logs = readArray<Record<string, unknown>>(result?.logs).flatMap(
 		(entry): BuildLogEntry[] => {
 			const timestamp = readString(entry.timestamp);
-			const level = readString(entry.level);
+			const level = readLogLevel(entry.level);
 			const message = readString(entry.message);
 			if (timestamp === null || level === null || message === null) return [];
 			return [

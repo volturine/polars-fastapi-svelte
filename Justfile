@@ -33,6 +33,7 @@ format:
 # Run all linters and type checks
 check:
     cd backend && uv run ruff format --check . && uv run ruff check . && uv run mypy .
+    cd backend && uv run python scripts/generate_ts_build_stream_types.py --check
     cd frontend && bun run panda:codegen && bun run check && bun run lint
 
 
@@ -71,6 +72,10 @@ test:
 # Generate TypeScript types from Pydantic step schemas
 generate-step-types:
     cd backend && uv run python scripts/generate_ts_step_types.py
+
+# Generate TypeScript types from build runtime schemas
+generate-build-stream-types:
+    cd backend && uv run python scripts/generate_ts_build_stream_types.py
 
 # Full verification gate -- must pass before any task is declared done
 verify: format check test

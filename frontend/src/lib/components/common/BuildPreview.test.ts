@@ -226,7 +226,8 @@ describe('BuildPreview', () => {
 							tab_name: 'Source 1',
 							status: 'success',
 							output_id: 'out-1',
-							output_name: 'output_salary_predictions'
+							output_name: 'output_salary_predictions',
+							error: null
 						}
 					]
 				})
@@ -586,8 +587,22 @@ describe('BuildPreview', () => {
 					duration_ms: 5000,
 					error: null,
 					results: [
-						{ tab_id: 't1', tab_name: 'Sheet 1', status: 'success' },
-						{ tab_id: 't2', tab_name: 'Sheet 2', status: 'failed', error: 'fail' }
+						{
+							tab_id: 't1',
+							tab_name: 'Sheet 1',
+							status: 'success',
+							output_id: null,
+							output_name: null,
+							error: null
+						},
+						{
+							tab_id: 't2',
+							tab_name: 'Sheet 2',
+							status: 'failed',
+							output_id: null,
+							output_name: null,
+							error: 'fail'
+						}
 					]
 				})
 			);

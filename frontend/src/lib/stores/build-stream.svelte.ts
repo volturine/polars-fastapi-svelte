@@ -155,7 +155,7 @@ export class BuildStreamStore {
 			},
 			onError: (msg: string) => {
 				if (generation !== this.generation) return;
-				if (!this.done && this.shouldReconnect) return;
+				if (!this.done && this.shouldReconnect && msg !== 'Invalid build stream message') return;
 				this.error = msg;
 			},
 			onClose: () => {

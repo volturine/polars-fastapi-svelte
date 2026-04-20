@@ -6,7 +6,6 @@ import threading
 import time
 import uuid
 from datetime import UTC, datetime
-from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -522,7 +521,7 @@ def test_schedule_stream_tasks_runs_on_main_loop() -> None:
     progress_task = None
     resource_task = None
 
-    async def emitter(_payload: dict[str, object]) -> None:
+    async def emitter(_payload: compute_schemas.BuildEvent) -> None:
         return None
 
     class FakeEngine:
@@ -540,6 +539,15 @@ def test_schedule_stream_tasks_runs_on_main_loop() -> None:
             future.set_result(
                 _schedule_stream_tasks(
                     loop,
+                    build=ActiveBuild(
+                        build_id='build-1',
+                        analysis_id='analysis-1',
+                        analysis_name='Analysis 1',
+                        namespace='default',
+                        starter=compute_service._build_starter(None),
+                        started_at=datetime.now(UTC),
+                    ),
+                    analysis_id='analysis-1',
                     engine=FakeEngine(),
                     job_id='job-1',
                     build_step_base=0,
@@ -596,6 +604,7 @@ def test_start_stream_tasks_skips_when_loop_unavailable() -> None:
 
     tasks = compute_service._start_stream_tasks(
         loop,
+        analysis_id='analysis-1',
         engine=FakeEngine(),
         job_id='job-1',
         build_step_base=0,
@@ -619,9 +628,9 @@ def test_start_stream_tasks_skips_when_loop_unavailable() -> None:
 
 
 def test_stream_engine_events_drains_final_events_after_job_finish() -> None:
-    emitted: list[dict[str, object]] = []
+    emitted: list[compute_schemas.BuildEvent] = []
 
-    async def emitter(payload: dict[str, object]) -> None:
+    async def emitter(payload: compute_schemas.BuildEvent) -> None:
         emitted.append(payload)
 
     class FakeEngine:
@@ -663,6 +672,15 @@ def test_stream_engine_events_drains_final_events_after_job_finish() -> None:
 
     async def run() -> None:
         await compute_service._stream_engine_events(
+            build=ActiveBuild(
+                build_id='build-1',
+                analysis_id='analysis-1',
+                analysis_name='Analysis 1',
+                namespace='default',
+                starter=compute_service._build_starter(None),
+                started_at=datetime.now(UTC),
+            ),
+            analysis_id='analysis-1',
             engine=FakeEngine(),
             job_id='job-1',
             build_step_base=0,
@@ -679,10 +697,13 @@ def test_stream_engine_events_drains_final_events_after_job_finish() -> None:
 
     asyncio.run(run())
 
-    assert [payload['type'] for payload in emitted] == ['plan', 'step_complete', 'progress']
-    assert emitted[0]['optimized_plan'] == 'OPT'
-    assert emitted[1]['build_step_index'] == 0
-    assert emitted[2]['progress'] == 1.0
+    assert [payload.type for payload in emitted] == ['plan', 'step_complete', 'progress']
+    assert isinstance(emitted[0], compute_schemas.BuildPlanEvent)
+    assert emitted[0].optimized_plan == 'OPT'
+    assert isinstance(emitted[1], compute_schemas.BuildStepCompleteEvent)
+    assert emitted[1].build_step_index == 0
+    assert isinstance(emitted[2], compute_schemas.BuildProgressEvent)
+    assert emitted[2].progress == 1.0
 
 
 class TestComputePreview:
@@ -1413,89 +1434,100 @@ def test_build_stream_websocket_emits_snapshot_and_terminal_event(client, sample
 
     async def fake_run_analysis_build_stream(session, manager, pipeline, *, build, emitter, triggered_by):
         del session, manager, pipeline, triggered_by
+        base = {
+            'build_id': build.build_id,
+            'analysis_id': build.analysis_id,
+            'emitted_at': datetime.now(UTC),
+        }
         await asyncio.to_thread(release.wait, 5)
         await emitter(
-            {
-                'type': 'plan',
-                'optimized_plan': 'OPT PLAN',
-                'unoptimized_plan': 'RAW PLAN',
-                'tab_id': 'tab1',
-                'tab_name': 'Tab 1',
-            }
+            compute_schemas.BuildPlanEvent(
+                **base,
+                optimized_plan='OPT PLAN',
+                unoptimized_plan='RAW PLAN',
+                tab_id='tab1',
+                tab_name='Tab 1',
+            )
         )
         await emitter(
-            {
-                'type': 'step_start',
-                'build_step_index': 0,
-                'step_index': 0,
-                'step_id': 'step1',
-                'step_name': 'Filter rows',
-                'step_type': 'filter',
-                'total_steps': 1,
-                'tab_id': 'tab1',
-                'tab_name': 'Tab 1',
-            }
+            compute_schemas.BuildStepStartEvent(
+                **base,
+                build_step_index=0,
+                step_index=0,
+                step_id='step1',
+                step_name='Filter rows',
+                step_type='filter',
+                total_steps=1,
+                tab_id='tab1',
+                tab_name='Tab 1',
+            )
         )
         await emitter(
-            {
-                'type': 'resources',
-                'cpu_percent': 10.5,
-                'memory_mb': 128.0,
-                'memory_limit_mb': 512,
-                'active_threads': 4,
-                'max_threads': 8,
-                'tab_id': 'tab1',
-                'tab_name': 'Tab 1',
-            }
+            compute_schemas.BuildResourceEvent(
+                **base,
+                cpu_percent=10.5,
+                memory_mb=128.0,
+                memory_limit_mb=512,
+                active_threads=4,
+                max_threads=8,
+                tab_id='tab1',
+                tab_name='Tab 1',
+            )
         )
         await emitter(
-            {
-                'type': 'log',
-                'level': 'info',
-                'message': 'Running filter',
-                'step_name': 'Filter rows',
-                'step_id': 'step1',
-                'tab_id': 'tab1',
-                'tab_name': 'Tab 1',
-            }
+            compute_schemas.BuildLogEvent(
+                **base,
+                level=compute_schemas.BuildLogLevel.INFO,
+                message='Running filter',
+                step_name='Filter rows',
+                step_id='step1',
+                tab_id='tab1',
+                tab_name='Tab 1',
+            )
         )
         await emitter(
-            {
-                'type': 'step_complete',
-                'build_step_index': 0,
-                'step_index': 0,
-                'step_id': 'step1',
-                'step_name': 'Filter rows',
-                'step_type': 'filter',
-                'duration_ms': 42,
-                'row_count': 3,
-                'total_steps': 1,
-                'tab_id': 'tab1',
-                'tab_name': 'Tab 1',
-            }
+            compute_schemas.BuildStepCompleteEvent(
+                **base,
+                build_step_index=0,
+                step_index=0,
+                step_id='step1',
+                step_name='Filter rows',
+                step_type='filter',
+                duration_ms=42,
+                row_count=3,
+                total_steps=1,
+                tab_id='tab1',
+                tab_name='Tab 1',
+            )
         )
         await emitter(
-            {
-                'type': 'progress',
-                'progress': 1.0,
-                'elapsed_ms': 42,
-                'estimated_remaining_ms': 0,
-                'current_step': 'Filter rows',
-                'current_step_index': 0,
-                'total_steps': 1,
-                'tab_id': 'tab1',
-                'tab_name': 'Tab 1',
-            }
+            compute_schemas.BuildProgressEvent(
+                **base,
+                progress=1.0,
+                elapsed_ms=42,
+                estimated_remaining_ms=0,
+                current_step='Filter rows',
+                current_step_index=0,
+                total_steps=1,
+                tab_id='tab1',
+                tab_name='Tab 1',
+            )
         )
         await emitter(
-            {
-                'type': 'complete',
-                'elapsed_ms': 50,
-                'total_steps': 1,
-                'tabs_built': 1,
-                'duration_ms': 50,
-                'results': [{'tab_id': 'tab1', 'tab_name': 'Tab 1', 'status': 'success'}],
-            }
+            compute_schemas.BuildCompleteEvent(
+                **base,
+                elapsed_ms=50,
+                total_steps=1,
+                tabs_built=1,
+                duration_ms=50,
+                results=[
+                    compute_schemas.BuildTabResult(
+                        tab_id='tab1',
+                        tab_name='Tab 1',
+                        status=compute_schemas.BuildTabStatus.SUCCESS,
+                    )
+                ],
+            )
         )
         return {
             'analysis_id': build.analysis_id,
@@ -1795,7 +1827,7 @@ def test_run_analysis_build_stream_tracks_output_target_and_read_write_stages(te
             write_duration_ms=7.0,
         )
 
-    async def run() -> tuple[list[dict[str, object]], ActiveBuild]:
+    async def run() -> tuple[list[compute_schemas.BuildEvent], ActiveBuild]:
         await active_build_registry.clear()
         build = await active_build_registry.create_build(
             analysis_id='analysis-live',
@@ -1804,17 +1836,11 @@ def test_run_analysis_build_stream_tracks_output_target_and_read_write_stages(te
             starter=compute_service._build_starter(test_user),
             total_tabs=1,
         )
-        emitted: list[dict[str, object]] = []
+        emitted: list[compute_schemas.BuildEvent] = []
 
-        async def emitter(payload: dict[str, object]) -> None:
-            normalized = {
-                'build_id': build.build_id,
-                'analysis_id': build.analysis_id,
-                'emitted_at': datetime.now(UTC).isoformat(),
-                **payload,
-            }
-            emitted.append(normalized)
-            await active_build_registry.apply_event(build.build_id, normalized)
+        async def emitter(payload: compute_schemas.BuildEvent) -> None:
+            emitted.append(payload)
+            await active_build_registry.apply_event(build.build_id, payload.model_dump(mode='json'))
 
         pipeline = {
             'analysis_id': 'analysis-live',
@@ -1863,12 +1889,10 @@ def test_run_analysis_build_stream_tracks_output_target_and_read_write_stages(te
     assert stored.detail().steps[0].duration_ms is not None
     assert stored.detail().steps[2].duration_ms == 7
     assert stored.detail().results[0].output_name == 'output_salary_predictions'
-    complete = next(event for event in emitted if event['type'] == 'complete')
-    assert complete['engine_run_id'] == 'run-1'
-    complete_results = complete.get('results')
-    assert isinstance(complete_results, list)
-    typed_complete_results = cast(list[dict[str, object]], complete_results)
-    assert typed_complete_results[0]['output_name'] == 'output_salary_predictions'
+    complete = next(event for event in emitted if event.type == compute_schemas.BuildEventType.COMPLETE)
+    assert isinstance(complete, compute_schemas.BuildCompleteEvent)
+    assert complete.engine_run_id == 'run-1'
+    assert complete.results[0].output_name == 'output_salary_predictions'
 
 
 def test_finalize_failed_engine_run_persists_failure_state(test_db_session) -> None:

@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter, field_validator
 
 
 class EngineStatus(StrEnum):
@@ -600,6 +600,23 @@ class BuildCancelledEvent(BuildStreamEvent):
     duration_ms: int
     cancelled_at: datetime
     cancelled_by: str | None = None
+
+
+BuildEvent = Annotated[
+    BuildPlanEvent
+    | BuildStepStartEvent
+    | BuildStepCompleteEvent
+    | BuildStepFailedEvent
+    | BuildProgressEvent
+    | BuildResourceEvent
+    | BuildLogEvent
+    | BuildCompleteEvent
+    | BuildFailedEvent
+    | BuildCancelledEvent,
+    Field(discriminator='type'),
+]
+
+BuildEventAdapter: TypeAdapter[BuildEvent] = TypeAdapter(BuildEvent)
 
 
 class CancelBuildResponse(BaseModel):

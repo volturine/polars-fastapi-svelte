@@ -15,6 +15,7 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
+		"generate:build-stream-types": "cd .. && just generate-build-stream-types",
 		"generate:step-types": "cd .. && just generate-step-types",
 		"test:e2e": "bun run test:hybrid-e2e",
 		"test:hybrid-e2e": "playwright test",

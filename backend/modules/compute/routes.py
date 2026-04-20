@@ -120,11 +120,12 @@ def _resolve_websocket_user(websocket: WebSocket) -> User | None:
     return run_settings_db(_lookup)
 
 
-async def _emit_active_build_event(build_id: str, analysis_id: str, payload: dict[str, object]) -> None:
-    emitted_at = payload.get('emitted_at')
-    if not isinstance(emitted_at, str):
-        emitted_at = service._utcnow().isoformat()
-    normalized = {'build_id': build_id, 'analysis_id': analysis_id, 'emitted_at': emitted_at, **payload}
+async def _emit_active_build_event(
+    build_id: str,
+    analysis_id: str,
+    payload: schemas.BuildEvent,
+) -> None:
+    normalized = payload.model_dump(mode='json')
     context = await build_registry.apply_event(build_id, normalized)
     if context is None:
         return
@@ -223,18 +224,25 @@ async def _run_active_build_task(
             await _emit_active_build_event(
                 build.build_id,
                 analysis_id,
-                {
-                    'type': 'failed',
-                    'progress': build.progress,
-                    'elapsed_ms': build.elapsed_ms,
-                    'total_steps': build.total_steps,
-                    'tabs_built': len(build.results),
-                    'results': [result.model_dump(mode='json') for result in build.results],
-                    'duration_ms': build.elapsed_ms,
-                    'error': 'Build failed due to an internal error',
-                    'current_output_id': build.current_output_id,
-                    'current_output_name': build.current_output_name,
-                },
+                schemas.BuildFailedEvent(
+                    build_id=build.build_id,
+                    analysis_id=analysis_id,
+                    emitted_at=service._utcnow(),
+                    current_kind=build.current_kind,
+                    current_datasource_id=build.current_datasource_id,
+                    tab_id=build.current_tab_id,
+                    tab_name=build.current_tab_name,
+                    current_output_id=build.current_output_id,
+                    current_output_name=build.current_output_name,
+                    engine_run_id=build.current_engine_run_id,
+                    progress=build.progress,
+                    elapsed_ms=build.elapsed_ms,
+                    total_steps=build.total_steps,
+                    tabs_built=len(build.results),
+                    results=build.results,
+                    duration_ms=build.elapsed_ms,
+                    error='Build failed due to an internal error',
+                ),
             )
     finally:
         if session is not None:
@@ -447,20 +455,26 @@ async def cancel_build(
         await _emit_active_build_event(
             match.build_id,
             match.analysis_id,
-            {
-                'type': 'cancelled',
-                'engine_run_id': run_id,
-                'progress': match.progress,
-                'elapsed_ms': cancelled.duration_ms or match.elapsed_ms,
-                'total_steps': match.total_steps,
-                'tabs_built': 0,
-                'results': [],
-                'duration_ms': cancelled.duration_ms or match.elapsed_ms,
-                'cancelled_at': cancelled.cancelled_at.isoformat(),
-                'cancelled_by': cancelled.cancelled_by,
-                'current_output_id': match.current_output_id,
-                'current_output_name': match.current_output_name,
-            },
+            schemas.BuildCancelledEvent(
+                build_id=match.build_id,
+                analysis_id=match.analysis_id,
+                emitted_at=service._utcnow(),
+                current_kind=match.current_kind,
+                current_datasource_id=match.current_datasource_id,
+                tab_id=match.current_tab_id,
+                tab_name=match.current_tab_name,
+                current_output_id=match.current_output_id,
+                current_output_name=match.current_output_name,
+                engine_run_id=run_id,
+                progress=match.progress,
+                elapsed_ms=cancelled.duration_ms or match.elapsed_ms,
+                total_steps=match.total_steps,
+                tabs_built=0,
+                results=[],
+                duration_ms=cancelled.duration_ms or match.elapsed_ms,
+                cancelled_at=cancelled.cancelled_at,
+                cancelled_by=cancelled.cancelled_by,
+            ),
         )
 
     return cancelled

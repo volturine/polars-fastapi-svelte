@@ -618,16 +618,27 @@ describe('BuildStreamStore', () => {
 		msg(socket, {
 			type: 'log',
 			message: 'test log message',
-			level: 'warn',
+			level: 'warning',
 			step_name: 'Load',
 			step_id: 'step-1'
 		});
 
 		expect(store.logs).toHaveLength(1);
-		expect(store.logs[0].level).toBe('warn');
+		expect(store.logs[0].level).toBe('warning');
 		expect(store.logs[0].message).toBe('test log message');
 		expect(store.logs[0].step_name).toBe('Load');
 		expect(store.logs[0].step_id).toBe('step-1');
+	});
+
+	test('invalid websocket messages surface as protocol errors', () => {
+		const store = new BuildStreamStore();
+		store.watch('build-3');
+
+		const socket = MockWebSocket.instances[0];
+		socket.emit('open');
+		socket.emit('message', { data: 'not-json' });
+
+		expect(store.error).toBe('Invalid build stream message');
 	});
 
 	test('applies complete event', () => {
@@ -923,6 +934,13 @@ describe('BuildStreamStore', () => {
 			build_id: 'b-1',
 			analysis_id: 'a-1',
 			emitted_at: '2025-01-01T00:00:01Z',
+			current_kind: null,
+			current_datasource_id: null,
+			tab_id: null,
+			tab_name: null,
+			current_output_id: null,
+			current_output_name: null,
+			engine_run_id: null,
 			progress: 0.5,
 			elapsed_ms: 500,
 			estimated_remaining_ms: 500,

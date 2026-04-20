@@ -1,13 +1,18 @@
 import type { BuildRequest } from './compute';
 import { apiRequest } from './client';
 import { createStream, type StreamHandle } from './websocket';
-import type { BuildEvent, BuildDetailSnapshot } from '$lib/types/build-stream';
+import type {
+	BuildEvent,
+	BuildDetailSnapshot,
+	BuildWebsocketErrorMessage
+} from '$lib/types/build-stream';
 import type { ActiveBuildDetail } from '$lib/types/build-stream';
 import type { ResultAsync } from 'neverthrow';
 import type { ApiError } from './client';
 
 export type BuildStreamMessage =
 	| { type: 'snapshot'; build: BuildDetailSnapshot['build'] }
+	| BuildWebsocketErrorMessage
 	| BuildEvent;
 
 export interface BuildStreamCallbacks {
@@ -17,11 +22,41 @@ export interface BuildStreamCallbacks {
 	onClose: () => void;
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function isSnapshotMessage(value: unknown): value is BuildDetailSnapshot {
+	if (!isObject(value)) return false;
+	return value.type === 'snapshot' && isObject(value.build);
+}
+
+function isErrorMessage(value: unknown): value is BuildWebsocketErrorMessage {
+	if (!isObject(value)) return false;
+	return value.type === 'error' && typeof value.error === 'string';
+}
+
+function isBuildEvent(value: unknown): value is BuildEvent {
+	if (!isObject(value)) return false;
+	if (typeof value.type !== 'string') return false;
+	if (typeof value.build_id !== 'string') return false;
+	if (typeof value.analysis_id !== 'string') return false;
+	if (typeof value.emitted_at !== 'string') return false;
+	return true;
+}
+
 function parseBuildMessage(data: string): BuildStreamMessage | null {
 	try {
-		return JSON.parse(data) as BuildStreamMessage;
+		const parsed: unknown = JSON.parse(data);
+		if (!isObject(parsed)) {
+			return { type: 'error', error: 'Invalid build stream message', status_code: 500 };
+		}
+		if (isSnapshotMessage(parsed)) return parsed;
+		if (isErrorMessage(parsed)) return parsed;
+		if (isBuildEvent(parsed)) return parsed;
+		return { type: 'error', error: 'Invalid build stream message', status_code: 500 };
 	} catch {
-		return null;
+		return { type: 'error', error: 'Invalid build stream message', status_code: 500 };
 	}
 }
 
@@ -37,7 +72,7 @@ function isBuildDetailSnapshot(msg: BuildStreamMessage): msg is BuildDetailSnaps
 }
 
 function toBuildDetailEvent(msg: BuildStreamMessage): BuildEvent {
-	if (isBuildDetailSnapshot(msg)) {
+	if (isBuildDetailSnapshot(msg) || msg.type === 'error') {
 		throw new Error('Expected build event');
 	}
 	return msg;

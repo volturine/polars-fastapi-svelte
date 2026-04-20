@@ -45,7 +45,7 @@ from modules.udf.models import Udf
 
 logger = logging.getLogger(__name__)
 
-BuildEmitter = Callable[[dict[str, object]], Awaitable[None]]
+BuildEmitter = Callable[[compute_schemas.BuildEvent], Awaitable[None]]
 
 
 def _secure_temp_path(suffix: str) -> str:
@@ -74,6 +74,20 @@ class _EngineRunFailureUpdateKwargs(TypedDict, total=False):
     execution_entries: list[dict[str, object]]
     progress: float
     current_step: str | None
+
+
+@dataclass(frozen=True)
+class _BuildEventBase:
+    build_id: str
+    analysis_id: str
+    emitted_at: datetime
+    current_kind: str | None
+    current_datasource_id: str | None
+    tab_id: str | None
+    tab_name: str | None
+    current_output_id: str | None
+    current_output_name: str | None
+    engine_run_id: str | None
 
 
 class BuildCancelledError(Exception):
@@ -143,15 +157,86 @@ def _estimate_remaining(elapsed_ms: int, completed_steps: int, total_steps: int)
     return int(avg * remaining)
 
 
-async def _emit_build_event(emitter: BuildEmitter | None, payload: dict[str, object]) -> None:
+def _build_event_payload(
+    build: ActiveBuild,
+    analysis_id: str,
+    *,
+    emitted_at: datetime | None = None,
+    current_kind: str | None = None,
+    current_datasource_id: str | None = None,
+    tab_id: str | None = None,
+    tab_name: str | None = None,
+    current_output_id: str | None = None,
+    current_output_name: str | None = None,
+    engine_run_id: str | None = None,
+) -> dict[str, object]:
+    return {
+        'build_id': build.build_id,
+        'analysis_id': analysis_id,
+        'emitted_at': emitted_at or _utcnow(),
+        'current_kind': current_kind if current_kind is not None else build.current_kind,
+        'current_datasource_id': (current_datasource_id if current_datasource_id is not None else build.current_datasource_id),
+        'tab_id': tab_id,
+        'tab_name': tab_name,
+        'current_output_id': current_output_id if current_output_id is not None else build.current_output_id,
+        'current_output_name': current_output_name if current_output_name is not None else build.current_output_name,
+        'engine_run_id': engine_run_id if engine_run_id is not None else build.current_engine_run_id,
+    }
+
+
+def _build_event_base(
+    build: ActiveBuild,
+    analysis_id: str,
+    *,
+    emitted_at: datetime | None = None,
+    current_kind: str | None = None,
+    current_datasource_id: str | None = None,
+    tab_id: str | None = None,
+    tab_name: str | None = None,
+    current_output_id: str | None = None,
+    current_output_name: str | None = None,
+    engine_run_id: str | None = None,
+) -> _BuildEventBase:
+    return _BuildEventBase(
+        build_id=build.build_id,
+        analysis_id=analysis_id,
+        emitted_at=emitted_at or _utcnow(),
+        current_kind=current_kind if current_kind is not None else build.current_kind,
+        current_datasource_id=(current_datasource_id if current_datasource_id is not None else build.current_datasource_id),
+        tab_id=tab_id,
+        tab_name=tab_name,
+        current_output_id=current_output_id if current_output_id is not None else build.current_output_id,
+        current_output_name=current_output_name if current_output_name is not None else build.current_output_name,
+        engine_run_id=engine_run_id if engine_run_id is not None else build.current_engine_run_id,
+    )
+
+
+def _event_model(payload: dict[str, object]) -> compute_schemas.BuildEvent:
+    return compute_schemas.BuildEventAdapter.validate_python(payload)
+
+
+async def _emit_build_event(
+    emitter: BuildEmitter | None,
+    *,
+    build: ActiveBuild,
+    analysis_id: str,
+    payload: dict[str, object] | compute_schemas.BuildEvent,
+) -> None:
     if emitter is None:
         return
-    await emitter(payload)
+    event = (
+        payload
+        if isinstance(payload, compute_schemas.BuildStreamEvent)
+        else _event_model({**_build_event_payload(build, analysis_id), **payload})
+    )
+    await emitter(event)
 
 
 async def _emit_progress(
     emitter: BuildEmitter | None,
     *,
+    build: ActiveBuild,
+    analysis_id: str,
     progress: float,
     elapsed_ms: int,
     completed_steps: int,
@@ -166,8 +251,10 @@ async def _emit_progress(
 ) -> None:
     await _emit_build_event(
         emitter,
-        {
-            'type': 'progress',
+        build=build,
+        analysis_id=analysis_id,
+        payload={
+            'type': compute_schemas.BuildEventType.PROGRESS,
             'progress': progress,
             'elapsed_ms': elapsed_ms,
             'estimated_remaining_ms': _estimate_remaining(elapsed_ms, completed_steps, total_steps),
@@ -825,6 +912,12 @@ def _raise_if_engine_run_cancelled(session: Session, run_id: str) -> None:
         return
     cancelled_at, cancelled_by = _read_cancel_metadata(latest)
     raise BuildCancelledError(run_id, cancelled_at=cancelled_at, cancelled_by=cancelled_by)
+
+
+def _parse_cancelled_at(value: str | None) -> datetime | None:
+    if value is None:
+        return None
+    return datetime.fromisoformat(value)
 
 
 def _latest_completed_step_name(run: EngineRun) -> str | None:
@@ -2655,6 +2748,8 @@ def _count_total_build_steps(tabs: list[dict], selected_tab_id: str | None) -> i
 
 async def _stream_engine_events(
     *,
+    build: ActiveBuild,
+    analysis_id: str,
     engine,
     job_id: str,
     engine_run_id: str | None = None,
@@ -2695,7 +2790,9 @@ async def _stream_engine_events(
             read_stage.completed = True
             await _emit_build_event(
                 emitter,
-                {
+                build=build,
+                analysis_id=analysis_id,
+                payload={
                     'type': 'step_complete',
                     'build_step_index': read_stage.build_step_index,
                     'step_index': read_stage.step_index,
@@ -2716,6 +2813,8 @@ async def _stream_engine_events(
             elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
             await _emit_progress(
                 emitter,
+                build=build,
+                analysis_id=analysis_id,
                 progress=(completed_steps / total_steps) if total_steps else 1.0,
                 elapsed_ms=elapsed_ms,
                 completed_steps=completed_steps,
@@ -2740,7 +2839,7 @@ async def _stream_engine_events(
         payload['engine_run_id'] = payload.get('engine_run_id') or engine_run_id
 
         if emitted_type not in {'compute_start', 'compute_complete'}:
-            await _emit_build_event(emitter, payload)
+            await _emit_build_event(emitter, build=build, analysis_id=analysis_id, payload=payload)
 
         if emitted_type == 'step_complete':
             completed_steps += 1
@@ -2749,6 +2848,8 @@ async def _stream_engine_events(
             elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
             await _emit_progress(
                 emitter,
+                build=build,
+                analysis_id=analysis_id,
                 progress=(completed_steps / total_steps) if total_steps else 1.0,
                 elapsed_ms=elapsed_ms,
                 completed_steps=completed_steps,
@@ -2765,6 +2866,8 @@ async def _stream_engine_events(
             elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
             await _emit_progress(
                 emitter,
+                build=build,
+                analysis_id=analysis_id,
                 progress=(completed_steps / total_steps) if total_steps else 1.0,
                 elapsed_ms=elapsed_ms,
                 completed_steps=completed_steps,
@@ -2783,6 +2886,8 @@ async def _stream_engine_events(
             step_index_value = payload.get('build_step_index') if isinstance(payload.get('build_step_index'), int) else None
             await _emit_progress(
                 emitter,
+                build=build,
+                analysis_id=analysis_id,
                 progress=(completed_steps / total_steps) if total_steps else 0.0,
                 elapsed_ms=elapsed_ms,
                 completed_steps=completed_steps,
@@ -2800,6 +2905,8 @@ async def _stream_engine_events(
 
 async def _stream_resource_events(
     *,
+    build: ActiveBuild,
+    analysis_id: str,
     engine,
     emitter: BuildEmitter | None,
     tab_id: str | None,
@@ -2808,7 +2915,9 @@ async def _stream_resource_events(
     async for resource in monitor_engine_resources(engine):
         await _emit_build_event(
             emitter,
-            {
+            build=build,
+            analysis_id=analysis_id,
+            payload={
                 'type': 'resources',
                 'tab_id': tab_id,
                 'tab_name': tab_name,
@@ -2820,6 +2929,8 @@ async def _stream_resource_events(
 def _schedule_stream_tasks(
     loop: asyncio.AbstractEventLoop,
     *,
+    build: ActiveBuild,
+    analysis_id: str,
     engine,
     job_id: str,
     engine_run_id: str | None = None,
@@ -2836,6 +2947,8 @@ def _schedule_stream_tasks(
 ) -> tuple[asyncio.Task, asyncio.Task]:
     progress_task = loop.create_task(
         _stream_engine_events(
+            build=build,
+            analysis_id=analysis_id,
             engine=engine,
             job_id=job_id,
             engine_run_id=engine_run_id,
@@ -2853,6 +2966,8 @@ def _schedule_stream_tasks(
     )
     resource_task = loop.create_task(
         _stream_resource_events(
+            build=build,
+            analysis_id=analysis_id,
             engine=engine,
             emitter=emitter,
             tab_id=tab_id,
@@ -2865,6 +2980,7 @@ def _schedule_stream_tasks(
 def _start_stream_tasks(
     loop: asyncio.AbstractEventLoop,
     *,
+    analysis_id: str,
     engine,
     job_id: str,
     engine_run_id: str | None = None,
@@ -2892,6 +3008,8 @@ def _start_stream_tasks(
             future.set_result(
                 _schedule_stream_tasks(
                     loop,
+                    build=build,
+                    analysis_id=analysis_id,
                     engine=engine,
                     job_id=job_id,
                     engine_run_id=engine_run_id,
@@ -2953,7 +3071,9 @@ async def run_analysis_build_stream(
 
     await _emit_build_event(
         emitter,
-        {
+        build=build,
+        analysis_id=analysis_id_value,
+        payload={
             'type': 'log',
             'level': compute_schemas.BuildLogLevel.INFO.value,
             'message': f'Starting build for {build.analysis_name}',
@@ -2961,6 +3081,8 @@ async def run_analysis_build_stream(
     )
     await _emit_progress(
         emitter,
+        build=build,
+        analysis_id=analysis_id_value,
         progress=0.0,
         elapsed_ms=0,
         completed_steps=0,
@@ -3015,7 +3137,9 @@ async def run_analysis_build_stream(
             results.append({'tab_id': tab_id, 'tab_name': tab_name, 'status': BuildTabStatus.FAILED, 'error': error})
             await _emit_build_event(
                 emitter,
-                {
+                build=build,
+                analysis_id=analysis_id_value,
+                payload={
                     'type': 'log',
                     'level': compute_schemas.BuildLogLevel.ERROR.value,
                     'message': error,
@@ -3079,7 +3203,9 @@ async def run_analysis_build_stream(
         try:
             await _emit_build_event(
                 emitter,
-                {
+                build=build,
+                analysis_id=analysis_id_value,
+                payload={
                     'type': 'log',
                     'level': compute_schemas.BuildLogLevel.INFO.value,
                     'message': f'Starting tab {tab_name}',
@@ -3092,7 +3218,9 @@ async def run_analysis_build_stream(
             read_stage.started = True
             await _emit_build_event(
                 emitter,
-                {
+                build=build,
+                analysis_id=analysis_id_value,
+                payload={
                     'type': 'step_start',
                     'build_step_index': read_stage.build_step_index,
                     'step_index': read_stage.step_index,
@@ -3143,13 +3271,14 @@ async def run_analysis_build_stream(
                     }
                     if isinstance(run_id, str):
                         payload['engine_run_id'] = run_id
-                    await _emit_build_event(emitter, payload)
+                    await _emit_build_event(emitter, build=build, analysis_id=analysis_id_value, payload=payload)
 
                 future = asyncio.run_coroutine_threadsafe(emit_run_started(), loop)
                 future.result()
 
                 next_progress_task, next_resource_task = _start_stream_tasks(
                     loop,
+                    analysis_id=analysis_id_value,
                     engine=engine,
                     job_id=job_id,
                     engine_run_id=run_id if isinstance(run_id, str) else build.current_engine_run_id,
@@ -3196,7 +3325,9 @@ async def run_analysis_build_stream(
                             current_read_stage.completed = True
                             await _emit_build_event(
                                 emitter,
-                                {
+                                build=build,
+                                analysis_id=analysis_id_value,
+                                payload={
                                     'type': 'step_complete',
                                     'build_step_index': current_read_stage.build_step_index,
                                     'step_index': current_read_stage.step_index,
@@ -3216,6 +3347,8 @@ async def run_analysis_build_stream(
                             elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
                             await _emit_progress(
                                 emitter,
+                                build=build,
+                                analysis_id=analysis_id_value,
                                 progress=((current_build_step_base + 1) / total_steps) if total_steps else 1.0,
                                 elapsed_ms=elapsed_ms,
                                 completed_steps=current_build_step_base + 1,
@@ -3232,7 +3365,9 @@ async def run_analysis_build_stream(
                         current_write_stage.started_at = time.perf_counter()
                         await _emit_build_event(
                             emitter,
-                            {
+                            build=build,
+                            analysis_id=analysis_id_value,
+                            payload={
                                 'type': 'step_start',
                                 'build_step_index': current_write_stage.build_step_index,
                                 'step_index': current_write_stage.step_index,
@@ -3259,7 +3394,9 @@ async def run_analysis_build_stream(
                         current_write_stage.completed = True
                         await _emit_build_event(
                             emitter,
-                            {
+                            build=build,
+                            analysis_id=analysis_id_value,
+                            payload={
                                 'type': 'step_complete',
                                 'build_step_index': current_write_stage.build_step_index,
                                 'step_index': current_write_stage.step_index,
@@ -3279,6 +3416,8 @@ async def run_analysis_build_stream(
                         elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
                         await _emit_progress(
                             emitter,
+                            build=build,
+                            analysis_id=analysis_id_value,
                             progress=((current_build_step_base + current_execution_step_count) / total_steps) if total_steps else 1.0,
                             elapsed_ms=elapsed_ms,
                             completed_steps=current_build_step_base + current_execution_step_count,
@@ -3371,7 +3510,9 @@ async def run_analysis_build_stream(
             cancelled_by = exc.cancelled_by
             await _emit_build_event(
                 emitter,
-                {
+                build=build,
+                analysis_id=analysis_id_value,
+                payload={
                     'type': 'log',
                     'level': compute_schemas.BuildLogLevel.WARNING.value,
                     'message': 'Build cancellation requested',
@@ -3391,7 +3532,9 @@ async def run_analysis_build_stream(
             if write_stage.started and not write_stage.completed:
                 await _emit_build_event(
                     emitter,
-                    {
+                    build=build,
+                    analysis_id=analysis_id_value,
+                    payload={
                         'type': 'step_failed',
                         'build_step_index': write_stage.build_step_index,
                         'step_index': write_stage.step_index,
@@ -3410,7 +3553,9 @@ async def run_analysis_build_stream(
             elif not read_stage.completed:
                 await _emit_build_event(
                     emitter,
-                    {
+                    build=build,
+                    analysis_id=analysis_id_value,
+                    payload={
                         'type': 'step_failed',
                         'build_step_index': read_stage.build_step_index,
                         'step_index': read_stage.step_index,
@@ -3438,7 +3583,9 @@ async def run_analysis_build_stream(
             )
             await _emit_build_event(
                 emitter,
-                {
+                build=build,
+                analysis_id=analysis_id_value,
+                payload={
                     'type': 'log',
                     'level': compute_schemas.BuildLogLevel.ERROR.value,
                     'message': str(exc),
@@ -3452,55 +3599,87 @@ async def run_analysis_build_stream(
             continue
 
     elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
+    base = _build_event_base(
+        build,
+        analysis_id_value,
+        current_output_id=build.current_output_id,
+        current_output_name=build.current_output_name,
+        engine_run_id=build.current_engine_run_id,
+    )
+    event_results = [compute_schemas.BuildTabResult.model_validate(item) for item in results]
     if was_cancelled:
         await _emit_build_event(
             emitter,
-            {
-                'type': 'cancelled',
-                'progress': build.progress,
-                'elapsed_ms': elapsed_ms,
-                'total_steps': total_steps,
-                'tabs_built': tabs_built,
-                'results': results,
-                'duration_ms': elapsed_ms,
-                'cancelled_at': cancelled_at or _utcnow().isoformat(),
-                'cancelled_by': cancelled_by,
-                'engine_run_id': build.current_engine_run_id,
-                'current_output_id': build.current_output_id,
-                'current_output_name': build.current_output_name,
-            },
+            build=build,
+            analysis_id=analysis_id_value,
+            payload=compute_schemas.BuildCancelledEvent(
+                build_id=base.build_id,
+                analysis_id=base.analysis_id,
+                emitted_at=base.emitted_at,
+                current_kind=base.current_kind,
+                current_datasource_id=base.current_datasource_id,
+                tab_id=base.tab_id,
+                tab_name=base.tab_name,
+                current_output_id=base.current_output_id,
+                current_output_name=base.current_output_name,
+                engine_run_id=base.engine_run_id,
+                progress=build.progress,
+                elapsed_ms=elapsed_ms,
+                total_steps=total_steps,
+                tabs_built=tabs_built,
+                results=event_results,
+                duration_ms=elapsed_ms,
+                cancelled_at=_parse_cancelled_at(cancelled_at) or _utcnow(),
+                cancelled_by=cancelled_by,
+            ),
         )
     elif has_failures:
         await _emit_build_event(
             emitter,
-            {
-                'type': 'failed',
-                'progress': build.progress,
-                'elapsed_ms': elapsed_ms,
-                'total_steps': total_steps,
-                'tabs_built': tabs_built,
-                'results': results,
-                'duration_ms': elapsed_ms,
-                'error': 'One or more tabs failed',
-                'engine_run_id': build.current_engine_run_id,
-                'current_output_id': build.current_output_id,
-                'current_output_name': build.current_output_name,
-            },
+            build=build,
+            analysis_id=analysis_id_value,
+            payload=compute_schemas.BuildFailedEvent(
+                build_id=base.build_id,
+                analysis_id=base.analysis_id,
+                emitted_at=base.emitted_at,
+                current_kind=base.current_kind,
+                current_datasource_id=base.current_datasource_id,
+                tab_id=base.tab_id,
+                tab_name=base.tab_name,
+                current_output_id=base.current_output_id,
+                current_output_name=base.current_output_name,
+                engine_run_id=base.engine_run_id,
+                progress=build.progress,
+                elapsed_ms=elapsed_ms,
+                total_steps=total_steps,
+                tabs_built=tabs_built,
+                results=event_results,
+                duration_ms=elapsed_ms,
+                error='One or more tabs failed',
+            ),
         )
     else:
         await _emit_build_event(
             emitter,
-            {
-                'type': 'complete',
-                'elapsed_ms': elapsed_ms,
-                'total_steps': total_steps,
-                'tabs_built': tabs_built,
-                'results': results,
-                'duration_ms': elapsed_ms,
-                'engine_run_id': build.current_engine_run_id,
-                'current_output_id': build.current_output_id,
-                'current_output_name': build.current_output_name,
-            },
+            build=build,
+            analysis_id=analysis_id_value,
+            payload=compute_schemas.BuildCompleteEvent(
+                build_id=base.build_id,
+                analysis_id=base.analysis_id,
+                emitted_at=base.emitted_at,
+                current_kind=base.current_kind,
+                current_datasource_id=base.current_datasource_id,
+                tab_id=base.tab_id,
+                tab_name=base.tab_name,
+                current_output_id=base.current_output_id,
+                current_output_name=base.current_output_name,
+                engine_run_id=base.engine_run_id,
+                elapsed_ms=elapsed_ms,
+                total_steps=total_steps,
+                tabs_built=tabs_built,
+                results=event_results,
+                duration_ms=elapsed_ms,
+            ),
         )
     return {'analysis_id': analysis_id_value, 'tabs_built': tabs_built, 'results': results}
 

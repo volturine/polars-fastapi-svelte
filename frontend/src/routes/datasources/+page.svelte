@@ -21,7 +21,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import Callout from '$lib/components/ui/Callout.svelte';
-	import { css, cx, spinner, button, chip, input } from '$lib/styles/panda';
+	import { css, spinner } from '$lib/styles/panda';
 	import { useNamespace } from '$lib/stores/namespace.svelte';
 
 	const queryClient = useQueryClient();
@@ -285,7 +285,24 @@
 					id="ds-search"
 					aria-label="Search datasources"
 					placeholder="Search datasources..."
-					class={cx(input({ variant: 'search' }), css({ paddingY: '1' }))}
+					class={css({
+						width: 'full',
+						fontSize: 'sm',
+						color: 'fg.primary',
+						backgroundColor: 'transparent',
+						borderWidth: '1',
+						borderRadius: '0',
+						paddingLeft: '8',
+						paddingRight: '2',
+						paddingY: '1',
+						transitionProperty: 'border-color',
+						transitionDuration: '160ms',
+						transitionTimingFunction: 'ease',
+						_focus: { outline: 'none' },
+						_focusVisible: { borderColor: 'border.accent' },
+						_disabled: { opacity: '0.5', cursor: 'not-allowed', backgroundColor: 'bg.tertiary' },
+						_placeholder: { color: 'fg.muted' }
+					})}
 					bind:value={searchQuery}
 				/>
 			</div>
@@ -389,7 +406,20 @@
 								</span>
 								{#if datasource.created_by === 'analysis'}
 									<span
-										class={cx(chip({ tone: 'accent' }), css({ gap: '0.5', flexShrink: '0' }))}
+										class={css({
+											display: 'inline-flex',
+											alignItems: 'center',
+											paddingX: '1.5',
+											paddingY: '0.5',
+											fontSize: '2xs',
+											fontWeight: 'medium',
+											textTransform: 'uppercase',
+											letterSpacing: 'wider',
+											backgroundColor: 'bg.accent',
+											color: 'accent.primary',
+											gap: '0.5',
+											flexShrink: '0'
+										})}
 										title="Created by analysis"
 									>
 										<GitBranch size={10} />
@@ -397,7 +427,20 @@
 									</span>
 								{:else}
 									<span
-										class={cx(chip({ tone: 'neutral' }), css({ gap: '0.5', flexShrink: '0' }))}
+										class={css({
+											display: 'inline-flex',
+											alignItems: 'center',
+											paddingX: '1.5',
+											paddingY: '0.5',
+											fontSize: '2xs',
+											fontWeight: 'medium',
+											textTransform: 'uppercase',
+											letterSpacing: 'wider',
+											backgroundColor: 'bg.tertiary',
+											color: 'fg.muted',
+											gap: '0.5',
+											flexShrink: '0'
+										})}
 										title="Imported datasource"
 									>
 										<Upload size={10} />
@@ -485,13 +528,16 @@
 									/>
 								</div>
 								<button
-									class={cx(
-										button({ variant: 'ghost', size: 'sm' }),
-										css({
-											borderWidth: '1',
-											fontSize: 'xs'
-										})
-									)}
+									class={css({
+										backgroundColor: 'transparent',
+										color: 'fg.secondary',
+										borderColor: 'transparent',
+										paddingX: '2',
+										paddingY: '1',
+										'&:hover:not(:disabled)': { backgroundColor: 'bg.hover', color: 'fg.primary' },
+										borderWidth: '1',
+										fontSize: 'xs'
+									})}
 									onclick={() => (showComparison = !showComparison)}
 									aria-pressed={showComparison}
 								>

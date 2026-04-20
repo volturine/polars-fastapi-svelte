@@ -49,24 +49,6 @@
 		saving = false;
 	}
 
-	const card = css({
-		backgroundColor: 'bg.panel',
-		borderWidth: '1',
-		padding: '6',
-		display: 'flex',
-		flexDirection: 'column',
-		gap: '5'
-	});
-
-	const heading = css({
-		fontSize: 'md',
-		fontWeight: 'semibold',
-		color: 'fg.primary',
-		display: 'flex',
-		alignItems: 'center',
-		gap: '2'
-	});
-
 	const feedbackStyle = (type: 'success' | 'error') =>
 		css({
 			display: 'flex',
@@ -113,8 +95,26 @@
 			</div>
 		{/if}
 
-		<div class={card}>
-			<h2 class={heading}>
+		<div
+			class={css({
+				backgroundColor: 'bg.panel',
+				borderWidth: '1',
+				padding: '6',
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '5'
+			})}
+		>
+			<h2
+				class={css({
+					fontSize: 'md',
+					fontWeight: 'semibold',
+					color: 'fg.primary',
+					display: 'flex',
+					alignItems: 'center',
+					gap: '2'
+				})}
+			>
 				<Database size={16} />
 				Debug
 			</h2>

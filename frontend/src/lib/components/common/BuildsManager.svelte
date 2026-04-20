@@ -30,7 +30,7 @@
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import { BuildStreamStore } from '$lib/stores/build-stream.svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
-	import { css, cx, spinner, button, emptyText, input } from '$lib/styles/panda';
+	import { css, spinner, button, emptyText, input } from '$lib/styles/panda';
 	import {
 		engineRunBuildDetail,
 		engineRunCurrentTabName,
@@ -493,20 +493,16 @@
 			runDetailStores.clear();
 		};
 	});
-
-	const summaryCellClass = css({
-		display: 'block',
-		overflow: 'hidden',
-		textOverflow: 'ellipsis',
-		whiteSpace: 'nowrap'
-	});
 </script>
 
 <div
-	class={cx(
-		'builds-page',
-		css({ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' })
-	)}
+	class={css({
+		display: 'flex',
+		flexDirection: 'column',
+		height: '100%',
+		width: '100%'
+	})}
+	data-builds-page
 >
 	{#if !compact && !embedded}
 		<header
@@ -581,23 +577,25 @@
 				</div>
 			{/if}
 			<select
-				class={cx(
-					input(),
-					css({
-						backgroundColor: 'bg.primary',
-						paddingX: '3',
-						paddingY: '1.5',
-						fontSize: 'sm',
-						'& option': {
-							backgroundColor: 'bg.secondary',
-							color: 'fg.primary'
-						},
-						'& option:checked': {
-							backgroundColor: 'bg.accent',
-							color: 'accent.primary'
-						}
-					})
-				)}
+				class={css({
+					width: 'full',
+					borderWidth: '1',
+					borderRadius: '0',
+					transitionProperty: 'border-color',
+					transitionDuration: '160ms',
+					transitionTimingFunction: 'ease',
+					_focus: { outline: 'none' },
+					_focusVisible: { borderColor: 'border.accent' },
+					_disabled: { opacity: '0.5', cursor: 'not-allowed', backgroundColor: 'bg.tertiary' },
+					_placeholder: { color: 'fg.muted' },
+					paddingX: '3',
+					paddingY: '1.5',
+					fontSize: 'sm',
+					'& option:checked': {
+						backgroundColor: 'bg.accent',
+						color: 'accent.primary'
+					}
+				})}
 				id="builds-kind-filter"
 				aria-label="Filter by type"
 				bind:value={kindFilter}
@@ -609,23 +607,25 @@
 				<option value="row_count">Row Count</option>
 			</select>
 			<select
-				class={cx(
-					input(),
-					css({
-						backgroundColor: 'bg.primary',
-						paddingX: '3',
-						paddingY: '1.5',
-						fontSize: 'sm',
-						'& option': {
-							backgroundColor: 'bg.secondary',
-							color: 'fg.primary'
-						},
-						'& option:checked': {
-							backgroundColor: 'bg.accent',
-							color: 'accent.primary'
-						}
-					})
-				)}
+				class={css({
+					width: 'full',
+					borderWidth: '1',
+					borderRadius: '0',
+					transitionProperty: 'border-color',
+					transitionDuration: '160ms',
+					transitionTimingFunction: 'ease',
+					_focus: { outline: 'none' },
+					_focusVisible: { borderColor: 'border.accent' },
+					_disabled: { opacity: '0.5', cursor: 'not-allowed', backgroundColor: 'bg.tertiary' },
+					_placeholder: { color: 'fg.muted' },
+					paddingX: '3',
+					paddingY: '1.5',
+					fontSize: 'sm',
+					'& option:checked': {
+						backgroundColor: 'bg.accent',
+						color: 'accent.primary'
+					}
+				})}
 				id="builds-status-filter"
 				aria-label="Filter by status"
 				bind:value={statusFilter}
@@ -646,7 +646,24 @@
 				<span class={css({ color: 'fg.muted' })}>From</span>
 				<input
 					type="date"
-					class={cx(input(), css({ paddingY: '1', fontSize: 'sm', cursor: 'pointer' }))}
+					class={css({
+						width: 'full',
+						fontSize: 'sm',
+						color: 'fg.primary',
+						backgroundColor: 'bg.primary',
+						borderWidth: '1',
+						borderRadius: '0',
+						paddingX: '3.5',
+						paddingY: '1',
+						cursor: 'pointer',
+						transitionProperty: 'border-color',
+						transitionDuration: '160ms',
+						transitionTimingFunction: 'ease',
+						_focus: { outline: 'none' },
+						_focusVisible: { borderColor: 'border.accent' },
+						_disabled: { opacity: '0.5', cursor: 'not-allowed', backgroundColor: 'bg.tertiary' },
+						_placeholder: { color: 'fg.muted' }
+					})}
 					id="builds-date-from"
 					aria-label="From date"
 					bind:value={dateFrom}
@@ -654,7 +671,24 @@
 				<span class={css({ color: 'fg.muted' })}>To</span>
 				<input
 					type="date"
-					class={cx(input(), css({ paddingY: '1', fontSize: 'sm', cursor: 'pointer' }))}
+					class={css({
+						width: 'full',
+						fontSize: 'sm',
+						color: 'fg.primary',
+						backgroundColor: 'bg.primary',
+						borderWidth: '1',
+						borderRadius: '0',
+						paddingX: '3.5',
+						paddingY: '1',
+						cursor: 'pointer',
+						transitionProperty: 'border-color',
+						transitionDuration: '160ms',
+						transitionTimingFunction: 'ease',
+						_focus: { outline: 'none' },
+						_focusVisible: { borderColor: 'border.accent' },
+						_disabled: { opacity: '0.5', cursor: 'not-allowed', backgroundColor: 'bg.tertiary' },
+						_placeholder: { color: 'fg.muted' }
+					})}
 					id="builds-date-to"
 					aria-label="To date"
 					bind:value={dateTo}
@@ -799,12 +833,12 @@
 								? resolveName(run.analysis_id, analysisNames)
 								: ''}
 							data-build-output-name={engineRunOutputName(run) ?? ''}
-							class={cx(
-								css({
+							class={css(
+								{
 									cursor: 'pointer',
 									_hover: { backgroundColor: 'bg.hover' }
-								}),
-								expandedId === run.id && css({ backgroundColor: 'bg.secondary' })
+								},
+								expandedId === run.id && { backgroundColor: 'bg.secondary' }
 							)}
 							onclick={() => toggleExpand(run.id)}
 						>
@@ -828,10 +862,19 @@
 								})}
 							>
 								<span
-									class={cx(
-										summaryCellClass,
-										css({ display: 'inline-flex', alignItems: 'center', gap: '1.5' })
-									)}
+									class={[
+										css({
+											display: 'block',
+											overflow: 'hidden',
+											textOverflow: 'ellipsis',
+											whiteSpace: 'nowrap'
+										}),
+										css({
+											display: 'inline-flex',
+											alignItems: 'center',
+											gap: '1.5'
+										})
+									]}
 								>
 									{#if run.kind === 'datasource_create'}
 										<Database size={14} class={css({ color: 'accent.primary' })} />
@@ -885,10 +928,19 @@
 									})}
 								>
 									<span
-										class={cx(
-											summaryCellClass,
-											css({ display: 'inline-flex', alignItems: 'center', gap: '1.5' })
-										)}
+										class={[
+											css({
+												display: 'block',
+												overflow: 'hidden',
+												textOverflow: 'ellipsis',
+												whiteSpace: 'nowrap'
+											}),
+											css({
+												display: 'inline-flex',
+												alignItems: 'center',
+												gap: '1.5'
+											})
+										]}
 									>
 										{#if engineRunStatus(run) === 'running'}
 											<Loader
@@ -935,7 +987,14 @@
 								})}
 							>
 								<span
-									class={cx(summaryCellClass, css({ fontSize: 'xs', color: 'fg.secondary' }))}
+									class={css({
+										display: 'block',
+										overflow: 'hidden',
+										textOverflow: 'ellipsis',
+										whiteSpace: 'nowrap',
+										fontSize: 'xs',
+										color: 'fg.secondary'
+									})}
 									title={engineRunDatasourceId(run)}
 								>
 									{engineRunDatasourceName(run) ?? resolveName(engineRunDatasourceId(run), dsNames)}
@@ -950,7 +1009,14 @@
 							>
 								{#if run.analysis_id}
 									<span
-										class={cx(summaryCellClass, css({ fontSize: 'xs', color: 'fg.secondary' }))}
+										class={css({
+											display: 'block',
+											overflow: 'hidden',
+											textOverflow: 'ellipsis',
+											whiteSpace: 'nowrap',
+											fontSize: 'xs',
+											color: 'fg.secondary'
+										})}
 										title={run.analysis_id}
 									>
 										{resolveName(run.analysis_id, analysisNames)}
@@ -968,7 +1034,14 @@
 							>
 								{#if engineRunOutputName(run)}
 									<span
-										class={cx(summaryCellClass, css({ fontSize: 'xs', color: 'fg.secondary' }))}
+										class={css({
+											display: 'block',
+											overflow: 'hidden',
+											textOverflow: 'ellipsis',
+											whiteSpace: 'nowrap',
+											fontSize: 'xs',
+											color: 'fg.secondary'
+										})}
 										title={engineRunOutputName(run) ?? ''}
 									>
 										{engineRunOutputName(run)}

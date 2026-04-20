@@ -81,6 +81,7 @@ just dev             # start both servers
 - **Panda CSS** for all styling — custom inline styles only when Panda cannot express it
 - Never use `transition-all` — use specific properties (see Transitions below)
 - Use semantic color tokens from the design system, never raw hex/rgb values
+- In Svelte files, do not hide styling behind helpers or intermediate style constants. Avoid `const foo = css(...)`, `const fooStyle = { ... }`, `css(fooStyle, ...)`, or wrapper functions that return `css(...)`; prefer direct `class={css({...})}` at the use site.
 
 ### Transitions
 
@@ -131,3 +132,4 @@ See [`STYLE_GUIDE.md`](STYLE_GUIDE.md)
 - Build cancellation must be terminal-state authoritative: before writing success state, re-check persisted run status and preserve `cancelled` if another request set it mid-flight, otherwise cancellation can be overwritten by late success finalization.
 - Do not run frontend e2e specs directly with Playwright/Bun commands; use `just test-e2e` only so the intended environment and orchestration stay consistent.
 - Monitoring builds architecture is strict: no polling, no separate live-preview row, no build-list websocket auto-refresh for history rows. Start builds via HTTP, show new history rows only after explicit refresh, and use websocket only for live preview/detail on the running build itself.
+- Do not run `just verify` and `just test-e2e` in parallel. `just verify` rewrites/generated frontend artifacts and can trigger Vite reloads during Playwright, causing false `net::ERR_ABORTED`, missing shell/navigation elements, and flaky option/list assertions. Run them sequentially.

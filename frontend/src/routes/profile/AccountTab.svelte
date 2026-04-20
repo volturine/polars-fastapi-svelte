@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { css, cx, button, input, label, spinner } from '$lib/styles/panda';
+	import { css, button, input, label, spinner } from '$lib/styles/panda';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { configStore } from '$lib/stores/config.svelte';
 	import { updateProfile, changePassword, unlinkProvider, getMe } from '$lib/api/auth';
@@ -100,24 +100,6 @@
 		unlinking = null;
 	}
 
-	const card = css({
-		backgroundColor: 'bg.panel',
-		borderWidth: '1',
-		padding: '6',
-		display: 'flex',
-		flexDirection: 'column',
-		gap: '5'
-	});
-
-	const heading = css({
-		fontSize: 'md',
-		fontWeight: 'semibold',
-		color: 'fg.primary',
-		paddingBottom: '3',
-		borderBottomWidth: '1',
-		borderColor: 'border.primary'
-	});
-
 	const alert = (kind: 'success' | 'error') =>
 		css({
 			backgroundColor: kind === 'success' ? 'bg.success' : 'bg.error',
@@ -131,8 +113,28 @@
 </script>
 
 <div class={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>
-	<div class={card}>
-		<h2 class={heading}>Profile</h2>
+	<div
+		class={css({
+			backgroundColor: 'bg.panel',
+			borderWidth: '1',
+			padding: '6',
+			display: 'flex',
+			flexDirection: 'column',
+			gap: '5'
+		})}
+	>
+		<h2
+			class={css({
+				fontSize: 'md',
+				fontWeight: 'semibold',
+				color: 'fg.primary',
+				paddingBottom: '3',
+				borderBottomWidth: '1',
+				borderColor: 'border.primary'
+			})}
+		>
+			Profile
+		</h2>
 
 		{#if message}
 			<div class={alert(message.kind)}>{message.text}</div>
@@ -147,7 +149,25 @@
 				<input
 					id="email"
 					type="email"
-					class={cx(input(), css({ opacity: '0.6', cursor: 'not-allowed' }))}
+					class={css({
+						width: 'full',
+						fontSize: 'sm2',
+						color: 'fg.primary',
+						backgroundColor: 'bg.primary',
+						borderWidth: '1',
+						borderRadius: '0',
+						paddingX: '3.5',
+						paddingY: '2.25',
+						opacity: '0.6',
+						cursor: 'not-allowed',
+						transitionProperty: 'border-color',
+						transitionDuration: '160ms',
+						transitionTimingFunction: 'ease',
+						_focus: { outline: 'none' },
+						_focusVisible: { borderColor: 'border.accent' },
+						_disabled: { opacity: '0.5', cursor: 'not-allowed', backgroundColor: 'bg.tertiary' },
+						_placeholder: { color: 'fg.muted' }
+					})}
 					value={authStore.user?.email ?? ''}
 					disabled
 				/>
@@ -180,8 +200,28 @@
 	</div>
 
 	{#if editable}
-		<div class={card}>
-			<h2 class={heading}>Password</h2>
+		<div
+			class={css({
+				backgroundColor: 'bg.panel',
+				borderWidth: '1',
+				padding: '6',
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '5'
+			})}
+		>
+			<h2
+				class={css({
+					fontSize: 'md',
+					fontWeight: 'semibold',
+					color: 'fg.primary',
+					paddingBottom: '3',
+					borderBottomWidth: '1',
+					borderColor: 'border.primary'
+				})}
+			>
+				Password
+			</h2>
 
 			{#if pwMessage}
 				<div class={alert(pwMessage.kind)}>{pwMessage.text}</div>
@@ -243,8 +283,28 @@
 			</form>
 		</div>
 
-		<div class={card}>
-			<h2 class={heading}>Connected accounts</h2>
+		<div
+			class={css({
+				backgroundColor: 'bg.panel',
+				borderWidth: '1',
+				padding: '6',
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '5'
+			})}
+		>
+			<h2
+				class={css({
+					fontSize: 'md',
+					fontWeight: 'semibold',
+					color: 'fg.primary',
+					paddingBottom: '3',
+					borderBottomWidth: '1',
+					borderColor: 'border.primary'
+				})}
+			>
+				Connected accounts
+			</h2>
 
 			{#if linkMessage}
 				<div class={alert(linkMessage.kind)}>{linkMessage.text}</div>
@@ -345,8 +405,26 @@
 			</div>
 		</div>
 
-		<div class={card}>
-			<h2 class={cx(heading, css({ color: 'fg.error', borderColor: 'border.error' }))}>
+		<div
+			class={css({
+				backgroundColor: 'bg.panel',
+				borderWidth: '1',
+				padding: '6',
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '5'
+			})}
+		>
+			<h2
+				class={css({
+					fontSize: 'md',
+					fontWeight: 'semibold',
+					color: 'fg.error',
+					paddingBottom: '3',
+					borderBottomWidth: '1',
+					borderColor: 'border.error'
+				})}
+			>
 				Danger zone
 			</h2>
 

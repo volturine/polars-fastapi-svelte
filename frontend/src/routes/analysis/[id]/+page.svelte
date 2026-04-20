@@ -54,7 +54,7 @@
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import { schemaStore } from '$lib/stores/schema.svelte';
-	import { css, cx, spinner, button, input } from '$lib/styles/panda';
+	import { css, spinner, button } from '$lib/styles/panda';
 	import {
 		Lock,
 		LockOpen,
@@ -1205,7 +1205,13 @@
 			{analysisQuery.error instanceof Error ? analysisQuery.error.message : 'Unknown error'}
 		</p>
 		<button
-			class={cx(button({ variant: 'primary' }), css({ marginTop: '4' }))}
+			class={css({
+				borderWidth: '1',
+				backgroundColor: 'accent.primary',
+				color: 'fg.inverse',
+				marginTop: '4',
+				'&:hover:not(:disabled)': { opacity: '0.9' }
+			})}
 			onclick={() => goto(resolve('/analysis/new'))}
 			type="button"
 		>
@@ -1909,9 +1915,10 @@
 		>
 			<div role="tablist" aria-label="Export format" class={css({ display: 'flex', gap: '1' })}>
 				<button
-					class={cx(
-						button({ variant: exportFormat === 'polars' ? 'primary' : 'secondary', size: 'sm' })
-					)}
+					class={button({
+						variant: exportFormat === 'polars' ? 'primary' : 'secondary',
+						size: 'sm'
+					})}
 					type="button"
 					role="tab"
 					aria-selected={exportFormat === 'polars'}
@@ -1921,9 +1928,7 @@
 					Polars (Python)
 				</button>
 				<button
-					class={cx(
-						button({ variant: exportFormat === 'sql' ? 'primary' : 'secondary', size: 'sm' })
-					)}
+					class={button({ variant: exportFormat === 'sql' ? 'primary' : 'secondary', size: 'sm' })}
 					type="button"
 					role="tab"
 					aria-selected={exportFormat === 'sql'}
@@ -1935,7 +1940,7 @@
 			</div>
 			<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 				<button
-					class={cx(button({ variant: 'secondary', size: 'sm' }))}
+					class={button({ variant: 'secondary', size: 'sm' })}
 					type="button"
 					onclick={copyExportCode}
 					disabled={!exportCode || exportLoading}
@@ -1945,7 +1950,7 @@
 					{exportCopied ? 'Copied' : 'Copy to Clipboard'}
 				</button>
 				<button
-					class={cx(button({ variant: 'secondary', size: 'sm' }))}
+					class={button({ variant: 'secondary', size: 'sm' })}
 					type="button"
 					onclick={downloadExportCodeFile}
 					disabled={!exportCode || exportLoading}
@@ -2157,16 +2162,27 @@
 							{#if editingVersionId === version.id}
 								<input
 									type="text"
-									class={cx(
-										input(),
-										css({
-											fontSize: 'sm',
-											fontWeight: 'semibold',
-											backgroundColor: 'transparent',
-											paddingX: '1',
-											paddingY: '0.5'
-										})
-									)}
+									class={css({
+										width: 'full',
+										color: 'fg.primary',
+										borderWidth: '1',
+										borderRadius: '0',
+										transitionProperty: 'border-color',
+										transitionDuration: '160ms',
+										transitionTimingFunction: 'ease',
+										_focus: { outline: 'none' },
+										_focusVisible: { borderColor: 'border.accent' },
+										_disabled: {
+											opacity: '0.5',
+											cursor: 'not-allowed'
+										},
+										_placeholder: { color: 'fg.muted' },
+										fontSize: 'sm',
+										fontWeight: 'semibold',
+										backgroundColor: 'transparent',
+										paddingX: '1',
+										paddingY: '0.5'
+									})}
 									id="version-name-{version.id}"
 									aria-label="Version name"
 									bind:value={editingVersionName}
@@ -2223,7 +2239,7 @@
 								<Trash2 size={14} />
 							</button>
 							<button
-								class={cx(button({ variant: 'secondary', size: 'sm' }))}
+								class={button({ variant: 'secondary', size: 'sm' })}
 								data-testid="version-restore-{version.version}"
 								onclick={() => handleRestoreVersion(version.version)}
 								type="button"

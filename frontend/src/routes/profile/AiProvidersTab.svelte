@@ -132,29 +132,6 @@
 		testingProvider = null;
 	}
 
-	const card = css({
-		backgroundColor: 'bg.panel',
-		borderWidth: '1',
-		padding: '6',
-		display: 'flex',
-		flexDirection: 'column',
-		gap: '4'
-	});
-
-	const providerHeader = css({
-		display: 'flex',
-		alignItems: 'center',
-		justifyContent: 'space-between'
-	});
-
-	const testBtn = css({
-		borderWidth: '1',
-		paddingX: '2',
-		paddingY: '1',
-		fontSize: 'xs',
-		_disabled: { opacity: '0.5', cursor: 'not-allowed' }
-	});
-
 	const feedbackStyle = (type: 'success' | 'error') =>
 		css({
 			display: 'flex',
@@ -201,11 +178,32 @@
 			</div>
 		{/if}
 
-		<div class={card}>
-			<div class={providerHeader}>
+		<div
+			class={css({
+				backgroundColor: 'bg.panel',
+				borderWidth: '1',
+				padding: '6',
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '4'
+			})}
+		>
+			<div
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'space-between'
+				})}
+			>
 				<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>OpenRouter</span>
 				<button
-					class={testBtn}
+					class={css({
+						borderWidth: '1',
+						paddingX: '2',
+						paddingY: '1',
+						fontSize: 'xs',
+						_disabled: { opacity: '0.5', cursor: 'not-allowed' }
+					})}
 					onclick={() => void handleTestAIProvider('openrouter')}
 					disabled={testingProvider === 'openrouter'}
 					aria-label="Test OpenRouter"
@@ -235,11 +233,32 @@
 			</label>
 		</div>
 
-		<div class={card}>
-			<div class={providerHeader}>
+		<div
+			class={css({
+				backgroundColor: 'bg.panel',
+				borderWidth: '1',
+				padding: '6',
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '4'
+			})}
+		>
+			<div
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'space-between'
+				})}
+			>
 				<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>OpenAI</span>
 				<button
-					class={testBtn}
+					class={css({
+						borderWidth: '1',
+						paddingX: '2',
+						paddingY: '1',
+						fontSize: 'xs',
+						_disabled: { opacity: '0.5', cursor: 'not-allowed' }
+					})}
 					onclick={() => void handleTestAIProvider('openai')}
 					disabled={testingProvider === 'openai'}
 					aria-label="Test OpenAI"
@@ -281,11 +300,32 @@
 			</label>
 		</div>
 
-		<div class={card}>
-			<div class={providerHeader}>
+		<div
+			class={css({
+				backgroundColor: 'bg.panel',
+				borderWidth: '1',
+				padding: '6',
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '4'
+			})}
+		>
+			<div
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'space-between'
+				})}
+			>
 				<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>Ollama</span>
 				<button
-					class={testBtn}
+					class={css({
+						borderWidth: '1',
+						paddingX: '2',
+						paddingY: '1',
+						fontSize: 'xs',
+						_disabled: { opacity: '0.5', cursor: 'not-allowed' }
+					})}
 					onclick={() => void handleTestAIProvider('ollama')}
 					disabled={testingProvider === 'ollama'}
 					aria-label="Test Ollama"
@@ -312,11 +352,32 @@
 			</div>
 		</div>
 
-		<div class={card}>
-			<div class={providerHeader}>
+		<div
+			class={css({
+				backgroundColor: 'bg.panel',
+				borderWidth: '1',
+				padding: '6',
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '4'
+			})}
+		>
+			<div
+				class={css({
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'space-between'
+				})}
+			>
 				<span class={css({ fontSize: 'sm', fontWeight: 'medium' })}>Hugging Face</span>
 				<button
-					class={testBtn}
+					class={css({
+						borderWidth: '1',
+						paddingX: '2',
+						paddingY: '1',
+						fontSize: 'xs',
+						_disabled: { opacity: '0.5', cursor: 'not-allowed' }
+					})}
 					onclick={() => void handleTestAIProvider('huggingface')}
 					disabled={testingProvider === 'huggingface'}
 					aria-label="Test Hugging Face"

@@ -26,7 +26,7 @@
 	import BuildPreview from '$lib/components/common/BuildPreview.svelte';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
-	import { css, cx, chip, input, label } from '$lib/styles/panda';
+	import { css, chip } from '$lib/styles/panda';
 	import {
 		Bell,
 		CalendarClock,
@@ -562,14 +562,19 @@
 				</span>
 			</div>
 			<span
-				class={cx(
-					chip({ tone: 'neutral' }),
-					css({
-						borderWidth: '1',
-						letterSpacing: 'widest',
-						color: 'fg.faint'
-					})
-				)}>sink</span
+				class={css({
+					display: 'inline-flex',
+					alignItems: 'center',
+					paddingX: '1.5',
+					paddingY: '0.5',
+					fontSize: '2xs',
+					fontWeight: 'medium',
+					textTransform: 'uppercase',
+					letterSpacing: 'widest',
+					backgroundColor: 'bg.tertiary',
+					borderWidth: '1',
+					color: 'fg.faint'
+				})}>sink</span
 			>
 		</div>
 
@@ -607,15 +612,27 @@
 					{#if editingName}
 						<div class={css({ display: 'flex', alignItems: 'center', gap: '1' })}>
 							<input
-								class={cx(
-									input(),
-									css({
-										minWidth: 'fieldSm',
-										paddingX: '2',
-										paddingY: '0.5',
-										fontSize: 'sm'
-									})
-								)}
+								class={css({
+									width: 'full',
+									color: 'fg.primary',
+									borderWidth: '1',
+									borderRadius: '0',
+									transitionProperty: 'border-color',
+									transitionDuration: '160ms',
+									transitionTimingFunction: 'ease',
+									_focus: { outline: 'none' },
+									_focusVisible: { borderColor: 'border.accent' },
+									_disabled: {
+										opacity: '0.5',
+										cursor: 'not-allowed',
+										backgroundColor: 'bg.tertiary'
+									},
+									_placeholder: { color: 'fg.muted' },
+									minWidth: 'fieldSm',
+									paddingX: '2',
+									paddingY: '0.5',
+									fontSize: 'sm'
+								})}
 								id="output-node-name"
 								bind:value={draftName}
 								onkeydown={(e) => {
@@ -686,9 +703,7 @@
 									justifyContent: 'center',
 									borderWidth: '1',
 									color: 'fg.muted',
-									backgroundColor: 'bg.primary',
 									padding: '0',
-									opacity: '0.5',
 									lineHeight: '1',
 									_hover: {
 										backgroundColor: 'bg.tertiary',
@@ -815,39 +830,34 @@
 							</div>
 						{:else}
 							<div
-								class={cx(
-									css({
-										position: 'relative',
-										display: 'flex',
-										flexDirection: 'column',
-										gap: '2',
-										minWidth: 'inputSm'
-									}),
-									css({ position: 'relative' })
-								)}
+								class={css({
+									display: 'flex',
+									flexDirection: 'column',
+									gap: '2',
+									minWidth: 'inputSm',
+									position: 'relative'
+								})}
 								bind:this={modeMenuRef}
 							>
 								<button
 									type="button"
-									class={cx(
-										css({
-											display: 'flex',
-											alignItems: 'center',
-											gap: '2',
-											paddingX: '3',
-											paddingY: '2',
-											borderWidth: '1',
-											backgroundColor: 'bg.secondary',
-											cursor: 'pointer',
-											justifyContent: 'space-between',
-											fontSize: 'sm',
-											_focusVisible: {
-												outline: '2px solid {colors.accent.secondary}',
-												outlineOffset: '2px'
-											}
-										}),
-										css({ width: '100%' })
-									)}
+									class={css({
+										display: 'flex',
+										alignItems: 'center',
+										gap: '2',
+										paddingX: '3',
+										paddingY: '2',
+										borderWidth: '1',
+										backgroundColor: 'bg.secondary',
+										cursor: 'pointer',
+										justifyContent: 'space-between',
+										fontSize: 'sm',
+										_focusVisible: {
+											outline: '2px solid {colors.accent.secondary}',
+											outlineOffset: '2px'
+										},
+										width: '100%'
+									})}
 									onclick={() => (modeMenuOpen = !modeMenuOpen)}
 									aria-expanded={modeMenuOpen}
 									bind:this={modeTriggerRef}
@@ -902,8 +912,8 @@
 											{#each ['full', 'incremental', 'recreate'] as mode (mode)}
 												<button
 													type="button"
-													class={cx(
-														css({
+													class={css(
+														{
 															minWidth: '0',
 															width: '100%',
 															paddingX: '3',
@@ -920,8 +930,8 @@
 															fontSize: 'sm',
 															'& span': { minWidth: '0', overflowWrap: 'anywhere' },
 															_hover: { backgroundColor: 'bg.hover' }
-														}),
-														outputConfig.build_mode === mode && css({ backgroundColor: 'bg.hover' })
+														},
+														outputConfig.build_mode === mode && { backgroundColor: 'bg.hover' }
 													)}
 													onclick={() => {
 														updateOutputConfig({ build_mode: mode });
@@ -979,7 +989,6 @@
 					justifyContent: 'center',
 					gap: '2',
 					borderWidth: '1',
-					backgroundColor: 'bg.secondary',
 					paddingY: '2',
 					paddingX: '3',
 					fontSize: 'xs',
@@ -1149,7 +1158,20 @@
 						})}
 						data-testid="output-notify-panel"
 					>
-						<label class={cx(label({ variant: 'checkbox' }), css({ gap: '2', fontSize: 'xs' }))}>
+						<label
+							class={css({
+								display: 'flex',
+								cursor: 'pointer',
+								alignItems: 'center',
+								gap: '2',
+								fontSize: 'xs',
+								fontWeight: 'normal',
+								color: 'fg.secondary',
+								textTransform: 'none',
+								letterSpacing: 'normal',
+								marginBottom: '0'
+							})}
+						>
 							<input
 								name="notify_enabled"
 								type="checkbox"
@@ -1273,21 +1295,40 @@
 
 								<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 									<label
-										class={cx(label(), css({ fontSize: '2xs' }))}
+										class={css({
+											display: 'block',
+											fontSize: '2xs',
+											fontWeight: 'semibold',
+											color: 'fg.muted',
+											marginBottom: '1.5',
+											textTransform: 'uppercase',
+											letterSpacing: 'wider'
+										})}
 										for={`${idPrefix}-notify-body`}
 									>
 										Message Template
 									</label>
 									<textarea
-										class={cx(
-											input(),
-											css({
-												backgroundColor: 'bg.secondary',
-												paddingY: '1',
-												paddingX: '2',
-												fontSize: 'xs'
-											})
-										)}
+										class={css({
+											width: 'full',
+											color: 'fg.primary',
+											borderWidth: '1',
+											borderRadius: '0',
+											transitionProperty: 'border-color',
+											transitionDuration: '160ms',
+											transitionTimingFunction: 'ease',
+											_focus: { outline: 'none' },
+											_focusVisible: { borderColor: 'border.accent' },
+											_disabled: {
+												opacity: '0.5',
+												cursor: 'not-allowed'
+											},
+											_placeholder: { color: 'fg.muted' },
+											backgroundColor: 'bg.secondary',
+											paddingY: '1',
+											paddingX: '2',
+											fontSize: 'xs'
+										})}
 										id={`${idPrefix}-notify-body`}
 										rows="3"
 										value={notifyConfig.body_template}
@@ -1340,14 +1381,15 @@
 					</span>
 					{#if healthCount > 0}
 						<span
-							class={cx(
-								css({ paddingX: '1.5', paddingY: '0.5', fontSize: '2xs' }),
-								healthPassed === true &&
-									css({ backgroundColor: 'bg.success', color: 'fg.success' }),
-								healthPassed === false && css({ backgroundColor: 'bg.error', color: 'fg.error' }),
+							class={css(
+								{ paddingX: '1.5', paddingY: '0.5', fontSize: '2xs' },
+								healthPassed === true && { backgroundColor: 'bg.success', color: 'fg.success' },
+								healthPassed === false && { backgroundColor: 'bg.error', color: 'fg.error' },
 								healthPassed !== true &&
-									healthPassed !== false &&
-									css({ backgroundColor: 'bg.accent', color: 'accent.primary' })
+									healthPassed !== false && {
+										backgroundColor: 'bg.accent',
+										color: 'accent.primary'
+									}
 							)}
 						>
 							{healthCount}

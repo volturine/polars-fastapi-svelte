@@ -7,7 +7,7 @@
 	import OutputNode from './OutputNode.svelte';
 	import ConnectionLine from './ConnectionLine.svelte';
 	import DatasourceNode from './DatasourceNode.svelte';
-	import { css, cx } from '$lib/styles/panda';
+	import { css } from '$lib/styles/panda';
 	import { ClipboardPaste, Plus, Eye, ArrowDown } from 'lucide-svelte';
 	import { stepTypes, isChartStep } from './utils';
 
@@ -319,7 +319,7 @@
 		return () => window.clearInterval(intervalId);
 	});
 
-	const insertControls = cx(
+	const insertControls = [
 		'insert-controls-group',
 		css({
 			display: 'flex',
@@ -333,32 +333,7 @@
 			transitionDuration: '150ms',
 			zIndex: '2'
 		})
-	);
-
-	const insertBtn = css({
-		display: 'inline-flex',
-		alignItems: 'center',
-		justifyContent: 'center',
-		padding: '0.5',
-		borderRadius: 'xs',
-		color: 'fg.faint',
-		backgroundColor: 'transparent',
-		border: 'none',
-		cursor: 'pointer',
-		transitionProperty: 'color',
-		transitionDuration: '150ms',
-		_hover: {
-			color: 'fg.primary'
-		}
-	});
-
-	const inertPlus = css({
-		display: 'inline-flex',
-		alignItems: 'center',
-		justifyContent: 'center',
-		padding: '0.5',
-		color: 'fg.faint'
-	});
+	];
 </script>
 
 <div
@@ -374,7 +349,7 @@
 >
 	<div
 		bind:this={canvasEl}
-		class={cx(
+		class={[
 			'pipeline-canvas',
 			css({
 				flex: '1',
@@ -382,7 +357,7 @@
 				padding: '8',
 				backgroundColor: 'bg.secondary'
 			})
-		)}
+		]}
 	>
 		<div
 			class={css({
@@ -408,7 +383,7 @@
 			/>
 			{#if shouldShowInsert(0)}
 				<div
-					class={cx(
+					class={[
 						'insert-zone',
 						css({
 							display: 'flex',
@@ -418,7 +393,7 @@
 							alignItems: 'center',
 							paddingY: '0'
 						})
-					)}
+					]}
 					class:ready={canDrop}
 					role="listitem"
 					data-hook="insert-zone"
@@ -505,13 +480,54 @@
 							{/if}
 							{#if !readOnly}
 								<div class={insertControls}>
-									<button class={insertBtn} title="Insert view" onclick={() => handleInsertView(0)}>
+									<button
+										class={css({
+											display: 'inline-flex',
+											alignItems: 'center',
+											justifyContent: 'center',
+											padding: '0.5',
+											borderRadius: 'xs',
+											backgroundColor: 'transparent',
+											border: 'none',
+											cursor: 'pointer',
+											transitionProperty: 'color',
+											transitionDuration: '150ms',
+											_hover: { color: 'fg.primary' }
+										})}
+										title="Insert view"
+										onclick={() => handleInsertView(0)}
+									>
 										<Eye size={14} />
 									</button>
-									<div class={inertPlus} aria-hidden="true">
+									<div
+										class={css({
+											display: 'inline-flex',
+											alignItems: 'center',
+											justifyContent: 'center',
+											padding: '0.5',
+											color: 'fg.faint'
+										})}
+										aria-hidden="true"
+									>
 										<Plus size={14} />
 									</div>
-									<button class={insertBtn} title="Paste step" onclick={() => handlePaste(0)}>
+									<button
+										class={css({
+											display: 'inline-flex',
+											alignItems: 'center',
+											justifyContent: 'center',
+											padding: '0.5',
+											borderRadius: 'xs',
+											backgroundColor: 'transparent',
+											border: 'none',
+											cursor: 'pointer',
+											transitionProperty: 'color',
+											transitionDuration: '150ms',
+											_hover: { color: 'fg.primary' }
+										})}
+										title="Paste step"
+										onclick={() => handlePaste(0)}
+									>
 										<ClipboardPaste size={14} />
 									</button>
 								</div>
@@ -547,7 +563,7 @@
 				/>
 				{#if shouldShowInsert(i + 1)}
 					<div
-						class={cx(
+						class={[
 							'insert-zone',
 							css({
 								display: 'flex',
@@ -557,7 +573,7 @@
 								alignItems: 'center',
 								paddingY: '0'
 							})
-						)}
+						]}
 						class:ready={canDrop}
 						role="listitem"
 						data-hook="insert-zone"
@@ -644,16 +660,53 @@
 								{#if !readOnly}
 									<div class={insertControls}>
 										<button
-											class={insertBtn}
+											class={css({
+												display: 'inline-flex',
+												alignItems: 'center',
+												justifyContent: 'center',
+												padding: '0.5',
+												borderRadius: 'xs',
+												backgroundColor: 'transparent',
+												border: 'none',
+												cursor: 'pointer',
+												transitionProperty: 'color',
+												transitionDuration: '150ms',
+												_hover: { color: 'fg.primary' }
+											})}
 											title="Insert view"
 											onclick={() => handleInsertView(i + 1)}
 										>
 											<Eye size={14} />
 										</button>
-										<div class={inertPlus} aria-hidden="true">
+										<div
+											class={css({
+												display: 'inline-flex',
+												alignItems: 'center',
+												justifyContent: 'center',
+												padding: '0.5',
+												color: 'fg.faint'
+											})}
+											aria-hidden="true"
+										>
 											<Plus size={14} />
 										</div>
-										<button class={insertBtn} title="Paste step" onclick={() => handlePaste(i + 1)}>
+										<button
+											class={css({
+												display: 'inline-flex',
+												alignItems: 'center',
+												justifyContent: 'center',
+												padding: '0.5',
+												borderRadius: 'xs',
+												backgroundColor: 'transparent',
+												border: 'none',
+												cursor: 'pointer',
+												transitionProperty: 'color',
+												transitionDuration: '150ms',
+												_hover: { color: 'fg.primary' }
+											})}
+											title="Paste step"
+											onclick={() => handlePaste(i + 1)}
+										>
 											<ClipboardPaste size={14} />
 										</button>
 									</div>
@@ -688,9 +741,12 @@
 					<ConnectionLine fromStepIndex={-1} toStepIndex={0} totalSteps={1} />
 				</div>
 			{/if}
-		<div bind:this={outputEl} class={css({ width: '100%', display: 'flex', justifyContent: 'center' })}>
-			<OutputNode {buildStore} {analysisId} {datasourceId} {activeTab} {readOnly} />
-		</div>
+			<div
+				bind:this={outputEl}
+				class={css({ width: '100%', display: 'flex', justifyContent: 'center' })}
+			>
+				<OutputNode {buildStore} {analysisId} {datasourceId} {activeTab} {readOnly} />
+			</div>
 		</div>
 		{#if pasteError}
 			<div
@@ -728,10 +784,8 @@
 				width: '10',
 				height: '10',
 				borderRadius: 'md',
-				backgroundColor: 'bg.primary',
 				borderWidth: '1',
 				borderColor: 'border.primary',
-				color: 'fg.muted',
 				cursor: 'pointer',
 				boxShadow: 'md',
 				transitionProperty: 'color, background-color, border-color',

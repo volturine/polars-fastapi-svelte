@@ -10,7 +10,13 @@ from modules.locks.schemas import LockStatusResponse
 
 
 def _utcnow() -> datetime:
-    return datetime.now(UTC).replace(tzinfo=None)
+    return datetime.now(UTC)
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is not None:
+        return value.astimezone(UTC)
+    return value.replace(tzinfo=UTC)
 
 
 def _expires_at(now: datetime, ttl_seconds: int | None) -> datetime:
@@ -19,7 +25,8 @@ def _expires_at(now: datetime, ttl_seconds: int | None) -> datetime:
 
 
 def _status(lock: ResourceLock, now: datetime | None = None) -> LockStatusResponse:
-    current = now or _utcnow()
+    current = _as_utc(now or _utcnow())
+    expires_at = _as_utc(lock.expires_at)
     return LockStatusResponse(
         resource_type=lock.resource_type,
         resource_id=lock.resource_id,
@@ -28,7 +35,7 @@ def _status(lock: ResourceLock, now: datetime | None = None) -> LockStatusRespon
         acquired_at=lock.acquired_at,
         expires_at=lock.expires_at,
         last_heartbeat=lock.last_heartbeat,
-        is_expired=lock.expires_at <= current,
+        is_expired=expires_at <= current,
     )
 
 
@@ -41,7 +48,7 @@ def lookup_lock_status(session: Session, resource_type: str, resource_id: str) -
     if lock is None:
         return None, False
     now = _utcnow()
-    if lock.expires_at <= now:
+    if _as_utc(lock.expires_at) <= now:
         session.delete(lock)
         session.commit()
         return None, True
@@ -84,7 +91,7 @@ def acquire_lock(
         else:
             session.refresh(lock)
             return _status(lock, now)
-    if lock.owner_id == owner_id or lock.expires_at <= now:
+    if lock.owner_id == owner_id or _as_utc(lock.expires_at) <= now:
         lock.owner_id = owner_id
         lock.lock_token = uuid.uuid4().hex
         lock.acquired_at = now
@@ -107,7 +114,7 @@ def heartbeat_lock(
 ) -> LockStatusResponse:
     now = _utcnow()
     lock = get_lock(session, resource_type, resource_id)
-    if lock is None or lock.expires_at <= now:
+    if lock is None or _as_utc(lock.expires_at) <= now:
         raise ValueError(f'{resource_type} {resource_id} lock is not active')
     if lock.owner_id != owner_id or lock.lock_token != lock_token:
         raise ValueError(f'{resource_type} {resource_id} lock is owned by another owner')
@@ -135,7 +142,7 @@ def release_lock(
     lock = get_lock(session, resource_type, resource_id)
     if lock is None:
         return False
-    if lock.expires_at <= now:
+    if _as_utc(lock.expires_at) <= now:
         session.delete(lock)
         session.commit()
         return False
@@ -151,7 +158,7 @@ def ensure_mutation_lock(session: Session, resource_type: str, resource_id: str,
     lock = get_lock(session, resource_type, resource_id)
     if lock is None:
         return
-    if lock.expires_at <= now:
+    if _as_utc(lock.expires_at) <= now:
         session.delete(lock)
         session.commit()
         return

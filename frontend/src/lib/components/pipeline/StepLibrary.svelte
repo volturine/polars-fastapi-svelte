@@ -23,6 +23,8 @@
 	let longPressTimer = $state<number | null>(null);
 	let pointerStartX = $state<number | null>(null);
 	let pointerStartY = $state<number | null>(null);
+	let pendingType = $state<string | null>(null);
+	let pendingPointerType = $state<string | null>(null);
 
 	const longPressDelay = 180;
 	const dragThreshold = 8;
@@ -44,6 +46,8 @@
 
 		pointerStartX = event.clientX;
 		pointerStartY = event.clientY;
+		pendingType = stepType;
+		pendingPointerType = event.pointerType;
 
 		// For touch inputs, require long press to prevent accidental drags
 		if (event.pointerType === 'touch') {
@@ -52,8 +56,6 @@
 			}, longPressDelay);
 			return;
 		}
-		// For mouse/trackpad, start drag immediately
-		initiateDrag(event, stepType);
 	}
 
 	function initiateDrag(event: PointerEvent, stepType: string) {
@@ -74,6 +76,8 @@
 		longPressTimer = null;
 		pointerStartX = null;
 		pointerStartY = null;
+		pendingType = null;
+		pendingPointerType = null;
 	}
 
 	function handlePointerMove(event: PointerEvent) {
@@ -82,9 +86,13 @@
 			const deltaX = Math.abs(event.clientX - pointerStartX);
 			const deltaY = Math.abs(event.clientY - pointerStartY);
 			const moved = deltaX > dragThreshold || deltaY > dragThreshold;
-			if (moved) {
+			if (!moved) return;
+			if (pendingPointerType === 'touch') {
 				cancelLongPress();
 				return;
+			}
+			if (pendingType) {
+				initiateDrag(event, pendingType);
 			}
 		}
 

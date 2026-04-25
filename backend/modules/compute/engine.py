@@ -349,11 +349,13 @@ class PolarsComputeEngine:
             if queue is None:
                 continue
             with contextlib.suppress(Exception):
-                queue.cancel_join_thread()
-            with contextlib.suppress(Exception):
                 queue.close()
             with contextlib.suppress(Exception):
                 queue.join_thread()
+
+    def __del__(self) -> None:
+        with contextlib.suppress(Exception):
+            self._close_queues()
 
     @staticmethod
     def _run_compute(
@@ -516,8 +518,6 @@ class PolarsComputeEngine:
                     )
         finally:
             for queue in (command_queue, result_queue, progress_queue):
-                with contextlib.suppress(Exception):
-                    queue.cancel_join_thread()
                 with contextlib.suppress(Exception):
                     queue.close()
                 with contextlib.suppress(Exception):

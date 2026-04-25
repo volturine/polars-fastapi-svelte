@@ -3,8 +3,21 @@ import { getClientIdentity } from '$lib/stores/clientIdentity.svelte';
 import { requireNamespace, isNamespaceReady } from '$lib/stores/namespace.svelte';
 import { track } from '$lib/utils/audit-log';
 
-// Always use relative paths - works in both dev (via proxy) and prod
 export const BASE_URL = '/api';
+
+function backendOrigin(): string {
+	const origin = import.meta.env.DEV
+		? `http://${window.location.hostname}:${import.meta.env.VITE_BACKEND_PORT ?? '8000'}`
+		: '';
+	return origin;
+}
+
+export function buildBackendUrl(endpoint: string): string {
+	const path = `${BASE_URL}${endpoint}`;
+	if (typeof window === 'undefined') return path;
+	if (!import.meta.env.DEV) return path;
+	return new URL(path, backendOrigin()).toString();
+}
 
 export type ApiErrorType = 'network' | 'http' | 'parse';
 
@@ -19,6 +32,10 @@ export interface ApiError {
 export interface ApiResponse<T> {
 	data: T;
 	headers: Headers;
+}
+
+export function buildApiUrl(endpoint: string): string {
+	return `${BASE_URL}${endpoint}`;
 }
 
 function trackParseError(endpoint: string, method?: string): void {
@@ -96,7 +113,7 @@ function apiFetch<T>(
 	const headers = buildHeaders(options);
 	const request = { ...options, headers } satisfies RequestInit;
 	return ResultAsync.fromPromise(
-		fetch(`${BASE_URL}${endpoint}`, request),
+		fetch(buildApiUrl(endpoint), request),
 		(error): ApiError =>
 			createApiError('network', error instanceof Error ? error.message : 'Network error')
 	).andThen((response) => {

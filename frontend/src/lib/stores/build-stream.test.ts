@@ -934,6 +934,7 @@ describe('BuildStreamStore', () => {
 			build_id: 'b-1',
 			analysis_id: 'a-1',
 			emitted_at: '2025-01-01T00:00:01Z',
+			sequence: 1,
 			current_kind: null,
 			current_datasource_id: null,
 			tab_id: null,

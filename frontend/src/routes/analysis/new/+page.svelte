@@ -11,7 +11,9 @@
 	import type { AnalysisCreate, PipelineStep } from '$lib/types/analysis';
 	import { buildOutputConfig, generateOutputName } from '$lib/utils/analysis-tab';
 	import { getDefaultConfig } from '$lib/utils/step-config-defaults';
+	import { uuid } from '$lib/utils/uuid';
 	import { css, spinner, button, label } from '$lib/styles/panda';
+	import { useNamespace } from '$lib/stores/namespace.svelte';
 
 	let step = $state(1);
 	let name = $state('');
@@ -19,16 +21,18 @@
 	let selectedDatasourceIds = $state<string[]>([]);
 	let error = $state('');
 	let creating = $state(false);
+	const ns = useNamespace();
 
 	const datasourcesQuery = createQuery(() => ({
-		queryKey: ['datasources'],
+		queryKey: ['datasources', ns.value],
 		queryFn: async () => {
 			const result = await listDatasources();
 			if (result.isErr()) {
 				throw new Error(result.error.message);
 			}
 			return result.value;
-		}
+		},
+		enabled: !ns.switching
 	}));
 
 	const canProceedStep1 = $derived(name.trim().length > 0);
@@ -39,7 +43,7 @@
 
 	function buildInitialSteps(): PipelineStep[] {
 		const step: PipelineStep = {
-			id: crypto.randomUUID(),
+			id: uuid(),
 			type: 'view',
 			config: getDefaultConfig('view') as Record<string, unknown>,
 			depends_on: [],
@@ -57,12 +61,12 @@
 		const tabs = selectedDatasourceIds.map((datasourceId, index) => {
 			const name = `Source ${index + 1}`;
 			const output = buildOutputConfig({
-				outputId: crypto.randomUUID(),
+				outputId: uuid(),
 				name: generateOutputName(),
 				branch: 'master'
 			});
 			return {
-				id: crypto.randomUUID(),
+				id: uuid(),
 				name,
 				parent_id: null,
 				datasource: {

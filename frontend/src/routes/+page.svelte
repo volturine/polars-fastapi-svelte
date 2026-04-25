@@ -13,18 +13,21 @@
 	import { toEpochDisplay } from '$lib/utils/datetime';
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import { css, spinner } from '$lib/styles/panda';
+	import { useNamespace } from '$lib/stores/namespace.svelte';
 
 	const queryClient = useQueryClient();
+	const ns = useNamespace();
 
 	const query = createQuery(() => ({
-		queryKey: ['analyses'],
+		queryKey: ['analyses', ns.value],
 		queryFn: async () => {
 			const result = await listAnalyses();
 			if (result.isErr()) {
 				throw new Error(result.error.message);
 			}
 			return result.value;
-		}
+		},
+		enabled: !ns.switching
 	}));
 
 	let searchQuery = $state('');
@@ -117,7 +120,7 @@
 
 		const result = await deleteAnalysis(id);
 		if (result.isOk()) {
-			queryClient.invalidateQueries({ queryKey: ['analyses'] });
+			queryClient.invalidateQueries({ queryKey: ['analyses', ns.value] });
 			selectedIds.delete(id);
 			deleteConfirmId = null;
 		} else {
@@ -144,7 +147,7 @@
 			if (result.isErr()) failed++;
 		}
 
-		queryClient.invalidateQueries({ queryKey: ['analyses'] });
+		queryClient.invalidateQueries({ queryKey: ['analyses', ns.value] });
 		selectedIds.clear();
 		bulkDeleteConfirm = false;
 

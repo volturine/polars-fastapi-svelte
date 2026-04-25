@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { createStream } from './websocket';
 
 vi.mock('$lib/stores/clientIdentity.svelte', () => ({
 	getClientIdentity: () => ({ clientId: 'client-1', clientSignature: 'signature-1' })
@@ -17,10 +16,12 @@ class MockWebSocket {
 
 	url: string;
 	readyState = 1;
+	closeCalls: Array<{ code?: number; reason?: string }> = [];
 	private listeners = new Map<string, Listener[]>();
 
 	static readonly OPEN = 1;
 	static readonly CONNECTING = 0;
+	static readonly CLOSED = 3;
 
 	constructor(url: string) {
 		this.url = url;
@@ -31,8 +32,41 @@ class MockWebSocket {
 		this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
 	}
 
-	close(_code?: number) {
-		this.readyState = 3;
+	close(code?: number, reason?: string) {
+		this.closeCalls.push({ code, reason });
+		this.readyState = MockWebSocket.CLOSED;
+	}
+
+	emit(type: string, event?: { data?: string; code?: number; reason?: string }) {
+		for (const listener of this.listeners.get(type) ?? []) {
+			listener(event);
+		}
+	}
+}
+
+class MockEventSource {
+	static instances: MockEventSource[] = [];
+	static readonly CONNECTING = 0;
+	static readonly OPEN = 1;
+	static readonly CLOSED = 2;
+
+	url: string;
+	readyState = MockEventSource.OPEN;
+	closeCalls = 0;
+	private listeners = new Map<string, Listener[]>();
+
+	constructor(url: string) {
+		this.url = url;
+		MockEventSource.instances.push(this);
+	}
+
+	addEventListener(type: string, listener: Listener) {
+		this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+	}
+
+	close() {
+		this.closeCalls += 1;
+		this.readyState = MockEventSource.CLOSED;
 	}
 
 	emit(type: string, event?: { data?: string; code?: number; reason?: string }) {
@@ -75,13 +109,21 @@ function extractEvent(msg: TestMessage): TestEvent {
 }
 
 describe('createStream', () => {
+	let createStream: typeof import('./websocket').createStream;
+	let createOwnedEventSource: typeof import('./websocket').createOwnedEventSource;
+	let closeOwnedEventSource: typeof import('./websocket').closeOwnedEventSource;
+
 	beforeEach(() => {
 		MockWebSocket.instances = [];
+		MockEventSource.instances = [];
 		vi.stubGlobal('WebSocket', MockWebSocket);
+		vi.stubGlobal('EventSource', MockEventSource);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		window.dispatchEvent(new Event('pagehide'));
 		vi.unstubAllGlobals();
+		vi.resetModules();
 	});
 
 	function connect(
@@ -92,6 +134,9 @@ describe('createStream', () => {
 			onClose?: () => void;
 		} = {}
 	) {
+		if (!createStream) {
+			throw new Error('createStream not loaded');
+		}
 		const callbacks = {
 			onSnapshot: overrides.onSnapshot ?? vi.fn(),
 			onEvent: overrides.onEvent ?? vi.fn(),
@@ -109,10 +154,16 @@ describe('createStream', () => {
 		return { handle, callbacks, socket };
 	}
 
+	beforeEach(async () => {
+		({ createOwnedEventSource, closeOwnedEventSource, createStream } = await import('./websocket'));
+	});
+
 	test('creates WebSocket with correct URL', () => {
 		connect();
 		expect(MockWebSocket.instances).toHaveLength(1);
-		expect(MockWebSocket.instances[0].url).toContain('/v1/test/ws');
+		expect(MockWebSocket.instances[0].url).toBe(
+			'ws://localhost:3000/api/v1/test/ws?namespace=default&client_id=client-1&client_signature=signature-1'
+		);
 	});
 
 	test('dispatches snapshot messages', () => {
@@ -171,6 +222,15 @@ describe('createStream', () => {
 		expect(onClose).toHaveBeenCalledOnce();
 	});
 
+	test('code 1001 close does not call onError', () => {
+		const onError = vi.fn();
+		const onClose = vi.fn();
+		const { socket } = connect({ onError, onClose });
+		socket.emit('close', { code: 1001, reason: 'Page unloading' });
+		expect(onError).not.toHaveBeenCalled();
+		expect(onClose).toHaveBeenCalledOnce();
+	});
+
 	test('abnormal close calls onError then onClose', () => {
 		const onError = vi.fn();
 		const onClose = vi.fn();
@@ -192,6 +252,7 @@ describe('createStream', () => {
 		expect(socket.readyState).toBe(1);
 		handle.close();
 		expect(socket.readyState).toBe(3);
+		expect(socket.closeCalls).toEqual([{ code: 1000, reason: undefined }]);
 	});
 
 	test('close() on already-closed socket is safe', () => {
@@ -216,5 +277,48 @@ describe('createStream', () => {
 		const socket = MockWebSocket.instances[MockWebSocket.instances.length - 1];
 		socket.emit('message', { data: JSON.stringify({ type: 'snapshot', items: ['x'] }) });
 		expect(onSnapshot).toHaveBeenCalledOnce();
+	});
+
+	test('pagehide closes owned sockets gracefully', () => {
+		const onError = vi.fn();
+		const { socket } = connect({ onError });
+		window.dispatchEvent(new Event('pagehide'));
+		expect(socket.readyState).toBe(3);
+		expect(socket.closeCalls).toEqual([{ code: 1001, reason: 'Page unloading' }]);
+		socket.emit('close', { code: 1001, reason: 'Page unloading' });
+		expect(onError).not.toHaveBeenCalled();
+	});
+
+	test('beforeunload closes connecting sockets', () => {
+		const { socket } = connect();
+		socket.readyState = MockWebSocket.CONNECTING;
+		window.dispatchEvent(new Event('beforeunload'));
+		expect(socket.readyState).toBe(3);
+		expect(socket.closeCalls).toEqual([{ code: 1001, reason: 'Page unloading' }]);
+	});
+
+	test('pagehide closes owned event sources', () => {
+		const source = createOwnedEventSource('http://localhost:8000/api/v1/ai/chat/stream/session-1');
+		expect(MockEventSource.instances).toHaveLength(1);
+		expect(source).toBe(MockEventSource.instances[0]);
+		window.dispatchEvent(new Event('pagehide'));
+		expect(MockEventSource.instances[0].readyState).toBe(MockEventSource.CLOSED);
+		expect(MockEventSource.instances[0].closeCalls).toBe(1);
+	});
+
+	test('manual event source close removes ownership before unload', () => {
+		const source = createOwnedEventSource('http://localhost:8000/api/v1/ai/chat/stream/session-2');
+		closeOwnedEventSource(source);
+		window.dispatchEvent(new Event('pagehide'));
+		expect(MockEventSource.instances[0].closeCalls).toBe(1);
+	});
+
+	test('closed event source error removes ownership before unload', () => {
+		createOwnedEventSource('http://localhost:8000/api/v1/ai/chat/stream/session-3');
+		const source = MockEventSource.instances[0];
+		source.readyState = MockEventSource.CLOSED;
+		source.emit('error');
+		window.dispatchEvent(new Event('beforeunload'));
+		expect(source.closeCalls).toBe(0);
 	});
 });

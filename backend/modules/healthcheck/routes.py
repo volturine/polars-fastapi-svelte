@@ -15,15 +15,22 @@ router = MCPRouter(prefix='/healthchecks', tags=['healthchecks'])
 
 @router.get('', response_model=list[schemas.HealthCheckResponse], mcp=True)
 @handle_errors(operation='list healthchecks')
-def list_healthchecks(datasource_id: str, session: Session = Depends(get_db)):
-    """List all healthchecks for a datasource. Requires datasource_id (from GET /datasource)."""
+async def list_healthchecks(datasource_id: str, session: Session = Depends(get_db)):
+    """List healthchecks for a datasource."""
     return service.list_healthchecks(session, parse_datasource_id(datasource_id))
+
+
+@router.get('/all', response_model=list[schemas.HealthCheckResponse], mcp=True)
+@handle_errors(operation='list all healthchecks')
+async def list_all_healthchecks(session: Session = Depends(get_db)):
+    """List healthchecks across all datasources."""
+    return service.list_all_healthchecks(session)
 
 
 @router.get('/results', response_model=list[schemas.HealthCheckResultResponse], mcp=True)
 @handle_errors(operation='list healthcheck results')
-def list_results(datasource_id: str, limit: int = 10, session: Session = Depends(get_db)):
-    """List recent healthcheck results for a datasource. Returns the last N results (default 10)."""
+async def list_results(datasource_id: str, limit: int = 10, session: Session = Depends(get_db)):
+    """List recent healthcheck results for a datasource."""
     parsed_id = parse_datasource_id(datasource_id)
     try:
         uuid.UUID(parsed_id)
@@ -32,9 +39,16 @@ def list_results(datasource_id: str, limit: int = 10, session: Session = Depends
     return service.list_results(session, parsed_id, limit)
 
 
+@router.get('/results/all', response_model=list[schemas.HealthCheckResultResponse], mcp=True)
+@handle_errors(operation='list all healthcheck results')
+async def list_all_results(limit: int = 10, session: Session = Depends(get_db)):
+    """List recent healthcheck results across all datasources."""
+    return service.list_all_results(session, limit)
+
+
 @router.post('', response_model=schemas.HealthCheckResponse, mcp=True)
 @handle_errors(operation='create healthcheck')
-def create_healthcheck(payload: schemas.HealthCheckCreate, session: Session = Depends(get_db)):
+async def create_healthcheck(payload: schemas.HealthCheckCreate, session: Session = Depends(get_db)):
     """Create a healthcheck for a datasource.
 
     Requires: datasource_id, name, check_type (one of: row_count, null_check, schema_check,
@@ -46,17 +60,17 @@ def create_healthcheck(payload: schemas.HealthCheckCreate, session: Session = De
 
 @router.put('/{healthcheck_id}', response_model=schemas.HealthCheckResponse, mcp=True)
 @handle_errors(operation='update healthcheck')
-def update_healthcheck(
+async def update_healthcheck(
     healthcheck_id: HealthcheckId,
     payload: schemas.HealthCheckUpdate,
     session: Session = Depends(get_db),
 ):
-    """Update a healthcheck's name, config, enabled state, or critical flag. Use GET /healthchecks to find IDs."""
+    """Update a healthcheck's name, config, enabled state, or critical flag. Use GET /healthchecks?datasource_id=... to find IDs."""
     return service.update_healthcheck(session, parse_healthcheck_id(healthcheck_id), payload)
 
 
 @router.delete('/{healthcheck_id}', status_code=204, mcp=True)
 @handle_errors(operation='delete healthcheck')
-def delete_healthcheck(healthcheck_id: HealthcheckId, session: Session = Depends(get_db)):
+async def delete_healthcheck(healthcheck_id: HealthcheckId, session: Session = Depends(get_db)):
     """Delete a healthcheck by ID. Use GET /healthchecks?datasource_id=... to find healthcheck IDs."""
     service.delete_healthcheck(session, parse_healthcheck_id(healthcheck_id))

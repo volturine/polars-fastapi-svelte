@@ -5,26 +5,38 @@ import os
 import threading
 import time
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import Session
 from starlette.websockets import WebSocketState
 
+from core.database import get_db
 from core.dependencies import get_manager
 from core.exceptions import PipelineValidationError
 from core.namespace import namespace_paths, reset_namespace, set_namespace_context
 from main import app
+from modules.build_jobs import service as build_job_service
+from modules.build_runs import service as build_run_service
+from modules.build_runs.live import BuildNotification, hub as build_hub
+from modules.build_runs.models import BuildRun
 from modules.compute import schemas as compute_schemas, service as compute_service
-from modules.compute.core.base import ComputeEngine, EngineProgressEvent, EngineResult
+from modules.compute.core.base import ComputeEngine, EngineProgressEvent, EngineResult, EngineStatusInfo
 from modules.compute.engine import PolarsComputeEngine
+from modules.compute.engine_live import create_snapshot_notifier, load_engine_snapshot
 from modules.compute.live import ActiveBuild, registry as active_build_registry
 from modules.compute.manager import ProcessManager
 from modules.compute.operations.datasource import _analysis_stack_var
 from modules.compute.routes import (
+    _emit_active_build_event,
+    _run_queued_build_job,
     _safe_close_websocket,
     _safe_send_json,
+    _wait_for_build_notification,
+    _wait_for_namespace_build_update,
     _wait_for_websocket_disconnect,
     active_build_stream,
     build_list_stream,
@@ -32,8 +44,28 @@ from modules.compute.routes import (
 )
 from modules.compute.utils import await_engine_result
 from modules.datasource.models import DataSource
+from modules.engine_instances import service as engine_instance_service
 from modules.engine_runs import service as engine_run_service
 from modules.engine_runs.models import EngineRun
+
+
+def _start_queued_build(client, build_id: str) -> tuple[threading.Thread, list[BaseException]]:
+    errors: list[BaseException] = []
+
+    def run() -> None:
+        try:
+            asyncio.run(_run_queued_build_job(manager=client.app.state.manager, build_id=build_id))
+        except BaseException as exc:  # pragma: no cover - test helper only
+            errors.append(exc)
+
+    thread = threading.Thread(target=run)
+    thread.start()
+    return thread, errors
+
+
+def _join_queued_build(thread: threading.Thread, *, timeout: float = 5.0) -> None:
+    thread.join(timeout=timeout)
+    assert not thread.is_alive(), 'Queued build thread did not finish before timeout'
 
 
 def test_safe_close_websocket_skips_when_already_disconnected() -> None:
@@ -275,6 +307,26 @@ def test_engine_shutdown_closes_queues_even_when_not_running(monkeypatch: pytest
     engine.shutdown()
 
     assert closed['value'] is True
+
+
+def test_close_queues_closes_then_joins_without_cancel_join_thread() -> None:
+    engine = PolarsComputeEngine('analysis')
+    order: list[str] = []
+
+    class FakeQueue:
+        def close(self) -> None:
+            order.append('close')
+
+        def join_thread(self) -> None:
+            order.append('join')
+
+    engine.command_queue = FakeQueue()  # type: ignore[assignment]
+    engine.result_queue = FakeQueue()  # type: ignore[assignment]
+    engine.progress_queue = FakeQueue()  # type: ignore[assignment]
+
+    engine._close_queues()
+
+    assert order == ['close', 'join', 'close', 'join', 'close', 'join']
 
 
 def test_build_canonical_engine_run_result_persists_unified_detail_shape() -> None:
@@ -1109,31 +1161,35 @@ class TestComputePreview:
         assert run.result_json['execution_entries'][0]['key'] == 'query_plan'
 
 
-def test_list_active_builds_returns_running_build(client, test_user) -> None:
-    build = asyncio.run(
-        active_build_registry.create_build(
-            analysis_id='analysis-1',
-            analysis_name='Analysis 1',
-            namespace='default',
-            starter=compute_service._build_starter(test_user),
-            total_tabs=1,
-        )
+def test_list_active_builds_returns_running_build(client, test_db_session, test_user) -> None:
+    run = build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+        analysis_id='analysis-1',
+        analysis_name='Analysis 1',
+        request_json={'analysis_id': 'analysis-1'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='preview',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
     )
-    asyncio.run(
-        active_build_registry.apply_event(
-            build.build_id,
-            {
-                'type': 'progress',
-                'build_id': build.build_id,
-                'analysis_id': 'analysis-1',
-                'emitted_at': datetime.now(UTC).isoformat(),
-                'progress': 0.5,
-                'elapsed_ms': 1200,
-                'total_steps': 4,
-                'current_step': 'Filter rows',
-                'current_step_index': 1,
-            },
-        )
+    build_run_service.append_build_event(
+        test_db_session,
+        build_id=run.id,
+        event=compute_schemas.BuildProgressEvent(
+            build_id=run.id,
+            analysis_id='analysis-1',
+            emitted_at=datetime.now(UTC),
+            current_kind='preview',
+            current_datasource_id=None,
+            progress=0.5,
+            elapsed_ms=1200,
+            total_steps=4,
+            current_step='Filter rows',
+            current_step_index=1,
+        ),
     )
 
     response = client.get('/api/v1/compute/builds/active')
@@ -1141,83 +1197,85 @@ def test_list_active_builds_returns_running_build(client, test_user) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload['total'] == 1
-    assert payload['builds'][0]['build_id'] == build.build_id
+    assert payload['builds'][0]['build_id'] == run.id
     assert payload['builds'][0]['status'] == 'running'
     assert payload['builds'][0]['progress'] == 0.5
     assert payload['builds'][0]['starter']['user_id'] == test_user.id
 
 
-def test_get_active_build_returns_detail(client, test_user) -> None:
-    build = asyncio.run(
-        active_build_registry.create_build(
+def test_get_active_build_returns_detail(client, test_db_session, test_user) -> None:
+    run = build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+        analysis_id='analysis-2',
+        analysis_name='Analysis 2',
+        request_json={'analysis_id': 'analysis-2'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='preview',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
+    )
+    emitted_at = datetime.now(UTC)
+    build_run_service.append_build_event(
+        test_db_session,
+        build_id=run.id,
+        event=compute_schemas.BuildStepStartEvent(
+            build_id=run.id,
             analysis_id='analysis-2',
-            analysis_name='Analysis 2',
-            namespace='default',
-            starter=compute_service._build_starter(test_user),
-            total_tabs=1,
-        )
+            emitted_at=emitted_at,
+            current_kind='preview',
+            current_datasource_id=None,
+            build_step_index=0,
+            step_index=0,
+            step_id='step-1',
+            step_name='Load source',
+            step_type='source',
+            total_steps=1,
+        ),
     )
-    emitted_at = datetime.now(UTC).isoformat()
-    asyncio.run(
-        active_build_registry.apply_event(
-            build.build_id,
-            {
-                'type': 'step_start',
-                'build_id': build.build_id,
-                'analysis_id': 'analysis-2',
-                'emitted_at': emitted_at,
-                'build_step_index': 0,
-                'step_index': 0,
-                'step_id': 'step-1',
-                'step_name': 'Load source',
-                'step_type': 'source',
-                'total_steps': 1,
-            },
-        )
-    )
-    asyncio.run(
-        active_build_registry.apply_event(
-            build.build_id,
-            {
-                'type': 'log',
-                'build_id': build.build_id,
-                'analysis_id': 'analysis-2',
-                'emitted_at': emitted_at,
-                'level': 'info',
-                'message': 'Started build',
-            },
-        )
+    build_run_service.append_build_event(
+        test_db_session,
+        build_id=run.id,
+        event=compute_schemas.BuildLogEvent(
+            build_id=run.id,
+            analysis_id='analysis-2',
+            emitted_at=emitted_at,
+            current_kind='preview',
+            current_datasource_id=None,
+            level=compute_schemas.BuildLogLevel.INFO,
+            message='Started build',
+        ),
     )
 
-    response = client.get(f'/api/v1/compute/builds/active/{build.build_id}')
+    response = client.get(f'/api/v1/compute/builds/active/{run.id}')
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload['build_id'] == build.build_id
+    assert payload['build_id'] == run.id
     assert payload['steps'][0]['step_id'] == 'step-1'
     assert payload['steps'][0]['state'] == 'running'
     assert payload['logs'][0]['message'] == 'Started build'
 
 
-def test_get_active_build_returns_resource_config_summary(client, test_user) -> None:
-    build = asyncio.run(
-        active_build_registry.create_build(
-            analysis_id='analysis-config',
-            analysis_name='Analysis Config',
-            namespace='default',
-            starter=compute_service._build_starter(test_user),
-            total_tabs=1,
-        )
-    )
-    registry_build = asyncio.run(active_build_registry.get_build(build.build_id))
-    assert registry_build is not None
-    registry_build.resource_config = compute_schemas.BuildResourceConfigSummary(
-        max_threads=6,
-        max_memory_mb=1024,
-        streaming_chunk_size=2000,
+def test_get_active_build_returns_resource_config_summary(client, test_db_session, test_user) -> None:
+    run = build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+        analysis_id='analysis-config',
+        analysis_name='Analysis Config',
+        request_json={'analysis_id': 'analysis-config'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        resource_config_json={'max_threads': 6, 'max_memory_mb': 1024, 'streaming_chunk_size': 2000},
+        current_kind='preview',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
     )
 
-    response = client.get(f'/api/v1/compute/builds/active/{build.build_id}')
+    response = client.get(f'/api/v1/compute/builds/active/{run.id}')
 
     assert response.status_code == 200
     payload = response.json()
@@ -1229,15 +1287,6 @@ def test_get_active_build_returns_resource_config_summary(client, test_user) -> 
 
 
 def test_get_active_build_by_engine_run_returns_detail(client, test_db_session, test_user) -> None:
-    build = asyncio.run(
-        active_build_registry.create_build(
-            analysis_id='analysis-live-by-run',
-            analysis_name='Analysis Live By Run',
-            namespace='default',
-            starter=compute_service._build_starter(test_user),
-            total_tabs=1,
-        )
-    )
     created = engine_run_service.create_engine_run(
         test_db_session,
         engine_run_service.create_engine_run_payload(
@@ -1250,29 +1299,152 @@ def test_get_active_build_by_engine_run_returns_detail(client, test_db_session, 
         ),
     )
     test_db_session.commit()
-    asyncio.run(
-        active_build_registry.apply_event(
-            build.build_id,
-            {
-                'type': 'progress',
-                'build_id': build.build_id,
-                'analysis_id': 'analysis-live-by-run',
-                'emitted_at': datetime.now(UTC).isoformat(),
-                'engine_run_id': created.id,
-                'progress': 0.25,
-                'elapsed_ms': 900,
-                'total_steps': 3,
-                'current_step': 'Load source',
-                'current_step_index': 0,
-            },
-        )
+    run = build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+        analysis_id='analysis-live-by-run',
+        analysis_name='Analysis Live By Run',
+        request_json={'analysis_id': 'analysis-live-by-run'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='datasource_create',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
+    )
+    build_run_service.append_build_event(
+        test_db_session,
+        build_id=run.id,
+        event=compute_schemas.BuildProgressEvent(
+            build_id=run.id,
+            analysis_id='analysis-live-by-run',
+            emitted_at=datetime.now(UTC),
+            current_kind='datasource_create',
+            current_datasource_id='output-ds-live-by-run',
+            engine_run_id=created.id,
+            progress=0.25,
+            elapsed_ms=900,
+            total_steps=3,
+            current_step='Load source',
+            current_step_index=0,
+        ),
     )
 
     response = client.get(f'/api/v1/compute/builds/active/by-engine-run/{created.id}')
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload['build_id'] == build.build_id
+    assert payload['build_id'] == run.id
+    assert payload['current_engine_run_id'] == created.id
+    assert payload['status'] == 'running'
+
+
+def test_get_active_build_falls_back_to_durable_db(client, test_db_session, test_user) -> None:
+    run = build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+        analysis_id='analysis-db-fallback',
+        analysis_name='Analysis DB Fallback',
+        request_json={'analysis_id': 'analysis-db-fallback'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='preview',
+        current_tab_id='tab-1',
+        current_tab_name='Tab 1',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
+    )
+    build_run_service.append_build_event(
+        test_db_session,
+        build_id=run.id,
+        event=compute_schemas.BuildCompleteEvent(
+            build_id=run.id,
+            analysis_id=run.analysis_id,
+            emitted_at=datetime.now(UTC),
+            current_kind='preview',
+            current_datasource_id='source-1',
+            tab_id='tab-1',
+            tab_name='Tab 1',
+            current_output_id='out-1',
+            current_output_name='Output 1',
+            engine_run_id='engine-db-1',
+            elapsed_ms=100,
+            total_steps=1,
+            tabs_built=1,
+            results=[
+                compute_schemas.BuildTabResult(
+                    tab_id='tab-1',
+                    tab_name='Tab 1',
+                    status=compute_schemas.BuildTabStatus.SUCCESS,
+                    output_id='out-1',
+                    output_name='Output 1',
+                )
+            ],
+            duration_ms=100,
+        ),
+    )
+
+    response = client.get(f'/api/v1/compute/builds/active/{run.id}')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['build_id'] == run.id
+    assert payload['status'] == 'completed'
+    assert payload['results'][0]['output_name'] == 'Output 1'
+
+
+def test_get_active_build_by_engine_run_falls_back_to_durable_db(client, test_db_session, test_user) -> None:
+    created = engine_run_service.create_engine_run(
+        test_db_session,
+        engine_run_service.create_engine_run_payload(
+            analysis_id='analysis-db-by-run',
+            datasource_id='output-ds-db-by-run',
+            kind='datasource_create',
+            status='running',
+            request_json={'kind': 'datasource_create'},
+            result_json={},
+            created_at=datetime.now(UTC),
+        ),
+    )
+    run = build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+        analysis_id='analysis-db-by-run',
+        analysis_name='Analysis DB By Run',
+        request_json={'analysis_id': 'analysis-db-by-run'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='preview',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
+    )
+    build_run_service.append_build_event(
+        test_db_session,
+        build_id=run.id,
+        event=compute_schemas.BuildProgressEvent(
+            build_id=run.id,
+            analysis_id=run.analysis_id,
+            emitted_at=datetime.now(UTC),
+            current_kind='preview',
+            current_datasource_id='source-1',
+            tab_id='tab-1',
+            tab_name='Tab 1',
+            engine_run_id=created.id,
+            progress=0.4,
+            elapsed_ms=400,
+            total_steps=2,
+            current_step='Load',
+            current_step_index=0,
+        ),
+    )
+
+    response = client.get(f'/api/v1/compute/builds/active/by-engine-run/{created.id}')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['build_id'] == run.id
     assert payload['current_engine_run_id'] == created.id
     assert payload['status'] == 'running'
 
@@ -1304,9 +1476,6 @@ def test_cancel_build_marks_running_run_cancelled(client, test_db_session, test_
             current_step='Filter rows',
         ),
     )
-    mock_manager = MagicMock()
-    app.dependency_overrides[get_manager] = lambda: mock_manager
-
     response = client.post(f'/api/v1/compute/cancel/{created.id}')
 
     assert response.status_code == 200
@@ -1324,7 +1493,68 @@ def test_cancel_build_marks_running_run_cancelled(client, test_db_session, test_
     assert run.result_json['results'] == []
     assert run.result_json['cancelled_by'] == test_user.email
     assert run.result_json['last_completed_step'] == 'Load source'
-    mock_manager.shutdown_engine.assert_called_once_with('analysis-cancel')
+
+
+def test_cancel_build_persists_durable_cancelled_build(client, test_db_session, test_user) -> None:
+    created = engine_run_service.create_engine_run(
+        test_db_session,
+        engine_run_service.create_engine_run_payload(
+            analysis_id='analysis-cancel-durable',
+            datasource_id='output-ds-cancel-durable',
+            kind='datasource_update',
+            status='running',
+            request_json={'kind': 'datasource_update'},
+            result_json={},
+            created_at=datetime.now(UTC),
+        ),
+    )
+    run = build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+        analysis_id='analysis-cancel-durable',
+        analysis_name='Analysis Cancel Durable',
+        request_json={'analysis_id': 'analysis-cancel-durable'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='datasource_update',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
+    )
+    build_run_service.append_build_event(
+        test_db_session,
+        build_id=run.id,
+        event=compute_schemas.BuildProgressEvent(
+            build_id=run.id,
+            analysis_id=run.analysis_id,
+            emitted_at=datetime.now(UTC),
+            current_kind='datasource_update',
+            current_datasource_id='output-ds-cancel-durable',
+            tab_id='tab-1',
+            tab_name='Tab 1',
+            engine_run_id=created.id,
+            progress=0.3,
+            elapsed_ms=300,
+            total_steps=3,
+            current_step='Write Output',
+            current_step_index=1,
+        ),
+    )
+    response = client.post(f'/api/v1/compute/cancel/{created.id}')
+
+    assert response.status_code == 200
+    test_db_session.expire_all()
+    stored = test_db_session.get(BuildRun, run.id)
+    assert stored is not None
+    assert stored.status == 'cancelled'
+    asyncio.run(active_build_registry.clear())
+
+    fallback = client.get(f'/api/v1/compute/builds/active/{run.id}')
+
+    assert fallback.status_code == 200
+    detail = fallback.json()
+    assert detail['status'] == 'cancelled'
+    assert detail['cancelled_by'] == test_user.email
 
 
 def test_cancel_build_requires_running_status(client, test_db_session) -> None:
@@ -1360,6 +1590,7 @@ def test_cancel_build_updates_active_build_registry(client, test_db_session, tes
             created_at=datetime.now(UTC),
         ),
     )
+    assert created.status == 'running'
     build = asyncio.run(
         active_build_registry.create_build(
             analysis_id='analysis-live-cancel',
@@ -1369,37 +1600,61 @@ def test_cancel_build_updates_active_build_registry(client, test_db_session, tes
             total_tabs=1,
         )
     )
+    build_run_service.create_build_run(
+        test_db_session,
+        build_id=build.build_id,
+        namespace='default',
+        analysis_id='analysis-live-cancel',
+        analysis_name='Live Cancel',
+        request_json={'analysis_id': 'analysis-live-cancel'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='datasource_update',
+        total_tabs=1,
+        created_at=build.started_at,
+        started_at=build.started_at,
+    )
+    build.status = compute_schemas.ActiveBuildStatus.RUNNING
     asyncio.run(
-        active_build_registry.apply_event(
+        _emit_active_build_event(
             build.build_id,
-            {
-                'type': 'progress',
-                'build_id': build.build_id,
-                'analysis_id': 'analysis-live-cancel',
-                'emitted_at': datetime.now(UTC).isoformat(),
-                'engine_run_id': created.id,
-                'progress': 0.35,
-                'elapsed_ms': 1200,
-                'total_steps': 4,
-                'current_step': 'Sort',
-                'current_step_index': 1,
-            },
+            'analysis-live-cancel',
+            compute_schemas.BuildProgressEvent(
+                build_id=build.build_id,
+                analysis_id='analysis-live-cancel',
+                emitted_at=datetime.now(UTC),
+                current_kind='datasource_update',
+                current_datasource_id=None,
+                engine_run_id=created.id,
+                progress=0.35,
+                elapsed_ms=1200,
+                total_steps=4,
+                current_step='Sort',
+                current_step_index=1,
+            ),
         )
     )
-    mock_manager = MagicMock()
-    app.dependency_overrides[get_manager] = lambda: mock_manager
-
     response = client.post(f'/api/v1/compute/cancel/{created.id}')
 
     assert response.status_code == 200
-    updated = asyncio.run(active_build_registry.get_build(build.build_id))
+    deadline = time.time() + 5
+    updated = None
+    while time.time() < deadline:
+        updated = asyncio.run(active_build_registry.get_build(build.build_id))
+        if updated is not None and updated.status == compute_schemas.ActiveBuildStatus.CANCELLED:
+            break
+        time.sleep(0.01)
     assert updated is not None
     assert updated.status == compute_schemas.ActiveBuildStatus.CANCELLED
     assert updated.cancelled_by == test_user.email
     assert updated.current_engine_run_id == created.id
 
 
-def test_build_stream_websocket_emits_snapshot_and_terminal_event(client, sample_datasource: DataSource, test_user) -> None:
+def test_build_stream_websocket_emits_snapshot_and_terminal_event(
+    client,
+    sample_datasource: DataSource,
+    test_user,
+    test_db_session,
+) -> None:
     payload = {
         'analysis_pipeline': {
             'analysis_id': 'analysis-stream',
@@ -1538,35 +1793,190 @@ def test_build_stream_websocket_emits_snapshot_and_terminal_event(client, sample
     with (
         patch('modules.compute.routes.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
         patch('modules.compute.routes._build_analysis_name', return_value='Stream Analysis'),
+        client.websocket_connect('/api/v1/compute/ws/builds?namespace=default') as _list_ws,
     ):
         response = client.post('/api/v1/compute/builds/active', json=payload)
         assert response.status_code == 200
         started = response.json()
         build_id = started['build_id']
         assert started['starter']['user_id'] == test_user.id
+        release.set()
+        asyncio.run(_run_queued_build_job(manager=client.app.state.manager, build_id=build_id))
 
-        with client.websocket_connect(f'/api/v1/compute/ws/builds/{build_id}?namespace=default') as websocket:
-            snapshot = websocket.receive_json()
-            release.set()
-            plan = websocket.receive_json()
-            step_start = websocket.receive_json()
-            resources = websocket.receive_json()
-            log = websocket.receive_json()
-            step_complete = websocket.receive_json()
-            progress = websocket.receive_json()
-            complete = websocket.receive_json()
+    with Session(test_db_session.get_bind()) as fresh_session:
+        last_sequence = build_run_service.get_latest_sequence(fresh_session, build_id)
+        rows = build_run_service.list_build_events_after(fresh_session, build_id, 0)
+    assert last_sequence >= 2
+
+    with client.websocket_connect(f'/api/v1/compute/ws/builds/{build_id}?namespace=default&last_sequence=1') as websocket:
+        updates: list[dict[str, object]] = []
+        while True:
+            message = websocket.receive_json()
+            if message.get('type') == 'snapshot':
+                snapshot = message
+                break
+            updates.append(message)
 
     assert snapshot['type'] == 'snapshot'
     assert snapshot['build']['build_id'] == build_id
-    assert plan['type'] == 'plan'
-    assert plan['build_id'] == build_id
-    assert step_start['type'] == 'step_start'
-    assert resources['type'] == 'resources'
-    assert log['type'] == 'log'
-    assert step_complete['type'] == 'step_complete'
-    assert progress['type'] == 'progress'
+    assert snapshot['last_sequence'] == last_sequence
+    print('EVENT_ROWS', [build_run_service.serialize_event_row(row) for row in rows])
+    print('WS_UPDATES', updates)
+    print('WS_SNAPSHOT', snapshot)
+    complete = next(item for item in updates if item.get('type') == 'complete')
+    assert complete['build_id'] == build_id
     assert complete['type'] == 'complete'
-    assert complete['results'][0]['status'] == 'success'
+    assert complete['sequence'] == last_sequence
+    results = complete.get('results')
+    assert isinstance(results, list)
+    assert results[0]['status'] == 'success'
+    assert updates
+
+
+def test_start_active_build_persists_durable_build_run(client, sample_datasource: DataSource, test_user, test_db_session) -> None:
+    payload = {
+        'analysis_pipeline': {
+            'analysis_id': 'analysis-durable-start',
+            'tabs': [
+                {
+                    'id': 'tab1',
+                    'name': 'Tab 1',
+                    'datasource': {
+                        'id': sample_datasource.id,
+                        'analysis_tab_id': None,
+                        'config': {'branch': 'master'},
+                    },
+                    'output': {
+                        'result_id': str(uuid.uuid4()),
+                        'datasource_type': 'iceberg',
+                        'format': 'parquet',
+                        'filename': 'out',
+                    },
+                    'steps': [],
+                }
+            ],
+        },
+        'tab_id': 'tab1',
+    }
+    release = threading.Event()
+
+    async def fake_run_analysis_build_stream(session, manager, pipeline, *, build, emitter, triggered_by):
+        del session, manager, pipeline, emitter, triggered_by
+        await asyncio.to_thread(release.wait, 5)
+        return {'analysis_id': build.analysis_id, 'tabs_built': 0, 'results': []}
+
+    with (
+        patch('modules.compute.routes.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
+        patch('modules.compute.routes._build_analysis_name', return_value='Durable Start Analysis'),
+    ):
+        response = client.post('/api/v1/compute/builds/active', json=payload)
+        assert response.status_code == 200
+        body = response.json()
+        release.set()
+
+    stored = test_db_session.get(BuildRun, body['build_id'])
+    job = build_job_service.get_job_by_build_id(test_db_session, body['build_id'])
+
+    assert stored is not None
+    assert job is not None
+    assert body['status'] == 'queued'
+    assert stored.id == body['build_id']
+    assert stored.status in {'queued', 'running'}
+    assert stored.analysis_name == 'Durable Start Analysis'
+    assert stored.current_tab_id == 'tab1'
+    assert job.build_id == body['build_id']
+    assert job.status in {'queued', 'leased', 'running'}
+
+
+def test_terminal_active_build_event_persists_to_db(client, sample_datasource: DataSource, test_user, test_db_session) -> None:
+    payload = {
+        'analysis_pipeline': {
+            'analysis_id': 'analysis-durable-complete',
+            'tabs': [
+                {
+                    'id': 'tab1',
+                    'name': 'Tab 1',
+                    'datasource': {
+                        'id': sample_datasource.id,
+                        'analysis_tab_id': None,
+                        'config': {'branch': 'master'},
+                    },
+                    'output': {
+                        'result_id': str(uuid.uuid4()),
+                        'datasource_type': 'iceberg',
+                        'format': 'parquet',
+                        'filename': 'out',
+                    },
+                    'steps': [],
+                }
+            ],
+        },
+        'tab_id': 'tab1',
+    }
+
+    async def fake_run_analysis_build_stream(session, manager, pipeline, *, build, emitter, triggered_by):
+        del session, manager, pipeline, triggered_by
+        base = {
+            'build_id': build.build_id,
+            'analysis_id': build.analysis_id,
+            'emitted_at': datetime.now(UTC),
+            'current_kind': 'preview',
+            'current_datasource_id': sample_datasource.id,
+            'tab_id': 'tab1',
+            'tab_name': 'Tab 1',
+            'current_output_id': 'out-1',
+            'current_output_name': 'Output 1',
+            'engine_run_id': 'engine-complete-1',
+        }
+        await emitter(
+            compute_schemas.BuildCompleteEvent(
+                **base,
+                elapsed_ms=50,
+                total_steps=1,
+                tabs_built=1,
+                duration_ms=50,
+                results=[
+                    compute_schemas.BuildTabResult(
+                        tab_id='tab1',
+                        tab_name='Tab 1',
+                        status=compute_schemas.BuildTabStatus.SUCCESS,
+                        output_id='out-1',
+                        output_name='Output 1',
+                    )
+                ],
+            )
+        )
+        return {'analysis_id': build.analysis_id, 'tabs_built': 1, 'results': []}
+
+    with (
+        patch('modules.compute.routes.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
+        patch('modules.compute.routes._build_analysis_name', return_value='Durable Complete Analysis'),
+    ):
+        response = client.post('/api/v1/compute/builds/active', json=payload)
+        assert response.status_code == 200
+        body = response.json()
+        asyncio.run(_run_queued_build_job(manager=client.app.state.manager, build_id=body['build_id']))
+        deadline = time.time() + 5
+        stored = None
+        while time.time() < deadline:
+            test_db_session.expire_all()
+            stored = test_db_session.get(BuildRun, body['build_id'])
+            if stored is not None and stored.status == 'completed':
+                break
+            time.sleep(0.01)
+
+    assert stored is not None
+    assert stored.status == 'completed'
+    assert stored.current_engine_run_id == 'engine-complete-1'
+
+    asyncio.run(active_build_registry.clear())
+    fallback = client.get(f'/api/v1/compute/builds/active/{body["build_id"]}')
+
+    assert fallback.status_code == 200
+    detail = fallback.json()
+    assert detail['status'] == 'completed'
+    assert detail['current_engine_run_id'] == 'engine-complete-1'
+    assert detail['results'][0]['output_name'] == 'Output 1'
 
 
 def test_start_active_build_notifies_active_build_list_watchers(client, sample_datasource: DataSource, test_user) -> None:
@@ -1696,34 +2106,244 @@ def test_active_build_monitor_websocket_sends_snapshot_and_updates(client, test_
             total_tabs=1,
         )
     )
+    session_gen = get_db()
+    session = next(session_gen)
+    build_run_service.create_build_run(
+        session,
+        build_id=build.build_id,
+        namespace='default',
+        analysis_id='analysis-watch',
+        analysis_name='Watch Build',
+        request_json={'analysis_id': 'analysis-watch'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='preview',
+        total_tabs=1,
+        created_at=build.started_at,
+        started_at=build.started_at,
+    )
+    session.close()
+    session_gen.close()
 
     with client.websocket_connect(f'/api/v1/compute/ws/builds/{build.build_id}?namespace=default') as websocket:
         snapshot = websocket.receive_json()
         asyncio.run(
-            active_build_registry.publish(
+            _emit_active_build_event(
                 build.build_id,
-                {
-                    'type': 'progress',
-                    'build_id': build.build_id,
-                    'analysis_id': build.analysis_id,
-                    'emitted_at': datetime.now(UTC).isoformat(),
-                    'progress': 0.75,
-                    'elapsed_ms': 3000,
-                    'total_steps': 4,
-                    'current_step': 'Sort',
-                    'current_step_index': 2,
-                },
+                build.analysis_id,
+                compute_schemas.BuildProgressEvent(
+                    build_id=build.build_id,
+                    analysis_id=build.analysis_id,
+                    emitted_at=datetime.now(UTC),
+                    current_kind='preview',
+                    current_datasource_id=None,
+                    progress=0.75,
+                    elapsed_ms=3000,
+                    total_steps=4,
+                    current_step='Sort',
+                    current_step_index=2,
+                ),
             )
         )
         update = websocket.receive_json()
 
     assert snapshot['type'] == 'snapshot'
     assert snapshot['build']['build_id'] == build.build_id
+    assert snapshot['last_sequence'] == 0
     assert update['type'] == 'progress'
     assert update['build_id'] == build.build_id
 
 
-def test_active_build_list_websocket_sends_snapshot_and_updates(client, test_user) -> None:
+def test_active_build_stream_replays_missed_events_from_db(client, test_db_session, test_user) -> None:
+    build = asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-replay',
+            analysis_name='Replay Build',
+            namespace='default',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+    build_run_service.create_build_run(
+        test_db_session,
+        build_id=build.build_id,
+        namespace='default',
+        analysis_id='analysis-replay',
+        analysis_name='Replay Build',
+        request_json={'analysis_id': 'analysis-replay'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='preview',
+        total_tabs=1,
+        created_at=build.started_at,
+        started_at=build.started_at,
+    )
+    first = compute_schemas.BuildLogEvent(
+        build_id=build.build_id,
+        analysis_id='analysis-replay',
+        emitted_at=datetime.now(UTC),
+        current_kind='preview',
+        current_datasource_id=None,
+        level=compute_schemas.BuildLogLevel.INFO,
+        message='first',
+    )
+    second = compute_schemas.BuildProgressEvent(
+        build_id=build.build_id,
+        analysis_id='analysis-replay',
+        emitted_at=datetime.now(UTC),
+        current_kind='preview',
+        current_datasource_id=None,
+        progress=0.5,
+        elapsed_ms=200,
+        total_steps=2,
+        current_step='Step 2',
+        current_step_index=1,
+    )
+    first_row = build_run_service.append_build_event(test_db_session, build_id=build.build_id, event=first)
+    second_row = build_run_service.append_build_event(test_db_session, build_id=build.build_id, event=second)
+    assert first_row is not None
+    assert second_row is not None
+    asyncio.run(active_build_registry.apply_event(build.build_id, build_run_service.serialize_event_row(first_row)))
+    asyncio.run(active_build_registry.apply_event(build.build_id, build_run_service.serialize_event_row(second_row)))
+
+    with client.websocket_connect(f'/api/v1/compute/ws/builds/{build.build_id}?namespace=default&last_sequence=1') as websocket:
+        replay = websocket.receive_json()
+        snapshot = websocket.receive_json()
+
+    assert replay['type'] == 'progress'
+    assert replay['sequence'] == 2
+    assert snapshot['type'] == 'snapshot'
+    assert snapshot['last_sequence'] == 2
+
+
+def test_build_hub_publishes_notification_on_emitted_build_event(client, sample_datasource: DataSource, test_user) -> None:
+    payload = {
+        'analysis_pipeline': {
+            'analysis_id': 'analysis-notify',
+            'tabs': [
+                {
+                    'id': 'tab1',
+                    'name': 'Tab 1',
+                    'datasource': {
+                        'id': sample_datasource.id,
+                        'analysis_tab_id': None,
+                        'config': {'branch': 'master'},
+                    },
+                    'output': {
+                        'result_id': str(uuid.uuid4()),
+                        'datasource_type': 'iceberg',
+                        'format': 'parquet',
+                        'filename': 'out',
+                    },
+                    'steps': [],
+                }
+            ],
+        },
+        'tab_id': 'tab1',
+    }
+    release = threading.Event()
+
+    async def fake_run_analysis_build_stream(session, manager, pipeline, *, build, emitter, triggered_by):
+        del session, manager, pipeline, triggered_by
+        await asyncio.to_thread(release.wait, 5)
+        await emitter(
+            compute_schemas.BuildLogEvent(
+                build_id=build.build_id,
+                analysis_id=build.analysis_id,
+                emitted_at=datetime.now(UTC),
+                current_kind='preview',
+                current_datasource_id=None,
+                level=compute_schemas.BuildLogLevel.INFO,
+                message='wake',
+            )
+        )
+        return {'analysis_id': build.analysis_id, 'tabs_built': 0, 'results': []}
+
+    with (
+        patch('modules.compute.routes.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
+        patch('modules.compute.routes._build_analysis_name', return_value='Notify Analysis'),
+        patch('modules.compute.routes.build_hub.publish', wraps=build_hub.publish) as publish,
+    ):
+        response = client.post('/api/v1/compute/builds/active', json=payload)
+        assert response.status_code == 200
+        started = response.json()
+        thread, errors = _start_queued_build(client, started['build_id'])
+        release.set()
+        deadline = time.time() + 5
+        while (not publish.await_args_list or publish.await_args_list[-1].args[0].latest_sequence != 1) and time.time() < deadline:
+            time.sleep(0.01)
+        _join_queued_build(thread)
+
+    notifications = [call.args[0] for call in publish.await_args_list]
+
+    assert errors == []
+    assert notifications
+    assert all(item.build_id == started['build_id'] for item in notifications)
+    assert all(item.namespace == 'default' for item in notifications)
+    assert notifications[0].latest_sequence == 0
+    session = next(get_db())
+    try:
+        assert build_run_service.get_latest_sequence(session, started['build_id']) == 1
+    finally:
+        session.close()
+
+
+def test_wait_for_build_notification_uses_local_hub_notification(test_db_session, test_user) -> None:
+    build = asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-durable',
+            analysis_name='Durable Build',
+            namespace='default',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+    build_run_service.create_build_run(
+        test_db_session,
+        build_id=build.build_id,
+        namespace='default',
+        analysis_id='analysis-durable',
+        analysis_name='Durable Build',
+        request_json={'analysis_id': 'analysis-durable'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='preview',
+        total_tabs=1,
+        created_at=build.started_at,
+        started_at=build.started_at,
+    )
+
+    async def run() -> BuildNotification | None:
+        websocket = MagicMock()
+        websocket.client_state = WebSocketState.CONNECTED
+        websocket.application_state = WebSocketState.CONNECTED
+
+        async def hold_receive() -> dict[str, str]:
+            await asyncio.sleep(60)
+            return {'type': 'websocket.disconnect'}
+
+        websocket.receive = AsyncMock(side_effect=hold_receive)
+
+        async def emit() -> None:
+            await asyncio.sleep(0.05)
+            await build_hub.publish(
+                BuildNotification(
+                    namespace='default',
+                    build_id=build.build_id,
+                    latest_sequence=1,
+                )
+            )
+
+        task = asyncio.create_task(_wait_for_build_notification(websocket, build.build_id, 0))
+        await emit()
+        return await asyncio.wait_for(task, timeout=2)
+
+    notification = asyncio.run(run())
+
+    assert notification is not None
+    assert notification.build_id == build.build_id
+    assert notification.namespace == 'default'
+    assert notification.latest_sequence == 1
+
+
+def test_active_build_list_websocket_sends_snapshot_and_updates(client, test_db_session, test_user) -> None:
     build = asyncio.run(
         active_build_registry.create_build(
             analysis_id='analysis-list',
@@ -1733,20 +2353,38 @@ def test_active_build_list_websocket_sends_snapshot_and_updates(client, test_use
             total_tabs=1,
         )
     )
+    build_run_service.create_build_run(
+        test_db_session,
+        build_id=build.build_id,
+        namespace='default',
+        analysis_id='analysis-list',
+        analysis_name='List Build',
+        request_json={'analysis_id': 'analysis-list'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='preview',
+        total_tabs=1,
+        created_at=build.started_at,
+        started_at=build.started_at,
+    )
 
     with client.websocket_connect('/api/v1/compute/ws/builds?namespace=default') as websocket:
         snapshot = websocket.receive_json()
         asyncio.run(
-            active_build_registry.publish(
+            _emit_active_build_event(
                 build.build_id,
-                {
-                    'type': 'log',
-                    'build_id': build.build_id,
-                    'analysis_id': build.analysis_id,
-                    'emitted_at': datetime.now(UTC).isoformat(),
-                    'level': 'info',
-                    'message': 'hello',
-                },
+                build.analysis_id,
+                compute_schemas.BuildProgressEvent(
+                    build_id=build.build_id,
+                    analysis_id=build.analysis_id,
+                    emitted_at=datetime.now(UTC),
+                    current_kind='preview',
+                    current_datasource_id=None,
+                    progress=0.5,
+                    elapsed_ms=200,
+                    total_steps=2,
+                    current_step='hello',
+                    current_step_index=0,
+                ),
             )
         )
         update = websocket.receive_json()
@@ -1755,6 +2393,67 @@ def test_active_build_list_websocket_sends_snapshot_and_updates(client, test_use
     assert snapshot['builds'][0]['build_id'] == build.build_id
     assert update['type'] == 'snapshot'
     assert update['builds'][0]['build_id'] == build.build_id
+    assert update['builds'][0]['progress'] == 0.5
+
+
+def test_wait_for_namespace_build_update_uses_local_hub_notification(test_db_session, test_user) -> None:
+    build = asyncio.run(
+        active_build_registry.create_build(
+            analysis_id='analysis-list-durable',
+            analysis_name='Durable List Build',
+            namespace='default',
+            starter=compute_service._build_starter(test_user),
+            total_tabs=1,
+        )
+    )
+    build_run_service.create_build_run(
+        test_db_session,
+        build_id=build.build_id,
+        namespace='default',
+        analysis_id=build.analysis_id,
+        analysis_name=build.analysis_name,
+        request_json={'analysis_id': build.analysis_id},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='preview',
+        total_tabs=1,
+        created_at=build.started_at,
+        started_at=build.started_at,
+    )
+
+    async def run() -> str | None:
+        websocket = MagicMock()
+        websocket.client_state = WebSocketState.CONNECTED
+        websocket.application_state = WebSocketState.CONNECTED
+
+        async def hold_receive() -> dict[str, str]:
+            await asyncio.sleep(60)
+            return {'type': 'websocket.disconnect'}
+
+        websocket.receive = AsyncMock(side_effect=hold_receive)
+
+        async def emit() -> None:
+            await asyncio.sleep(0.05)
+            await build_hub.publish(
+                BuildNotification(
+                    namespace='default',
+                    build_id=build.build_id,
+                    latest_sequence=2,
+                )
+            )
+
+        task = asyncio.create_task(
+            _wait_for_namespace_build_update(
+                websocket,
+                'default',
+                '0',
+            )
+        )
+        await emit()
+        return await asyncio.wait_for(task, timeout=2)
+
+    updated = asyncio.run(run())
+
+    assert updated == '1'
 
 
 def test_run_analysis_build_stream_tracks_output_target_and_read_write_stages(test_user) -> None:
@@ -1827,7 +2526,7 @@ def test_run_analysis_build_stream_tracks_output_target_and_read_write_stages(te
             write_duration_ms=7.0,
         )
 
-    async def run() -> tuple[list[compute_schemas.BuildEvent], ActiveBuild]:
+    async def run() -> tuple[list[compute_schemas.BuildEvent], ActiveBuild, MagicMock]:
         await active_build_registry.clear()
         build = await active_build_registry.create_build(
             analysis_id='analysis-live',
@@ -1837,6 +2536,7 @@ def test_run_analysis_build_stream_tracks_output_target_and_read_write_stages(te
             total_tabs=1,
         )
         emitted: list[compute_schemas.BuildEvent] = []
+        manager = MagicMock()
 
         async def emitter(payload: compute_schemas.BuildEvent) -> None:
             emitted.append(payload)
@@ -1868,7 +2568,7 @@ def test_run_analysis_build_stream_tracks_output_target_and_read_write_stages(te
         ):
             await compute_service.run_analysis_build_stream(
                 session=MagicMock(),
-                manager=MagicMock(),
+                manager=manager,
                 pipeline=pipeline,
                 build=build,
                 emitter=emitter,
@@ -1877,9 +2577,9 @@ def test_run_analysis_build_stream_tracks_output_target_and_read_write_stages(te
 
         stored = await active_build_registry.get_build(build.build_id)
         assert stored is not None
-        return emitted, stored
+        return emitted, stored, manager
 
-    emitted, stored = asyncio.run(run())
+    emitted, stored, manager = asyncio.run(run())
 
     assert stored.current_output_id == 'output-ds-1'
     assert stored.current_output_name == 'output_salary_predictions'
@@ -1893,6 +2593,66 @@ def test_run_analysis_build_stream_tracks_output_target_and_read_write_stages(te
     assert isinstance(complete, compute_schemas.BuildCompleteEvent)
     assert complete.engine_run_id == 'run-1'
     assert complete.results[0].output_name == 'output_salary_predictions'
+    manager.shutdown_engine.assert_called_once_with('analysis-live')
+
+
+def test_preview_does_not_shutdown_engine_after_success(test_db_session, sample_datasource: DataSource) -> None:
+    manager = MagicMock()
+    engine = MagicMock()
+    engine.resource_config = {}
+    engine.effective_resources = {}
+    engine.preview.return_value = 'preview-job-1'
+    engine.get_result.side_effect = [
+        None,
+        EngineResult(
+            job_id='preview-job-1',
+            data={'schema': {'name': 'String'}, 'data': [{'name': 'Bob'}], 'row_count': 1},
+            error=None,
+        ),
+    ]
+    manager.get_engine.return_value = None
+    manager.get_or_create_engine.return_value = engine
+
+    pipeline = {
+        'analysis_id': 'analysis-id',
+        'tabs': [
+            {
+                'id': 'tab1',
+                'datasource': {
+                    'id': sample_datasource.id,
+                    'analysis_tab_id': None,
+                    'config': {'branch': 'master'},
+                },
+                'output': {
+                    'result_id': 'out-1',
+                    'datasource_type': 'iceberg',
+                    'format': 'parquet',
+                    'filename': 'out',
+                },
+                'steps': [{'id': 'step-1', 'type': 'filter', 'config': {'column': 'age', 'operator': '>', 'value': 25}}],
+            }
+        ],
+    }
+
+    result = compute_service.preview_step(
+        session=test_db_session,
+        manager=manager,
+        target_step_id='step-1',
+        analysis_pipeline=pipeline,
+        row_limit=10,
+        page=1,
+        analysis_id='analysis-id',
+        request_json={
+            'analysis_id': 'analysis-id',
+            'analysis_pipeline': pipeline,
+            'target_step_id': 'step-1',
+            'row_limit': 10,
+            'page': 1,
+        },
+    )
+
+    assert result.total_rows == 1
+    manager.shutdown_engine.assert_not_called()
 
 
 def test_finalize_failed_engine_run_persists_failure_state(test_db_session) -> None:
@@ -2057,6 +2817,173 @@ def test_engine_list_stream_treats_disconnect_runtimeerror_as_normal(monkeypatch
     snap.assert_awaited_once()
 
 
+def test_process_manager_persists_engine_instances_to_settings_db(isolate_settings_engine) -> None:
+    loop = asyncio.new_event_loop()
+    analysis_id = 'analysis-engine-persist'
+    worker_id = 'api:test'
+
+    def persist(namespace: str, statuses: list[EngineStatusInfo]) -> None:
+        from core.database import run_settings_db
+        from modules.engine_instances import service as service
+
+        def write(session: Session) -> None:
+            service.persist_engine_snapshot(session, worker_id=worker_id, namespace=namespace, statuses=list(statuses))
+
+        run_settings_db(write)
+
+    manager = ProcessManager(on_snapshot=create_snapshot_notifier(loop, persist=persist))
+    manager._engine_factory = FakeEngine
+
+    try:
+        manager.spawn_engine(analysis_id)
+        manager.shutdown_engine(analysis_id)
+
+        from core.database import run_settings_db
+
+        rows = run_settings_db(engine_instance_service.list_engine_instances, namespace='default')
+        latest = run_settings_db(engine_instance_service.latest_namespace_update, namespace='default')
+
+        assert rows == []
+        assert latest is not None
+    finally:
+        manager.shutdown_all()
+        loop.close()
+
+
+def test_load_engine_snapshot_dedupes_analysis_rows_across_workers(test_db_session: Session) -> None:
+    now = datetime.now(UTC)
+    status = EngineStatusInfo(
+        analysis_id='analysis-dup',
+        status='healthy',
+        process_id=222,
+        last_activity=now.isoformat(),
+        current_job_id='job-new',
+        resource_config={'max_threads': 2},
+        effective_resources={'max_threads': 2},
+        defaults={'max_threads': 2},
+    )
+    older = now - timedelta(seconds=30)
+    engine_instance_service.upsert_engine_status(
+        test_db_session,
+        worker_id='worker-b',
+        namespace='default',
+        status=EngineStatusInfo(
+            analysis_id='analysis-dup',
+            status='healthy',
+            process_id=111,
+            last_activity=older.isoformat(),
+            current_job_id='job-old',
+            resource_config={'max_threads': 1},
+            effective_resources={'max_threads': 1},
+            defaults={'max_threads': 1},
+        ),
+        now=older,
+    )
+    engine_instance_service.upsert_engine_status(
+        test_db_session,
+        worker_id='worker-a',
+        namespace='default',
+        status=status,
+        now=now,
+    )
+
+    snapshot = load_engine_snapshot(
+        test_db_session,
+        namespace='default',
+        defaults={'max_threads': 4, 'max_memory_mb': 512, 'streaming_chunk_size': 1000},
+    )
+
+    assert snapshot.total == 1
+    assert len(snapshot.engines) == 1
+    assert snapshot.engines[0].analysis_id == 'analysis-dup'
+    assert snapshot.engines[0].process_id == 222
+    assert snapshot.engines[0].current_job_id == 'job-new'
+    assert snapshot.engines[0].resource_config is not None
+    assert snapshot.engines[0].resource_config.max_threads == 2
+
+
+def test_cleanup_idle_engines_persists_snapshot_before_notifying(monkeypatch) -> None:
+    manager = ProcessManager()
+    manager._engine_factory = FakeEngine
+    manager.spawn_engine('analysis-cleanup-order')
+    info = manager.get_engine_info('analysis-cleanup-order')
+    assert info is not None
+    info.last_activity = datetime.now(UTC) - timedelta(seconds=600)
+
+    calls: list[str] = []
+
+    def persist(namespace: str, statuses: list[EngineStatusInfo]) -> None:
+        calls.append(f'persist:{namespace}:{len(statuses)}')
+
+    def notify(namespace: str) -> None:
+        calls.append(f'notify:{namespace}')
+
+    manager._snapshot_persist = persist
+    monkeypatch.setattr('modules.compute.manager.runtime_ipc.notify_api_engine', notify)
+
+    try:
+        cleaned = manager.cleanup_idle_engines()
+    finally:
+        manager.shutdown_all()
+
+    assert cleaned == ['default:analysis-cleanup-order']
+    assert calls[:2] == ['persist:default:0', 'notify:default']
+
+
+def test_upsert_engine_status_retries_after_duplicate_insert(test_db_session: Session) -> None:
+    status = EngineStatusInfo(
+        analysis_id='analysis-engine-race',
+        status='healthy',
+        process_id=123,
+        last_activity=datetime.now(UTC).isoformat(),
+        current_job_id=None,
+        resource_config={'max_threads': 2},
+        effective_resources={'max_threads': 2},
+        defaults={'max_threads': 2},
+    )
+    original_commit = test_db_session.commit
+    calls = {'count': 0}
+
+    def commit_with_race() -> None:
+        calls['count'] += 1
+        if calls['count'] != 1:
+            original_commit()
+            return
+        with Session(test_db_session.get_bind()) as race_session:
+            duplicate = engine_instance_service.EngineInstance(
+                id='worker-1:default:analysis-engine-race',
+                worker_id='worker-1',
+                namespace='default',
+                analysis_id='analysis-engine-race',
+                process_id=999,
+                status=engine_instance_service.EngineInstanceStatus.IDLE,
+                current_job_id=None,
+                current_build_id=None,
+                current_engine_run_id=None,
+                resource_config_json=None,
+                effective_resources_json=None,
+                last_activity_at=datetime.now(UTC),
+                last_seen_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            )
+            race_session.add(duplicate)
+            race_session.commit()
+        raise IntegrityError('insert', {}, Exception('duplicate'))
+
+    with patch.object(test_db_session, 'commit', side_effect=commit_with_race):
+        row = engine_instance_service.upsert_engine_status(
+            test_db_session,
+            worker_id='worker-1',
+            namespace='default',
+            status=status,
+            now=datetime.now(UTC),
+        )
+
+    assert row.id == 'worker-1:default:analysis-engine-race'
+    assert row.process_id == 123
+    assert row.status == engine_instance_service.EngineInstanceStatus.IDLE
+
+
 def test_build_list_stream_treats_disconnect_runtimeerror_as_normal(monkeypatch) -> None:
     websocket = MagicMock()
     websocket.headers.get.return_value = None
@@ -2066,25 +2993,19 @@ def test_build_list_stream_treats_disconnect_runtimeerror_as_normal(monkeypatch)
     websocket.client_state = WebSocketState.CONNECTED
     websocket.application_state = WebSocketState.CONNECTED
 
-    async def boom(*_args, **_kwargs) -> None:
-        raise RuntimeError('Cannot call "send" once a close message has been sent')
-
-    add = AsyncMock()
-    remove = AsyncMock()
     snap = AsyncMock()
+    wait = AsyncMock(return_value=None)
 
     monkeypatch.setattr('modules.compute.routes._require_websocket_user', AsyncMock(return_value=MagicMock()))
     monkeypatch.setattr('modules.compute.routes._send_build_list_snapshot', snap)
-    monkeypatch.setattr('modules.compute.routes._wait_for_websocket_disconnect', boom)
+    monkeypatch.setattr('modules.compute.routes._get_latest_build_namespace_update', MagicMock(return_value=None))
+    monkeypatch.setattr('modules.compute.routes._wait_for_namespace_build_update', wait)
     monkeypatch.setattr('modules.compute.routes._safe_send_json', AsyncMock())
-    monkeypatch.setattr('modules.compute.routes.build_registry.add_list_watcher', add)
-    monkeypatch.setattr('modules.compute.routes.build_registry.remove_list_watcher', remove)
 
     asyncio.run(build_list_stream(websocket))
 
-    add.assert_awaited_once()
-    remove.assert_awaited_once()
     snap.assert_awaited_once()
+    wait.assert_awaited_once()
 
 
 def test_active_build_stream_treats_disconnect_runtimeerror_as_normal(monkeypatch, test_user) -> None:
@@ -2097,6 +3018,23 @@ def test_active_build_stream_treats_disconnect_runtimeerror_as_normal(monkeypatc
             total_tabs=1,
         )
     )
+    session_gen = get_db()
+    session = next(session_gen)
+    build_run_service.create_build_run(
+        session,
+        build_id=build.build_id,
+        namespace='default',
+        analysis_id='analysis-stream',
+        analysis_name='Stream Build',
+        request_json={'analysis_id': 'analysis-stream'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='preview',
+        total_tabs=1,
+        created_at=build.started_at,
+        started_at=build.started_at,
+    )
+    session.close()
+    session_gen.close()
     websocket = MagicMock()
     websocket.headers.get.return_value = None
     websocket.query_params.get.return_value = 'default'
@@ -2105,25 +3043,14 @@ def test_active_build_stream_treats_disconnect_runtimeerror_as_normal(monkeypatc
     websocket.client_state = WebSocketState.CONNECTED
     websocket.application_state = WebSocketState.CONNECTED
 
-    async def boom(*_args, **_kwargs) -> None:
-        raise RuntimeError('Unexpected ASGI message after websocket.close')
-
-    add = AsyncMock()
-    remove = AsyncMock()
-    snap = AsyncMock()
-
+    wait = AsyncMock(return_value=None)
     monkeypatch.setattr('modules.compute.routes._require_websocket_user', AsyncMock(return_value=MagicMock()))
-    monkeypatch.setattr('modules.compute.routes._send_build_snapshot', snap)
-    monkeypatch.setattr('modules.compute.routes._wait_for_websocket_disconnect', boom)
+    monkeypatch.setattr('modules.compute.routes._wait_for_build_notification', wait)
     monkeypatch.setattr('modules.compute.routes._safe_send_json', AsyncMock())
-    monkeypatch.setattr('modules.compute.routes.build_registry.add_watcher', add)
-    monkeypatch.setattr('modules.compute.routes.build_registry.remove_watcher', remove)
 
     asyncio.run(active_build_stream(websocket, build.build_id))
 
-    add.assert_awaited_once()
-    remove.assert_awaited_once()
-    snap.assert_awaited_once_with(websocket, build.build_id)
+    wait.assert_awaited_once()
 
 
 def test_active_build_registry_tracks_and_drops_finished_task(test_user) -> None:
@@ -2168,31 +3095,39 @@ def test_active_build_detail_websocket_rejects_wrong_namespace(client, test_user
     assert payload == {'type': 'error', 'error': 'Active build not found', 'status_code': 404}
 
 
-def test_active_build_list_websocket_filters_namespace(client, test_user) -> None:
-    asyncio.run(
-        active_build_registry.create_build(
-            analysis_id='analysis-alpha',
-            analysis_name='Alpha Build',
-            namespace='alpha',
-            starter=compute_service._build_starter(test_user),
-            total_tabs=1,
-        )
+def test_active_build_list_websocket_filters_namespace(client, test_db_session, test_user) -> None:
+    build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='alpha',
+        analysis_id='analysis-alpha',
+        analysis_name='Alpha Build',
+        request_json={'analysis_id': 'analysis-alpha'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='preview',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
     )
-    beta = asyncio.run(
-        active_build_registry.create_build(
-            analysis_id='analysis-beta',
-            analysis_name='Beta Build',
-            namespace='beta',
-            starter=compute_service._build_starter(test_user),
-            total_tabs=1,
-        )
+    beta = build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='beta',
+        analysis_id='analysis-beta',
+        analysis_name='Beta Build',
+        request_json={'analysis_id': 'analysis-beta'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_kind='preview',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
     )
 
     with client.websocket_connect('/api/v1/compute/ws/builds?namespace=beta') as websocket:
         snapshot = websocket.receive_json()
 
     assert snapshot['type'] == 'snapshot'
-    assert [item['build_id'] for item in snapshot['builds']] == [beta.build_id]
+    assert [item['build_id'] for item in snapshot['builds']] == [beta.id]
 
 
 def test_process_manager_isolates_same_analysis_id_by_namespace(monkeypatch) -> None:

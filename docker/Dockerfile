@@ -28,8 +28,10 @@ FROM python:3.13-slim AS backend-builder
 
 WORKDIR /app/backend
 
-# Install uv (from official image)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+# Install uv inside the image so builds are self-contained
+RUN pip install --no-cache-dir uv
+
+ARG INSTALL_DEV=false
 
 LABEL maintainer="Your Name <your.email@example.com>"
 LABEL description="Data-Forge Analysis Platform - Combined frontend and backend"
@@ -41,7 +43,7 @@ RUN addgroup --gid 1000 appgroup && adduser --uid 1000 --gid 1000 --disabled-pas
 COPY backend/pyproject.toml backend/uv.lock* backend/README.md ./
 
 # Install dependencies into .venv
-RUN uv sync --frozen || uv sync
+RUN if [ "$INSTALL_DEV" = "true" ]; then uv sync --frozen --group dev || uv sync --group dev; else uv sync --frozen || uv sync; fi
 
 # Copy backend code
 COPY backend/ /app/backend/
@@ -60,6 +62,7 @@ USER appuser
 
 # Change to backend directory for execution
 WORKDIR /app/backend
+ENV PATH="/app/backend/.venv/bin:${PATH}"
 
 # Expose port
 EXPOSE 8000
@@ -68,5 +71,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD python -c "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"
 
-# Start command using uv
-CMD [ "uv", "run", "main.py" ]
+CMD [ "python", "app.py" ]

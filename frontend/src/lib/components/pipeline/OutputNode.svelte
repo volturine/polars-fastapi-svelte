@@ -477,12 +477,13 @@
 	async function confirmCancelBuild(): Promise<void> {
 		const runId = buildStore.engineRunId;
 		if (!runId || cancelPending) return;
+		cancelConfirmOpen = false;
 		cancelPending = true;
 		error = null;
 		const result = await cancelBuild(runId);
 		result.match(
-			() => {
-				cancelConfirmOpen = false;
+			(cancelled) => {
+				buildStore.markCancelled(cancelled);
 				showCancelToast('Build cancelled');
 			},
 			(err) => {

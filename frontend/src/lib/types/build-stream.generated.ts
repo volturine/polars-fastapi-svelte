@@ -6,6 +6,7 @@ export interface BuildPlanEvent {
 	build_id: string;
 	analysis_id: string;
 	emitted_at: string;
+	sequence: number | null;
 	current_kind: string | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
@@ -22,6 +23,7 @@ export interface BuildStepStartEvent {
 	build_id: string;
 	analysis_id: string;
 	emitted_at: string;
+	sequence: number | null;
 	current_kind: string | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
@@ -42,6 +44,7 @@ export interface BuildStepCompleteEvent {
 	build_id: string;
 	analysis_id: string;
 	emitted_at: string;
+	sequence: number | null;
 	current_kind: string | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
@@ -64,6 +67,7 @@ export interface BuildStepFailedEvent {
 	build_id: string;
 	analysis_id: string;
 	emitted_at: string;
+	sequence: number | null;
 	current_kind: string | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
@@ -85,6 +89,7 @@ export interface BuildProgressEvent {
 	build_id: string;
 	analysis_id: string;
 	emitted_at: string;
+	sequence: number | null;
 	current_kind: string | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
@@ -105,6 +110,7 @@ export interface BuildResourceEvent {
 	build_id: string;
 	analysis_id: string;
 	emitted_at: string;
+	sequence: number | null;
 	current_kind: string | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
@@ -126,6 +132,7 @@ export interface BuildLogEvent {
 	build_id: string;
 	analysis_id: string;
 	emitted_at: string;
+	sequence: number | null;
 	current_kind: string | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
@@ -155,6 +162,7 @@ export interface BuildCompleteEvent {
 	build_id: string;
 	analysis_id: string;
 	emitted_at: string;
+	sequence: number | null;
 	current_kind: string | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
@@ -175,6 +183,7 @@ export interface BuildFailedEvent {
 	build_id: string;
 	analysis_id: string;
 	emitted_at: string;
+	sequence: number | null;
 	current_kind: string | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
@@ -196,6 +205,7 @@ export interface BuildCancelledEvent {
 	build_id: string;
 	analysis_id: string;
 	emitted_at: string;
+	sequence: number | null;
 	current_kind: string | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
@@ -225,7 +235,7 @@ export type BuildEvent =
 	| BuildStepFailedEvent
 	| BuildStepStartEvent;
 
-export type ActiveBuildStatus = 'running' | 'completed' | 'failed' | 'cancelled';
+export type ActiveBuildStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 export interface BuildStarter {
 	user_id: string | null;
@@ -347,6 +357,7 @@ export interface ActiveBuildDetail {
 export interface BuildDetailSnapshot {
 	type: 'snapshot';
 	build: ActiveBuildDetail;
+	last_sequence?: number;
 }
 
 export interface BuildsSnapshot {

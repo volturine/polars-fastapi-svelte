@@ -1,6 +1,7 @@
-import { apiRequest, BASE_URL } from './client';
+import { apiRequest, buildBackendUrl } from './client';
 import type { ResultAsync } from 'neverthrow';
 import type { ApiError } from './client';
+import { createOwnedEventSource } from './websocket';
 
 export interface ChatSession {
 	session_id: string;
@@ -231,5 +232,5 @@ export function listSessions(): ResultAsync<ChatSessionInfo[], ApiError> {
 }
 
 export function openEventStream(sessionId: string): EventSource {
-	return new EventSource(`${BASE_URL}/v1/ai/chat/stream/${sessionId}`);
+	return createOwnedEventSource(buildBackendUrl(`/v1/ai/chat/stream/${sessionId}`));
 }

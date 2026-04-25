@@ -2,6 +2,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
+from sqlmodel import Session
 
 from main import app
 from modules.analysis.models import Analysis, AnalysisDataSource
@@ -414,6 +415,51 @@ class TestAnalysisCreate:
         created = test_db_session.get(Analysis, analysis_id)
         assert created is not None
         assert created.owner_id == test_user.id
+
+    def test_create_analysis_persists_when_request_session_already_started(
+        self,
+        client,
+        sample_datasource: DataSource,
+        test_engine,
+    ):
+        payload = {
+            'name': 'Persisted Analysis',
+            'tabs': [
+                {
+                    'id': 'tab1',
+                    'name': 'Source',
+                    'parent_id': None,
+                    'datasource': {
+                        'id': sample_datasource.id,
+                        'analysis_tab_id': None,
+                        'config': {'branch': 'master'},
+                    },
+                    'output': {
+                        'result_id': str(uuid.uuid4()),
+                        'datasource_type': 'iceberg',
+                        'format': 'parquet',
+                        'filename': 'persisted_source',
+                    },
+                    'steps': [],
+                },
+            ],
+        }
+
+        response = client.post('/api/v1/analysis', json=payload)
+
+        assert response.status_code == 200
+        analysis_id = response.json()['id']
+        with Session(test_engine) as fresh_session:
+            created = fresh_session.get(Analysis, analysis_id)
+            assert created is not None
+            links = (
+                fresh_session.execute(
+                    select(AnalysisDataSource).where(AnalysisDataSource.analysis_id == analysis_id)  # type: ignore[arg-type]
+                )
+                .scalars()
+                .all()
+            )
+            assert [link.datasource_id for link in links] == [sample_datasource.id]
 
 
 class TestAnalysisGet:

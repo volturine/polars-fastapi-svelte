@@ -17,13 +17,14 @@
 	} from 'lucide-svelte';
 	import { css } from '$lib/styles/panda';
 	import { enginesStore } from '$lib/stores/engines.svelte';
+	import EnginesPopup from '$lib/components/common/EnginesPopup.svelte';
 
 	interface Props {
 		collapsed: boolean;
+		interactive: boolean;
 		onToggle: () => void;
 		theme: 'light' | 'dark';
 		onToggleTheme: () => void;
-		onOpenEngines: () => void;
 		onOpenChat: () => void;
 		onOpenNamespace: () => void;
 		onSignOut: () => void;
@@ -32,15 +33,14 @@
 		authRequired: boolean;
 		avatarUrl: string | null;
 		namespaceTrigger?: HTMLButtonElement;
-		enginesTrigger?: HTMLButtonElement;
 	}
 
 	let {
 		collapsed,
+		interactive,
 		onToggle,
 		theme,
 		onToggleTheme,
-		onOpenEngines,
 		onOpenChat,
 		onOpenNamespace,
 		onSignOut,
@@ -48,11 +48,12 @@
 		authenticated,
 		authRequired,
 		avatarUrl,
-		namespaceTrigger = $bindable(),
-		enginesTrigger = $bindable()
+		namespaceTrigger = $bindable()
 	}: Props = $props();
 
 	const currentPath = $derived(page.url.pathname);
+	let enginesOpen = $state(false);
+	let enginesTrigger = $state<HTMLButtonElement>();
 
 	const navItems = [
 		{ href: '/', label: 'Analyses', icon: LayoutGrid, prefix: '/analysis' },
@@ -80,7 +81,7 @@
 			transitionProperty: 'width',
 			transitionDuration: '200ms',
 			transitionTimingFunction: 'ease',
-			overflow: 'hidden'
+			overflow: 'visible'
 		})
 	);
 
@@ -135,9 +136,17 @@
 	);
 
 	const profileActive = $derived(currentPath.startsWith('/profile'));
+
+	function openEngines(): void {
+		enginesOpen = true;
+	}
 </script>
 
-<aside class={sidebarClass} aria-label="Main navigation">
+<aside
+	class={sidebarClass}
+	aria-label="Main navigation"
+	data-shell-interactive={interactive ? 'true' : 'false'}
+>
 	<div
 		class={css({
 			display: 'flex',
@@ -296,57 +305,62 @@
 			{/if}
 		</button>
 
-		<button
-			class={[
-				sidebarBtnClass,
-				css({
-					color: enginesStore.count > 0 ? 'fg.secondary' : 'fg.tertiary'
-				})
-			]}
-			title={collapsed ? 'Engines' : 'Engine Monitor'}
-			aria-label="Engine Monitor"
-			type="button"
-			onclick={onOpenEngines}
-			bind:this={enginesTrigger}
-		>
-			<span
-				class={css({
-					position: 'relative',
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					flexShrink: 0,
-					width: '5',
-					height: '5'
-				})}
+		<div class={css({ position: 'relative' })}>
+			<button
+				class={[
+					sidebarBtnClass,
+					css({
+						color: enginesStore.count > 0 ? 'fg.secondary' : 'fg.tertiary'
+					})
+				]}
+				title={collapsed ? 'Engines' : 'Engine Monitor'}
+				aria-label="Engine Monitor"
+				aria-expanded={enginesOpen}
+				type="button"
+				onclick={openEngines}
+				bind:this={enginesTrigger}
 			>
-				<Cpu size={16} />
-				{#if enginesStore.count > 0}
-					<span
-						data-testid="engine-monitor-count"
-						class={css({
-							position: 'absolute',
-							top: '-2px',
-							right: '-4px',
-							minWidth: '3',
-							height: '3',
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							fontSize: '2xs',
-							fontWeight: 'bold',
-							backgroundColor: 'accent.primary',
-							color: 'fg.inverse'
-						})}
-					>
-						{enginesStore.count}
-					</span>
+				<span
+					class={css({
+						position: 'relative',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						flexShrink: 0,
+						width: '5',
+						height: '5'
+					})}
+				>
+					<Cpu size={16} />
+					{#if enginesStore.count > 0}
+						<span
+							data-testid="engine-monitor-count"
+							class={css({
+								position: 'absolute',
+								top: '-2px',
+								right: '-4px',
+								minWidth: '3',
+								height: '3',
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								fontSize: '2xs',
+								fontWeight: 'bold',
+								backgroundColor: 'accent.primary',
+								color: 'fg.inverse'
+							})}
+						>
+							{enginesStore.count}
+						</span>
+					{/if}
+				</span>
+				{#if !collapsed}
+					<span>Engines</span>
 				{/if}
-			</span>
-			{#if !collapsed}
-				<span>Engines</span>
-			{/if}
-		</button>
+			</button>
+
+			<EnginesPopup bind:open={enginesOpen} anchor={enginesTrigger} />
+		</div>
 
 		<button
 			class={sidebarBtnClass}

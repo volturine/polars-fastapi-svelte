@@ -33,6 +33,7 @@ async function waitForAnyVisible(locator: Locator, timeout: number): Promise<voi
  */
 export async function waitForAppShell(page: Page, timeout = 15_000): Promise<void> {
 	await expect(page.getByLabel('Main navigation')).toBeVisible({ timeout });
+	await expect(page.locator('[data-shell-interactive="true"]')).toBeVisible({ timeout });
 }
 
 /**
@@ -46,6 +47,7 @@ export async function waitForAppShell(page: Page, timeout = 15_000): Promise<voi
  */
 export async function waitForLayoutReady(page: Page, timeout = 30_000): Promise<void> {
 	await expect(page.getByLabel('Main navigation')).toBeVisible({ timeout });
+	await expect(page.locator('[data-shell-interactive="true"]')).toBeVisible({ timeout });
 	await waitForAnyVisible(page.locator('main'), timeout);
 }
 

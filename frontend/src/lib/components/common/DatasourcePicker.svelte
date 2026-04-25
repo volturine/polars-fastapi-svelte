@@ -8,6 +8,7 @@
 	import type { SourceType } from '$lib/utils/file-types';
 	import SearchableDropdown from '$lib/components/ui/SearchableDropdown.svelte';
 	import { css } from '$lib/styles/panda';
+	import { useNamespace } from '$lib/stores/namespace.svelte';
 
 	interface PickerOption {
 		id: string;
@@ -52,6 +53,8 @@
 	}: Props = $props();
 
 	let searchValue = $state('');
+	const ns = useNamespace();
+	let lastNs = $state('');
 
 	const excludedSet = $derived(new SvelteSet(excludeIds));
 
@@ -75,6 +78,12 @@
 	// Network: $derived can't fetch analyses.
 	$effect(() => {
 		if (modeSource !== 'analysis') return;
+		const currentNs = ns.value;
+		if (currentNs !== lastNs) {
+			lastNs = currentNs;
+			analyses = [];
+			analysesLoaded = false;
+		}
 		if (analysesLoaded) return;
 		listAnalyses()
 			.map((value) => {

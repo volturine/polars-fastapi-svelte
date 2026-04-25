@@ -2,6 +2,8 @@
 	import {
 		createHealthCheck,
 		deleteHealthCheck,
+		listAllHealthCheckResults,
+		listAllHealthChecks,
 		listHealthChecks,
 		listHealthCheckResults,
 		updateHealthCheck,
@@ -46,10 +48,12 @@
 	const datasourcesQuery = createQuery(() => ({
 		queryKey: ['datasources-lookup', 'include-hidden'],
 		queryFn: async () => {
-			const result = await listDatasources(true);
+			const result = await listDatasources(true, { cache: 'no-store' });
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
-		}
+		},
+		staleTime: 0,
+		refetchOnMount: 'always'
 	}));
 
 	const datasourceMap = $derived.by(() => {
@@ -60,8 +64,6 @@
 		return map;
 	});
 
-	const allDatasources = $derived(datasourcesQuery.data ?? []);
-
 	function resolveDatasource(id: string): string {
 		const ds = datasourceMap.get(id);
 		if (ds) return ds.name;
@@ -71,53 +73,30 @@
 	const listQuery = createQuery(() => ({
 		queryKey: ['healthchecks', datasourceId ?? 'all'],
 		queryFn: async (): Promise<HealthCheckItem[]> => {
-			if (datasourceId) {
-				const result = await listHealthChecks(datasourceId);
-				if (result.isErr()) throw new Error(result.error.message);
-				return result.value.map((check) => ({
-					...check,
-					critical: !!(check as { critical?: boolean }).critical
-				}));
-			}
-			if (datasourcesQuery.error instanceof Error) throw datasourcesQuery.error;
-			const sources = datasourcesQuery.data ?? [];
-			if (sources.length === 0) return [];
-			const all = await Promise.all(
-				sources.map(async (ds) => {
-					const result = await listHealthChecks(ds.id);
-					if (result.isErr()) throw new Error(result.error.message);
-					return result.value;
-				})
-			);
-			return all.flat().map((check) => ({
+			const result = datasourceId
+				? await listHealthChecks(datasourceId)
+				: await listAllHealthChecks();
+			if (result.isErr()) throw new Error(result.error.message);
+			return result.value.map((check) => ({
 				...check,
 				critical: !!(check as { critical?: boolean }).critical
 			}));
 		},
-		enabled: !!datasourceId || datasourcesQuery.isSuccess
+		enabled: true
 	}));
+
+	const showInitialLoading = $derived(listQuery.isLoading && listQuery.data === undefined);
 
 	const resultsQuery = createQuery(() => ({
 		queryKey: ['healthcheck-results', datasourceId ?? 'all'],
 		queryFn: async () => {
-			if (datasourceId) {
-				const result = await listHealthCheckResults(datasourceId, 50);
-				if (result.isErr()) throw new Error(result.error.message);
-				return result.value;
-			}
-			if (datasourcesQuery.error instanceof Error) throw datasourcesQuery.error;
-			const sources = datasourcesQuery.data ?? [];
-			if (sources.length === 0) return [];
-			const all = await Promise.all(
-				sources.map(async (ds) => {
-					const result = await listHealthCheckResults(ds.id, 20);
-					if (result.isErr()) throw new Error(result.error.message);
-					return result.value;
-				})
-			);
-			return all.flat();
+			const result = datasourceId
+				? await listHealthCheckResults(datasourceId, 50)
+				: await listAllHealthCheckResults(200);
+			if (result.isErr()) throw new Error(result.error.message);
+			return result.value;
 		},
-		enabled: !!datasourceId || datasourcesQuery.isSuccess
+		enabled: true
 	}));
 
 	const latestResults = $derived.by(() => {
@@ -210,6 +189,7 @@
 	});
 
 	let creating = $state(false);
+	let createDatasources = $state<DataSource[]>([]);
 	let search = $state('');
 	let name = $state('');
 	let checkType = $state<CheckType>('row_count');
@@ -265,6 +245,21 @@
 		config = {};
 		critical = false;
 		duplicateColumns = '';
+	}
+
+	async function openCreateForm(): Promise<void> {
+		const result = await listDatasources(true, { cache: 'no-store' });
+		if (result.isErr()) throw new Error(result.error.message);
+		queryClient.setQueryData(['datasources-lookup', 'include-hidden'], result.value);
+		createDatasources = result.value;
+		if (
+			!datasourceId &&
+			targetDatasourceId &&
+			!result.value.some((ds) => ds.id === targetDatasourceId)
+		) {
+			targetDatasourceId = '';
+		}
+		creating = true;
 	}
 
 	function updateConfig(key: string, value: unknown): void {
@@ -388,7 +383,7 @@
 					bind:value={targetDatasourceId}
 				>
 					<option value="">Select datasource...</option>
-					{#each allDatasources as ds (ds.id)}
+					{#each createDatasources as ds (ds.id)}
 						<option value={ds.id}>{ds.name}</option>
 					{/each}
 				</select>
@@ -1012,6 +1007,7 @@
 					})}
 					onclick={() => {
 						creating = false;
+						createDatasources = [];
 						resetForm();
 					}}
 				>
@@ -1089,7 +1085,7 @@
 							color: 'accent.primary',
 							_hover: { backgroundColor: 'bg.accent/80' }
 						})}
-						onclick={() => (creating = true)}
+						onclick={openCreateForm}
 					>
 						<Plus size={14} />
 						New Check
@@ -1178,7 +1174,7 @@
 						_hover: { backgroundColor: 'bg.accent/80' },
 						transition: 'color 160ms, background-color 160ms'
 					})}
-					onclick={() => (creating = true)}
+					onclick={openCreateForm}
 				>
 					<Plus size={12} />
 					Add
@@ -1205,7 +1201,7 @@
 		{@render createForm()}
 	{/if}
 
-	{#if listQuery.isLoading}
+	{#if showInitialLoading}
 		<div
 			class={css({
 				display: 'flex',

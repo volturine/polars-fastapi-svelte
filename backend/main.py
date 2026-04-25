@@ -2,8 +2,8 @@ import asyncio
 import contextlib
 import logging
 import os
-from collections import deque
-from collections.abc import AsyncIterator, Mapping
+import socket
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -15,18 +15,65 @@ from sqlmodel import Session, text
 
 from api import router
 from core.config import settings
-from core.database import get_settings_db, init_db, run_db
+from core.database import get_settings_db, init_db, run_db, run_settings_db, supports_distributed_runtime
 from core.error_handlers import app_error_handler, generic_error_handler, validation_error_handler
 from core.exceptions import AppError
 from core.http import close_clients
 from core.logging import RequestLoggingMiddleware, configure_logging
 from core.namespace import list_namespaces, namespace_paths, reset_namespace, set_namespace_context
+from modules.build_runs import service as build_run_service
 from modules.compute.engine_live import create_snapshot_notifier
 from modules.compute.manager import ProcessManager
-from modules.scheduler import service as scheduler_service
+from modules.engine_instances import service as engine_instance_service
+from modules.runtime import ipc as runtime_ipc
+from modules.runtime_workers import service as runtime_worker_service
+from modules.runtime_workers.models import RuntimeWorkerKind
 from modules.udf.seed import ensure_udf_seeds
 
 logger = logging.getLogger(__name__)
+
+
+def _persist_engine_snapshot(worker_id: str, namespace: str, statuses) -> None:
+    from core.database import run_settings_db
+
+    def _write(session: Session) -> None:
+        engine_instance_service.persist_engine_snapshot(
+            session,
+            worker_id=worker_id,
+            namespace=namespace,
+            statuses=list(statuses),
+        )
+
+    run_settings_db(_write)
+
+
+def _register_api_worker(worker_id: str) -> None:
+    def _register(session: Session) -> None:
+        runtime_worker_service.register_worker(
+            session,
+            worker_id=worker_id,
+            kind=RuntimeWorkerKind.API,
+            hostname=socket.gethostname(),
+            pid=os.getpid(),
+            capacity=max(settings.worker_connections, 1),
+        )
+
+    run_settings_db(_register)
+
+
+def _heartbeat_api_worker(worker_id: str) -> None:
+    def _heartbeat(session: Session) -> None:
+        runtime_worker_service.heartbeat_worker(session, worker_id=worker_id)
+
+    run_settings_db(_heartbeat)
+
+
+def _stop_api_worker(worker_id: str) -> None:
+    def _stop(session: Session) -> None:
+        runtime_worker_service.mark_worker_stopped(session, worker_id=worker_id)
+
+    run_settings_db(_stop)
+
 
 # Detect Nuitka compiled binary vs running from source.
 # In Nuitka-compiled code, __compiled__ is a C-level built-in constant set to True.
@@ -55,10 +102,32 @@ def _resolve_uvicorn_workers() -> int:
     return max(1, (2 * cores) + 1)
 
 
+def _guard_runtime_workers(workers: int) -> int:
+    if workers <= 1:
+        return workers
+    if supports_distributed_runtime():
+        return workers
+    raise RuntimeError('Multiple workers are not supported in the current runtime mode. Set WORKERS=1.')
+
+
 def _resolve_uvicorn_limit_concurrency() -> int | None:
     if settings.worker_connections > 0:
         return settings.worker_connections
     return None
+
+
+def _mark_running_builds_orphaned_across_namespaces() -> int:
+    namespaces = list_namespaces()
+    if not namespaces:
+        namespaces = [settings.default_namespace]
+    count = 0
+    for namespace in namespaces:
+        token = set_namespace_context(namespace)
+        try:
+            count += run_db(build_run_service.mark_running_builds_orphaned)
+        finally:
+            reset_namespace(token)
+    return count
 
 
 async def chat_sweep_loop(stop_event: asyncio.Event) -> None:
@@ -96,109 +165,41 @@ async def engine_cleanup_loop(stop_event: asyncio.Event, manager: ProcessManager
             logger.error(f'Error in engine cleanup: {e}', exc_info=True)
 
 
-async def scheduler_loop(stop_event: asyncio.Event, manager: ProcessManager) -> None:
+async def api_worker_heartbeat_loop(stop_event: asyncio.Event, worker_id: str, *, heartbeat_seconds: float = 5.0) -> None:
     while not stop_event.is_set():
         with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(stop_event.wait(), timeout=settings.scheduler_check_interval)
+            await asyncio.wait_for(stop_event.wait(), timeout=heartbeat_seconds)
         if stop_event.is_set():
-            break
-        try:
-            namespaces = list_namespaces()
-            if not namespaces:
-                namespaces = [settings.default_namespace]
-            for name in namespaces:
-                token = set_namespace_context(name)
-                try:
-                    due = await asyncio.to_thread(run_db, scheduler_service.get_due_schedules)
-                    if not due:
-                        logger.debug('No schedules due')
-                        break
-
-                    due_by_id = {s.id: s for s in due}
-                    completed_schedule_ids: set[str] = set()
-
-                    sorted_schedules = _topo_sort_schedules(due, due_by_id)
-                    for sched in sorted_schedules:
-                        sched_id = sched.id
-                        if sched.depends_on and sched.depends_on not in completed_schedule_ids and sched.depends_on in due_by_id:
-                            logger.warning(f'Scheduler: skipping schedule {sched_id} — dependency {sched.depends_on} did not complete')
-                            continue
-
-                        try:
-
-                            def _execute_and_mark(session: Session, target_id: str = sched_id) -> dict:
-                                result = scheduler_service.execute_schedule(session, manager, target_id)
-                                scheduler_service.mark_schedule_run(session, target_id)
-                                return result
-
-                            result = await asyncio.to_thread(run_db, _execute_and_mark)
-                            completed_schedule_ids.add(sched.id)
-                            logger.info(
-                                'Scheduler: execution complete for schedule %s (datasource=%s status=%s)',
-                                sched_id,
-                                sched.datasource_id,
-                                result.get('status', 'unknown'),
-                            )
-                        except Exception as e:
-                            logger.error(f'Scheduler: execution failed for schedule {sched_id}: {e}', exc_info=True)
-
-                            def _mark(session: Session, target_id: str = sched_id) -> None:
-                                scheduler_service.mark_schedule_run(session, target_id)
-
-                            await asyncio.to_thread(run_db, _mark)
-                    break
-                finally:
-                    reset_namespace(token)
-        except Exception as e:
-            logger.error(f'Error in scheduler loop: {e}', exc_info=True)
-
-
-def _topo_sort_schedules(
-    schedules: list,
-    due_by_id: Mapping[str, object],
-) -> list:
-    """Sort schedules respecting depends_on within a single batch."""
-    id_set = {s.id for s in schedules}
-    graph: dict[str, list] = {s.id: [] for s in schedules}
-    in_degree: dict[str, int] = {s.id: 0 for s in schedules}
-
-    for s in schedules:
-        if s.depends_on and s.depends_on in id_set:
-            graph[s.depends_on].append(s.id)
-            in_degree[s.id] += 1
-
-    queue = deque(sid for sid, deg in in_degree.items() if deg == 0)
-    ordered: list[str] = []
-    while queue:
-        node = queue.popleft()
-        ordered.append(node)
-        for neighbor in graph.get(node, []):
-            in_degree[neighbor] -= 1
-            if in_degree[neighbor] == 0:
-                queue.append(neighbor)
-
-    # Append any remaining (cycle protection)
-    for s in schedules:
-        if s.id not in ordered:
-            ordered.append(s.id)
-
-    by_id = {s.id: s for s in schedules}
-    return [by_id[sid] for sid in ordered]
+            return
+        _heartbeat_api_worker(worker_id)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     logger.info('Starting application...')
-    app.state.manager = ProcessManager(on_snapshot=create_snapshot_notifier(asyncio.get_running_loop()))
+    api_worker_id = f'api:{os.getpid()}'
+    app.state.api_worker_id = api_worker_id
+    app.state.manager = ProcessManager(
+        on_snapshot=create_snapshot_notifier(
+            asyncio.get_running_loop(),
+            persist=lambda namespace, statuses: _persist_engine_snapshot(api_worker_id, namespace, statuses),
+        )
+    )
     await init_db()
+    await asyncio.to_thread(_register_api_worker, api_worker_id)
     await asyncio.to_thread(run_db, ensure_udf_seeds)
 
     # Start background cleanup task
     stop_event = asyncio.Event()
+    ipc_server = await runtime_ipc.start_api_server(listener='api')
+
     cleanup_task = asyncio.create_task(engine_cleanup_loop(stop_event, app.state.manager))
-    scheduler_task = asyncio.create_task(scheduler_loop(stop_event, app.state.manager))
     chat_sweep_task = asyncio.create_task(chat_sweep_loop(stop_event))
+    api_heartbeat_task = asyncio.create_task(api_worker_heartbeat_loop(stop_event, api_worker_id))
+    ipc_task = None
+    if ipc_server is not None:
+        ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, stop_event, runtime_ipc.handle_api_payload))
 
     # Start Telegram bot only if explicitly enabled in settings
     from modules.telegram.bot import telegram_bot
@@ -231,10 +232,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     with contextlib.suppress(asyncio.TimeoutError):
         await asyncio.wait_for(cleanup_task, timeout=5)
     with contextlib.suppress(asyncio.TimeoutError):
-        await asyncio.wait_for(scheduler_task, timeout=5)
-    with contextlib.suppress(asyncio.TimeoutError):
         await asyncio.wait_for(chat_sweep_task, timeout=5)
+    with contextlib.suppress(asyncio.TimeoutError):
+        await asyncio.wait_for(api_heartbeat_task, timeout=5)
+    if ipc_task is not None:
+        with contextlib.suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(ipc_task, timeout=5)
+    await runtime_ipc.stop_api_server(ipc_server, listener='api')
     await close_clients()
+    await asyncio.to_thread(_stop_api_worker, api_worker_id)
 
     # Cleanup compute processes on shutdown
     logger.info('Shutting down compute processes...')
@@ -388,6 +394,8 @@ if __name__ == '__main__':
 
     import uvicorn
 
+    workers = _guard_runtime_workers(_resolve_uvicorn_workers())
+
     # Required for multiprocessing 'spawn' context in frozen (Nuitka onefile) executables.
     multiprocessing.freeze_support()
 
@@ -399,7 +407,7 @@ if __name__ == '__main__':
         host='0.0.0.0',
         port=settings.port,
         reload=False if _NUITKA_COMPILED else settings.debug,
-        workers=_resolve_uvicorn_workers(),
+        workers=workers,
         limit_concurrency=_resolve_uvicorn_limit_concurrency(),
         log_level=settings.log_level,
         access_log=settings.uvicorn_access_log,

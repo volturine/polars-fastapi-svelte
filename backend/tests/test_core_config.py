@@ -69,8 +69,7 @@ class TestSettings:
 
         assert settings.debug is True
         assert settings.port == 8123
-        # database_url is always derived from data_dir, ignoring the env var
-        assert settings.database_url == f'sqlite:///{data_dir / "app.db"}'
+        assert settings.database_url == 'sqlite:///./test.db'
         assert settings.data_dir == data_dir
         assert settings.default_namespace == 'acme'
         assert settings.upload_chunk_size == 2000000
@@ -104,14 +103,78 @@ class TestSettings:
         assert settings.cors_origins is not None
         assert len(settings.cors_origins_list) > 0
 
-    def test_database_url_always_derived_from_data_dir(self, monkeypatch, tmp_path):
-        """database_url is always derived from data_dir regardless of DATABASE_URL env var."""
+    def test_database_url_defaults_from_data_dir_when_empty(self, monkeypatch, tmp_path):
         data_dir = tmp_path / 'data'
         _set_isolated_settings_env(monkeypatch, tmp_path, data_dir)
-        monkeypatch.setenv('DATABASE_URL', 'invalid-url')
+        monkeypatch.delenv('DATABASE_URL', raising=False)
         monkeypatch.setenv('DATA_DIR', str(data_dir))
+
         settings = Settings()
+
         assert settings.database_url == f'sqlite:///{data_dir / "app.db"}'
+
+    def test_database_url_uses_explicit_env_value(self, monkeypatch, tmp_path):
+        _set_isolated_settings_env(monkeypatch, tmp_path)
+        monkeypatch.setenv('DATABASE_URL', 'postgresql+psycopg://user:pass@host:5432/db')
+
+        settings = Settings()
+
+        assert settings.database_url == 'postgresql+psycopg://user:pass@host:5432/db'
+        assert settings.is_postgres is True
+
+    def test_distributed_runtime_defaults_disabled(self, monkeypatch, tmp_path):
+        _set_isolated_settings_env(monkeypatch, tmp_path)
+
+        settings = Settings()
+
+        assert settings.distributed_runtime_enabled is False
+
+    def test_distributed_runtime_and_pool_settings_from_env(self, monkeypatch, tmp_path):
+        _set_isolated_settings_env(monkeypatch, tmp_path)
+        monkeypatch.setenv('DATABASE_URL', 'postgresql+psycopg://user:pass@host:5432/db')
+        monkeypatch.setenv('DISTRIBUTED_RUNTIME_ENABLED', 'true')
+        monkeypatch.setenv('DATABASE_POOL_SIZE', '15')
+        monkeypatch.setenv('DATABASE_MAX_OVERFLOW', '7')
+        monkeypatch.setenv('DATABASE_POOL_TIMEOUT', '12')
+
+        settings = Settings()
+
+        assert settings.distributed_runtime_enabled is True
+        assert settings.database_pool_size == 15
+        assert settings.database_max_overflow == 7
+        assert settings.database_pool_timeout == 12
+
+    def test_distributed_runtime_requires_postgres(self, monkeypatch, tmp_path):
+        _set_isolated_settings_env(monkeypatch, tmp_path)
+        monkeypatch.setenv('DISTRIBUTED_RUNTIME_ENABLED', 'true')
+
+        with pytest.raises(ValidationError, match='DISTRIBUTED_RUNTIME_ENABLED requires a PostgreSQL DATABASE_URL'):
+            Settings()
+
+    def test_distributed_runtime_rejects_embedded_build_worker(self, monkeypatch, tmp_path):
+        _set_isolated_settings_env(monkeypatch, tmp_path)
+        monkeypatch.setenv('DATABASE_URL', 'postgresql+psycopg://user:pass@host:5432/db')
+        monkeypatch.setenv('DISTRIBUTED_RUNTIME_ENABLED', 'true')
+        monkeypatch.setenv('EMBEDDED_BUILD_WORKER_ENABLED', 'true')
+
+        with pytest.raises(ValidationError, match='EMBEDDED_BUILD_WORKER_ENABLED cannot be enabled'):
+            Settings()
+
+    def test_build_worker_process_range_rejects_min_above_max(self, monkeypatch, tmp_path):
+        _set_isolated_settings_env(monkeypatch, tmp_path)
+        monkeypatch.setenv('BUILD_WORKER_MIN_PROCESSES', '2')
+        monkeypatch.setenv('BUILD_WORKER_MAX_PROCESSES', '1')
+
+        with pytest.raises(ValidationError, match='BUILD_WORKER_MIN_PROCESSES must be <= BUILD_WORKER_MAX_PROCESSES'):
+            Settings()
+
+    def test_build_worker_process_range_rejects_max_above_engine_limit(self, monkeypatch, tmp_path):
+        _set_isolated_settings_env(monkeypatch, tmp_path)
+        monkeypatch.setenv('MAX_CONCURRENT_ENGINES', '2')
+        monkeypatch.setenv('BUILD_WORKER_MAX_PROCESSES', '3')
+
+        with pytest.raises(ValidationError, match='BUILD_WORKER_MAX_PROCESSES must be <= MAX_CONCURRENT_ENGINES'):
+            Settings()
 
     def test_negative_timeout_values(self, monkeypatch, tmp_path):
         _set_isolated_settings_env(monkeypatch, tmp_path)

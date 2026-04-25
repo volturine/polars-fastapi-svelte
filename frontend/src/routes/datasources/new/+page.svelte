@@ -146,6 +146,7 @@
 				if (response.successful === response.total) {
 					selectedFiles = [];
 					queryClient.invalidateQueries({ queryKey: ['datasources'] });
+					queryClient.invalidateQueries({ queryKey: ['datasources-lookup'] });
 					goto(resolve('/datasources'), { invalidateAll: true });
 				}
 			},
@@ -216,6 +217,7 @@
 					return;
 				}
 				queryClient.invalidateQueries({ queryKey: ['datasources'] });
+				queryClient.invalidateQueries({ queryKey: ['datasources-lookup'] });
 				goto(resolve('/datasources'), { invalidateAll: true });
 				return;
 			}
@@ -227,6 +229,7 @@
 				encoding: csvEncoding
 			});
 			queryClient.invalidateQueries({ queryKey: ['datasources'] });
+			queryClient.invalidateQueries({ queryKey: ['datasources-lookup'] });
 			goto(resolve('/datasources'), { invalidateAll: true });
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Upload failed';
@@ -247,6 +250,7 @@
 		try {
 			await connectDatabase(dbName, connectionString, query);
 			queryClient.invalidateQueries({ queryKey: ['datasources'] });
+			queryClient.invalidateQueries({ queryKey: ['datasources-lookup'] });
 			goto(resolve('/datasources'), { invalidateAll: true });
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Connection failed';

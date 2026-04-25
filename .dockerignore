@@ -20,6 +20,15 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 .venv/
+backend/.env
+backend/.env.*
+backend/.prod.env
+backend/e2e.env
+backend/.mypy_cache/
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/.venv/
+frontend/node_modules/
 venv/
 ENV/
 env/

@@ -1,62 +1,125 @@
 from logging.config import fileConfig
+from typing import Any
 
 from alembic import context
-from sqlalchemy import create_engine, pool
+from sqlalchemy import create_engine, pool, text
 from sqlmodel import SQLModel
 
-# Import the Base and settings
 from core.config import settings
+from modules.analysis import models as analysis_models
 from modules.analysis_versions import models as analysis_versions_models
+from modules.auth import models as auth_models
+from modules.build_jobs import models as build_jobs_models
+from modules.build_runs import models as build_runs_models
+from modules.chat.sessions import ChatSession
 from modules.datasource import models as datasource_models
+from modules.engine_instances import models as engine_instances_models
 from modules.engine_runs import models as engine_runs_models
+from modules.healthcheck import models as healthcheck_models
 from modules.locks import models as locks_models
+from modules.runtime_workers import models as runtime_workers_models
+from modules.scheduler import models as scheduler_models
+from modules.settings import models as settings_models
+from modules.telegram import models as telegram_models
+from modules.udf import models as udf_models
 
-_eng: type = engine_runs_models.EngineRun
-_ana: type = analysis_versions_models.AnalysisVersion
-_dsrc: type = datasource_models.DataSource
-_lock: type = locks_models.ResourceLock
+del analysis_models
+del analysis_versions_models
+del auth_models
+del build_jobs_models
+del build_runs_models
+del datasource_models
+del engine_instances_models
+del engine_runs_models
+del healthcheck_models
+del locks_models
+del runtime_workers_models
+del scheduler_models
+del settings_models
+del telegram_models
+del udf_models
+del ChatSession
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
 config = context.config
-
-# Override the sqlalchemy.url with our settings
 config.set_main_option('sqlalchemy.url', settings.database_url)
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-target_metadata = SQLModel.metadata
+_SHARED_TABLES = {
+    'app_settings',
+    'auth_providers',
+    'chat_sessions',
+    'engine_instances',
+    'runtime_workers',
+    'user_sessions',
+    'users',
+    'verification_tokens',
+}
+_TENANT_TABLES = {
+    'analyses',
+    'analysis_datasources',
+    'analysis_versions',
+    'build_events',
+    'build_jobs',
+    'build_runs',
+    'datasources',
+    'engine_runs',
+    'healthcheck_results',
+    'healthchecks',
+    'resource_locks',
+    'schedules',
+    'telegram_listeners',
+    'telegram_subscribers',
+    'udfs',
+}
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+
+def _runtime_scope() -> str:
+    return str(config.attributes.get('runtime_scope', 'public'))
+
+
+def _target_schema() -> str:
+    return str(config.attributes.get('target_schema', 'public'))
+
+
+def _runtime_attributes() -> dict[str, Any]:
+    raw = config.attributes
+    return raw if isinstance(raw, dict) else {}
+
+
+def _table_names() -> set[str]:
+    if _runtime_scope() == 'tenant':
+        return _TENANT_TABLES
+    return _SHARED_TABLES
+
+
+def _target_metadata():
+    metadata = SQLModel.metadata
+    names = _table_names()
+    metadata.info['alembic_table_names'] = names
+    metadata.info['alembic_target_schema'] = _target_schema()
+    return metadata
+
+
+def _include_object(object_, name, type_, reflected, compare_to):  # type: ignore[no-untyped-def]
+    del object_, reflected, compare_to
+    if type_ != 'table':
+        return True
+    return name in _table_names()
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
     url = config.get_main_option('sqlalchemy.url')
     context.configure(
         url=url,
-        target_metadata=target_metadata,
+        target_metadata=_target_metadata(),
         literal_binds=True,
         dialect_opts={'paramstyle': 'named'},
-        render_as_batch=True,  # For SQLite support
+        include_object=_include_object,
+        version_table_schema=_target_schema() if settings.is_postgres else None,
+        include_schemas=settings.is_postgres,
+        render_as_batch=not settings.is_postgres,
     )
 
     with context.begin_transaction():
@@ -64,20 +127,22 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
     configuration = config.get_section(config.config_ini_section, {})
     configuration['sqlalchemy.url'] = settings.database_url
-
-    connectable = create_engine(
-        configuration['sqlalchemy.url'],
-        poolclass=pool.NullPool,
-    )
+    connectable = create_engine(configuration['sqlalchemy.url'], poolclass=pool.NullPool)
 
     with connectable.connect() as connection:
+        if settings.is_postgres:
+            schema = _target_schema()
+            connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+            connection.execute(text(f'SET search_path TO "{schema}", public'))
         context.configure(
             connection=connection,
-            target_metadata=target_metadata,
-            render_as_batch=True,
+            target_metadata=_target_metadata(),
+            include_object=_include_object,
+            version_table_schema=_target_schema() if settings.is_postgres else None,
+            include_schemas=settings.is_postgres,
+            render_as_batch=not settings.is_postgres,
         )
 
         with context.begin_transaction():

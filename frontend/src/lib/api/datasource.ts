@@ -215,13 +215,16 @@ export function compareDatasourceSnapshots(
 	});
 }
 
-export function listDatasources(includeHidden?: boolean): ResultAsync<DataSource[], ApiError> {
+export function listDatasources(
+	includeHidden?: boolean,
+	options?: RequestInit
+): ResultAsync<DataSource[], ApiError> {
 	const params = new URLSearchParams();
 	if (includeHidden) {
 		params.set('include_hidden', 'true');
 	}
 	const suffix = params.toString() ? `?${params.toString()}` : '';
-	return apiRequest<DataSource[]>(`/v1/datasource${suffix}`);
+	return apiRequest<DataSource[]>(`/v1/datasource${suffix}`, options);
 }
 
 export function getDatasource(id: string): ResultAsync<DataSource, ApiError> {

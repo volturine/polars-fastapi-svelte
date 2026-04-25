@@ -1,33 +1,121 @@
 """Tests for scheduler service."""
 
+import asyncio
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from sqlalchemy import select
 from sqlmodel import Session
 
 from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, ScheduleNotFoundError
 from modules.analysis.models import Analysis, AnalysisDataSource, AnalysisStatus
+from modules.build_jobs import service as build_job_service
+from modules.build_runs import service as build_run_service
+from modules.build_runs.models import BuildRunStatus
 from modules.datasource.models import DataSource
-from modules.engine_runs.models import EngineRun
+from modules.runtime import scheduler as runtime_scheduler
 from modules.scheduler.models import Schedule
 from modules.scheduler.schemas import ScheduleCreate, ScheduleUpdate
 from modules.scheduler.service import (
+    claim_due_schedules,
     create_schedule,
     delete_schedule,
-    execute_schedule,
+    enqueue_schedule_run,
     get_build_order,
     get_due_schedules,
     is_schedule_target_eligible,
     list_schedules,
     mark_schedule_run,
+    reconcile_schedule_run,
     run_analysis_build,
     should_run,
     update_schedule,
 )
+
+
+@pytest.mark.asyncio
+async def test_scheduler_main_starts_runtime_listener(monkeypatch) -> None:
+    calls: list[tuple[str, object]] = []
+
+    async def fake_init_db() -> None:
+        calls.append(('init_db', None))
+
+    async def fake_start_api_server() -> object:
+        server = object()
+        calls.append(('start_api_server', server))
+        return server
+
+    async def fake_serve_api_notifications(server: object, stop_event: asyncio.Event, handler) -> None:
+        calls.append(('serve_api_notifications', server))
+        assert handler is runtime_scheduler.runtime_ipc.handle_api_payload
+        await stop_event.wait()
+
+    async def fake_stop_api_server(server: object) -> None:
+        calls.append(('stop_api_server', server))
+
+    async def fake_scheduler_loop(stop_event: asyncio.Event, worker_id: str, **_kwargs) -> None:
+        calls.append(('scheduler_loop', worker_id))
+        stop_event.set()
+
+    monkeypatch.setattr(
+        runtime_scheduler.settings,
+        'database_url',
+        'postgresql+psycopg://user:pass@host:5432/db',
+        raising=False,
+    )
+    monkeypatch.setattr(runtime_scheduler, 'configure_logging', lambda: calls.append(('configure_logging', None)))
+    monkeypatch.setattr(runtime_scheduler, 'init_db', fake_init_db)
+    monkeypatch.setattr(runtime_scheduler.runtime_ipc, 'start_api_server', fake_start_api_server)
+    monkeypatch.setattr(runtime_scheduler.runtime_ipc, 'serve_api_notifications', fake_serve_api_notifications)
+    monkeypatch.setattr(runtime_scheduler.runtime_ipc, 'stop_api_server', fake_stop_api_server)
+    monkeypatch.setattr(runtime_scheduler, 'install_stop_handlers', lambda stop_event: calls.append(('install_stop_handlers', stop_event)))
+    monkeypatch.setattr(runtime_scheduler, 'scheduler_loop', fake_scheduler_loop)
+    monkeypatch.setattr(runtime_scheduler, 'scheduler_id', lambda: 'scheduler-1')
+
+    await runtime_scheduler.main()
+
+    names = [name for name, _ in calls]
+
+    assert names[0:4] == ['configure_logging', 'init_db', 'install_stop_handlers', 'start_api_server']
+    assert 'serve_api_notifications' in names
+    assert 'scheduler_loop' in names
+    assert names[-1] == 'stop_api_server'
+
+    server = next(value for name, value in calls if name == 'start_api_server')
+    assert next(value for name, value in calls if name == 'serve_api_notifications') is server
+    assert next(value for name, value in calls if name == 'stop_api_server') is server
+
+
+@pytest.mark.asyncio
+async def test_scheduler_main_skips_runtime_listener_outside_postgres(monkeypatch) -> None:
+    calls: list[str] = []
+
+    async def fake_init_db() -> None:
+        calls.append('init_db')
+
+    async def fake_scheduler_loop(stop_event: asyncio.Event, worker_id: str, **_kwargs) -> None:
+        calls.append('scheduler_loop')
+        assert worker_id == 'scheduler-1'
+        stop_event.set()
+
+    monkeypatch.setattr(runtime_scheduler.settings, 'database_url', 'sqlite:////tmp/test.db', raising=False)
+    monkeypatch.setattr(runtime_scheduler, 'configure_logging', lambda: calls.append('configure_logging'))
+    monkeypatch.setattr(runtime_scheduler, 'init_db', fake_init_db)
+    monkeypatch.setattr(
+        runtime_scheduler.runtime_ipc,
+        'start_api_server',
+        lambda: pytest.fail('runtime IPC server should not start outside Postgres'),
+    )
+    monkeypatch.setattr(runtime_scheduler, 'install_stop_handlers', lambda stop_event: calls.append('install_stop_handlers'))
+    monkeypatch.setattr(runtime_scheduler, 'scheduler_loop', fake_scheduler_loop)
+    monkeypatch.setattr(runtime_scheduler, 'scheduler_id', lambda: 'scheduler-1')
+
+    await runtime_scheduler.main()
+
+    assert calls == ['configure_logging', 'init_db', 'install_stop_handlers', 'scheduler_loop']
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -432,6 +520,31 @@ class TestGetDueSchedules:
         result = get_due_schedules(test_db_session)
         assert len(result) == 0
 
+    def test_dependency_schedule_uses_last_triggered_at(self, test_db_session: Session, output_datasource: DataSource):
+        upstream = create_schedule(test_db_session, ScheduleCreate(datasource_id=output_datasource.id, cron_expression='0 * * * *'))
+        downstream = create_schedule(
+            test_db_session,
+            ScheduleCreate(datasource_id=output_datasource.id, cron_expression='0 * * * *', depends_on=upstream.id),
+        )
+
+        upstream_row = test_db_session.get(Schedule, upstream.id)
+        assert upstream_row is not None
+        upstream_row.last_success_at = datetime.now(UTC).replace(tzinfo=None)
+        test_db_session.add(upstream_row)
+        test_db_session.commit()
+
+        due = get_due_schedules(test_db_session)
+        assert downstream.id in {schedule.id for schedule in due}
+
+        downstream_row = test_db_session.get(Schedule, downstream.id)
+        assert downstream_row is not None
+        downstream_row.last_triggered_at = datetime.now(UTC).replace(tzinfo=None)
+        test_db_session.add(downstream_row)
+        test_db_session.commit()
+
+        due = get_due_schedules(test_db_session)
+        assert downstream.id not in {schedule.id for schedule in due}
+
 
 # ---------------------------------------------------------------------------
 # mark_schedule_run()
@@ -457,6 +570,49 @@ class TestMarkScheduleRun:
     def test_nonexistent_schedule_no_error(self, test_db_session: Session):
         """Marking a nonexistent schedule should not raise."""
         mark_schedule_run(test_db_session, 'nonexistent')
+
+
+class TestScheduleClaiming:
+    def test_claim_due_schedule_sets_lease(self, test_db_session: Session, output_datasource: DataSource):
+        schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=output_datasource.id, cron_expression='* * * * *'))
+
+        claimed = claim_due_schedules(test_db_session, worker_id='scheduler:test')
+
+        assert [row.id for row in claimed] == [schedule.id]
+        row = test_db_session.get(Schedule, schedule.id)
+        assert row is not None
+        assert row.lease_owner == 'scheduler:test'
+        assert row.lease_expires_at is not None
+
+    def test_claim_due_schedule_skips_already_leased_row(self, test_db_session: Session, output_datasource: DataSource):
+        schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=output_datasource.id, cron_expression='* * * * *'))
+
+        first = claim_due_schedules(test_db_session, worker_id='scheduler:one')
+        second = claim_due_schedules(test_db_session, worker_id='scheduler:two')
+
+        assert [row.id for row in first] == [schedule.id]
+        assert second == []
+        stored = test_db_session.get(Schedule, schedule.id)
+        assert stored is not None
+        assert stored.lease_owner == 'scheduler:one'
+
+    def test_claim_due_schedule_skips_inflight_build(self, test_db_session: Session, output_datasource: DataSource):
+        schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=output_datasource.id, cron_expression='* * * * *'))
+        build_run_service.create_build_run(
+            test_db_session,
+            build_id=str(uuid.uuid4()),
+            namespace='default',
+            schedule_id=schedule.id,
+            analysis_id='analysis',
+            analysis_name='Analysis',
+            request_json={'analysis_pipeline': {'analysis_id': 'analysis', 'tabs': []}, 'tab_id': None},
+            starter_json={'triggered_by': f'schedule:{schedule.id}'},
+            status=BuildRunStatus.QUEUED,
+        )
+
+        claimed = claim_due_schedules(test_db_session, worker_id='scheduler:test')
+
+        assert claimed == []
 
 
 # ---------------------------------------------------------------------------
@@ -759,69 +915,119 @@ class TestRunAnalysisBuild:
         assert len(result_all['results']) == 2
 
 
-class TestExecuteSchedule:
-    @patch('modules.datasource.service.refresh_external_datasource')
-    def test_execute_schedule_for_reingestable_raw_runs_refresh(
-        self,
-        mock_refresh,
-        test_db_session: Session,
-        sample_csv_file,
-    ):
-        source = {'source_type': 'file', 'file_path': str(sample_csv_file), 'file_type': 'csv', 'options': {}}
-        raw = DataSource(
-            id=str(uuid.uuid4()),
-            name='Raw Iceberg',
-            source_type='iceberg',
-            config={'metadata_path': '/tmp/path', 'branch': 'master', 'source': source},
-            created_by='import',
-            created_at=datetime.now(UTC),
-        )
-        test_db_session.add(raw)
-        test_db_session.commit()
-
-        schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=raw.id, cron_expression='0 * * * *'))
-
-        mock_refresh.return_value = raw
-        manager = MagicMock()
-        result = execute_schedule(test_db_session, manager, schedule.id)
-
-        assert result['status'] == 'success'
-        assert result['datasource_id'] == raw.id
-        assert result['analysis_id'] is None
-        mock_refresh.assert_called_once_with(test_db_session, raw.id)
-
-    def test_execute_schedule_for_plain_datasource_runs_generic_refresh(
+class TestEnqueueScheduleRun:
+    def test_enqueue_schedule_for_analysis_creates_queued_build(
         self,
         test_db_session: Session,
+        analysis_with_output: Analysis,
         sample_datasource: DataSource,
     ):
-        schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=sample_datasource.id, cron_expression='0 * * * *'))
-
-        manager = MagicMock()
-        result = execute_schedule(test_db_session, manager, schedule.id)
-
-        assert result['status'] == 'success'
-        assert result['datasource_id'] == sample_datasource.id
-        assert result['analysis_id'] is None
-
-        refreshed = test_db_session.get(DataSource, sample_datasource.id)
-        assert refreshed is not None
-        assert refreshed.schema_cache is not None
-        refresh_meta = refreshed.config.get('refresh') if isinstance(refreshed.config, dict) else None
-        assert isinstance(refresh_meta, dict)
-        assert refresh_meta.get('mode') == 'schedule_schema_refresh'
-
-        runs = (
-            test_db_session.execute(
-                select(EngineRun).where(EngineRun.datasource_id == sample_datasource.id),  # type: ignore[arg-type]
-            )
-            .scalars()
-            .all()
+        output_id = analysis_with_output.pipeline_definition['tabs'][0]['output']['result_id']
+        output = DataSource(
+            id=output_id,
+            name='Analysis Output',
+            source_type='iceberg',
+            config={'analysis_tab_id': 'tab-1'},
+            created_by='analysis',
+            created_by_analysis_id=analysis_with_output.id,
+            is_hidden=True,
+            created_at=datetime.now(UTC),
         )
-        assert len(runs) >= 1
-        latest = sorted(runs, key=lambda row: row.created_at)[-1]
-        assert latest.kind == 'datasource_update'
-        assert latest.triggered_by == 'schedule'
+        test_db_session.add(output)
+        test_db_session.commit()
+
+        schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=output.id, cron_expression='0 * * * *'))
+        row = test_db_session.get(Schedule, schedule.id)
+        assert row is not None
+        row.lease_owner = 'scheduler:test'
+        row.lease_expires_at = datetime.now(UTC) + timedelta(minutes=5)
+        test_db_session.add(row)
+        test_db_session.commit()
+
+        run_id = enqueue_schedule_run(test_db_session, schedule.id, worker_id='scheduler:test')
+        run = build_run_service.get_build_run(test_db_session, run_id)
+
+        assert run is not None
+        assert run.schedule_id == schedule.id
+        assert run.status == BuildRunStatus.QUEUED
+        assert run.current_datasource_id == output.id
+        job = build_job_service.get_job_by_build_id(test_db_session, run_id)
+        assert job is not None
+
+    def test_enqueue_schedule_for_plain_datasource_creates_refresh_build(self, test_db_session: Session, sample_datasource: DataSource):
+        schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=sample_datasource.id, cron_expression='0 * * * *'))
+        row = test_db_session.get(Schedule, schedule.id)
+        assert row is not None
+        row.lease_owner = 'scheduler:test'
+        row.lease_expires_at = datetime.now(UTC) + timedelta(minutes=5)
+        test_db_session.add(row)
+        test_db_session.commit()
+
+        run_id = enqueue_schedule_run(test_db_session, schedule.id, worker_id='scheduler:test')
+        run = build_run_service.get_build_run(test_db_session, run_id)
+
+        assert run is not None
+        assert run.schedule_id == schedule.id
+        assert run.current_kind == 'datasource_update'
+        assert run.status == BuildRunStatus.QUEUED
+
+
+class TestScheduleReconciliation:
+    def test_reconcile_success_updates_success_fields(self, test_db_session: Session, output_datasource: DataSource):
+        schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=output_datasource.id, cron_expression='0 * * * *'))
+        build = build_run_service.create_build_run(
+            test_db_session,
+            build_id=str(uuid.uuid4()),
+            namespace='default',
+            schedule_id=schedule.id,
+            analysis_id='analysis',
+            analysis_name='Analysis',
+            request_json={'analysis_pipeline': {'analysis_id': 'analysis', 'tabs': []}, 'tab_id': None},
+            starter_json={'triggered_by': f'schedule:{schedule.id}'},
+            status=BuildRunStatus.COMPLETED,
+        )
+        build.completed_at = datetime.now(UTC)
+        test_db_session.add(build)
+        test_db_session.commit()
+
+        updated = reconcile_schedule_run(test_db_session, build_id=build.id)
+
+        assert updated is not None
+        assert updated.last_run is not None
+        assert updated.last_success_at is not None
+        assert updated.last_successful_build_id == build.id
+        assert updated.lease_owner is None
+
+    def test_reconcile_failure_does_not_advance_last_run(self, test_db_session: Session, output_datasource: DataSource):
+        schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=output_datasource.id, cron_expression='0 * * * *'))
+        row = test_db_session.get(Schedule, schedule.id)
+        assert row is not None
+        row.last_run = datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=1)
+        row.lease_owner = 'scheduler:test'
+        test_db_session.add(row)
+        test_db_session.commit()
+
+        build = build_run_service.create_build_run(
+            test_db_session,
+            build_id=str(uuid.uuid4()),
+            namespace='default',
+            schedule_id=schedule.id,
+            analysis_id='analysis',
+            analysis_name='Analysis',
+            request_json={'analysis_pipeline': {'analysis_id': 'analysis', 'tabs': []}, 'tab_id': None},
+            starter_json={'triggered_by': f'schedule:{schedule.id}'},
+            status=BuildRunStatus.FAILED,
+        )
+        build.completed_at = datetime.now(UTC)
+        test_db_session.add(build)
+        test_db_session.commit()
+
+        updated = reconcile_schedule_run(test_db_session, build_id=build.id)
+
+        assert updated is not None
+        assert updated.last_failure_at is not None
+        assert updated.last_successful_build_id is None
+        assert updated.lease_owner is None
 
 
 # ---------------------------------------------------------------------------

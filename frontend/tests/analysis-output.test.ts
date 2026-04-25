@@ -83,6 +83,9 @@ test.describe('Analyses – output node interactions', () => {
 		try {
 			await gotoAnalysisEditor(page, aId);
 
+			const buildBtn = page.locator('[data-testid="output-build-button"]');
+			await expect(buildBtn).toBeVisible({ timeout: 10_000 });
+
 			const modeTrigger = page.locator('[data-testid="output-mode-trigger"]');
 			await expect(modeTrigger).toBeVisible({ timeout: 10_000 });
 

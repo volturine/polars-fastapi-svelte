@@ -87,6 +87,29 @@ class TestLockRoutes:
         assert body['owner_id'] == owner.id
         assert body['lock_token'] != 'expired-token'
 
+    def test_status_handles_aware_postgres_style_timestamps(self, client, test_db_session, monkeypatch) -> None:
+        monkeypatch.setattr('core.config.settings.auth_required', False)
+        owner = run_settings_db(ensure_default_user)
+        now = datetime.now(UTC)
+        lock = ResourceLock(
+            resource_type='analysis',
+            resource_id='analysis-aware',
+            owner_id=owner.id,
+            lock_token='aware-token',
+            acquired_at=now,
+            expires_at=now + timedelta(seconds=30),
+            last_heartbeat=now,
+        )
+        test_db_session.add(lock)
+        test_db_session.commit()
+
+        status = client.get('/api/v1/locks/analysis/analysis-aware')
+
+        assert status.status_code == 200
+        body = status.json()
+        assert body['lock_token'] == 'aware-token'
+        assert body['is_expired'] is False
+
     def test_no_auth_resolves_default_user_when_auth_disabled(self, client, monkeypatch) -> None:
         monkeypatch.setattr('core.config.settings.auth_required', False)
         owner = run_settings_db(ensure_default_user)
@@ -152,6 +175,30 @@ class TestLockWebsocket:
             'resource_id': 'analysis-ws-0',
             'lock': None,
         }
+
+    def test_watch_acquire_succeeds_with_aware_existing_lock(self, client, test_db_session, monkeypatch) -> None:
+        monkeypatch.setattr('core.config.settings.auth_required', False)
+        owner = run_settings_db(ensure_default_user)
+        now = datetime.now(UTC)
+        lock = ResourceLock(
+            resource_type='analysis',
+            resource_id='analysis-ws-aware',
+            owner_id=owner.id,
+            lock_token='aware-existing-token',
+            acquired_at=now,
+            expires_at=now + timedelta(seconds=30),
+            last_heartbeat=now,
+        )
+        test_db_session.add(lock)
+        test_db_session.commit()
+
+        with client.websocket_connect('/api/v1/locks/ws') as websocket:
+            assert websocket.receive_json() == {'type': 'connected'}
+            websocket.send_json({'action': 'watch', 'resource_type': 'analysis', 'resource_id': 'analysis-ws-aware'})
+            initial = websocket.receive_json()
+
+        assert initial['type'] == 'status'
+        assert initial['lock']['lock_token'] == 'aware-existing-token'
 
     def test_watch_receives_initial_and_release_updates(self, client, monkeypatch) -> None:
         monkeypatch.setattr('core.config.settings.auth_required', False)

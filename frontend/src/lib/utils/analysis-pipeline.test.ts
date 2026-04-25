@@ -574,6 +574,21 @@ describe('buildDatasourcePipelinePayload', () => {
 		const config = result.tabs[0].datasource.config;
 		expect(config.time_travel_ui).toBeUndefined();
 	});
+
+	test('analysis-created datasource payload still uses owning analysis context', () => {
+		const result = buildDatasourcePipelinePayload({
+			datasource: datasource({
+				id: 'out-1',
+				source_type: 'analysis',
+				created_by_analysis_id: 'a-1',
+				output_of_tab_id: 'tab-1',
+				config: { analysis_id: 'a-1', analysis_tab_id: 'tab-1' }
+			}),
+			datasourceConfig: { branch: 'main' }
+		});
+		expect(result.analysis_id).toBe('out-1');
+		expect(result.tabs[0].datasource.source_type).toBe('analysis');
+	});
 });
 
 // ── normalizeSnapshotConfig ────────────────────────────────────────────────

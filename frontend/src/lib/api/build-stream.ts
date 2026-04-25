@@ -10,13 +10,10 @@ import type { ActiveBuildDetail } from '$lib/types/build-stream';
 import type { ResultAsync } from 'neverthrow';
 import type { ApiError } from './client';
 
-export type BuildStreamMessage =
-	| { type: 'snapshot'; build: BuildDetailSnapshot['build'] }
-	| BuildWebsocketErrorMessage
-	| BuildEvent;
+export type BuildStreamMessage = BuildDetailSnapshot | BuildWebsocketErrorMessage | BuildEvent;
 
 export interface BuildStreamCallbacks {
-	onSnapshot: (build: BuildDetailSnapshot['build']) => void;
+	onSnapshot: (snapshot: BuildDetailSnapshot) => void;
 	onEvent: (event: BuildEvent) => void;
 	onError: (error: string) => void;
 	onClose: () => void;
@@ -78,27 +75,27 @@ function toBuildDetailEvent(msg: BuildStreamMessage): BuildEvent {
 	return msg;
 }
 
-function getBuildDetailSnapshot(msg: BuildStreamMessage): BuildDetailSnapshot['build'] {
-	if (!isBuildDetailSnapshot(msg)) {
-		throw new Error('Expected build snapshot');
-	}
-	return msg.build;
-}
-
 export function connectBuildDetailStream(
 	buildId: string,
+	lastSequence: number,
 	callbacks: BuildStreamCallbacks
 ): StreamHandle {
-	return createStream<BuildDetailSnapshot['build'], BuildEvent, BuildStreamMessage>(
-		`/v1/compute/ws/builds/${buildId}`,
-		{
-			parse: parseBuildMessage,
-			isSnapshot: isBuildDetailSnapshot,
-			extractSnapshot: getBuildDetailSnapshot,
-			extractEvent: toBuildDetailEvent,
-			callbacks
-		}
-	);
+	const endpoint =
+		lastSequence > 0
+			? `/v1/compute/ws/builds/${buildId}?last_sequence=${lastSequence}`
+			: `/v1/compute/ws/builds/${buildId}`;
+	return createStream<BuildDetailSnapshot, BuildEvent, BuildStreamMessage>(endpoint, {
+		parse: parseBuildMessage,
+		isSnapshot: isBuildDetailSnapshot,
+		extractSnapshot: (msg) => {
+			if (!isBuildDetailSnapshot(msg)) {
+				throw new Error('Expected build snapshot');
+			}
+			return msg;
+		},
+		extractEvent: toBuildDetailEvent,
+		callbacks
+	});
 }
 
 export function getActiveBuild(buildId: string): ResultAsync<ActiveBuildDetail, ApiError> {

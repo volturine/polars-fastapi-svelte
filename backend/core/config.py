@@ -20,6 +20,9 @@ _NUMERIC_CONSTRAINTS: list[tuple[str, int | None, int | None]] = [
     ('polars_streaming_chunk_size', 0, None),
     ('max_concurrent_engines', 1, 100),
     ('workers', 0, 32),
+    ('build_worker_min_processes', 0, 100),
+    ('build_worker_max_processes', 0, 100),
+    ('build_worker_idle_exit_seconds', 1, None),
     ('log_queue_max_size', 1, None),
     ('log_max_body_size', 0, None),
     ('log_client_batch_size', 1, None),
@@ -37,9 +40,11 @@ def _default_data_dir() -> Path:
 
 
 def _get_env_file() -> str | None:
-    env_val = os.environ.get('ENV_FILE')
-    if env_val:
-        return env_val
+    if 'ENV_FILE' in os.environ:
+        env_val = os.environ.get('ENV_FILE', '')
+        if env_val:
+            return env_val
+        return None
     return '.env'
 
 
@@ -96,6 +101,10 @@ class Settings(BaseSettings):
 
     data_dir: Path = Field(default_factory=_default_data_dir, alias='DATA_DIR')
     database_url: str = ''
+    distributed_runtime_enabled: bool = Field(default=False, alias='DISTRIBUTED_RUNTIME_ENABLED')
+    database_pool_size: int = Field(default=10, alias='DATABASE_POOL_SIZE')
+    database_max_overflow: int = Field(default=20, alias='DATABASE_MAX_OVERFLOW')
+    database_pool_timeout: int = Field(default=30, alias='DATABASE_POOL_TIMEOUT')
     default_namespace: str = Field(default='default', alias='DEFAULT_NAMESPACE')
 
     upload_chunk_size: int = Field(default=5 * 1024 * 1024, alias='UPLOAD_CHUNK_SIZE')
@@ -133,9 +142,15 @@ class Settings(BaseSettings):
     # Worker Configuration
     # Number of Gunicorn/Uvicorn workers (0 = auto: 2 * cores + 1)
     workers: int = Field(default=1, alias='WORKERS')
+    embedded_build_worker_enabled: bool = Field(default=False, alias='EMBEDDED_BUILD_WORKER_ENABLED')
 
     # Maximum connections per worker
     worker_connections: int = Field(default=1000, alias='WORKER_CONNECTIONS')
+
+    # Dynamic build worker pool
+    build_worker_min_processes: int = Field(default=0, alias='BUILD_WORKER_MIN_PROCESSES')
+    build_worker_max_processes: int = Field(default=10, alias='BUILD_WORKER_MAX_PROCESSES')
+    build_worker_idle_exit_seconds: int = Field(default=30, alias='BUILD_WORKER_IDLE_EXIT_SECONDS')
 
     # Logging level (debug, info, warning, error)
     log_level: str = Field(default='info', alias='LOG_LEVEL')
@@ -236,6 +251,17 @@ class Settings(BaseSettings):
         """Parse CORS origins from comma-separated string."""
         return [origin.strip() for origin in self.cors_origins.split(',') if origin.strip()]
 
+    @property
+    def database_backend(self) -> str:
+        url = self.database_url.lower()
+        if url.startswith('postgresql://') or url.startswith('postgresql+'):
+            return 'postgresql'
+        return 'sqlite'
+
+    @property
+    def is_postgres(self) -> bool:
+        return self.database_backend == 'postgresql'
+
     @field_validator('data_dir', mode='before')
     @classmethod
     def _ensure_dirs(cls, value: Path) -> Path:
@@ -274,6 +300,8 @@ class Settings(BaseSettings):
     @field_validator('database_url')
     @classmethod
     def _validate_database_url(cls, value: str, info) -> str:
+        if value.strip():
+            return value.strip()
         data_dir = info.data.get('data_dir')
         if data_dir:
             return f'sqlite:///{Path(data_dir) / "app.db"}'
@@ -345,6 +373,18 @@ class Settings(BaseSettings):
     def _validate_lock_intervals(self) -> 'Settings':
         if self.lock_heartbeat_interval_seconds >= self.lock_ttl_seconds:
             raise ValueError('lock_heartbeat_interval_seconds must be < lock_ttl_seconds')
+        return self
+
+    @model_validator(mode='after')
+    def _validate_runtime_mode(self) -> 'Settings':
+        if self.distributed_runtime_enabled and not self.is_postgres:
+            raise ValueError('DISTRIBUTED_RUNTIME_ENABLED requires a PostgreSQL DATABASE_URL')
+        if self.distributed_runtime_enabled and self.embedded_build_worker_enabled:
+            raise ValueError('EMBEDDED_BUILD_WORKER_ENABLED cannot be enabled with DISTRIBUTED_RUNTIME_ENABLED')
+        if self.build_worker_min_processes > self.build_worker_max_processes:
+            raise ValueError('BUILD_WORKER_MIN_PROCESSES must be <= BUILD_WORKER_MAX_PROCESSES')
+        if self.build_worker_max_processes > self.max_concurrent_engines:
+            raise ValueError('BUILD_WORKER_MAX_PROCESSES must be <= MAX_CONCURRENT_ENGINES')
         return self
 
 

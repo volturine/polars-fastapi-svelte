@@ -40,6 +40,12 @@ def _utcnow() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 
+def _naive_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(UTC).replace(tzinfo=None)
+
+
 _PASSWORD_PROVIDER = AuthProviderName.PASSWORD
 _PBKDF2_ALG = 'sha256'
 _PBKDF2_ITERATIONS = 200_000
@@ -199,6 +205,8 @@ def ensure_default_user(session: Session) -> User:
             updated_at=now,
         )
         session.add(user)
+        session.commit()
+        session.refresh(user)
         session.add(
             AuthProvider(
                 id=uuid.uuid4().hex,
@@ -210,7 +218,6 @@ def ensure_default_user(session: Session) -> User:
             ),
         )
         session.commit()
-        session.refresh(user)
         return user
 
     if user.display_name != desired_name:
@@ -295,6 +302,7 @@ def create_user(session: Session, email: str, password: str, display_name: str) 
         updated_at=now,
     )
     session.add(user)
+    session.flush()
     provider = AuthProvider(
         id=uuid.uuid4().hex,
         user_id=user.id,
@@ -414,7 +422,7 @@ def validate_session(session: Session, session_id: str) -> User | None:
     now = _utcnow()
     if user_session.revoked:
         return None
-    if user_session.expires_at <= now:
+    if _naive_utc(user_session.expires_at) <= now:
         user_session.revoked = True
         session.add(user_session)
         session.commit()
@@ -610,7 +618,7 @@ def validate_verification_token(session: Session, token: str, token_type: Verifi
     if row.used:
         raise TokenInvalidError()
     now = _utcnow()
-    if row.expires_at <= now:
+    if _naive_utc(row.expires_at) <= now:
         raise TokenExpiredError()
     row.used = True
     session.add(row)
@@ -720,7 +728,7 @@ def reset_password(session: Session, token: str, new_password: str) -> None:
     if row.used:
         raise TokenInvalidError()
     now = _utcnow()
-    if row.expires_at <= now:
+    if _naive_utc(row.expires_at) <= now:
         raise TokenExpiredError()
     user = get_user_by_id(session, row.user_id)
     if not user:

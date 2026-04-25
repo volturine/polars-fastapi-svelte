@@ -75,6 +75,10 @@ export function listHealthChecks(datasourceId: string): ResultAsync<HealthCheck[
 	return apiRequest<HealthCheck[]>(`/v1/healthchecks?datasource_id=${datasourceId}`);
 }
 
+export function listAllHealthChecks(): ResultAsync<HealthCheck[], ApiError> {
+	return apiRequest<HealthCheck[]>('/v1/healthchecks/all');
+}
+
 export function createHealthCheck(payload: HealthCheckCreate): ResultAsync<HealthCheck, ApiError> {
 	return apiRequest<HealthCheck>('/v1/healthchecks', {
 		method: 'POST',
@@ -109,7 +113,13 @@ export function listHealthCheckResults(
 	datasourceId: string,
 	limit: number = 10
 ): ResultAsync<HealthCheckResult[], ApiError> {
-	return apiRequest<HealthCheckResult[]>(
-		`/v1/healthchecks/results?datasource_id=${datasourceId}&limit=${limit}`
-	);
+	const query = new URLSearchParams({ datasource_id: datasourceId, limit: String(limit) });
+	return apiRequest<HealthCheckResult[]>(`/v1/healthchecks/results?${query.toString()}`);
+}
+
+export function listAllHealthCheckResults(
+	limit: number = 10
+): ResultAsync<HealthCheckResult[], ApiError> {
+	const query = new URLSearchParams({ limit: String(limit) });
+	return apiRequest<HealthCheckResult[]>(`/v1/healthchecks/results/all?${query.toString()}`);
 }

@@ -1,7 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
-const baseURL = `http://localhost:${port}`;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${port}`;
+const webServerCommand = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND || 'bun run dev';
+const webServerReuseExisting = process.env.PLAYWRIGHT_REUSE_WEB_SERVER !== 'false';
+const disableWebServer = process.env.PLAYWRIGHT_DISABLE_WEB_SERVER === 'true';
+const ciArgs = process.env.CI ? ['--disable-dev-shm-usage', '--disable-gpu'] : [];
 
 export default defineConfig({
 	testDir: './tests',
@@ -10,7 +14,7 @@ export default defineConfig({
 	timeout: 30_000,
 	expect: { timeout: 10_000 },
 	fullyParallel: true,
-	workers: 3,
+	workers: process.env.CI ? 1 : 3,
 	retries: 1,
 	outputDir: './tests/test-results',
 	reporter: [['html', { open: 'never', outputFolder: 'tests/playwright-report' }], ['line']],
@@ -24,14 +28,19 @@ export default defineConfig({
 			name: 'chromium',
 			use: {
 				...devices['Desktop Chrome'],
-				viewport: { width: 1920, height: 1080 }
+				viewport: { width: 1920, height: 1080 },
+				launchOptions: ciArgs.length === 0 ? undefined : { args: ciArgs }
 			}
 		}
 	],
-	webServer: {
-		command: 'bun run dev',
-		url: baseURL,
-		reuseExistingServer: true,
-		timeout: 60_000
-	}
+	...(disableWebServer
+		? {}
+		: {
+				webServer: {
+					command: webServerCommand,
+					url: baseURL,
+					reuseExistingServer: webServerReuseExisting,
+					timeout: 60_000
+				}
+			})
 });

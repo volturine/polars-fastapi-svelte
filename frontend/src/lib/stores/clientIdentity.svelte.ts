@@ -1,26 +1,12 @@
 import { browser } from '$app/environment';
 import { idbGet, idbSet } from '$lib/utils/indexeddb';
+import { uuid } from '$lib/utils/uuid';
 
 export interface Fingerprint {
 	screen: string;
 	timezone: string;
 	language: string;
 	platform: string;
-}
-
-// Generate UUID that works in both secure and non-secure contexts
-function generateUUID(): string {
-	// Use crypto.randomUUID if available (secure contexts)
-	if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-		return crypto.randomUUID();
-	}
-
-	// Fallback for non-secure contexts (HTTP)
-	return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-		const r = (Math.random() * 16) | 0;
-		const v = c === 'x' ? r : (r & 0x3) | 0x8;
-		return v.toString(16);
-	});
 }
 
 let clientIdValue = '';
@@ -32,7 +18,7 @@ async function initClientId(): Promise<void> {
 		clientIdValue = existing;
 		return;
 	}
-	const id = generateUUID();
+	const id = uuid();
 	clientIdValue = id;
 	await idbSet('client_id', id);
 }

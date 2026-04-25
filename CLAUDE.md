@@ -9,7 +9,7 @@ just verify          # REQUIRED before declaring any task done
 just format          # ruff format + prettier
 just check           # ruff + mypy + svelte-check + eslint
 just test            # backend pytest
-just dev             # start both servers
+just dev             # start API, worker, scheduler, and frontend
 ```
 
 ## Claude Code Behaviour

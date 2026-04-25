@@ -342,6 +342,7 @@ class BuildRequest(BaseModel):
 
 
 class ActiveBuildStatus(StrEnum):
+    QUEUED = 'queued'
     RUNNING = 'running'
     COMPLETED = 'completed'
     FAILED = 'failed'
@@ -494,6 +495,7 @@ class BuildStreamEvent(BaseModel):
     build_id: str
     analysis_id: str
     emitted_at: datetime
+    sequence: int | None = None
     current_kind: str | None = None
     current_datasource_id: str | None = None
     tab_id: str | None = None
@@ -632,6 +634,7 @@ class BuildSnapshotMessage(BaseModel):
 
     type: Literal['snapshot'] = 'snapshot'
     build: ActiveBuildDetail
+    last_sequence: int = 0
 
 
 class BuildListSnapshotMessage(BaseModel):

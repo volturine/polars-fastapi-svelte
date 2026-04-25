@@ -2,11 +2,11 @@
 
 This project uses environment variables for two layers:
 
-1. **Backend runtime** — loaded by `backend/core/config.py` from `backend/.env`
-2. **Frontend dev server (Vite)** — read from the process environment; `just dev` sources `backend/.env` so all variables come from the same file
+1. **Backend runtime** — loaded by `backend/core/config.py` from process env and the env file selected by `ENV_FILE`
+2. **Frontend dev server (Vite)** — read from the process environment; `just dev` sources `backend/dev.env` so local dev variables come from the same file
 
-There is no separate `frontend/.env` file. All configuration — including Vite
-dev-server settings (`FRONTEND_PORT`, `BACKEND_HOST`) — lives in `backend/.env`.
+There is no separate `frontend/.env` file. All local dev configuration — including Vite
+dev-server settings (`FRONTEND_PORT`, `BACKEND_HOST`) — lives in `backend/dev.env`.
 
 ## Deployment topologies
 
@@ -34,19 +34,27 @@ Browser  ──►  FastAPI (PORT 8000)
 
 **Templates for this topology:**
 
-- Docker / compose: copy `.env.example` → `.env`
-- Bare-metal (`just prod`): copy `backend/.prod.env.example` → `backend/.prod.env`
+- Docker / compose: edit `docker/env/prod.env`
+- Bare-metal (`just prod`): edit `backend/prod.env`
 
-### Development — two separate servers
+### Development — local runtime
 
 ```
 Browser  ──►  Vite dev server (FRONTEND_PORT 3000)
-                  │
-                  └── /api/* proxy ──►  FastAPI (BACKEND_PORT 8000)
+                   │
+                   └── /api/* proxy ──►  FastAPI (BACKEND_PORT 8000)
+
+Background runtime inside `backend/app.py`:
+  - API subprocess
+  - scheduler subprocess
+  - worker-manager subprocess
+  - dynamically spawned build-worker subprocesses
 ```
 
 - `PROD_MODE_ENABLED=false` (default) — FastAPI does not serve static files; the
   Vite dev server handles all browser requests and proxies `/api` to FastAPI.
+- `just dev` starts one supervised local app runtime. That runtime runs the API,
+  scheduler, and worker manager, and the worker manager spawns build workers on demand.
 - Because the browser origin (`:3000`) differs from the API origin (`:8000`),
   FastAPI's `CORS_ORIGINS` **must** include the dev-server origin.
 - `FRONTEND_PORT`, `BACKEND_HOST`, and `BACKEND_PORT` wire the Vite
@@ -57,7 +65,7 @@ Browser  ──►  Vite dev server (FRONTEND_PORT 3000)
 
 **Templates for this topology:**
 
-- Copy `backend/.env.example` → `backend/.env` (covers both backend and Vite dev-server settings)
+- Edit `backend/dev.env` (covers both backend and Vite dev-server settings)
 
 ---
 
@@ -80,12 +88,12 @@ If you only want the high-value knobs, start with these:
 - `Settings()` reads process environment first, then an env file.
 - `ENV_FILE` chooses the env file path. Default: `.env`.
 - Set `ENV_FILE` to an empty value only if you want to rely on process env alone.
-- `DATABASE_URL` currently exists as a setting, but the backend recomputes the SQLite URL from `DATA_DIR` on startup.
+- `DATABASE_URL` is the actual backend database URL. Leave it blank to default to SQLite under `DATA_DIR`, or set a full Postgres URL to enable the Postgres runtime.
 - Some values such as SMTP and provider defaults are **seeded into the database once**. After the UI saves a value, the database value wins until it is cleared.
 
 ### Frontend dev server
 
-- `just dev` sources `backend/.env` into the shell before starting Vite, so `FRONTEND_PORT` and `BACKEND_HOST` are inherited from the same file as the backend.
+- `just dev` sources `backend/dev.env` into the shell before starting Vite, so `FRONTEND_PORT` and `BACKEND_HOST` are inherited from the same file as the backend.
 - No `frontend/.env` file is needed or used.
 - No variables are exposed to browser code — the `VITE_` prefix convention is not used.
 
@@ -95,10 +103,16 @@ If you only want the high-value knobs, start with these:
 
 ```bash
 # From the repository root
-cp .env.example .env
-# Edit .env with your host, secrets, resource limits
-docker compose up
+# Edit docker/env/prod.env with your host, secrets, resource limits
+# Build or pull the app image referenced by DF_APP_IMAGE first
+docker compose --env-file docker/env/prod.env -f docker/docker-compose.yml up
 ```
+
+`docker/docker-compose.yml` uses the prebuilt image named by `DF_APP_IMAGE` and does not build application images during `up`.
+The compose topology uses one `app` container from that image. The container runs migrations once before startup, then supervises the API, scheduler, and dynamic build workers.
+The checked-in Docker topology still includes `postgres` because the supported Docker runtime path is Postgres-backed. `DF_DATABASE_URL` in the Docker env files points at that service.
+
+The checked-in Docker production env defaults to `DF_WORKERS=4` for the API process pool inside that app runtime, `DF_BUILD_WORKER_MIN_PROCESSES=0`, and dynamic build-worker spawn up to `DF_BUILD_WORKER_MAX_PROCESSES`.
 
 ### Production — bare-metal (`just prod`)
 
@@ -106,16 +120,16 @@ docker compose up
 # Build the frontend first
 cd frontend && bun run build && cd ..
 # Configure the backend
-cp backend/.prod.env.example backend/.prod.env
-# Edit backend/.prod.env with your host, secrets, resource limits
+# Edit backend/prod.env with your host, secrets, resource limits
 just prod
 ```
+
+The checked-in `backend/prod.env` now defaults to `WORKERS=4` and dynamic build-worker scaling with zero warm workers.
 
 ### Local development
 
 ```bash
-cp backend/.env.example backend/.env
-# Edit backend/.env with your settings — covers both backend and Vite dev-server
+# Edit backend/dev.env with your settings — covers both backend and Vite dev-server
 just dev
 ```
 
@@ -132,7 +146,9 @@ just dev
 | `PROD_MODE_ENABLED`          | `false`                                                                                   | Must be `true` in production. Enables static-file serving from `frontend/build/`. In dev, leave `false` so FastAPI does not try to serve the frontend.        |
 | `PORT`                       | `8000`                                                                                    | Backend HTTP port.                                                                                                                                            |
 | `DATA_DIR`                   | system temp dir + `/data-forge`                                                           | Base writable directory for app data.                                                                                                                         |
-| `DATABASE_URL`               | derived from `DATA_DIR`                                                                   | Present for compatibility, but current code rebuilds the SQLite URL from `DATA_DIR`.                                                                          |
+| `DATABASE_URL`               | SQLite under `DATA_DIR`                                                                   | Full backend database URL. Leave blank for local SQLite or set a Postgres URL for distributed runtime.                                                        |
+| `DF_APP_IMAGE`              | `polars-analysis:latest`                                                                  | Docker compose production image tag for the supervised `app` container. Build or pull this image before `docker compose up`.                                     |
+| `DISTRIBUTED_RUNTIME_ENABLED`| `false`                                                                                   | Enables supported distributed runtime behavior when `DATABASE_URL` is Postgres.                                                                                |
 | `DEFAULT_NAMESPACE`          | `default`                                                                                 | Namespace used when no namespace is selected.                                                                                                                 |
 | `CORS_ORIGINS`               | `http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173` | Comma-separated allowed browser origins. Required in dev (Vite server is cross-origin). In prod (single port) same-origin applies and this can be left unset. |
 | `UPLOAD_CHUNK_SIZE`          | `5242880`                                                                                 | Upload chunk size in bytes. Valid range: `1024` to `104857600`.                                                                                               |
@@ -151,8 +167,15 @@ just dev
 | `POLARS_MAX_MEMORY_MB`            | `0`     | `0` means unlimited.                                            |
 | `POLARS_STREAMING_CHUNK_SIZE`     | `0`     | `0` means automatic chunk sizing.                               |
 | `MAX_CONCURRENT_ENGINES`          | `10`    | Valid range: `1` to `100`.                                      |
-| `WORKERS`                         | `1`     | Valid range: `0` to `32`; `0` means auto in deployment scripts. |
+| `WORKERS`                         | `1`     | Valid range: `0` to `32`; `0` means auto in deployment scripts. The checked-in production env templates currently set this to `4`. |
 | `WORKER_CONNECTIONS`              | `1000`  | Maximum connections per worker.                                 |
+| `BUILD_WORKER_MIN_PROCESSES`      | `0`     | Minimum warm build-worker subprocesses to keep alive.           |
+| `BUILD_WORKER_MAX_PROCESSES`      | `10`    | Maximum dynamic build-worker subprocesses. Must be <= `MAX_CONCURRENT_ENGINES`. |
+| `BUILD_WORKER_IDLE_EXIT_SECONDS`  | `30`    | Seconds an idle build worker waits before exiting.              |
+| `EMBEDDED_BUILD_WORKER_ENABLED`   | `false` | Debug-only local override. It is incompatible with distributed runtime mode. |
+| `DATABASE_POOL_SIZE`              | `10`    | SQLAlchemy pool size for Postgres runtime.                      |
+| `DATABASE_MAX_OVERFLOW`           | `20`    | Extra Postgres connections allowed above pool size.             |
+| `DATABASE_POOL_TIMEOUT`           | `30`    | Seconds to wait for a Postgres pooled connection.               |
 
 ### Logging and time handling
 
@@ -227,7 +250,7 @@ just dev
 ## Frontend dev-server variables
 
 > **Development only.** These configure the Vite dev server and its proxy.
-> They live in `backend/.env` alongside the backend variables. `just dev`
+> They live in `backend/dev.env` alongside the backend variables. `just dev`
 > sources that file so both processes share the same configuration.
 > In production the Vite dev server is not running, so none of these have any
 > effect on the deployed application.

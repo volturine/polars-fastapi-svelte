@@ -72,10 +72,12 @@
 	const datasourcesQuery = createQuery(() => ({
 		queryKey: ['datasources-lookup', 'include-hidden'],
 		queryFn: async () => {
-			const result = await listDatasources(true);
+			const result = await listDatasources(true, { cache: 'no-store' });
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
-		}
+		},
+		staleTime: 0,
+		refetchOnMount: 'always'
 	}));
 
 	const datasourceMap = $derived(
@@ -347,8 +349,15 @@
 	}
 
 	function openCreate() {
-		void datasourcesQuery.refetch();
-		creating = true;
+		void listDatasources(true, { cache: 'no-store' }).match(
+			(datasources) => {
+				queryClient.setQueryData(['datasources-lookup', 'include-hidden'], datasources);
+				creating = true;
+			},
+			() => {
+				creating = true;
+			}
+		);
 	}
 
 	function toggleExpand(id: string) {

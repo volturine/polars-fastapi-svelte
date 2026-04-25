@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
 	import type { EngineRun } from '$lib/api/engine-runs';
-	import { cancelBuild } from '$lib/api/compute';
+	import { cancelBuild, type CancelBuildResponse } from '$lib/api/compute';
 	import { getDatasource, listDatasources } from '$lib/api/datasource';
 	import { listAnalyses } from '$lib/api/analysis';
 	import type { ActiveBuildDetail } from '$lib/types/build-stream';
@@ -29,6 +29,7 @@
 	import BuildPreview from '$lib/components/common/BuildPreview.svelte';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import { BuildStreamStore } from '$lib/stores/build-stream.svelte';
+	import { useNamespace } from '$lib/stores/namespace.svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { css, spinner, button, emptyText, input } from '$lib/styles/panda';
 	import {
@@ -69,6 +70,7 @@
 	let sortColumn = $state<string>('created_at');
 	let sortDir = $state<'asc' | 'desc'>('desc');
 	const runDetailStores = new SvelteMap<string, BuildStreamStore>();
+	const pendingCancelled = new SvelteMap<string, CancelBuildResponse>();
 	const limit = 50;
 
 	const queryParams = $derived({
@@ -90,6 +92,7 @@
 	});
 
 	const engineRunsStore = new EngineRunsStore();
+	const ns = useNamespace();
 
 	// Network: fetch build history when filters change.
 	$effect(() => {
@@ -99,23 +102,25 @@
 	});
 
 	const datasourcesQuery = createQuery(() => ({
-		queryKey: ['datasources-lookup'],
+		queryKey: ['datasources-lookup', ns.value],
 		queryFn: async () => {
 			const result = await listDatasources();
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		},
-		staleTime: 60_000
+		staleTime: 60_000,
+		enabled: !ns.switching
 	}));
 
 	const analysesQuery = createQuery(() => ({
-		queryKey: ['analyses-lookup'],
+		queryKey: ['analyses-lookup', ns.value],
 		queryFn: async () => {
 			const result = await listAnalyses();
 			if (result.isErr()) throw new Error(result.error.message);
 			return result.value;
 		},
-		staleTime: 60_000
+		staleTime: 60_000,
+		enabled: !ns.switching
 	}));
 
 	const dsNames = $derived.by(() => {
@@ -160,7 +165,7 @@
 	});
 
 	const filteredRuns = $derived.by(() => {
-		let result = runs.filter((run) => run.kind !== 'preview');
+		let result = runs;
 
 		if (effectiveSearch) {
 			const q = effectiveSearch.toLowerCase();
@@ -304,8 +309,13 @@
 		return null;
 	}
 
+	function currentStatus(run: EngineRun): 'running' | 'completed' | 'failed' | 'cancelled' {
+		if (run.status === 'running' && pendingCancelled.has(run.id)) return 'cancelled';
+		return engineRunStatus(run);
+	}
+
 	function runStatusLabel(run: EngineRun): string {
-		const status = engineRunStatus(run);
+		const status = currentStatus(run);
 		if (status === 'running') return 'Running';
 		if (status === 'completed') return 'Success';
 		if (status === 'cancelled') return 'Cancelled';
@@ -319,19 +329,28 @@
 	}
 
 	function cancelledAt(run: EngineRun): string | null {
+		if (run.status === 'running') {
+			const cancelled = pendingCancelled.get(run.id);
+			if (cancelled) return cancelled.cancelled_at;
+		}
 		return readResultString(run, 'cancelled_at');
 	}
 
 	function cancelledBy(run: EngineRun): string | null {
+		if (run.status === 'running') {
+			const cancelled = pendingCancelled.get(run.id);
+			if (cancelled) return cancelled.cancelled_by;
+		}
 		return readResultString(run, 'cancelled_by');
 	}
 
 	function lastCompletedStep(run: EngineRun): string | null {
+		if (run.status === 'running' && pendingCancelled.has(run.id)) return '-';
 		return readResultString(run, 'last_completed_step');
 	}
 
 	function canCancelRun(run: EngineRun): boolean {
-		return run.status === 'running';
+		return currentStatus(run) === 'running';
 	}
 
 	function requestCancelRun(run: EngineRun): void {
@@ -345,15 +364,48 @@
 		cancelTarget = null;
 	}
 
+	function updateCancelledRun(runId: string, cancelled: CancelBuildResponse): void {
+		pendingCancelled.set(runId, cancelled);
+		const current = runs.find((run) => run.id === runId);
+		if (!current) return;
+		const resultJson = { ...(current.result_json ?? {}) };
+		resultJson.cancelled_at = cancelled.cancelled_at;
+		resultJson.cancelled_by = cancelled.cancelled_by;
+		resultJson.results = [];
+		engineRunsStore.replaceRun({
+			...current,
+			status: 'cancelled',
+			completed_at: cancelled.cancelled_at,
+			duration_ms: cancelled.duration_ms,
+			error_message: cancelled.cancelled_by
+				? `Cancelled by ${cancelled.cancelled_by}`
+				: 'Cancelled',
+			result_json: resultJson
+		});
+	}
+
+	$effect(() => {
+		for (const [runId] of pendingCancelled) {
+			const run = runs.find((item) => item.id === runId);
+			if (!run) {
+				pendingCancelled.delete(runId);
+				continue;
+			}
+			if (run.status !== 'running') pendingCancelled.delete(runId);
+		}
+	});
+
 	async function confirmCancelRun(): Promise<void> {
 		const target = cancelTarget;
 		if (!target || cancelPending) return;
+		cancelTarget = null;
 		cancelPending = true;
 		cancelError = null;
 		const result = await cancelBuild(target.id);
 		result.match(
-			() => {
-				cancelTarget = null;
+			(cancelled) => {
+				updateCancelledRun(target.id, cancelled);
+				engineRunsStore.refresh();
 			},
 			(err) => {
 				cancelError = err.message;
@@ -602,6 +654,7 @@
 			>
 				<option value="">All types</option>
 				<option value="download">Download</option>
+				<option value="preview">Preview</option>
 				<option value="datasource_create">Output Create</option>
 				<option value="datasource_update">Output Update</option>
 				<option value="row_count">Row Count</option>
@@ -823,7 +876,7 @@
 						<tr
 							data-build-row={run.id}
 							data-build-source="history"
-							data-build-status={engineRunStatus(run)}
+							data-build-status={currentStatus(run)}
 							data-build-kind={run.kind}
 							data-build-datasource-id={engineRunDatasourceId(run)}
 							data-build-datasource-name={engineRunDatasourceName(run) ??
@@ -942,7 +995,7 @@
 											})
 										]}
 									>
-										{#if engineRunStatus(run) === 'running'}
+										{#if currentStatus(run) === 'running'}
 											<Loader
 												size={14}
 												class={css({
@@ -951,10 +1004,10 @@
 												})}
 											/>
 											<span class={css({ color: 'accent.primary' })}>{runStatusLabel(run)}</span>
-										{:else if engineRunStatus(run) === 'completed'}
+										{:else if currentStatus(run) === 'completed'}
 											<CircleCheck size={14} class={css({ color: 'fg.success' })} />
 											<span class={css({ color: 'fg.success' })}>{runStatusLabel(run)}</span>
-										{:else if engineRunStatus(run) === 'cancelled'}
+										{:else if currentStatus(run) === 'cancelled'}
 											<CircleX size={14} class={css({ color: 'fg.warning' })} />
 											<span class={css({ color: 'fg.warning' })}>{runStatusLabel(run)}</span>
 										{:else}
@@ -1100,7 +1153,7 @@
 												<strong>Run ID:</strong>
 												{run.id}
 											</span>
-											{#if engineRunStatus(run) === 'cancelled'}
+											{#if currentStatus(run) === 'cancelled'}
 												<span class={css({ color: 'fg.warning' })}>
 													<strong>Cancelled At:</strong>
 													{cancelledAt(run) ? formatDate(cancelledAt(run) ?? '') : '-'}

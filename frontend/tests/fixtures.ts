@@ -15,7 +15,7 @@ import {
 export { expect } from '@playwright/test';
 
 const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
-const baseURL = `http://localhost:${port}`;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${port}`;
 
 interface WorkerAuth {
 	authFile: string;
@@ -64,14 +64,16 @@ export const test = base.extend<
 		});
 		const page = await context.newPage();
 		await use(page);
-		await page.close();
+		await page.close({ runBeforeUnload: true });
 		await context.close();
 	},
 
 	request: async ({ playwright, workerAuth }, use) => {
+		const token = readStoredSessionToken(workerAuth.authFile);
 		const ctx = await playwright.request.newContext({
 			baseURL,
-			storageState: workerAuth.authFile
+			storageState: workerAuth.authFile,
+			extraHTTPHeaders: token ? { 'X-Session-Token': token } : undefined
 		});
 		await use(ctx);
 		await ctx.dispose();

@@ -159,22 +159,21 @@ def create_analysis(
         owner_id=owner_id,
     )
 
-    transaction = session.begin_nested() if session.in_transaction() else session.begin()
-    with transaction:
-        session.add(analysis)
+    session.add(analysis)
 
-        seen: set[str] = set()
-        for datasource_id in datasource_ids:
-            if datasource_id in seen:
-                continue
-            seen.add(datasource_id)
-            link = AnalysisDataSource(
-                analysis_id=analysis_id,
-                datasource_id=datasource_id,
-            )
-            session.add(link)
+    seen: set[str] = set()
+    for datasource_id in datasource_ids:
+        if datasource_id in seen:
+            continue
+        seen.add(datasource_id)
+        link = AnalysisDataSource(
+            analysis_id=analysis_id,
+            datasource_id=datasource_id,
+        )
+        session.add(link)
 
-        version_service.create_version(session, analysis, commit=False)
+    version_service.create_version(session, analysis, commit=False)
+    session.commit()
 
     session.refresh(analysis)
     return _to_response(analysis)

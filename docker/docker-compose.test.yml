@@ -1,0 +1,185 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${DF_POSTGRES_DB}
+      POSTGRES_USER: ${DF_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${DF_POSTGRES_PASSWORD}
+    volumes:
+      - pg-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DF_POSTGRES_USER} -d ${DF_POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        INSTALL_DEV: "true"
+    image: polars-analysis:test
+    environment:
+      ENV_FILE: ""
+      DATA_DIR: ${DF_DATA_DIR}
+      SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
+    volumes:
+      - backend-test-data:/app/data
+    command: ["python", "-m", "pytest", "--tb=short", "-q", "-k", "not docker_bootstrap and not postgres_runtime_integration"]
+    healthcheck:
+      disable: true
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        INSTALL_DEV: "true"
+    image: polars-analysis:test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ENV_FILE: ""
+      APP_NAME: ${DF_APP_NAME}
+      APP_VERSION: ${DF_APP_VERSION}
+      DEBUG: ${DF_DEBUG}
+      PROD_MODE_ENABLED: "false"
+      PORT: "8000"
+      DATA_DIR: ${DF_DATA_DIR}
+      DATABASE_URL: ${DF_DATABASE_URL}
+      DISTRIBUTED_RUNTIME_ENABLED: "true"
+      DEFAULT_NAMESPACE: ${DF_DEFAULT_NAMESPACE}
+      WORKERS: "2"
+      BUILD_WORKER_MIN_PROCESSES: "0"
+      BUILD_WORKER_MAX_PROCESSES: "4"
+      BUILD_WORKER_IDLE_EXIT_SECONDS: "5"
+      AUTH_REQUIRED: "true"
+      SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
+      DEFAULT_USER_PASSWORD: ${DF_DEFAULT_USER_PASSWORD}
+      DEFAULT_USER_EMAIL: ${DF_DEFAULT_USER_EMAIL}
+      DEFAULT_USER_NAME: ${DF_DEFAULT_USER_NAME}
+      LOG_LEVEL: ${DF_LOG_LEVEL}
+      UVICORN_ACCESS_LOG: "false"
+      AUTH_FRONTEND_URL: ${DF_E2E_FRONTEND_ORIGIN}
+      CORS_ORIGINS: ${DF_E2E_FRONTEND_ORIGIN}
+    volumes:
+      - backend-test-data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health/ready').status==200 else 1)\""]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  runtime-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        INSTALL_DEV: "true"
+    image: polars-analysis:test
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      ENV_FILE: ""
+      PORT: "8000"
+      DATA_DIR: ${DF_DATA_DIR}
+      DATABASE_URL: ${DF_DATABASE_URL}
+      DISTRIBUTED_RUNTIME_ENABLED: "true"
+      DEFAULT_NAMESPACE: ${DF_DEFAULT_NAMESPACE}
+      AUTH_REQUIRED: "false"
+      SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
+      DEFAULT_USER_EMAIL: ${DF_DEFAULT_USER_EMAIL}
+      DEFAULT_USER_PASSWORD: ${DF_DEFAULT_USER_PASSWORD}
+      LOG_LEVEL: ${DF_LOG_LEVEL}
+      RUNTIME_TEST_BASE_URL: ${DF_RUNTIME_TEST_BASE_URL}
+      RUNTIME_TEST_DB_URL: ${DF_RUNTIME_TEST_DB_URL}
+    volumes:
+      - backend-test-data:/app/data
+    command: ["python", "-m", "pytest", "--tb=short", "-q", "tests/test_docker_bootstrap.py"]
+    healthcheck:
+      disable: true
+
+  frontend-test:
+    image: oven/bun:1
+    working_dir: /app/frontend
+    environment:
+      CI: "true"
+    volumes:
+      - ../frontend:/app/frontend
+      - frontend-test-node-modules:/app/frontend/node_modules
+      - frontend-test-svelte-kit:/app/frontend/.svelte-kit
+    command: ["sh", "-lc", "bun install --frozen-lockfile && bun run test:unit"]
+
+  frontend-e2e:
+    image: mcr.microsoft.com/playwright:v1.59.1-noble
+    working_dir: /app/frontend
+    ipc: host
+    shm_size: 2gb
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      FRONTEND_PORT: ${DF_FRONTEND_PORT}
+      BACKEND_HOST: app
+      BACKEND_PORT: "8000"
+      CI: "true"
+    ports:
+      - "${DF_E2E_FRONTEND_PORT}:${DF_FRONTEND_PORT}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "const http = require('node:http'); const port = process.env.FRONTEND_PORT; const req = http.get({ host: '127.0.0.1', port, path: '/' }, (res) => process.exit(res.statusCode && res.statusCode < 500 ? 0 : 1)); req.setTimeout(4000, () => { req.destroy(); process.exit(1); }); req.on('error', () => process.exit(1));",
+        ]
+      interval: 5s
+      timeout: 10s
+      start_period: 20s
+      retries: 30
+    volumes:
+      - ../frontend:/app/frontend
+      - frontend-e2e-node-modules:/app/frontend/node_modules
+      - frontend-e2e-svelte-kit:/app/frontend/.svelte-kit
+    command: ["sh", "-lc", "npm install -g bun && bun install --frozen-lockfile && bun run build && bun run preview -- --host 0.0.0.0 --port ${DF_FRONTEND_PORT}"]
+
+  e2e-test:
+    image: mcr.microsoft.com/playwright:v1.59.1-noble
+    ipc: host
+    shm_size: 2gb
+    depends_on:
+      frontend-e2e:
+        condition: service_healthy
+      app:
+        condition: service_started
+    working_dir: /app/frontend
+    environment:
+      CI: "true"
+      FRONTEND_PORT: ${DF_FRONTEND_PORT}
+      BACKEND_PORT: "8000"
+      PLAYWRIGHT_BASE_URL: ${DF_E2E_FRONTEND_ORIGIN}
+      PLAYWRIGHT_API_ORIGIN: http://app:8000
+      PLAYWRIGHT_FRONTEND_ORIGIN: ${DF_E2E_FRONTEND_ORIGIN}
+      PLAYWRIGHT_COOKIE_DOMAIN: frontend-e2e
+      PLAYWRIGHT_DISABLE_WEB_SERVER: "true"
+    volumes:
+      - ../frontend:/app/frontend
+      - frontend-test-node-modules:/app/frontend/node_modules
+    command: ["sh", "-lc", "npx playwright test"]
+
+volumes:
+  backend-test-data:
+    driver: local
+  frontend-test-node-modules:
+    driver: local
+  frontend-test-svelte-kit:
+    driver: local
+  frontend-e2e-node-modules:
+    driver: local
+  frontend-e2e-svelte-kit:
+    driver: local
+  pg-data:
+    driver: local

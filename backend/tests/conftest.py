@@ -36,13 +36,17 @@ def _settings():
 def _settings_tables() -> list[Any]:
     from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
     from modules.chat.sessions import ChatSession
+    from modules.engine_instances.models import EngineInstance
+    from modules.runtime_workers.models import RuntimeWorker
     from modules.settings.models import AppSettings
 
     table_names = {
         AppSettings.__tablename__,
         ChatSession.__tablename__,
+        EngineInstance.__tablename__,
         User.__tablename__,
         AuthProvider.__tablename__,
+        RuntimeWorker.__tablename__,
         UserSession.__tablename__,
         VerificationToken.__tablename__,
     }
@@ -66,17 +70,17 @@ def _reset_settings_state(engine: Engine) -> None:
 
 
 @pytest.fixture(scope='function')
-def test_engine():
+def test_engine(tmp_path: Path):
     from modules.locks.models import ResourceLock
     from modules.udf.models import Udf
 
     del ResourceLock
     del Udf
+    db_path = tmp_path / 'test.db'
     engine = create_engine(
-        'sqlite:///:memory:',
+        f'sqlite:///{db_path}',
         echo=False,
         connect_args={'check_same_thread': False},
-        poolclass=StaticPool,
     )
     SQLModel.metadata.create_all(engine)
     return engine
@@ -119,7 +123,8 @@ def client(test_db_session, test_user):
     from modules.auth.dependencies import get_current_user
 
     def override_get_db():
-        yield test_db_session
+        with Session(test_db_session.bind) as session:
+            yield session
 
     if hasattr(app.state, 'mcp_registry'):
         del app.state.mcp_registry
@@ -146,6 +151,24 @@ def clear_active_build_registry():
     asyncio.run(registry.clear())
     yield
     asyncio.run(registry.clear())
+
+
+@pytest.fixture(autouse=True, scope='function')
+def clear_build_notification_hub():
+    from modules.build_runs.live import hub
+
+    asyncio.run(hub.clear())
+    yield
+    asyncio.run(hub.clear())
+
+
+@pytest.fixture(autouse=True, scope='function')
+def clear_build_job_hub():
+    from modules.build_jobs.live import hub
+
+    asyncio.run(hub.clear())
+    yield
+    asyncio.run(hub.clear())
 
 
 @pytest.fixture(autouse=True, scope='function')

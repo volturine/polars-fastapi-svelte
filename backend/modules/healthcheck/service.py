@@ -20,9 +20,13 @@ def list_healthchecks(session: Session, datasource_id: str) -> list[HealthCheckR
     datasource = session.get(DataSource, datasource_id)
     if not datasource:
         return []
-    result = session.execute(
-        select(HealthCheck).where(HealthCheck.datasource_id == datasource_id),  # type: ignore[arg-type]
-    )
+    result = session.execute(select(HealthCheck).where(HealthCheck.datasource_id == datasource_id))  # type: ignore[arg-type]
+    checks = result.scalars().all()
+    return [HealthCheckResponse.model_validate(check) for check in checks]
+
+
+def list_all_healthchecks(session: Session) -> list[HealthCheckResponse]:
+    result = session.execute(select(HealthCheck))
     checks = result.scalars().all()
     return [HealthCheckResponse.model_validate(check) for check in checks]
 
@@ -73,10 +77,11 @@ def delete_healthcheck(session: Session, healthcheck_id: str) -> None:
 
 
 def list_results(session: Session, datasource_id: str, limit: int = 10) -> list[HealthCheckResultResponse]:
-    """Get recent healthcheck results for all checks on a datasource."""
+    """Get recent healthcheck results for one datasource."""
     datasource = session.get(DataSource, datasource_id)
     if not datasource:
         return []
+    query = select(HealthCheckResult).order_by(HealthCheckResult.checked_at.desc()).limit(limit)  # type: ignore[union-attr, attr-defined]
     checks = session.execute(
         select(HealthCheck.id).where(HealthCheck.datasource_id == datasource_id),  # type: ignore[arg-type, call-overload]
     )
@@ -84,11 +89,15 @@ def list_results(session: Session, datasource_id: str, limit: int = 10) -> list[
     if not check_ids:
         return []
     results = session.execute(
-        select(HealthCheckResult)
-        .where(HealthCheckResult.healthcheck_id.in_(check_ids))  # type: ignore[union-attr, attr-defined]
-        .order_by(HealthCheckResult.checked_at.desc())  # type: ignore[union-attr, attr-defined]
-        .limit(limit),
+        query.where(HealthCheckResult.healthcheck_id.in_(check_ids)),  # type: ignore[union-attr, attr-defined]
     )
+    return [HealthCheckResultResponse.model_validate(r) for r in results.scalars().all()]
+
+
+def list_all_results(session: Session, limit: int = 10) -> list[HealthCheckResultResponse]:
+    """Get recent healthcheck results across all datasources."""
+    query = select(HealthCheckResult).order_by(HealthCheckResult.checked_at.desc()).limit(limit)  # type: ignore[union-attr, attr-defined]
+    results = session.execute(query)
     return [HealthCheckResultResponse.model_validate(r) for r in results.scalars().all()]
 
 

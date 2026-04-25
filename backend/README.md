@@ -1,6 +1,6 @@
 # FastAPI Backend
 
-FastAPI backend with async SQLAlchemy, Alembic migrations, and SQLite database.
+FastAPI backend for the supervised runtime with Postgres-backed production mode and SQLite-backed local single-node development.
 
 ## Setup
 
@@ -10,25 +10,24 @@ FastAPI backend with async SQLAlchemy, Alembic migrations, and SQLite database.
    uv sync --extra dev
    ```
 
-2. Configure environment (optional):
+2. Configure environment:
 
    ```bash
-   cp .env.example .env
-   # Edit .env if needed
+   # Edit dev.env for local development settings
    ```
 
-3. Run database migrations:
+3. Run database migrations manually if needed:
 
    ```bash
    ./migrate.sh upgrade
    # Or manually: uv run alembic -c database/alembic.ini upgrade head
    ```
 
-4. Start the development server:
-   ```bash
-   uv run main.py
-   # Or: uv run uvicorn main:app --reload
-   ```
+4. Start the local supervised runtime:
+    ```bash
+    uv run --env-file dev.env ./app.py
+    # Or from the repo root: just dev
+    ```
 
 ## Database Migrations
 
@@ -88,7 +87,8 @@ backend/
 │   ├── datasource/     # Data source management
 │   ├── health/         # Health checks
 │   └── results/        # Result handling
-├── main.py             # Application entry point
+├── app.py              # Supervised runtime entry point
+├── main.py             # API subprocess entry point
 ├── migrate.sh          # Migration helper script
 └── pyproject.toml      # Project dependencies
 ```
@@ -151,11 +151,7 @@ Once the server is running, visit:
 
 Configuration is managed through `core/config.py` using Pydantic settings.
 
-Local setup:
-
-```bash
-cp .env.example .env
-```
+Local setup uses `dev.env`.
 
 Common settings:
 
@@ -167,28 +163,24 @@ Common settings:
 - `ENGINE_IDLE_TIMEOUT` - Idle engine timeout in seconds
 - `AUTH_REQUIRED` - Whether authenticated routes require login
 
-Override in `.env` file or environment variables. Use `ENV_FILE` to point to a specific env file (set to empty to disable env-file loading).
+Override in `dev.env`, `prod.env`, or process environment variables. Use `ENV_FILE` to point to a specific env file (set to empty to disable env-file loading).
 
 See [`../ENV_VARIABLES.md`](../ENV_VARIABLES.md) for the complete reference, including frontend development variables and notes about DB-seeded settings.
 
 ## Production Deployment
 
-1. Set environment variables:
+1. Set production environment variables:
 
    ```bash
-   export DATABASE_URL="sqlite:///${DATA_DIR}/app.db"
+   export DATABASE_URL="postgresql+psycopg://user:pass@host:5432/dataforge"
+   export DISTRIBUTED_RUNTIME_ENABLED=true
    # ... other settings
    ```
 
-2. Run migrations:
+2. Start the production runtime:
 
    ```bash
-   ./migrate.sh upgrade
-   ```
-
-3. Start server with production settings:
-   ```bash
-   uv run uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+   uv run --env-file prod.env ./app.py
    ```
 
 ## Troubleshooting

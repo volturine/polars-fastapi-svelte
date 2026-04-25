@@ -15,6 +15,7 @@ import { normalizeConfig } from '$lib/utils/step-config-defaults';
 import { isChartStep, normalizeStepType } from '$lib/components/pipeline/utils';
 import { track } from '$lib/utils/audit-log';
 import { cloneJson, isRecord } from '$lib/utils/json';
+import { uuid } from '$lib/utils/uuid';
 import { schemaStore } from '$lib/stores/schema.svelte';
 import { SvelteMap } from 'svelte/reactivity';
 import { ResultAsync, errAsync, ok } from 'neverthrow';
@@ -259,15 +260,15 @@ export class AnalysisStore {
 		if (!sourceTab) return null;
 
 		const nextName = nextDuplicateTabName(this.tabs, sourceTab.name);
-		const nextTabId = `tab-${crypto.randomUUID()}`;
-		const nextOutputId = crypto.randomUUID();
+		const nextTabId = `tab-${uuid()}`;
+		const nextOutputId = uuid();
 		const nextFilename = slugifyOutputName(nextName);
 		const sourceOutput = cloneJson(sourceTab.output);
 		const sourceIceberg = sourceOutput.iceberg;
 
 		const stepIdMap: Record<string, string> = {};
 		for (const step of sourceTab.steps) {
-			stepIdMap[step.id] = crypto.randomUUID();
+			stepIdMap[step.id] = uuid();
 		}
 
 		const duplicatedSteps: PipelineStep[] = [];
@@ -659,7 +660,7 @@ export class AnalysisStore {
 					config: { branch: 'master' }
 				},
 				output: buildOutputConfig({
-					outputId: crypto.randomUUID(),
+					outputId: uuid(),
 					name: generateOutputName(),
 					branch: 'master'
 				}),

@@ -1,5 +1,6 @@
 import type { EngineStatusResponse } from '$lib/types/compute';
 import { connectEnginesStream, shutdownEngine as shutdownEngineApi } from '$lib/api/compute';
+import { SvelteSet } from 'svelte/reactivity';
 
 const RECONNECT_DELAY_MS = 1_000;
 
@@ -10,6 +11,7 @@ export class EnginesStore {
 	loading = $state(false);
 	error = $state<string | null>(null);
 	status = $state<EnginesConnectionStatus>('disconnected');
+	private shuttingDown = new SvelteSet<string>();
 
 	private connection: { close: () => void } | null = null;
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -37,11 +39,12 @@ export class EnginesStore {
 	}
 
 	async shutdownEngine(analysisId: string): Promise<void> {
+		this.shuttingDown.add(analysisId);
+		this.engines = this.engines.filter((engine) => engine.analysis_id !== analysisId);
 		await shutdownEngineApi(analysisId).match(
-			() => {
-				this.engines = this.engines.filter((engine) => engine.analysis_id !== analysisId);
-			},
+			() => {},
 			(err) => {
+				this.shuttingDown.delete(analysisId);
 				this.error = err.message;
 				throw new Error(err.message);
 			}
@@ -55,6 +58,7 @@ export class EnginesStore {
 		this.connection?.close();
 		this.connection = null;
 		this.engines = [];
+		this.shuttingDown.clear();
 		this.loading = false;
 		this.error = null;
 		this.status = 'disconnected';
@@ -76,7 +80,11 @@ export class EnginesStore {
 
 		this.connection = connectEnginesStream({
 			onSnapshot: (engines) => {
-				this.engines = engines;
+				for (const analysisId of this.shuttingDown) {
+					if (engines.some((engine) => engine.analysis_id === analysisId)) continue;
+					this.shuttingDown.delete(analysisId);
+				}
+				this.engines = engines.filter((engine) => !this.shuttingDown.has(engine.analysis_id));
 				this.loading = false;
 				this.error = null;
 				this.status = 'connected';

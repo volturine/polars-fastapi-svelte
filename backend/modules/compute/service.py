@@ -215,20 +215,21 @@ def _event_model(payload: dict[str, object]) -> compute_schemas.BuildEvent:
     return compute_schemas.BuildEventAdapter.validate_python(payload)
 
 
+def _build_event(
+    build: ActiveBuild,
+    analysis_id: str,
+    payload: dict[str, object],
+) -> compute_schemas.BuildEvent:
+    return _event_model({**_build_event_payload(build, analysis_id), **payload})
+
+
 async def _emit_build_event(
     emitter: BuildEmitter | None,
     *,
-    build: ActiveBuild,
-    analysis_id: str,
-    payload: dict[str, object] | compute_schemas.BuildEvent,
+    event: compute_schemas.BuildEvent,
 ) -> None:
     if emitter is None:
         return
-    event = (
-        payload
-        if isinstance(payload, compute_schemas.BuildStreamEvent)
-        else _event_model({**_build_event_payload(build, analysis_id), **payload})
-    )
     await emitter(event)
 
 
@@ -251,22 +252,24 @@ async def _emit_progress(
 ) -> None:
     await _emit_build_event(
         emitter,
-        build=build,
-        analysis_id=analysis_id,
-        payload={
-            'type': compute_schemas.BuildEventType.PROGRESS,
-            'progress': progress,
-            'elapsed_ms': elapsed_ms,
-            'estimated_remaining_ms': _estimate_remaining(elapsed_ms, completed_steps, total_steps),
-            'current_step': current_step,
-            'current_step_index': current_step_index,
-            'total_steps': total_steps,
-            'tab_id': tab_id,
-            'tab_name': tab_name,
-            'current_output_id': current_output_id,
-            'current_output_name': current_output_name,
-            'engine_run_id': engine_run_id,
-        },
+        event=_build_event(
+            build,
+            analysis_id,
+            {
+                'type': compute_schemas.BuildEventType.PROGRESS,
+                'progress': progress,
+                'elapsed_ms': elapsed_ms,
+                'estimated_remaining_ms': _estimate_remaining(elapsed_ms, completed_steps, total_steps),
+                'current_step': current_step,
+                'current_step_index': current_step_index,
+                'total_steps': total_steps,
+                'tab_id': tab_id,
+                'tab_name': tab_name,
+                'current_output_id': current_output_id,
+                'current_output_name': current_output_name,
+                'engine_run_id': engine_run_id,
+            },
+        ),
     )
 
 
@@ -941,7 +944,6 @@ def _latest_completed_step_name(run: EngineRun) -> str | None:
 
 def cancel_engine_run(
     session: Session,
-    manager: ProcessManager,
     run_id: str,
     *,
     cancelled_by: str | None,
@@ -983,9 +985,6 @@ def cancel_engine_run(
         progress=run.progress,
         current_step=run.current_step,
     )
-
-    if run.analysis_id:
-        manager.shutdown_engine(run.analysis_id)
 
     return compute_schemas.CancelBuildResponse(
         id=run_id,
@@ -2790,24 +2789,26 @@ async def _stream_engine_events(
             read_stage.completed = True
             await _emit_build_event(
                 emitter,
-                build=build,
-                analysis_id=analysis_id,
-                payload={
-                    'type': 'step_complete',
-                    'build_step_index': read_stage.build_step_index,
-                    'step_index': read_stage.step_index,
-                    'step_id': read_stage.step_id,
-                    'step_name': read_stage.step_name,
-                    'step_type': read_stage.step_type,
-                    'duration_ms': read_duration_ms,
-                    'row_count': None,
-                    'total_steps': total_steps,
-                    'tab_id': tab_id,
-                    'tab_name': tab_name,
-                    'current_output_id': current_output_id,
-                    'current_output_name': current_output_name,
-                    'engine_run_id': engine_run_id,
-                },
+                event=_build_event(
+                    build,
+                    analysis_id,
+                    {
+                        'type': 'step_complete',
+                        'build_step_index': read_stage.build_step_index,
+                        'step_index': read_stage.step_index,
+                        'step_id': read_stage.step_id,
+                        'step_name': read_stage.step_name,
+                        'step_type': read_stage.step_type,
+                        'duration_ms': read_duration_ms,
+                        'row_count': None,
+                        'total_steps': total_steps,
+                        'tab_id': tab_id,
+                        'tab_name': tab_name,
+                        'current_output_id': current_output_id,
+                        'current_output_name': current_output_name,
+                        'engine_run_id': engine_run_id,
+                    },
+                ),
             )
             completed_steps += 1
             elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
@@ -2839,7 +2840,7 @@ async def _stream_engine_events(
         payload['engine_run_id'] = payload.get('engine_run_id') or engine_run_id
 
         if emitted_type not in {'compute_start', 'compute_complete'}:
-            await _emit_build_event(emitter, build=build, analysis_id=analysis_id, payload=payload)
+            await _emit_build_event(emitter, event=_build_event(build, analysis_id, payload))
 
         if emitted_type == 'step_complete':
             completed_steps += 1
@@ -2915,14 +2916,16 @@ async def _stream_resource_events(
     async for resource in monitor_engine_resources(engine):
         await _emit_build_event(
             emitter,
-            build=build,
-            analysis_id=analysis_id,
-            payload={
-                'type': 'resources',
-                'tab_id': tab_id,
-                'tab_name': tab_name,
-                **resource,
-            },
+            event=_build_event(
+                build,
+                analysis_id,
+                {
+                    'type': 'resources',
+                    'tab_id': tab_id,
+                    'tab_name': tab_name,
+                    **resource,
+                },
+            ),
         )
 
 
@@ -3071,13 +3074,15 @@ async def run_analysis_build_stream(
 
     await _emit_build_event(
         emitter,
-        build=build,
-        analysis_id=analysis_id_value,
-        payload={
-            'type': 'log',
-            'level': compute_schemas.BuildLogLevel.INFO.value,
-            'message': f'Starting build for {build.analysis_name}',
-        },
+        event=_build_event(
+            build,
+            analysis_id_value,
+            {
+                'type': 'log',
+                'level': compute_schemas.BuildLogLevel.INFO.value,
+                'message': f'Starting build for {build.analysis_name}',
+            },
+        ),
     )
     await _emit_progress(
         emitter,
@@ -3137,15 +3142,17 @@ async def run_analysis_build_stream(
             results.append({'tab_id': tab_id, 'tab_name': tab_name, 'status': BuildTabStatus.FAILED, 'error': error})
             await _emit_build_event(
                 emitter,
-                build=build,
-                analysis_id=analysis_id_value,
-                payload={
-                    'type': 'log',
-                    'level': compute_schemas.BuildLogLevel.ERROR.value,
-                    'message': error,
-                    'tab_id': tab_id,
-                    'tab_name': tab_name,
-                },
+                event=_build_event(
+                    build,
+                    analysis_id_value,
+                    {
+                        'type': 'log',
+                        'level': compute_schemas.BuildLogLevel.ERROR.value,
+                        'message': error,
+                        'tab_id': tab_id,
+                        'tab_name': tab_name,
+                    },
+                ),
             )
             build_step_base += max(len(steps), 1)
             continue
@@ -3203,37 +3210,41 @@ async def run_analysis_build_stream(
         try:
             await _emit_build_event(
                 emitter,
-                build=build,
-                analysis_id=analysis_id_value,
-                payload={
-                    'type': 'log',
-                    'level': compute_schemas.BuildLogLevel.INFO.value,
-                    'message': f'Starting tab {tab_name}',
-                    'tab_id': tab_id,
-                    'tab_name': tab_name,
-                    'current_output_id': current_output_id,
-                    'current_output_name': current_output_name,
-                },
+                event=_build_event(
+                    build,
+                    analysis_id_value,
+                    {
+                        'type': 'log',
+                        'level': compute_schemas.BuildLogLevel.INFO.value,
+                        'message': f'Starting tab {tab_name}',
+                        'tab_id': tab_id,
+                        'tab_name': tab_name,
+                        'current_output_id': current_output_id,
+                        'current_output_name': current_output_name,
+                    },
+                ),
             )
             read_stage.started = True
             await _emit_build_event(
                 emitter,
-                build=build,
-                analysis_id=analysis_id_value,
-                payload={
-                    'type': 'step_start',
-                    'build_step_index': read_stage.build_step_index,
-                    'step_index': read_stage.step_index,
-                    'step_id': read_stage.step_id,
-                    'step_name': read_stage.step_name,
-                    'step_type': read_stage.step_type,
-                    'total_steps': total_steps,
-                    'tab_id': tab_id,
-                    'tab_name': tab_name,
-                    'current_output_id': current_output_id,
-                    'current_output_name': current_output_name,
-                    'engine_run_id': build.current_engine_run_id,
-                },
+                event=_build_event(
+                    build,
+                    analysis_id_value,
+                    {
+                        'type': 'step_start',
+                        'build_step_index': read_stage.build_step_index,
+                        'step_index': read_stage.step_index,
+                        'step_id': read_stage.step_id,
+                        'step_name': read_stage.step_name,
+                        'step_type': read_stage.step_type,
+                        'total_steps': total_steps,
+                        'tab_id': tab_id,
+                        'tab_name': tab_name,
+                        'current_output_id': current_output_id,
+                        'current_output_name': current_output_name,
+                        'engine_run_id': build.current_engine_run_id,
+                    },
+                ),
             )
 
             def handle_job_started(
@@ -3271,7 +3282,7 @@ async def run_analysis_build_stream(
                     }
                     if isinstance(run_id, str):
                         payload['engine_run_id'] = run_id
-                    await _emit_build_event(emitter, build=build, analysis_id=analysis_id_value, payload=payload)
+                    await _emit_build_event(emitter, event=_build_event(build, analysis_id_value, payload))
 
                 future = asyncio.run_coroutine_threadsafe(emit_run_started(), loop)
                 future.result()
@@ -3325,24 +3336,26 @@ async def run_analysis_build_stream(
                             current_read_stage.completed = True
                             await _emit_build_event(
                                 emitter,
-                                build=build,
-                                analysis_id=analysis_id_value,
-                                payload={
-                                    'type': 'step_complete',
-                                    'build_step_index': current_read_stage.build_step_index,
-                                    'step_index': current_read_stage.step_index,
-                                    'step_id': current_read_stage.step_id,
-                                    'step_name': current_read_stage.step_name,
-                                    'step_type': current_read_stage.step_type,
-                                    'duration_ms': resolved_read_duration,
-                                    'row_count': None,
-                                    'total_steps': total_steps,
-                                    'tab_id': current_tab_id,
-                                    'tab_name': current_tab_name,
-                                    'current_output_id': current_output_id_value,
-                                    'current_output_name': current_output_name_value,
-                                    'engine_run_id': build.current_engine_run_id,
-                                },
+                                event=_build_event(
+                                    build,
+                                    analysis_id_value,
+                                    {
+                                        'type': 'step_complete',
+                                        'build_step_index': current_read_stage.build_step_index,
+                                        'step_index': current_read_stage.step_index,
+                                        'step_id': current_read_stage.step_id,
+                                        'step_name': current_read_stage.step_name,
+                                        'step_type': current_read_stage.step_type,
+                                        'duration_ms': resolved_read_duration,
+                                        'row_count': None,
+                                        'total_steps': total_steps,
+                                        'tab_id': current_tab_id,
+                                        'tab_name': current_tab_name,
+                                        'current_output_id': current_output_id_value,
+                                        'current_output_name': current_output_name_value,
+                                        'engine_run_id': build.current_engine_run_id,
+                                    },
+                                ),
                             )
                             elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
                             await _emit_progress(
@@ -3365,22 +3378,24 @@ async def run_analysis_build_stream(
                         current_write_stage.started_at = time.perf_counter()
                         await _emit_build_event(
                             emitter,
-                            build=build,
-                            analysis_id=analysis_id_value,
-                            payload={
-                                'type': 'step_start',
-                                'build_step_index': current_write_stage.build_step_index,
-                                'step_index': current_write_stage.step_index,
-                                'step_id': current_write_stage.step_id,
-                                'step_name': current_write_stage.step_name,
-                                'step_type': current_write_stage.step_type,
-                                'total_steps': total_steps,
-                                'tab_id': current_tab_id,
-                                'tab_name': current_tab_name,
-                                'current_output_id': current_output_id_value,
-                                'current_output_name': current_output_name_value,
-                                'engine_run_id': build.current_engine_run_id,
-                            },
+                            event=_build_event(
+                                build,
+                                analysis_id_value,
+                                {
+                                    'type': 'step_start',
+                                    'build_step_index': current_write_stage.build_step_index,
+                                    'step_index': current_write_stage.step_index,
+                                    'step_id': current_write_stage.step_id,
+                                    'step_name': current_write_stage.step_name,
+                                    'step_type': current_write_stage.step_type,
+                                    'total_steps': total_steps,
+                                    'tab_id': current_tab_id,
+                                    'tab_name': current_tab_name,
+                                    'current_output_id': current_output_id_value,
+                                    'current_output_name': current_output_name_value,
+                                    'engine_run_id': build.current_engine_run_id,
+                                },
+                            ),
                         )
                         return
 
@@ -3394,24 +3409,26 @@ async def run_analysis_build_stream(
                         current_write_stage.completed = True
                         await _emit_build_event(
                             emitter,
-                            build=build,
-                            analysis_id=analysis_id_value,
-                            payload={
-                                'type': 'step_complete',
-                                'build_step_index': current_write_stage.build_step_index,
-                                'step_index': current_write_stage.step_index,
-                                'step_id': current_write_stage.step_id,
-                                'step_name': current_write_stage.step_name,
-                                'step_type': current_write_stage.step_type,
-                                'duration_ms': resolved_write_duration,
-                                'row_count': None,
-                                'total_steps': total_steps,
-                                'tab_id': current_tab_id,
-                                'tab_name': current_tab_name,
-                                'current_output_id': current_output_id_value,
-                                'current_output_name': current_output_name_value,
-                                'engine_run_id': build.current_engine_run_id,
-                            },
+                            event=_build_event(
+                                build,
+                                analysis_id_value,
+                                {
+                                    'type': 'step_complete',
+                                    'build_step_index': current_write_stage.build_step_index,
+                                    'step_index': current_write_stage.step_index,
+                                    'step_id': current_write_stage.step_id,
+                                    'step_name': current_write_stage.step_name,
+                                    'step_type': current_write_stage.step_type,
+                                    'duration_ms': resolved_write_duration,
+                                    'row_count': None,
+                                    'total_steps': total_steps,
+                                    'tab_id': current_tab_id,
+                                    'tab_name': current_tab_name,
+                                    'current_output_id': current_output_id_value,
+                                    'current_output_name': current_output_name_value,
+                                    'engine_run_id': build.current_engine_run_id,
+                                },
+                            ),
                         )
                         elapsed_ms = int((time.perf_counter() - started_perf) * 1000)
                         await _emit_progress(
@@ -3510,17 +3527,19 @@ async def run_analysis_build_stream(
             cancelled_by = exc.cancelled_by
             await _emit_build_event(
                 emitter,
-                build=build,
-                analysis_id=analysis_id_value,
-                payload={
-                    'type': 'log',
-                    'level': compute_schemas.BuildLogLevel.WARNING.value,
-                    'message': 'Build cancellation requested',
-                    'tab_id': tab_id,
-                    'tab_name': tab_name,
-                    'current_output_id': current_output_id,
-                    'current_output_name': current_output_name,
-                },
+                event=_build_event(
+                    build,
+                    analysis_id_value,
+                    {
+                        'type': 'log',
+                        'level': compute_schemas.BuildLogLevel.WARNING.value,
+                        'message': 'Build cancellation requested',
+                        'tab_id': tab_id,
+                        'tab_name': tab_name,
+                        'current_output_id': current_output_id,
+                        'current_output_name': current_output_name,
+                    },
+                ),
             )
             break
         except Exception as exc:
@@ -3532,44 +3551,48 @@ async def run_analysis_build_stream(
             if write_stage.started and not write_stage.completed:
                 await _emit_build_event(
                     emitter,
-                    build=build,
-                    analysis_id=analysis_id_value,
-                    payload={
-                        'type': 'step_failed',
-                        'build_step_index': write_stage.build_step_index,
-                        'step_index': write_stage.step_index,
-                        'step_id': write_stage.step_id,
-                        'step_name': write_stage.step_name,
-                        'step_type': write_stage.step_type,
-                        'error': str(exc),
-                        'total_steps': total_steps,
-                        'tab_id': tab_id,
-                        'tab_name': tab_name,
-                        'current_output_id': current_output_id,
-                        'current_output_name': current_output_name,
-                        'engine_run_id': build.current_engine_run_id,
-                    },
+                    event=_build_event(
+                        build,
+                        analysis_id_value,
+                        {
+                            'type': 'step_failed',
+                            'build_step_index': write_stage.build_step_index,
+                            'step_index': write_stage.step_index,
+                            'step_id': write_stage.step_id,
+                            'step_name': write_stage.step_name,
+                            'step_type': write_stage.step_type,
+                            'error': str(exc),
+                            'total_steps': total_steps,
+                            'tab_id': tab_id,
+                            'tab_name': tab_name,
+                            'current_output_id': current_output_id,
+                            'current_output_name': current_output_name,
+                            'engine_run_id': build.current_engine_run_id,
+                        },
+                    ),
                 )
             elif not read_stage.completed:
                 await _emit_build_event(
                     emitter,
-                    build=build,
-                    analysis_id=analysis_id_value,
-                    payload={
-                        'type': 'step_failed',
-                        'build_step_index': read_stage.build_step_index,
-                        'step_index': read_stage.step_index,
-                        'step_id': read_stage.step_id,
-                        'step_name': read_stage.step_name,
-                        'step_type': read_stage.step_type,
-                        'error': str(exc),
-                        'total_steps': total_steps,
-                        'tab_id': tab_id,
-                        'tab_name': tab_name,
-                        'current_output_id': current_output_id,
-                        'current_output_name': current_output_name,
-                        'engine_run_id': build.current_engine_run_id,
-                    },
+                    event=_build_event(
+                        build,
+                        analysis_id_value,
+                        {
+                            'type': 'step_failed',
+                            'build_step_index': read_stage.build_step_index,
+                            'step_index': read_stage.step_index,
+                            'step_id': read_stage.step_id,
+                            'step_name': read_stage.step_name,
+                            'step_type': read_stage.step_type,
+                            'error': str(exc),
+                            'total_steps': total_steps,
+                            'tab_id': tab_id,
+                            'tab_name': tab_name,
+                            'current_output_id': current_output_id,
+                            'current_output_name': current_output_name,
+                            'engine_run_id': build.current_engine_run_id,
+                        },
+                    ),
                 )
             results.append(
                 {
@@ -3583,17 +3606,19 @@ async def run_analysis_build_stream(
             )
             await _emit_build_event(
                 emitter,
-                build=build,
-                analysis_id=analysis_id_value,
-                payload={
-                    'type': 'log',
-                    'level': compute_schemas.BuildLogLevel.ERROR.value,
-                    'message': str(exc),
-                    'tab_id': tab_id,
-                    'tab_name': tab_name,
-                    'current_output_id': current_output_id,
-                    'current_output_name': current_output_name,
-                },
+                event=_build_event(
+                    build,
+                    analysis_id_value,
+                    {
+                        'type': 'log',
+                        'level': compute_schemas.BuildLogLevel.ERROR.value,
+                        'message': str(exc),
+                        'tab_id': tab_id,
+                        'tab_name': tab_name,
+                        'current_output_id': current_output_id,
+                        'current_output_name': current_output_name,
+                    },
+                ),
             )
             build_step_base += execution_step_count
             continue
@@ -3610,9 +3635,7 @@ async def run_analysis_build_stream(
     if was_cancelled:
         await _emit_build_event(
             emitter,
-            build=build,
-            analysis_id=analysis_id_value,
-            payload=compute_schemas.BuildCancelledEvent(
+            event=compute_schemas.BuildCancelledEvent(
                 build_id=base.build_id,
                 analysis_id=base.analysis_id,
                 emitted_at=base.emitted_at,
@@ -3636,9 +3659,7 @@ async def run_analysis_build_stream(
     elif has_failures:
         await _emit_build_event(
             emitter,
-            build=build,
-            analysis_id=analysis_id_value,
-            payload=compute_schemas.BuildFailedEvent(
+            event=compute_schemas.BuildFailedEvent(
                 build_id=base.build_id,
                 analysis_id=base.analysis_id,
                 emitted_at=base.emitted_at,
@@ -3659,11 +3680,11 @@ async def run_analysis_build_stream(
             ),
         )
     else:
+        if analysis_id_value:
+            manager.shutdown_engine(analysis_id_value)
         await _emit_build_event(
             emitter,
-            build=build,
-            analysis_id=analysis_id_value,
-            payload=compute_schemas.BuildCompleteEvent(
+            event=compute_schemas.BuildCompleteEvent(
                 build_id=base.build_id,
                 analysis_id=base.analysis_id,
                 emitted_at=base.emitted_at,

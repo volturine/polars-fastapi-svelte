@@ -1,14 +1,13 @@
 import { test, expect } from './fixtures.js';
-import { deleteAccount, shutdownEngineByToken } from './utils/api.js';
-import { createAnalysisViaUi, registerViaUi, uploadDatasourceViaUi } from './utils/user-flows.js';
+import {
+	buildStorageState,
+	deleteAccount,
+	registerUser,
+	shutdownEngineByToken
+} from './utils/api.js';
+import { createAnalysisViaUi, uploadDatasourceViaUi } from './utils/user-flows.js';
 import { gotoAnalysisEditor, gotoReadOnlyAnalysisEditor } from './utils/analysis.js';
 import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
-import type { BrowserContext } from '@playwright/test';
-
-async function getSessionToken(context: BrowserContext): Promise<string | undefined> {
-	const state = await context.storageState();
-	return state.cookies.find((cookie) => cookie.name === 'session_token')?.value;
-}
 
 test.describe('Analyses – multi-user locking', () => {
 	test('second account stays read-only until the active editor leaves, then takes over', async ({
@@ -17,42 +16,25 @@ test.describe('Analyses – multi-user locking', () => {
 		test.setTimeout(180_000);
 
 		const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
-		const baseURL = `http://localhost:${port}`;
+		const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${port}`;
 		const id = Date.now().toString(36);
 		const datasourceName = `e2e-lock-ds-${id}`;
 		const analysisName = `E2E Lock ${id}`;
 		const userOneEmail = `e2e-lock-owner-${id}@example.com`;
 		const userTwoEmail = `e2e-lock-viewer-${id}@example.com`;
+		const ownerToken = await registerUser(userOneEmail, 'Owner User');
+		const viewerToken = await registerUser(userTwoEmail, 'Viewer User');
 
-		const ownerContext = await browser.newContext({ baseURL });
-		const viewerContext = await browser.newContext({ baseURL });
+		const ownerContext = await browser.newContext({
+			baseURL,
+			storageState: buildStorageState(ownerToken)
+		});
+		const viewerContext = await browser.newContext({
+			baseURL,
+			storageState: buildStorageState(viewerToken)
+		});
 		const ownerPage = await ownerContext.newPage();
 		const viewerPage = await viewerContext.newPage();
-
-		const ownerToken = await (async () => {
-			try {
-				await registerViaUi(ownerPage, userOneEmail, 'Owner User');
-				return await getSessionToken(ownerContext);
-			} catch (error) {
-				await ownerPage.close();
-				await ownerContext.close();
-				throw error;
-			}
-		})();
-
-		const viewerToken = await (async () => {
-			try {
-				await registerViaUi(viewerPage, userTwoEmail, 'Viewer User');
-				return await getSessionToken(viewerContext);
-			} catch (error) {
-				await viewerPage.close();
-				await viewerContext.close();
-				if (ownerToken) {
-					await deleteAccount(ownerToken).catch(() => {});
-				}
-				throw error;
-			}
-		})();
 
 		let analysisId: string | undefined;
 		try {
@@ -105,7 +87,7 @@ test.describe('Analyses – multi-user locking', () => {
 				timeout: 10_000
 			});
 		} finally {
-			if (ownerToken && analysisId) {
+			if (analysisId) {
 				await shutdownEngineByToken(ownerToken, analysisId).catch(() => {});
 			}
 
@@ -114,24 +96,10 @@ test.describe('Analyses – multi-user locking', () => {
 			await ownerContext.close().catch(() => {});
 			await viewerContext.close().catch(() => {});
 
-			if (ownerToken) {
+			{
 				const cleanupCtx = await browser.newContext({
 					baseURL,
-					storageState: {
-						cookies: [
-							{
-								name: 'session_token',
-								value: ownerToken,
-								domain: 'localhost',
-								path: '/',
-								expires: -1,
-								httpOnly: true,
-								secure: false,
-								sameSite: 'Lax' as const
-							}
-						],
-						origins: []
-					}
+					storageState: buildStorageState(ownerToken)
 				});
 				const cleanupPage = await cleanupCtx.newPage();
 				await deleteAnalysisViaUI(cleanupPage, analysisName).catch(() => {});
@@ -140,12 +108,8 @@ test.describe('Analyses – multi-user locking', () => {
 				await cleanupCtx.close().catch(() => {});
 			}
 
-			if (viewerToken) {
-				await deleteAccount(viewerToken).catch(() => {});
-			}
-			if (ownerToken) {
-				await deleteAccount(ownerToken).catch(() => {});
-			}
+			await deleteAccount(viewerToken).catch(() => {});
+			await deleteAccount(ownerToken).catch(() => {});
 		}
 	});
 });

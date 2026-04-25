@@ -1,12 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { APIRequestContext } from '@playwright/test';
+import type { APIRequestContext, BrowserContextOptions } from '@playwright/test';
 
 // Hybrid Playwright seed helpers.
 // These bypass the UI and should be treated as explicit state setup, not user-driven coverage.
 
 const apiPort = process.env.BACKEND_PORT || process.env.PORT || '8000';
-export const API_BASE = `http://localhost:${apiPort}/api/v1`;
+const apiOrigin = process.env.PLAYWRIGHT_API_ORIGIN || `http://localhost:${apiPort}`;
+export const API_BASE = `${apiOrigin}/api/v1`;
+const DATASOURCE_READY_TIMEOUT_MS = 20_000;
+const DATASOURCE_READY_DELAY_MS = 500;
 
 export const AUTH_DIR = path.resolve('tests/.auth');
 export const META_FILE = path.join(AUTH_DIR, 'meta.json');
@@ -104,6 +107,35 @@ export async function registerWorker(workerIndex: number): Promise<string> {
 	return token;
 }
 
+export async function registerUser(email: string, displayName: string): Promise<string> {
+	const resp = await fetch(`${API_BASE}/auth/register`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			email,
+			password: E2E_PASSWORD,
+			display_name: displayName
+		})
+	});
+
+	if (resp.status === 409) {
+		const login = await loginAs(email);
+		if (login.status === 'ok') {
+			return login.token;
+		}
+	}
+
+	if (!resp.ok) {
+		throw new Error(`registerUser failed for ${email}: ${resp.status} ${await resp.text()}`);
+	}
+
+	const token = parseSessionToken(resp);
+	if (!token) {
+		throw new Error(`registerUser succeeded for ${email} but no session_token received`);
+	}
+	return token;
+}
+
 export async function ensureWorkerClean(workerIndex: number): Promise<void> {
 	const email = workerEmail(workerIndex);
 	const result = await loginAs(email);
@@ -131,32 +163,33 @@ export function readStoredSessionToken(authFile: string): string | undefined {
 }
 
 const frontendPort = process.env.FRONTEND_PORT || '3000';
-const frontendOrigin = `http://localhost:${frontendPort}`;
-const apiOrigin = new URL(API_BASE).origin;
+const frontendOrigin = process.env.PLAYWRIGHT_FRONTEND_ORIGIN || `http://localhost:${frontendPort}`;
+const apiStorageOrigin = new URL(API_BASE).origin;
+const cookieDomain = process.env.PLAYWRIGHT_COOKIE_DOMAIN || 'localhost';
 
-export function buildStorageState(sessionToken: string | undefined): Record<string, unknown> {
-	const cookies = sessionToken
-		? [
-				{
-					name: 'session_token',
-					value: sessionToken,
-					domain: 'localhost',
-					path: '/',
-					expires: -1,
-					httpOnly: true,
-					secure: false,
-					sameSite: 'Lax'
-				}
-			]
-		: [];
-
+export function buildStorageState(
+	sessionToken: string | undefined
+): NonNullable<BrowserContextOptions['storageState']> {
 	return {
-		cookies,
+		cookies: sessionToken
+			? [
+					{
+						name: 'session_token',
+						value: sessionToken,
+						domain: cookieDomain,
+						path: '/',
+						expires: -1,
+						httpOnly: true,
+						secure: false,
+						sameSite: 'Lax'
+					}
+				]
+			: [],
 		origins: [
-			{ origin: apiOrigin, localStorage: [] },
+			{ origin: apiStorageOrigin, localStorage: [] },
 			{ origin: frontendOrigin, localStorage: [] }
 		]
-	};
+	} satisfies NonNullable<BrowserContextOptions['storageState']>;
 }
 
 export interface RunMeta {
@@ -172,6 +205,32 @@ export function readMeta(): RunMeta {
 	} catch {
 		return { authRequired: true, stamp: Date.now().toString(36) };
 	}
+}
+
+async function waitForDatasourceVisible(
+	request: APIRequestContext,
+	id: string,
+	namespace?: string,
+	timeoutMs = DATASOURCE_READY_TIMEOUT_MS
+): Promise<void> {
+	const headers: Record<string, string> = {};
+	if (namespace) headers['X-Namespace'] = namespace;
+	const startedAt = Date.now();
+	let lastError = '';
+
+	while (Date.now() - startedAt < timeoutMs) {
+		const response = await request.get(`${API_BASE}/datasource?include_hidden=true`, { headers });
+		if (response.ok()) {
+			const datasources = (await response.json()) as Array<{ id: string }>;
+			if (datasources.some((datasource) => datasource.id === id)) return;
+			lastError = `datasource ${id} not visible in list yet`;
+		} else {
+			lastError = `list datasources failed: ${response.status()} ${await response.text()}`;
+		}
+		await delay(DATASOURCE_READY_DELAY_MS);
+	}
+
+	throw new Error(`Timed out waiting for datasource visibility: ${lastError}`);
 }
 
 // ── Datasource ────────────────────────────────────────────────────────────────
@@ -234,7 +293,9 @@ export async function createDatasource(
 	if (!response.ok()) {
 		throw new Error(`createDatasource failed: ${response.status()} ${await response.text()}`);
 	}
-	return ((await response.json()) as { id: string }).id;
+	const id = ((await response.json()) as { id: string }).id;
+	await waitForDatasourceVisible(request, id, namespace);
+	return id;
 }
 
 export async function createLargeDatasource(
@@ -256,7 +317,9 @@ export async function createLargeDatasource(
 	if (!response.ok()) {
 		throw new Error(`createLargeDatasource failed: ${response.status()} ${await response.text()}`);
 	}
-	return ((await response.json()) as { id: string }).id;
+	const id = ((await response.json()) as { id: string }).id;
+	await waitForDatasourceVisible(request, id);
+	return id;
 }
 
 export async function deleteDatasource(
@@ -594,6 +657,10 @@ export async function createLongRunningAnalysis(
 	const viewId = crypto.randomUUID();
 	const joinId = crypto.randomUUID();
 	const sortId = crypto.randomUUID();
+	const withColumnsId = crypto.randomUUID();
+	const deduplicateId = crypto.randomUUID();
+	const groupById = crypto.randomUUID();
+	const pivotId = crypto.randomUUID();
 
 	const steps: Array<Record<string, unknown>> = [
 		{
@@ -630,6 +697,58 @@ export async function createLongRunningAnalysis(
 				descending: [false]
 			},
 			depends_on: [joinId],
+			is_applied: true
+		},
+		{
+			id: withColumnsId,
+			type: 'with_columns',
+			config: {
+				expressions: [
+					{
+						name: 'city_name',
+						expression: 'pl.col("city") + "-" + pl.col("name")'
+					}
+				]
+			},
+			depends_on: [sortId],
+			is_applied: true
+		},
+		{
+			id: deduplicateId,
+			type: 'deduplicate',
+			config: {
+				columns: ['city_name'],
+				keep: 'first'
+			},
+			depends_on: [withColumnsId],
+			is_applied: true
+		},
+		{
+			id: groupById,
+			type: 'groupby',
+			config: {
+				group_columns: ['city'],
+				aggregations: [
+					{
+						column: 'age',
+						function: 'mean',
+						alias: 'avg_age'
+					}
+				]
+			},
+			depends_on: [deduplicateId],
+			is_applied: true
+		},
+		{
+			id: pivotId,
+			type: 'pivot',
+			config: {
+				pivot_column: 'city',
+				value_column: 'avg_age',
+				index_columns: [],
+				aggregation: 'first'
+			},
+			depends_on: [groupById],
 			is_applied: true
 		}
 	];

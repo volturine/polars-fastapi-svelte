@@ -1,4 +1,5 @@
 import type { Browser, Locator, Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import fs from 'node:fs';
 import { shutdownEngineByToken, workerAuthFile } from './api.js';
 import { gotoAnalysesGallery, waitForDatasourceList, waitForUdfList } from './readiness.js';
@@ -6,6 +7,33 @@ import { gotoAnalysesGallery, waitForDatasourceList, waitForUdfList } from './re
 const ELEMENT_VISIBLE_TIMEOUT = 10_000;
 const DIALOG_HIDDEN_TIMEOUT = 10_000;
 const ANALYSIS_HREF_RE = /\/analysis\/([0-9a-f-]+)/;
+
+async function waitForHealthChecksList(page: Page, timeout: number): Promise<void> {
+	const panel = page.locator('#panel-health');
+	await expect(panel).toBeVisible({ timeout });
+	const terminal = panel.locator(
+		'[data-healthcheck-row], :text("No health checks configured."), :text("No health checks match your search."), :text("Failed to load health checks.")'
+	);
+	await expect
+		.poll(
+			async () => {
+				const count = await terminal.count();
+				for (let index = 0; index < count; index += 1) {
+					if (
+						await terminal
+							.nth(index)
+							.isVisible()
+							.catch(() => false)
+					) {
+						return true;
+					}
+				}
+				return false;
+			},
+			{ timeout }
+		)
+		.toBe(true);
+}
 
 async function bestEffortShutdownEngine(page: Page, card: Locator): Promise<void> {
 	try {
@@ -27,9 +55,10 @@ async function bestEffortShutdownEngine(page: Page, card: Locator): Promise<void
 
 export async function createCleanupPage(browser: Browser, workerIndex: number) {
 	const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
+	const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${port}`;
 	const authFile = workerAuthFile(workerIndex);
 	const context = await browser.newContext({
-		baseURL: `http://localhost:${port}`,
+		baseURL,
 		...(fs.existsSync(authFile) ? { storageState: authFile } : {})
 	});
 	const page = await context.newPage();
@@ -117,6 +146,7 @@ export async function deleteScheduleViaUI(page: Page, cronOrName: string): Promi
 export async function deleteHealthCheckViaUI(page: Page, name: string): Promise<void> {
 	try {
 		await page.goto('/monitoring?tab=health', { waitUntil: 'domcontentloaded' });
+		await waitForHealthChecksList(page, ELEMENT_VISIBLE_TIMEOUT);
 		const row = page.locator(`[data-healthcheck-name="${name}"]`);
 		await row.waitFor({ state: 'visible', timeout: ELEMENT_VISIBLE_TIMEOUT });
 		await row.getByLabel('Delete check').click();

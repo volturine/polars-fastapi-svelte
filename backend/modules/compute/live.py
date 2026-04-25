@@ -147,8 +147,8 @@ def _coerce_status(value: object) -> schemas.ActiveBuildStatus:
         try:
             return schemas.ActiveBuildStatus(value)
         except ValueError:
-            return schemas.ActiveBuildStatus.RUNNING
-    return schemas.ActiveBuildStatus.RUNNING
+            return schemas.ActiveBuildStatus.QUEUED
+    return schemas.ActiveBuildStatus.QUEUED
 
 
 @dataclass(slots=True)
@@ -161,7 +161,7 @@ class ActiveBuild:
     started_at: datetime
     total_steps: int = 0
     total_tabs: int = 0
-    status: schemas.ActiveBuildStatus = schemas.ActiveBuildStatus.RUNNING
+    status: schemas.ActiveBuildStatus = schemas.ActiveBuildStatus.QUEUED
     progress: float = 0.0
     elapsed_ms: int = 0
     estimated_remaining_ms: int | None = None
@@ -213,7 +213,7 @@ class ActiveBuild:
         self.current_step = current_step
         self.current_step_index = current_step_index
         self.total_steps = total_steps
-        if self.duration_ms is None and self.status == schemas.ActiveBuildStatus.RUNNING:
+        if self.duration_ms is None and self.status in {schemas.ActiveBuildStatus.QUEUED, schemas.ActiveBuildStatus.RUNNING}:
             self.duration_ms = elapsed_ms
 
     def update_status(
@@ -330,14 +330,16 @@ class ActiveBuildRegistry:
         starter: schemas.BuildStarter,
         total_tabs: int = 0,
         context: ActiveBuildContext | None = None,
+        build_id: str | None = None,
+        started_at: datetime | None = None,
     ) -> ActiveBuild:
         build = ActiveBuild(
-            build_id=str(uuid.uuid4()),
+            build_id=build_id or str(uuid.uuid4()),
             analysis_id=analysis_id,
             analysis_name=analysis_name,
             namespace=namespace,
             starter=starter,
-            started_at=_utcnow(),
+            started_at=started_at or _utcnow(),
             total_tabs=total_tabs,
         )
         if context is not None:

@@ -425,6 +425,16 @@ class TestSessionService:
         assert resolved.id == user.id
         assert resolved.last_login_at is not None
 
+    def test_validate_session_accepts_timezone_aware_expiry(self, auth_db_session: Session) -> None:
+        user = create_user(auth_db_session, 'aware-session@example.com', 'Password123', 'Aware Session User')
+        user_session = create_session(auth_db_session, user.id, None, None)
+        user_session.expires_at = user_session.expires_at.replace(tzinfo=UTC)
+
+        resolved = validate_session(auth_db_session, user_session.id)
+
+        assert resolved is not None
+        assert resolved.id == user.id
+
     def test_validate_session_expired(self, auth_db_session: Session) -> None:
         user = create_user(auth_db_session, 'test@example.com', 'Password123', 'Test User')
         now = datetime.now(UTC).replace(tzinfo=None)
@@ -625,6 +635,19 @@ class TestVerificationTokenService:
         assert row is not None
         assert row.used is True
 
+    def test_validate_verification_token_accepts_timezone_aware_expiry(self, auth_db_session: Session) -> None:
+        user = create_user(auth_db_session, 'aware-token@example.com', 'Password123', 'Aware Token User')
+        token = create_verification_token(auth_db_session, user_id=user.id, token_type=VerificationTokenType.EMAIL_VERIFY)
+        row = auth_db_session.exec(select(VerificationToken).where(VerificationToken.token == token)).first()
+        assert row is not None
+        row.expires_at = row.expires_at.replace(tzinfo=UTC)
+        auth_db_session.add(row)
+        auth_db_session.commit()
+
+        resolved_user_id = validate_verification_token(auth_db_session, token=token, token_type=VerificationTokenType.EMAIL_VERIFY)
+
+        assert resolved_user_id == user.id
+
     def test_validate_verification_token_expired(self, auth_db_session: Session) -> None:
         user = create_user(auth_db_session, 'expired-token@example.com', 'Password123', 'Expired Token User')
         token = create_verification_token(auth_db_session, user_id=user.id, token_type=VerificationTokenType.EMAIL_VERIFY, ttl_hours=-1)
@@ -750,6 +773,22 @@ class TestAuthRoutes:
 
         assert first.status_code == 200
         assert second.status_code == 409
+
+    def test_create_user_persists_user_before_provider_for_cross_session_reads(
+        self,
+        auth_db_session: Session,
+        auth_engine,
+    ) -> None:
+        user = create_user(auth_db_session, 'provider-order@example.com', 'Password123', 'Provider Order User')
+
+        with Session(auth_engine) as fresh_session:
+            stored_user = fresh_session.get(User, user.id)
+            provider = fresh_session.exec(select(AuthProvider).where(AuthProvider.user_id == user.id)).first()
+
+        assert stored_user is not None
+        assert stored_user.email == 'provider-order@example.com'
+        assert provider is not None
+        assert provider.provider == AuthProviderName.PASSWORD
 
     def test_register_weak_password(self, auth_client: TestClient) -> None:
         response = auth_client.post(

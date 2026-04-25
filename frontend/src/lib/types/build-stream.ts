@@ -2,17 +2,18 @@ export type {
 	ActiveBuildDetail,
 	ActiveBuildSummary,
 	BuildDetailSnapshot,
+	BuildsSnapshot,
 	BuildEvent,
 	BuildLogLevel,
 	BuildQueryPlanSnapshot,
 	BuildStepSnapshot,
 	BuildTabStatus,
-	BuildWebsocketErrorMessage,
-	BuildsSnapshot
+	BuildWebsocketErrorMessage
 } from './build-stream.generated';
 
 export type BuildStatus =
 	| 'connecting'
+	| 'queued'
 	| 'running'
 	| 'completed'
 	| 'failed'

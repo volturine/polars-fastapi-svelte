@@ -452,6 +452,27 @@ def test_healthcheck_update_duplicate_row_count(test_db_session, client):
     assert update_response.status_code == 400
 
 
+def test_list_healthchecks_all_datasources(test_db_session, client):
+    first_id = str(uuid.uuid4())
+    second_id = str(uuid.uuid4())
+    _create_datasource(test_db_session, first_id)
+    _create_datasource(test_db_session, second_id)
+    first = _create_check(test_db_session, first_id, name='First Check')
+    second = _create_check(test_db_session, second_id, name='Second Check')
+
+    response = client.get('/api/v1/healthchecks/all')
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    ids = {item['id'] for item in data}
+    assert ids == {first.id, second.id}
+
+
+def test_list_healthchecks_requires_datasource_id(client):
+    response = client.get('/api/v1/healthchecks')
+    assert response.status_code == 422
+
+
 def test_list_results_empty(test_db_session, client):
     datasource_id = str(uuid.uuid4())
     _create_datasource(test_db_session, datasource_id)
@@ -491,6 +512,26 @@ def test_list_results_limit(test_db_session, client):
     assert len(data) == 3
 
 
+def test_list_results_all_datasources_limit(test_db_session, client):
+    first_id = str(uuid.uuid4())
+    second_id = str(uuid.uuid4())
+    _create_datasource(test_db_session, first_id)
+    _create_datasource(test_db_session, second_id)
+    first = _create_check(test_db_session, first_id, name='First Check')
+    second = _create_check(test_db_session, second_id, name='Second Check')
+
+    _create_result(test_db_session, first.id, True, 'First recent', minutes_ago=0)
+    _create_result(test_db_session, second.id, False, 'Second recent', minutes_ago=1)
+    _create_result(test_db_session, first.id, True, 'First older', minutes_ago=2)
+    _create_result(test_db_session, second.id, False, 'Second older', minutes_ago=3)
+
+    response = client.get('/api/v1/healthchecks/results/all?limit=3')
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 3
+    assert [item['message'] for item in data] == ['First recent', 'Second recent', 'First older']
+
+
 def test_list_results_ordering(test_db_session, client):
     datasource_id = str(uuid.uuid4())
     _create_datasource(test_db_session, datasource_id)
@@ -507,7 +548,12 @@ def test_list_results_ordering(test_db_session, client):
     assert data[1]['message'] == 'Old failure'
 
 
-def test_list_results_no_datasource(client):
+def test_list_results_requires_datasource_id(client):
+    response = client.get('/api/v1/healthchecks/results')
+    assert response.status_code == 422
+
+
+def test_list_results_missing_datasource(client):
     missing_id = str(uuid.uuid4())
     response = client.get(f'/api/v1/healthchecks/results?datasource_id={missing_id}')
     assert response.status_code == 200

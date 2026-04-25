@@ -15,6 +15,13 @@ class Schedule(SQLModel, table=True):  # type: ignore[call-arg, assignment]
     trigger_on_datasource_id: str | None = Field(default=None, sa_column=Column(String, nullable=True))
     last_run: dt.datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
     next_run: dt.datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    lease_owner: str | None = Field(default=None, sa_column=Column(String, nullable=True, index=True))
+    lease_expires_at: dt.datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    last_claimed_at: dt.datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    last_triggered_at: dt.datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    last_success_at: dt.datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    last_failure_at: dt.datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+    last_successful_build_id: str | None = Field(default=None, sa_column=Column(String, nullable=True))
     created_at: dt.datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
 
     # Backward compatibility: analysis_id is kept but deprecated

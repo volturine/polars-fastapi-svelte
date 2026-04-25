@@ -178,6 +178,25 @@ describe('EnginesStore', () => {
 		expect(store.engines[0]?.analysis_id).toBe('a-2');
 	});
 
+	test('shutdownEngine keeps a pending engine hidden across snapshots', async () => {
+		const stream = mockStreamConnection();
+		const engines = [makeEngine({ analysis_id: 'a-1' }), makeEngine({ analysis_id: 'a-2' })];
+		mockShutdownSuccess();
+
+		store.startStream();
+		stream.emitSnapshot(engines);
+		await store.shutdownEngine('a-1');
+		stream.emitSnapshot(engines);
+
+		expect(store.engines).toHaveLength(1);
+		expect(store.engines[0]?.analysis_id).toBe('a-2');
+
+		stream.emitSnapshot([makeEngine({ analysis_id: 'a-2' })]);
+		stream.emitSnapshot(engines);
+
+		expect(store.engines).toHaveLength(2);
+	});
+
 	test('shutdownEngine surfaces API failures', async () => {
 		const stream = mockStreamConnection();
 		const engines = [makeEngine({ analysis_id: 'a-1' })];
@@ -187,8 +206,11 @@ describe('EnginesStore', () => {
 		stream.emitSnapshot(engines);
 
 		await expect(store.shutdownEngine('a-1')).rejects.toThrow('Permission denied');
-		expect(store.engines).toEqual(engines);
+		expect(store.engines).toEqual([]);
 		expect(store.error).toBe('Permission denied');
+		stream.emitSnapshot(engines);
+		expect(store.engines).toEqual(engines);
+		expect(store.error).toBeNull();
 	});
 
 	test('multiple subscribers keep the stream alive until all unsubscribe', () => {

@@ -3937,7 +3937,7 @@
 						color: 'fg.muted',
 						transition: 'background-color 120ms ease, color 120ms ease',
 						_hover: { background: 'bg.tertiary', color: 'fg.primary' },
-						'& :global(svg)': { stroke: 'currentColor' }
+						'& svg': { stroke: 'currentColor' }
 					})
 				: css({
 						flexShrink: '0',
@@ -3956,7 +3956,7 @@
 						color: 'fg.muted',
 						transition: 'background-color 120ms ease, color 120ms ease',
 						_hover: { background: 'bg.tertiary', color: 'fg.primary' },
-						'& :global(svg)': { stroke: 'currentColor' }
+						'& svg': { stroke: 'currentColor' }
 					});
 		}
 		return legendCollapsed
@@ -3975,7 +3975,7 @@
 					color: 'fg.muted',
 					transition: 'background-color 120ms ease, color 120ms ease',
 					_hover: { background: 'bg.tertiary', color: 'fg.primary' },
-					'& :global(svg)': { stroke: 'currentColor' }
+					'& svg': { stroke: 'currentColor' }
 				})
 			: css({
 					flexShrink: '0',
@@ -3994,7 +3994,7 @@
 					color: 'fg.muted',
 					transition: 'background-color 120ms ease, color 120ms ease',
 					_hover: { background: 'bg.tertiary', color: 'fg.primary' },
-					'& :global(svg)': { stroke: 'currentColor' }
+					'& svg': { stroke: 'currentColor' }
 				});
 	});
 

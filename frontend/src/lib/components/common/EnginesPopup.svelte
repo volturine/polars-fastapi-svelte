@@ -16,7 +16,6 @@
 	let { open = $bindable(), anchor = null }: Props = $props();
 
 	const shuttingDown = new SvelteSet<string>();
-	let popoverRect = $state({ left: 0, bottom: 0, width: 320 });
 	let lastAnchor = $state<HTMLElement | null>(null);
 	let popupRef = $state<HTMLElement | null>(null);
 
@@ -52,53 +51,12 @@
 		}
 	});
 
-	function updatePopoverPosition() {
-		const node = lastAnchor;
-		if (!node) return;
-		const rect = node.getBoundingClientRect();
-		const width = 320;
-		popoverRect = {
-			left: rect.right + 6,
-			bottom: window.innerHeight - rect.bottom,
-			width
-		};
-	}
-
-	function applyPopoverPosition(
-		node: HTMLElement | undefined,
-		rect: { left: number; bottom: number; width: number }
-	) {
-		if (!node) return;
-		node.style.left = `${rect.left}px`;
-		node.style.bottom = `${rect.bottom}px`;
-		node.style.width = `${rect.width}px`;
-	}
-
-	function portal(node: HTMLElement, rect: { left: number; bottom: number; width: number }) {
-		document.body.appendChild(node);
-		applyPopoverPosition(node, rect);
-		return {
-			update(next: { left: number; bottom: number; width: number }) {
-				applyPopoverPosition(node, next);
-			},
-			destroy() {
-				node.remove();
-			}
-		};
-	}
-
-	// DOM: $derived can't track anchor position.
+	// DOM: $derived can't keep the latest anchor node for outside-click checks.
 	$effect(() => {
 		if (!open) return;
 		lastAnchor = anchor;
-		if (!lastAnchor) return;
-		updatePopoverPosition();
-		const handleResize = () => updatePopoverPosition();
-		window.addEventListener('resize', handleResize);
-		window.addEventListener('scroll', handleResize, true);
 		return () => {
-			window.removeEventListener('resize', handleResize);
-			window.removeEventListener('scroll', handleResize, true);
+			lastAnchor = null;
 		};
 	});
 </script>
@@ -106,8 +64,11 @@
 {#if open}
 	<div
 		bind:this={popupRef}
+		data-engines-popup="true"
 		class={css({
-			position: 'fixed',
+			position: 'absolute',
+			left: '0',
+			bottom: 'calc(100% + 6px)',
 			zIndex: 'overlay',
 			display: 'flex',
 			flexDirection: 'column',
@@ -115,14 +76,15 @@
 			backgroundColor: 'bg.primary',
 			boxShadow: 'drag',
 			outline: 'none',
+			width: 'panel',
+			maxWidth: 'calc(100vw - 24px)',
 			maxHeight: '60vh',
 			overflowY: 'auto'
 		})}
 		role="dialog"
 		aria-modal="false"
-		aria-labelledby="engines-title"
+		aria-label="Engines"
 		tabindex="-1"
-		use:portal={popoverRect}
 		use:overlayStack.action={overlayConfig}
 	>
 		<PanelHeader>
@@ -185,6 +147,7 @@
 			<div class={css({ display: 'flex', flexDirection: 'column' })}>
 				{#each enginesStore.engines as engine (engine.analysis_id)}
 					<div
+						data-engine-row={engine.analysis_id}
 						class={css({
 							display: 'flex',
 							alignItems: 'center',
@@ -222,6 +185,7 @@
 							</span>
 						</div>
 						<button
+							data-engine-shutdown={engine.analysis_id}
 							class={css({
 								display: 'flex',
 								cursor: 'pointer',

@@ -8,7 +8,6 @@
 	import { css, spinner } from '$lib/styles/panda';
 	import { PanelLeftClose } from 'lucide-svelte';
 	// SettingsPopup removed — settings now live under /profile tabs
-	import EnginesPopup from '$lib/components/common/EnginesPopup.svelte';
 	import NamespacePickerModal from '$lib/components/common/NamespacePickerModal.svelte';
 	import ChatPanel from '$lib/components/common/ChatPanel.svelte';
 	import Sidebar from '$lib/components/shell/Sidebar.svelte';
@@ -37,9 +36,9 @@
 	const initialTheme = themeAttribute === 'dark' ? 'dark' : 'light';
 	let theme = $state<'light' | 'dark'>(initialTheme);
 	// settingsOpen removed — settings now live under /profile tabs
-	let enginesOpen = $state(false);
 	let sidebarCollapsed = $state(false);
 	let sidebarHovered = $state(false);
+	let shellInteractive = $state(false);
 	const currentPath = $derived(page.url.pathname);
 
 	const authPaths = [
@@ -128,6 +127,25 @@
 		return () => enginesStore.stopStream();
 	});
 
+	// DOM: shell controls need one painted frame after ready before JS-bound buttons are reliable.
+	$effect(() => {
+		shellInteractive = false;
+		if (typeof window === 'undefined') return;
+		if (!ready) return;
+		let frameA = 0;
+		let frameB = 0;
+		frameA = window.requestAnimationFrame(() => {
+			frameB = window.requestAnimationFrame(() => {
+				shellInteractive = true;
+			});
+		});
+		return () => {
+			window.cancelAnimationFrame(frameA);
+			window.cancelAnimationFrame(frameB);
+			shellInteractive = false;
+		};
+	});
+
 	// DOM: global capture-phase arbiter for overlay Escape / outside-click.
 	$effect(() => {
 		if (typeof window === 'undefined') return;
@@ -196,7 +214,6 @@
 	const namespaceState = useNamespace();
 	let namespaceOpen = $state(false);
 	let namespaceTrigger = $state<HTMLButtonElement>();
-	let enginesTrigger = $state<HTMLButtonElement>();
 	const namespaceDraft = $derived(namespaceState.value);
 
 	async function handleNamespaceSelect(value: string) {
@@ -284,10 +301,10 @@
 			>
 				<Sidebar
 					collapsed={sidebarCollapsed}
+					interactive={shellInteractive}
 					onToggle={toggleSidebar}
 					{theme}
 					onToggleTheme={toggleTheme}
-					onOpenEngines={() => (enginesOpen = !enginesOpen)}
 					onOpenChat={handleOpenChat}
 					onOpenNamespace={openNamespace}
 					onSignOut={handleSignOut}
@@ -296,7 +313,6 @@
 					authRequired={configStore.authRequired}
 					avatarUrl={authStore.user?.avatar_url ?? null}
 					bind:namespaceTrigger
-					bind:enginesTrigger
 				/>
 
 				{#if !sidebarCollapsed}
@@ -343,7 +359,6 @@
 			</main>
 		</div>
 
-		<EnginesPopup bind:open={enginesOpen} anchor={enginesTrigger} />
 		<NamespacePickerModal
 			open={namespaceOpen}
 			selected={namespaceDraft}

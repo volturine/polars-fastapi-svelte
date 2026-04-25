@@ -1,4 +1,4 @@
-import { buildWebsocketUrl, preferHttp } from './websocket';
+import { closeOwnedWebSocket, createOwnedWebSocket, preferHttp } from './websocket';
 
 const RECONNECT_DELAY_MS = 1_000;
 
@@ -100,7 +100,7 @@ export function openLockSession(options: LockSessionOptions): LockSession {
 		clearTimer();
 		clearReconnectTimer();
 		if (socket !== null) {
-			socket.close();
+			closeOwnedWebSocket(socket);
 			socket = null;
 		}
 	}
@@ -155,7 +155,7 @@ export function openLockSession(options: LockSessionOptions): LockSession {
 
 	function connect(): void {
 		clearReconnectTimer();
-		socket = new WebSocket(buildWebsocketUrl('/v1/locks/ws'));
+		socket = createOwnedWebSocket('/v1/locks/ws');
 
 		socket.addEventListener('open', () => {
 			if (closed || !socket) return;

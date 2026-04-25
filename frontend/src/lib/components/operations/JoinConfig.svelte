@@ -4,6 +4,7 @@
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
 	import { schemaStore } from '$lib/stores/schema.svelte';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
+	import { uuid } from '$lib/utils/uuid';
 	import DatasourcePicker from '$lib/components/common/DatasourcePicker.svelte';
 	import ColumnDropdown from '$lib/components/common/ColumnDropdown.svelte';
 	import MultiSelectColumnDropdown from '$lib/components/common/MultiSelectColumnDropdown.svelte';
@@ -78,10 +79,7 @@
 
 	function addJoinColumn() {
 		const columns = config.join_columns ?? [];
-		const randomId =
-			typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-				? crypto.randomUUID().substring(0, 8)
-				: 'id-' + Math.random().toString(16).slice(2) + Date.now().toString(16).slice(-8);
+		const randomId = uuid().slice(0, 8);
 		config.join_columns = [...columns, { id: randomId, left_column: '', right_column: '' }];
 	}
 

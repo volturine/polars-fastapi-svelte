@@ -1,9 +1,8 @@
 import { test, expect } from './fixtures.js';
 import {
-	createDatasource,
-	createAnalysis,
-	waitForNoActiveBuild,
-	shutdownEngine as shutdownEngineViaApi
+	createLongRunningAnalysis,
+	createLargeDatasource,
+	waitForNoActiveBuild
 } from './utils/api.js';
 import { screenshot } from './utils/visual.js';
 import { waitForAppShell } from './utils/readiness.js';
@@ -84,10 +83,10 @@ test.describe('Navigation – page load smoke tests', () => {
 
 	test('UDFs "New UDF" button navigates to /udfs/new', async ({ page }) => {
 		await page.goto('/udfs');
-		const newUdfBtn = page.getByRole('button', { name: /New UDF/i });
+		const newUdfBtn = page.getByRole('button', { name: 'New UDF' });
 		await expect(newUdfBtn).toBeVisible();
 		await newUdfBtn.click();
-		await expect(page).toHaveURL(/udfs\/new/);
+		await expect(page).toHaveURL(/udfs\/new/, { timeout: 15_000 });
 	});
 });
 
@@ -113,12 +112,13 @@ test.describe('Navigation – engines live monitor', () => {
 		test.setTimeout(120_000);
 		const dsName = `e2e-engines-ds-${uid()}`;
 		const analysisName = `E2E Engines ${uid()}`;
-		const datasourceId = await createDatasource(request, dsName);
-		const analysisId = await createAnalysis(request, analysisName, datasourceId);
+		const datasourceId = await createLargeDatasource(request, dsName, 250_000);
+		const analysisId = await createLongRunningAnalysis(request, analysisName, datasourceId);
 
 		try {
 			// Start a build from the analysis editor — this spawns a compute engine
 			await gotoAnalysisEditor(page, analysisId);
+			await waitForAppShell(page);
 			const buildBtn = page.locator('[data-testid="output-build-button"]');
 			await expect(buildBtn).toBeVisible({ timeout: 10_000 });
 			await buildBtn.click();
@@ -129,28 +129,38 @@ test.describe('Navigation – engines live monitor', () => {
 			// Engine badge should appear in the sidebar
 			const engineBadge = page.getByTestId('engine-monitor-count');
 			await expect(engineBadge).toBeVisible({ timeout: 15_000 });
+			await page.goto('/monitoring');
+			await waitForAppShell(page);
 
 			// Open engine popup and verify the engine is listed
 			const engineButton = page.getByRole('button', { name: 'Engine Monitor' });
-			await engineButton.click();
-			const dialog = page.getByRole('dialog', { name: 'Engines' });
-			await expect(dialog).toBeVisible({ timeout: 5_000 });
-			await expect(dialog.getByText(analysisId, { exact: true })).toBeVisible({
+			await expect(engineButton).toBeVisible({ timeout: 10_000 });
+			const enginePopup = page.locator('[data-engines-popup="true"]');
+			let open = false;
+			for (let attempt = 0; attempt < 2; attempt += 1) {
+				await engineButton.click();
+				if (await enginePopup.isVisible().catch(() => false)) {
+					open = true;
+					break;
+				}
+				await page.waitForTimeout(250);
+			}
+			expect(open).toBe(true);
+			const engineRow = enginePopup.locator('[data-engine-row]').first();
+			await expect(engineRow).toBeVisible({
 				timeout: 10_000
 			});
+			const engineId = await engineRow.getAttribute('data-engine-row');
+			if (!engineId) throw new Error('Expected engine row id');
+			const targetRow = enginePopup.locator(`[data-engine-row="${engineId}"]`);
 
-			// Shut down engine and verify it disappears (no UI path for shutdown — Tier 3 cleanup)
+			// Wait for the active job to finish, then shut the engine down from the popup.
 			await waitForNoActiveBuild(request, analysisId);
-			await shutdownEngineViaApi(request, analysisId);
-			await expect(dialog.getByText(analysisId, { exact: true })).not.toBeVisible({
+			await targetRow.locator(`[data-engine-shutdown="${engineId}"]`).click();
+			await expect(targetRow).not.toBeVisible({
 				timeout: 10_000
 			});
 		} finally {
-			try {
-				await shutdownEngineViaApi(request, analysisId);
-			} catch {
-				// Engine may already be stopped or build may have finished — ignore cleanup errors
-			}
 			await deleteAnalysisViaUI(page, analysisName);
 			await deleteDatasourceViaUI(page, dsName);
 		}

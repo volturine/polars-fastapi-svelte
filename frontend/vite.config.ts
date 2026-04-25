@@ -1,16 +1,54 @@
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
-import http from 'node:http';
+import type { ProxyOptions } from 'vite';
+import { createLogger, defineConfig } from 'vite';
+
+type ProxyServer = Parameters<NonNullable<ProxyOptions['configure']>>[0];
 
 const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
 const apiPort = parseInt(process.env.BACKEND_PORT || process.env.PORT || '8000', 10);
 const apiHost = process.env.BACKEND_HOST || '127.0.0.1';
 
-const abortCodes = new Set(['EPIPE', 'ECONNRESET', 'ECONNREFUSED', 'ENOTFOUND', 'EADDRNOTAVAIL']);
+const proxy = {
+	'/api': {
+		target: `http://${apiHost}:${apiPort}`,
+		ws: true,
+		configure(proxy: ProxyServer) {
+			const listeners = proxy.listeners('error');
+			proxy.removeAllListeners('error');
+			proxy.on('error', (error, req, res, target) => {
+				if (isExpectedProxySocketError(error)) return;
+				for (const listener of listeners) {
+					if (typeof listener !== 'function') continue;
+					listener(error, req, res, target);
+				}
+			});
+		}
+	}
+} satisfies Record<string, ProxyOptions>;
 
-const agent = new http.Agent({ keepAlive: true, maxSockets: 64, maxFreeSockets: 16 });
+function isExpectedProxySocketError(error: NodeJS.ErrnoException): boolean {
+	return error.code === 'EPIPE' || error.code === 'ECONNRESET';
+}
+
+function shouldIgnoreViteProxyLog(message: string): boolean {
+	return (
+		message.includes('[vite] ws proxy error') ||
+		message.includes('[vite] ws proxy socket error') ||
+		message.includes('Error: write EPIPE') ||
+		message.includes('Error: read ECONNRESET')
+	);
+}
+
+const logger = createLogger();
+const baseError = logger.error;
+
+logger.error = (message, options) => {
+	if (shouldIgnoreViteProxyLog(String(message))) return;
+	baseError(message, options);
+};
 
 export default defineConfig({
+	customLogger: logger,
 	resolve: {
 		dedupe: [
 			'@codemirror/state',
@@ -27,27 +65,23 @@ export default defineConfig({
 		port,
 		strictPort: true,
 		allowedHosts: true,
+		watch: {
+			ignored: ['**/tests/playwright-report/**', '**/tests/test-results/**']
+		},
 		fs: {
 			allow: ['styled-system']
 		},
-		proxy: {
-			'/api': {
-				target: `http://${apiHost}:${apiPort}`,
-				ws: true,
-				agent,
-				configure: (proxy) => {
-					proxy.on('error', (err, _req, res) => {
-						if (abortCodes.has((err as NodeJS.ErrnoException).code ?? '')) return;
-						console.error('[proxy error]', err.message);
-						if (res && 'writeHead' in res && !res.headersSent) {
-							(res as import('node:http').ServerResponse).writeHead(502).end('Bad Gateway');
-						}
-					});
-				}
-			}
-		},
+		proxy,
 		hmr: {
 			host: '0.0.0.0'
 		}
+	},
+
+	preview: {
+		host: '0.0.0.0',
+		port,
+		strictPort: true,
+		allowedHosts: true,
+		proxy
 	}
 });

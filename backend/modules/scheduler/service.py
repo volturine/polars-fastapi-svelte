@@ -2,23 +2,204 @@ import logging
 import uuid
 from collections import deque
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
 import croniter  # type: ignore[import-untyped]
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select, update
+from sqlalchemy.engine import CursorResult
 from sqlmodel import Session, col
 
+from core.config import settings
 from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, ScheduleNotFoundError, ScheduleValidationError
+from core.namespace import get_namespace
 from modules.analysis.models import Analysis
 from modules.analysis.pipeline_types import PipelineTab
+from modules.build_jobs import service as build_job_service
+from modules.build_jobs.live import hub as build_job_hub
+from modules.build_runs import service as build_run_service
+from modules.build_runs.models import BuildRunStatus
+from modules.compute import schemas as compute_schemas, service as compute_service
 from modules.compute.manager import ProcessManager
 from modules.datasource.models import DataSource
 from modules.datasource.service import is_reingestable_raw_datasource
 from modules.engine_runs.models import EngineRun
+from modules.runtime import ipc as runtime_ipc
 from modules.scheduler.models import Schedule
 from modules.scheduler.schemas import ScheduleCreate, ScheduleResponse, ScheduleUpdate
 
 logger = logging.getLogger(__name__)
+
+_SCHEDULE_TERMINAL_STATUSES = frozenset(
+    {
+        BuildRunStatus.COMPLETED,
+        BuildRunStatus.FAILED,
+        BuildRunStatus.CANCELLED,
+        BuildRunStatus.ORPHANED,
+    }
+)
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
+
+
+def _naive_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=None) if value.tzinfo is not None else value
+
+
+def _lease_seconds() -> int:
+    return max(settings.scheduler_check_interval * 2, 30)
+
+
+def _schedule_starter(schedule_id: str) -> compute_schemas.BuildStarter:
+    return compute_schemas.BuildStarter(triggered_by=f'schedule:{schedule_id}')
+
+
+def _mark_schedule_failure(
+    session: Session,
+    *,
+    schedule: Schedule,
+    error: str,
+    now: datetime | None = None,
+) -> Schedule:
+    stamp = now or _utcnow()
+    schedule.last_failure_at = stamp
+    schedule.lease_owner = None
+    schedule.lease_expires_at = None
+    session.add(schedule)
+    session.commit()
+    session.refresh(schedule)
+    return schedule
+
+
+def mark_schedule_enqueue_failed(session: Session, schedule_id: str, *, error: str) -> Schedule | None:
+    schedule = session.get(Schedule, schedule_id)
+    if schedule is None:
+        return None
+    return _mark_schedule_failure(session, schedule=schedule, error=error)
+
+
+def _build_analysis_request(
+    session: Session, schedule: Schedule, analysis_id: str
+) -> tuple[compute_schemas.BuildRequest, str, str, str | None, str | None]:
+    analysis = session.get(Analysis, analysis_id)
+    if not analysis:
+        raise ValueError(f'Analysis {analysis_id} not found for datasource {schedule.datasource_id}')
+
+    pipeline = analysis.pipeline
+    target_tab = next(
+        (tab for tab in pipeline.tabs if tab.output.result_id == schedule.datasource_id),
+        None,
+    )
+    if target_tab is None:
+        raise ValueError(f'No tab found in analysis {analysis_id} that produces datasource {schedule.datasource_id}')
+
+    pipeline_payload = compute_service.build_analysis_pipeline_payload(session, analysis, datasource_id=schedule.datasource_id)
+    request = compute_schemas.BuildRequest.model_validate(
+        {
+            'analysis_pipeline': pipeline_payload,
+            'tab_id': target_tab.id,
+        }
+    )
+    return request, str(analysis.id), analysis.name, target_tab.id, target_tab.name
+
+
+def _build_refresh_request(schedule: Schedule) -> compute_schemas.BuildRequest:
+    pipeline = {
+        'analysis_id': schedule.id,
+        'tabs': [
+            {
+                'id': schedule.id,
+                'name': 'Scheduled refresh',
+                'datasource': {
+                    'id': schedule.datasource_id,
+                    'analysis_tab_id': None,
+                    'source_type': 'schedule',
+                    'config': {'branch': 'master'},
+                },
+                'output': {
+                    'result_id': schedule.datasource_id,
+                    'datasource_type': 'iceberg',
+                    'format': 'parquet',
+                    'filename': f'schedule_{schedule.id}',
+                },
+                'steps': [],
+            }
+        ],
+    }
+    return compute_schemas.BuildRequest.model_validate({'analysis_pipeline': pipeline, 'tab_id': schedule.id})
+
+
+def _enqueue_schedule_refresh_build(
+    session: Session,
+    *,
+    schedule: Schedule,
+    target_kind: str,
+    namespace: str,
+    now: datetime,
+) -> build_run_service.BuildRun:
+    build_id = str(uuid.uuid4())
+    analysis_name = f'Schedule refresh {schedule.datasource_id}'
+    run = build_run_service.create_build_run(
+        session,
+        build_id=build_id,
+        namespace=namespace,
+        schedule_id=schedule.id,
+        analysis_id=schedule.id,
+        analysis_name=analysis_name,
+        request_json=_build_refresh_request(schedule).model_dump(mode='json'),
+        starter_json=_schedule_starter(schedule.id).model_dump(mode='json'),
+        status=BuildRunStatus.QUEUED,
+        current_kind=target_kind,
+        current_datasource_id=schedule.datasource_id,
+        current_tab_id=schedule.id,
+        current_tab_name='Scheduled refresh',
+        current_output_id=schedule.datasource_id,
+        current_output_name=analysis_name,
+        total_tabs=1,
+        created_at=now,
+        started_at=now,
+    )
+    build_job_service.create_job(session, build_id=build_id, namespace=namespace)
+    return run
+
+
+def _enqueue_schedule_analysis_build(
+    session: Session,
+    *,
+    schedule: Schedule,
+    namespace: str,
+    analysis_id: str,
+    analysis_name: str,
+    tab_id: str | None,
+    tab_name: str | None,
+    request: compute_schemas.BuildRequest,
+    now: datetime,
+) -> build_run_service.BuildRun:
+    build_id = str(uuid.uuid4())
+    run = build_run_service.create_build_run(
+        session,
+        build_id=build_id,
+        namespace=namespace,
+        schedule_id=schedule.id,
+        analysis_id=analysis_id,
+        analysis_name=analysis_name,
+        request_json=request.model_dump(mode='json'),
+        starter_json=_schedule_starter(schedule.id).model_dump(mode='json'),
+        status=BuildRunStatus.QUEUED,
+        current_kind='datasource_update',
+        current_datasource_id=schedule.datasource_id,
+        current_tab_id=tab_id,
+        current_tab_name=tab_name,
+        current_output_id=schedule.datasource_id,
+        current_output_name=tab_name,
+        total_tabs=len(request.analysis_pipeline.tabs),
+        created_at=now,
+        started_at=now,
+    )
+    build_job_service.create_job(session, build_id=build_id, namespace=namespace)
+    return run
 
 
 def is_schedule_target_eligible(datasource: DataSource) -> bool:
@@ -317,6 +498,21 @@ def _is_triggered_by_datasource(
     return created > last_dt
 
 
+def _is_triggered_by_schedule(
+    session: Session,
+    dependency_id: str,
+    last_triggered_at: datetime | None,
+) -> bool:
+    dependency = session.get(Schedule, dependency_id)
+    if dependency is None or dependency.last_success_at is None:
+        return False
+    completed = dependency.last_success_at.replace(tzinfo=None) if dependency.last_success_at.tzinfo else dependency.last_success_at
+    if last_triggered_at is None:
+        return True
+    previous = last_triggered_at.replace(tzinfo=None) if last_triggered_at.tzinfo else last_triggered_at
+    return completed > previous
+
+
 def get_due_schedules(session: Session) -> list[Schedule]:
     """Return all enabled schedules that are due to run."""
     result = session.execute(
@@ -332,16 +528,86 @@ def get_due_schedules(session: Session) -> list[Schedule]:
     for sched in schedules:
         if sched.datasource_id not in valid_ds_ids:
             continue
-        if should_run(sched.cron_expression, sched.last_run):
+        reference = sched.last_triggered_at or sched.last_run
+        if sched.depends_on and _is_triggered_by_schedule(session, sched.depends_on, sched.last_triggered_at):
             due.append(sched)
             continue
         if sched.trigger_on_datasource_id and _is_triggered_by_datasource(
             session,
             sched.trigger_on_datasource_id,
-            sched.last_run,
+            reference,
         ):
             due.append(sched)
+            continue
+        if sched.depends_on or sched.trigger_on_datasource_id:
+            continue
+        if should_run(sched.cron_expression, reference):
+            due.append(sched)
     return due
+
+
+def claim_due_schedules(
+    session: Session,
+    *,
+    worker_id: str,
+    limit: int = 100,
+    now: datetime | None = None,
+    lease_seconds: int | None = None,
+) -> list[Schedule]:
+    stamp = now or _utcnow()
+    naive_stamp = _naive_utc(stamp)
+    ttl = lease_seconds or _lease_seconds()
+    lease_until = stamp + timedelta(seconds=ttl)
+    table = Schedule.metadata.tables[Schedule.__tablename__]
+    base = (
+        select(Schedule)
+        .where(col(Schedule.enabled) == True)  # type: ignore[arg-type]  # noqa: E712
+        .where(
+            or_(
+                table.c.lease_owner.is_(None),
+                and_(table.c.lease_expires_at.is_not(None), table.c.lease_expires_at <= naive_stamp),
+            )
+        )
+    )
+    dialect = session.get_bind().dialect.name
+    stmt = base.with_for_update(skip_locked=True) if dialect == 'postgresql' else base
+    schedules = list(session.execute(stmt).scalars().all())
+    due_ids = {schedule.id for schedule in get_due_schedules(session)}
+    due = [schedule for schedule in schedules if schedule.id in due_ids]
+    claimed: list[Schedule] = []
+    for schedule in due[:limit]:
+        if build_run_service.has_inflight_build_for_schedule(session, schedule.id):
+            continue
+        claim = update(Schedule).where(Schedule.id == schedule.id)
+        claim = (
+            claim.where(table.c.lease_owner.is_(None))
+            if schedule.lease_owner is None
+            else claim.where(Schedule.lease_owner == schedule.lease_owner)  # type: ignore[arg-type]
+        )
+        if schedule.lease_expires_at is None:
+            claim = claim.where(table.c.lease_expires_at.is_(None))
+        else:
+            claim = claim.where(Schedule.lease_expires_at == schedule.lease_expires_at)  # type: ignore[arg-type]
+        result = cast(
+            CursorResult[Any],
+            session.execute(
+                claim.values(
+                    lease_owner=worker_id,
+                    lease_expires_at=_naive_utc(lease_until),
+                    last_claimed_at=naive_stamp,
+                )
+            ),
+        )
+        if result.rowcount != 1:
+            continue
+        claimed.append(schedule)
+    if not claimed:
+        session.rollback()
+        return []
+    session.commit()
+    claimed_ids = [schedule.id for schedule in claimed]
+    refreshed = session.execute(select(Schedule).where(col(Schedule.id).in_(claimed_ids))).scalars().all()
+    return list(refreshed)
 
 
 def mark_schedule_run(session: Session, schedule_id: str) -> None:
@@ -349,129 +615,101 @@ def mark_schedule_run(session: Session, schedule_id: str) -> None:
     schedule = session.get(Schedule, schedule_id)
     if not schedule:
         return
-    now = datetime.now(UTC).replace(tzinfo=None)
+    now = _utcnow().replace(tzinfo=None)
     schedule.last_run = now
+    schedule.last_success_at = now
     schedule.next_run = _compute_next_run(schedule.cron_expression)
+    schedule.lease_owner = None
+    schedule.lease_expires_at = None
     session.add(schedule)
     session.commit()
 
 
-def execute_schedule(session: Session, manager: ProcessManager, schedule_id: str, triggered_by: str = 'schedule') -> dict:
-    """Execute a schedule by building its target dataset.
-
-    The datasource determines which analysis and tab to run.
-    The LATEST version of the analysis is always used.
-
-    BUILD BEHAVIOR:
-    - Analysis provenance datasource: build the producing analysis tab
-    - Reingestable raw iceberg datasource: refresh external source into iceberg
-    - Other datasources: refresh schema/cache from current source and log update run
-
-    Returns build results.
-    """
-    from modules.compute import service as compute_service
-
+def enqueue_schedule_run(session: Session, schedule_id: str, *, worker_id: str) -> str:
     schedule = session.get(Schedule, schedule_id)
     if not schedule:
         raise ValueError(f'Schedule {schedule_id} not found')
+    if build_run_service.has_inflight_build_for_schedule(session, schedule_id):
+        raise ValueError(f'Schedule {schedule_id} already has an in-flight build')
 
-    # Resolve target at execution time
+    stamp = _utcnow()
+    naive_stamp = _naive_utc(stamp)
+    if schedule.lease_owner != worker_id:
+        raise ValueError(f'Schedule {schedule_id} is not leased by {worker_id}')
+    if schedule.lease_expires_at is not None and _naive_utc(schedule.lease_expires_at) <= naive_stamp:
+        raise ValueError(f'Schedule {schedule_id} lease has expired')
+
     target_kind, analysis_id, _ = _resolve_schedule_target(session, schedule.datasource_id)
+    namespace = get_namespace()
+    schedule.last_triggered_at = naive_stamp
+    schedule.last_failure_at = None
 
     if target_kind == 'raw':
-        from modules.datasource import service as datasource_service
-
-        refreshed = datasource_service.refresh_external_datasource(session, schedule.datasource_id)
-        return {
-            'schedule_id': schedule_id,
-            'datasource_id': schedule.datasource_id,
-            'analysis_id': None,
-            'tab_id': None,
-            'tab_name': refreshed.name,
-            'status': 'success',
-        }
+        run = _enqueue_schedule_refresh_build(
+            session,
+            schedule=schedule,
+            target_kind='raw',
+            namespace=namespace,
+            now=stamp,
+        )
+        build_job_hub.publish()
+        runtime_ipc.notify_build_job()
+        return run.id
 
     if target_kind == 'datasource':
-        from modules.datasource import service as datasource_service
+        run = _enqueue_schedule_refresh_build(
+            session,
+            schedule=schedule,
+            target_kind='datasource_update',
+            namespace=namespace,
+            now=stamp,
+        )
+        build_job_hub.publish()
+        runtime_ipc.notify_build_job()
+        return run.id
 
-        refreshed = datasource_service.refresh_datasource_for_schedule(session, schedule.datasource_id)
-        return {
-            'schedule_id': schedule_id,
-            'datasource_id': schedule.datasource_id,
-            'analysis_id': None,
-            'tab_id': None,
-            'tab_name': refreshed.name,
-            'status': 'success',
-        }
-
-    # Get the LATEST analysis version
-    analysis = session.get(Analysis, analysis_id)
-    if not analysis:
-        raise ValueError(f'Analysis {analysis_id} not found for datasource {schedule.datasource_id}')
-
-    # Find the specific tab that produces this datasource
-    pipeline = analysis.pipeline
-
-    target_tab = next(
-        (t for t in pipeline.tabs if t.output.result_id == schedule.datasource_id),
-        None,
+    if analysis_id is None:
+        raise ValueError(f'Analysis provenance missing for schedule {schedule_id}')
+    request, resolved_analysis_id, analysis_name, tab_id, tab_name = _build_analysis_request(session, schedule, analysis_id)
+    run = _enqueue_schedule_analysis_build(
+        session,
+        schedule=schedule,
+        namespace=namespace,
+        analysis_id=resolved_analysis_id,
+        analysis_name=analysis_name,
+        tab_id=tab_id,
+        tab_name=tab_name,
+        request=request,
+        now=stamp,
     )
+    build_job_hub.publish()
+    runtime_ipc.notify_build_job()
+    return run.id
 
-    if not target_tab:
-        raise ValueError(f'No tab found in analysis {analysis_id} that produces datasource {schedule.datasource_id}')
 
-    tab_id = target_tab.id or 'unknown'
-    tab_name = target_tab.name or 'unnamed'
+def reconcile_schedule_run(session: Session, *, build_id: str) -> Schedule | None:
+    run = build_run_service.get_build_run(session, build_id)
+    if run is None or run.schedule_id is None or run.status not in _SCHEDULE_TERMINAL_STATUSES:
+        return None
+    schedule = session.get(Schedule, run.schedule_id)
+    if schedule is None:
+        return None
 
-    if not target_tab.datasource.id:
-        raise ValueError(f'Tab {tab_id} has no input datasource')
-
-    if not target_tab.output.filename:
-        raise ValueError(f'Tab {tab_id} missing output configuration')
-
-    # Determine target step
-    target_step_id = target_tab.steps[-1].id if target_tab.steps else 'source'
-
-    # Build the tab (single execution - query plan handles lazyframe deps automatically)
-    filename = target_tab.output.filename or f'{tab_name}_out'
-
-    iceberg_options = None
-    output_raw = target_tab.output.to_dict()
-    iceberg_cfg = output_raw.get('iceberg')
-    if isinstance(iceberg_cfg, dict):
-        iceberg_options = {
-            'table_name': iceberg_cfg.get('table_name', 'exported_data'),
-            'namespace': iceberg_cfg.get('namespace', 'outputs'),
-            'branch': iceberg_cfg.get('branch', 'master'),
-        }
-
-    tab_build_mode = output_raw.get('build_mode', 'full')
-
-    logger.info(f'Schedule {schedule_id}: Building tab {tab_name} mode={tab_build_mode} (lazyframe deps auto-resolved in query plan)')
-
-    pipeline_payload = compute_service.build_analysis_pipeline_payload(session, analysis, datasource_id=schedule.datasource_id)
-    compute_service.export_data(
-        session=session,
-        manager=manager,
-        target_step_id=target_step_id,
-        analysis_pipeline=pipeline_payload,
-        filename=filename,
-        iceberg_options=iceberg_options,
-        analysis_id=analysis_id,
-        triggered_by=triggered_by,
-        result_id=schedule.datasource_id,
-        tab_id=str(tab_id),
-        build_mode=tab_build_mode,
-    )
-
-    return {
-        'schedule_id': schedule_id,
-        'datasource_id': schedule.datasource_id,
-        'analysis_id': analysis_id,
-        'tab_id': tab_id,
-        'tab_name': tab_name,
-        'status': 'success',
-    }
+    completed = run.completed_at or run.updated_at
+    stamp = completed.replace(tzinfo=None) if completed.tzinfo is not None else completed
+    schedule.lease_owner = None
+    schedule.lease_expires_at = None
+    if run.status == BuildRunStatus.COMPLETED:
+        schedule.last_run = stamp
+        schedule.last_success_at = stamp
+        schedule.last_successful_build_id = run.id
+        schedule.next_run = _compute_next_run(schedule.cron_expression)
+    else:
+        schedule.last_failure_at = stamp
+    session.add(schedule)
+    session.commit()
+    session.refresh(schedule)
+    return schedule
 
 
 def _resolve_upstream_tabs(tabs: list[PipelineTab], target_tab_id: str) -> set[str]:

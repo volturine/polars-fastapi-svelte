@@ -55,14 +55,14 @@
 		searchQuery = '';
 	}
 
-	function handleSelect(value: string) {
-		onSelect(value);
+	async function handleSelect(value: string) {
+		await onSelect(value);
 		handleClose();
 	}
 
-	function handleCreate() {
+	async function handleCreate() {
 		if (!normalizedCandidate) return;
-		handleSelect(normalizedCandidate);
+		await handleSelect(normalizedCandidate);
 	}
 
 	const overlayConfig = $derived<OverlayConfig>({
@@ -219,7 +219,7 @@
 								transitionDuration: '150ms',
 								_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
 							})}
-							onclick={handleCreate}
+							onclick={() => void handleCreate()}
 							type="button"
 						>
 							<span class={css({ fontSize: 'xs' })}>Create "{normalizedCandidate}"</span>
@@ -256,7 +256,7 @@
 								transitionDuration: '150ms',
 								_hover: { backgroundColor: 'bg.hover' }
 							})}
-							onclick={() => handleSelect(name)}
+							onclick={() => void handleSelect(name)}
 							type="button"
 						>
 							<span

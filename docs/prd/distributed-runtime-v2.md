@@ -888,7 +888,25 @@ Exit criteria:
 - Multiple scheduler instances do not duplicate schedule executions.
 - Dependency skips are explicit and do not advance success timestamps.
 
-### Phase 6: Postgres Production Runtime
+### Phase 6: Warning-Fail Verification
+
+Purpose:
+
+- Make release output clean and trustworthy before enabling distributed deployment modes.
+
+Tasks:
+
+- Fix color environment warning.
+- Investigate Vite websocket proxy warnings.
+- Add warning scanner wrapper.
+- Add narrow allowlist file if absolutely needed.
+- Make CI fail on unexpected warnings.
+
+Exit criteria:
+
+- `just verify` and `just test-e2e` are warning-clean or fail on unclassified warnings.
+
+### Phase 7: Postgres Production Runtime
 
 Purpose:
 
@@ -910,7 +928,7 @@ Exit criteria:
 - Test suite runs against Postgres in CI.
 - Distributed runtime integration tests run with at least two API workers and one build worker.
 
-### Phase 7: Enable Multi-Worker API
+### Phase 8: Enable Multi-Worker API
 
 Purpose:
 
@@ -929,24 +947,6 @@ Exit criteria:
 
 - `WORKERS=2` or higher is a supported, tested production mode.
 - No in-memory registry is required for correctness.
-
-### Phase 8: Warning-Fail Verification
-
-Purpose:
-
-- Make release output clean and trustworthy.
-
-Tasks:
-
-- Fix color environment warning.
-- Investigate Vite websocket proxy warnings.
-- Add warning scanner wrapper.
-- Add narrow allowlist file if absolutely needed.
-- Make CI fail on unexpected warnings.
-
-Exit criteria:
-
-- `just verify` and `just test-e2e` are warning-clean or fail on unclassified warnings.
 
 ## Testing Strategy
 

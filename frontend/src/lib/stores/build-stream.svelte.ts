@@ -7,11 +7,12 @@ import type {
 	BuildResourceConfigSummary,
 	BuildLogEntry,
 	ActiveBuildDetail,
+	BuildDetailSnapshot,
 	QueryPlan,
 	BuildStepState
 } from '$lib/types/build-stream';
 import { connectBuildDetailStream, startActiveBuild } from '$lib/api/build-stream';
-import type { BuildRequest } from '$lib/api/compute';
+import type { BuildRequest, CancelBuildResponse } from '$lib/api/compute';
 
 const MAX_LOGS = 500;
 const MAX_RESOURCE_HISTORY = 120;
@@ -58,6 +59,7 @@ export class BuildStreamStore {
 	private shouldReconnect = false;
 	private targetBuildId: string | null = null;
 	private reconnectAttempts = 0;
+	private lastSequence = 0;
 
 	done = $derived(
 		this.status === 'completed' || this.status === 'failed' || this.status === 'cancelled'
@@ -137,15 +139,25 @@ export class BuildStreamStore {
 		this.results = [];
 		this.error = null;
 		this.duration = null;
+		this.lastSequence = 0;
+	}
+
+	markCancelled(cancelled: CancelBuildResponse): void {
+		this.status = 'cancelled';
+		this.duration = cancelled.duration_ms;
+		if (cancelled.duration_ms !== null) {
+			this.elapsed = cancelled.duration_ms;
+		}
+		this.error = cancelled.cancelled_by ? `Cancelled by ${cancelled.cancelled_by}` : 'Cancelled';
 	}
 
 	private openConnection(buildId: string, generation: number): void {
 		this.clearReconnectTimer();
-		this.connection = connectBuildDetailStream(buildId, {
-			onSnapshot: (build: ActiveBuildDetail) => {
+		this.connection = connectBuildDetailStream(buildId, this.lastSequence, {
+			onSnapshot: (snapshot: BuildDetailSnapshot) => {
 				if (generation !== this.generation) return;
 				this.reconnectAttempts = 0;
-				this.applySnapshot(build);
+				this.applySnapshot(snapshot.build, snapshot.last_sequence);
 			},
 			onEvent: (event: BuildEvent) => {
 				if (generation !== this.generation) return;
@@ -195,8 +207,9 @@ export class BuildStreamStore {
 		this.reconnectTimer = null;
 	}
 
-	applySnapshot(build: ActiveBuildDetail): void {
+	applySnapshot(build: ActiveBuildDetail, lastSequence = 0): void {
 		this.buildId = build.build_id;
+		this.lastSequence = lastSequence;
 		this.engineRunId = build.current_engine_run_id ?? null;
 		this.analysisId = build.analysis_id;
 		this.progress = build.progress;
@@ -236,6 +249,8 @@ export class BuildStreamStore {
 			this.status = 'cancelled';
 		} else if (build.error) {
 			this.status = 'failed';
+		} else if (build.status === 'queued') {
+			this.status = 'queued';
 		} else {
 			this.status = build.status === 'completed' ? 'completed' : 'running';
 		}
@@ -243,6 +258,7 @@ export class BuildStreamStore {
 
 	applyEvent(event: BuildEvent): void {
 		this.buildId = event.build_id;
+		this.lastSequence = event.sequence ?? this.lastSequence;
 		if (event.engine_run_id) this.engineRunId = event.engine_run_id;
 		this.analysisId = event.analysis_id;
 

@@ -40,6 +40,7 @@
 	import { idbGet, idbSet, idbDelete } from '$lib/utils/indexeddb';
 	import { track } from '$lib/utils/audit-log';
 	import { hashPipeline } from '$lib/utils/hash';
+	import { uuid } from '$lib/utils/uuid';
 	import { applySteps } from '$lib/utils/pipeline';
 	import { createAsyncGate } from '$lib/utils/async-gate';
 	import type { EngineResourceConfig, EngineDefaults } from '$lib/types/compute';
@@ -671,7 +672,7 @@
 
 	function buildStep(type: string): PipelineStep {
 		const base: PipelineStep = {
-			id: crypto.randomUUID(),
+			id: uuid(),
 			type,
 			config: getDefaultConfig(type) as Record<string, unknown>,
 			depends_on: []
@@ -714,7 +715,7 @@
 	function handlePasteStep(payload: ClipboardStep, target: DropTarget) {
 		if (editorReadOnly) return;
 		const step: PipelineStep = {
-			id: crypto.randomUUID(),
+			id: uuid(),
 			type: payload.type,
 			config: JSON.parse(JSON.stringify(payload.config)),
 			depends_on: [],
@@ -854,7 +855,7 @@
 		if (editorReadOnly) return;
 		const tabId = `tab-${datasourceId}-${Date.now()}`;
 		const output = buildOutputConfig({
-			outputId: crypto.randomUUID(),
+			outputId: uuid(),
 			name: generateOutputName(),
 			branch: 'master'
 		});
@@ -893,7 +894,7 @@
 		}
 		const tabId = `tab-analysis-${datasourceId}-${Date.now()}`;
 		const output = buildOutputConfig({
-			outputId: crypto.randomUUID(),
+			outputId: uuid(),
 			name: generateOutputName(),
 			branch: 'master'
 		});

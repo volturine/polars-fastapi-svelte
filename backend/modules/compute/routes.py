@@ -1,5 +1,7 @@
 import asyncio
+import contextlib
 import logging
+import uuid
 from urllib.parse import quote
 
 from fastapi import Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -8,7 +10,8 @@ from fastapi.responses import Response
 from sqlmodel import Session
 from starlette.websockets import WebSocketState
 
-from core.database import get_db
+from core.config import settings
+from core.database import get_db, get_settings_db
 from core.dependencies import get_manager
 from core.error_handlers import handle_errors
 from core.exceptions import EngineNotFoundError
@@ -16,13 +19,17 @@ from core.namespace import get_namespace, reset_namespace, set_namespace_context
 from core.validation import AnalysisId, DataSourceId, EngineRunId, parse_analysis_id, parse_datasource_id, parse_engine_run_id
 from modules.auth.dependencies import get_current_user
 from modules.auth.models import User
+from modules.build_jobs import service as build_job_service
+from modules.build_runs import service as build_run_service
+from modules.build_runs.live import BuildNotification, hub as build_hub
 from modules.compute import schemas, service
-from modules.compute.engine_live import registry as engine_registry
-from modules.compute.live import ActiveBuildContext, registry as build_registry
+from modules.compute.engine_live import load_engine_snapshot, registry as engine_registry
+from modules.compute.live import ActiveBuild, ActiveBuildContext, registry as build_registry
 from modules.compute.manager import ProcessManager
 from modules.engine_runs import service as engine_run_service
 from modules.engine_runs.schemas import EngineRunKind, EngineRunStatus
 from modules.mcp.router import MCPRouter
+from modules.runtime import ipc as runtime_ipc
 
 logger = logging.getLogger(__name__)
 
@@ -125,12 +132,129 @@ async def _emit_active_build_event(
     analysis_id: str,
     payload: schemas.BuildEvent,
 ) -> None:
-    normalized = payload.model_dump(mode='json')
-    context = await build_registry.apply_event(build_id, normalized)
-    if context is None:
+    build = await build_registry.get_build(build_id)
+    namespace = build.namespace if build is not None else get_namespace()
+    token = set_namespace_context(namespace)
+    session_gen = get_db()
+    session = next(session_gen)
+    try:
+        event_row = build_run_service.append_build_event(
+            session,
+            build_id=build_id,
+            event=payload,
+            resource_config_json=(
+                build.resource_config.model_dump(mode='json') if build is not None and build.resource_config is not None else None
+            ),
+        )
+    finally:
+        session.close()
+        session_gen.close()
+        reset_namespace(token)
+    if event_row is None:
         return
-    normalized.update(context.payload())
-    await build_registry.publish(build_id, normalized)
+    normalized = build_run_service.serialize_event_row(event_row)
+    context = await build_registry.apply_event(build_id, normalized)
+    if context is not None:
+        normalized.update(context.payload())
+        await build_registry.publish(build_id, normalized)
+    await _publish_build_notification(namespace, build_id, latest_sequence=event_row.sequence)
+
+
+async def _publish_build_notification(namespace: str, build_id: str, latest_sequence: int) -> None:
+    await build_hub.publish(
+        BuildNotification(
+            namespace=namespace,
+            build_id=build_id,
+            latest_sequence=latest_sequence,
+        )
+    )
+    await asyncio.to_thread(runtime_ipc.notify_api_build, namespace, build_id, latest_sequence)
+
+
+def _get_durable_build_detail(session: Session, build_id: str) -> schemas.ActiveBuildDetail | None:
+    build_run = build_run_service.get_build_run(session, build_id)
+    if build_run is None or build_run.namespace != get_namespace():
+        return None
+    return build_run_service.fold_build_detail(session, build_run)
+
+
+def _list_durable_active_builds(session: Session, namespace: str) -> list[schemas.ActiveBuildSummary]:
+    runs = build_run_service.list_build_runs(session)
+    visible = [run for run in runs if run.namespace == namespace]
+    return [
+        build_run_service.build_summary(run)
+        for run in visible
+        if run.status in {build_run_service.BuildRunStatus.QUEUED, build_run_service.BuildRunStatus.RUNNING}
+    ]
+
+
+def _build_snapshot_message(session: Session, build_id: str) -> schemas.BuildSnapshotMessage | None:
+    detail = _get_durable_build_detail(session, build_id)
+    if detail is None:
+        return None
+    return schemas.BuildSnapshotMessage(build=detail, last_sequence=build_run_service.get_latest_sequence(session, build_id))
+
+
+def _build_list_snapshot_message(session: Session, namespace: str) -> schemas.BuildListSnapshotMessage:
+    return schemas.BuildListSnapshotMessage(builds=_list_durable_active_builds(session, namespace))
+
+
+async def _replay_build_events(websocket: WebSocket, build_id: str, after_sequence: int) -> int | None:
+    session_gen = get_db()
+    session = next(session_gen)
+    try:
+        rows = build_run_service.list_build_events_after(session, build_id, after_sequence)
+    finally:
+        session.close()
+        session_gen.close()
+    latest = after_sequence
+    for row in rows:
+        if not await _safe_send_json(websocket, build_run_service.serialize_event_row(row)):
+            return None
+        latest = row.sequence
+    return latest
+
+
+async def _wait_for_build_notification(websocket: WebSocket, build_id: str, last_sequence: int = 0) -> BuildNotification | None:
+    receive_task = asyncio.create_task(_wait_for_websocket_disconnect(websocket))
+    notify_task = asyncio.create_task(build_hub.wait_for_build(build_id, last_sequence))
+    done, pending = await asyncio.wait({receive_task, notify_task}, return_when=asyncio.FIRST_COMPLETED)
+    for task in pending:
+        task.cancel()
+    for task in pending:
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+    if receive_task in done:
+        await receive_task
+        return None
+    return await notify_task
+
+
+async def _wait_for_namespace_build_update(websocket: WebSocket, namespace: str, last_seen: str | None) -> str | None:
+    last_version = int(last_seen) if last_seen and last_seen.isdigit() else 0
+    receive_task = asyncio.create_task(_wait_for_websocket_disconnect(websocket))
+    notify_task = asyncio.create_task(build_hub.wait_for_namespace(namespace, last_version))
+    done, pending = await asyncio.wait({receive_task, notify_task}, return_when=asyncio.FIRST_COMPLETED)
+    for task in pending:
+        task.cancel()
+    for task in pending:
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+    if receive_task in done:
+        await receive_task
+        return None
+    await notify_task
+    latest_version = build_hub.latest_namespace_sequence(namespace)
+    if latest_version > last_version:
+        return str(latest_version)
+    return last_seen
+
+
+def _get_durable_build_detail_by_engine_run(session: Session, engine_run_id: str) -> schemas.ActiveBuildDetail | None:
+    build_run = build_run_service.get_build_run_by_engine_run(session, engine_run_id)
+    if build_run is None or build_run.namespace != get_namespace():
+        return None
+    return build_run_service.fold_build_detail(session, build_run)
 
 
 async def _require_websocket_user(websocket: WebSocket) -> User:
@@ -160,27 +284,66 @@ def _build_triggered_by(user: User | None) -> str:
 
 
 async def _send_build_snapshot(websocket: WebSocket, build_id: str) -> None:
-    build = await build_registry.get_build(build_id)
-    if build is None:
+    session_gen = get_db()
+    session = next(session_gen)
+    try:
+        message = _build_snapshot_message(session, build_id)
+    finally:
+        session.close()
+        session_gen.close()
+    if message is None:
         raise HTTPException(status_code=404, detail='Active build not found')
-    await _safe_send_json(websocket, schemas.BuildSnapshotMessage(build=build.detail()).model_dump(mode='json'))
+    await _safe_send_json(websocket, message.model_dump(mode='json'))
 
 
 async def _send_build_list_snapshot(websocket: WebSocket, namespace: str) -> None:
-    builds = await build_registry.list_builds(status=schemas.ActiveBuildStatus.RUNNING)
-    visible = [build for build in builds if build.namespace == namespace]
-    await _safe_send_json(websocket, schemas.BuildListSnapshotMessage(builds=visible).model_dump(mode='json'))
+    session_gen = get_db()
+    session = next(session_gen)
+    try:
+        message = _build_list_snapshot_message(session, namespace)
+    finally:
+        session.close()
+        session_gen.close()
+    await _safe_send_json(websocket, message.model_dump(mode='json'))
+
+
+def _get_latest_build_namespace_update(namespace: str) -> str | None:
+    latest = build_hub.latest_namespace_sequence(namespace)
+    if latest <= 0:
+        return None
+    return str(latest)
 
 
 async def _send_engine_snapshot(websocket: WebSocket, manager: ProcessManager) -> None:
-    statuses = manager.list_all_engine_statuses()
-    await _safe_send_json(
-        websocket,
-        schemas.EngineListSnapshotMessage(
-            engines=[schemas.EngineStatusSchema.model_validate(status) for status in statuses],
-            total=len(statuses),
-        ).model_dump(mode='json'),
-    )
+    del manager
+    session_gen = get_settings_db()
+    session = next(session_gen)
+    try:
+        defaults: dict[str, object] = {
+            'max_threads': settings.polars_max_threads,
+            'max_memory_mb': settings.polars_max_memory_mb,
+            'streaming_chunk_size': settings.polars_streaming_chunk_size,
+        }
+        message = load_engine_snapshot(session, namespace=get_namespace(), defaults=defaults)
+    finally:
+        session.close()
+        session_gen.close()
+    await _safe_send_json(websocket, message.model_dump(mode='json'))
+
+
+async def _wait_for_engine_notification(websocket: WebSocket, namespace: str, last_seen: str | None) -> str | None:
+    receive_task = asyncio.create_task(_wait_for_websocket_disconnect(websocket))
+    notify_task = asyncio.create_task(engine_registry.wait_for_namespace(namespace, last_seen))
+    done, pending = await asyncio.wait({receive_task, notify_task}, return_when=asyncio.FIRST_COMPLETED)
+    for task in pending:
+        task.cancel()
+    for task in pending:
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+    if receive_task in done:
+        await receive_task
+        return None
+    return await notify_task
 
 
 def _build_pipeline_payload(request: schemas.BuildRequest) -> dict:
@@ -250,6 +413,137 @@ async def _run_active_build_task(
         if session_gen is not None:
             session_gen.close()
         reset_namespace(token)
+
+
+async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> None:
+    session_gen = get_db()
+    session = next(session_gen)
+    build: ActiveBuild | None = None
+    pipeline: dict | None = None
+    starter: schemas.BuildStarter | None = None
+    request_payload: schemas.BuildRequest | None = None
+    namespace = get_namespace()
+    try:
+        run = build_run_service.get_build_run(session, build_id)
+        if run is None:
+            return
+        marked = build_run_service.mark_build_running(session, build_id, now=service._utcnow())
+        if marked is None:
+            return
+        request_payload = schemas.BuildRequest.model_validate(run.request_json)
+        pipeline = _build_pipeline_payload(request_payload)
+        starter = schemas.BuildStarter.model_validate(run.starter_json)
+        namespace = run.namespace
+        context = ActiveBuildContext(
+            current_kind=run.current_kind,
+            current_datasource_id=run.current_datasource_id,
+            current_tab_id=run.current_tab_id,
+            current_tab_name=run.current_tab_name,
+            current_output_id=run.current_output_id,
+            current_output_name=run.current_output_name,
+        )
+        build = await build_registry.create_build(
+            analysis_id=run.analysis_id,
+            analysis_name=run.analysis_name,
+            namespace=namespace,
+            starter=starter,
+            total_tabs=run.total_tabs,
+            context=context,
+            build_id=run.id,
+            started_at=run.started_at,
+        )
+        build.status = schemas.ActiveBuildStatus.RUNNING
+    finally:
+        session.close()
+        session_gen.close()
+    if build is None or pipeline is None or starter is None or request_payload is None:
+        return
+    await _publish_build_notification(namespace, build_id, latest_sequence=0)
+    current_kind = build.current_kind or ''
+    if current_kind in {'raw', 'datasource_update'}:
+        datasource_id = build.current_datasource_id
+        if datasource_id is None:
+            raise ValueError(f'Queued schedule build {build.build_id} missing datasource id')
+        session_gen = get_db()
+        session = next(session_gen)
+        try:
+            try:
+                from modules.datasource import service as datasource_service
+
+                if current_kind == 'raw':
+                    refreshed = await asyncio.to_thread(datasource_service.refresh_external_datasource, session, datasource_id)
+                else:
+                    refreshed = await asyncio.to_thread(
+                        datasource_service.refresh_datasource_for_schedule,
+                        session,
+                        datasource_id,
+                    )
+                await _emit_active_build_event(
+                    build.build_id,
+                    build.analysis_id,
+                    schemas.BuildCompleteEvent(
+                        build_id=build.build_id,
+                        analysis_id=build.analysis_id,
+                        emitted_at=service._utcnow(),
+                        current_kind=build.current_kind,
+                        current_datasource_id=build.current_datasource_id,
+                        tab_id=build.current_tab_id,
+                        tab_name=build.current_tab_name,
+                        current_output_id=build.current_output_id,
+                        current_output_name=refreshed.name,
+                        engine_run_id=None,
+                        elapsed_ms=build.elapsed_ms,
+                        total_steps=0,
+                        tabs_built=1,
+                        results=[
+                            schemas.BuildTabResult(
+                                tab_id=build.current_tab_id or build.build_id,
+                                tab_name=build.current_tab_name or refreshed.name,
+                                status=schemas.BuildTabStatus.SUCCESS,
+                                output_id=build.current_output_id,
+                                output_name=refreshed.name,
+                            )
+                        ],
+                        duration_ms=build.elapsed_ms,
+                    ),
+                )
+                return
+            except Exception as exc:
+                await _emit_active_build_event(
+                    build.build_id,
+                    build.analysis_id,
+                    schemas.BuildFailedEvent(
+                        build_id=build.build_id,
+                        analysis_id=build.analysis_id,
+                        emitted_at=service._utcnow(),
+                        current_kind=build.current_kind,
+                        current_datasource_id=build.current_datasource_id,
+                        tab_id=build.current_tab_id,
+                        tab_name=build.current_tab_name,
+                        current_output_id=build.current_output_id,
+                        current_output_name=build.current_output_name,
+                        engine_run_id=None,
+                        progress=build.progress,
+                        elapsed_ms=build.elapsed_ms,
+                        total_steps=0,
+                        tabs_built=0,
+                        results=[],
+                        duration_ms=build.elapsed_ms,
+                        error=str(exc),
+                    ),
+                )
+                return
+        finally:
+            session.close()
+            session_gen.close()
+    await _run_active_build_task(
+        manager=manager,
+        build_id=build.build_id,
+        analysis_id=build.analysis_id,
+        namespace=build.namespace,
+        pipeline=pipeline,
+        triggered_by=starter.user_id or starter.email or starter.display_name or starter.triggered_by,
+    )
 
 
 @router.post('/preview', response_model=schemas.StepPreviewResponse, mcp=True)
@@ -363,13 +657,16 @@ def delete_iceberg_snapshot(
 @handle_errors(operation='start active build')
 async def start_active_build(
     request: schemas.BuildRequest,
-    manager: ProcessManager = Depends(get_manager),
+    session: Session = Depends(get_db),
+    _manager: ProcessManager = Depends(get_manager),
     user: User = Depends(get_current_user),
 ):
     pipeline = _build_pipeline_payload(request)
     analysis_id = str(pipeline.get('analysis_id') or '')
     analysis_name = await run_in_threadpool(_build_analysis_name, pipeline)
     namespace = get_namespace()
+    started_at = service._utcnow()
+    build_id = str(uuid.uuid4())
     raw_tabs = pipeline.get('tabs')
     tabs = raw_tabs if isinstance(raw_tabs, list) else []
     selected_tab = next(
@@ -393,28 +690,40 @@ async def start_active_build(
             context.current_tab_id = active_tab.get('id')
         if isinstance(active_tab.get('name'), str):
             context.current_tab_name = active_tab.get('name')
-    build = await build_registry.create_build(
+    starter = service._build_starter(user)
+    build_run_service.create_build_run(
+        session,
+        build_id=build_id,
+        namespace=namespace,
         analysis_id=analysis_id,
         analysis_name=analysis_name,
+        request_json=request.model_dump(mode='json'),
+        starter_json=starter.model_dump(mode='json'),
+        status=build_run_service.BuildRunStatus.QUEUED,
+        current_kind=context.current_kind,
+        current_datasource_id=context.current_datasource_id,
+        current_tab_id=context.current_tab_id,
+        current_tab_name=context.current_tab_name,
+        current_output_id=context.current_output_id,
+        current_output_name=context.current_output_name,
+        total_tabs=len(tabs),
+        created_at=started_at,
+        started_at=started_at,
+    )
+    build_job_service.create_job(
+        session,
+        build_id=build_id,
         namespace=namespace,
-        starter=service._build_starter(user),
-        total_tabs=len(pipeline.get('tabs', [])) if isinstance(pipeline.get('tabs'), list) else 0,
-        context=context,
     )
-    await build_registry.publish_list_snapshot(namespace)
-    task = asyncio.create_task(
-        _run_active_build_task(
-            manager=manager,
-            build_id=build.build_id,
-            analysis_id=analysis_id,
-            namespace=namespace,
-            pipeline=pipeline,
-            triggered_by=_build_triggered_by(user),
-        ),
-        name=f'active-build:{build.build_id}',
-    )
-    await build_registry.track_task(build.build_id, task)
-    return build.detail()
+    detail = _get_durable_build_detail(session, build_id)
+    if detail is None:
+        raise HTTPException(status_code=500, detail='Failed to create build')
+    await _publish_build_notification(namespace, build_id, latest_sequence=0)
+    from modules.build_jobs.live import hub as build_job_hub
+
+    build_job_hub.publish()
+    await asyncio.to_thread(runtime_ipc.notify_build_job)
+    return detail
 
 
 @router.post('/cancel/{engine_run_id}', response_model=schemas.CancelBuildResponse, mcp=True)
@@ -422,7 +731,6 @@ async def start_active_build(
 async def cancel_build(
     engine_run_id: EngineRunId,
     session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
     user: User = Depends(get_current_user),
 ):
     run_id = parse_engine_run_id(engine_run_id)
@@ -435,7 +743,6 @@ async def cancel_build(
     cancelled_by = user.email or user.display_name or user.id
     cancelled = service.cancel_engine_run(
         session,
-        manager,
         run_id,
         cancelled_by=cancelled_by,
     )
@@ -451,27 +758,30 @@ async def cancel_build(
         ),
         None,
     )
-    if match is not None:
+    live = await build_registry.get_build(match.build_id) if match is not None else None
+    durable = _get_durable_build_detail_by_engine_run(session, run_id)
+    target = live.detail() if live is not None and live.namespace == get_namespace() else durable
+    if target is not None:
         await _emit_active_build_event(
-            match.build_id,
-            match.analysis_id,
+            target.build_id,
+            target.analysis_id,
             schemas.BuildCancelledEvent(
-                build_id=match.build_id,
-                analysis_id=match.analysis_id,
+                build_id=target.build_id,
+                analysis_id=target.analysis_id,
                 emitted_at=service._utcnow(),
-                current_kind=match.current_kind,
-                current_datasource_id=match.current_datasource_id,
-                tab_id=match.current_tab_id,
-                tab_name=match.current_tab_name,
-                current_output_id=match.current_output_id,
-                current_output_name=match.current_output_name,
+                current_kind=target.current_kind,
+                current_datasource_id=target.current_datasource_id,
+                tab_id=target.current_tab_id,
+                tab_name=target.current_tab_name,
+                current_output_id=target.current_output_id,
+                current_output_name=target.current_output_name,
                 engine_run_id=run_id,
-                progress=match.progress,
-                elapsed_ms=cancelled.duration_ms or match.elapsed_ms,
-                total_steps=match.total_steps,
-                tabs_built=0,
-                results=[],
-                duration_ms=cancelled.duration_ms or match.elapsed_ms,
+                progress=target.progress,
+                elapsed_ms=cancelled.duration_ms or target.elapsed_ms,
+                total_steps=target.total_steps,
+                tabs_built=len(target.results),
+                results=target.results,
+                duration_ms=cancelled.duration_ms or target.elapsed_ms,
                 cancelled_at=cancelled.cancelled_at,
                 cancelled_by=cancelled.cancelled_by,
             ),
@@ -485,12 +795,19 @@ async def cancel_build(
 async def list_active_builds(
     request: Request,
     status: schemas.ActiveBuildStatus | None = None,
+    session: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
     del request
-    builds = await build_registry.list_builds(status=status or schemas.ActiveBuildStatus.RUNNING)
-    namespace = get_namespace()
-    visible = [build for build in builds if build.namespace == namespace]
+    if status not in {None, schemas.ActiveBuildStatus.QUEUED, schemas.ActiveBuildStatus.RUNNING}:
+        return schemas.ActiveBuildListResponse(builds=[], total=0)
+    runs = build_run_service.list_build_runs(session)
+    visible = [
+        build_run_service.build_summary(run)
+        for run in runs
+        if run.namespace == get_namespace()
+        and run.status in {build_run_service.BuildRunStatus.QUEUED, build_run_service.BuildRunStatus.RUNNING}
+    ]
     return schemas.ActiveBuildListResponse(builds=visible, total=len(visible))
 
 
@@ -498,33 +815,27 @@ async def list_active_builds(
 @handle_errors(operation='get active build')
 async def get_active_build(
     build_id: str,
+    session: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
-    build = await build_registry.get_build(build_id)
-    if build is None or build.namespace != get_namespace():
+    detail = _get_durable_build_detail(session, build_id)
+    if detail is None:
         raise HTTPException(status_code=404, detail='Active build not found')
-    return build.detail()
+    return detail
 
 
 @router.get('/builds/active/by-engine-run/{engine_run_id}', response_model=schemas.ActiveBuildDetail, mcp=True)
 @handle_errors(operation='get active build by engine run')
 async def get_active_build_by_engine_run(
     engine_run_id: EngineRunId,
+    session: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
     run_id = parse_engine_run_id(engine_run_id)
-    builds = await build_registry.list_builds(status=schemas.ActiveBuildStatus.RUNNING)
-    namespace = get_namespace()
-    match = next(
-        (build for build in builds if build.namespace == namespace and build.current_engine_run_id == run_id),
-        None,
-    )
-    if match is None:
+    detail = _get_durable_build_detail_by_engine_run(session, run_id)
+    if detail is None:
         raise HTTPException(status_code=404, detail='Active build not found')
-    build = await build_registry.get_build(match.build_id)
-    if build is None or build.namespace != namespace:
-        raise HTTPException(status_code=404, detail='Active build not found')
-    return build.detail()
+    return detail
 
 
 # Engine lifecycle endpoints
@@ -598,8 +909,14 @@ async def engine_list_stream(websocket: WebSocket) -> None:
     try:
         await _require_websocket_user(websocket)
         await engine_registry.add_watcher(namespace, websocket)
+        last_seen = await engine_registry.current_version(namespace)
         await _send_engine_snapshot(websocket, manager)
-        await _wait_for_websocket_disconnect(websocket)
+        while True:
+            updated = await _wait_for_engine_notification(websocket, namespace, last_seen)
+            if updated is None:
+                return
+            await _send_engine_snapshot(websocket, manager)
+            last_seen = updated
     except WebSocketDisconnect:
         return
     except HTTPException as exc:
@@ -634,9 +951,23 @@ async def build_list_stream(websocket: WebSocket) -> None:
     await websocket.accept()
     try:
         await _require_websocket_user(websocket)
-        await build_registry.add_list_watcher(namespace, websocket)
+        last_seen = await run_in_threadpool(_get_latest_build_namespace_update, namespace)
         await _send_build_list_snapshot(websocket, namespace)
-        await _wait_for_websocket_disconnect(websocket)
+        while True:
+            updated = await _wait_for_namespace_build_update(websocket, namespace, last_seen)
+            if updated is None:
+                return
+            session_gen = get_db()
+            session = next(session_gen)
+            try:
+                payload = _build_list_snapshot_message(session, namespace).model_dump(mode='json')
+            finally:
+                session.close()
+                session_gen.close()
+            sent = await _safe_send_json(websocket, payload)
+            if not sent:
+                return
+            last_seen = updated
     except WebSocketDisconnect:
         return
     except HTTPException as exc:
@@ -658,7 +989,6 @@ async def build_list_stream(websocket: WebSocket) -> None:
             schemas.BuildWebsocketErrorMessage(error='An internal error occurred').model_dump(mode='json'),
         )
     finally:
-        await build_registry.remove_list_watcher(namespace, websocket)
         reset_namespace(token)
         await _safe_close_websocket(websocket)
 
@@ -666,15 +996,42 @@ async def build_list_stream(websocket: WebSocket) -> None:
 @router.websocket('/ws/builds/{build_id}')
 async def active_build_stream(websocket: WebSocket, build_id: str) -> None:
     token = set_namespace_context(websocket.headers.get('X-Namespace') or websocket.query_params.get('namespace'))
+    raw_last_sequence = websocket.query_params.get('last_sequence')
+    last_sequence = int(raw_last_sequence) if raw_last_sequence and raw_last_sequence.isdigit() else 0
     await websocket.accept()
     try:
         await _require_websocket_user(websocket)
-        build = await build_registry.get_build(build_id)
-        if build is None or build.namespace != get_namespace():
-            raise HTTPException(status_code=404, detail='Active build not found')
-        await build_registry.add_watcher(build_id, websocket)
-        await _send_build_snapshot(websocket, build_id)
-        await _wait_for_websocket_disconnect(websocket)
+        while True:
+            session_gen = get_db()
+            session = next(session_gen)
+            try:
+                message = _build_snapshot_message(session, build_id)
+            finally:
+                session.close()
+                session_gen.close()
+            if message is None or message.build.namespace != get_namespace():
+                raise HTTPException(status_code=404, detail='Active build not found')
+            if message.last_sequence <= last_sequence:
+                break
+            if last_sequence > 0:
+                replayed_sequence = await _replay_build_events(websocket, build_id, last_sequence)
+                if replayed_sequence is None:
+                    return
+                last_sequence = replayed_sequence
+                continue
+            break
+        sent = await _safe_send_json(websocket, message.model_dump(mode='json'))
+        if not sent:
+            return
+        last_sequence = max(last_sequence, message.last_sequence)
+        while True:
+            notification = await _wait_for_build_notification(websocket, build_id, last_sequence)
+            if notification is None:
+                return
+            replayed_sequence = await _replay_build_events(websocket, build_id, last_sequence)
+            if replayed_sequence is None:
+                return
+            last_sequence = max(replayed_sequence, notification.latest_sequence)
     except WebSocketDisconnect:
         return
     except HTTPException as exc:
@@ -696,7 +1053,6 @@ async def active_build_stream(websocket: WebSocket, build_id: str) -> None:
             schemas.BuildWebsocketErrorMessage(error='An internal error occurred').model_dump(mode='json'),
         )
     finally:
-        await build_registry.remove_watcher(build_id, websocket)
         reset_namespace(token)
         await _safe_close_websocket(websocket)
 

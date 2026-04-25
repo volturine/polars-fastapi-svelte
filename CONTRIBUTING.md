@@ -41,8 +41,8 @@ cd polars-fastapi-svelte
 # Install dependencies
 just install
 
-# Copy environment file
-cp backend/.env.example backend/.env
+# Edit local environment file
+# backend/dev.env covers backend and Vite dev-server settings
 
 # Start development servers
 just dev
@@ -63,7 +63,7 @@ Backend API: http://localhost:8000
 ### Useful Commands
 
 ```bash
-just dev              # Start both servers with hot-reload
+just dev              # Start API, worker, scheduler, and frontend
 just format           # Format all code (ruff + prettier)
 just check            # Run linters and type checks
 just test             # Run all tests
@@ -192,7 +192,7 @@ uv run pytest -k "test_name"     # Run tests matching name
 ```bash
 cd frontend
 bun run test:unit                # Run unit tests
-bun run test:e2e                 # Run e2e tests (requires servers)
+just test-e2e                    # Run e2e tests with managed local runtime
 ```
 
 ### Writing Tests

@@ -17,11 +17,41 @@ update-deps:
     @echo "Updating frontend dependencies to latest..."
     cd frontend && bun update --latest
 
-# Run development servers concurrently
+# Run development frontend plus supervised backend runtime
 dev:
     #!/usr/bin/env bash
-    set -a; source backend/.env; set +a
-    (cd backend && uv run --env-file .env ./main.py) & (cd frontend && bun run dev) & wait
+    set -a; source backend/dev.env; set +a
+    (cd backend && uv run --env-file dev.env ./app.py) & (cd frontend && bun run dev) & wait
+
+# Run full development stack entirely in Docker
+docker-dev:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOCKER_CONFIG="${PWD}/.docker"
+    docker buildx build --load -f docker/Dockerfile -t polars-analysis:latest .
+    docker compose --env-file docker/env/dev.env -p dataforge-dev -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up
+
+docker-dev-down:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOCKER_CONFIG="${PWD}/.docker"
+    docker compose --env-file docker/env/dev.env -p dataforge-dev -f docker/docker-compose.yml -f docker/docker-compose.dev.yml down -v --remove-orphans
+
+docker-dev-logs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOCKER_CONFIG="${PWD}/.docker"
+    docker compose --env-file docker/env/dev.env -p dataforge-dev -f docker/docker-compose.yml -f docker/docker-compose.dev.yml logs -f
+
+worker:
+	#!/usr/bin/env bash
+	set -a; source backend/dev.env; set +a
+	cd backend && uv run --env-file dev.env ./worker.py
+
+scheduler:
+	#!/usr/bin/env bash
+	set -a; source backend/dev.env; set +a
+	cd backend && uv run --env-file dev.env ./scheduler.py
 
 # Format code
 format:
@@ -39,33 +69,30 @@ check:
 
 # Run e2e tests with backend + frontend lifecycle managed by Just
 test-e2e:
-    #!/usr/bin/env bash
-    set -euo pipefail
+    cd backend && uv run python scripts/scan_warnings.py --scope just-test-e2e --cwd . -- just test-e2e-raw
 
-    cleanup() {
-        lsof -ti tcp:8001,3001 | xargs kill 2>/dev/null || true
-    }
-
-    trap cleanup EXIT INT TERM
-
-    set -a; source backend/e2e.env; set +a
-    (cd backend && uv run --no-env-file ./main.py) &
-    (cd frontend && bun run dev) &
-    FRONTEND_PID=$!
-
-    for _ in {1..90}; do
-        if nc -z localhost 8001 && nc -z localhost 3001; then
-            cd frontend && bun run test:e2e
-            exit 0
-        fi
-        sleep 1
-    done
-
-    echo "Timed out waiting for backend/frontend to start for e2e tests" >&2
-    exit 1
+test-e2e-raw:
+    cd backend && uv run python scripts/run_e2e_harness.py
 
 # Run backend tests
 test:
+    cd backend && uv run python scripts/scan_warnings.py --scope just-test --cwd . -- just test-raw
+
+# Run backend and frontend tests entirely in Docker
+docker-test:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOCKER_CONFIG="${PWD}/.docker"
+    trap 'docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml down -v --remove-orphans >/dev/null 2>&1 || true' EXIT
+    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml down -v --remove-orphans >/dev/null 2>&1 || true
+    docker buildx build --load --build-arg INSTALL_DEV=true -f docker/Dockerfile -t polars-analysis:test .
+    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm frontend-test
+    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml up -d postgres app frontend-e2e
+    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm backend-test
+    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm runtime-test
+    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm e2e-test
+
+test-raw:
     cd backend && uv run pytest --tb=short -q
     cd frontend && bun run test:unit
 
@@ -78,12 +105,35 @@ generate-build-stream-types:
     cd backend && uv run python scripts/generate_ts_build_stream_types.py
 
 # Full verification gate -- must pass before any task is declared done
-verify: format check test
+verify:
+    cd backend && uv run python scripts/scan_warnings.py --scope just-verify --cwd . -- just verify-raw
+
+verify-raw: format check test
 
 # Build for production (single-port: FastAPI serves the built frontend)
-# Setup: cp backend/.prod.env.example backend/.prod.env  then edit it.
+# Setup: edit backend/prod.env.
 prod:
     @echo "Building frontend..."
     cd frontend && bun run build
     @echo "Starting backend in production mode..."
-    cd backend && uv run --env-file .prod.env ./main.py
+    cd backend && uv run --env-file prod.env ./app.py
+
+# Run production stack entirely in Docker
+docker-prod:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOCKER_CONFIG="${PWD}/.docker"
+    docker buildx build --load -f docker/Dockerfile -t polars-analysis:latest .
+    docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml up -d
+
+docker-prod-down:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOCKER_CONFIG="${PWD}/.docker"
+    docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml down -v --remove-orphans
+
+docker-prod-logs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOCKER_CONFIG="${PWD}/.docker"
+    docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml logs -f

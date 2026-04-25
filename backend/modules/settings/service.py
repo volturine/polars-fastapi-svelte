@@ -25,6 +25,10 @@ def invalidate_resolved_settings_cache() -> None:
         _RESOLVED_CACHE.clear()
 
 
+def _warn_bootstrap_secret_missing(name: str) -> None:
+    logging.warning('Skipping %s bootstrap because SETTINGS_ENCRYPTION_KEY is not set', name)
+
+
 def _read_secret(row: AppSettings, field: str) -> str:
     stored = str(getattr(row, field, '') or '')
     if not stored:
@@ -174,14 +178,14 @@ def seed_settings_from_env(session: Session) -> None:
             changed = True
         except SettingsConfigurationError:
             bootstrap_complete = False
-            logger.warning('Skipping SMTP password bootstrap because SETTINGS_ENCRYPTION_KEY is not set')
+            _warn_bootstrap_secret_missing('SMTP password')
     if not row.telegram_bot_token and app_settings.telegram_bot_token:
         try:
             _write_secret(row, 'telegram_bot_token', app_settings.telegram_bot_token)
             changed = True
         except SettingsConfigurationError:
             bootstrap_complete = False
-            logger.warning('Skipping Telegram token bootstrap because SETTINGS_ENCRYPTION_KEY is not set')
+            _warn_bootstrap_secret_missing('Telegram token')
     if not row.telegram_bot_enabled and app_settings.telegram_bot_enabled:
         row.telegram_bot_enabled = app_settings.telegram_bot_enabled
         changed = True
@@ -191,7 +195,7 @@ def seed_settings_from_env(session: Session) -> None:
             changed = True
         except SettingsConfigurationError:
             bootstrap_complete = False
-            logger.warning('Skipping OpenRouter key bootstrap because SETTINGS_ENCRYPTION_KEY is not set')
+            _warn_bootstrap_secret_missing('OpenRouter key')
     if not row.openrouter_default_model and app_settings.openrouter_default_model:
         row.openrouter_default_model = app_settings.openrouter_default_model
         changed = True
@@ -201,7 +205,7 @@ def seed_settings_from_env(session: Session) -> None:
             changed = True
         except SettingsConfigurationError:
             bootstrap_complete = False
-            logger.warning('Skipping OpenAI key bootstrap because SETTINGS_ENCRYPTION_KEY is not set')
+            _warn_bootstrap_secret_missing('OpenAI key')
     if not row.openai_endpoint_url and app_settings.openai_base_url:
         row.openai_endpoint_url = app_settings.openai_base_url
         changed = True
@@ -223,7 +227,7 @@ def seed_settings_from_env(session: Session) -> None:
             changed = True
         except SettingsConfigurationError:
             bootstrap_complete = False
-            logger.warning('Skipping Hugging Face token bootstrap because SETTINGS_ENCRYPTION_KEY is not set')
+            _warn_bootstrap_secret_missing('Hugging Face token')
     if not row.huggingface_default_model and app_settings.huggingface_default_model:
         row.huggingface_default_model = app_settings.huggingface_default_model
         changed = True

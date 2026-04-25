@@ -76,6 +76,7 @@ export async function screenshot(
 	name: string,
 	options?: ScreenshotOptions
 ): Promise<void> {
+	if (process.env.CI === 'true') return;
 	await waitForStableUI(page);
 	const suitePath = suite
 		.split('/')
@@ -88,5 +89,5 @@ export async function screenshot(
 		await options.target.screenshot({ path });
 		return;
 	}
-	await page.screenshot({ path, fullPage: true });
+	await page.screenshot({ path });
 }

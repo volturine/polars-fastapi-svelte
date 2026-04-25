@@ -13,12 +13,12 @@ services:
       timeout: 5s
       retries: 20
 
-  app:
-    image: ${DF_APP_IMAGE}
+  api:
+    image: ${DF_API_IMAGE}
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
+    environment: &app-env
       ENV_FILE: ""
       APP_NAME: ${DF_APP_NAME}
       APP_VERSION: ${DF_APP_VERSION}
@@ -46,6 +46,12 @@ services:
       JOB_TIMEOUT: ${DF_JOB_TIMEOUT}
       SCHEDULER_CHECK_INTERVAL: ${DF_SCHEDULER_CHECK_INTERVAL}
       LOG_LEVEL: ${DF_LOG_LEVEL}
+      TRUSTED_PROXY_HOPS: ${DF_TRUSTED_PROXY_HOPS}
+      AUTH_REQUIRED: ${DF_AUTH_REQUIRED}
+      DEFAULT_USER_EMAIL: ${DF_DEFAULT_USER_EMAIL}
+      DEFAULT_USER_PASSWORD: ${DF_DEFAULT_USER_PASSWORD}
+      DEFAULT_USER_NAME: ${DF_DEFAULT_USER_NAME}
+      SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
       UVICORN_ACCESS_LOG: "true"
       AUTH_FRONTEND_URL: ${DF_AUTH_FRONTEND_URL}
     ports:
@@ -67,15 +73,53 @@ services:
       timeout: 5s
       retries: 30
 
+  scheduler:
+    image: ${DF_SCHEDULER_IMAGE}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *app-env
+      WORKERS: "1"
+    volumes:
+      - data:/app/data
+      - ../backend/api:/app/backend/api
+      - ../backend/config:/app/backend/config
+      - ../backend/core:/app/backend/core
+      - ../backend/database:/app/backend/database
+      - ../backend/modules:/app/backend/modules
+      - ../backend/main.py:/app/backend/main.py
+      - ../backend/scheduler.py:/app/backend/scheduler.py
+      - ../backend/worker.py:/app/backend/worker.py
+
+  worker:
+    image: ${DF_WORKER_IMAGE}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *app-env
+      WORKERS: "1"
+    volumes:
+      - data:/app/data
+      - ../backend/api:/app/backend/api
+      - ../backend/config:/app/backend/config
+      - ../backend/core:/app/backend/core
+      - ../backend/database:/app/backend/database
+      - ../backend/modules:/app/backend/modules
+      - ../backend/main.py:/app/backend/main.py
+      - ../backend/scheduler.py:/app/backend/scheduler.py
+      - ../backend/worker.py:/app/backend/worker.py
+
   frontend:
     image: oven/bun:1
     working_dir: /app/frontend
     depends_on:
-      app:
+      api:
         condition: service_started
     environment:
       FRONTEND_PORT: ${DF_FRONTEND_PORT}
-      BACKEND_HOST: app
+      BACKEND_HOST: api
       BACKEND_PORT: "8000"
     ports:
       - "${DF_FRONTEND_PORT}:${DF_FRONTEND_PORT}"

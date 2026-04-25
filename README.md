@@ -69,30 +69,35 @@ Data-Forge is a **local-first**, **no-code** data transformation tool. Build mul
 ### Option 1: Docker (Recommended)
 
 ```bash
-# Build and tag the production image once
-docker buildx build --load -f docker/Dockerfile -t polars-analysis:latest .
-
-# Start with Docker Compose using the prebuilt image
-docker compose --env-file docker/env/prod.env -f docker/docker-compose.yml up
+# Customer install
+# 1) copy docker/docker-compose.yml to compose.yml
+# 2) copy docker/env/prod.env to .env and edit it
+docker compose -f compose.yml pull
+docker compose -f compose.yml up -d
 
 # Open the application
 open http://localhost:8000
 ```
 
-`docker/docker-compose.yml` now uses `DF_APP_IMAGE` from `docker/env/prod.env` and does not build from source during `up`.
-Point `DF_APP_IMAGE` at any prebuilt image tag you want to deploy.
-The production topology is one reusable app image and one `app` container. That container runs migrations once at startup, then supervises the API, scheduler, and dynamically spawned build workers.
+`docker/docker-compose.yml` is the only production compose file and is customer-facing. Pair it with `docker/env/prod.env`, rename that file to `.env`, set your secrets and release tags, then run `docker compose pull && docker compose up -d`.
+`just docker-prod` still uses the same production compose file and the same `docker/env/prod.env`, but overrides the image tags at runtime to use local builds. GHCR images are for production release publishing only.
+The production topology is Postgres plus three role containers from one codebase:
+- `api`
+- `scheduler`
+- `worker`
 
 Default Docker production sizing:
 - API workers: `4` via `docker/env/prod.env`
 - Warm build workers: `0` by default
 - Dynamic build worker max: `10` by default
 
-This starts the Postgres-backed single-container runtime topology:
+This starts the Postgres-backed fixed-role runtime topology:
 - `postgres`
-- `app`
+- `api`
+- `scheduler`
+- `worker`
 
-`postgres` is still required in the checked-in Docker topology. The current supported Docker runtime is Postgres-backed; the app container uses `DF_DATABASE_URL` pointing at the `postgres` service and is not configured to run the supported Docker path on SQLite.
+`postgres` is still required in the checked-in Docker topology. The current supported Docker runtime is Postgres-backed; the role services use `DF_DATABASE_URL` pointing at the `postgres` service and are not configured to run the supported Docker path on SQLite.
 
 ### Option 2: Local Development
 
@@ -135,13 +140,13 @@ cd frontend && bun run build
 just prod
 ```
 
-For supported production deployments, use Postgres. The repository `docker/docker-compose.yml`
-is the reference topology for the supervised single-container runtime mode.
+For supported production deployments, use Postgres. `docker/docker-compose.yml`
+is the fixed-role Docker runtime topology for both customers and local maintainer automation.
 
 The repository defaults are tuned for concurrent clients:
-- Docker production defaults to `4` API workers inside the app runtime
-- build throughput scales by dynamic worker spawn up to `BUILD_WORKER_MAX_PROCESSES`
-- zero warm build workers are kept by default; workers spawn on demand and exit when idle
+- Docker production defaults to `4` API workers in the `api` service
+- build throughput scales in the `worker` service up to `BUILD_WORKER_MAX_PROCESSES`
+- zero warm build workers are kept by default; worker subprocesses spawn on demand and exit when idle
 
 ### Development (local runtime)
 
@@ -241,7 +246,7 @@ polars-fastapi-svelte/
 │   │   └── routes/           # SvelteKit page routes
 │   └── tests/                # Playwright e2e tests
 ├── docs/                     # Product and architecture docs
-├── docker/                   # Docker image, compose, and env files
+├── docker/                   # Docker image targets, compose, and env files
 ├── Justfile                  # Task runner commands
 └── ENV_VARIABLES.md          # Complete environment variable reference
 ```

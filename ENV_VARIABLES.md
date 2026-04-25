@@ -34,7 +34,8 @@ Browser  ──►  FastAPI (PORT 8000)
 
 **Templates for this topology:**
 
-- Docker / compose: edit `docker/env/prod.env`
+- Customer install: copy `docker/docker-compose.yml` to `compose.yml` plus `docker/env/prod.env` to `.env`, then run `docker compose pull && docker compose up -d`
+- Maintainer local smoke test: `just docker-prod` uses the same `docker/env/prod.env` but overrides image tags to local builds at runtime
 - Bare-metal (`just prod`): edit `backend/prod.env`
 
 ### Development — local runtime
@@ -103,16 +104,19 @@ If you only want the high-value knobs, start with these:
 
 ```bash
 # From the repository root
-# Edit docker/env/prod.env with your host, secrets, resource limits
-# Build or pull the app image referenced by DF_APP_IMAGE first
-docker compose --env-file docker/env/prod.env -f docker/docker-compose.yml up
+# Customer install bundle
+cp docker/env/prod.env .env
+# Edit .env with your host, secrets, and release tags
+docker compose -f docker/docker-compose.yml pull
+docker compose -f docker/docker-compose.yml up -d
 ```
 
-`docker/docker-compose.yml` uses the prebuilt image named by `DF_APP_IMAGE` and does not build application images during `up`.
-The compose topology uses one `app` container from that image. The container runs migrations once before startup, then supervises the API, scheduler, and dynamic build workers.
+`docker/docker-compose.yml` is the single production compose file. `docker/env/prod.env` is the single production env template. `just docker-prod` uses that same env file but overrides image tags to local builds at runtime. GHCR-published images are for production releases only.
+`docker/docker-compose.yml` uses published fixed-role images and does not build application images during `up`.
+The compose topology uses separate `api`, `scheduler`, and `worker` containers from the same codebase release.
 The checked-in Docker topology still includes `postgres` because the supported Docker runtime path is Postgres-backed. `DF_DATABASE_URL` in the Docker env files points at that service.
 
-The checked-in Docker production env defaults to `DF_WORKERS=4` for the API process pool inside that app runtime, `DF_BUILD_WORKER_MIN_PROCESSES=0`, and dynamic build-worker spawn up to `DF_BUILD_WORKER_MAX_PROCESSES`.
+The checked-in Docker production env defaults to `DF_WORKERS=4` for the API process pool in the `api` service, `DF_BUILD_WORKER_MIN_PROCESSES=0`, and dynamic build-worker spawn up to `DF_BUILD_WORKER_MAX_PROCESSES` in the `worker` service.
 
 ### Production — bare-metal (`just prod`)
 
@@ -147,7 +151,9 @@ just dev
 | `PORT`                       | `8000`                                                                                    | Backend HTTP port.                                                                                                                                            |
 | `DATA_DIR`                   | system temp dir + `/data-forge`                                                           | Base writable directory for app data.                                                                                                                         |
 | `DATABASE_URL`               | SQLite under `DATA_DIR`                                                                   | Full backend database URL. Leave blank for local SQLite or set a Postgres URL for distributed runtime.                                                        |
-| `DF_APP_IMAGE`              | `polars-analysis:latest`                                                                  | Docker compose production image tag for the supervised `app` container. Build or pull this image before `docker compose up`.                                     |
+| `DF_API_IMAGE`              | `ghcr.io/volturine/data-forge-api:1.0.0`                                                  | Docker compose production image tag for the `api` service. Pull this image before `docker compose up`.                                                         |
+| `DF_SCHEDULER_IMAGE`        | `ghcr.io/volturine/data-forge-scheduler:1.0.0`                                            | Docker compose production image tag for the `scheduler` service.                                                                                                 |
+| `DF_WORKER_IMAGE`           | `ghcr.io/volturine/data-forge-worker:1.0.0`                                               | Docker compose production image tag for the `worker` service.                                                                                                    |
 | `DISTRIBUTED_RUNTIME_ENABLED`| `false`                                                                                   | Enables supported distributed runtime behavior when `DATABASE_URL` is Postgres.                                                                                |
 | `DEFAULT_NAMESPACE`          | `default`                                                                                 | Namespace used when no namespace is selected.                                                                                                                 |
 | `CORS_ORIGINS`               | `http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173` | Comma-separated allowed browser origins. Required in dev (Vite server is cross-origin). In prod (single port) same-origin applies and this can be left unset. |
@@ -240,6 +246,7 @@ just dev
 | `DEFAULT_USER_NAME`     | `Default User`                                      | Default env-managed account name.                                                                                                                                                                                         |
 | `AUTH_FRONTEND_URL`     | `http://localhost:5173`                             | Frontend URL used by auth redirects. In prod (single port) set to the backend URL (e.g. `http://your-server:8000`). In dev set to the Vite dev-server URL — must match `FRONTEND_PORT` (default `http://localhost:3000`). |
 | `SESSION_MAX_AGE_DAYS`  | `30`                                                | Session lifetime in days.                                                                                                                                                                                                 |
+| `TRUSTED_PROXY_HOPS`    | `0`                                                 | Number of trusted reverse proxies in front of the app. `0` means ignore `X-Forwarded-For` and use the direct client socket.                                                                                           |
 | `GOOGLE_CLIENT_ID`      | empty                                               | Google OAuth client id.                                                                                                                                                                                                   |
 | `GOOGLE_CLIENT_SECRET`  | empty                                               | Google OAuth client secret.                                                                                                                                                                                               |
 | `GOOGLE_REDIRECT_URI`   | `http://localhost:8000/api/v1/auth/google/callback` | Google OAuth callback.                                                                                                                                                                                                    |

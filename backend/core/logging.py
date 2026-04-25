@@ -21,6 +21,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import StreamingResponse
 
 from core.config import settings
+from core.proxy import client_ip
 
 _writer: SqliteLogWriter | None = None
 _listener: logging.handlers.QueueListener | None = None
@@ -513,7 +514,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         status = response.status_code if response else 500
         if not error and response and status >= 400:
             error = f'HTTP {status}'
-        ip = request.headers.get('x-forwarded-for') or request.client.host if request.client else None
+        ip = client_ip(request)
         if isinstance(ip, str):
             parts = ip.split('.') if '.' in ip else []
             if len(parts) == 4:

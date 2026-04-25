@@ -279,6 +279,32 @@ class TestSettings:
         assert settings.auth_required is False
         assert not caught
 
+    def test_rejects_production_auth_without_encryption_key(self, monkeypatch, tmp_path):
+        _set_isolated_settings_env(monkeypatch, tmp_path)
+        monkeypatch.setenv('PROD_MODE_ENABLED', 'true')
+        monkeypatch.setenv('AUTH_REQUIRED', 'true')
+        monkeypatch.delenv('SETTINGS_ENCRYPTION_KEY', raising=False)
+
+        with pytest.raises(ValidationError, match='SETTINGS_ENCRYPTION_KEY must be set'):
+            Settings()
+
+    def test_rejects_production_placeholder_default_password(self, monkeypatch, tmp_path):
+        _set_isolated_settings_env(monkeypatch, tmp_path)
+        monkeypatch.setenv('PROD_MODE_ENABLED', 'true')
+        monkeypatch.setenv('AUTH_REQUIRED', 'true')
+        monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'prod-key')
+        monkeypatch.setenv('DEFAULT_USER_PASSWORD', 'ChangeMe123!')
+
+        with pytest.raises(ValidationError, match='DEFAULT_USER_PASSWORD must be changed'):
+            Settings()
+
+    def test_trusted_proxy_hops_must_be_non_negative(self, monkeypatch, tmp_path):
+        _set_isolated_settings_env(monkeypatch, tmp_path)
+        monkeypatch.setenv('TRUSTED_PROXY_HOPS', '-1')
+
+        with pytest.raises(ValidationError, match='TRUSTED_PROXY_HOPS must be >= 0'):
+            Settings()
+
     def test_rejects_lock_heartbeat_not_less_than_ttl(self, monkeypatch, tmp_path):
         _set_isolated_settings_env(monkeypatch, tmp_path)
         monkeypatch.setenv('LOCK_TTL_SECONDS', '10')

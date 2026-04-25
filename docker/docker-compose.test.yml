@@ -17,9 +17,10 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+      target: api
       args:
         INSTALL_DEV: "true"
-    image: polars-analysis:test
+    image: polars-analysis-api:test
     environment:
       ENV_FILE: ""
       DATA_DIR: ${DF_DATA_DIR}
@@ -30,17 +31,18 @@ services:
     healthcheck:
       disable: true
 
-  app:
+  api:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+      target: api
       args:
         INSTALL_DEV: "true"
-    image: polars-analysis:test
+    image: polars-analysis-api:test
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
+    environment: &app-env
       ENV_FILE: ""
       APP_NAME: ${DF_APP_NAME}
       APP_VERSION: ${DF_APP_VERSION}
@@ -61,6 +63,7 @@ services:
       DEFAULT_USER_EMAIL: ${DF_DEFAULT_USER_EMAIL}
       DEFAULT_USER_NAME: ${DF_DEFAULT_USER_NAME}
       LOG_LEVEL: ${DF_LOG_LEVEL}
+      TRUSTED_PROXY_HOPS: "0"
       UVICORN_ACCESS_LOG: "false"
       AUTH_FRONTEND_URL: ${DF_E2E_FRONTEND_ORIGIN}
       CORS_ORIGINS: ${DF_E2E_FRONTEND_ORIGIN}
@@ -72,15 +75,50 @@ services:
       timeout: 5s
       retries: 30
 
+  scheduler:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: scheduler
+      args:
+        INSTALL_DEV: "true"
+    image: polars-analysis-scheduler:test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *app-env
+      WORKERS: "1"
+    volumes:
+      - backend-test-data:/app/data
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: worker
+      args:
+        INSTALL_DEV: "true"
+    image: polars-analysis-worker:test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *app-env
+      WORKERS: "1"
+    volumes:
+      - backend-test-data:/app/data
+
   runtime-test:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+      target: api
       args:
         INSTALL_DEV: "true"
-    image: polars-analysis:test
+    image: polars-analysis-api:test
     depends_on:
-      app:
+      api:
         condition: service_healthy
     environment:
       ENV_FILE: ""
@@ -103,7 +141,7 @@ services:
       disable: true
 
   frontend-test:
-    image: oven/bun:1
+    image: oven/bun:1.2.22
     working_dir: /app/frontend
     environment:
       CI: "true"
@@ -119,11 +157,11 @@ services:
     ipc: host
     shm_size: 2gb
     depends_on:
-      app:
+      api:
         condition: service_healthy
     environment:
       FRONTEND_PORT: ${DF_FRONTEND_PORT}
-      BACKEND_HOST: app
+      BACKEND_HOST: api
       BACKEND_PORT: "8000"
       CI: "true"
     ports:
@@ -153,7 +191,7 @@ services:
     depends_on:
       frontend-e2e:
         condition: service_healthy
-      app:
+      api:
         condition: service_started
     working_dir: /app/frontend
     environment:
@@ -161,7 +199,7 @@ services:
       FRONTEND_PORT: ${DF_FRONTEND_PORT}
       BACKEND_PORT: "8000"
       PLAYWRIGHT_BASE_URL: ${DF_E2E_FRONTEND_ORIGIN}
-      PLAYWRIGHT_API_ORIGIN: http://app:8000
+      PLAYWRIGHT_API_ORIGIN: http://api:8000
       PLAYWRIGHT_FRONTEND_ORIGIN: ${DF_E2E_FRONTEND_ORIGIN}
       PLAYWRIGHT_COOKIE_DOMAIN: frontend-e2e
       PLAYWRIGHT_DISABLE_WEB_SERVER: "true"

@@ -12,6 +12,7 @@ from core.config import settings
 from core.database import get_settings_db, run_settings_db
 from core.error_handlers import handle_errors
 from core.exceptions import AccountDisabledError, InvalidCredentialsError, OAuthError
+from core.proxy import client_ip
 from modules.auth.dependencies import get_current_user
 from modules.auth.models import AuthProvider, AuthProviderName, User, UserStatus, VerificationTokenType
 from modules.auth.schemas import (
@@ -146,12 +147,7 @@ def _request_device_info(request: Request) -> str | None:
 
 
 def _request_ip_address(request: Request) -> str | None:
-    xff = request.headers.get('x-forwarded-for')
-    if xff:
-        return xff.split(',')[0].strip()[:128]
-    if request.client:
-        return str(request.client.host)
-    return None
+    return client_ip(request)
 
 
 @router.post('/register', response_model=UserPublic)

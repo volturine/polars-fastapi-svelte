@@ -155,7 +155,7 @@
 
 ## Deployment & Operations
 
-- ✅ Docker deployment — single container with both frontend and backend
+- ✅ Docker deployment — fixed-role production runtime with published `api`, `scheduler`, and `worker` images
 - ✅ Environment variable configuration — full reference of all configurable options
 - ⬜ Serve under a custom subdomain rather than `localhost:8000`
 - ⬜ All-in-one release script for streamlined builds and deploys

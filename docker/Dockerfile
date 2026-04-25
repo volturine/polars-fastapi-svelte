@@ -1,10 +1,7 @@
 # Multi-stage Dockerfile for Data-Forge Analysis Platform
-# Combines frontend and backend into a single deployable image
+# Builds fixed-role release images from one codebase
 
-# ============================================
-# Stage 1: Build Frontend
-# ============================================
-FROM oven/bun:1 AS frontend-builder
+FROM oven/bun:1.2.22 AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -21,54 +18,61 @@ COPY frontend/ .
 # The build will be output to /app/frontend/build
 RUN bun run build
 
-# ============================================
-# Stage 2: Backend Runtime (Build + Run)
-# ============================================
-FROM python:3.13-slim AS backend-builder
+FROM python:3.13.7-slim AS backend-base
 
 WORKDIR /app/backend
 
-# Install uv inside the image so builds are self-contained
-RUN pip install --no-cache-dir uv
-
+ARG UV_VERSION=0.9.5
+ARG VCS_REF=unknown
+ARG BUILD_DATE=unknown
+ARG APP_VERSION=unknown
 ARG INSTALL_DEV=false
 
-LABEL maintainer="Your Name <your.email@example.com>"
-LABEL description="Data-Forge Analysis Platform - Combined frontend and backend"
+LABEL org.opencontainers.image.title="Data-Forge"
+LABEL org.opencontainers.image.description="Postgres-backed Data-Forge runtime image"
+LABEL org.opencontainers.image.version="${APP_VERSION}"
+LABEL org.opencontainers.image.revision="${VCS_REF}"
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
+LABEL org.opencontainers.image.source="https://github.com/volturine/data-forge"
+LABEL org.opencontainers.image.licenses="MIT"
 
-# Create a custom user with UID 1000 and GID 1000
+RUN pip install --no-cache-dir "uv==${UV_VERSION}"
+
 RUN addgroup --gid 1000 appgroup && adduser --uid 1000 --gid 1000 --disabled-password --gecos "" appuser
 
-# Copy dependency files
 COPY backend/pyproject.toml backend/uv.lock* backend/README.md ./
 
-# Install dependencies into .venv
 RUN if [ "$INSTALL_DEV" = "true" ]; then uv sync --frozen --group dev || uv sync --group dev; else uv sync --frozen || uv sync; fi
+RUN if [ "$INSTALL_DEV" = "true" ]; then uv sync --frozen --group dev; else uv sync --frozen; fi
 
-# Copy backend code
 COPY backend/ /app/backend/
-
-# Copy frontend build from builder
 COPY --from=frontend-builder /app/frontend/build /app/frontend/build
 
-# Create data directories with proper permissions
 RUN mkdir -p /app/data/default/uploads /app/data/default/clean /app/data/default/exports /app/backend/database && \
     chmod -R 755 /app/data /app/backend/database
 
-# Fix ownership and permissions for all files
 RUN chown -R appuser:appgroup /app
 
 USER appuser
-
-# Change to backend directory for execution
 WORKDIR /app/backend
 ENV PATH="/app/backend/.venv/bin:${PATH}"
-
-# Expose port
 EXPOSE 8000
 
-# Health check using the /health endpoint
+FROM backend-base AS runtime-base
+
+COPY --chown=appuser:appgroup backend/ /app/backend/
+COPY --chown=appuser:appgroup --from=frontend-builder /app/frontend/build /app/frontend/build
+
+RUN chown -R appuser:appgroup /app/data /app/backend/database
+
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD python -c "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"
 
-CMD [ "python", "app.py" ]
+FROM runtime-base AS api
+CMD ["python", "main.py"]
+
+FROM runtime-base AS scheduler
+CMD ["python", "scheduler.py"]
+
+FROM runtime-base AS worker
+CMD ["python", "worker.py"]

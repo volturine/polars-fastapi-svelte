@@ -176,12 +176,12 @@ Evidence:
 - `backend/core/migrations.py` provides the Postgres-first migration/bootstrap path with `0001_runtime_public` and `0002_runtime_tenant`
 - `backend/tests/test_postgres_runtime_integration.py` validates schema bootstrap, advisory-lock-safe startup, Postgres notification delivery, and cross-worker runtime flows
 - `docker/docker-compose.yml` is the supported Postgres distributed runtime topology
-- `docker/docker-compose.test.yml` provides the Docker validation topology with Postgres, one supervised `app` container, runtime tests, and e2e
-- `README.md` documents Postgres-backed deployment with one supervised `app` container running API, scheduler, and dynamic build workers
+- `docker/docker-compose.test.yml` provides the Docker validation topology with Postgres plus fixed `api`, `scheduler`, and `worker` role containers, runtime tests, and e2e
+- `README.md` documents Postgres-backed deployment with fixed-role release images for API, scheduler, and worker
 
 Notes:
 
-- production topology is now migration-first, Postgres-backed, and Docker-native
+- production topology is now migration-first, Postgres-backed, Docker-native, and split into fixed runtime roles
 - examples target `postgres:18-alpine` per the PRD decision
 
 ### Phase 8: Enable Multi-Worker API
@@ -192,8 +192,8 @@ Evidence:
 
 - `backend/main.py` allows `WORKERS > 1` when distributed runtime is enabled on Postgres
 - `backend/tests/test_main.py` covers the new guard behavior
-- `backend/tests/test_postgres_runtime_integration.py` validates two API workers inside the supervised app runtime plus dynamic worker execution and cross-worker build detail, cancellation, and websocket replay
-- `backend/tests/test_docker_bootstrap.py` validates Docker startup with the supervised app runtime, multiple API workers, dynamic build-worker execution, and scheduler-triggered build execution
+- `backend/tests/test_postgres_runtime_integration.py` validates two API workers plus independent scheduler/worker runtime processes and cross-worker build detail, cancellation, and websocket replay
+- `backend/tests/test_docker_bootstrap.py` validates Docker startup with fixed API, scheduler, and worker roles, multiple API workers, dynamic build-worker execution, and scheduler-triggered build execution
 - `Justfile` includes `just docker-test` to exercise the distributed topology end to end
 
 ## Runtime Claim
@@ -201,13 +201,13 @@ Evidence:
 The repository currently supports:
 
 - supported Postgres distributed runtime deployment
-- one supervised app runtime with API, scheduler, and a dynamic worker manager
+- fixed API, scheduler, and worker runtime roles from one codebase release
 - durable build state and event replay
 - DB-backed websocket snapshots and replay
 - lease-based build job execution
 - lease-based scheduler coordination
 - migration-first Postgres bootstrap
-- Docker-native runtime validation with the supervised app topology
+- Docker-native runtime validation with the fixed-role image topology
 - release-confidence runtime/admin overview endpoint for runtime mode, API process identity, worker heartbeats, engine state, and queue status
 
 The repository still should not claim:

@@ -32,6 +32,7 @@ _NUMERIC_CONSTRAINTS: list[tuple[str, int | None, int | None]] = [
     ('upload_max_file_size_bytes', 0, None),
 ]
 _PLACEHOLDER_ENCRYPTION_KEYS = {'your-encryption-key-here'}
+_PLACEHOLDER_PASSWORDS = {'changeme123', 'changeme123!', 'replaceme123', 'replace-with-strong-password'}
 
 
 def _default_data_dir() -> Path:
@@ -245,6 +246,7 @@ class Settings(BaseSettings):
     )
     auth_frontend_url: str = Field(default='http://localhost:5173', alias='AUTH_FRONTEND_URL')
     session_max_age_days: int = Field(default=30, alias='SESSION_MAX_AGE_DAYS')
+    trusted_proxy_hops: int = Field(default=0, alias='TRUSTED_PROXY_HOPS')
 
     @property
     def cors_origins_list(self) -> list[str]:
@@ -336,6 +338,13 @@ class Settings(BaseSettings):
             raise ValueError('DEFAULT_USER_PASSWORD must contain at least one digit')
         return value
 
+    @field_validator('trusted_proxy_hops')
+    @classmethod
+    def _validate_trusted_proxy_hops(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError('TRUSTED_PROXY_HOPS must be >= 0')
+        return value
+
     @model_validator(mode='after')
     def _validate_numeric_constraints(self) -> 'Settings':
         for field_name, min_val, max_val in _NUMERIC_CONSTRAINTS:
@@ -358,6 +367,8 @@ class Settings(BaseSettings):
     @model_validator(mode='after')
     def _validate_encryption_key(self) -> 'Settings':
         encryption_key = self.settings_encryption_key.strip()
+        if self.auth_required and self.prod_mode_enabled and (not encryption_key or encryption_key in _PLACEHOLDER_ENCRYPTION_KEYS):
+            raise ValueError('SETTINGS_ENCRYPTION_KEY must be set to a non-placeholder value when AUTH_REQUIRED=true in production')
         if self.auth_required and (not encryption_key or encryption_key in _PLACEHOLDER_ENCRYPTION_KEYS):
             import warnings
 
@@ -385,6 +396,8 @@ class Settings(BaseSettings):
             raise ValueError('BUILD_WORKER_MIN_PROCESSES must be <= BUILD_WORKER_MAX_PROCESSES')
         if self.build_worker_max_processes > self.max_concurrent_engines:
             raise ValueError('BUILD_WORKER_MAX_PROCESSES must be <= MAX_CONCURRENT_ENGINES')
+        if self.prod_mode_enabled and self.auth_required and self.default_user_password.strip().lower() in _PLACEHOLDER_PASSWORDS:
+            raise ValueError('DEFAULT_USER_PASSWORD must be changed from the production placeholder value')
         return self
 
 

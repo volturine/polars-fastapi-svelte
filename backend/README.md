@@ -180,8 +180,12 @@ See [`../ENV_VARIABLES.md`](../ENV_VARIABLES.md) for the complete reference, inc
 2. Start the production runtime:
 
    ```bash
-   uv run --env-file prod.env ./app.py
+   uv run --env-file prod.env ./main.py
+   uv run --env-file prod.env ./scheduler.py
+   uv run --env-file prod.env ./worker.py
    ```
+
+For Docker releases, customers should pull the published `data-forge-api`, `data-forge-scheduler`, and `data-forge-worker` images rather than building from source.
 
 ## Troubleshooting
 

@@ -1,190 +1,210 @@
-# PRD: Docker Release All-in-One
+# PRD: Docker Release
 
 ## Overview
 
-Provide a single Docker image and `docker-compose.yml` that bundles the complete Data-Forge stack — frontend, backend, and optional PostgreSQL — so users can deploy the platform with a single `docker compose up` command. Publish versioned images to a container registry on each release.
+Provide a production-grade Docker release for Data-Forge built around one production compose file, one production env file, and published fixed-role images. Customers should install the product without building from source. Maintainers should keep using the same production compose topology for local smoke tests, with only image tags overridden to local builds.
+
+The release artifacts are:
+
+- `docker/docker-compose.yml`
+- `docker/env/prod.env`
+- published images in GitHub Container Registry
+
+The runtime topology is:
+
+- `postgres`
+- `api`
+- `scheduler`
+- `worker`
 
 ## Problem Statement
 
-The current Docker setup (`Dockerfile` + `docker-compose.yml`) builds and runs the application but has gaps for a production-ready release:
+The original Docker direction mixed several concerns:
 
-- No published Docker images — users must build from source.
-- No PostgreSQL service in `docker-compose.yml` — users wanting PostgreSQL must configure it separately.
-- No multi-architecture images (linux/amd64, linux/arm64).
-- No image tagging strategy tied to release versions.
-- The healthcheck is commented out.
-- No documentation for common deployment scenarios (standalone, with PostgreSQL, with S3).
+- single-container supervised runtime versus split runtime roles
+- customer-facing install files versus maintainer-local smoke-test files
+- source-build workflows versus published-image workflows
 
-### Current State
+That created product confusion.
 
-| Concern | Status |
-|---------|--------|
-| Multi-stage Dockerfile | ✅ Frontend build + backend runtime |
-| docker-compose.yml | ✅ Single service, local volumes |
-| Published images | ❌ Must build from source |
-| PostgreSQL service | ❌ Not included |
-| Multi-arch builds | ❌ Only build platform |
-| Healthcheck | ⚠️ Commented out |
-| Image tagging | ❌ No strategy |
+For this release, Docker should be opinionated and simple:
+
+1. There is exactly one production compose file.
+2. There is exactly one production env file.
+3. Customers install from published images, not from source.
+4. GitHub Container Registry is used only for real production release artifacts.
+5. Maintainer-local smoke tests may override image names, but must keep the same production compose topology.
 
 ## Goals
 
 | # | Goal | Success Metric |
 |---|------|----------------|
-| G-1 | One-command deployment | `docker compose up` starts full stack with zero additional setup |
-| G-2 | Published versioned images | Images available on GHCR/Docker Hub with `latest` and semver tags |
-| G-3 | Multi-arch support | Images built for linux/amd64 and linux/arm64 |
-| G-4 | Optional PostgreSQL sidecar | `docker-compose.yml` includes a PostgreSQL service with sensible defaults |
-| G-5 | Production-ready defaults | Healthcheck enabled, resource limits set, restart policies configured |
+| G-1 | Single production compose | `docker/docker-compose.yml` is the only production compose file used by both customers and maintainers |
+| G-2 | Single production env | `docker/env/prod.env` is the only production env file |
+| G-3 | No source build for customers | Customer install is `docker compose pull && docker compose up -d` |
+| G-4 | Fixed-role runtime release | Published images exist for `api`, `scheduler`, and `worker` |
+| G-5 | Release-grade security defaults | Production env template requires users to replace secrets and admin credentials |
+| G-6 | Multi-arch publish | Release images are published for `linux/amd64` and `linux/arm64` |
 
 ## Non-Goals
 
-- Kubernetes Helm chart (future)
-- Managed database provisioning (users bring their own or use the included PostgreSQL)
-- Automatic TLS/SSL termination (use a reverse proxy)
-- Horizontal auto-scaling configuration
+- Kubernetes manifests or Helm charts
+- separate production compose variants
+- separate production env variants
+- GHCR usage for local-only test images
+- a single all-in-one production container
 
 ## User Stories
 
-### US-1: Deploy with Docker Compose
+### US-1: Customer Installs Without Source
 
-> As a user, I want to run `docker compose up -d` and have a working Data-Forge instance.
-
-**Acceptance Criteria:**
-
-1. `docker-compose.yml` defines two profiles:
-   - **default**: App only (SQLite, self-contained).
-   - **postgres**: App + PostgreSQL service.
-2. Running `docker compose up -d` starts the default profile with SQLite.
-3. Running `docker compose --profile postgres up -d` starts the app with PostgreSQL.
-4. Data persists across restarts via named volumes.
-5. The app is accessible on `http://localhost:8000` after startup.
-6. Healthcheck passes within 30 seconds of container start.
-
-### US-2: Use Published Docker Image
-
-> As a user, I want to pull a pre-built image instead of building from source.
+> As a customer, I want to deploy Data-Forge without cloning the repository or building images myself.
 
 **Acceptance Criteria:**
 
-1. Images published to `ghcr.io/volturine/data-forge` (or configured registry).
-2. Tags: `latest`, `v1.2.3`, `v1.2`, `v1`.
-3. `docker-compose.yml` references the published image with a `build:` fallback.
-4. Users can override the image tag via `.env`: `IMAGE_TAG=v1.2.3`.
+1. Customer copies `docker/docker-compose.yml` and `docker/env/prod.env`.
+2. Customer renames `docker/env/prod.env` to `.env` or passes it as the compose env file.
+3. Customer edits only env values such as passwords, secrets, and image tags.
+4. Customer runs:
 
-### US-3: Deploy with PostgreSQL
+   ```bash
+   docker compose pull
+   docker compose up -d
+   ```
 
-> As a user, I want to use PostgreSQL for metadata storage alongside the Data-Forge app.
+5. The app becomes reachable on port `8000`.
+6. No customer step requires `docker build`, `uv`, `bun`, or a source checkout.
+
+### US-2: Maintainer Smokes Local Production Topology
+
+> As a maintainer, I want to test the real production topology locally before release.
 
 **Acceptance Criteria:**
 
-1. PostgreSQL service uses `postgres:16-alpine` image.
-2. Database, user, and password configurable via `.env`.
-3. App `DATABASE_URL` automatically references the PostgreSQL service.
-4. PostgreSQL data persists in a named volume.
-5. App waits for PostgreSQL readiness before starting (healthcheck dependency).
-6. `.env.example` includes commented PostgreSQL configuration block.
+1. `just docker-prod` builds local role images.
+2. `just docker-prod` still runs `docker/docker-compose.yml`.
+3. `just docker-prod` still reads `docker/env/prod.env`.
+4. `just docker-prod` overrides only image names/tags at runtime to point to locally built images.
+5. No extra production compose file or production env file is introduced for local smoke testing.
+
+### US-3: Publish Production Images
+
+> As a maintainer, I want GitHub releases to publish the production Docker artifacts automatically.
+
+**Acceptance Criteria:**
+
+1. Tag push `vX.Y.Z` publishes:
+   - `ghcr.io/volturine/data-forge-api:X.Y.Z`
+   - `ghcr.io/volturine/data-forge-scheduler:X.Y.Z`
+   - `ghcr.io/volturine/data-forge-worker:X.Y.Z`
+2. Images are multi-arch.
+3. GHCR is used only for production release artifacts.
+4. Local maintainer smoke tests do not require publishing temporary images to GHCR.
 
 ## Technical Design
 
-### docker-compose.yml Structure
+### Runtime Shape
 
-```yaml
-services:
-  app:
-    image: ghcr.io/volturine/data-forge:${IMAGE_TAG:-latest}
-    build: .
-    ports:
-      - "${PORT:-8000}:8000"
-    environment:
-      - DATABASE_URL=${DATABASE_URL:-sqlite:///data/app.db}
-      - DATA_DIR=/data
-    volumes:
-      - app-data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "${CPU_LIMIT:-4.0}"
-          memory: "${MEMORY_LIMIT:-8g}"
+The Docker production topology is fixed-role, not supervised single-container:
 
-  postgres:
-    image: postgres:16-alpine
-    profiles: ["postgres"]
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-dataforge}
-      POSTGRES_USER: ${POSTGRES_USER:-dataforge}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
-    volumes:
-      - pg-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dataforge}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-volumes:
-  app-data:
-  pg-data:
+```text
+Browser
+  |
+  v
+api
+  |
+  v
+Postgres
+  ^
+  |
+scheduler
+worker
 ```
 
-### CI/CD Image Publishing
+Notes:
 
-Add a GitHub Actions workflow (`.github/workflows/docker-publish.yml`):
+- `api` serves HTTP and websockets.
+- `scheduler` claims due schedules and enqueues jobs.
+- `worker` owns build execution and dynamic worker subprocesses.
+- `postgres` is required for the supported Docker production path.
 
-1. Triggered on: push to `master` with version tags (`v*`), manual dispatch.
-2. Build multi-arch images using `docker/build-push-action` with QEMU.
-3. Push to GHCR with tags derived from git ref.
-4. Cache layers across builds for speed.
+### Compose Contract
 
-### Dockerfile Improvements
+`docker/docker-compose.yml` is the only production compose file.
 
-- Uncomment and configure healthcheck.
-- Add `LABEL` metadata (version, description, source URL).
-- Ensure `curl` is available in final image for healthcheck.
-- Pin base image digests for reproducibility.
+Requirements:
 
-### Environment File
+1. It must reference only image names, never `build:`.
+2. It must define the four services above.
+3. It must be suitable for both customer installs and maintainer-local smoke tests.
+4. Maintainer-local smoke tests may override image tags through shell env, but may not swap to another compose file.
 
-Provide `docker.env.example` with all deployment-relevant variables:
+### Env Contract
+
+`docker/env/prod.env` is the only production env file.
+
+Requirements:
+
+1. It must contain published-image defaults.
+2. It must be customer-facing.
+3. It must use placeholder secrets that force explicit replacement.
+4. It must document the fixed-role image names:
+   - `DF_API_IMAGE`
+   - `DF_SCHEDULER_IMAGE`
+   - `DF_WORKER_IMAGE`
+
+### Dockerfile Contract
+
+`docker/Dockerfile` builds three final targets from one codebase:
+
+- `api`
+- `scheduler`
+- `worker`
+
+Requirements:
+
+1. Shared layers should be reused across the three targets.
+2. Base/toolchain versions should be pinned.
+3. OCI labels should be present.
+4. Healthchecks should remain enabled for the API image.
+
+### Registry Publishing
+
+GitHub Actions publishes fixed-role images to GHCR on production release tags.
+
+Rules:
+
+1. Publish only on release tags or explicit release workflow triggers.
+2. Do not publish local smoke-test images.
+3. Use immutable version tags.
+4. Support multi-arch builds.
+
+## Environment Example
+
+`docker/env/prod.env` should look like this shape:
 
 ```env
-# Image
-IMAGE_TAG=latest
+DF_API_IMAGE=ghcr.io/volturine/data-forge-api:1.0.0
+DF_SCHEDULER_IMAGE=ghcr.io/volturine/data-forge-scheduler:1.0.0
+DF_WORKER_IMAGE=ghcr.io/volturine/data-forge-worker:1.0.0
 
-# App
-PORT=8000
-DATA_DIR=/data
-DEBUG=false
+DF_POSTGRES_PASSWORD=replace-with-strong-password
+DF_DATABASE_URL=postgresql+psycopg://dataforge:replace-with-strong-password@postgres:5432/dataforge
 
-# Database (default: SQLite)
-DATABASE_URL=sqlite:///data/app.db
-
-# Uncomment for PostgreSQL (use with --profile postgres)
-# DATABASE_URL=postgresql+psycopg://dataforge:changeme@postgres:5432/dataforge
-# POSTGRES_DB=dataforge
-# POSTGRES_USER=dataforge
-# POSTGRES_PASSWORD=changeme
-
-# Resources
-CPU_LIMIT=4.0
-MEMORY_LIMIT=8g
+DF_AUTH_REQUIRED=true
+DF_DEFAULT_USER_PASSWORD=replace-with-strong-password
+DF_SETTINGS_ENCRYPTION_KEY=replace-with-long-random-secret
 ```
 
 ## Acceptance Criteria
 
-- [ ] `docker compose up -d` starts the app with SQLite, accessible on port 8000
-- [ ] `docker compose --profile postgres up -d` starts app + PostgreSQL, app uses PostgreSQL
-- [ ] Healthcheck passes within 30 seconds
-- [ ] Published multi-arch image pullable from GHCR
-- [ ] Version tags (`v1.0.0`) produce correctly tagged images
-- [ ] Data persists across `docker compose down && docker compose up`
-- [ ] `docker.env.example` documents all configurable variables
-- [ ] README updated with deployment instructions
+- [ ] `docker/docker-compose.yml` is the only production compose file in the repository
+- [ ] `docker/env/prod.env` is the only production env file in the repository
+- [ ] Customer install requires only `docker compose pull` and `docker compose up -d`
+- [ ] Customer install does not require source build
+- [ ] `just docker-prod` uses the same production compose file and same production env file
+- [ ] `just docker-prod` overrides only image tags to local builds
+- [ ] Production runtime is split into `api`, `scheduler`, and `worker`
+- [ ] GHCR publishes only production release images
+- [ ] Published images are multi-arch
+- [ ] Production env template uses placeholder secrets and credentials that must be replaced

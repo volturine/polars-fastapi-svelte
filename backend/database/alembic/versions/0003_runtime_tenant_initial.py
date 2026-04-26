@@ -1,6 +1,6 @@
-"""add datasource column metadata.
+"""runtime tenant initialization additions.
 
-Revision ID: 0003_runtime_tenant_column_metadata
+Revision ID: 0003_runtime_tenant_initial
 Revises: 0002_runtime_tenant
 Create Date: 2026-04-25
 
@@ -11,7 +11,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = '0003_runtime_tenant_column_metadata'
+revision: str = '0003_runtime_tenant_initial'
 down_revision: str | Sequence[str] | None = '0002_runtime_tenant'
 branch_labels: str | Sequence[str] | None = ('tenant',)
 depends_on: str | Sequence[str] | None = None
@@ -27,6 +27,7 @@ def _scope() -> str:
 def upgrade() -> None:
     if _scope() != 'tenant':
         return
+    op.add_column('datasources', sa.Column('description', sa.String(length=4000), nullable=True))
     op.create_table(
         'datasource_column_metadata',
         sa.Column('id', sa.String(), nullable=False),
@@ -47,3 +48,4 @@ def downgrade() -> None:
         return
     op.drop_index('ix_datasource_column_metadata_datasource_id', table_name='datasource_column_metadata')
     op.drop_table('datasource_column_metadata')
+    op.drop_column('datasources', 'description')

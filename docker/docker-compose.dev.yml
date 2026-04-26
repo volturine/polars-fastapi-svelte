@@ -78,6 +78,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      api:
+        condition: service_started
     environment:
       <<: *app-env
       WORKERS: "1"
@@ -97,6 +99,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      api:
+        condition: service_started
     environment:
       <<: *app-env
       WORKERS: "1"

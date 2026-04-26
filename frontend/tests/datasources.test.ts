@@ -6,7 +6,8 @@ import { screenshot } from './utils/visual.js';
 import {
 	selectDatasourceAndWaitForConfig,
 	openSchemaTabAndWait,
-	waitForDatasourceList
+	waitForDatasourceList,
+	waitForLayoutReady
 } from './utils/readiness.js';
 
 /**
@@ -132,6 +133,12 @@ test.describe('Datasources – list & management', () => {
 test.describe('Datasources – upload page', () => {
 	test('upload page shows description fields for file and database flows', async ({ page }) => {
 		await page.goto('/datasources/new');
+		await waitForLayoutReady(page);
+		await page.locator('#file-input').setInputFiles({
+			name: 'upload-description.csv',
+			mimeType: 'text/csv',
+			buffer: Buffer.from('id,name\n1,Alice\n')
+		});
 		await expect(page.locator('#file-description')).toBeVisible();
 		await page.getByRole('button', { name: 'External DB' }).click();
 		await expect(page.locator('#db-description')).toBeVisible();
@@ -249,9 +256,11 @@ test.describe('Datasources – detail view', () => {
 		await openSchemaTabAndWait(page);
 
 		const config = page.locator('[data-ds-config]');
-		await config.getByRole('button', { name: 'Edit description for city' }).click();
+		const editButton = config.getByRole('button', { name: 'Edit description for city' });
+		await editButton.click();
 		await config.locator('textarea').fill('Primary city label used for regional rollups');
 		await config.getByRole('button', { name: 'Save' }).click();
+		await expect(editButton).toBeVisible({ timeout: 10_000 });
 
 		await expect(config.locator('[data-schema-description="city"]')).toContainText(
 			'Primary city label used for regional rollups'

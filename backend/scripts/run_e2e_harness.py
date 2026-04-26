@@ -24,6 +24,7 @@ def _load_env() -> dict[str, str]:
             continue
         key, value = line.split('=', 1)
         env[key] = value.strip().strip('"')
+    env.pop('NO_COLOR', None)
     env.setdefault('PLAYWRIGHT_DISABLE_WEB_SERVER', 'true')
     return env
 
@@ -164,7 +165,6 @@ def main() -> int:
         if not _wait_for_port(backend_port, timeout=90) or not _wait_for_port(frontend_port, timeout=90):
             print('Timed out waiting for backend/frontend to start for e2e tests', file=sys.stderr)
             return 1
-        time.sleep(5)
         return _run_playwright(env)
     finally:
         _kill_tree(frontend_proc)

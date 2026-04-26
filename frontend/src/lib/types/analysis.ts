@@ -107,6 +107,7 @@ export interface AnalysisTemplateSummary {
 }
 
 export interface AnalysisTemplateDetail extends AnalysisTemplateSummary {
+	required_input_columns: string[];
 	steps: Array<{
 		type: PipelineStepType;
 		config: Record<string, unknown>;

@@ -140,6 +140,7 @@
 	let descriptionDraft = $state('');
 	let descriptionError = $state<string | null>(null);
 	let descriptionExpanded = $state<Record<string, boolean>>({});
+	let currentDatasourceId = $state<string | null>(null);
 
 	const descriptionMutation = createMutation(() => ({
 		mutationFn: async (payload: { columnName: string; description: string | null }) => {
@@ -160,11 +161,12 @@
 		}
 	}));
 
-	// Subscription: $derived can't reset state on datasource changes.
-	// Subscription: $derived can't sync schema into local state.
+	// Subscription: $derived can't reset state only when the selected datasource changes.
 	$effect(() => {
 		const ds = datasource;
 		if (!ds) return;
+		if (currentDatasourceId === ds.id) return;
+		currentDatasourceId = ds.id;
 
 		// Reset all state for new datasource
 		name = ds.name;

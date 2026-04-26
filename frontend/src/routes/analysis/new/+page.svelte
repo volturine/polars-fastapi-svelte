@@ -18,6 +18,7 @@
 	import SnapshotPicker from '$lib/components/datasources/SnapshotPicker.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import { css, spinner } from '$lib/styles/panda';
+	import { configStore } from '$lib/stores/config.svelte';
 	import { useNamespace } from '$lib/stores/namespace.svelte';
 	import type {
 		AnalysisCreate,
@@ -120,6 +121,7 @@
 		})
 	);
 	const configuredProviders = $derived(aiProvidersQuery.data ?? []);
+	const defaultOutputNamespace = $derived(configStore.config?.default_namespace ?? ns.value);
 	const steps = $derived.by(() => {
 		if (mode === 'clone') return ['Start', 'Clone', 'Review'];
 		if (mode === 'import') return ['Start', 'Import', 'Review'];
@@ -197,6 +199,15 @@
 			size: stepCount >= 8 ? 'High' : stepCount >= 4 ? 'Medium' : 'Low'
 		};
 	});
+	const estimatedOutputSize = $derived.by(() => {
+		const rowCount = selectedDatasources.reduce((total, datasource) => {
+			const raw = datasource.schema_cache?.row_count;
+			return total + (typeof raw === 'number' ? raw : 0);
+		}, 0);
+		if (rowCount >= 1_000_000 || complexity.steps >= 10) return 'Large';
+		if (rowCount >= 100_000 || complexity.steps >= 5) return 'Medium';
+		return 'Small';
+	});
 
 	function getDatasourceById(id: string): DataSource | null {
 		return datasources.find((ds) => ds.id === id) ?? null;
@@ -237,7 +248,8 @@
 		return buildOutputConfig({
 			outputId: uuid(),
 			name: outputName,
-			branch
+			branch,
+			namespace: defaultOutputNamespace
 		});
 	}
 
@@ -300,7 +312,7 @@
 				output: {
 					...output,
 					iceberg: {
-						namespace: output.iceberg?.namespace ?? 'outputs',
+						namespace: output.iceberg?.namespace ?? defaultOutputNamespace,
 						table_name: output.iceberg?.table_name ?? slugify(output.filename),
 						branch: output.iceberg?.branch ?? branch
 					}
@@ -332,11 +344,13 @@
 		const tableNames = new SvelteSet<string>();
 		for (const tab of tabs) {
 			const filename = tab.output.filename.trim();
+			const namespace = tab.output.iceberg?.namespace?.trim() ?? '';
 			const tableName = tab.output.iceberg?.table_name?.trim() ?? '';
 			if (!filename) errors.push(`${tab.name}: output name is required`);
 			if (filename && filenames.has(filename))
 				errors.push(`${tab.name}: output names must be unique`);
 			filenames.add(filename);
+			if (!namespace) errors.push(`${tab.name}: namespace is required`);
 			if (!/^[a-z0-9_]+$/.test(tableName))
 				errors.push(`${tab.name}: table name must be snake_case`);
 			if (tableName && tableNames.has(tableName))
@@ -547,7 +561,7 @@
 
 	function updateOutput(
 		index: number,
-		field: 'filename' | 'table_name' | 'build_mode',
+		field: 'filename' | 'namespace' | 'table_name' | 'build_mode',
 		value: string
 	): void {
 		const tab = designTabs[index];
@@ -556,9 +570,17 @@
 			tab.output.filename = value;
 			return;
 		}
+		if (field === 'namespace') {
+			tab.output.iceberg = {
+				namespace: value,
+				table_name: tab.output.iceberg?.table_name ?? slugify(tab.output.filename),
+				branch: tab.output.iceberg?.branch ?? tab.datasource.config.branch
+			};
+			return;
+		}
 		if (field === 'table_name') {
 			tab.output.iceberg = {
-				namespace: tab.output.iceberg?.namespace ?? 'outputs',
+				namespace: tab.output.iceberg?.namespace ?? defaultOutputNamespace,
 				table_name: value,
 				branch: tab.output.iceberg?.branch ?? tab.datasource.config.branch
 			};
@@ -961,7 +983,14 @@
 								{#if templateSummary}
 									<div class={css({ marginTop: '4', borderTopWidth: '1', paddingTop: '4' })}>
 										<div class={css({ fontWeight: 'semibold', marginBottom: '2' })}>Preview</div>
-										<div class={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}>
+										<div
+											class={css({
+												display: 'flex',
+												flexWrap: 'wrap',
+												gap: '2',
+												alignItems: 'center'
+											})}
+										>
 											<span
 												class={css({
 													borderWidth: '1',
@@ -972,6 +1001,7 @@
 											>
 												source
 											</span>
+											<span class={css({ color: 'fg.tertiary', fontSize: 'xs' })}>→</span>
 											{#each templateDetailQuery.data?.steps ?? [] as stepPreview (stepPreview.type)}
 												<span
 													class={css({
@@ -984,6 +1014,7 @@
 												>
 													{stepPreview.type}
 												</span>
+												<span class={css({ color: 'fg.tertiary', fontSize: 'xs' })}>→</span>
 											{/each}
 											<span
 												class={css({
@@ -996,6 +1027,34 @@
 												output
 											</span>
 										</div>
+										{#if (templateDetailQuery.data?.required_input_columns?.length ?? 0) > 0}
+											<div class={css({ marginTop: '3', display: 'grid', gap: '1' })}>
+												<div
+													class={css({
+														fontSize: 'xs',
+														fontWeight: 'semibold',
+														color: 'fg.tertiary'
+													})}
+												>
+													Required input columns
+												</div>
+												<div class={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}>
+													{#each templateDetailQuery.data?.required_input_columns ?? [] as columnHint (columnHint)}
+														<span
+															class={css({
+																borderWidth: '1',
+																paddingX: '2',
+																paddingY: '1',
+																fontSize: 'xs',
+																backgroundColor: 'bg.secondary'
+															})}
+														>
+															{columnHint}
+														</span>
+													{/each}
+												</div>
+											</div>
+										{/if}
 									</div>
 								{/if}
 							{/if}
@@ -1098,6 +1157,23 @@
 											/>
 										</label>
 										<label class={css({ display: 'grid', gap: '1' })}>
+											<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Namespace</span>
+											<input
+												class={css({
+													borderWidth: '1',
+													backgroundColor: 'bg.primary',
+													padding: '2'
+												})}
+												value={tab.output.iceberg?.namespace ?? ''}
+												oninput={(event) =>
+													updateOutput(
+														index,
+														'namespace',
+														(event.currentTarget as HTMLInputElement).value
+													)}
+											/>
+										</label>
+										<label class={css({ display: 'grid', gap: '1' })}>
 											<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>Table name</span>
 											<input
 												class={css({
@@ -1163,12 +1239,20 @@
 								<div><strong>Sources:</strong> {selectedDatasourceIds.length}</div>
 								<div><strong>Steps:</strong> {complexity.steps}</div>
 								<div><strong>Complexity:</strong> {complexity.size}</div>
+								<div><strong>Estimated output size:</strong> {estimatedOutputSize}</div>
 							</div>
 							<div class={css({ display: 'grid', gap: '3' })}>
 								{#each designTabs as tab (tab.id)}
 									<div class={css({ borderWidth: '1', padding: '4', display: 'grid', gap: '2' })}>
 										<div class={css({ fontWeight: 'semibold' })}>{tab.name}</div>
-										<div class={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}>
+										<div
+											class={css({
+												display: 'flex',
+												flexWrap: 'wrap',
+												gap: '2',
+												alignItems: 'center'
+											})}
+										>
 											<span
 												class={css({
 													borderWidth: '1',
@@ -1183,6 +1267,7 @@
 													]
 												)?.name ?? 'datasource'}
 											</span>
+											<span class={css({ color: 'fg.tertiary', fontSize: 'xs' })}>→</span>
 											{#each tab.steps as stepPreview (stepPreview.id)}
 												<span
 													class={css({
@@ -1195,6 +1280,7 @@
 												>
 													{stepPreview.type}
 												</span>
+												<span class={css({ color: 'fg.tertiary', fontSize: 'xs' })}>→</span>
 											{/each}
 											<span
 												class={css({
@@ -1204,7 +1290,8 @@
 													fontSize: 'xs'
 												})}
 											>
-												{tab.output.filename}
+												{tab.output.iceberg?.namespace ?? defaultOutputNamespace}.{tab.output
+													.iceberg?.table_name ?? tab.output.filename}
 											</span>
 										</div>
 									</div>

@@ -1,3 +1,4 @@
+import fcntl
 import threading
 from collections import OrderedDict
 from collections.abc import Callable, Generator
@@ -413,8 +414,9 @@ def _run_postgres_init_locked(func) -> None:
 def _init_settings_db() -> None:
     if settings.is_postgres:
         return
-    _create_shared_tables_sqlite()
-    _seed_shared_state()
+    with _sqlite_shared_init_lock():
+        _create_shared_tables_sqlite()
+        _seed_shared_state()
 
 
 def _init_namespace_db(namespace: str) -> None:
@@ -422,11 +424,34 @@ def _init_namespace_db(namespace: str) -> None:
         _init_namespace_db_unlocked(namespace)
 
 
+@contextmanager
+def _sqlite_init_lock(namespace: str) -> Generator[None]:
+    lock_path = namespace_paths(namespace).base_dir / '.init.lock'
+    with open(lock_path, 'w') as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+@contextmanager
+def _sqlite_shared_init_lock() -> Generator[None]:
+    lock_path = namespace_paths(settings.default_namespace).base_dir / '.settings.init.lock'
+    with open(lock_path, 'w') as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
 def _init_namespace_db_unlocked(namespace: str) -> None:
     if settings.is_postgres:
         _init_postgres_namespace(namespace)
         return
-    _create_tenant_tables_sqlite(namespace)
+    with _sqlite_init_lock(namespace):
+        _create_tenant_tables_sqlite(namespace)
 
 
 def _bootstrap_sqlite() -> None:

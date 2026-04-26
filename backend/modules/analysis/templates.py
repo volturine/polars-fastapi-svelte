@@ -13,6 +13,7 @@ class AnalysisTemplate:
     name: str
     description: str
     icon: str
+    required_input_columns: tuple[str, ...]
     steps: tuple[dict[str, Any], ...]
 
     def to_summary(self) -> dict[str, Any]:
@@ -27,6 +28,7 @@ class AnalysisTemplate:
     def to_detail(self) -> dict[str, Any]:
         return {
             **self.to_summary(),
+            'required_input_columns': list(self.required_input_columns),
             'steps': [dict(step) for step in self.steps],
         }
 
@@ -47,6 +49,7 @@ def load_builtin_templates() -> tuple[AnalysisTemplate, ...]:
                 name=str(item['name']),
                 description=str(item['description']),
                 icon=str(item.get('icon', 'file')),
+                required_input_columns=tuple(str(value) for value in item.get('required_input_columns', [])),
                 steps=steps,
             ),
         )

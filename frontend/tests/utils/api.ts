@@ -167,27 +167,16 @@ const frontendOrigin = process.env.PLAYWRIGHT_FRONTEND_ORIGIN || `http://localho
 const apiStorageOrigin = new URL(API_BASE).origin;
 const cookieDomain = process.env.PLAYWRIGHT_COOKIE_DOMAIN || 'localhost';
 
-interface StorageStateOptions {
-	apiOrigin?: string;
-	cookieDomain?: string;
-	frontendOrigin?: string;
-}
-
 export function buildStorageState(
-	sessionToken: string | undefined,
-	options?: StorageStateOptions
+	sessionToken: string | undefined
 ): NonNullable<BrowserContextOptions['storageState']> {
-	const resolvedApiOrigin = options?.apiOrigin ?? apiStorageOrigin;
-	const resolvedCookieDomain = options?.cookieDomain ?? cookieDomain;
-	const resolvedFrontendOrigin = options?.frontendOrigin ?? frontendOrigin;
-
 	return {
 		cookies: sessionToken
 			? [
 					{
 						name: 'session_token',
 						value: sessionToken,
-						domain: resolvedCookieDomain,
+						domain: cookieDomain,
 						path: '/',
 						expires: -1,
 						httpOnly: true,
@@ -197,8 +186,8 @@ export function buildStorageState(
 				]
 			: [],
 		origins: [
-			{ origin: resolvedApiOrigin, localStorage: [] },
-			{ origin: resolvedFrontendOrigin, localStorage: [] }
+			{ origin: apiStorageOrigin, localStorage: [] },
+			{ origin: frontendOrigin, localStorage: [] }
 		]
 	} satisfies NonNullable<BrowserContextOptions['storageState']>;
 }
@@ -722,7 +711,14 @@ export async function createLongRunningAnalysis(
 				expressions: [
 					{
 						name: 'city_name',
-						expression: 'pl.col("city") + "-" + pl.col("name")'
+						type: 'udf',
+						args: ['city', 'name'],
+						code:
+							'def udf(column_city, column_name):\n' +
+							'    total = 0\n' +
+							'    for i in range(50):\n' +
+							'        total += i\n' +
+							'    return column_city + "-" + column_name + str(total)\n'
 					}
 				]
 			},
@@ -757,12 +753,10 @@ export async function createLongRunningAnalysis(
 		},
 		{
 			id: pivotId,
-			type: 'pivot',
+			type: 'sort',
 			config: {
-				pivot_column: 'city',
-				value_column: 'avg_age',
-				index_columns: [],
-				aggregation: 'first'
+				columns: ['avg_age'],
+				descending: [true]
 			},
 			depends_on: [groupById],
 			is_applied: true

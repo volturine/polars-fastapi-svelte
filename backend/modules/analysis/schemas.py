@@ -148,6 +148,7 @@ class AnalysisTemplateSummarySchema(BaseModel):
 
 
 class AnalysisTemplateDetailSchema(AnalysisTemplateSummarySchema):
+    required_input_columns: list[str] = Field(default_factory=list)
     steps: list[dict[str, Any]] = Field(default_factory=list)
 
 

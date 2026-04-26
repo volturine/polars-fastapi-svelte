@@ -628,13 +628,13 @@ def import_analysis(
     data: ImportAnalysisSchema,
     owner_id: str | None = None,
 ) -> AnalysisResponseSchema:
-    missing = _collect_missing_import_datasources(session, data.pipeline)
+    rewritten = _rewrite_import_payload(data.pipeline, data.datasource_remap)
+    missing = _collect_missing_import_datasources(session, rewritten)
     if missing:
         raise AnalysisValidationError(
             'Imported pipeline references datasources that do not exist',
             details={'missing_datasource_ids': missing},
         )
-    rewritten = _rewrite_import_payload(data.pipeline, data.datasource_remap)
     tabs = rewritten.get('tabs')
     if not isinstance(tabs, list):
         raise ValueError("Imported pipeline must contain a 'tabs' array")

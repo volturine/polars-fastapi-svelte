@@ -158,7 +158,7 @@ Evidence:
 - `backend/scripts/scan_warnings.py` scans command output for forbidden warning and error patterns
 - `backend/config/warning-allowlist.json` exists and remains empty
 - `Justfile` routes `just verify`, `just test`, and `just test-e2e` through the warning scanner
-- `backend/scripts/run_e2e_harness.py` emits one combined harness stream so warning scanning covers backend, worker, scheduler, frontend, and Playwright output
+- `just test-e2e-raw` emits the combined runtime/frontend/Playwright stream so warning scanning covers backend, worker, scheduler, frontend, and Playwright output
 - `backend/e2e.env` avoids the `NO_COLOR` and `FORCE_COLOR` conflict documented in the PRD
 
 Notes:

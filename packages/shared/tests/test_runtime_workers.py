@@ -256,11 +256,6 @@ async def test_run_build_worker_process_starts_runtime_listener(monkeypatch) -> 
     async def fake_init_db() -> None:
         calls.append(('init_db', None))
 
-    async def fake_start_api_server() -> object:
-        server = object()
-        calls.append(('start_api_server', server))
-        return server
-
     async def fake_serve_api_notifications(server: object, local_stop: asyncio.Event, handler) -> None:
         calls.append(('serve_api_notifications', server))
         assert local_stop is stop_event
@@ -284,6 +279,7 @@ async def test_run_build_worker_process_starts_runtime_listener(monkeypatch) -> 
         raising=False,
     )
     monkeypatch.setattr(runtime_process, 'init_db', fake_init_db)
+    monkeypatch.setattr(runtime_process.runtime_ipc, 'serve_api_notifications', fake_serve_api_notifications)
     monkeypatch.setattr(runtime_process, 'build_worker_loop', fake_build_worker_loop)
     monkeypatch.setattr(runtime_process, 'build_worker_id', lambda: 'worker-1')
     monkeypatch.setattr(

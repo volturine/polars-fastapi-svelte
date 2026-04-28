@@ -421,7 +421,7 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
     pipeline: dict | None = None
     starter: schemas.BuildStarter | None = None
     request_payload: schemas.BuildRequest | None = None
-    namespace = get_namespace()
+    namespace: str | None = None
     try:
         run = build_run_service.get_build_run(session, build_id)
         if run is None:
@@ -455,7 +455,7 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
     finally:
         session.close()
         session_gen.close()
-    if build is None or pipeline is None or starter is None or request_payload is None:
+    if build is None or pipeline is None or starter is None or request_payload is None or namespace is None:
         return
     await _publish_build_notification(namespace, build_id, latest_sequence=0)
     current_kind = build.current_kind or ''

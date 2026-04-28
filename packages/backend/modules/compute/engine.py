@@ -322,6 +322,9 @@ class PolarsComputeEngine:
         """Shutdown the compute subprocess."""
         if not self.is_running:
             self._close_queues()
+            self.command_queue = self._mp_context.Queue()
+            self.result_queue = self._mp_context.Queue()
+            self.progress_queue = self._mp_context.Queue()
             return
 
         try:
@@ -342,6 +345,9 @@ class PolarsComputeEngine:
                 self.process.close()
 
         self._close_queues()
+        self.command_queue = self._mp_context.Queue()
+        self.result_queue = self._mp_context.Queue()
+        self.progress_queue = self._mp_context.Queue()
         self.is_running = False
         self.process = None
 

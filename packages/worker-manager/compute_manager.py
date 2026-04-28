@@ -105,7 +105,6 @@ class ProcessManager:
                         break
 
                     self._engine_events[key] = threading.Event()
-                    wait_event = None
                     if info:
                         logger.info(f'Resource config changed for analysis {analysis_id}, restarting engine')
                         shutdown_target = info.engine

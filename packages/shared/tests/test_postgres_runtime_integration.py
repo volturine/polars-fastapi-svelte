@@ -184,7 +184,9 @@ def _wait_for_running_engine_run(client, build_id: str, *, timeout: float = 180)
             detail = dict(response.json())
             engine_run_id = detail.get('current_engine_run_id')
             if detail.get('status') == 'running' and isinstance(engine_run_id, str) and engine_run_id:
-                return detail
+                run_response = client.get(f'/api/v1/engine-runs/{engine_run_id}')
+                if run_response.status_code == 200 and run_response.json().get('status') == 'running':
+                    return detail
             if detail.get('status') in {'completed', 'failed', 'cancelled'}:
                 raise AssertionError(f'Build {build_id} reached terminal state before cancellation: {detail}')
         time.sleep(0.5)
@@ -200,7 +202,7 @@ def _slow_steps() -> list[dict[str, object]]:
             'id': step_id,
             'type': 'filter',
             'config': {
-                'conditions': [{'column': 'score', 'operator': 'greater_than', 'value': index, 'value_type': 'number'}],
+                'conditions': [{'column': 'score', 'operator': '>', 'value': index, 'value_type': 'number'}],
                 'logic': 'AND',
             },
             'depends_on': [prev] if prev is not None else [],

@@ -1,12 +1,12 @@
 from fastapi import APIRouter
 from modules.ai import router as ai_router
-from modules.analysis import router as analysis_router
-from modules.analysis_versions import router as analysis_versions_router
+from modules.analysis.routes import router as analysis_router
+from modules.analysis_versions.routes import router as analysis_versions_router
 from modules.auth import router as auth_router
 from modules.chat import router as chat_router
 from modules.compute.routes import router as compute_router
 from modules.config import router as config_router
-from modules.datasource import router as datasource_router
+from modules.datasource.routes import router as datasource_router
 from modules.engine_runs.routes import router as engine_runs_router
 from modules.health.routes import router as health_router
 from modules.healthcheck import router as healthcheck_router

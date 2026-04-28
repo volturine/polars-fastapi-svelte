@@ -44,9 +44,8 @@ async def scheduler_loop(
             done, pending = await asyncio.wait({wait_task, stop_task, sleep_task}, return_when=asyncio.FIRST_COMPLETED)
             for task in pending:
                 task.cancel()
-            for task in pending:
-                with contextlib.suppress(asyncio.CancelledError):
-                    await task
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
             for task in done:
                 with contextlib.suppress(asyncio.CancelledError):
                     value = await task
@@ -54,8 +53,7 @@ async def scheduler_loop(
                         last_seen = value
     finally:
         heartbeat_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await heartbeat_task
+        await asyncio.gather(heartbeat_task, return_exceptions=True)
         _stop_worker(worker_id)
 
 

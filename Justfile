@@ -125,7 +125,20 @@ test-e2e-raw:
     (cd packages/worker-manager && exec uv run --no-env-file main.py) & WORKER_PID=$!
     (cd packages/scheduler && exec uv run --no-env-file main.py) & SCHEDULER_PID=$!
     (cd packages/frontend && bun run predev && exec node ./node_modules/vite/bin/vite.js dev) & FRONTEND_PID=$!
-    for port in "$PORT" "$FRONTEND_PORT"; do deadline=$((SECONDS + 90)); until (exec 3<>"/dev/tcp/127.0.0.1/$port") >/dev/null 2>&1; do if [ "$SECONDS" -ge "$deadline" ]; then echo "Timed out waiting for port $port" >&2; exit 1; fi; sleep 1; done; done
+    wait_for_url() {
+        local url="$1"
+        local label="$2"
+        local deadline=$((SECONDS + 90))
+        until curl -fsS "$url" >/dev/null; do
+            if [ "$SECONDS" -ge "$deadline" ]; then
+                echo "Timed out waiting for ${label} at ${url}" >&2
+                exit 1
+            fi
+            sleep 1
+        done
+    }
+    wait_for_url "http://127.0.0.1:${PORT}/health/ready" "backend readiness"
+    wait_for_url "http://127.0.0.1:${FRONTEND_PORT}" "frontend"
     cd packages/frontend && PLAYWRIGHT_DISABLE_WEB_SERVER=true npx playwright test
 
 # Run backend tests

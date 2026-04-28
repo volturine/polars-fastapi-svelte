@@ -134,7 +134,7 @@ async def run_build_worker_process(
         )
     )
     try:
-        await task
+        return await task
     finally:
         local_stop.set()
         if not task.done():
@@ -178,11 +178,9 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
                 done, pending = await asyncio.wait({wait_task, stop_task}, return_when=asyncio.FIRST_COMPLETED)
                 for task in pending:
                     task.cancel()
-                for task in pending:
-                    with contextlib.suppress(asyncio.CancelledError):
-                        await task
+                if pending:
+                    await asyncio.gather(*pending, return_exceptions=True)
                 if stop_task in done:
-                    await stop_task
                     continue
                 with contextlib.suppress(asyncio.CancelledError):
                     value = await wait_task

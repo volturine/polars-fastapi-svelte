@@ -17,3 +17,5 @@ node_modules/
 .opencode/package-lock.json
 
 .docker/
+
+*__pycache__/

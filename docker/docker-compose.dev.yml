@@ -65,15 +65,7 @@ services:
       - "${DF_API_PORT}:8000"
     volumes:
       - data:/app/data
-      - ../backend/api:/app/backend/api
-      - ../backend/config:/app/backend/config
-      - ../backend/core:/app/backend/core
-      - ../backend/database:/app/backend/database
-      - ../backend/modules:/app/backend/modules
-      - ../backend/app.py:/app/backend/app.py
-      - ../backend/main.py:/app/backend/main.py
-      - ../backend/scheduler.py:/app/backend/scheduler.py
-      - ../backend/worker.py:/app/backend/worker.py
+      - ../packages/:/app/packages/
     healthcheck:
       test:
         [
@@ -98,14 +90,7 @@ services:
       WORKERS: "1"
     volumes:
       - data:/app/data
-      - ../backend/api:/app/backend/api
-      - ../backend/config:/app/backend/config
-      - ../backend/core:/app/backend/core
-      - ../backend/database:/app/backend/database
-      - ../backend/modules:/app/backend/modules
-      - ../backend/main.py:/app/backend/main.py
-      - ../backend/scheduler.py:/app/backend/scheduler.py
-      - ../backend/worker.py:/app/backend/worker.py
+      - ../packages/:/app/packages/
 
   worker:
     image: ${DF_WORKER_IMAGE}
@@ -119,18 +104,11 @@ services:
       WORKERS: "1"
     volumes:
       - data:/app/data
-      - ../backend/api:/app/backend/api
-      - ../backend/config:/app/backend/config
-      - ../backend/core:/app/backend/core
-      - ../backend/database:/app/backend/database
-      - ../backend/modules:/app/backend/modules
-      - ../backend/main.py:/app/backend/main.py
-      - ../backend/scheduler.py:/app/backend/scheduler.py
-      - ../backend/worker.py:/app/backend/worker.py
+      - ../packages/:/app/packages/
 
   frontend:
     image: oven/bun:1
-    working_dir: /app/frontend
+    working_dir: /app/packages/frontend
     depends_on:
       api:
         condition: service_started
@@ -138,6 +116,7 @@ services:
       FRONTEND_PORT: ${DF_FRONTEND_PORT}
       BACKEND_HOST: api
       BACKEND_PORT: "8000"
+      VITE_BACKEND_PORT: "8000"
     ports:
       - "${DF_FRONTEND_PORT}:${DF_FRONTEND_PORT}"
     healthcheck:
@@ -146,22 +125,20 @@ services:
           "CMD",
           "bun",
           "-e",
-          "const port = process.env.FRONTEND_PORT; const res = await
-            fetch('http://127.0.0.1:' + port); if (!res.ok) process.exit(1);",
+          "const port = process.env.FRONTEND_PORT; const res = await fetch('http://127.0.0.1:' + port); if (!res.ok) process.exit(1);",
         ]
       interval: 5s
       timeout: 5s
       retries: 30
     volumes:
-      - ../frontend:/app/frontend
-      - frontend-node-modules:/app/frontend/node_modules
-      - frontend-svelte-kit:/app/frontend/.svelte-kit
+      - ../packages/frontend:/app/packages/frontend
+      - frontend-node-modules:/app/packages/frontend/node_modules
+      - frontend-svelte-kit:/app/packages/frontend/.svelte-kit
     command:
       [
         "sh",
         "-lc",
-        "bun install --frozen-lockfile && bun run dev --host 0.0.0.0 --port
-          ${DF_FRONTEND_PORT}",
+        "bun install --frozen-lockfile && bun run dev --host 0.0.0.0 --port ${DF_FRONTEND_PORT}",
       ]
 
 volumes:

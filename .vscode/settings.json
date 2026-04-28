@@ -18,11 +18,11 @@
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
   "svelte.enable-ts-plugin": true,
-  "typescript.tsdk": "frontend/node_modules/typescript/lib",
+  "typescript.tsdk": "packages/frontend/node_modules/typescript/lib",
   "files.associations": {
     "*.svelte": "svelte"
   },
-  "eslint.workingDirectories": ["./frontend"],
+  "eslint.workingDirectories": ["./packages/frontend"],
   "ruff.path": ["${workspaceFolder}/backend/.venv/bin/ruff"],
   "files.exclude": {
     "**/__pycache__": true,

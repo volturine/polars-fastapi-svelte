@@ -8,6 +8,8 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -97,6 +99,19 @@ def _wait_for_port(port: int, *, timeout: float) -> bool:
     return False
 
 
+def _wait_for_http_ready(url: str, *, timeout: float) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(url, timeout=5) as response:  # noqa: S310
+                if response.status == 200:
+                    return True
+        except urllib.error.URLError:
+            pass
+        time.sleep(1)
+    return False
+
+
 def _pipe_stream(stream, target, chunks: list[str]) -> None:
     if stream is None:
         return
@@ -167,6 +182,12 @@ def main() -> int:
                 thread.start()
                 threads.append(thread)
         if not _wait_for_port(backend_port, timeout=90) or not _wait_for_port(frontend_port, timeout=90):
+            print('Timed out waiting for backend/frontend ports to start for e2e tests', file=sys.stderr)
+            return 1
+        if not _wait_for_http_ready(f'http://127.0.0.1:{backend_port}/health/ready', timeout=90):
+            print('Timed out waiting for backend readiness for e2e tests', file=sys.stderr)
+            return 1
+        if not _wait_for_http_ready(f'http://127.0.0.1:{frontend_port}', timeout=90):
             print('Timed out waiting for backend/frontend to start for e2e tests', file=sys.stderr)
             return 1
         return _run_playwright(env)

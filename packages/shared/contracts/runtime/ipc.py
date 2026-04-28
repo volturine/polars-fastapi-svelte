@@ -66,11 +66,9 @@ async def _serve_unix_notifications(server: socket.socket, stop_event, handler: 
         done, pending = await asyncio.wait({accept_task, stop_task}, return_when=asyncio.FIRST_COMPLETED)
         for task in pending:
             task.cancel()
-        for task in pending:
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
         if stop_task in done:
-            await stop_task
             return
         conn, _ = await accept_task
         try:

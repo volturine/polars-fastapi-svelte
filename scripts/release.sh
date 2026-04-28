@@ -56,7 +56,7 @@ fi
 tmp="$(mktemp -d)"
 files=(
 	"backend/pyproject.toml"
-	"frontend/package.json"
+	"packages/frontend/package.json"
 	"docker/env/prod.env"
 	"docker/env/dev.env"
 	"backend/prod.env"
@@ -80,7 +80,7 @@ render() {
 		backend/pyproject.toml)
 			perl -0pi -e 's/version = "'"$current"'"/version = "'"$version"'"/' "$dst"
 			;;
-		frontend/package.json)
+		packages/frontend/package.json)
 			perl -0pi -e 's/"version": "'"$current"'"/"version": "'"$version"'"/' "$dst"
 			;;
 		docker/env/prod.env)

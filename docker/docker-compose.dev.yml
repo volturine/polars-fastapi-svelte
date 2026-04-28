@@ -8,7 +8,7 @@ services:
     volumes:
       - pg-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DF_POSTGRES_USER} -d ${DF_POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${DF_POSTGRES_USER} -d ${DF_POSTGRES_DB}" ]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -48,27 +48,32 @@ services:
       LOG_LEVEL: ${DF_LOG_LEVEL}
       TRUSTED_PROXY_HOPS: ${DF_TRUSTED_PROXY_HOPS}
       AUTH_REQUIRED: ${DF_AUTH_REQUIRED}
+      VERIFY_EMAIL_ADDRESS: ${DF_VERIFY_EMAIL_ADDRESS}
       DEFAULT_USER_EMAIL: ${DF_DEFAULT_USER_EMAIL}
       DEFAULT_USER_PASSWORD: ${DF_DEFAULT_USER_PASSWORD}
       DEFAULT_USER_NAME: ${DF_DEFAULT_USER_NAME}
       SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
       UVICORN_ACCESS_LOG: "true"
       AUTH_FRONTEND_URL: ${DF_AUTH_FRONTEND_URL}
+      GOOGLE_CLIENT_ID: ${DF_GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${DF_GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${DF_GOOGLE_REDIRECT_URI}
+      GITHUB_CLIENT_ID: ${DF_GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${DF_GITHUB_CLIENT_SECRET}
+      GITHUB_REDIRECT_URI: ${DF_GITHUB_REDIRECT_URI}
     ports:
       - "${DF_API_PORT}:8000"
     volumes:
       - data:/app/data
-      - ../backend/api:/app/backend/api
-      - ../backend/config:/app/backend/config
-      - ../backend/core:/app/backend/core
-      - ../backend/database:/app/backend/database
-      - ../backend/modules:/app/backend/modules
-      - ../backend/app.py:/app/backend/app.py
-      - ../backend/main.py:/app/backend/main.py
-      - ../backend/scheduler.py:/app/backend/scheduler.py
-      - ../backend/worker.py:/app/backend/worker.py
+      - ../packages/:/app/packages/
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health/ready').status==200 else 1)\""]
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import sys,urllib.request; sys.exit(0 if
+            urllib.request.urlopen('http://localhost:8000/health/ready').status\
+            ==200 else 1)\"",
+        ]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -78,42 +83,32 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      api:
+        condition: service_started
     environment:
       <<: *app-env
       WORKERS: "1"
     volumes:
       - data:/app/data
-      - ../backend/api:/app/backend/api
-      - ../backend/config:/app/backend/config
-      - ../backend/core:/app/backend/core
-      - ../backend/database:/app/backend/database
-      - ../backend/modules:/app/backend/modules
-      - ../backend/main.py:/app/backend/main.py
-      - ../backend/scheduler.py:/app/backend/scheduler.py
-      - ../backend/worker.py:/app/backend/worker.py
+      - ../packages/:/app/packages/
 
   worker:
     image: ${DF_WORKER_IMAGE}
     depends_on:
       postgres:
         condition: service_healthy
+      api:
+        condition: service_started
     environment:
       <<: *app-env
       WORKERS: "1"
     volumes:
       - data:/app/data
-      - ../backend/api:/app/backend/api
-      - ../backend/config:/app/backend/config
-      - ../backend/core:/app/backend/core
-      - ../backend/database:/app/backend/database
-      - ../backend/modules:/app/backend/modules
-      - ../backend/main.py:/app/backend/main.py
-      - ../backend/scheduler.py:/app/backend/scheduler.py
-      - ../backend/worker.py:/app/backend/worker.py
+      - ../packages/:/app/packages/
 
   frontend:
     image: oven/bun:1
-    working_dir: /app/frontend
+    working_dir: /app/packages/frontend
     depends_on:
       api:
         condition: service_started
@@ -121,6 +116,7 @@ services:
       FRONTEND_PORT: ${DF_FRONTEND_PORT}
       BACKEND_HOST: api
       BACKEND_PORT: "8000"
+      VITE_BACKEND_PORT: "8000"
     ports:
       - "${DF_FRONTEND_PORT}:${DF_FRONTEND_PORT}"
     healthcheck:
@@ -135,10 +131,15 @@ services:
       timeout: 5s
       retries: 30
     volumes:
-      - ../frontend:/app/frontend
-      - frontend-node-modules:/app/frontend/node_modules
-      - frontend-svelte-kit:/app/frontend/.svelte-kit
-    command: ["sh", "-lc", "bun install --frozen-lockfile && bun run dev --host 0.0.0.0 --port ${DF_FRONTEND_PORT}"]
+      - ../packages/frontend:/app/packages/frontend
+      - frontend-node-modules:/app/packages/frontend/node_modules
+      - frontend-svelte-kit:/app/packages/frontend/.svelte-kit
+    command:
+      [
+        "sh",
+        "-lc",
+        "bun install --frozen-lockfile && bun run dev --host 0.0.0.0 --port ${DF_FRONTEND_PORT}",
+      ]
 
 volumes:
   data:

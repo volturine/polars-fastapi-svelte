@@ -17,10 +17,10 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-      target: api
+      target: backend-test
       args:
         INSTALL_DEV: "true"
-    image: polars-analysis-api:test
+    image: polars-analysis-backend-test:test
     environment:
       ENV_FILE: ""
       DATA_DIR: ${DF_DATA_DIR}
@@ -53,8 +53,9 @@ services:
       DATABASE_URL: ${DF_DATABASE_URL}
       DISTRIBUTED_RUNTIME_ENABLED: "true"
       DEFAULT_NAMESPACE: ${DF_DEFAULT_NAMESPACE}
-      WORKERS: "2"
-      BUILD_WORKER_MIN_PROCESSES: "0"
+      WORKERS: "1"
+      SCHEDULER_CHECK_INTERVAL: "1"
+      BUILD_WORKER_MIN_PROCESSES: "1"
       BUILD_WORKER_MAX_PROCESSES: "4"
       BUILD_WORKER_IDLE_EXIT_SECONDS: "5"
       AUTH_REQUIRED: "true"
@@ -67,6 +68,12 @@ services:
       UVICORN_ACCESS_LOG: "false"
       AUTH_FRONTEND_URL: ${DF_E2E_FRONTEND_ORIGIN}
       CORS_ORIGINS: ${DF_E2E_FRONTEND_ORIGIN}
+      GOOGLE_CLIENT_ID: ${DF_GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${DF_GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${DF_GOOGLE_REDIRECT_URI}
+      GITHUB_CLIENT_ID: ${DF_GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${DF_GITHUB_CLIENT_SECRET}
+      GITHUB_REDIRECT_URI: ${DF_GITHUB_REDIRECT_URI}
     volumes:
       - backend-test-data:/app/data
     healthcheck:
@@ -86,6 +93,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      api:
+        condition: service_started
     environment:
       <<: *app-env
       WORKERS: "1"
@@ -103,6 +112,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      api:
+        condition: service_started
     environment:
       <<: *app-env
       WORKERS: "1"
@@ -141,19 +152,20 @@ services:
       disable: true
 
   frontend-test:
-    image: oven/bun:1.2.22
-    working_dir: /app/frontend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: frontend-test
+    image: polars-analysis-frontend-test:test
     environment:
       CI: "true"
-    volumes:
-      - ../frontend:/app/frontend
-      - frontend-test-node-modules:/app/frontend/node_modules
-      - frontend-test-svelte-kit:/app/frontend/.svelte-kit
-    command: ["sh", "-lc", "bun install --frozen-lockfile && bun run test:unit"]
 
   frontend-e2e:
-    image: mcr.microsoft.com/playwright:v1.59.1-noble
-    working_dir: /app/frontend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: frontend-e2e
+    image: polars-analysis-frontend-e2e:test
     ipc: host
     shm_size: 2gb
     depends_on:
@@ -178,14 +190,13 @@ services:
       timeout: 10s
       start_period: 20s
       retries: 30
-    volumes:
-      - ../frontend:/app/frontend
-      - frontend-e2e-node-modules:/app/frontend/node_modules
-      - frontend-e2e-svelte-kit:/app/frontend/.svelte-kit
-    command: ["sh", "-lc", "npm install -g bun && bun install --frozen-lockfile && bun run build && bun run preview -- --host 0.0.0.0 --port ${DF_FRONTEND_PORT}"]
 
   e2e-test:
-    image: mcr.microsoft.com/playwright:v1.59.1-noble
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: e2e-test
+    image: polars-analysis-e2e-test:test
     ipc: host
     shm_size: 2gb
     depends_on:
@@ -193,7 +204,6 @@ services:
         condition: service_healthy
       api:
         condition: service_started
-    working_dir: /app/frontend
     environment:
       CI: "true"
       FRONTEND_PORT: ${DF_FRONTEND_PORT}
@@ -203,21 +213,11 @@ services:
       PLAYWRIGHT_FRONTEND_ORIGIN: ${DF_E2E_FRONTEND_ORIGIN}
       PLAYWRIGHT_COOKIE_DOMAIN: frontend-e2e
       PLAYWRIGHT_DISABLE_WEB_SERVER: "true"
-    volumes:
-      - ../frontend:/app/frontend
-      - frontend-test-node-modules:/app/frontend/node_modules
-    command: ["sh", "-lc", "npx playwright test"]
+      PLAYWRIGHT_WORKERS: "3"
+    command: ["npx", "playwright", "test"]
 
 volumes:
   backend-test-data:
-    driver: local
-  frontend-test-node-modules:
-    driver: local
-  frontend-test-svelte-kit:
-    driver: local
-  frontend-e2e-node-modules:
-    driver: local
-  frontend-e2e-svelte-kit:
     driver: local
   pg-data:
     driver: local

@@ -28,7 +28,7 @@ backend/.mypy_cache/
 backend/.pytest_cache/
 backend/.ruff_cache/
 backend/.venv/
-frontend/node_modules/
+packages/frontend/node_modules/
 venv/
 ENV/
 env/
@@ -39,9 +39,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-frontend/build/
-frontend/.svelte-kit/
-frontend/dist/
+packages/frontend/build/
+packages/frontend/.svelte-kit/
+packages/frontend/dist/
 
 # IDE
 .vscode/

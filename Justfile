@@ -6,14 +6,26 @@ default: dev
 # Install all dependencies
 install:
     @echo "Installing backend dependencies..."
+    cd packages/backend && uv sync
+    @echo "Installing shared dependencies..."
     cd packages/shared && uv sync
+    @echo "Installing scheduler dependencies..."
+    cd packages/scheduler && uv sync
+    @echo "Installing worker-manager dependencies..."
+    cd packages/worker-manager && uv sync
     @echo "Installing frontend dependencies..."
     cd packages/frontend && bun install
 
 # Update dependencies to latest available versions
 update-deps:
     @echo "Updating backend dependencies to latest..."
+    cd packages/backend && uv lock --upgrade && uv sync
+    @echo "Updating shared dependencies to latest..."
     cd packages/shared && uv lock --upgrade && uv sync
+    @echo "Updating scheduler dependencies to latest..."
+    cd packages/scheduler && uv lock --upgrade && uv sync
+    @echo "Updating worker-manager dependencies to latest..."
+    cd packages/worker-manager && uv lock --upgrade && uv sync
     @echo "Updating frontend dependencies to latest..."
     cd packages/frontend && bun update --latest
 

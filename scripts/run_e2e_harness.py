@@ -106,7 +106,7 @@ def _wait_for_http_ready(url: str, *, timeout: float) -> bool:
             with urllib.request.urlopen(url, timeout=5) as response:  # noqa: S310
                 if response.status == 200:
                     return True
-        except urllib.error.URLError:
+        except (TimeoutError, urllib.error.HTTPError, urllib.error.URLError):
             pass
         time.sleep(1)
     return False

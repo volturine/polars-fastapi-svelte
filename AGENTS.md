@@ -10,7 +10,7 @@ just format          # ruff format + prettier
 just test            # backend pytest
 just test-e2e        # e2e tests with Playwright
 just check           # ruff + mypy + svelte-check + eslint
-just dev             # start both servers
+just dev             # start API, worker, scheduler, and frontend
 ```
 
 - E2E must be run only via `just test-e2e`. Do not run Playwright e2e commands directly.
@@ -133,3 +133,9 @@ See [`STYLE_GUIDE.md`](STYLE_GUIDE.md)
 - Do not run frontend e2e specs directly with Playwright/Bun commands; use `just test-e2e` only so the intended environment and orchestration stay consistent.
 - Monitoring builds architecture is strict: no polling, no separate live-preview row, no build-list websocket auto-refresh for history rows. Start builds via HTTP, show new history rows only after explicit refresh, and use websocket only for live preview/detail on the running build itself.
 - Do not run `just verify` and `just test-e2e` in parallel. `just verify` rewrites/generated frontend artifacts and can trigger Vite reloads during Playwright, causing false `net::ERR_ABORTED`, missing shell/navigation elements, and flaky option/list assertions. Run them sequentially.
+- When generating frontend types from backend Pydantic models, preserve the serialized response contract, not only Pydantic's `required` flags. Fields with model defaults (for example websocket `type`, snapshot arrays, or `sequence` once added to emitted events) still serialize and should stay required in generated TypeScript, or `svelte-check` will incorrectly widen stable API shapes to `undefined`.
+- Async notification hubs that publish from worker threads into websocket loops must resolve waiter futures with `loop.call_soon_threadsafe(...)`; calling `future.set_result(...)` directly from the publishing thread can leave websocket listeners hung in full-suite runs even if isolated tests pass.
+- In SQLite/dev mode, runtime IPC is single-node and the Unix socket path is API-owned. Do not start additional IPC listener servers in standalone worker or scheduler processes there; Postgres-only listener startup is required for cross-process `LISTEN/NOTIFY`, while SQLite workers/schedulers must keep using local in-process hubs plus explicit API notifications.
+- Tenant Alembic revision IDs are runtime data too: `_stamp_schema()` writes them into `alembic_version.version_num VARCHAR(32)`, so keep new tenant revision identifiers at or under 32 characters or Postgres bootstrap/init tests will fail with string truncation.
+- SQLite namespace runtime upgrades do not go through Alembic. When adding tenant-table columns, update `core.database._ensure_namespace_runtime_columns()` alongside the model/migration so existing dev/e2e namespace DBs gain the new columns on startup.
+- Frontend unit tests must be run with Vitest (`bun x vitest run ...` or `bun run test:unit`), not `bun test`; Bun's default runner does not provide Vitest APIs like `vi.importActual` and can break module mocks/isolation in existing test files.

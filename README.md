@@ -53,7 +53,7 @@ Data-Forge is a **local-first**, **no-code** data transformation tool. Build mul
 | **API Framework** | FastAPI (async) |
 | **Data Engine** | [Polars](https://pola.rs) + DuckDB |
 | **Storage** | Apache Iceberg via [PyIceberg](https://py.iceberg.apache.org) |
-| **Database** | SQLite with SQLAlchemy 2.0 async + Alembic migrations |
+| **Database** | PostgreSQL 18+ for distributed runtime, SQLite for local single-node development |
 | **Schema Validation** | Pydantic V2 |
 | **Frontend Runtime** | [Bun](https://bun.sh) |
 | **UI Framework** | [SvelteKit 2](https://kit.svelte.dev) + [Svelte 5](https://svelte.dev) (runes mode) |
@@ -69,15 +69,35 @@ Data-Forge is a **local-first**, **no-code** data transformation tool. Build mul
 ### Option 1: Docker (Recommended)
 
 ```bash
-# Copy and configure environment
-cp .env.example .env
-
-# Start with Docker Compose
-docker compose up
+# Customer install
+# 1) copy docker/docker-compose.yml to compose.yml
+# 2) copy docker/env/prod.env to .env and edit it
+docker compose -f compose.yml pull
+docker compose -f compose.yml up -d
 
 # Open the application
 open http://localhost:8000
 ```
+
+`docker/docker-compose.yml` is the only production compose file and is customer-facing. Pair it with `docker/env/prod.env`, rename that file to `.env`, set your secrets and release tags, then run `docker compose pull && docker compose up -d`.
+`just docker-prod` still uses the same production compose file and the same `docker/env/prod.env`, but overrides the image tags at runtime to use local builds. GHCR images are for production release publishing only.
+The production topology is Postgres plus three role containers from one codebase:
+- `api`
+- `scheduler`
+- `worker`
+
+Default Docker production sizing:
+- API workers: `4` via `docker/env/prod.env`
+- Warm build workers: `0` by default
+- Dynamic build worker max: `10` by default
+
+This starts the Postgres-backed fixed-role runtime topology:
+- `postgres`
+- `api`
+- `scheduler`
+- `worker`
+
+`postgres` is still required in the checked-in Docker topology. The current supported Docker runtime is Postgres-backed; the role services use `DF_DATABASE_URL` pointing at the `postgres` service and are not configured to run the supported Docker path on SQLite.
 
 ### Option 2: Local Development
 
@@ -87,16 +107,16 @@ open http://localhost:8000
 # Install all dependencies
 just install
 
-# Copy environment file
-cp backend/.env.example backend/.env
+# Edit backend/dev.env for local settings
 
-# Start both servers with hot-reload
+# Start the full local runtime with hot-reload
 just dev
 ```
 
 - Frontend: http://localhost:3000 (Vite dev server, proxies `/api` to backend)
 - Backend API: http://localhost:8000
 - API Docs: http://localhost:8000/docs
+- Background runtime: scheduler + dynamic build workers supervised by the local app runtime
 
 ### Install Prerequisites (Ubuntu/Debian)
 
@@ -115,15 +135,23 @@ The app supports two deployment topologies:
 FastAPI serves both the API and the pre-built frontend on port 8000.
 
 ```bash
-cp backend/.prod.env.example backend/.prod.env
-# Edit .prod.env with your settings
+# Edit backend/prod.env with your settings
 cd frontend && bun run build
 just prod
 ```
 
-### Development (two servers)
+For supported production deployments, use Postgres. `docker/docker-compose.yml`
+is the fixed-role Docker runtime topology for both customers and local maintainer automation.
 
-Vite dev server on port 3000 proxies `/api` to FastAPI on port 8000.
+The repository defaults are tuned for concurrent clients:
+- Docker production defaults to `4` API workers in the `api` service
+- build throughput scales in the `worker` service up to `BUILD_WORKER_MAX_PROCESSES`
+- zero warm build workers are kept by default; worker subprocesses spawn on demand and exit when idle
+
+### Development (local runtime)
+
+Vite dev server on port 3000 proxies `/api` to FastAPI on port 8000. `just dev`
+starts one supervised app runtime that runs API, scheduler, and dynamic build workers so queued builds do not run inside the API process.
 
 ```bash
 just dev
@@ -139,6 +167,8 @@ just dev
 | `JOB_TIMEOUT` | `300` | Max job execution time in seconds |
 | `AUTH_REQUIRED` | `false` | Require login before accessing routes |
 | `DATA_DIR` | — | Base directory for all data storage |
+| `DATABASE_URL` | SQLite under `DATA_DIR` or Postgres URL | Runtime database connection |
+| `DISTRIBUTED_RUNTIME_ENABLED` | `false` | Enables supported Postgres distributed runtime mode |
 | `DEFAULT_NAMESPACE` | `default` | Default data namespace |
 
 See **[ENV_VARIABLES.md](ENV_VARIABLES.md)** for the complete reference.
@@ -158,7 +188,7 @@ See **[ENV_VARIABLES.md](ENV_VARIABLES.md)** for the complete reference.
 
 ```bash
 just install        # Install all dependencies
-just dev            # Start both servers with hot-reload
+just dev            # Start supervised app runtime and frontend
 just format         # Format all code (ruff + prettier)
 just check          # Run all linters and type checks
 just test           # Run backend pytest + frontend Vitest
@@ -186,7 +216,7 @@ just test-e2e
 - **TypeScript/Svelte**: ESLint + Prettier + svelte-check
 - **Conventions**: See [STYLE_GUIDE.md](STYLE_GUIDE.md)
 
-> **Important:** Always run `just verify` before opening a PR. It must pass with zero errors and zero warnings.
+> **Important:** Always run `just verify` before opening a PR. It must pass with zero errors and zero unclassified warnings.
 
 ---
 
@@ -205,7 +235,8 @@ polars-fastapi-svelte/
 │   │   ├── lineage/          # Dependency graph computation
 │   │   └── mcp/              # MCP tool registry and router
 │   ├── tests/                # Backend pytest tests
-│   └── main.py               # Application entry point
+│   ├── app.py                # Supervised runtime entry point
+│   └── main.py               # API subprocess entry point
 ├── frontend/                 # SvelteKit frontend
 │   ├── src/
 │   │   ├── lib/              # Shared components, utils, stores
@@ -215,8 +246,7 @@ polars-fastapi-svelte/
 │   │   └── routes/           # SvelteKit page routes
 │   └── tests/                # Playwright e2e tests
 ├── docs/                     # Product and architecture docs
-├── docker-compose.yml        # Docker Compose configuration
-├── Dockerfile                # Production container image
+├── docker/                   # Docker image targets, compose, and env files
 ├── Justfile                  # Task runner commands
 └── ENV_VARIABLES.md          # Complete environment variable reference
 ```

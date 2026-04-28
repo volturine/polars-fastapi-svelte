@@ -165,7 +165,7 @@ cors_origins: list[str] = [
 |------|---------|
 | `Caddyfile` | Production proxy config |
 | `Caddyfile.dev` | Development proxy config (frontend + backend) |
-| Updated `docker-compose.yml` | Caddy service with `subdomain` profile |
+| Updated `docker/docker-compose.yml` | Caddy service with `subdomain` profile |
 | Updated `Justfile` | `dev-subdomain` and `stop-subdomain` commands |
 | Updated CORS config | Include `LOCAL_DOMAIN` origin |
 

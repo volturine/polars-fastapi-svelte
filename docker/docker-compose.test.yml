@@ -1,0 +1,223 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${DF_POSTGRES_DB}
+      POSTGRES_USER: ${DF_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${DF_POSTGRES_PASSWORD}
+    volumes:
+      - pg-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DF_POSTGRES_USER} -d ${DF_POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: backend-test
+      args:
+        INSTALL_DEV: "true"
+    image: polars-analysis-backend-test:test
+    environment:
+      ENV_FILE: ""
+      DATA_DIR: ${DF_DATA_DIR}
+      SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
+    volumes:
+      - backend-test-data:/app/data
+    command: ["python", "-m", "pytest", "--tb=short", "-q", "-k", "not docker_bootstrap and not postgres_runtime_integration"]
+    healthcheck:
+      disable: true
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: api
+      args:
+        INSTALL_DEV: "true"
+    image: polars-analysis-api:test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: &app-env
+      ENV_FILE: ""
+      APP_NAME: ${DF_APP_NAME}
+      APP_VERSION: ${DF_APP_VERSION}
+      DEBUG: ${DF_DEBUG}
+      PROD_MODE_ENABLED: "false"
+      PORT: "8000"
+      DATA_DIR: ${DF_DATA_DIR}
+      DATABASE_URL: ${DF_DATABASE_URL}
+      DISTRIBUTED_RUNTIME_ENABLED: "true"
+      DEFAULT_NAMESPACE: ${DF_DEFAULT_NAMESPACE}
+      WORKERS: "1"
+      SCHEDULER_CHECK_INTERVAL: "1"
+      BUILD_WORKER_MIN_PROCESSES: "1"
+      BUILD_WORKER_MAX_PROCESSES: "4"
+      BUILD_WORKER_IDLE_EXIT_SECONDS: "5"
+      AUTH_REQUIRED: "true"
+      SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
+      DEFAULT_USER_PASSWORD: ${DF_DEFAULT_USER_PASSWORD}
+      DEFAULT_USER_EMAIL: ${DF_DEFAULT_USER_EMAIL}
+      DEFAULT_USER_NAME: ${DF_DEFAULT_USER_NAME}
+      LOG_LEVEL: ${DF_LOG_LEVEL}
+      TRUSTED_PROXY_HOPS: "0"
+      UVICORN_ACCESS_LOG: "false"
+      AUTH_FRONTEND_URL: ${DF_E2E_FRONTEND_ORIGIN}
+      CORS_ORIGINS: ${DF_E2E_FRONTEND_ORIGIN}
+      GOOGLE_CLIENT_ID: ${DF_GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${DF_GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${DF_GOOGLE_REDIRECT_URI}
+      GITHUB_CLIENT_ID: ${DF_GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${DF_GITHUB_CLIENT_SECRET}
+      GITHUB_REDIRECT_URI: ${DF_GITHUB_REDIRECT_URI}
+    volumes:
+      - backend-test-data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health/ready').status==200 else 1)\""]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  scheduler:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: scheduler
+      args:
+        INSTALL_DEV: "true"
+    image: polars-analysis-scheduler:test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      <<: *app-env
+      WORKERS: "1"
+    volumes:
+      - backend-test-data:/app/data
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: worker
+      args:
+        INSTALL_DEV: "true"
+    image: polars-analysis-worker:test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      <<: *app-env
+      WORKERS: "1"
+    volumes:
+      - backend-test-data:/app/data
+
+  runtime-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: api
+      args:
+        INSTALL_DEV: "true"
+    image: polars-analysis-api:test
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      ENV_FILE: ""
+      PORT: "8000"
+      DATA_DIR: ${DF_DATA_DIR}
+      DATABASE_URL: ${DF_DATABASE_URL}
+      DISTRIBUTED_RUNTIME_ENABLED: "true"
+      DEFAULT_NAMESPACE: ${DF_DEFAULT_NAMESPACE}
+      AUTH_REQUIRED: "false"
+      SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
+      DEFAULT_USER_EMAIL: ${DF_DEFAULT_USER_EMAIL}
+      DEFAULT_USER_PASSWORD: ${DF_DEFAULT_USER_PASSWORD}
+      LOG_LEVEL: ${DF_LOG_LEVEL}
+      RUNTIME_TEST_BASE_URL: ${DF_RUNTIME_TEST_BASE_URL}
+      RUNTIME_TEST_DB_URL: ${DF_RUNTIME_TEST_DB_URL}
+    volumes:
+      - backend-test-data:/app/data
+    command: ["python", "-m", "pytest", "--tb=short", "-q", "tests/test_docker_bootstrap.py"]
+    healthcheck:
+      disable: true
+
+  frontend-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: frontend-test
+    image: polars-analysis-frontend-test:test
+    environment:
+      CI: "true"
+
+  frontend-e2e:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: frontend-e2e
+    image: polars-analysis-frontend-e2e:test
+    ipc: host
+    shm_size: 2gb
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      FRONTEND_PORT: ${DF_FRONTEND_PORT}
+      BACKEND_HOST: api
+      BACKEND_PORT: "8000"
+      CI: "true"
+    ports:
+      - "${DF_E2E_FRONTEND_PORT}:${DF_FRONTEND_PORT}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "const http = require('node:http'); const port = process.env.FRONTEND_PORT; const req = http.get({ host: '127.0.0.1', port, path: '/' }, (res) => process.exit(res.statusCode && res.statusCode < 500 ? 0 : 1)); req.setTimeout(4000, () => { req.destroy(); process.exit(1); }); req.on('error', () => process.exit(1));",
+        ]
+      interval: 5s
+      timeout: 10s
+      start_period: 20s
+      retries: 30
+
+  e2e-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: e2e-test
+    image: polars-analysis-e2e-test:test
+    ipc: host
+    shm_size: 2gb
+    depends_on:
+      frontend-e2e:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      CI: "true"
+      FRONTEND_PORT: ${DF_FRONTEND_PORT}
+      BACKEND_PORT: "8000"
+      PLAYWRIGHT_BASE_URL: ${DF_E2E_FRONTEND_ORIGIN}
+      PLAYWRIGHT_API_ORIGIN: http://api:8000
+      PLAYWRIGHT_FRONTEND_ORIGIN: ${DF_E2E_FRONTEND_ORIGIN}
+      PLAYWRIGHT_COOKIE_DOMAIN: frontend-e2e
+      PLAYWRIGHT_DISABLE_WEB_SERVER: "true"
+      PLAYWRIGHT_WORKERS: "3"
+    command: ["npx", "playwright", "test"]
+
+volumes:
+  backend-test-data:
+    driver: local
+  pg-data:
+    driver: local

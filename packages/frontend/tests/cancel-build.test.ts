@@ -10,7 +10,10 @@ async function startBuildFromAnalysisPage(page: Page, analysisId: string) {
 	await gotoAnalysisEditor(page, analysisId);
 	const buildBtn = page.locator('[data-testid="output-build-button"]');
 	await expect(buildBtn).toBeVisible({ timeout: 10_000 });
-	await buildBtn.click();
+	// analysisPipeline may take a moment to populate after the lock is acquired;
+	// give the button a generous timeout so we fail fast instead of consuming the
+	// full 240 s test budget.
+	await buildBtn.click({ timeout: 30_000 });
 	await expect(page.locator('[data-testid="output-build-preview-trigger"]')).toBeVisible({
 		timeout: 30_000
 	});
@@ -40,7 +43,7 @@ function buildHistoryRow(
 }
 
 async function refreshBuildHistory(page: Page) {
-	await page.getByRole('button', { name: /Refresh History/i }).click();
+	await page.getByRole('button', { name: /Refresh History/i }).click({ timeout: 15_000 });
 }
 
 async function waitForBuildHistoryRow(
@@ -72,7 +75,7 @@ async function waitForBuildHistoryRow(
 async function openCancelDialogFromRow(page: Page, row: ReturnType<Page['locator']>) {
 	const btn = row.getByLabel('Cancel build');
 	await expect(btn).toBeVisible({ timeout: 10_000 });
-	await btn.click();
+	await btn.click({ timeout: 10_000 });
 	await expect(
 		page.getByRole('dialog').getByRole('heading', { name: 'Cancel this build?' })
 	).toBeVisible({ timeout: 10_000 });
@@ -161,7 +164,7 @@ test.describe('Cancel Build – e2e', () => {
 		test.setTimeout(240_000);
 		const dsName = `e2e-cancel-history-ds-${uid()}`;
 		const analysisName = `E2E Cancel History ${uid()}`;
-		const dsId = await createLargeDatasource(request, dsName, 125_000);
+		const dsId = await createLargeDatasource(request, dsName, 250_000);
 		const analysisId = await createLongRunningAnalysis(request, analysisName, dsId);
 		try {
 			await startBuildFromAnalysisPage(page, analysisId);
@@ -174,18 +177,26 @@ test.describe('Cancel Build – e2e', () => {
 				panel,
 				analysisId,
 				['running'],
-				30_000,
+				60_000,
 				['datasource_create', 'preview', 'datasource_update']
 			);
 			await expect(runningRow).toHaveAttribute('data-build-status', 'running', { timeout: 30_000 });
 			await expect(runningRow.getByLabel('Cancel build')).toBeVisible({ timeout: 30_000 });
-			const runId = await runningRow.getAttribute('data-build-row');
+			const runId = await runningRow.getAttribute('data-build-row', { timeout: 10_000 });
 			expect(runId).toBeTruthy();
 			await openCancelDialogFromRow(page, runningRow);
 
 			const dialog = cancelDialog(page);
 			await expect(dialog.getByRole('heading', { name: 'Cancel this build?' })).toBeVisible();
-			await dialog.getByRole('button', { name: 'Cancel Build', exact: true }).click();
+			const cancelled = page.waitForResponse(
+				(response) =>
+					response.url().includes('/api/v1/compute/cancel/') && response.status() === 200
+			);
+			await dialog.getByRole('button', { name: 'Cancel Build', exact: true }).click({
+				timeout: 10_000
+			});
+			const payload = await cancelled.then((response) => response.json());
+			expect(payload.status).toBe('cancelled');
 			await expect(dialog).not.toBeVisible({
 				timeout: 15_000
 			});

@@ -138,14 +138,14 @@ def main() -> int:
             stderr=subprocess.PIPE,
         )
         worker_proc = _spawn(
-            ['uv', 'run', '--no-env-file', str(WORKER / 'worker.py')],
+            ['uv', 'run', '--no-env-file', str(WORKER / 'main.py')],
             cwd=CORE,
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
         scheduler_proc = _spawn(
-            ['uv', 'run', '--no-env-file', str(SCHEDULER / 'scheduler.py')],
+            ['uv', 'run', '--no-env-file', str(SCHEDULER / 'main.py')],
             cwd=CORE,
             env=env,
             stdout=subprocess.PIPE,

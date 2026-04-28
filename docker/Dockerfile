@@ -111,11 +111,11 @@ COPY --chown=appuser:appgroup packages/scheduler/ /app/packages/scheduler/
 ENV PYTHONPATH="/app/packages/scheduler:/app/packages/shared"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD python3 -c "import sys; from core.docker_healthcheck import worker_healthy; from contracts.runtime_workers.models import RuntimeWorkerKind; sys.exit(0 if worker_healthy(kind=RuntimeWorkerKind.SCHEDULER) else 1)"
-CMD ["python3", "../scheduler/scheduler.py"]
+CMD ["python3", "../scheduler/main.py"]
 
 FROM runtime-base AS worker
 COPY --chown=appuser:appgroup packages/worker-manager/ /app/packages/worker-manager/
 ENV PYTHONPATH="/app/packages/worker-manager:/app/packages/shared"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD python3 -c "import sys; from core.docker_healthcheck import worker_healthy; from contracts.runtime_workers.models import RuntimeWorkerKind; sys.exit(0 if worker_healthy(kind=RuntimeWorkerKind.BUILD_MANAGER) else 1)"
-CMD ["python3", "../worker-manager/worker.py"]
+CMD ["python3", "../worker-manager/main.py"]

@@ -45,17 +45,17 @@ Browser  ──►  Vite dev server (FRONTEND_PORT 3000)
                    │
                    └── /api/* proxy ──►  FastAPI (BACKEND_PORT 8000)
 
-Background runtime inside `backend/app.py`:
-  - API subprocess
-  - scheduler subprocess
-  - worker-manager subprocess
+Repo-level local runtime:
+  - backend/main.py API process
+  - scheduler/main.py scheduler process
+  - worker-manager/main.py worker-manager process
   - dynamically spawned build-worker subprocesses
 ```
 
 - `PROD_MODE_ENABLED=false` (default) — FastAPI does not serve static files; the
   Vite dev server handles all browser requests and proxies `/api` to FastAPI.
-- `just dev` starts one supervised local app runtime. That runtime runs the API,
-  scheduler, and worker manager, and the worker manager spawns build workers on demand.
+- `just dev` starts the three package entrypoints from the repo root. The
+  worker manager then spawns build workers on demand.
 - Because the browser origin (`:3000`) differs from the API origin (`:8000`),
   FastAPI's `CORS_ORIGINS` **must** include the dev-server origin.
 - `FRONTEND_PORT`, `BACKEND_HOST`, and `BACKEND_PORT` wire the Vite

@@ -1,9 +1,10 @@
 import asyncio
+import importlib.util
 import uuid
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 
-import manager_runtime as runtime_process
 import pytest
 from worker_runtime import build_worker_loop, next_job
 
@@ -12,6 +13,20 @@ from contracts.runtime_workers.models import RuntimeWorkerKind
 from core import build_jobs_service as build_job_service, runtime_workers_service as runtime_worker_service
 from core.database import run_db, run_settings_db
 from core.namespace import reset_namespace, set_namespace_context
+from core.namespaces_service import register_namespace
+
+
+def _load_runtime_process():
+    path = Path(__file__).resolve().parents[2] / 'worker-manager' / 'main.py'
+    spec = importlib.util.spec_from_file_location('worker_manager_main_for_tests', path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f'Unable to load worker-manager runtime module from {path}')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+runtime_process = _load_runtime_process()
 
 
 def test_register_heartbeat_and_stop_worker(test_db_session) -> None:
@@ -221,6 +236,7 @@ def test_next_job_claims_from_non_default_namespace() -> None:
     token = set_namespace_context('beta')
     try:
         build_id = str(uuid.uuid4())
+        run_settings_db(register_namespace, 'beta')
         run_db(build_job_service.create_job, build_id=build_id, namespace='beta')
     finally:
         reset_namespace(token)

@@ -21,7 +21,10 @@ update-deps:
 dev:
     #!/usr/bin/env bash
     set -a; source packages/shared/dev.env; set +a
-    (cd packages/backend && uv run --env-file ../shared/dev.env main.py) & (cd packages/frontend && bun run dev) & wait
+    (cd packages/backend && uv run --env-file ../shared/dev.env main.py) & \
+    (cd packages/scheduler && uv run --env-file ../shared/dev.env main.py) & \
+    (cd packages/worker-manager && uv run --env-file ../shared/dev.env main.py) & \
+    (cd packages/frontend && bun run dev) & wait
 
 # Run full development stack entirely in Docker
 docker-dev:
@@ -48,12 +51,12 @@ docker-dev-logs:
 worker:
 	#!/usr/bin/env bash
 	set -a; source packages/shared/dev.env; set +a
-	cd packages/worker-manager && uv run --env-file ../shared/dev.env worker.py
+	cd packages/worker-manager && uv run --env-file ../shared/dev.env main.py
 
 scheduler:
 	#!/usr/bin/env bash
 	set -a; source packages/shared/dev.env; set +a
-	cd packages/scheduler && uv run --env-file ../shared/dev.env scheduler.py
+	cd packages/scheduler && uv run --env-file ../shared/dev.env main.py
 
 # Format code
 format:
@@ -64,7 +67,7 @@ format:
 
 # Run all linters and type checks
 check:
-    cd packages/shared && uv run ruff format --check . ../backend ../scheduler ../worker-manager && uv run ruff check . ../backend ../scheduler ../worker-manager && uv run python -m mypy . ../backend ../scheduler ../worker-manager
+    cd packages/shared && uv run ruff format --check . ../backend ../scheduler ../worker-manager && uv run ruff check . ../backend ../scheduler ../worker-manager && uv run python -m mypy . && uv run python -m mypy ../backend && uv run python -m mypy ../scheduler && uv run python -m mypy ../worker-manager
     cd packages/shared && uv run python ../../scripts/generate_ts_build_stream_types.py --check
     cd packages/frontend && bun run panda:codegen && bun run check && bun run lint
 
@@ -119,8 +122,8 @@ test-e2e-raw:
     lsof -ti "tcp:${PORT}" | xargs -r kill >/dev/null 2>&1 || true
     lsof -ti "tcp:${FRONTEND_PORT}" | xargs -r kill >/dev/null 2>&1 || true
     (cd packages/backend && exec uv run --no-env-file main.py) & BACKEND_PID=$!
-    (cd packages/worker-manager && exec uv run --no-env-file worker.py) & WORKER_PID=$!
-    (cd packages/scheduler && exec uv run --no-env-file scheduler.py) & SCHEDULER_PID=$!
+    (cd packages/worker-manager && exec uv run --no-env-file main.py) & WORKER_PID=$!
+    (cd packages/scheduler && exec uv run --no-env-file main.py) & SCHEDULER_PID=$!
     (cd packages/frontend && bun run predev && exec node ./node_modules/vite/bin/vite.js dev) & FRONTEND_PID=$!
     for port in "$PORT" "$FRONTEND_PORT"; do deadline=$((SECONDS + 90)); until (exec 3<>"/dev/tcp/127.0.0.1/$port") >/dev/null 2>&1; do if [ "$SECONDS" -ge "$deadline" ]; then echo "Timed out waiting for port $port" >&2; exit 1; fi; sleep 1; done; done
     cd packages/frontend && PLAYWRIGHT_DISABLE_WEB_SERVER=true npx playwright test
@@ -178,10 +181,15 @@ verify-raw: format check test
 # Build for production (single-port: FastAPI serves the built frontend)
 # Setup: edit packages/shared/prod.env.
 prod:
-    @echo "Building frontend..."
-    cd packages/frontend && bun run build
-    @echo "Starting backend in production mode..."
-    cd packages/backend && uv run --env-file ../shared/prod.env main.py
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Building frontend..."
+    (cd packages/frontend && bun run build)
+    set -a; source packages/shared/prod.env; set +a
+    echo "Starting production runtime..."
+    (cd packages/backend && uv run --env-file ../shared/prod.env main.py) & \
+    (cd packages/scheduler && uv run --env-file ../shared/prod.env main.py) & \
+    (cd packages/worker-manager && uv run --env-file ../shared/prod.env main.py) & wait
 
 # Run production stack entirely in Docker
 docker-prod:

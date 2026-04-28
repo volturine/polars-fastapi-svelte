@@ -1,13 +1,14 @@
 """Tests for scheduler service."""
 
 import asyncio
+import importlib.util
 import uuid
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
 import pytest
-import scheduler_runtime as runtime_scheduler
 from scheduler_service import (
     claim_due_schedules,
     create_schedule,
@@ -32,6 +33,19 @@ from contracts.scheduler.models import Schedule
 from contracts.scheduler.schemas import ScheduleCreate, ScheduleUpdate
 from core import build_jobs_service as build_job_service, build_runs_service as build_run_service
 from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, ScheduleNotFoundError
+
+
+def _load_runtime_scheduler():
+    path = Path(__file__).resolve().parents[2] / 'scheduler' / 'main.py'
+    spec = importlib.util.spec_from_file_location('scheduler_main_for_tests', path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f'Unable to load scheduler runtime module from {path}')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+runtime_scheduler = _load_runtime_scheduler()
 
 
 @pytest.mark.asyncio

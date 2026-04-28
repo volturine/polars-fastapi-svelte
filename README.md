@@ -235,8 +235,11 @@ polars-fastapi-svelte/
 │   │   ├── lineage/          # Dependency graph computation
 │   │   └── mcp/              # MCP tool registry and router
 │   ├── tests/                # Backend pytest tests
-│   ├── app.py                # Supervised runtime entry point
-│   └── main.py               # API subprocess entry point
+│   └── main.py               # API entry point
+├── scheduler/                # Scheduler runtime package
+│   └── main.py               # Scheduler entry point
+├── worker-manager/           # Build worker runtime package
+│   └── main.py               # Worker-manager entry point
 ├── frontend/                 # SvelteKit frontend
 │   ├── src/
 │   │   ├── lib/              # Shared components, utils, stores

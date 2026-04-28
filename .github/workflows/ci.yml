@@ -33,7 +33,11 @@ jobs:
         run: uv run ruff check . ../backend ../scheduler ../worker-manager
 
       - name: Type check
-        run: uv run python -m mypy . ../backend ../scheduler ../worker-manager
+        run: |
+          uv run python -m mypy .
+          uv run python -m mypy ../backend
+          uv run python -m mypy ../scheduler
+          uv run python -m mypy ../worker-manager
 
       - name: Tests
         run: uv run python -m pytest --tb=short -q
@@ -101,11 +105,13 @@ jobs:
         working-directory: packages/frontend
         run: bun x playwright install --with-deps chromium
 
-      - name: Start backend
+      - name: Start runtime
         working-directory: packages/shared
         run: |
           set -a; source e2e.env; set +a
           PYTHONPATH="../backend:../scheduler:../worker-manager:." uv run --no-env-file ../backend/main.py &
+          PYTHONPATH="../backend:../scheduler:../worker-manager:." uv run --no-env-file ../scheduler/main.py &
+          PYTHONPATH="../backend:../scheduler:../worker-manager:." uv run --no-env-file ../worker-manager/main.py &
 
       - name: Start frontend
         working-directory: packages/frontend
@@ -124,8 +130,7 @@ jobs:
           exit 1
 
       - name: Run e2e tests
-        working-directory: packages/frontend
-        run: bun run test:e2e
+        run: just test-e2e
 
       - name: Upload Playwright report
         if: failure()

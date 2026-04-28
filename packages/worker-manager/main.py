@@ -227,3 +227,7 @@ async def main() -> None:
     stop_event = asyncio.Event()
     install_stop_handlers(stop_event)
     await run_build_manager_process(stop_event=stop_event)
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

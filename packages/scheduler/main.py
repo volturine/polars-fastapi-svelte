@@ -184,3 +184,7 @@ async def main() -> None:
             with contextlib.suppress(asyncio.TimeoutError):
                 await asyncio.wait_for(ipc_task, timeout=5)
         await runtime_ipc.stop_api_server(ipc_server)
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

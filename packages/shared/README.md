@@ -1,6 +1,6 @@
 # FastAPI Backend
 
-FastAPI backend for the supervised runtime with Postgres-backed production mode and SQLite-backed local single-node development.
+FastAPI backend plus shared runtime contracts for Postgres-backed production mode and SQLite-backed local single-node development.
 
 ## Setup
 
@@ -23,10 +23,9 @@ FastAPI backend for the supervised runtime with Postgres-backed production mode 
    # Or manually: uv run alembic -c database/alembic.ini upgrade head
    ```
 
-4. Start the local supervised runtime:
+4. Start the local runtime from the repo root:
     ```bash
-    uv run --env-file dev.env ./app.py
-    # Or from the repo root: just dev
+    just dev
     ```
 
 ## Database Migrations
@@ -87,8 +86,7 @@ backend/
 │   ├── datasource/     # Data source management
 │   ├── health/         # Health checks
 │   └── results/        # Result handling
-├── app.py              # Supervised runtime entry point
-├── main.py             # API subprocess entry point
+├── main.py             # API entry point
 ├── migrate.sh          # Migration helper script
 └── pyproject.toml      # Project dependencies
 ```
@@ -180,9 +178,9 @@ See [`../ENV_VARIABLES.md`](../ENV_VARIABLES.md) for the complete reference, inc
 2. Start the production runtime:
 
    ```bash
-   uv run --env-file prod.env ./main.py
-   uv run --env-file prod.env ./scheduler.py
-   uv run --env-file prod.env ./worker.py
+   (cd ../backend && uv run --env-file ../shared/prod.env ./main.py)
+   (cd ../scheduler && uv run --env-file ../shared/prod.env ./main.py)
+   (cd ../worker-manager && uv run --env-file ../shared/prod.env ./main.py)
    ```
 
 For Docker releases, customers should pull the published `data-forge-api`, `data-forge-scheduler`, and `data-forge-worker` images rather than building from source.

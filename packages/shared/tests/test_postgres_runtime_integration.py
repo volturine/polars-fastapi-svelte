@@ -422,7 +422,7 @@ async def test_postgres_runtime_supports_cross_api_build_detail_and_replay(tmp_p
         )
         worker = ManagedProcess(
             name='worker',
-            command=['uv', 'run', '--no-env-file', str(WORKER_ROOT / 'worker.py')],
+            command=['uv', 'run', '--no-env-file', str(WORKER_ROOT / 'main.py')],
             cwd=CORE_ROOT,
             env=_runtime_env(data_dir=data_dir, database_url=container.url, port=api_one_port),
         )
@@ -522,7 +522,7 @@ def test_postgres_runtime_supports_cross_api_cancellation(tmp_path: Path) -> Non
         )
         worker = ManagedProcess(
             name='worker',
-            command=['uv', 'run', '--no-env-file', str(WORKER_ROOT / 'worker.py')],
+            command=['uv', 'run', '--no-env-file', str(WORKER_ROOT / 'main.py')],
             cwd=CORE_ROOT,
             env=_runtime_env(data_dir=data_dir, database_url=container.url, port=api_one_port),
         )

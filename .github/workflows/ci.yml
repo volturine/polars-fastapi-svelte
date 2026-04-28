@@ -95,6 +95,8 @@ jobs:
         with:
           bun-version: latest
 
+      - uses: taiki-e/install-action@just
+
       - name: Install backend dependencies
         working-directory: packages/shared
         run: uv sync

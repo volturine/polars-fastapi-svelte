@@ -611,7 +611,7 @@ DatasourceHandler.FILE_LOADERS = {
     'parquet': lambda path, _: pl.scan_parquet(path),
     'json': lambda path, _: pl.read_json(path).lazy(),
     'ndjson': lambda path, _: pl.scan_ndjson(path),
-    'excel': lambda path, opts: _read_excel(path, opts),
+    'excel': _read_excel,
 }
 
 DatasourceHandler.SOURCE_LOADERS = {

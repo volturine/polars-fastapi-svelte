@@ -74,7 +74,7 @@ check:
 
 # Run e2e tests with backend + frontend lifecycle managed by Just
 test-e2e:
-    cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-test-e2e --cwd . -- python ../../scripts/run_e2e_harness.py
+    cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-test-e2e --cwd . -- python scripts/run_e2e_harness.py
 
 test-e2e-raw:
     #!/usr/bin/env bash

@@ -18,7 +18,6 @@
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
   "svelte.enable-ts-plugin": true,
-  "typescript.tsdk": "packages/frontend/node_modules/typescript/lib",
   "files.associations": {
     "*.svelte": "svelte"
   },
@@ -30,7 +29,7 @@
     "**/.mypy_cache": true,
     "**/.ruff_cache": true,
     "**/node_modules": true,
-    "**/.svelte-kit": true
+    "**/.svelte-kit": false
   },
   "python-envs.pythonProjects": [],
   "projectManager.hg.ignoredFolders": ["out", "typings", "test", ".haxelib"]

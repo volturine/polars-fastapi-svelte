@@ -162,7 +162,6 @@ class NotificationHandler(OperationHandler):
             predicate_pushdown=False,
             projection_pushdown=False,
             slice_pushdown=False,
-            no_optimizations=True,
             validate_output_schema=True,
             streamable=False,
         )

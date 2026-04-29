@@ -75,7 +75,9 @@ async function waitForBuildHistoryRow(
 async function openCancelDialogFromRow(page: Page, row: ReturnType<Page['locator']>) {
 	const btn = row.getByLabel('Cancel build');
 	await expect(btn).toBeVisible({ timeout: 10_000 });
-	await btn.click({ timeout: 10_000 });
+	await expect(btn).toBeEnabled({ timeout: 10_000 });
+	await btn.scrollIntoViewIfNeeded();
+	await btn.click({ force: true, timeout: 10_000 });
 	await expect(
 		page.getByRole('dialog').getByRole('heading', { name: 'Cancel this build?' })
 	).toBeVisible({ timeout: 10_000 });
@@ -84,7 +86,9 @@ async function openCancelDialogFromRow(page: Page, row: ReturnType<Page['locator
 async function openCancelDialogFromPreview(page: Page, preview: ReturnType<Page['locator']>) {
 	const btn = preview.locator('[data-testid="build-cancel-button"]');
 	await expect(btn).toBeVisible({ timeout: 30_000 });
-	await btn.click();
+	await expect(btn).toBeEnabled({ timeout: 30_000 });
+	await btn.scrollIntoViewIfNeeded();
+	await btn.click({ force: true, timeout: 10_000 });
 	await expect(
 		page.getByRole('dialog').getByRole('heading', { name: 'Cancel this build?' })
 	).toBeVisible({ timeout: 10_000 });
@@ -99,6 +103,25 @@ async function previewBuildId(preview: ReturnType<Page['locator']>) {
 function cancelDialog(page: Page) {
 	const title = page.getByRole('heading', { name: 'Cancel this build?' });
 	return page.getByRole('dialog').filter({ has: title });
+}
+
+async function confirmCancelDialog(page: Page) {
+	const dialog = cancelDialog(page);
+	const confirmButton = dialog.getByRole('button', { name: 'Cancel Build', exact: true });
+	await expect(dialog.getByRole('heading', { name: 'Cancel this build?' })).toBeVisible({
+		timeout: 10_000
+	});
+	await expect(confirmButton).toBeVisible({ timeout: 10_000 });
+	await expect(confirmButton).toBeEnabled({ timeout: 10_000 });
+	const [response] = await Promise.all([
+		page.waitForResponse(
+			(apiResponse) =>
+				apiResponse.url().includes('/api/v1/compute/cancel/') && apiResponse.status() === 200,
+			{ timeout: 15_000 }
+		),
+		confirmButton.click({ force: true, timeout: 10_000 })
+	]);
+	return response.json() as Promise<{ status: string }>;
 }
 
 async function waitForBuildRowById(
@@ -142,17 +165,9 @@ test.describe('Cancel Build – e2e', () => {
 			await openCancelDialogFromPreview(page, preview);
 
 			const dialog = cancelDialog(page);
-			await expect(dialog.getByRole('heading', { name: 'Cancel this build?' })).toBeVisible();
-			const cancelled = page.waitForResponse(
-				(response) =>
-					response.url().includes('/api/v1/compute/cancel/') && response.status() === 200
-			);
-			await dialog.getByRole('button', { name: 'Cancel Build', exact: true }).click();
-			const payload = await cancelled.then((response) => response.json());
+			const payload = await confirmCancelDialog(page);
 			expect(payload.status).toBe('cancelled');
-			await expect(dialog).not.toBeVisible({
-				timeout: 15_000
-			});
+			await expect(dialog).not.toBeVisible({ timeout: 15_000 });
 			await expect(page.locator('[data-testid="build-cancel-error"]')).not.toBeVisible();
 		} finally {
 			await deleteAnalysisViaUI(page, analysisName);
@@ -187,19 +202,9 @@ test.describe('Cancel Build – e2e', () => {
 			await openCancelDialogFromRow(page, runningRow);
 
 			const dialog = cancelDialog(page);
-			await expect(dialog.getByRole('heading', { name: 'Cancel this build?' })).toBeVisible();
-			const cancelled = page.waitForResponse(
-				(response) =>
-					response.url().includes('/api/v1/compute/cancel/') && response.status() === 200
-			);
-			await dialog.getByRole('button', { name: 'Cancel Build', exact: true }).click({
-				timeout: 10_000
-			});
-			const payload = await cancelled.then((response) => response.json());
+			const payload = await confirmCancelDialog(page);
 			expect(payload.status).toBe('cancelled');
-			await expect(dialog).not.toBeVisible({
-				timeout: 15_000
-			});
+			await expect(dialog).not.toBeVisible({ timeout: 15_000 });
 			await expect(page.locator('[data-testid="build-cancel-error"]')).not.toBeVisible({
 				timeout: 5_000
 			});

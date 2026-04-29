@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { defineConfig, devices } from '@playwright/test';
 
 const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
@@ -20,7 +21,7 @@ export default defineConfig({
 	expect: { timeout: 10_000 },
 	fullyParallel: true,
 	workers,
-	retries: 1,
+	retries: 0,
 	outputDir: './tests/test-results',
 	reporter: [['html', { open: 'never', outputFolder: 'tests/playwright-report' }], ['line']],
 	use: {

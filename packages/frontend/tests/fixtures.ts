@@ -24,10 +24,12 @@ interface WorkerAuth {
 
 async function ensureAuthFileReady(workerAuth: WorkerAuth): Promise<void> {
 	if (fs.existsSync(workerAuth.authFile)) return;
+	console.log(`[e2e] worker ${workerAuth.workerIndex} auth file missing, creating`);
 	const meta = readMeta();
 	const token = meta.authRequired ? await registerWorker(workerAuth.workerIndex) : undefined;
 	fs.mkdirSync(AUTH_DIR, { recursive: true });
 	fs.writeFileSync(workerAuth.authFile, JSON.stringify(buildStorageState(token), null, 2));
+	console.log(`[e2e] worker ${workerAuth.workerIndex} auth file ready`);
 }
 
 export const test = base.extend<
@@ -40,27 +42,35 @@ export const test = base.extend<
 		async ({}, use, workerInfo) => {
 			const idx = workerInfo.workerIndex;
 			const authFile = workerAuthFile(idx);
+			console.log(`[e2e] worker ${idx} setup start`);
 
 			fs.mkdirSync(AUTH_DIR, { recursive: true });
 
 			const meta = readMeta();
 
 			if (meta.authRequired) {
+				console.log(`[e2e] worker ${idx} ensuring clean account`);
 				await ensureWorkerClean(idx);
+				console.log(`[e2e] worker ${idx} registering account`);
 				const token = await registerWorker(idx);
 				fs.writeFileSync(authFile, JSON.stringify(buildStorageState(token), null, 2));
+				console.log(`[e2e] worker ${idx} registered account`);
 			} else {
 				fs.writeFileSync(authFile, JSON.stringify(buildStorageState(undefined), null, 2));
+				console.log(`[e2e] worker ${idx} auth disabled`);
 			}
 
+			console.log(`[e2e] worker ${idx} setup complete`);
 			await use({ authFile, workerIndex: idx });
 
 			if (meta.authRequired) {
 				const token = readStoredSessionToken(authFile);
 				if (token) {
+					console.log(`[e2e] worker ${idx} deleting account`);
 					await deleteAccount(token).catch(() => {});
 				}
 			}
+			console.log(`[e2e] worker ${idx} teardown complete`);
 		},
 		{ scope: 'worker' }
 	],

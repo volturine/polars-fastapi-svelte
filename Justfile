@@ -95,6 +95,7 @@ test-e2e-raw:
     unset VIRTUAL_ENV
     DATA_DIR="${DATA_DIR}-run-$$"
     export DATA_DIR
+    LOG_DIR="${E2E_LOG_DIR:-}"
     kill_tree() {
         local pid="$1"
         if [ -z "$pid" ] || ! kill -0 "$pid" >/dev/null 2>&1; then
@@ -119,11 +120,11 @@ test-e2e-raw:
     }
     cleanup() {
         status=$?
-        for pid in ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
+        for pid in ${HEARTBEAT_PID:-} ${PLAYWRIGHT_PID:-} ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
             kill_tree "$pid"
         done
         sleep 1
-        for pid in ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
+        for pid in ${HEARTBEAT_PID:-} ${PLAYWRIGHT_PID:-} ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
             kill_tree_force "$pid"
         done
         lsof -ti "tcp:${PORT}" | xargs -r kill >/dev/null 2>&1 || true
@@ -133,10 +134,22 @@ test-e2e-raw:
     trap cleanup EXIT
     lsof -ti "tcp:${PORT}" | xargs -r kill >/dev/null 2>&1 || true
     lsof -ti "tcp:${FRONTEND_PORT}" | xargs -r kill >/dev/null 2>&1 || true
-    (cd packages/backend && exec uv run --no-env-file main.py) & BACKEND_PID=$!
-    (cd packages/worker-manager && exec uv run --no-env-file main.py) & WORKER_PID=$!
-    (cd packages/scheduler && exec uv run --no-env-file main.py) & SCHEDULER_PID=$!
-    (cd packages/frontend && bun run predev && exec node ./node_modules/vite/bin/vite.js dev) & FRONTEND_PID=$!
+    if [ -n "$LOG_DIR" ]; then
+        mkdir -p "$LOG_DIR"
+    fi
+    echo "Starting e2e services"
+    if [ -n "$LOG_DIR" ]; then
+        (cd packages/backend && exec uv run --no-env-file main.py) >"$LOG_DIR/backend.log" 2>&1 & BACKEND_PID=$!
+        (cd packages/worker-manager && exec uv run --no-env-file main.py) >"$LOG_DIR/worker.log" 2>&1 & WORKER_PID=$!
+        (cd packages/scheduler && exec uv run --no-env-file main.py) >"$LOG_DIR/scheduler.log" 2>&1 & SCHEDULER_PID=$!
+        (cd packages/frontend && bun run predev && exec node ./node_modules/vite/bin/vite.js dev) >"$LOG_DIR/frontend.log" 2>&1 & FRONTEND_PID=$!
+    fi
+    if [ -z "$LOG_DIR" ]; then
+        (cd packages/backend && exec uv run --no-env-file main.py) & BACKEND_PID=$!
+        (cd packages/worker-manager && exec uv run --no-env-file main.py) & WORKER_PID=$!
+        (cd packages/scheduler && exec uv run --no-env-file main.py) & SCHEDULER_PID=$!
+        (cd packages/frontend && bun run predev && exec node ./node_modules/vite/bin/vite.js dev) & FRONTEND_PID=$!
+    fi
     wait_for_url() {
         local url="$1"
         local label="$2"
@@ -149,9 +162,33 @@ test-e2e-raw:
             sleep 1
         done
     }
+    echo "Waiting for backend readiness"
     wait_for_url "http://127.0.0.1:${PORT}/health/ready" "backend readiness"
+    echo "Backend is ready"
+    echo "Waiting for frontend readiness"
     wait_for_url "http://127.0.0.1:${FRONTEND_PORT}" "frontend"
-    cd packages/frontend && PLAYWRIGHT_DISABLE_WEB_SERVER=true npx playwright test
+    echo "Frontend is ready"
+    echo "Starting Playwright e2e tests"
+    (cd packages/frontend && PLAYWRIGHT_DISABLE_WEB_SERVER=true exec npx playwright test) & PLAYWRIGHT_PID=$!
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+        (
+            while kill -0 "$PLAYWRIGHT_PID" >/dev/null 2>&1; do
+                sleep 60
+                if kill -0 "$PLAYWRIGHT_PID" >/dev/null 2>&1; then
+                    echo "[e2e] Playwright still running after ${SECONDS}s"
+                fi
+            done
+        ) & HEARTBEAT_PID=$!
+    fi
+    set +e
+    wait "$PLAYWRIGHT_PID"
+    status=$?
+    set -e
+    if [ -n "${HEARTBEAT_PID:-}" ]; then
+        kill "$HEARTBEAT_PID" >/dev/null 2>&1 || true
+        wait "$HEARTBEAT_PID" >/dev/null 2>&1 || true
+    fi
+    exit "$status"
 
 # Run backend tests
 test:

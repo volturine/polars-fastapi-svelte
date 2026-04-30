@@ -112,12 +112,25 @@ jobs:
         run: bun x playwright install --with-deps chromium
 
       - name: Run e2e tests
-        run: just test-e2e
+        run: |
+          set -o pipefail
+          mkdir -p packages/frontend/tests/ci-artifacts
+          export E2E_LOG_DIR="$PWD/packages/frontend/tests/ci-artifacts/services"
+          timeout --signal=TERM --kill-after=30s 27m just test-e2e 2>&1 | tee packages/frontend/tests/ci-artifacts/e2e.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -eq 124 ]; then
+            echo "e2e step hit the 27 minute timeout before the 30 minute job timeout"
+          fi
+          exit "$status"
 
       - name: Upload Playwright report
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: packages/frontend/tests/playwright-report/
+          if-no-files-found: ignore
+          path: |
+            packages/frontend/tests/ci-artifacts/
+            packages/frontend/tests/playwright-report/
+            packages/frontend/tests/test-results/
           retention-days: 7

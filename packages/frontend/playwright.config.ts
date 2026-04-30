@@ -19,9 +19,9 @@ export default defineConfig({
 	globalTeardown: './tests/global-teardown.ts',
 	timeout: 30_000,
 	expect: { timeout: 10_000 },
-	fullyParallel: true,
+	fullyParallel: false,
 	workers,
-	retries: 0,
+	retries: 1,
 	outputDir: './tests/test-results',
 	reporter: [['html', { open: 'never', outputFolder: 'tests/playwright-report' }], ['line']],
 	use: {

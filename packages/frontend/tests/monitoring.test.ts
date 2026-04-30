@@ -210,7 +210,7 @@ test.describe('Monitoring – Schedules tab', () => {
 		await createSchedule(request, dsId, '0 6 * * *');
 		try {
 			await page.goto('/monitoring?tab=schedules');
-			const schedRow = page.locator(`[data-datasource-name="${ds}"]`);
+			const schedRow = page.locator(`tr[data-datasource-id="${dsId}"]`);
 			await expect(schedRow).toBeVisible({ timeout: 8_000 });
 			await expect(schedRow).toContainText('Cron: 0 6 * * *', { timeout: 5_000 });
 		} finally {
@@ -294,8 +294,8 @@ test.describe('Monitoring – Schedule create flow', () => {
 			await expect(createBtn).toBeEnabled({ timeout: 5_000 });
 			await createBtn.click();
 
-			// Schedule should appear in the list table (scope to table rows to avoid matching the form <option>)
-			const schedRow = page.locator(`[data-datasource-name="${ds}"]`);
+			// Datasource name resolution can lag the row render, but datasource_id is stable immediately.
+			const schedRow = page.locator(`tr[data-datasource-id="${dsId}"]`);
 			await expect(schedRow).toBeVisible({ timeout: 8_000 });
 			await expect(schedRow).toContainText('Every hour', { timeout: 5_000 });
 		} finally {

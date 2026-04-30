@@ -132,7 +132,11 @@ export async function deleteUdfViaUI(page: Page, name: string): Promise<void> {
 export async function deleteScheduleViaUI(page: Page, cronOrName: string): Promise<void> {
 	try {
 		await page.goto('/monitoring?tab=schedules', { waitUntil: 'domcontentloaded' });
-		const row = page.locator(`[data-datasource-name="${cronOrName}"]`);
+		const row = page
+			.locator('tr')
+			.filter({ has: page.getByLabel('Delete schedule') })
+			.filter({ hasText: cronOrName })
+			.first();
 		await row.waitFor({ state: 'visible', timeout: ELEMENT_VISIBLE_TIMEOUT });
 		await row.getByLabel('Delete schedule').click();
 		const dialog = page.getByRole('dialog');

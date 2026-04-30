@@ -10,6 +10,7 @@ const apiOrigin = process.env.PLAYWRIGHT_API_ORIGIN || `http://localhost:${apiPo
 export const API_BASE = `${apiOrigin}/api/v1`;
 const DATASOURCE_READY_TIMEOUT_MS = 20_000;
 const DATASOURCE_READY_DELAY_MS = 500;
+const FETCH_TIMEOUT_MS = 10_000;
 
 export const AUTH_DIR = path.resolve('tests/.auth');
 export const META_FILE = path.join(AUTH_DIR, 'meta.json');
@@ -46,8 +47,21 @@ export function parseSessionToken(response: Response): string | undefined {
 	return undefined;
 }
 
+async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Response> {
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+	try {
+		return await fetch(input, {
+			...init,
+			signal: controller.signal
+		});
+	} finally {
+		clearTimeout(timeout);
+	}
+}
+
 export async function deleteAccount(token: string): Promise<DeleteOutcome> {
-	const resp = await fetch(`${API_BASE}/auth/account`, {
+	const resp = await fetchWithTimeout(`${API_BASE}/auth/account`, {
 		method: 'DELETE',
 		headers: { Cookie: `session_token=${token}` }
 	});
@@ -58,7 +72,7 @@ export async function deleteAccount(token: string): Promise<DeleteOutcome> {
 }
 
 export async function loginAs(email: string): Promise<LoginResult> {
-	const resp = await fetch(`${API_BASE}/auth/login`, {
+	const resp = await fetchWithTimeout(`${API_BASE}/auth/login`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ email, password: E2E_PASSWORD })
@@ -74,7 +88,7 @@ export async function loginAs(email: string): Promise<LoginResult> {
 
 export async function registerWorker(workerIndex: number): Promise<string> {
 	const register = async (): Promise<Response> =>
-		fetch(`${API_BASE}/auth/register`, {
+		fetchWithTimeout(`${API_BASE}/auth/register`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
@@ -108,7 +122,7 @@ export async function registerWorker(workerIndex: number): Promise<string> {
 }
 
 export async function registerUser(email: string, displayName: string): Promise<string> {
-	const resp = await fetch(`${API_BASE}/auth/register`, {
+	const resp = await fetchWithTimeout(`${API_BASE}/auth/register`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({
@@ -513,7 +527,7 @@ async function waitForNoEngineJobByToken(
 	let lastError = '';
 
 	while (Date.now() - startedAt < timeoutMs) {
-		const response = await fetch(`${API_BASE}/compute/engine/keepalive/${analysisId}`, {
+		const response = await fetchWithTimeout(`${API_BASE}/compute/engine/keepalive/${analysisId}`, {
 			method: 'POST',
 			headers: { Cookie: `session_token=${token}` }
 		});
@@ -566,7 +580,7 @@ export async function shutdownEngineByToken(
 ): Promise<void> {
 	const deadline = Date.now() + (options.waitForIdleMs ?? DEFAULT_SHUTDOWN_WAIT_MS);
 	while (true) {
-		const resp = await fetch(`${API_BASE}/compute/engine/${analysisId}`, {
+		const resp = await fetchWithTimeout(`${API_BASE}/compute/engine/${analysisId}`, {
 			method: 'DELETE',
 			headers: { Cookie: `session_token=${token}` }
 		});

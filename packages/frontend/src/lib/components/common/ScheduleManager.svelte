@@ -38,6 +38,7 @@
 	const defaultCron = '0 * * * *';
 
 	let creating = $state(false);
+	let createDatasources = $state<DataSource[]>([]);
 	let triggerType = $state<'cron' | 'depends' | 'event'>('cron');
 	let newCron = $state(defaultCron);
 	let newDatasourceId = $state('');
@@ -209,6 +210,7 @@
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['schedules'] });
 			creating = false;
+			createDatasources = [];
 			triggerType = 'cron';
 			newCron = defaultCron;
 			newDatasourceId = '';
@@ -352,9 +354,11 @@
 		void listDatasources(true, { cache: 'no-store' }).match(
 			(datasources) => {
 				queryClient.setQueryData(['datasources-lookup', 'include-hidden'], datasources);
+				createDatasources = datasources;
 				creating = true;
 			},
 			() => {
+				createDatasources = datasourcesQuery.data ?? [];
 				creating = true;
 			}
 		);
@@ -696,7 +700,7 @@
 								bind:value={newDatasourceId}
 							>
 								<option value="">Select output dataset...</option>
-								{#each allDatasources as ds (ds.id)}
+								{#each createDatasources as ds (ds.id)}
 									<option value={ds.id}>{ds.name}</option>
 								{/each}
 							</select>
@@ -956,7 +960,7 @@
 										bind:value={newTrigger}
 									>
 										<option value="">Select a datasource...</option>
-										{#each allDatasources as ds (ds.id)}
+										{#each createDatasources as ds (ds.id)}
 											<option value={ds.id}>{ds.name}</option>
 										{/each}
 									</select>

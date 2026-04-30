@@ -83,7 +83,6 @@ export const test = base.extend<
 		});
 		const page = await context.newPage();
 		await use(page);
-		await page.close({ runBeforeUnload: true });
 		await context.close();
 	},
 

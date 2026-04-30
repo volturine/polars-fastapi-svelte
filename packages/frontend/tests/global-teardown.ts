@@ -16,8 +16,10 @@ import {
 	deleteUdfViaUI
 } from './utils/ui-cleanup.js';
 
+const MAX_CLEANUP_PASSES = 25;
+
 async function cleanSchedules(page: import('@playwright/test').Page): Promise<void> {
-	while (true) {
+	for (let attempt = 0; attempt < MAX_CLEANUP_PASSES; attempt += 1) {
 		const row = page
 			.locator('tr')
 			.filter({ has: page.getByLabel('Delete schedule') })
@@ -30,10 +32,11 @@ async function cleanSchedules(page: import('@playwright/test').Page): Promise<vo
 		}
 		await deleteScheduleViaUI(page, await row.textContent().then((text) => text ?? ''));
 	}
+	console.warn('[e2e] globalTeardown schedule cleanup hit max passes');
 }
 
 async function cleanHealthChecks(page: import('@playwright/test').Page): Promise<void> {
-	while (true) {
+	for (let attempt = 0; attempt < MAX_CLEANUP_PASSES; attempt += 1) {
 		await page.goto('/monitoring?tab=health', { waitUntil: 'domcontentloaded' });
 		const row = page.locator('[data-healthcheck-name^="e2e"]').first();
 		try {
@@ -45,10 +48,11 @@ async function cleanHealthChecks(page: import('@playwright/test').Page): Promise
 		if (!name) return;
 		await deleteHealthCheckViaUI(page, name);
 	}
+	console.warn('[e2e] globalTeardown health-check cleanup hit max passes');
 }
 
 async function cleanAnalyses(page: import('@playwright/test').Page): Promise<void> {
-	while (true) {
+	for (let attempt = 0; attempt < MAX_CLEANUP_PASSES; attempt += 1) {
 		await page.goto('/', { waitUntil: 'domcontentloaded' });
 		const card = page.locator('[data-analysis-card^="E2E"]').first();
 		try {
@@ -60,10 +64,11 @@ async function cleanAnalyses(page: import('@playwright/test').Page): Promise<voi
 		if (!name) return;
 		await deleteAnalysisViaUI(page, name, { skipNavigation: true });
 	}
+	console.warn('[e2e] globalTeardown analysis cleanup hit max passes');
 }
 
 async function cleanDatasources(page: import('@playwright/test').Page): Promise<void> {
-	while (true) {
+	for (let attempt = 0; attempt < MAX_CLEANUP_PASSES; attempt += 1) {
 		await page.goto('/datasources', { waitUntil: 'domcontentloaded' });
 		const toggle = page.locator('button[title="Show auto-generated datasources"]');
 		if (await toggle.isVisible().catch(() => false)) {
@@ -79,10 +84,11 @@ async function cleanDatasources(page: import('@playwright/test').Page): Promise<
 		if (!name) return;
 		await deleteDatasourceViaUI(page, name);
 	}
+	console.warn('[e2e] globalTeardown datasource cleanup hit max passes');
 }
 
 async function cleanUdfs(page: import('@playwright/test').Page): Promise<void> {
-	while (true) {
+	for (let attempt = 0; attempt < MAX_CLEANUP_PASSES; attempt += 1) {
 		await page.goto('/udfs', { waitUntil: 'domcontentloaded' });
 		const card = page.locator('[data-udf-card^="e2e"]').first();
 		try {
@@ -94,6 +100,7 @@ async function cleanUdfs(page: import('@playwright/test').Page): Promise<void> {
 		if (!name) return;
 		await deleteUdfViaUI(page, name);
 	}
+	console.warn('[e2e] globalTeardown UDF cleanup hit max passes');
 }
 
 export default async function globalTeardown(): Promise<void> {

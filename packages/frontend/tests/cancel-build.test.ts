@@ -161,7 +161,7 @@ test.describe('Cancel Build – e2e', () => {
 
 			const preview = page.locator('[data-testid="build-preview"]');
 			await expect(preview).toBeVisible({ timeout: 10_000 });
-			await previewBuildId(preview);
+			const runId = await previewBuildId(preview);
 			await openCancelDialogFromPreview(page, preview);
 
 			const dialog = cancelDialog(page);
@@ -169,6 +169,14 @@ test.describe('Cancel Build – e2e', () => {
 			expect(payload.status).toBe('cancelled');
 			await expect(dialog).not.toBeVisible({ timeout: 15_000 });
 			await expect(page.locator('[data-testid="build-cancel-error"]')).not.toBeVisible();
+
+			await gotoMonitoringBuilds(page, analysisId);
+			const panel = page.locator('#panel-builds');
+			const cancelledRow = await waitForBuildRowById(page, panel, runId, 'cancelled', 30_000);
+			await expect(cancelledRow).toHaveAttribute('data-build-status', 'cancelled', {
+				timeout: 30_000
+			});
+			await expect(cancelledRow.getByText('Cancelled')).toBeVisible();
 		} finally {
 			await deleteAnalysisViaUI(page, analysisName);
 			await deleteDatasourceViaUI(page, dsName);

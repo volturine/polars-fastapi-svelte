@@ -6,5 +6,9 @@
   {
     "scope": "just-test-e2e",
     "pattern": "resource_tracker: There appear to be \\d+ leaked semaphore objects to clean up at shutdown"
+  },
+  {
+    "scope": "just-test-browser-integration",
+    "pattern": "resource_tracker: There appear to be \\d+ leaked semaphore objects to clean up at shutdown"
   }
 ]

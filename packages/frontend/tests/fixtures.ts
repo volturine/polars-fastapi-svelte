@@ -37,7 +37,7 @@ export const test = base.extend<
 	{ workerAuth: WorkerAuth }
 >({
 	workerAuth: [
-		// Hybrid suite setup: auth is provisioned via API so browser tests can focus on feature flows.
+		// Browser-integration suite setup: auth is provisioned via API for fast seeded scenarios.
 		// eslint-disable-next-line no-empty-pattern
 		async ({}, use, workerInfo) => {
 			const idx = workerInfo.workerIndex;

@@ -84,9 +84,16 @@ check:
     cd packages/frontend && bun run panda:codegen && bun run check && bun run lint
 
 
-# Run e2e tests with backend + frontend lifecycle managed by Just
+# Run pure user-driven e2e tests with backend + frontend lifecycle managed by Just
 test-e2e:
     cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-test-e2e --cwd . -- just test-e2e-raw
+
+# Run API-seeded browser-integration tests separately from pure e2e
+test-browser-integration:
+    cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-test-browser-integration --cwd . -- just test-browser-integration-raw
+
+test-browser-integration-raw:
+    PLAYWRIGHT_CONFIG_FILE=playwright.config.ts just test-e2e-raw
 
 test-e2e-raw:
     #!/usr/bin/env bash
@@ -178,7 +185,7 @@ test-e2e-raw:
             --timeout-seconds "${E2E_TIMEOUT_SECONDS:-0}" \
             --grace-seconds "${E2E_TIMEOUT_GRACE_SECONDS:-30}" \
             --heartbeat-seconds "${E2E_HEARTBEAT_SECONDS:-0}" \
-            -- npx playwright test
+            -- npx playwright test --config="${PLAYWRIGHT_CONFIG_FILE:-playwright.e2e.config.ts}"
     )
     status=$?
     set -e

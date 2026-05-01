@@ -1,17 +1,16 @@
-# Playwright Test Scope
+# Playwright Browser-Integration Scope
 
-These browser tests are intentionally a hybrid suite:
+These tests are not the pure e2e suite.
 
-- UI interactions are exercised in the browser.
-- Some setup and teardown still use backend API seed helpers in [utils/api.ts](utils/api.ts).
+They are browser-driven integration tests that still use API seed helpers in [utils/api.ts](utils/api.ts) to create or prepare state before the browser assertions run.
 
 Implications:
 
-- This suite is useful for end-to-end UI verification after state exists.
-- It does not prove that every resource-creation flow is fully user-driven.
-- When adding a new test, prefer UI setup first. Use API seeding only when the setup would otherwise dominate runtime or make the scenario impractical.
+- They are useful for broad browser coverage and fast scenario setup.
+- They must not be presented as true end-to-end user-flow coverage.
+- Pure user-driven coverage lives in `packages/frontend/tests-e2e/` and is what `just test-e2e` runs.
 
 Naming:
 
-- `bun run test:e2e` runs the hybrid Playwright suite.
-- `bun run test:hybrid-e2e` is the explicit alias for the same suite.
+- `bun run test:e2e` runs the pure user-driven suite.
+- `bun run test:browser-integration` runs this API-seeded browser-integration suite.

@@ -1,5 +1,5 @@
 import asyncio
-import contextlib
+import concurrent.futures
 import logging
 import uuid
 from urllib.parse import quote
@@ -220,11 +220,9 @@ async def _wait_for_build_notification(websocket: WebSocket, build_id: str, last
     done, pending = await asyncio.wait({receive_task, notify_task}, return_when=asyncio.FIRST_COMPLETED)
     for task in pending:
         task.cancel()
-    for task in pending:
-        with contextlib.suppress(asyncio.CancelledError):
-            await task
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
     if receive_task in done:
-        await receive_task
         return None
     return await notify_task
 
@@ -236,13 +234,11 @@ async def _wait_for_namespace_build_update(websocket: WebSocket, namespace: str,
     done, pending = await asyncio.wait({receive_task, notify_task}, return_when=asyncio.FIRST_COMPLETED)
     for task in pending:
         task.cancel()
-    for task in pending:
-        with contextlib.suppress(asyncio.CancelledError):
-            await task
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
     if receive_task in done:
-        await receive_task
         return None
-    await notify_task
+    _ = await notify_task
     latest_version = build_hub.latest_namespace_sequence(namespace)
     if latest_version > last_version:
         return str(latest_version)
@@ -336,11 +332,9 @@ async def _wait_for_engine_notification(websocket: WebSocket, namespace: str, la
     done, pending = await asyncio.wait({receive_task, notify_task}, return_when=asyncio.FIRST_COMPLETED)
     for task in pending:
         task.cancel()
-    for task in pending:
-        with contextlib.suppress(asyncio.CancelledError):
-            await task
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
     if receive_task in done:
-        await receive_task
         return None
     return await notify_task
 
@@ -917,6 +911,8 @@ async def engine_list_stream(websocket: WebSocket) -> None:
             last_seen = updated
     except WebSocketDisconnect:
         return
+    except (asyncio.CancelledError, concurrent.futures.CancelledError):
+        return
     except HTTPException as exc:
         await _safe_send_json(
             websocket,
@@ -967,6 +963,8 @@ async def build_list_stream(websocket: WebSocket) -> None:
                 return
             last_seen = updated
     except WebSocketDisconnect:
+        return
+    except (asyncio.CancelledError, concurrent.futures.CancelledError):
         return
     except HTTPException as exc:
         await _safe_send_json(
@@ -1031,6 +1029,8 @@ async def active_build_stream(websocket: WebSocket, build_id: str) -> None:
                 return
             last_sequence = max(replayed_sequence, notification.latest_sequence)
     except WebSocketDisconnect:
+        return
+    except (asyncio.CancelledError, concurrent.futures.CancelledError):
         return
     except HTTPException as exc:
         await _safe_send_json(

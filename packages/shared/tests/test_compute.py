@@ -38,7 +38,7 @@ from starlette.websockets import WebSocketState
 from contracts.build_runs.live import BuildNotification, hub as build_hub
 from contracts.build_runs.models import BuildRun
 from contracts.compute import schemas as compute_schemas
-from contracts.compute.base import ComputeEngine, EngineProgressEvent, EngineResult, EngineStatusInfo
+from contracts.compute.base import ComputeEngine, EngineProgressEvent, EngineResult, EngineStatusInfo, ShutdownAck
 from contracts.datasource.models import DataSource
 from contracts.engine_runs.models import EngineRun
 from core import (
@@ -346,6 +346,84 @@ def test_close_queues_closes_then_joins_without_cancel_join_thread() -> None:
     engine._close_queues()
 
     assert order == ['close', 'join', 'close', 'join', 'close', 'join']
+    assert engine.command_queue is None
+    assert engine.result_queue is None
+    assert engine.progress_queue is None
+
+
+def test_engine_shutdown_waits_for_ack_before_escalating() -> None:
+    engine = PolarsComputeEngine('analysis')
+    engine.is_running = True
+    calls: list[tuple[str, object | None]] = []
+
+    class FakeProcess:
+        exitcode = 0
+        pid = 123
+
+        def __init__(self) -> None:
+            self._alive = True
+
+        def is_alive(self) -> bool:
+            return self._alive
+
+        def join(self, timeout=None) -> None:
+            calls.append(('join', timeout))
+            self._alive = False
+
+        def terminate(self) -> None:
+            calls.append(('terminate', None))
+            self._alive = False
+
+        def kill(self) -> None:
+            calls.append(('kill', None))
+            self._alive = False
+
+        def close(self) -> None:
+            calls.append(('close_process', None))
+
+    class FakeCommandQueue:
+        def put(self, command, timeout=None) -> None:
+            calls.append((type(command).__name__, timeout))
+
+        def close(self) -> None:
+            calls.append(('close_command_queue', None))
+
+        def join_thread(self) -> None:
+            calls.append(('join_command_queue', None))
+
+    class FakeResultQueue:
+        def __init__(self) -> None:
+            self._messages = [ShutdownAck()]
+
+        def get(self, timeout=None):
+            calls.append(('result_get', timeout))
+            return self._messages.pop(0)
+
+        def close(self) -> None:
+            calls.append(('close_result_queue', None))
+
+        def join_thread(self) -> None:
+            calls.append(('join_result_queue', None))
+
+    class FakeProgressQueue:
+        def close(self) -> None:
+            calls.append(('close_progress_queue', None))
+
+        def join_thread(self) -> None:
+            calls.append(('join_progress_queue', None))
+
+    engine.process = FakeProcess()  # type: ignore[assignment]
+    engine.command_queue = FakeCommandQueue()  # type: ignore[assignment]
+    engine.result_queue = FakeResultQueue()  # type: ignore[assignment]
+    engine.progress_queue = FakeProgressQueue()  # type: ignore[assignment]
+
+    engine.shutdown()
+
+    assert ('ShutdownCommand', 1) in calls
+    assert ('join', 5) in calls
+    assert ('terminate', None) not in calls
+    assert ('kill', None) not in calls
+    assert engine.process is None
     assert engine.command_queue is None
     assert engine.result_queue is None
     assert engine.progress_queue is None

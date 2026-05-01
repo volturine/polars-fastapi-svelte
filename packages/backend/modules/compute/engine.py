@@ -21,6 +21,7 @@ from contracts.compute.base import (
     PreviewCommand,
     RowCountCommand,
     SchemaCommand,
+    ShutdownAck,
     ShutdownCommand,
 )
 from core.exceptions import PipelineValidationError
@@ -286,14 +287,12 @@ class PolarsComputeEngine:
             except Exception as e:
                 logger.warning(f'Error getting result from queue: {e}', exc_info=True)
                 return None
+            if isinstance(result, ShutdownAck):
+                continue
             if not isinstance(result, EngineResult):
                 continue
             if expected and result.job_id and result.job_id != expected:
-                self._pending_results[result.job_id] = result
-                if len(self._pending_results) > 100:
-                    excess = len(self._pending_results) - 100
-                    for _ in range(excess):
-                        self._pending_results.pop(next(iter(self._pending_results)))
+                self._store_pending_result(result)
                 continue
             if expected == self.current_job_id and (result.data is not None or result.error):
                 self.current_job_id = None
@@ -336,21 +335,54 @@ class PolarsComputeEngine:
                 continue
             return event
 
+    def _store_pending_result(self, result: EngineResult) -> None:
+        if result.job_id is None:
+            return
+        self._pending_results[result.job_id] = result
+        if len(self._pending_results) <= 100:
+            return
+        excess = len(self._pending_results) - 100
+        for _ in range(excess):
+            self._pending_results.pop(next(iter(self._pending_results)))
+
+    def _await_shutdown_ack(self, timeout: float = 5.0) -> bool:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self.process is not None and not self.process.is_alive():
+                return self.process.exitcode == 0
+            try:
+                if self.result_queue is None:
+                    return False
+                message = self.result_queue.get(timeout=min(0.1, max(0.0, deadline - time.monotonic())))
+            except Empty:
+                continue
+            except Exception as exc:
+                logger.debug(f'Failed while waiting for compute shutdown acknowledgement: {exc}', exc_info=True)
+                return False
+            if isinstance(message, ShutdownAck):
+                return True
+            if isinstance(message, EngineResult):
+                self._store_pending_result(message)
+        return False
+
     def shutdown(self) -> None:
         """Shutdown the compute subprocess."""
         if not self.is_running:
             self._close_queues()
             return
 
+        acknowledged = False
         try:
             if self.command_queue is not None:
                 self.command_queue.put(ShutdownCommand(), timeout=1)
+                acknowledged = self._await_shutdown_ack()
         except Exception as exc:
             logger.debug(f'Failed to enqueue shutdown command: {exc}', exc_info=True)
 
         if self.process and self.process.is_alive():
-            self.process.join(timeout=5)
+            self.process.join(timeout=5 if acknowledged else 1)
             if self.process.is_alive():
+                logger.warning('Compute process for analysis %s did not stop cooperatively; escalating shutdown', self.analysis_id)
                 self.process.terminate()
                 self.process.join(timeout=2)
             if self.process.is_alive():
@@ -362,6 +394,7 @@ class PolarsComputeEngine:
 
         self._close_queues()
         self.is_running = False
+        self.current_job_id = None
         self.process = None
 
     def _close_queues(self) -> None:
@@ -422,9 +455,11 @@ class PolarsComputeEngine:
                         continue
 
                     if isinstance(command, ShutdownCommand):
+                        result_queue.put(ShutdownAck())
                         break
                     if isinstance(command, dict):
                         if command.get('type') == 'shutdown':
+                            result_queue.put(ShutdownAck())
                             break
                         logger.warning('Ignoring unsupported dict command payload: %s', command.get('type'))
                         continue

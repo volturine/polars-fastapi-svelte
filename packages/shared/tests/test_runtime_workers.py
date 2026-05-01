@@ -336,21 +336,15 @@ async def test_run_build_manager_process_tracks_manager_and_spawns_workers(monke
     stop_event = asyncio.Event()
 
     class FakeProcess:
-        def __init__(self, target) -> None:
-            self.target = target
+        def __init__(self) -> None:
             self.pid = 123
-            self._alive = False
-
-        def start(self) -> None:
             self._alive = True
-            calls.append(('child_start', self.target))
-            stop_event.set()
 
         def is_alive(self) -> bool:
             return self._alive
 
         def join(self, timeout=None) -> None:
-            del timeout
+            calls.append(('child_join', timeout))
             self._alive = False
 
         def terminate(self) -> None:
@@ -360,6 +354,14 @@ async def test_run_build_manager_process_tracks_manager_and_spawns_workers(monke
         def kill(self) -> None:
             self._alive = False
             calls.append(('child_kill', None))
+
+    class FakeStopSignal:
+        def __init__(self) -> None:
+            self.set_calls = 0
+
+        def set(self) -> None:
+            self.set_calls += 1
+            calls.append(('child_stop_signal', self.set_calls))
 
     async def fake_init_db() -> None:
         calls.append(('init_db', None))
@@ -377,6 +379,11 @@ async def test_run_build_manager_process_tracks_manager_and_spawns_workers(monke
         del server
         calls.append(('stop_api_server', listener))
 
+    def fake_spawn_worker_process():
+        calls.append(('child_start', None))
+        stop_event.set()
+        return runtime_process.ManagedWorkerProcess(process=FakeProcess(), stop_signal=FakeStopSignal())
+
     monkeypatch.setattr(runtime_process, 'init_db', fake_init_db)
     monkeypatch.setattr(runtime_process.runtime_ipc, 'start_api_server', fake_start_api_server)
     monkeypatch.setattr(runtime_process.runtime_ipc, 'serve_api_notifications', fake_serve_api_notifications)
@@ -386,7 +393,7 @@ async def test_run_build_manager_process_tracks_manager_and_spawns_workers(monke
     monkeypatch.setattr(runtime_process, '_heartbeat_manager', lambda worker_id, active_jobs=0: calls.append(('heartbeat', active_jobs)))
     monkeypatch.setattr(runtime_process, 'manager_id', lambda: 'manager-1')
     monkeypatch.setattr(runtime_process, 'queued_job_count', lambda: 1)
-    monkeypatch.setattr(runtime_process._SPAWN, 'Process', FakeProcess)
+    monkeypatch.setattr(runtime_process, '_spawn_worker_process', fake_spawn_worker_process)
     monkeypatch.setattr(runtime_process.settings, 'build_worker_min_processes', 0, raising=False)
     monkeypatch.setattr(runtime_process.settings, 'build_worker_max_processes', 2, raising=False)
 
@@ -395,5 +402,8 @@ async def test_run_build_manager_process_tracks_manager_and_spawns_workers(monke
     names = [name for name, _ in calls]
     assert names[0:3] == ['init_db', 'start_api_server', 'register_manager']
     assert 'child_start' in names
+    assert 'child_stop_signal' in names
+    assert 'child_terminate' not in names
+    assert 'child_kill' not in names
     assert any(name == 'stop_api_server' for name, _ in calls)
     assert ('stop_manager', 'manager-1') in calls

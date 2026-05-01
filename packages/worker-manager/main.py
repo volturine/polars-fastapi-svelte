@@ -9,6 +9,7 @@ import os
 import signal
 import socket
 import uuid
+from multiprocessing.synchronize import Event as ProcessEvent
 
 from compute_manager import ProcessManager
 from engine_live import create_snapshot_notifier
@@ -29,6 +30,12 @@ from core.namespace import reset_namespace, set_namespace_context
 
 logger = logging.getLogger(__name__)
 _SPAWN = multiprocessing.get_context('spawn')
+
+
+class ManagedWorkerProcess:
+    def __init__(self, process: multiprocessing.process.BaseProcess, stop_signal: ProcessEvent) -> None:
+        self.process = process
+        self.stop_signal = stop_signal
 
 
 def _persist_engine_snapshot(worker_id: str, namespace: str, statuses) -> None:
@@ -97,11 +104,23 @@ async def _manager_heartbeat_loop(stop_event: asyncio.Event, worker_id: str, *, 
         _heartbeat_manager(worker_id, active_jobs=active_children)
 
 
-def _worker_main() -> None:
+async def _watch_process_stop_signal(stop_signal: ProcessEvent, stop_event: asyncio.Event) -> None:
+    await asyncio.to_thread(stop_signal.wait)
+    stop_event.set()
+
+
+def _worker_main(stop_signal: ProcessEvent) -> None:
     async def _run() -> None:
         stop_event = asyncio.Event()
         install_stop_handlers(stop_event)
-        await run_build_worker_process(stop_event=stop_event)
+        stop_task = asyncio.create_task(_watch_process_stop_signal(stop_signal, stop_event))
+        try:
+            await run_build_worker_process(stop_event=stop_event)
+        finally:
+            stop_event.set()
+            stop_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await stop_task
 
     asyncio.run(_run())
 
@@ -144,9 +163,35 @@ async def run_build_worker_process(
         local_stop.set()
         if not task.done():
             with contextlib.suppress(asyncio.TimeoutError):
-                await asyncio.wait_for(task, timeout=5)
+                _ = await asyncio.wait_for(task, timeout=5)
         manager.shutdown_all()
         logger.info('Build worker process shutdown complete')
+
+
+def _spawn_worker_process() -> ManagedWorkerProcess:
+    stop_signal = _SPAWN.Event()
+    process = _SPAWN.Process(target=_worker_main, args=(stop_signal,))
+    process.start()
+    return ManagedWorkerProcess(process=process, stop_signal=stop_signal)
+
+
+def _stop_worker_process(child: ManagedWorkerProcess) -> None:
+    child.stop_signal.set()
+    child.process.join(timeout=10)
+    if child.process.is_alive():
+        logger.warning('Build worker process %s did not stop cooperatively; escalating shutdown', child.process.pid)
+        child.process.terminate()
+        child.process.join(timeout=5)
+    if child.process.is_alive():
+        child.process.kill()
+        child.process.join(timeout=5)
+
+
+def _reap_dead_children(children: dict[int, ManagedWorkerProcess]) -> None:
+    stale = [pid for pid, child in children.items() if not child.process.is_alive()]
+    for pid in stale:
+        child = children.pop(pid)
+        child.process.join(timeout=1)
 
 
 async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) -> None:
@@ -161,21 +206,21 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
     worker_id = manager_id()
     _register_manager(worker_id)
     heartbeat_task = asyncio.create_task(_manager_heartbeat_loop(local_stop, worker_id))
-    children: dict[int, multiprocessing.process.BaseProcess] = {}
+    children: dict[int, ManagedWorkerProcess] = {}
     last_seen = build_job_hub.version()
     try:
         while not local_stop.is_set():
-            stale = [pid for pid, proc in children.items() if not proc.is_alive()]
-            for pid in stale:
-                proc = children.pop(pid)
-                proc.join(timeout=1)
+            _reap_dead_children(children)
 
             queued = await asyncio.to_thread(queued_job_count)
             desired = min(settings.build_worker_max_processes, max(settings.build_worker_min_processes, queued))
             while len(children) < desired:
-                proc = _SPAWN.Process(target=_worker_main)
-                proc.start()
-                children[proc.pid or id(proc)] = proc
+                child = _spawn_worker_process()
+                children[child.process.pid or id(child.process)] = child
+            while len(children) > desired:
+                pid, child = next(iter(children.items()))
+                children.pop(pid)
+                _stop_worker_process(child)
 
             if len(children) >= desired and queued == 0:
                 wait_task = asyncio.create_task(build_job_hub.wait(last_seen))
@@ -199,13 +244,8 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
         heartbeat_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await heartbeat_task
-        for proc in children.values():
-            if proc.is_alive():
-                proc.terminate()
-                proc.join(timeout=5)
-            if proc.is_alive():
-                proc.kill()
-                proc.join(timeout=5)
+        for child in children.values():
+            _stop_worker_process(child)
         if ipc_task is not None:
             with contextlib.suppress(asyncio.TimeoutError):
                 await asyncio.wait_for(ipc_task, timeout=5)

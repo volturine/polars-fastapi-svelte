@@ -19,26 +19,6 @@ T = TypeVar('T')
 _MAX_NAMESPACE_ENGINES = 50
 _PUBLIC_SCHEMA = 'public'
 _POSTGRES_INIT_LOCK_KEY = 4815162342
-_TENANT_TABLES = frozenset(
-    {
-        'analyses',
-        'analysis_datasources',
-        'analysis_versions',
-        'build_events',
-        'build_jobs',
-        'build_runs',
-        'datasources',
-        'datasource_column_metadata',
-        'engine_runs',
-        'healthcheck_results',
-        'healthchecks',
-        'resource_locks',
-        'schedules',
-        'telegram_listeners',
-        'telegram_subscribers',
-        'udfs',
-    }
-)
 
 
 def _engine_kwargs() -> dict[str, object]:

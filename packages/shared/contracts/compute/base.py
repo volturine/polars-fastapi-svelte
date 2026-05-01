@@ -101,6 +101,11 @@ class EngineProgressEvent:
     event: dict[str, Any]
 
 
+@dataclass(frozen=True, slots=True)
+class ShutdownAck:
+    type: Literal['shutdown_ack'] = 'shutdown_ack'
+
+
 # ---------------------------------------------------------------------------
 # Engine status — returned by manager
 # ---------------------------------------------------------------------------

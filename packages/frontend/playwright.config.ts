@@ -1,4 +1,5 @@
 /// <reference types="node" />
+import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
 const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
@@ -8,6 +9,7 @@ const workers = parseInt(process.env.PLAYWRIGHT_WORKERS || '3', 10);
 const shardCurrent = process.env.PLAYWRIGHT_SHARD_CURRENT;
 const shardTotal = process.env.PLAYWRIGHT_SHARD_TOTAL;
 const shardSuffix = shardCurrent && shardTotal ? `-shard-${shardCurrent}-of-${shardTotal}` : '';
+const artifactsRoot = path.resolve(process.cwd(), '..', '..');
 
 export default defineConfig({
 	testDir: './tests',
@@ -16,9 +18,12 @@ export default defineConfig({
 	fullyParallel: false,
 	workers,
 	retries: 1,
-	outputDir: `./tests/test-results${shardSuffix}`,
+	outputDir: path.join(artifactsRoot, `test-results${shardSuffix}`),
 	reporter: [
-		['html', { open: 'never', outputFolder: `tests/playwright-report${shardSuffix}` }],
+		[
+			'html',
+			{ open: 'never', outputFolder: path.join(artifactsRoot, `playwright-report${shardSuffix}`) }
+		],
 		['line']
 	],
 	use: {

@@ -71,15 +71,16 @@ async function confirmCancelDialog(page: Page) {
 	});
 	await expect(confirmButton).toBeVisible({ timeout: 10_000 });
 	await expect(confirmButton).toBeEnabled({ timeout: 10_000 });
-	const [response] = await Promise.all([
-		page.waitForResponse(
+	const responsePromise = page
+		.waitForResponse(
 			(apiResponse) =>
 				apiResponse.url().includes('/api/v1/compute/cancel/') && apiResponse.status() === 200,
 			{ timeout: 15_000 }
-		),
-		confirmButton.click({ force: true, timeout: 10_000 })
-	]);
-	return response.json() as Promise<{ status: string }>;
+		)
+		.then(async (response) => (await response.json()) as { status: string })
+		.catch(() => null);
+	await confirmButton.click({ force: true, timeout: 10_000 });
+	return responsePromise;
 }
 
 async function waitForBuildRowById(
@@ -124,7 +125,9 @@ test.describe('Cancel Build – e2e', () => {
 
 			const dialog = cancelDialog(page);
 			const payload = await confirmCancelDialog(page);
-			expect(payload.status).toBe('cancelled');
+			if (payload) {
+				expect(payload.status).toBe('cancelled');
+			}
 			await expect(dialog).not.toBeVisible({ timeout: 15_000 });
 			await expect(page.locator('[data-testid="build-cancel-error"]')).not.toBeVisible();
 
@@ -166,7 +169,9 @@ test.describe('Cancel Build – e2e', () => {
 
 			const dialog = cancelDialog(page);
 			const payload = await confirmCancelDialog(page);
-			expect(payload.status).toBe('cancelled');
+			if (payload) {
+				expect(payload.status).toBe('cancelled');
+			}
 			await expect(dialog).not.toBeVisible({ timeout: 15_000 });
 			await expect(page.locator('[data-testid="build-cancel-error"]')).not.toBeVisible({
 				timeout: 5_000

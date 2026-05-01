@@ -145,6 +145,6 @@ jobs:
           if-no-files-found: ignore
           path: |
             packages/frontend/tests/ci-artifacts/
-            packages/frontend/tests/playwright-report-shard-${{ matrix.shard }}-of-${{ matrix.total }}/
-            packages/frontend/tests/test-results-shard-${{ matrix.shard }}-of-${{ matrix.total }}/
+            playwright-report-shard-${{ matrix.shard }}-of-${{ matrix.total }}/
+            test-results-shard-${{ matrix.shard }}-of-${{ matrix.total }}/
           retention-days: 7

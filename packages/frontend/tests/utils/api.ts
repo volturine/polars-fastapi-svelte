@@ -289,7 +289,7 @@ export async function createLongRunningAnalysis(
 										code:
 											'def udf(column_city, column_name):\n' +
 											'    total = 0\n' +
-											'    for i in range(50):\n' +
+											'    for i in range(250):\n' +
 											'        total += i\n' +
 											'    return column_city + "-" + column_name + str(total)\n'
 									}

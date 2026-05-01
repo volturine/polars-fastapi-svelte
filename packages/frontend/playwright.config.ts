@@ -5,6 +5,9 @@ const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${port}`;
 const ciArgs = process.env.CI ? ['--disable-dev-shm-usage', '--disable-gpu'] : [];
 const workers = parseInt(process.env.PLAYWRIGHT_WORKERS || '3', 10);
+const shardCurrent = process.env.PLAYWRIGHT_SHARD_CURRENT;
+const shardTotal = process.env.PLAYWRIGHT_SHARD_TOTAL;
+const shardSuffix = shardCurrent && shardTotal ? `-shard-${shardCurrent}-of-${shardTotal}` : '';
 
 export default defineConfig({
 	testDir: './tests',
@@ -13,8 +16,11 @@ export default defineConfig({
 	fullyParallel: false,
 	workers,
 	retries: 1,
-	outputDir: './tests/test-results',
-	reporter: [['html', { open: 'never', outputFolder: 'tests/playwright-report' }], ['line']],
+	outputDir: `./tests/test-results${shardSuffix}`,
+	reporter: [
+		['html', { open: 'never', outputFolder: `tests/playwright-report${shardSuffix}` }],
+		['line']
+	],
 	use: {
 		baseURL,
 		trace: 'on-first-retry',

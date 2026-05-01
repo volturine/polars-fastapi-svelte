@@ -74,15 +74,26 @@ jobs:
       - name: Unit tests
         run: bun run test:unit
 
-  e2e:
+  e2e-shard:
+    name: e2e / shard ${{ matrix.shard }} of ${{ matrix.total }}
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.base_ref == 'master'
     timeout-minutes: 30
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+            total: 2
+          - shard: 2
+            total: 2
     env:
       PORT: '8001'
       FRONTEND_PORT: '3001'
+      PLAYWRIGHT_SHARD_CURRENT: '${{ matrix.shard }}'
+      PLAYWRIGHT_SHARD_TOTAL: '${{ matrix.total }}'
     steps:
       - uses: actions/checkout@v5
 
@@ -126,10 +137,22 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard }}-of-${{ matrix.total }}
           if-no-files-found: ignore
           path: |
             packages/frontend/tests/ci-artifacts/
-            packages/frontend/tests/playwright-report/
-            packages/frontend/tests/test-results/
+            packages/frontend/tests/playwright-report-shard-${{ matrix.shard }}-of-${{ matrix.total }}/
+            packages/frontend/tests/test-results-shard-${{ matrix.shard }}-of-${{ matrix.total }}/
           retention-days: 7
+
+  e2e:
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request' && github.base_ref == 'master'
+    needs: [e2e-shard]
+    steps:
+      - name: Verify e2e shards succeeded
+        run: |
+          echo 'Shard results: ${{ toJson(needs) }}'
+          if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+            exit 1
+          fi

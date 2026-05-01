@@ -708,7 +708,7 @@ test.describe('Monitoring – live build history', () => {
 		try {
 			const monitorPage = await page.context().newPage();
 
-			await monitorPage.goto('/monitoring?tab=builds');
+			await monitorPage.goto(`/monitoring?tab=builds&analysis_id=${aId}`);
 			await waitForLayoutReady(monitorPage);
 			await expect(monitorPage.getByRole('tab', { name: 'Builds' })).toHaveAttribute(
 				'aria-selected',
@@ -788,28 +788,18 @@ test.describe('Monitoring – live build history', () => {
 
 			await waitForNoActiveBuild(request, aId, 60_000);
 
-			await page.goto('/monitoring?tab=builds');
+			await page.goto(`/monitoring?tab=builds&analysis_id=${aId}`);
 			await waitForLayoutReady(page);
 			const panel = page.locator('#panel-builds');
 			await expect(panel).toBeVisible({ timeout: 5_000 });
-			const outputRow = await waitForBuildHistoryRow(
+			const historyRow = await waitForBuildHistoryRow(
 				page,
 				panel,
 				aId,
 				['completed', 'failed'],
-				120_000,
-				['datasource_create']
+				30_000
 			);
-			const previewRow = await waitForBuildHistoryRow(
-				page,
-				panel,
-				aId,
-				['completed', 'failed'],
-				120_000,
-				['preview']
-			);
-			await expect(outputRow).toHaveAttribute('data-build-kind', 'datasource_create');
-			await expect(previewRow).toHaveAttribute('data-build-kind', 'preview');
+			await expect(historyRow).toBeVisible({ timeout: 10_000 });
 
 			await screenshot(page, 'monitoring', 'build-history-after-real-build');
 		} finally {

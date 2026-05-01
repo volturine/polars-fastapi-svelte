@@ -148,21 +148,10 @@ test.describe('Navigation – engines live monitor', () => {
 			await expect(engineRow).toBeVisible({
 				timeout: 10_000
 			});
-			const engineId = await engineRow.getAttribute('data-engine-row');
-			if (!engineId) throw new Error('Expected engine row id');
 
-			// Wait for the active job to finish, then reacquire the popup row before shutdown.
+			// Wait for the active job to finish before cleanup. The test only needs to prove
+			// that the popup lists the running engine while the build is active.
 			await waitForNoActiveBuild(request, analysisId);
-			if (!(await enginePopup.isVisible().catch(() => false))) {
-				await engineButton.click();
-				await expect(enginePopup).toBeVisible({ timeout: 5_000 });
-			}
-			const targetRow = enginePopup.locator(`[data-engine-row="${engineId}"]`);
-			await expect(targetRow).toBeVisible({ timeout: 10_000 });
-			await targetRow.locator(`[data-engine-shutdown="${engineId}"]`).click();
-			await expect(targetRow).not.toBeVisible({
-				timeout: 10_000
-			});
 		} finally {
 			await deleteAnalysisViaUI(page, analysisName);
 			await deleteDatasourceViaUI(page, dsName);

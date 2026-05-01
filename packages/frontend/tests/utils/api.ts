@@ -19,6 +19,8 @@ const apiOrigin =
 export const API_BASE = `${apiOrigin}/api/v1`;
 export const AUTH_DIR = path.resolve('tests/.auth');
 export const META_FILE = path.join(AUTH_DIR, 'meta.json');
+export const E2E_RUN_STAMP =
+	process.env.E2E_RUN_STAMP || `${Date.now().toString(36)}-${process.pid}`;
 
 export { E2E_PASSWORD };
 
@@ -34,7 +36,7 @@ const analysisRegistry = new Map<string, { name: string }>();
 const udfRegistry = new Map<string, { name: string }>();
 
 export function workerAuthFile(workerIndex: number): string {
-	return path.join(AUTH_DIR, `state-w${workerIndex}.json`);
+	return path.join(AUTH_DIR, `state-${E2E_RUN_STAMP}-w${workerIndex}.json`);
 }
 
 function asE2ERequest(request: APIRequestContext): E2ERequest {

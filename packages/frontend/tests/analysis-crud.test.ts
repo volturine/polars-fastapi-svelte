@@ -13,7 +13,7 @@ import { dialogByHeading } from './utils/locators.js';
 
 test.describe('Analyses – list & gallery', () => {
 	test('home page renders main content area', async ({ page }) => {
-		await page.goto('/');
+		await gotoAnalysesGallery(page);
 		await expect(page.getByRole('heading', { name: 'Analyses', level: 1 })).toBeVisible();
 		await expect(page.getByText(/Browse and manage your data analyses/i)).toBeVisible();
 		await screenshot(page, 'analysis/crud', 'gallery');
@@ -42,7 +42,7 @@ test.describe('Analyses – list & gallery', () => {
 		const dsId = await createDatasource(request, dsName);
 		await createAnalysis(request, analysisName, dsId);
 		try {
-			await page.goto('/');
+			await gotoAnalysesGallery(page);
 			const card = page.locator(`[data-analysis-card="${analysisName}"]`);
 			await expect(card).toBeVisible();
 
@@ -60,7 +60,7 @@ test.describe('Analyses – list & gallery', () => {
 		const dsId = await createDatasource(request, dsName);
 		await createAnalysis(request, aName, dsId);
 		try {
-			await page.goto('/');
+			await gotoAnalysesGallery(page);
 			const card = page.locator(`[data-analysis-card="${aName}"]`);
 			await expect(card).toBeVisible();
 			const countBefore = await card.count();

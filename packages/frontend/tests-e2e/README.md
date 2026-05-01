@@ -9,4 +9,4 @@ Rules:
 - Cleanup uses visible UI actions only.
 - `just test-e2e` runs this suite.
 
-This suite intentionally focuses on user-driven coverage. API-seeded browser tests belong in the separate browser-integration suite under `packages/frontend/tests/`.
+This suite intentionally focuses on user-driven coverage. There is no API-seeded Playwright suite in this repository.

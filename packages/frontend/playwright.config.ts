@@ -3,23 +3,18 @@ import { defineConfig, devices } from '@playwright/test';
 
 const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${port}`;
-const webServerCommand = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND || 'bun run dev';
-const webServerReuseExisting = process.env.PLAYWRIGHT_REUSE_WEB_SERVER !== 'false';
-const disableWebServer = process.env.PLAYWRIGHT_DISABLE_WEB_SERVER === 'true';
 const ciArgs = process.env.CI ? ['--disable-dev-shm-usage', '--disable-gpu'] : [];
 const workers = parseInt(process.env.PLAYWRIGHT_WORKERS || '3', 10);
 
 export default defineConfig({
-	testDir: './tests',
-	globalSetup: './tests/global-setup.ts',
-	globalTeardown: './tests/global-teardown.ts',
+	testDir: './tests-e2e',
 	timeout: 30_000,
 	expect: { timeout: 10_000 },
 	fullyParallel: false,
 	workers,
 	retries: 1,
-	outputDir: './tests/test-results',
-	reporter: [['html', { open: 'never', outputFolder: 'tests/playwright-report' }], ['line']],
+	outputDir: './tests-e2e/test-results',
+	reporter: [['html', { open: 'never', outputFolder: 'tests-e2e/playwright-report' }], ['line']],
 	use: {
 		baseURL,
 		trace: 'on-first-retry',
@@ -34,15 +29,5 @@ export default defineConfig({
 				launchOptions: ciArgs.length === 0 ? undefined : { args: ciArgs }
 			}
 		}
-	],
-	...(disableWebServer
-		? {}
-		: {
-				webServer: {
-					command: webServerCommand,
-					url: baseURL,
-					reuseExistingServer: webServerReuseExisting,
-					timeout: 60_000
-				}
-			})
+	]
 });

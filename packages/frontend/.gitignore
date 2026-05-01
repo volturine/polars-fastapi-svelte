@@ -25,10 +25,6 @@ vite.config.ts.timestamp-*
 package-lock.json
 
 # Playwright
-tests/playwright-report/
-tests/test-results/
-tests/screenshots/
-tests/.auth/
 tests-e2e/playwright-report/
 tests-e2e/test-results/
 tests-e2e/.auth/

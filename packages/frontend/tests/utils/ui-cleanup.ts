@@ -1,7 +1,7 @@
 import type { Browser, Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 import fs from 'node:fs';
-import { shutdownEngineByToken, workerAuthFile } from './api.js';
+import { deleteAnalysisByToken, shutdownEngineByToken, workerAuthFile } from './api.js';
 import { gotoAnalysesGallery, waitForDatasourceList, waitForUdfList } from './readiness.js';
 
 const ELEMENT_VISIBLE_TIMEOUT = 10_000;
@@ -111,6 +111,16 @@ export async function deleteAnalysisViaUI(
 		try {
 			await card.waitFor({ state: 'visible', timeout: ELEMENT_VISIBLE_TIMEOUT });
 		} catch {
+			return;
+		}
+		const href = await card.getAttribute('href');
+		const match = href?.match(ANALYSIS_HREF_RE);
+		const state = await page.context().storageState();
+		const token = state.cookies.find((c) => c.name === 'session_token')?.value;
+		if (match && token) {
+			const analysisId = match[1];
+			await bestEffortShutdownEngine(page, card);
+			await deleteAnalysisByToken(token, analysisId);
 			return;
 		}
 		await bestEffortShutdownEngine(page, card);

@@ -604,6 +604,15 @@ export async function shutdownEngineByToken(
 	}
 }
 
+export async function deleteAnalysisByToken(token: string, analysisId: string): Promise<void> {
+	const response = await fetchWithTimeout(`${API_BASE}/analysis/${analysisId}`, {
+		method: 'DELETE',
+		headers: { Cookie: `session_token=${token}` }
+	});
+	if (response.ok || response.status === 404) return;
+	throw new Error(`deleteAnalysisByToken failed: ${response.status} ${await response.text()}`);
+}
+
 export async function createMultiStepAnalysis(
 	request: APIRequestContext,
 	name: string,

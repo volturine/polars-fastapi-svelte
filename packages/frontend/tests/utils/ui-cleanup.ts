@@ -8,6 +8,13 @@ const ELEMENT_VISIBLE_TIMEOUT = 10_000;
 const DIALOG_HIDDEN_TIMEOUT = 10_000;
 const ANALYSIS_HREF_RE = /\/analysis\/([0-9a-f-]+)/;
 
+function confirmDialog(page: Page, heading: string | RegExp): Locator {
+	return page
+		.getByRole('dialog')
+		.filter({ has: page.getByRole('heading', { name: heading }) })
+		.first();
+}
+
 async function waitForHealthChecksList(page: Page, timeout: number): Promise<void> {
 	const panel = page.locator('#panel-health');
 	await expect(panel).toBeVisible({ timeout });
@@ -83,7 +90,7 @@ export async function deleteDatasourceViaUI(page: Page, name: string): Promise<v
 		if (!(await row.isVisible())) return;
 
 		await row.locator('button[title="Delete"]').click();
-		const dialog = page.getByRole('dialog');
+		const dialog = confirmDialog(page, 'Delete Datasource');
 		await dialog.getByRole('button', { name: /^Delete$/ }).click();
 		await dialog.waitFor({ state: 'hidden', timeout: DIALOG_HIDDEN_TIMEOUT });
 	} catch (e: unknown) {
@@ -108,7 +115,7 @@ export async function deleteAnalysisViaUI(
 		}
 		await bestEffortShutdownEngine(page, card);
 		await card.getByRole('button', { name: /Delete analysis/ }).click();
-		const dialog = page.getByRole('dialog');
+		const dialog = confirmDialog(page, 'Delete Analysis');
 		await dialog.getByRole('button', { name: /^Delete$/ }).click();
 		await dialog.waitFor({ state: 'hidden', timeout: DIALOG_HIDDEN_TIMEOUT });
 	} catch (e: unknown) {
@@ -139,7 +146,7 @@ export async function deleteScheduleViaUI(page: Page, cronOrName: string): Promi
 			.first();
 		await row.waitFor({ state: 'visible', timeout: ELEMENT_VISIBLE_TIMEOUT });
 		await row.getByLabel('Delete schedule').click();
-		const dialog = page.getByRole('dialog');
+		const dialog = confirmDialog(page, 'Delete Schedule');
 		await dialog.getByRole('button', { name: /^Delete$/ }).click();
 		await dialog.waitFor({ state: 'hidden', timeout: DIALOG_HIDDEN_TIMEOUT });
 	} catch (e: unknown) {
@@ -154,7 +161,7 @@ export async function deleteHealthCheckViaUI(page: Page, name: string): Promise<
 		const row = page.locator(`[data-healthcheck-name="${name}"]`);
 		await row.waitFor({ state: 'visible', timeout: ELEMENT_VISIBLE_TIMEOUT });
 		await row.getByLabel('Delete check').click();
-		const dialog = page.getByRole('dialog');
+		const dialog = confirmDialog(page, 'Delete Health Check');
 		await dialog.getByRole('button', { name: /^Delete$/ }).click();
 		await dialog.waitFor({ state: 'hidden', timeout: DIALOG_HIDDEN_TIMEOUT });
 	} catch (e: unknown) {

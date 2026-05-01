@@ -91,7 +91,15 @@ test-e2e:
 test-e2e-raw:
     #!/usr/bin/env bash
     set -euo pipefail
+    EXPLICIT_PLAYWRIGHT_WORKERS="${PLAYWRIGHT_WORKERS:-}"
     set -a; source packages/shared/e2e.env; set +a
+    if [ -n "$EXPLICIT_PLAYWRIGHT_WORKERS" ]; then
+        export PLAYWRIGHT_WORKERS="$EXPLICIT_PLAYWRIGHT_WORKERS"
+    elif [ -n "${CI:-}" ]; then
+        export PLAYWRIGHT_WORKERS="${PLAYWRIGHT_WORKERS_CI:-$PLAYWRIGHT_WORKERS}"
+    else
+        export PLAYWRIGHT_WORKERS="${PLAYWRIGHT_WORKERS_LOCAL:-$PLAYWRIGHT_WORKERS}"
+    fi
     unset VIRTUAL_ENV
     export UV_PYTHON="${E2E_PYTHON_VERSION}"
     DATA_DIR="${DATA_DIR}-run-$$"

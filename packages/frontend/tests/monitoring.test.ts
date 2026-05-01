@@ -16,6 +16,7 @@ import { waitForLayoutReady } from './utils/readiness.js';
 import { waitForNoActiveBuild } from './utils/api.js';
 import { uid } from './utils/uid.js';
 import { screenshot } from './utils/visual.js';
+import { dialogByHeading } from './utils/locators.js';
 
 async function waitForHealthChecksList(page: import('@playwright/test').Page, timeout = 30_000) {
 	const panel = page.locator('#panel-health');
@@ -87,7 +88,7 @@ function buildRowByName(
 	);
 }
 
-function buildHistoryRow(
+function buildHistoryRows(
 	panel: ReturnType<import('@playwright/test').Page['locator']>,
 	analysisId: string,
 	status?: 'running' | 'completed' | 'failed' | 'cancelled',
@@ -96,7 +97,7 @@ function buildHistoryRow(
 	let selector = `[data-build-analysis-id="${analysisId}"]`;
 	if (status) selector += `[data-build-status="${status}"]`;
 	if (kind) selector += `[data-build-kind="${kind}"]`;
-	return panel.locator(selector).first();
+	return panel.locator(selector);
 }
 
 async function refreshBuildHistory(page: import('@playwright/test').Page) {
@@ -119,14 +120,28 @@ async function waitForBuildHistoryRow(
 	while (Date.now() - started < timeout) {
 		for (const status of statuses) {
 			for (const kind of kinds) {
-				const row = buildHistoryRow(panel, analysisId, status, kind);
-				if (await row.isVisible().catch(() => false)) return row;
+				const rows = buildHistoryRows(panel, analysisId, status, kind);
+				const count = await rows.count();
+				let visibleIndex = -1;
+				let visibleCount = 0;
+				for (let index = 0; index < count; index += 1) {
+					if (
+						await rows
+							.nth(index)
+							.isVisible()
+							.catch(() => false)
+					) {
+						visibleCount += 1;
+						visibleIndex = index;
+					}
+				}
+				if (visibleCount === 1) return rows.nth(visibleIndex);
 			}
 		}
 		await refreshBuildHistory(page);
 		await page.waitForTimeout(1_000);
 	}
-	throw new Error(`Timed out waiting for build history row for analysis ${analysisId}`);
+	throw new Error(`Timed out waiting for a unique build history row for analysis ${analysisId}`);
 }
 
 /**
@@ -236,8 +251,8 @@ test.describe('Monitoring – Schedules tab', () => {
 			await deleteBtn.click({ timeout: 5_000 });
 
 			// Confirm in the dialog
-			const dialog = page.getByRole('dialog');
-			await expect(dialog.getByRole('heading', { name: /Delete Schedule/i })).toBeVisible();
+			const dialog = dialogByHeading(page, /Delete Schedule/i);
+			await expect(dialog).toBeVisible();
 			await dialog.getByRole('button', { name: /^Delete$/ }).click();
 
 			await expect(schedRow).toHaveCount(0, { timeout: 8_000 });
@@ -454,8 +469,8 @@ test.describe('Monitoring – Health Checks tab', () => {
 			await row.getByLabel('Delete check').click({ timeout: 5_000 });
 
 			// Confirm in the dialog
-			const dialog = page.getByRole('dialog');
-			await expect(dialog.getByRole('heading', { name: /Delete Health Check/i })).toBeVisible();
+			const dialog = dialogByHeading(page, /Delete Health Check/i);
+			await expect(dialog).toBeVisible();
 			await dialog.getByRole('button', { name: /^Delete$/ }).click();
 
 			await expect(row).toHaveCount(0, { timeout: 8_000 });

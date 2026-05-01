@@ -9,6 +9,7 @@ import {
 	waitForDatasourceList,
 	waitForLayoutReady
 } from './utils/readiness.js';
+import { dialogByHeading } from './utils/locators.js';
 
 /**
  * E2E tests for datasources – mirrors test_datasource.py / test_datasource_extended.py.
@@ -116,8 +117,8 @@ test.describe('Datasources – list & management', () => {
 		await deleteBtn.click();
 
 		// Confirm in the dialog
-		const dialog = page.getByRole('dialog');
-		await expect(dialog.getByRole('heading', { name: /Delete Datasource/i })).toBeVisible();
+		const dialog = dialogByHeading(page, /Delete Datasource/i);
+		await expect(dialog).toBeVisible();
 		await dialog.getByRole('button', { name: /^Delete$/ }).click();
 
 		await expect(row).not.toBeVisible({ timeout: 8_000 });
@@ -280,7 +281,7 @@ test.describe('Datasources – detail view', () => {
 		await expect(config).toBeVisible({ timeout: 8_000 });
 
 		await expect(config.getByText('Rows')).toBeVisible({ timeout: 10_000 });
-		await expect(config.getByText('3', { exact: true })).toBeVisible({ timeout: 5_000 });
+		await expect(page.getByTestId('datasource-row-count')).toHaveText('3', { timeout: 5_000 });
 	});
 
 	test('datasource URL includes id query param after selection', async ({ page }) => {

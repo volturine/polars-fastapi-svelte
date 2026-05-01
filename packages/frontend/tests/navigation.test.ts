@@ -9,6 +9,7 @@ import { waitForAppShell } from './utils/readiness.js';
 import { gotoAnalysisEditor } from './utils/analysis.js';
 import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
 import { uid } from './utils/uid.js';
+import { dialogByTextbox } from './utils/locators.js';
 
 /**
  * Smoke tests: every top-level route renders without a JS crash,
@@ -223,7 +224,7 @@ test.describe('Navigation – namespace persistence', () => {
 		await waitForAppShell(page);
 
 		await page.getByRole('button', { name: 'Select namespace' }).click();
-		const dialog = page.getByRole('dialog');
+		const dialog = dialogByTextbox(page, 'Search namespaces');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 
 		const search = dialog.getByRole('textbox', { name: 'Search namespaces' });

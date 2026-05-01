@@ -8,6 +8,7 @@ import {
 } from './utils/ui-cleanup.js';
 import { screenshot } from './utils/visual.js';
 import { uid } from './utils/uid.js';
+import { dialogByHeading } from './utils/locators.js';
 
 async function latestNode(page: Parameters<typeof gotoAnalysisEditor>[0], stepType: string) {
 	const nodes = page.locator(`[data-step-type="${stepType}"]`);
@@ -580,7 +581,7 @@ test.describe('Analyses – derived tab flow', () => {
 			} else {
 				// Fallback: add a datasource tab and verify multi-tab switching works
 				await page.locator('button[title="Add datasource tab"]').click();
-				const modal = page.getByRole('dialog');
+				const modal = dialogByHeading(page, /Add Datasource/i);
 				await expect(modal).toBeVisible({ timeout: 5_000 });
 
 				// Search for our datasource (use the same one)
@@ -630,7 +631,7 @@ test.describe('Analyses – multi-tab flow', () => {
 
 			await page.locator('button[title="Add datasource tab"]').click();
 
-			const modal = page.getByRole('dialog');
+			const modal = dialogByHeading(page, /Add Datasource/i);
 			await expect(modal).toBeVisible({ timeout: 5_000 });
 
 			await modal.locator('#dsm-search').fill(ds2);
@@ -674,9 +675,8 @@ test.describe('Analyses – version history modal', () => {
 			await expect(trigger).toBeVisible();
 			await trigger.click();
 
-			const dialog = page.getByRole('dialog');
+			const dialog = dialogByHeading(page, /Version history/i);
 			await expect(dialog).toBeVisible({ timeout: 5_000 });
-			await expect(dialog.getByText('Version history')).toBeVisible();
 
 			// Fresh analysis has no previous versions
 			await expect(
@@ -712,9 +712,8 @@ test.describe('Analyses – version history modal', () => {
 
 			// Open version modal
 			await page.locator('[data-testid="version-history-trigger"]').click();
-			const dialog = page.getByRole('dialog');
+			const dialog = dialogByHeading(page, /Version history/i);
 			await expect(dialog).toBeVisible({ timeout: 5_000 });
-			await expect(dialog.getByText('Version history')).toBeVisible();
 
 			// Wait for versions to load — should show at least Version 1
 			await expect(dialog.getByText(/Version 1/)).toBeVisible({ timeout: 10_000 });
@@ -747,7 +746,7 @@ test.describe('Analyses – version history modal', () => {
 
 			// Open version modal
 			await page.locator('[data-testid="version-history-trigger"]').click();
-			const dialog = page.getByRole('dialog');
+			const dialog = dialogByHeading(page, /Version history/i);
 			await expect(dialog.getByText(/Version 1/)).toBeVisible({ timeout: 10_000 });
 
 			// Click rename button on version 1
@@ -785,7 +784,7 @@ test.describe('Analyses – version history modal', () => {
 			await gotoAnalysisEditor(page, aId);
 
 			await page.locator('[data-testid="version-history-trigger"]').click();
-			const dialog = page.getByRole('dialog');
+			const dialog = dialogByHeading(page, /Version history/i);
 			await expect(dialog).toBeVisible({ timeout: 5_000 });
 
 			await page.keyboard.press('Escape');
@@ -814,7 +813,7 @@ test.describe('Analyses – version history modal', () => {
 
 			// Open version modal
 			await page.locator('[data-testid="version-history-trigger"]').click();
-			const dialog = page.getByRole('dialog');
+			const dialog = dialogByHeading(page, /Version history/i);
 			await expect(dialog.getByText(/Version 1/)).toBeVisible({ timeout: 10_000 });
 
 			// Delete version 1
@@ -853,7 +852,7 @@ test.describe('Analyses – version history modal', () => {
 
 			// Restore version 1 (= initial [view] from create): limit should be removed
 			await page.locator('[data-testid="version-history-trigger"]').click();
-			const dialog = page.getByRole('dialog');
+			const dialog = dialogByHeading(page, /Version history/i);
 			await expect(dialog.getByText(/Version 1/)).toBeVisible({ timeout: 10_000 });
 
 			await dialog.locator('[data-testid="version-restore-1"]').click();

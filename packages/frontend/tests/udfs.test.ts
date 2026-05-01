@@ -5,6 +5,7 @@ import { waitForLayoutReady, waitForUdfList, gotoUdfEditor } from './utils/readi
 import { uid } from './utils/uid.js';
 import { deleteUdfViaUI } from './utils/ui-cleanup.js';
 import { screenshot } from './utils/visual.js';
+import { dialogByHeading } from './utils/locators.js';
 
 /**
  * E2E tests for UDFs – mirrors test_udf.py.
@@ -173,8 +174,8 @@ test.describe('UDFs – export & import', () => {
 		const importBtn = page.getByRole('button', { name: /Import/i });
 		await expect(importBtn).toBeVisible();
 		await importBtn.click();
-		await expect(page.getByRole('dialog')).toBeVisible();
-		await expect(page.getByRole('heading', { name: /Import UDFs/i })).toBeVisible();
+		const dialog = dialogByHeading(page, /Import UDFs/i);
+		await expect(dialog).toBeVisible();
 	});
 
 	test('Import dialog Cancel closes it', async ({ page }) => {
@@ -182,7 +183,7 @@ test.describe('UDFs – export & import', () => {
 		const importBtn = page.getByRole('button', { name: /Import/i });
 		await expect(importBtn).toBeVisible();
 		await importBtn.click();
-		const dialog = page.getByRole('dialog');
+		const dialog = dialogByHeading(page, /Import UDFs/i);
 		await expect(dialog).toBeVisible();
 		const dialogHeading = dialog.getByRole('heading', { name: /Import UDFs/i });
 		await expect(dialogHeading).toBeVisible();
@@ -195,7 +196,7 @@ test.describe('UDFs – export & import', () => {
 		const importBtn = page.getByRole('button', { name: /Import/i });
 		await expect(importBtn).toBeVisible();
 		await importBtn.click();
-		const dialog = page.getByRole('dialog');
+		const dialog = dialogByHeading(page, /Import UDFs/i);
 		await expect(dialog).toBeVisible();
 		await page.locator('#udf-import-json').fill('not-valid-json');
 		await dialog.getByRole('button', { name: /^Import$/i }).click();
@@ -207,9 +208,8 @@ test.describe('UDFs – export & import', () => {
 		const importBtn = page.getByRole('button', { name: /Import/i });
 		await expect(importBtn).toBeVisible();
 		await importBtn.click();
-		const dialog = page.getByRole('dialog');
+		const dialog = dialogByHeading(page, /Import UDFs/i);
 		await expect(dialog).toBeVisible();
-		await expect(dialog.getByRole('heading', { name: /Import UDFs/i })).toBeVisible();
 		await page.locator('#udf-import-json').fill('{"other": []}');
 		await dialog.getByRole('button', { name: /^Import$/i }).click();
 		await expect(page.getByText(/udfs array/i)).toBeVisible();
@@ -241,7 +241,7 @@ test.describe('UDFs – export & import', () => {
 			// Import the exported UDF back via the UI import dialog
 			const importBtn = page.getByRole('button', { name: /Import/i });
 			await importBtn.click();
-			const importDialog = page.getByRole('dialog');
+			const importDialog = dialogByHeading(page, /Import UDFs/i);
 			await expect(importDialog).toBeVisible();
 			await page.locator('#udf-import-json').fill(exportedJson);
 			await importDialog.getByRole('button', { name: /^Import$/i }).click();

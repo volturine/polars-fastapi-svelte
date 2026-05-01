@@ -1074,7 +1074,7 @@
 											color: 'fg.muted'
 										})}>Rows</span
 									>
-									<span class={css({ fontWeight: 'medium' })}
+									<span data-testid="datasource-row-count" class={css({ fontWeight: 'medium' })}
 										>{schemaQuery.data.row_count?.toLocaleString() ?? 'Unknown'}</span
 									>
 								</div>

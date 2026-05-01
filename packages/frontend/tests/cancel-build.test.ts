@@ -30,46 +30,8 @@ async function gotoMonitoringBuilds(page: Page, analysisId?: string) {
 	await expect(page.locator('#panel-builds')).toBeVisible({ timeout: 15_000 });
 }
 
-function buildHistoryRow(
-	panel: ReturnType<Page['locator']>,
-	analysisId: string,
-	status: 'running' | 'completed' | 'failed' | 'cancelled',
-	kind?: 'preview' | 'datasource_create' | 'datasource_update'
-) {
-	let selector = `[data-build-analysis-id="${analysisId}"]`;
-	selector += `[data-build-status="${status}"]`;
-	if (kind) selector += `[data-build-kind="${kind}"]`;
-	return panel.locator(selector).first();
-}
-
 async function refreshBuildHistory(page: Page) {
 	await page.getByRole('button', { name: /Refresh History/i }).click({ timeout: 15_000 });
-}
-
-async function waitForBuildHistoryRow(
-	page: Page,
-	panel: ReturnType<Page['locator']>,
-	analysisId: string,
-	statuses: Array<'running' | 'completed' | 'failed' | 'cancelled'>,
-	timeout = 90_000,
-	kinds: Array<'preview' | 'datasource_create' | 'datasource_update'> = [
-		'datasource_create',
-		'preview',
-		'datasource_update'
-	]
-) {
-	const started = Date.now();
-	while (Date.now() - started < timeout) {
-		for (const status of statuses) {
-			for (const kind of kinds) {
-				const row = buildHistoryRow(panel, analysisId, status, kind);
-				if (await row.isVisible().catch(() => false)) return row;
-			}
-		}
-		await refreshBuildHistory(page);
-		await page.waitForTimeout(1_000);
-	}
-	throw new Error(`Timed out waiting for build history row for analysis ${analysisId}`);
 }
 
 async function openCancelDialogFromRow(page: Page, row: ReturnType<Page['locator']>) {
@@ -78,9 +40,7 @@ async function openCancelDialogFromRow(page: Page, row: ReturnType<Page['locator
 	await expect(btn).toBeEnabled({ timeout: 10_000 });
 	await btn.scrollIntoViewIfNeeded();
 	await btn.click({ force: true, timeout: 10_000 });
-	await expect(
-		page.getByRole('dialog').getByRole('heading', { name: 'Cancel this build?' })
-	).toBeVisible({ timeout: 10_000 });
+	await expect(cancelDialog(page)).toBeVisible({ timeout: 10_000 });
 }
 
 async function openCancelDialogFromPreview(page: Page, preview: ReturnType<Page['locator']>) {
@@ -89,9 +49,7 @@ async function openCancelDialogFromPreview(page: Page, preview: ReturnType<Page[
 	await expect(btn).toBeEnabled({ timeout: 30_000 });
 	await btn.scrollIntoViewIfNeeded();
 	await btn.click({ force: true, timeout: 10_000 });
-	await expect(
-		page.getByRole('dialog').getByRole('heading', { name: 'Cancel this build?' })
-	).toBeVisible({ timeout: 10_000 });
+	await expect(cancelDialog(page)).toBeVisible({ timeout: 10_000 });
 }
 
 async function previewBuildId(preview: ReturnType<Page['locator']>) {
@@ -191,22 +149,19 @@ test.describe('Cancel Build – e2e', () => {
 		const analysisId = await createLongRunningAnalysis(request, analysisName, dsId);
 		try {
 			await startBuildFromAnalysisPage(page, analysisId);
+			const openPreviewBtn = page.locator('[data-testid="output-build-preview-trigger"]');
+			await expect(openPreviewBtn).toBeVisible({ timeout: 10_000 });
+			await openPreviewBtn.click();
+			const preview = page.locator('[data-testid="build-preview"]');
+			await expect(preview).toBeVisible({ timeout: 10_000 });
+			const runId = await previewBuildId(preview);
 
-			// Navigate to monitoring and find the running build by analysis name
+			// Navigate to monitoring and find the exact running build row by run id.
 			await gotoMonitoringBuilds(page, analysisId);
 			const panel = page.locator('#panel-builds');
-			const runningRow = await waitForBuildHistoryRow(
-				page,
-				panel,
-				analysisId,
-				['running'],
-				60_000,
-				['datasource_create', 'preview', 'datasource_update']
-			);
+			const runningRow = await waitForBuildRowById(page, panel, runId, 'running', 60_000);
 			await expect(runningRow).toHaveAttribute('data-build-status', 'running', { timeout: 30_000 });
 			await expect(runningRow.getByLabel('Cancel build')).toBeVisible({ timeout: 30_000 });
-			const runId = await runningRow.getAttribute('data-build-row', { timeout: 10_000 });
-			expect(runId).toBeTruthy();
 			await openCancelDialogFromRow(page, runningRow);
 
 			const dialog = cancelDialog(page);
@@ -217,7 +172,7 @@ test.describe('Cancel Build – e2e', () => {
 				timeout: 5_000
 			});
 
-			const cancelledRow = await waitForBuildRowById(page, panel, runId ?? '', 'cancelled', 30_000);
+			const cancelledRow = await waitForBuildRowById(page, panel, runId, 'cancelled', 30_000);
 			await expect(cancelledRow).toHaveAttribute('data-build-status', 'cancelled', {
 				timeout: 30_000
 			});

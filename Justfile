@@ -93,6 +93,7 @@ test-e2e-raw:
     set -euo pipefail
     set -a; source packages/shared/e2e.env; set +a
     unset VIRTUAL_ENV
+    export UV_PYTHON="${E2E_PYTHON_VERSION}"
     DATA_DIR="${DATA_DIR}-run-$$"
     export DATA_DIR
     LOG_DIR="${E2E_LOG_DIR:-}"
@@ -120,11 +121,11 @@ test-e2e-raw:
     }
     cleanup() {
         status=$?
-        for pid in ${HEARTBEAT_PID:-} ${PLAYWRIGHT_PID:-} ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
+        for pid in ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
             kill_tree "$pid"
         done
         sleep 1
-        for pid in ${HEARTBEAT_PID:-} ${PLAYWRIGHT_PID:-} ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
+        for pid in ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
             kill_tree_force "$pid"
         done
         lsof -ti "tcp:${PORT}" | xargs -r kill >/dev/null 2>&1 || true
@@ -169,25 +170,18 @@ test-e2e-raw:
     wait_for_url "http://127.0.0.1:${FRONTEND_PORT}" "frontend"
     echo "Frontend is ready"
     echo "Starting Playwright e2e tests"
-    (cd packages/frontend && PLAYWRIGHT_DISABLE_WEB_SERVER=true exec npx playwright test) & PLAYWRIGHT_PID=$!
-    if [ -n "${GITHUB_ACTIONS:-}" ]; then
-        (
-            while kill -0 "$PLAYWRIGHT_PID" >/dev/null 2>&1; do
-                sleep 60
-                if kill -0 "$PLAYWRIGHT_PID" >/dev/null 2>&1; then
-                    echo "[e2e] Playwright still running after ${SECONDS}s"
-                fi
-            done
-        ) & HEARTBEAT_PID=$!
-    fi
     set +e
-    wait "$PLAYWRIGHT_PID"
+    (
+        cd packages/frontend && \
+        PLAYWRIGHT_DISABLE_WEB_SERVER=true \
+        exec python3 ../../scripts/run_with_timeout.py \
+            --timeout-seconds "${E2E_TIMEOUT_SECONDS:-0}" \
+            --grace-seconds "${E2E_TIMEOUT_GRACE_SECONDS:-30}" \
+            --heartbeat-seconds "${E2E_HEARTBEAT_SECONDS:-0}" \
+            -- npx playwright test
+    )
     status=$?
     set -e
-    if [ -n "${HEARTBEAT_PID:-}" ]; then
-        kill "$HEARTBEAT_PID" >/dev/null 2>&1 || true
-        wait "$HEARTBEAT_PID" >/dev/null 2>&1 || true
-    fi
     exit "$status"
 
 # Run backend tests

@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { waitForAppShell, waitForDatasourceList } from './readiness.js';
+import { dialogByTextbox } from './locators.js';
 
 const SIDEBAR = 'aside[aria-label="Main navigation"]';
 
@@ -10,7 +11,7 @@ const SIDEBAR = 'aside[aria-label="Main navigation"]';
  */
 export async function switchNamespace(page: Page, name: string): Promise<void> {
 	await page.getByRole('button', { name: 'Select namespace' }).click();
-	const dialog = page.getByRole('dialog');
+	const dialog = dialogByTextbox(page, 'Search namespaces');
 	await expect(dialog).toBeVisible({ timeout: 5_000 });
 
 	const search = dialog.getByRole('textbox', { name: 'Search namespaces' });

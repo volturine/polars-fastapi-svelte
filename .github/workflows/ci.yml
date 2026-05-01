@@ -81,7 +81,6 @@ jobs:
     permissions:
       contents: read
     env:
-      PLAYWRIGHT_WORKERS: '3'
       PORT: '8001'
       FRONTEND_PORT: '3001'
     steps:
@@ -116,10 +115,10 @@ jobs:
           set -o pipefail
           mkdir -p packages/frontend/tests/ci-artifacts
           export E2E_LOG_DIR="$PWD/packages/frontend/tests/ci-artifacts/services"
-          timeout --signal=TERM --kill-after=30s 27m just test-e2e 2>&1 | tee packages/frontend/tests/ci-artifacts/e2e.log
+          just test-e2e 2>&1 | tee packages/frontend/tests/ci-artifacts/e2e.log
           status=${PIPESTATUS[0]}
           if [ "$status" -eq 124 ]; then
-            echo "e2e step hit the 27 minute timeout before the 30 minute job timeout"
+            echo "e2e step hit the shared 27 minute harness timeout before the 30 minute job timeout"
           fi
           exit "$status"
 

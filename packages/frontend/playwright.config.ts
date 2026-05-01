@@ -7,11 +7,7 @@ const webServerCommand = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND || 'bun run d
 const webServerReuseExisting = process.env.PLAYWRIGHT_REUSE_WEB_SERVER !== 'false';
 const disableWebServer = process.env.PLAYWRIGHT_DISABLE_WEB_SERVER === 'true';
 const ciArgs = process.env.CI ? ['--disable-dev-shm-usage', '--disable-gpu'] : [];
-const workers = process.env.PLAYWRIGHT_WORKERS
-	? parseInt(process.env.PLAYWRIGHT_WORKERS, 10)
-	: process.env.CI
-		? 1
-		: 3;
+const workers = parseInt(process.env.PLAYWRIGHT_WORKERS || '3', 10);
 
 export default defineConfig({
 	testDir: './tests',

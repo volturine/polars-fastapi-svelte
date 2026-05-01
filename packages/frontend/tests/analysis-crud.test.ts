@@ -9,6 +9,7 @@ import { uid } from './utils/uid.js';
 import { screenshot } from './utils/visual.js';
 import { gotoAnalysesGallery, gotoNewAnalysis, waitForLayoutReady } from './utils/readiness.js';
 import { gotoAnalysisEditor } from './utils/analysis.js';
+import { dialogByHeading } from './utils/locators.js';
 
 test.describe('Analyses – list & gallery', () => {
 	test('home page renders main content area', async ({ page }) => {
@@ -67,8 +68,8 @@ test.describe('Analyses – list & gallery', () => {
 			await card.getByRole('button', { name: /Delete analysis/ }).click();
 
 			// Confirm dialog appears
-			const dialog = page.getByRole('dialog');
-			await expect(dialog.getByRole('heading', { name: /Delete Analysis/i })).toBeVisible();
+			const dialog = dialogByHeading(page, /Delete Analysis/i);
+			await expect(dialog).toBeVisible();
 			await dialog.getByRole('button', { name: /^Delete$/ }).click();
 
 			await expect(card).toHaveCount(countBefore - 1, { timeout: 8_000 });

@@ -1,23 +1,27 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Page } from '@playwright/test';
+import type { Browser, Page } from '@playwright/test';
 import { test as base } from '@playwright/test';
+import { E2E_PASSWORD, type E2ERequest, workerAuthFile } from './utils/api.js';
 
 export { expect } from '@playwright/test';
 
 const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${port}`;
 const authRequired = process.env.AUTH_REQUIRED !== 'false';
-const password = 'E2eTestPw12345';
 const runStamp = process.env.E2E_RUN_STAMP || `${Date.now().toString(36)}-${process.pid}`;
-const authDir = path.resolve('tests-e2e/.auth');
+const authDir = path.resolve('tests/.auth');
 
 interface WorkerAuth {
 	authFile: string;
 	workerIndex: number;
 }
 
-async function createAuthFile(browser: import('@playwright/test').Browser, workerAuth: WorkerAuth) {
+async function expectSignedIn(page: Page): Promise<void> {
+	await page.getByLabel('Main navigation').waitFor({ state: 'visible', timeout: 15_000 });
+}
+
+async function createAuthFile(browser: Browser, workerAuth: WorkerAuth): Promise<void> {
 	fs.mkdirSync(authDir, { recursive: true });
 	const context = await browser.newContext({ baseURL });
 	const page = await context.newPage();
@@ -27,8 +31,8 @@ async function createAuthFile(browser: import('@playwright/test').Browser, worke
 			await page.goto('/register');
 			await page.locator('#name').fill(`E2E UI Worker ${workerAuth.workerIndex}`);
 			await page.locator('#email').fill(email);
-			await page.locator('#password').fill(password);
-			await page.locator('#confirm').fill(password);
+			await page.locator('#password').fill(E2E_PASSWORD);
+			await page.locator('#confirm').fill(E2E_PASSWORD);
 			await page.getByRole('button', { name: 'Create account', exact: true }).click();
 			const continueLink = page.getByRole('link', { name: /Continue/i });
 			await Promise.race([
@@ -49,23 +53,15 @@ async function createAuthFile(browser: import('@playwright/test').Browser, worke
 	}
 }
 
-async function ensureAuthFileReady(
-	browser: import('@playwright/test').Browser,
-	workerAuth: WorkerAuth
-): Promise<void> {
+async function ensureAuthFileReady(browser: Browser, workerAuth: WorkerAuth): Promise<void> {
 	if (fs.existsSync(workerAuth.authFile)) return;
 	await createAuthFile(browser, workerAuth);
 }
 
-async function expectSignedIn(page: Page): Promise<void> {
-	await page.waitForURL((url) => !url.pathname.startsWith('/register'), { timeout: 15_000 });
-	await page.getByLabel('Main navigation').waitFor({ state: 'visible', timeout: 15_000 });
-}
-
-export const test = base.extend<{ page: Page }, { workerAuth: WorkerAuth }>({
+export const test = base.extend<{ page: Page; request: E2ERequest }, { workerAuth: WorkerAuth }>({
 	workerAuth: [
 		async ({ browser }, use, workerInfo) => {
-			const authFile = path.join(authDir, `state-w${workerInfo.workerIndex}.json`);
+			const authFile = workerAuthFile(workerInfo.workerIndex);
 			const workerAuth = { authFile, workerIndex: workerInfo.workerIndex };
 			await ensureAuthFileReady(browser, workerAuth);
 			await use(workerAuth);
@@ -87,5 +83,15 @@ export const test = base.extend<{ page: Page }, { workerAuth: WorkerAuth }>({
 		const page = await context.newPage();
 		await use(page);
 		await context.close();
+	},
+
+	request: async ({ browser, workerAuth }, use) => {
+		await ensureAuthFileReady(browser, workerAuth);
+		await use({
+			browser,
+			authFile: workerAuth.authFile,
+			workerIndex: workerAuth.workerIndex,
+			baseURL
+		} as unknown as import('@playwright/test').APIRequestContext);
 	}
 });

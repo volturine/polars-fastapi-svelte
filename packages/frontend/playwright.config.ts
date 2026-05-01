@@ -7,14 +7,14 @@ const ciArgs = process.env.CI ? ['--disable-dev-shm-usage', '--disable-gpu'] : [
 const workers = parseInt(process.env.PLAYWRIGHT_WORKERS || '3', 10);
 
 export default defineConfig({
-	testDir: './tests-e2e',
+	testDir: './tests',
 	timeout: 30_000,
 	expect: { timeout: 10_000 },
 	fullyParallel: false,
 	workers,
 	retries: 1,
-	outputDir: './tests-e2e/test-results',
-	reporter: [['html', { open: 'never', outputFolder: 'tests-e2e/playwright-report' }], ['line']],
+	outputDir: './tests/test-results',
+	reporter: [['html', { open: 'never', outputFolder: 'tests/playwright-report' }], ['line']],
 	use: {
 		baseURL,
 		trace: 'on-first-retry',

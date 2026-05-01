@@ -65,9 +65,10 @@ class PolarsComputeEngine:
         self.effective_resources: dict = {}  # Populated when engine starts
         self._mp_context = mp.get_context('spawn')
         self.process: BaseProcess | None = None
-        self.command_queue: mp.Queue = self._mp_context.Queue()
-        self.result_queue: mp.Queue = self._mp_context.Queue()
-        self.progress_queue: mp.Queue = self._mp_context.Queue()
+        self.command_queue: mp.Queue | None = None
+        self.result_queue: mp.Queue | None = None
+        self.progress_queue: mp.Queue | None = None
+        self._create_queues()
         self.is_running = False
         self.current_job_id: str | None = None
         self._command_lock = threading.Lock()
@@ -109,6 +110,16 @@ class PolarsComputeEngine:
         self._reset_state()
         return False
 
+    def _create_queues(self) -> None:
+        self.command_queue = self._mp_context.Queue()
+        self.result_queue = self._mp_context.Queue()
+        self.progress_queue = self._mp_context.Queue()
+
+    def _ensure_queues(self) -> None:
+        if self.command_queue and self.result_queue and self.progress_queue:
+            return
+        self._create_queues()
+
     def _reset_state(self) -> None:
         """Reset engine state after process death."""
         self.is_running = False
@@ -123,9 +134,6 @@ class PolarsComputeEngine:
                 self.process.close()
             self.process = None
         self._close_queues()
-        self.command_queue = self._mp_context.Queue()
-        self.result_queue = self._mp_context.Queue()
-        self.progress_queue = self._mp_context.Queue()
 
     def start(self) -> None:
         """Start the compute subprocess."""
@@ -144,6 +152,10 @@ class PolarsComputeEngine:
             'max_memory_mb': max_memory_mb,
             'streaming_chunk_size': streaming_chunk_size,
         }
+
+        self._ensure_queues()
+        if not self.command_queue or not self.result_queue or not self.progress_queue:
+            raise RuntimeError('Compute engine queues were not initialized')
 
         process = self._mp_context.Process(
             target=self._run_compute,
@@ -165,6 +177,8 @@ class PolarsComputeEngine:
             self.check_health()
             if not self.is_running:
                 self.start()
+            if self.command_queue is None:
+                raise RuntimeError('Compute engine command queue is not initialized')
             self.command_queue.put(command)
             return command.job_id
 
@@ -264,6 +278,8 @@ class PolarsComputeEngine:
             if remaining == 0:
                 return None
             try:
+                if self.result_queue is None:
+                    return None
                 result = self.result_queue.get(timeout=remaining)
             except Empty:
                 return None
@@ -296,6 +312,8 @@ class PolarsComputeEngine:
             if remaining == 0:
                 return None
             try:
+                if self.progress_queue is None:
+                    return None
                 event = self.progress_queue.get(timeout=remaining)
             except Empty:
                 return None
@@ -322,13 +340,11 @@ class PolarsComputeEngine:
         """Shutdown the compute subprocess."""
         if not self.is_running:
             self._close_queues()
-            self.command_queue = self._mp_context.Queue()
-            self.result_queue = self._mp_context.Queue()
-            self.progress_queue = self._mp_context.Queue()
             return
 
         try:
-            self.command_queue.put(ShutdownCommand(), timeout=1)
+            if self.command_queue is not None:
+                self.command_queue.put(ShutdownCommand(), timeout=1)
         except Exception as exc:
             logger.debug(f'Failed to enqueue shutdown command: {exc}', exc_info=True)
 
@@ -345,21 +361,20 @@ class PolarsComputeEngine:
                 self.process.close()
 
         self._close_queues()
-        self.command_queue = self._mp_context.Queue()
-        self.result_queue = self._mp_context.Queue()
-        self.progress_queue = self._mp_context.Queue()
         self.is_running = False
         self.process = None
 
     def _close_queues(self) -> None:
         """Close queues to properly unregister semaphores from resource tracker."""
-        for queue in (self.command_queue, self.result_queue, self.progress_queue):
+        for attr in ('command_queue', 'result_queue', 'progress_queue'):
+            queue = getattr(self, attr)
             if queue is None:
                 continue
             with contextlib.suppress(Exception):
                 queue.close()
             with contextlib.suppress(Exception):
                 queue.join_thread()
+            setattr(self, attr, None)
 
     def __del__(self) -> None:
         with contextlib.suppress(Exception):

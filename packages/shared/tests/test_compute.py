@@ -311,21 +311,21 @@ def test_engine_shutdown_closes_queues_even_when_not_running(monkeypatch: pytest
     engine = PolarsComputeEngine('analysis')
     engine.is_running = False
     closed = {'value': False}
-    original_command_queue = engine.command_queue
-    original_result_queue = engine.result_queue
-    original_progress_queue = engine.progress_queue
 
     def fake_close() -> None:
         closed['value'] = True
+        engine.command_queue = None
+        engine.result_queue = None
+        engine.progress_queue = None
 
     monkeypatch.setattr(engine, '_close_queues', fake_close)
 
     engine.shutdown()
 
     assert closed['value'] is True
-    assert engine.command_queue is not original_command_queue
-    assert engine.result_queue is not original_result_queue
-    assert engine.progress_queue is not original_progress_queue
+    assert engine.command_queue is None
+    assert engine.result_queue is None
+    assert engine.progress_queue is None
 
 
 def test_close_queues_closes_then_joins_without_cancel_join_thread() -> None:
@@ -346,6 +346,9 @@ def test_close_queues_closes_then_joins_without_cancel_join_thread() -> None:
     engine._close_queues()
 
     assert order == ['close', 'join', 'close', 'join', 'close', 'join']
+    assert engine.command_queue is None
+    assert engine.result_queue is None
+    assert engine.progress_queue is None
 
 
 def test_build_canonical_engine_run_result_persists_unified_detail_shape() -> None:

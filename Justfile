@@ -124,7 +124,20 @@ test-e2e-raw:
         for pid in ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
             kill_tree "$pid"
         done
-        sleep 1
+        local deadline=$((SECONDS + 10))
+        while [ "$SECONDS" -lt "$deadline" ]; do
+            local any_alive=0
+            for pid in ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
+                if [ -n "$pid" ] && kill -0 "$pid" >/dev/null 2>&1; then
+                    any_alive=1
+                    break
+                fi
+            done
+            if [ "$any_alive" -eq 0 ]; then
+                break
+            fi
+            sleep 0.5
+        done
         for pid in ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
             kill_tree_force "$pid"
         done

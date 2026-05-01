@@ -98,7 +98,12 @@ async def _manager_heartbeat_loop(stop_event: asyncio.Event, worker_id: str, *, 
 
 
 def _worker_main() -> None:
-    asyncio.run(run_build_worker_process())
+    async def _run() -> None:
+        stop_event = asyncio.Event()
+        install_stop_handlers(stop_event)
+        await run_build_worker_process(stop_event=stop_event)
+
+    asyncio.run(_run())
 
 
 async def run_build_worker_process(

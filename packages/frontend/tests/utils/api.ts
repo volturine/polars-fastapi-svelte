@@ -263,10 +263,8 @@ export async function createLongRunningAnalysis(
 							config: {
 								how: 'inner',
 								right_source: rightRef,
-								join_columns: [
-									{ id: crypto.randomUUID(), left_column: 'city', right_column: 'city' }
-								],
-								right_columns: ['age', 'id'],
+								join_columns: [{ id: crypto.randomUUID(), left_column: 'id', right_column: 'id' }],
+								right_columns: ['age', 'city'],
 								suffix: '_right'
 							},
 							depends_on: [viewId],

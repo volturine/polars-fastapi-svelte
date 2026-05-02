@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -13,32 +11,15 @@ from contracts.compute_requests.live import response_hub
 from contracts.compute_requests.models import ComputeRequestKind, ComputeRequestStatus
 from contracts.runtime import ipc as runtime_ipc
 from contracts.runtime_workers.models import RuntimeWorkerKind
-from core import compute_requests_service, runtime_workers_service
-from core.database import run_settings_db
+from core import compute_requests_service
+from core.dependencies import RuntimeAvailabilityProbe
 from core.exceptions import PipelineExecutionError
 from core.namespace import get_namespace
 from modules.datasource import schemas as datasource_schemas
 
 
-def _runtime_available(*, kind: RuntimeWorkerKind, heartbeat_seconds: float = 15.0) -> bool:
-    def _read(settings_session: Session) -> bool:
-        workers = runtime_workers_service.list_workers(settings_session, kind=kind)
-        now = datetime.now(UTC)
-        for worker in reversed(workers):
-            if worker.stopped_at is not None:
-                continue
-            heartbeat = worker.last_heartbeat_at.replace(tzinfo=UTC)
-            if now - heartbeat <= timedelta(seconds=heartbeat_seconds):
-                return True
-        return False
-
-    return bool(run_settings_db(_read))
-
-
-def _ensure_runtime_available() -> None:
-    if os.getenv('DATAFORGE_SKIP_RUNTIME_PREFLIGHT') == '1':
-        return
-    if _runtime_available(kind=RuntimeWorkerKind.BUILD_MANAGER):
+def _ensure_runtime_available(runtime_probe: RuntimeAvailabilityProbe) -> None:
+    if runtime_probe.available(kind=RuntimeWorkerKind.BUILD_MANAGER):
         return
     raise HTTPException(status_code=503, detail='Compute runtime unavailable')
 
@@ -48,8 +29,9 @@ async def _submit_and_wait(
     *,
     kind: ComputeRequestKind,
     request_json: dict[str, object],
+    runtime_probe: RuntimeAvailabilityProbe,
 ):
-    _ensure_runtime_available()
+    _ensure_runtime_available(runtime_probe)
     request = compute_requests_service.create_request(
         session,
         namespace=get_namespace(),
@@ -73,38 +55,62 @@ async def _submit_and_wait(
     raise PipelineExecutionError(message)
 
 
-async def preview_step(session: Session, request: compute_schemas.StepPreviewRequest) -> compute_schemas.StepPreviewResponse:
+async def preview_step(
+    session: Session,
+    request: compute_schemas.StepPreviewRequest,
+    *,
+    runtime_probe: RuntimeAvailabilityProbe,
+) -> compute_schemas.StepPreviewResponse:
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.PREVIEW,
         request_json=request.model_dump(mode='json'),
+        runtime_probe=runtime_probe,
     )
     return compute_schemas.StepPreviewResponse.model_validate(completed.response_json)
 
 
-async def get_step_schema(session: Session, request: compute_schemas.StepSchemaRequest) -> compute_schemas.StepSchemaResponse:
+async def get_step_schema(
+    session: Session,
+    request: compute_schemas.StepSchemaRequest,
+    *,
+    runtime_probe: RuntimeAvailabilityProbe,
+) -> compute_schemas.StepSchemaResponse:
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.SCHEMA,
         request_json=request.model_dump(mode='json'),
+        runtime_probe=runtime_probe,
     )
     return compute_schemas.StepSchemaResponse.model_validate(completed.response_json)
 
 
-async def get_step_row_count(session: Session, request: compute_schemas.StepRowCountRequest) -> compute_schemas.StepRowCountResponse:
+async def get_step_row_count(
+    session: Session,
+    request: compute_schemas.StepRowCountRequest,
+    *,
+    runtime_probe: RuntimeAvailabilityProbe,
+) -> compute_schemas.StepRowCountResponse:
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.ROW_COUNT,
         request_json=request.model_dump(mode='json'),
+        runtime_probe=runtime_probe,
     )
     return compute_schemas.StepRowCountResponse.model_validate(completed.response_json)
 
 
-async def download_step(session: Session, request: compute_schemas.DownloadRequest) -> tuple[bytes, str, str]:
+async def download_step(
+    session: Session,
+    request: compute_schemas.DownloadRequest,
+    *,
+    runtime_probe: RuntimeAvailabilityProbe,
+) -> tuple[bytes, str, str]:
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.DOWNLOAD,
         request_json=request.model_dump(mode='json'),
+        runtime_probe=runtime_probe,
     )
     if not completed.artifact_path or not completed.artifact_name or not completed.artifact_content_type:
         raise PipelineExecutionError('Download artifact missing from compute response')
@@ -114,11 +120,17 @@ async def download_step(session: Session, request: compute_schemas.DownloadReque
     return data, completed.artifact_name, completed.artifact_content_type
 
 
-async def export_data(session: Session, request: compute_schemas.ExportRequest) -> compute_schemas.ExportResponse:
+async def export_data(
+    session: Session,
+    request: compute_schemas.ExportRequest,
+    *,
+    runtime_probe: RuntimeAvailabilityProbe,
+) -> compute_schemas.ExportResponse:
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.EXPORT,
         request_json=request.model_dump(mode='json'),
+        runtime_probe=runtime_probe,
     )
     return compute_schemas.ExportResponse.model_validate(completed.response_json)
 
@@ -126,6 +138,7 @@ async def export_data(session: Session, request: compute_schemas.ExportRequest) 
 async def create_file_datasource(
     session: Session,
     *,
+    runtime_probe: RuntimeAvailabilityProbe,
     name: str,
     description: str | None,
     file_path: str,
@@ -146,6 +159,7 @@ async def create_file_datasource(
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.CREATE_FILE_DATASOURCE,
+        runtime_probe=runtime_probe,
         request_json={
             'name': name,
             'description': description,
@@ -171,6 +185,7 @@ async def create_file_datasource(
 async def create_database_datasource(
     session: Session,
     *,
+    runtime_probe: RuntimeAvailabilityProbe,
     name: str,
     description: str | None,
     connection_string: str,
@@ -181,6 +196,7 @@ async def create_database_datasource(
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.CREATE_DATABASE_DATASOURCE,
+        runtime_probe=runtime_probe,
         request_json={
             'name': name,
             'description': description,
@@ -196,6 +212,7 @@ async def create_database_datasource(
 async def create_iceberg_datasource(
     session: Session,
     *,
+    runtime_probe: RuntimeAvailabilityProbe,
     name: str,
     description: str | None,
     source: dict[str, object],
@@ -205,6 +222,7 @@ async def create_iceberg_datasource(
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.CREATE_ICEBERG_DATASOURCE,
+        runtime_probe=runtime_probe,
         request_json={
             'name': name,
             'description': description,
@@ -216,11 +234,17 @@ async def create_iceberg_datasource(
     return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
 
 
-async def refresh_datasource(session: Session, *, datasource_id: str) -> datasource_schemas.DataSourceResponse:
+async def refresh_datasource(
+    session: Session,
+    *,
+    datasource_id: str,
+    runtime_probe: RuntimeAvailabilityProbe,
+) -> datasource_schemas.DataSourceResponse:
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.REFRESH_DATASOURCE,
         request_json={'datasource_id': datasource_id},
+        runtime_probe=runtime_probe,
     )
     return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
 
@@ -229,21 +253,29 @@ async def spawn_engine(
     session: Session,
     *,
     analysis_id: str,
+    runtime_probe: RuntimeAvailabilityProbe,
     resource_config: dict[str, object] | None,
 ) -> compute_schemas.EngineStatusSchema:
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.SPAWN_ENGINE,
         request_json={'analysis_id': analysis_id, 'resource_config': resource_config or {}},
+        runtime_probe=runtime_probe,
     )
     return compute_schemas.EngineStatusSchema.model_validate(completed.response_json)
 
 
-async def keepalive_engine(session: Session, *, analysis_id: str) -> compute_schemas.EngineStatusSchema:
+async def keepalive_engine(
+    session: Session,
+    *,
+    analysis_id: str,
+    runtime_probe: RuntimeAvailabilityProbe,
+) -> compute_schemas.EngineStatusSchema:
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.KEEPALIVE_ENGINE,
         request_json={'analysis_id': analysis_id},
+        runtime_probe=runtime_probe,
     )
     return compute_schemas.EngineStatusSchema.model_validate(completed.response_json)
 
@@ -252,19 +284,27 @@ async def configure_engine(
     session: Session,
     *,
     analysis_id: str,
+    runtime_probe: RuntimeAvailabilityProbe,
     resource_config: dict[str, object],
 ) -> compute_schemas.EngineStatusSchema:
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.CONFIGURE_ENGINE,
         request_json={'analysis_id': analysis_id, 'resource_config': resource_config},
+        runtime_probe=runtime_probe,
     )
     return compute_schemas.EngineStatusSchema.model_validate(completed.response_json)
 
 
-async def shutdown_engine(session: Session, *, analysis_id: str) -> None:
+async def shutdown_engine(
+    session: Session,
+    *,
+    analysis_id: str,
+    runtime_probe: RuntimeAvailabilityProbe,
+) -> None:
     await _submit_and_wait(
         session,
         kind=ComputeRequestKind.SHUTDOWN_ENGINE,
         request_json={'analysis_id': analysis_id},
+        runtime_probe=runtime_probe,
     )

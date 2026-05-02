@@ -26,7 +26,7 @@ from core import (
 )
 from core.config import settings
 from core.database import get_db, get_settings_db
-from core.dependencies import get_manager
+from core.dependencies import RuntimeAvailabilityProbe, get_manager, get_runtime_availability_probe
 from core.error_handlers import handle_errors
 from core.exceptions import EngineNotFoundError
 from core.namespace import get_namespace, reset_namespace, set_namespace_context
@@ -383,6 +383,7 @@ async def preview_step(
     request: schemas.StepPreviewRequest,
     http_request: Request,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Preview the result of a pipeline step with pagination.
 
@@ -406,7 +407,7 @@ async def preview_step(
             tab_id=normalized.tab_id,
             request_json=normalized.model_dump(mode='json'),
         )
-    return await executor_client.preview_step(session, normalized)
+    return await executor_client.preview_step(session, normalized, runtime_probe=runtime_probe)
 
 
 @router.post('/schema', response_model=schemas.StepSchemaResponse, mcp=True)
@@ -415,6 +416,7 @@ async def get_step_schema(
     request: schemas.StepSchemaRequest,
     http_request: Request,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Get the output column schema of a pipeline step without fetching data.
 
@@ -433,7 +435,7 @@ async def get_step_schema(
             analysis_pipeline=normalized.analysis_pipeline.model_dump(mode='json'),
             tab_id=normalized.tab_id,
         )
-    return await executor_client.get_step_schema(session, normalized)
+    return await executor_client.get_step_schema(session, normalized, runtime_probe=runtime_probe)
 
 
 @router.post('/row-count', response_model=schemas.StepRowCountResponse, mcp=True)
@@ -442,6 +444,7 @@ async def get_step_row_count(
     request: schemas.StepRowCountRequest,
     http_request: Request,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Get the row count of a pipeline step result without fetching data. Faster than a full preview."""
     analysis_id = request.analysis_id if request.analysis_id is not None else request.analysis_pipeline.analysis_id
@@ -457,7 +460,7 @@ async def get_step_row_count(
             tab_id=normalized.tab_id,
             request_json=normalized.model_dump(mode='json'),
         )
-    return await executor_client.get_step_row_count(session, normalized)
+    return await executor_client.get_step_row_count(session, normalized, runtime_probe=runtime_probe)
 
 
 @router.get('/iceberg/{datasource_id}/snapshots', response_model=schemas.IcebergSnapshotsResponse, mcp=True)
@@ -687,6 +690,7 @@ async def spawn_engine(
     http_request: Request,
     request: schemas.SpawnEngineRequest | None = None,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Spawn a compute engine for an analysis (called when analysis page opens).
 
@@ -698,7 +702,12 @@ async def spawn_engine(
     if manager is not None:
         manager.spawn_engine(analysis_id_value, resource_config=resource_config)
         return manager.get_engine_status(analysis_id_value)
-    return await executor_client.spawn_engine(session, analysis_id=analysis_id_value, resource_config=resource_config)
+    return await executor_client.spawn_engine(
+        session,
+        analysis_id=analysis_id_value,
+        resource_config=resource_config,
+        runtime_probe=runtime_probe,
+    )
 
 
 @router.post('/engine/keepalive/{analysis_id}', response_model=schemas.EngineStatusSchema, mcp=True)
@@ -707,6 +716,7 @@ async def keepalive(
     analysis_id: AnalysisId,
     http_request: Request,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Send keepalive ping for an analysis engine."""
     analysis_id_value = parse_analysis_id(analysis_id)
@@ -716,7 +726,7 @@ async def keepalive(
         if not info:
             raise EngineNotFoundError(analysis_id_value)
         return manager.get_engine_status(analysis_id_value)
-    return await executor_client.keepalive_engine(session, analysis_id=analysis_id_value)
+    return await executor_client.keepalive_engine(session, analysis_id=analysis_id_value, runtime_probe=runtime_probe)
 
 
 @router.post('/engine/configure/{analysis_id}', response_model=schemas.EngineStatusSchema, mcp=True)
@@ -726,6 +736,7 @@ async def configure_engine(
     request: schemas.EngineResourceConfig,
     http_request: Request,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Update engine resource configuration (restarts the engine).
 
@@ -738,7 +749,12 @@ async def configure_engine(
     if manager is not None:
         manager.restart_engine_with_config(analysis_id_value, resource_config)
         return manager.get_engine_status(analysis_id_value)
-    return await executor_client.configure_engine(session, analysis_id=analysis_id_value, resource_config=resource_config)
+    return await executor_client.configure_engine(
+        session,
+        analysis_id=analysis_id_value,
+        resource_config=resource_config,
+        runtime_probe=runtime_probe,
+    )
 
 
 @router.delete('/engine/{analysis_id}', status_code=204, mcp=True)
@@ -747,6 +763,7 @@ async def shutdown_engine(
     analysis_id: AnalysisId,
     http_request: Request,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Shutdown an analysis engine."""
     analysis_id_value = parse_analysis_id(analysis_id)
@@ -759,7 +776,7 @@ async def shutdown_engine(
             raise HTTPException(status_code=409, detail='Engine has an active job')
         manager.shutdown_engine(analysis_id_value)
         return
-    await executor_client.shutdown_engine(session, analysis_id=analysis_id_value)
+    await executor_client.shutdown_engine(session, analysis_id=analysis_id_value, runtime_probe=runtime_probe)
 
 
 @router.websocket('/ws/engines')
@@ -942,6 +959,7 @@ async def export_data(
     request: schemas.ExportRequest,
     http_request: Request,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Export pipeline results to a file download or output datasource.
 
@@ -970,7 +988,11 @@ async def export_data(
                 tab_id=download_request.tab_id,
             )
         else:
-            file_bytes, filename, content_type = await executor_client.download_step(session, download_request)
+            file_bytes, filename, content_type = await executor_client.download_step(
+                session,
+                download_request,
+                runtime_probe=runtime_probe,
+            )
         safe_name = quote(filename)
         return Response(
             content=file_bytes,
@@ -1001,7 +1023,7 @@ async def export_data(
             datasource_id=result.datasource_id,
             datasource_name=result.result_meta.get('datasource_name') if isinstance(result.result_meta, dict) else None,
         )
-    return await executor_client.export_data(session, request)
+    return await executor_client.export_data(session, request, runtime_probe=runtime_probe)
 
 
 @router.post('/download', mcp=True)
@@ -1010,6 +1032,7 @@ async def download_step(
     request: schemas.DownloadRequest,
     http_request: Request,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Download pipeline step result as a file.
 
@@ -1029,7 +1052,11 @@ async def download_step(
             tab_id=request.tab_id,
         )
     else:
-        file_bytes, filename, content_type = await executor_client.download_step(session, request)
+        file_bytes, filename, content_type = await executor_client.download_step(
+            session,
+            request,
+            runtime_probe=runtime_probe,
+        )
 
     if file_bytes is None or filename is None or content_type is None:
         from fastapi import HTTPException

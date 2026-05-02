@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session, select
 
@@ -95,3 +95,19 @@ def list_workers(session: Session, *, kind: RuntimeWorkerKind | None = None) -> 
         stmt = stmt.where(RuntimeWorker.kind == kind)  # type: ignore[arg-type]
     stmt = stmt.order_by(RuntimeWorker.started_at)  # type: ignore[arg-type]
     return list(session.execute(stmt).scalars().all())
+
+
+def worker_available(
+    session: Session,
+    *,
+    kind: RuntimeWorkerKind,
+    heartbeat_seconds: float = 15.0,
+) -> bool:
+    now = _utcnow()
+    for worker in reversed(list_workers(session, kind=kind)):
+        if worker.stopped_at is not None:
+            continue
+        heartbeat = worker.last_heartbeat_at.replace(tzinfo=UTC)
+        if now - heartbeat <= timedelta(seconds=heartbeat_seconds):
+            return True
+    return False

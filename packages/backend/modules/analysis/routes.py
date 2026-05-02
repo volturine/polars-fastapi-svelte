@@ -7,7 +7,7 @@ from sqlmodel import Session
 from contracts.auth_models import User
 from contracts.compute import schemas as compute_schemas
 from core.database import get_db
-from core.dependencies import get_optional_lock_owner_id
+from core.dependencies import RuntimeAvailabilityProbe, get_optional_lock_owner_id, get_runtime_availability_probe
 from core.error_handlers import handle_errors
 from core.validation import AnalysisId, parse_analysis_id
 from modules.analysis import schemas, service
@@ -204,6 +204,7 @@ async def delete_analysis(
     analysis_id: AnalysisId,
     _lock: None = Depends(require_analysis_lock),
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Delete an analysis and its associated data."""
     analysis_id_value = parse_analysis_id(analysis_id)
@@ -212,7 +213,7 @@ async def delete_analysis(
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     with contextlib.suppress(HTTPException):
-        await executor_client.shutdown_engine(session, analysis_id=analysis_id_value)
+        await executor_client.shutdown_engine(session, analysis_id=analysis_id_value, runtime_probe=runtime_probe)
 
 
 @router.post('/{analysis_id}/preview', mcp=True)
@@ -221,6 +222,7 @@ async def preview_analysis(
     analysis_id: AnalysisId,
     request: Request,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Preview the analysis pipeline and return results with schema, rows, and row count."""
     analysis_payload = None
@@ -270,6 +272,7 @@ async def preview_analysis(
             page=1,
             tab_id=None,
         ),
+        runtime_probe=runtime_probe,
     )
 
     return {

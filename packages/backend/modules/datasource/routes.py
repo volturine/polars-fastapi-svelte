@@ -12,6 +12,7 @@ from sqlmodel import Session
 from contracts.auth_models import User
 from core.config import settings
 from core.database import get_db
+from core.dependencies import RuntimeAvailabilityProbe, get_runtime_availability_probe
 from core.error_handlers import handle_errors
 from core.exceptions import AppError
 from core.namespace import namespace_paths
@@ -108,6 +109,7 @@ async def upload_file(
     encoding: str = Form('utf8'),
     user: User | None = Depends(get_optional_user),
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail='No filename provided')
@@ -151,6 +153,7 @@ async def upload_file(
         owner_id = user.id if user else None
         return await create_remote_file_datasource(
             session,
+            runtime_probe=runtime_probe,
             name=name,
             description=description,
             file_path=str(file_path),
@@ -180,6 +183,7 @@ async def upload_bulk(
     encoding: str = Form('utf8'),
     user: User | None = Depends(get_optional_user),
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     if not files:
         raise HTTPException(status_code=400, detail='No files provided')
@@ -243,6 +247,7 @@ async def upload_bulk(
             owner_id = user.id if user else None
             datasource = await create_remote_file_datasource(
                 session,
+                runtime_probe=runtime_probe,
                 name=name,
                 description=None,
                 file_path=str(file_path),
@@ -450,6 +455,7 @@ async def confirm_excel(
     cell_range: str | None = Form(None),
     user: User | None = Depends(get_optional_user),
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     preflight = await get_preflight(parse_preflight_id(preflight_id))
     if not preflight:
@@ -489,6 +495,7 @@ async def confirm_excel(
             )
         datasource = await create_remote_file_datasource(
             session,
+            runtime_probe=runtime_probe,
             name=name,
             description=description,
             file_path=str(target_path),
@@ -526,6 +533,7 @@ async def connect_datasource(
     datasource: schemas.DataSourceCreate,
     session: Session = Depends(get_db),
     user: User | None = Depends(get_optional_user),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Connect a new datasource (database, Iceberg, or analysis type).
 
@@ -551,6 +559,7 @@ async def connect_datasource(
         db_config = schemas.DatabaseDataSourceConfig.model_validate(datasource.config)
         return await create_remote_database_datasource(
             session,
+            runtime_probe=runtime_probe,
             name=datasource.name,
             description=datasource.description,
             connection_string=db_config.connection_string,
@@ -562,6 +571,7 @@ async def connect_datasource(
         iceberg_config = schemas.IcebergDataSourceConfig.model_validate(datasource.config)
         return await create_remote_iceberg_datasource(
             session,
+            runtime_probe=runtime_probe,
             name=datasource.name,
             description=datasource.description,
             source=iceberg_config.source,
@@ -647,6 +657,7 @@ async def get_datasource_schema(
     sheet_name: str | None = None,
     refresh: bool = False,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Get the column schema of a datasource (column names, types, nullability).
 
@@ -660,7 +671,11 @@ async def get_datasource_schema(
         if datasource.source_type == DataSourceType.ICEBERG and isinstance(source, dict):
             source_type = source.get('source_type')
             if source_type in {DataSourceType.DATABASE, DataSourceType.FILE}:
-                await refresh_remote_datasource(session, datasource_id=datasource_id_value)
+                await refresh_remote_datasource(
+                    session,
+                    datasource_id=datasource_id_value,
+                    runtime_probe=runtime_probe,
+                )
     return service.get_datasource_schema(session, datasource_id_value, sheet_name=sheet_name, refresh=False)
 
 
@@ -767,9 +782,14 @@ def update_datasource(
 async def refresh_datasource(
     datasource_id: DataSourceId,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Refresh an external datasource (re-read schema from source). Useful after upstream data changes."""
-    return await refresh_remote_datasource(session, datasource_id=parse_datasource_id(datasource_id))
+    return await refresh_remote_datasource(
+        session,
+        datasource_id=parse_datasource_id(datasource_id),
+        runtime_probe=runtime_probe,
+    )
 
 
 @router.delete('/{datasource_id}', status_code=204, mcp=True)
@@ -777,10 +797,11 @@ async def refresh_datasource(
 async def delete_datasource(
     datasource_id: DataSourceId,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Delete a datasource and its associated files. Use GET /datasource to find IDs."""
     datasource_id_value = parse_datasource_id(datasource_id)
     service.delete_datasource(session, datasource_id_value)
     preview_key = f'__preview__{datasource_id_value}'
     with contextlib.suppress(HTTPException):
-        await shutdown_remote_engine(session, analysis_id=preview_key)
+        await shutdown_remote_engine(session, analysis_id=preview_key, runtime_probe=runtime_probe)

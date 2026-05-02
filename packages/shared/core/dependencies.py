@@ -1,17 +1,36 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from fastapi import Depends, HTTPException, Request
 from modules.auth.dependencies import _resolve_session_token
 from modules.auth.service import ensure_default_user, validate_session
 from sqlmodel import Session
 
+from contracts.runtime_workers.models import RuntimeWorkerKind
+from core import runtime_workers_service
 from core.config import settings
 from core.database import get_settings_db
 
 if TYPE_CHECKING:
     from modules.compute.manager import ProcessManager
+
+
+class RuntimeAvailabilityProbe(Protocol):
+    def available(self, *, kind: RuntimeWorkerKind) -> bool: ...
+
+
+class PersistedRuntimeAvailabilityProbe:
+    def __init__(self, session: Session, *, heartbeat_seconds: float = 15.0) -> None:
+        self._session = session
+        self._heartbeat_seconds = heartbeat_seconds
+
+    def available(self, *, kind: RuntimeWorkerKind) -> bool:
+        return runtime_workers_service.worker_available(
+            self._session,
+            kind=kind,
+            heartbeat_seconds=self._heartbeat_seconds,
+        )
 
 
 def get_manager(request: Request) -> ProcessManager:
@@ -34,6 +53,16 @@ def get_optional_lock_owner_id(
     session: Session = Depends(get_settings_db),
 ) -> str | None:
     return resolve_lock_owner_id(session, _resolve_session_token(request))
+
+
+def get_runtime_availability_probe(
+    request: Request,
+    session: Session = Depends(get_settings_db),
+) -> RuntimeAvailabilityProbe:
+    probe = getattr(request.app.state, 'runtime_availability_probe', None)
+    if probe is not None:
+        return probe
+    return PersistedRuntimeAvailabilityProbe(session)
 
 
 def get_lock_owner_id(owner_id: str | None = Depends(get_optional_lock_owner_id)) -> str:

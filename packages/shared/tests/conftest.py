@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.engine import Engine
-from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 if TYPE_CHECKING:
@@ -27,7 +26,6 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     os.environ.pop('POLARS_STREAMING_CHUNK_SIZE', None)
     os.environ.setdefault('ENV_FILE', '')
     os.environ.setdefault('SETTINGS_ENCRYPTION_KEY', 'test-key')
-    os.environ.setdefault('DATAFORGE_SKIP_RUNTIME_PREFLIGHT', '1')
 
 
 def _settings():
@@ -36,11 +34,24 @@ def _settings():
     return settings
 
 
+class _InProcessRuntimeAvailabilityProbe:
+    def __init__(self, is_alive) -> None:
+        self._is_alive = is_alive
+
+    def available(self, *, kind) -> bool:
+        from contracts.runtime_workers.models import RuntimeWorkerKind
+
+        if kind is not RuntimeWorkerKind.BUILD_MANAGER:
+            return False
+        return self._is_alive()
+
+
 def _settings_tables() -> list[Any]:
     from modules.chat.sessions import ChatSession
 
     from contracts.auth_models import AuthProvider, User, UserSession, VerificationToken
     from contracts.engine_instances.models import EngineInstance
+    from contracts.namespaces.models import RuntimeNamespace
     from contracts.runtime_workers.models import RuntimeWorker
     from contracts.settings_models import AppSettings
 
@@ -51,6 +62,7 @@ def _settings_tables() -> list[Any]:
         User.__tablename__,
         AuthProvider.__tablename__,
         RuntimeWorker.__tablename__,
+        RuntimeNamespace.__tablename__,
         UserSession.__tablename__,
         VerificationToken.__tablename__,
     }
@@ -200,11 +212,14 @@ def client(test_db_session, test_user):
     app.dependency_overrides[get_current_user] = lambda: test_user
     with TestClient(app) as ac:
         runtime_thread, runtime_stop = start_test_runtime()
+        app.state.runtime_availability_probe = _InProcessRuntimeAvailabilityProbe(runtime_thread.is_alive)
         try:
             yield ac
         finally:
             runtime_stop.set()
             runtime_thread.join(timeout=10)
+            if hasattr(app.state, 'runtime_availability_probe'):
+                del app.state.runtime_availability_probe
             app.state.manager.shutdown_all()
     app.dependency_overrides.clear()
 
@@ -287,34 +302,28 @@ def isolate_data_dir(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(settings, 'log_sqlite_path', log_dir, raising=False)
 
 
-@pytest.fixture(scope='session')
-def shared_settings_engine() -> Generator[Engine, None, None]:
+@pytest.fixture(autouse=True, scope='function')
+def isolate_settings_engine(tmp_path: Path, isolate_data_dir) -> Generator[Engine, None, None]:
     from contracts.settings_models import AppSettings
     from core import database
 
+    settings_db_path = tmp_path / 'settings.db'
     engine = create_engine(
-        'sqlite:///:memory:',
+        f'sqlite:///{settings_db_path}',
         echo=False,
         connect_args={'check_same_thread': False},
-        poolclass=StaticPool,
     )
     AppSettings.metadata.create_all(engine, tables=_settings_tables())
     original = database.settings_engine
     database.settings_engine = engine
-    yield engine
-    database.settings_engine = original
-    engine.dispose()
-
-
-@pytest.fixture(autouse=True, scope='function')
-def isolate_settings_engine(isolate_data_dir, shared_settings_engine):
-    from core import database
-
     database.clear_settings_engine_override()
-    _reset_settings_state(shared_settings_engine)
-    yield shared_settings_engine
-    database.clear_settings_engine_override()
-    _reset_settings_state(shared_settings_engine)
+    try:
+        yield engine
+    finally:
+        database.clear_settings_engine_override()
+        _reset_settings_state(engine)
+        database.settings_engine = original
+        engine.dispose()
 
 
 @pytest.fixture(autouse=True, scope='function')

@@ -3692,6 +3692,23 @@ class TestEngineLifecycle:
         result = response.json()
         assert result['analysis_id'] == analysis_id
 
+    def test_remote_spawn_engine_returns_503_when_runtime_unavailable(self, client):
+        class UnavailableProbe:
+            def available(self, *, kind) -> bool:
+                return False
+
+        analysis_id = str(uuid.uuid4())
+        app.dependency_overrides.pop(get_manager, None)
+        app.state.runtime_availability_probe = UnavailableProbe()
+
+        try:
+            response = client.post(f'/api/v1/compute/engine/spawn/{analysis_id}')
+        finally:
+            del app.state.runtime_availability_probe
+
+        assert response.status_code == 503
+        assert response.json() == {'detail': 'Compute runtime unavailable'}
+
     def test_shutdown_engine(self, client):
         analysis_id = str(uuid.uuid4())
         mock_manager = MagicMock()

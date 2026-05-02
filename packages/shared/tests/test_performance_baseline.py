@@ -2,7 +2,7 @@ import json
 import time
 import uuid
 
-from modules.compute import service as compute_service
+import compute_service
 from modules.compute.manager import ProcessManager
 
 

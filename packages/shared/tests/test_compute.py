@@ -6,16 +6,18 @@ import threading
 import time
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import compute_service
 import polars as pl
 import pytest
 from build_execution import _run_queued_build_job
+from compute_live import ActiveBuild as ComputeActiveBuild
 from main import app
-from modules.compute import service as compute_service
 from modules.compute.engine import PolarsComputeEngine
 from modules.compute.engine_live import create_snapshot_notifier, load_engine_snapshot
-from modules.compute.live import ActiveBuild, registry as active_build_registry
+from modules.compute.live import ActiveBuild as RouteActiveBuild, registry as active_build_registry
 from modules.compute.manager import ProcessManager
 from modules.compute.operations.datasource import _analysis_stack_var
 from modules.compute.routes import (
@@ -583,7 +585,7 @@ def test_finalize_failed_engine_run_preserves_omitted_current_step() -> None:
     session = MagicMock()
     error = RuntimeError('preview failed')
 
-    with patch('modules.compute.service.engine_run_service.update_engine_run') as update:
+    with patch('compute_service.engine_run_service.update_engine_run') as update:
         compute_service._finalize_failed_engine_run(
             session,
             run_id='run-1',
@@ -623,7 +625,7 @@ def test_finalize_failed_engine_run_preserves_explicit_none_current_step_and_que
     session = MagicMock()
     error = RuntimeError('export failed')
 
-    with patch('modules.compute.service.engine_run_service.update_engine_run') as update:
+    with patch('compute_service.engine_run_service.update_engine_run') as update:
         compute_service._finalize_failed_engine_run(
             session,
             run_id='run-2',
@@ -686,12 +688,12 @@ def test_schedule_stream_tasks_runs_on_main_loop() -> None:
         future: concurrent.futures.Future[tuple[asyncio.Task, asyncio.Task]] = concurrent.futures.Future()
 
         def assign() -> None:
-            from modules.compute.service import _schedule_stream_tasks
+            from compute_service import _schedule_stream_tasks
 
             future.set_result(
                 _schedule_stream_tasks(
                     loop,
-                    build=ActiveBuild(
+                    build=ComputeActiveBuild(
                         build_id='build-1',
                         analysis_id='analysis-1',
                         analysis_name='Analysis 1',
@@ -745,7 +747,7 @@ def test_start_stream_tasks_skips_when_loop_unavailable() -> None:
     class FakeEngine:
         effective_resources = {'max_threads': 8, 'max_memory_mb': 512, 'streaming_chunk_size': 1000}
 
-    build = ActiveBuild(
+    build = ComputeActiveBuild(
         build_id='build-1',
         analysis_id='analysis-1',
         analysis_name='Analysis 1',
@@ -824,7 +826,7 @@ def test_stream_engine_events_drains_final_events_after_job_finish() -> None:
 
     async def run() -> None:
         await compute_service._stream_engine_events(
-            build=ActiveBuild(
+            build=ComputeActiveBuild(
                 build_id='build-1',
                 analysis_id='analysis-1',
                 analysis_name='Analysis 1',
@@ -2131,7 +2133,7 @@ def test_start_active_build_notifies_active_build_list_watchers(client, sample_d
 
 
 def test_active_build_registry_sanitizes_logs_and_flushes_throttled_events(test_user) -> None:
-    async def run() -> tuple[list[dict[str, object]], ActiveBuild | None]:
+    async def run() -> tuple[list[dict[str, object]], RouteActiveBuild | None]:
         build = await active_build_registry.create_build(
             analysis_id='analysis-log',
             analysis_name='Analysis Log',
@@ -2626,7 +2628,7 @@ def test_run_analysis_build_stream_tracks_output_target_and_read_write_stages(te
             write_duration_ms=7.0,
         )
 
-    async def run() -> tuple[list[compute_schemas.BuildEvent], ActiveBuild, MagicMock]:
+    async def run() -> tuple[list[compute_schemas.BuildEvent], RouteActiveBuild, MagicMock]:
         await active_build_registry.clear()
         build = await active_build_registry.create_build(
             analysis_id='analysis-live',
@@ -2663,14 +2665,14 @@ def test_run_analysis_build_stream_tracks_output_target_and_read_write_stages(te
         }
 
         with (
-            patch('modules.compute.service.export_data', side_effect=fake_export_data),
-            patch('modules.compute.service.monitor_engine_resources', side_effect=fake_monitor_engine_resources),
+            patch('compute_service.export_data', side_effect=fake_export_data),
+            patch('compute_service.monitor_engine_resources', side_effect=fake_monitor_engine_resources),
         ):
             await compute_service.run_analysis_build_stream(
                 session=MagicMock(),
                 manager=manager,
                 pipeline=pipeline,
-                build=build,
+                build=cast(ComputeActiveBuild, build),
                 emitter=emitter,
                 triggered_by=str(test_user.id),
             )
@@ -3736,7 +3738,7 @@ class TestBuildAnalysisPipelinePayloadDerived:
     def test_derived_tab_datasource_contains_analysis_metadata(self, test_db_session, sample_datasource: DataSource):
         from datetime import UTC, datetime
 
-        from modules.compute.service import build_analysis_pipeline_payload
+        from compute_service import build_analysis_pipeline_payload
         from modules.datasource.service import create_placeholder_output_datasource
 
         from contracts.analysis.models import Analysis, AnalysisStatus

@@ -1,7 +1,9 @@
 import asyncio
 import concurrent.futures
+import importlib
 import logging
 import uuid
+from datetime import UTC, datetime
 from urllib.parse import quote
 
 from fastapi import Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -10,6 +12,7 @@ from fastapi.responses import Response
 from sqlmodel import Session
 from starlette.websockets import WebSocketState
 
+from contracts.analysis.models import Analysis
 from contracts.auth_models import User
 from contracts.build_runs.live import BuildNotification, hub as build_hub
 from contracts.compute import schemas
@@ -29,8 +32,12 @@ from core.exceptions import EngineNotFoundError
 from core.namespace import get_namespace, reset_namespace, set_namespace_context
 from core.validation import AnalysisId, DataSourceId, EngineRunId, parse_analysis_id, parse_datasource_id, parse_engine_run_id
 from modules.auth.dependencies import get_current_user
-from modules.compute import executor_client, service
+from modules.compute import executor_client
 from modules.compute.engine_live import load_engine_snapshot, registry as engine_registry
+from modules.compute.iceberg_service import (
+    delete_iceberg_snapshot as delete_iceberg_snapshot_info,
+    list_iceberg_snapshots as list_iceberg_snapshots_info,
+)
 from modules.compute.live import ActiveBuildContext, registry as build_registry
 from modules.compute.manager import ProcessManager
 from modules.mcp.router import MCPRouter
@@ -256,6 +263,34 @@ async def _require_websocket_user(websocket: WebSocket) -> User:
     return user
 
 
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
+
+
+def _analysis_name(session: Session, analysis_id: str | None) -> str:
+    if not analysis_id:
+        return 'Build'
+    analysis = session.get(Analysis, analysis_id)
+    if analysis and analysis.name:
+        return analysis.name
+    return analysis_id
+
+
+def _build_starter(user: User | None) -> schemas.BuildStarter:
+    if user is None:
+        return schemas.BuildStarter(triggered_by='user')
+    return schemas.BuildStarter(
+        user_id=getattr(user, 'id', None),
+        display_name=getattr(user, 'display_name', None),
+        email=getattr(user, 'email', None),
+        triggered_by='user',
+    )
+
+
+def _runtime_compute_service():
+    return importlib.import_module('compute_service')
+
+
 def _build_analysis_name(pipeline: dict) -> str:
     analysis_id = pipeline.get('analysis_id')
     if not isinstance(analysis_id, str) or not analysis_id:
@@ -263,7 +298,7 @@ def _build_analysis_name(pipeline: dict) -> str:
     session_gen = get_db()
     session = next(session_gen)
     try:
-        return service._analysis_name(session, analysis_id)
+        return _analysis_name(session, analysis_id)
     finally:
         session.close()
         session_gen.close()
@@ -359,7 +394,7 @@ async def preview_step(
     normalized = request.model_copy(update={'analysis_id': analysis_id})
     manager = _override_manager(http_request)
     if manager is not None:
-        return service.preview_step(
+        return _runtime_compute_service().preview_step(
             session=session,
             manager=manager,
             target_step_id=normalized.target_step_id,
@@ -390,7 +425,7 @@ async def get_step_schema(
     normalized = request.model_copy(update={'analysis_id': analysis_id})
     manager = _override_manager(http_request)
     if manager is not None:
-        return service.get_step_schema(
+        return _runtime_compute_service().get_step_schema(
             session=session,
             manager=manager,
             target_step_id=normalized.target_step_id,
@@ -413,7 +448,7 @@ async def get_step_row_count(
     normalized = request.model_copy(update={'analysis_id': analysis_id})
     manager = _override_manager(http_request)
     if manager is not None:
-        return service.get_step_row_count(
+        return _runtime_compute_service().get_step_row_count(
             session=session,
             manager=manager,
             target_step_id=normalized.target_step_id,
@@ -437,7 +472,7 @@ def list_iceberg_snapshots(
     Each snapshot has a snapshot_id, timestamp, and operation type.
     Optionally filter by branch. Use snapshot_id with compare-snapshots.
     """
-    return service.list_iceberg_snapshots(session, parse_datasource_id(datasource_id), branch=branch)
+    return list_iceberg_snapshots_info(session, parse_datasource_id(datasource_id), branch=branch)
 
 
 @router.delete(
@@ -455,7 +490,7 @@ def delete_iceberg_snapshot(
 
     Warning: deleting snapshots removes the ability to time-travel to that point.
     """
-    return service.delete_iceberg_snapshot(session, parse_datasource_id(datasource_id), str(snapshot_id))
+    return delete_iceberg_snapshot_info(session, parse_datasource_id(datasource_id), str(snapshot_id))
 
 
 @router.post('/builds/active', response_model=schemas.ActiveBuildDetail)
@@ -469,7 +504,7 @@ async def start_active_build(
     analysis_id = str(pipeline.get('analysis_id') or '')
     analysis_name = await run_in_threadpool(_build_analysis_name, pipeline)
     namespace = get_namespace()
-    started_at = service._utcnow()
+    started_at = _utcnow()
     build_id = str(uuid.uuid4())
     raw_tabs = pipeline.get('tabs')
     tabs = raw_tabs if isinstance(raw_tabs, list) else []
@@ -494,7 +529,7 @@ async def start_active_build(
             context.current_tab_id = active_tab.get('id')
         if isinstance(active_tab.get('name'), str):
             context.current_tab_name = active_tab.get('name')
-    starter = service._build_starter(user)
+    starter = _build_starter(user)
     build_run_service.create_build_run(
         session,
         build_id=build_id,
@@ -572,7 +607,7 @@ async def cancel_build(
             schemas.BuildCancelledEvent(
                 build_id=target.build_id,
                 analysis_id=target.analysis_id,
-                emitted_at=service._utcnow(),
+                emitted_at=_utcnow(),
                 current_kind=target.current_kind,
                 current_datasource_id=target.current_datasource_id,
                 tab_id=target.current_tab_id,
@@ -924,7 +959,7 @@ async def export_data(
         )
         manager = _override_manager(http_request)
         if manager is not None:
-            file_bytes, filename, content_type = service.download_step(
+            file_bytes, filename, content_type = _runtime_compute_service().download_step(
                 session=session,
                 manager=manager,
                 target_step_id=download_request.target_step_id,
@@ -945,7 +980,7 @@ async def export_data(
 
     manager = _override_manager(http_request)
     if manager is not None:
-        result = service.export_data(
+        result = _runtime_compute_service().export_data(
             session=session,
             manager=manager,
             target_step_id=request.target_step_id,
@@ -983,7 +1018,7 @@ async def download_step(
     """
     manager = _override_manager(http_request)
     if manager is not None:
-        file_bytes, filename, content_type = service.download_step(
+        file_bytes, filename, content_type = _runtime_compute_service().download_step(
             session=session,
             manager=manager,
             target_step_id=request.target_step_id,

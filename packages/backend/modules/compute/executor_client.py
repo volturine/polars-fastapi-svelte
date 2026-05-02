@@ -104,6 +104,102 @@ async def export_data(session: Session, request: compute_schemas.ExportRequest) 
     return compute_schemas.ExportResponse.model_validate(completed.response_json)
 
 
+async def create_file_datasource(
+    session: Session,
+    *,
+    name: str,
+    description: str | None,
+    file_path: str,
+    file_type: str,
+    options: dict | None = None,
+    csv_options: dict[str, object] | None = None,
+    sheet_name: str | None = None,
+    start_row: int | None = None,
+    start_col: int | None = None,
+    end_col: int | None = None,
+    end_row: int | None = None,
+    has_header: bool | None = None,
+    table_name: str | None = None,
+    named_range: str | None = None,
+    cell_range: str | None = None,
+    owner_id: str | None = None,
+) -> datasource_schemas.DataSourceResponse:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.CREATE_FILE_DATASOURCE,
+        request_json={
+            'name': name,
+            'description': description,
+            'file_path': file_path,
+            'file_type': file_type,
+            'options': options or {},
+            'csv_options': csv_options,
+            'sheet_name': sheet_name,
+            'start_row': start_row,
+            'start_col': start_col,
+            'end_col': end_col,
+            'end_row': end_row,
+            'has_header': has_header,
+            'table_name': table_name,
+            'named_range': named_range,
+            'cell_range': cell_range,
+            'owner_id': owner_id,
+        },
+        timeout=180,
+    )
+    return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
+
+
+async def create_database_datasource(
+    session: Session,
+    *,
+    name: str,
+    description: str | None,
+    connection_string: str,
+    query: str,
+    branch: str,
+    owner_id: str | None = None,
+) -> datasource_schemas.DataSourceResponse:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.CREATE_DATABASE_DATASOURCE,
+        request_json={
+            'name': name,
+            'description': description,
+            'connection_string': connection_string,
+            'query': query,
+            'branch': branch,
+            'owner_id': owner_id,
+        },
+        timeout=180,
+    )
+    return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
+
+
+async def create_iceberg_datasource(
+    session: Session,
+    *,
+    name: str,
+    description: str | None,
+    source: dict[str, object],
+    branch: str,
+    owner_id: str | None = None,
+) -> datasource_schemas.DataSourceResponse:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.CREATE_ICEBERG_DATASOURCE,
+        request_json={
+            'name': name,
+            'description': description,
+            'source': source,
+            'branch': branch,
+            'owner_id': owner_id,
+        },
+        timeout=180,
+    )
+    return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
+
+
 async def refresh_datasource(session: Session, *, datasource_id: str) -> datasource_schemas.DataSourceResponse:
     completed = await _submit_and_wait(
         session,

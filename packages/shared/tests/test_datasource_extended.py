@@ -3,7 +3,7 @@ import threading
 import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import polars as pl
 import pytest
@@ -432,8 +432,8 @@ class TestDataSourceValidation:
         assert config['source']['end_col'] == 1
         assert config['source']['end_row'] == 2
 
-    @patch('modules.datasource.routes.run_db')
-    def test_confirm_excel_preserves_validation_error(self, mock_run_db, client, temp_upload_dir: Path):
+    @patch('modules.datasource.routes.create_remote_file_datasource', new_callable=AsyncMock)
+    def test_confirm_excel_preserves_validation_error(self, mock_create, client, temp_upload_dir: Path):
         excel_path = temp_upload_dir / 'confirm-invalid.xlsx'
         workbook = Workbook()
         sheet = workbook.active
@@ -451,7 +451,7 @@ class TestDataSourceValidation:
         assert preflight.status_code == 200
         preflight_id = preflight.json()['preflight_id']
 
-        mock_run_db.side_effect = DataSourceValidationError('Excel selection is invalid')
+        mock_create.side_effect = DataSourceValidationError('Excel selection is invalid')
         confirm = client.post(
             '/api/v1/datasource/confirm',
             data={'preflight_id': preflight_id, 'name': 'Broken Excel', 'sheet_name': 'Sheet1', 'has_header': 'true'},

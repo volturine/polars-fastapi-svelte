@@ -2,9 +2,9 @@ import uuid
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
+from compute_service import _upsert_output_datasource, export_data
 from modules.analysis.schemas import AnalysisUpdateSchema, TabDatasourceConfig, TabDatasourceSchema, TabOutputSchema, TabSchema
 from modules.analysis.service import update_analysis
-from modules.compute.service import _upsert_output_datasource, export_data
 from modules.datasource.service import create_analysis_datasource
 from modules.datasource.source_types import DataSourceType
 from sqlmodel import Session, select
@@ -459,10 +459,10 @@ class TestRunAnalysisBuildOutputDatasource:
         manager_mock.get_or_create_engine.return_value = engine_mock
 
         with (
-            patch('modules.compute.service.load_catalog', return_value=mock_catalog),
-            patch('modules.compute.service.pl.read_parquet') as mock_read,
-            patch('modules.compute.service.os.path.getsize', return_value=100),
-            patch('modules.compute.service._send_pipeline_notifications'),
+            patch('compute_service.load_catalog', return_value=mock_catalog),
+            patch('compute_service.pl.read_parquet') as mock_read,
+            patch('compute_service.os.path.getsize', return_value=100),
+            patch('compute_service._send_pipeline_notifications'),
         ):
             mock_read.return_value.to_arrow.return_value = MagicMock(schema=MagicMock())
             export_result = export_data(
@@ -571,10 +571,10 @@ class TestRunAnalysisBuildOutputDatasource:
         ]
 
         with (
-            patch('modules.compute.service.load_catalog', return_value=mock_catalog),
-            patch('modules.compute.service.pl.read_parquet') as mock_read,
-            patch('modules.compute.service.os.path.getsize', return_value=100),
-            patch('modules.compute.service._send_pipeline_notifications'),
+            patch('compute_service.load_catalog', return_value=mock_catalog),
+            patch('compute_service.pl.read_parquet') as mock_read,
+            patch('compute_service.os.path.getsize', return_value=100),
+            patch('compute_service._send_pipeline_notifications'),
         ):
             mock_read.return_value.to_arrow.return_value = MagicMock(schema=MagicMock())
             export_data(

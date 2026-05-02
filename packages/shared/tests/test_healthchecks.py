@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import polars as pl
-from modules.compute.service import _build_subscriber_message, _resolve_build_status
+from compute_service import _build_subscriber_message, _resolve_build_status
 from modules.healthcheck.service import run_healthchecks
 
 from contracts.compute.schemas import BuildStatus

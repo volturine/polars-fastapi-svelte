@@ -3,23 +3,27 @@ import contextlib
 import logging
 import os
 import uuid
-from collections.abc import Callable
 from pathlib import Path
 from shutil import copy2
 
 from fastapi import Depends, Form, HTTPException, UploadFile
 from sqlmodel import Session
-from starlette.concurrency import run_in_threadpool
 
 from contracts.auth_models import User
 from core.config import settings
-from core.database import get_db, run_db
+from core.database import get_db
 from core.error_handlers import handle_errors
 from core.exceptions import AppError
 from core.namespace import namespace_paths
 from core.validation import DataSourceId, PreflightId, parse_datasource_id, parse_preflight_id
 from modules.auth.dependencies import get_optional_user
-from modules.compute.executor_client import refresh_datasource as refresh_remote_datasource, shutdown_engine as shutdown_remote_engine
+from modules.compute.executor_client import (
+    create_database_datasource as create_remote_database_datasource,
+    create_file_datasource as create_remote_file_datasource,
+    create_iceberg_datasource as create_remote_iceberg_datasource,
+    refresh_datasource as refresh_remote_datasource,
+    shutdown_engine as shutdown_remote_engine,
+)
 from modules.datasource import schemas, service
 from modules.datasource.preflight import clear_preflight, create_preflight, get_preflight
 from modules.datasource.source_types import DataSourceType
@@ -103,6 +107,7 @@ async def upload_file(
     skip_rows: int = Form(0),
     encoding: str = Form('utf8'),
     user: User | None = Depends(get_optional_user),
+    session: Session = Depends(get_db),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail='No filename provided')
@@ -144,17 +149,16 @@ async def upload_file(
 
     try:
         owner_id = user.id if user else None
-        return await run_in_threadpool(
-            run_db,
-            service.create_file_datasource,
+        return await create_remote_file_datasource(
+            session,
             name=name,
             description=description,
             file_path=str(file_path),
             file_type=file_type,
-            csv_options=csv_options,
+            csv_options=csv_options.model_dump() if csv_options else None,
             owner_id=owner_id,
         )
-    except (AppError, ValueError):
+    except (AppError, HTTPException, ValueError):
         if file_path.exists():
             file_path.unlink()
         raise
@@ -175,6 +179,7 @@ async def upload_bulk(
     skip_rows: int = Form(0),
     encoding: str = Form('utf8'),
     user: User | None = Depends(get_optional_user),
+    session: Session = Depends(get_db),
 ):
     if not files:
         raise HTTPException(status_code=400, detail='No files provided')
@@ -236,14 +241,13 @@ async def upload_bulk(
         file_csv_options = csv_options if file_type == 'csv' else None
         try:
             owner_id = user.id if user else None
-            datasource = await run_in_threadpool(
-                run_db,
-                service.create_file_datasource,
+            datasource = await create_remote_file_datasource(
+                session,
                 name=name,
                 description=None,
                 file_path=str(file_path),
                 file_type=file_type,
-                csv_options=file_csv_options,
+                csv_options=file_csv_options.model_dump() if file_csv_options else None,
                 owner_id=owner_id,
             )
             results.append(schemas.BulkUploadResult(name=file.filename, success=True, datasource=datasource))
@@ -251,6 +255,10 @@ async def upload_bulk(
             if file_path.exists():
                 file_path.unlink()
             results.append(schemas.BulkUploadResult(name=file.filename, success=False, error=exc.message))
+        except HTTPException as exc:
+            if file_path.exists():
+                file_path.unlink()
+            results.append(schemas.BulkUploadResult(name=file.filename, success=False, error=str(exc.detail)))
         except ValueError as exc:
             if file_path.exists():
                 file_path.unlink()
@@ -441,6 +449,7 @@ async def confirm_excel(
     named_range: str | None = Form(None),
     cell_range: str | None = Form(None),
     user: User | None = Depends(get_optional_user),
+    session: Session = Depends(get_db),
 ):
     preflight = await get_preflight(parse_preflight_id(preflight_id))
     if not preflight:
@@ -478,9 +487,8 @@ async def confirm_excel(
                 resolved_end_row,
                 resolved_end_col,
             )
-        datasource = await run_in_threadpool(
-            run_db,
-            service.create_file_datasource,
+        datasource = await create_remote_file_datasource(
+            session,
             name=name,
             description=description,
             file_path=str(target_path),
@@ -496,7 +504,7 @@ async def confirm_excel(
             cell_range=resolved_cell_range,
             owner_id=user.id if user else None,
         )
-    except AppError:
+    except (AppError, HTTPException):
         if target_path.exists():
             target_path.unlink()
         await clear_preflight(parse_preflight_id(preflight_id))
@@ -514,7 +522,7 @@ async def confirm_excel(
 
 @router.post('/connect', response_model=schemas.DataSourceResponse, mcp=True)
 @handle_errors(operation='connect datasource', value_error_status=400)
-def connect_datasource(
+async def connect_datasource(
     datasource: schemas.DataSourceCreate,
     session: Session = Depends(get_db),
     user: User | None = Depends(get_optional_user),
@@ -538,54 +546,36 @@ def connect_datasource(
         )
     if datasource.source_type == 'api':
         raise HTTPException(status_code=400, detail='API datasources are not supported')
-    handlers = _connect_handlers()
-    handler = handlers.get(datasource.source_type)
-    if not handler:
+    owner_id = user.id if user else None
+    if datasource.source_type == DataSourceType.DATABASE:
+        db_config = schemas.DatabaseDataSourceConfig.model_validate(datasource.config)
+        return await create_remote_database_datasource(
+            session,
+            name=datasource.name,
+            description=datasource.description,
+            connection_string=db_config.connection_string,
+            query=db_config.query,
+            branch=db_config.branch,
+            owner_id=owner_id,
+        )
+    if datasource.source_type == DataSourceType.ICEBERG:
+        iceberg_config = schemas.IcebergDataSourceConfig.model_validate(datasource.config)
+        return await create_remote_iceberg_datasource(
+            session,
+            name=datasource.name,
+            description=datasource.description,
+            source=iceberg_config.source,
+            branch=iceberg_config.branch,
+            owner_id=owner_id,
+        )
+    if datasource.source_type == DataSourceType.ANALYSIS:
         raise HTTPException(
             status_code=400,
-            detail=(f'Unsupported source type: {datasource.source_type}. Use "file", "database", "iceberg", or "analysis"'),
+            detail='Direct creation of analysis datasources is no longer supported. Use analysis tabs with analysis_tab_id.',
         )
-    return handler(datasource, session, user.id if user else None)
-
-
-def _connect_handlers() -> dict[DataSourceType, Callable[[schemas.DataSourceCreate, Session, str | None], schemas.DataSourceResponse]]:
-    return {
-        DataSourceType.DATABASE: _connect_database,
-        DataSourceType.ICEBERG: _connect_iceberg,
-        DataSourceType.ANALYSIS: _connect_analysis,
-    }
-
-
-def _connect_database(datasource: schemas.DataSourceCreate, session: Session, owner_id: str | None) -> schemas.DataSourceResponse:
-    db_config = schemas.DatabaseDataSourceConfig.model_validate(datasource.config)
-    return service.create_database_datasource(
-        session=session,
-        name=datasource.name,
-        description=datasource.description,
-        connection_string=db_config.connection_string,
-        query=db_config.query,
-        branch=db_config.branch,
-        owner_id=owner_id,
-    )
-
-
-def _connect_iceberg(datasource: schemas.DataSourceCreate, session: Session, owner_id: str | None) -> schemas.DataSourceResponse:
-    iceberg_config = schemas.IcebergDataSourceConfig.model_validate(datasource.config)
-    return service.create_iceberg_datasource(
-        session=session,
-        name=datasource.name,
-        description=datasource.description,
-        source=iceberg_config.source,
-        branch=iceberg_config.branch,
-        owner_id=owner_id,
-    )
-
-
-def _connect_analysis(datasource: schemas.DataSourceCreate, session: Session, owner_id: str | None) -> schemas.DataSourceResponse:
-    _ = owner_id
     raise HTTPException(
         status_code=400,
-        detail='Direct creation of analysis datasources is no longer supported. Use analysis tabs with analysis_tab_id.',
+        detail=(f'Unsupported source type: {datasource.source_type}. Use "file", "database", "iceberg", or "analysis"'),
     )
 
 
@@ -652,7 +642,7 @@ def get_datasource(
 
 @router.get('/{datasource_id}/schema', response_model=schemas.SchemaInfo, mcp=True)
 @handle_errors(operation='get datasource schema')
-def get_datasource_schema(
+async def get_datasource_schema(
     datasource_id: DataSourceId,
     sheet_name: str | None = None,
     refresh: bool = False,
@@ -663,7 +653,15 @@ def get_datasource_schema(
     For Excel files, pass sheet_name to select a specific sheet.
     Set refresh=true to re-read the schema from the source file.
     """
-    return service.get_datasource_schema(session, parse_datasource_id(datasource_id), sheet_name=sheet_name, refresh=refresh)
+    datasource_id_value = parse_datasource_id(datasource_id)
+    if refresh:
+        datasource = service.get_datasource(session, datasource_id_value)
+        source = datasource.config.get('source') if isinstance(datasource.config, dict) else None
+        if datasource.source_type == DataSourceType.ICEBERG and isinstance(source, dict):
+            source_type = source.get('source_type')
+            if source_type in {DataSourceType.DATABASE, DataSourceType.FILE}:
+                await refresh_remote_datasource(session, datasource_id=datasource_id_value)
+    return service.get_datasource_schema(session, datasource_id_value, sheet_name=sheet_name, refresh=False)
 
 
 @router.patch('/{datasource_id}/column-metadata', response_model=schemas.SchemaInfo, mcp=True)

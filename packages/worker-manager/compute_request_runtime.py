@@ -9,6 +9,7 @@ from pathlib import Path
 import compute_service as service
 import datasource_service
 from compute_manager import ProcessManager
+from datasource_schemas import CSVOptions
 from fastapi import HTTPException
 from sqlmodel import Session
 from worker_runtime import runtime_namespaces
@@ -33,6 +34,18 @@ class ClaimedComputeRequest:
     namespace: str
     kind: ComputeRequestKind
     request_json: dict[str, object]
+
+
+def _optional_int(value: object) -> int | None:
+    return int(value) if value is not None and isinstance(value, (str, int)) else None
+
+
+def _optional_str(value: object) -> str | None:
+    return str(value) if value is not None else None
+
+
+def _optional_dict(value: object) -> dict[str, object] | None:
+    return dict(value) if isinstance(value, dict) else None
 
 
 def next_compute_request(worker_id: str, *, lease_seconds: int = 30) -> ClaimedComputeRequest | None:
@@ -223,6 +236,65 @@ async def _execute_request(claimed: ClaimedComputeRequest, manager: ProcessManag
                 session,
                 claimed.id,
                 response_json=export_response.model_dump(mode='json'),
+            )
+        elif claimed.kind == ComputeRequestKind.CREATE_FILE_DATASOURCE:
+            raw_csv_options = claimed.request_json.get('csv_options')
+            csv_options = CSVOptions.model_validate(raw_csv_options) if isinstance(raw_csv_options, dict) else None
+            datasource_response = datasource_service.create_file_datasource(
+                session=session,
+                name=str(claimed.request_json['name']),
+                description=str(claimed.request_json['description']) if claimed.request_json.get('description') is not None else None,
+                file_path=str(claimed.request_json['file_path']),
+                file_type=str(claimed.request_json['file_type']),
+                options=_optional_dict(claimed.request_json.get('options')),
+                csv_options=csv_options,
+                sheet_name=_optional_str(claimed.request_json.get('sheet_name')),
+                start_row=_optional_int(claimed.request_json.get('start_row')),
+                start_col=_optional_int(claimed.request_json.get('start_col')),
+                end_col=_optional_int(claimed.request_json.get('end_col')),
+                end_row=_optional_int(claimed.request_json.get('end_row')),
+                has_header=bool(claimed.request_json['has_header']) if claimed.request_json.get('has_header') is not None else None,
+                table_name=_optional_str(claimed.request_json.get('table_name')),
+                named_range=_optional_str(claimed.request_json.get('named_range')),
+                cell_range=_optional_str(claimed.request_json.get('cell_range')),
+                owner_id=_optional_str(claimed.request_json.get('owner_id')),
+            )
+            compute_requests_service.mark_request_completed(
+                session,
+                claimed.id,
+                response_json=datasource_response.model_dump(mode='json'),
+            )
+        elif claimed.kind == ComputeRequestKind.CREATE_DATABASE_DATASOURCE:
+            datasource_response = datasource_service.create_database_datasource(
+                session=session,
+                name=str(claimed.request_json['name']),
+                description=str(claimed.request_json['description']) if claimed.request_json.get('description') is not None else None,
+                connection_string=str(claimed.request_json['connection_string']),
+                query=str(claimed.request_json['query']),
+                branch=str(claimed.request_json['branch']),
+                owner_id=str(claimed.request_json['owner_id']) if claimed.request_json.get('owner_id') is not None else None,
+            )
+            compute_requests_service.mark_request_completed(
+                session,
+                claimed.id,
+                response_json=datasource_response.model_dump(mode='json'),
+            )
+        elif claimed.kind == ComputeRequestKind.CREATE_ICEBERG_DATASOURCE:
+            raw_source = claimed.request_json.get('source')
+            if not isinstance(raw_source, dict):
+                raise ValueError('source is required')
+            datasource_response = datasource_service.create_iceberg_datasource(
+                session=session,
+                name=str(claimed.request_json['name']),
+                description=str(claimed.request_json['description']) if claimed.request_json.get('description') is not None else None,
+                source=dict(raw_source),
+                branch=str(claimed.request_json['branch']),
+                owner_id=str(claimed.request_json['owner_id']) if claimed.request_json.get('owner_id') is not None else None,
+            )
+            compute_requests_service.mark_request_completed(
+                session,
+                claimed.id,
+                response_json=datasource_response.model_dump(mode='json'),
             )
         elif claimed.kind == ComputeRequestKind.REFRESH_DATASOURCE:
             datasource_id = str(claimed.request_json['datasource_id'])

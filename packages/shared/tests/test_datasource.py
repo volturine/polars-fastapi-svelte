@@ -112,9 +112,9 @@ class TestDataSourceUpload:
         assert created is not None
         assert created.owner_id == test_user.id
 
-    @patch('modules.datasource.routes.run_db')
-    def test_upload_preserves_datasource_validation_error(self, mock_run_db, client, mock_file_upload: dict):
-        mock_run_db.side_effect = DataSourceValidationError('CSV schema is invalid')
+    @patch('modules.datasource.routes.create_remote_file_datasource', new_callable=AsyncMock)
+    def test_upload_preserves_datasource_validation_error(self, mock_create, client, mock_file_upload: dict):
+        mock_create.side_effect = DataSourceValidationError('CSV schema is invalid')
         files = {'file': (mock_file_upload['filename'], mock_file_upload['content'], mock_file_upload['content_type'])}
         data = {'name': 'Validation Failure'}
 
@@ -123,9 +123,9 @@ class TestDataSourceUpload:
         assert response.status_code == 400
         assert response.json()['detail'] == 'CSV schema is invalid'
 
-    @patch('modules.datasource.routes.run_db')
-    def test_upload_preserves_value_error(self, mock_run_db, client, mock_file_upload: dict):
-        mock_run_db.side_effect = ValueError('Bad upload path')
+    @patch('modules.datasource.routes.create_remote_file_datasource', new_callable=AsyncMock)
+    def test_upload_preserves_value_error(self, mock_create, client, mock_file_upload: dict):
+        mock_create.side_effect = ValueError('Bad upload path')
         files = {'file': (mock_file_upload['filename'], mock_file_upload['content'], mock_file_upload['content_type'])}
         data = {'name': 'Value Failure'}
 
@@ -215,8 +215,8 @@ class TestDataSourceConnect:
 
         assert response.status_code == 400
 
-    @patch('modules.datasource.service.load_datasource')
-    @patch('modules.datasource.service._write_iceberg_table')
+    @patch('datasource_service.load_datasource')
+    @patch('datasource_service._write_iceberg_table')
     def test_connect_iceberg_with_source_config_creates_iceberg(
         self,
         mock_write,

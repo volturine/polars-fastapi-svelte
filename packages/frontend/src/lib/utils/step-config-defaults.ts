@@ -178,8 +178,7 @@ const defaultConfigs: Record<string, StepConfig> = {
 		output_column: 'notification_status',
 		message_template: '{{message}}',
 		subject_template: 'Notification',
-		batch_size: 10,
-		timeout_seconds: 20
+		batch_size: 10
 	} satisfies NotificationConfig,
 
 	ai: {

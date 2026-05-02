@@ -242,7 +242,6 @@ export interface NotificationConfigData {
 	message_template: string;
 	subject_template: string;
 	batch_size: number;
-	timeout_seconds: number;
 }
 
 export interface AIConfigData {

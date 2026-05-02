@@ -246,7 +246,6 @@ export interface NotificationConfig {
 	message_template?: string;
 	subject_template?: string;
 	batch_size?: number;
-	timeout_seconds?: number;
 }
 
 export type AIProvider = 'ollama' | 'openai' | 'openrouter' | 'huggingface';
@@ -272,19 +271,59 @@ export interface DatasourceConfig {
 	[key: string]: unknown;
 }
 
+export type TimeseriesOperationType =
+	| 'extract'
+	| 'timestamp'
+	| 'add'
+	| 'subtract'
+	| 'offset'
+	| 'diff'
+	| 'truncate'
+	| 'round';
+
+export type TimeComponent =
+	| 'year'
+	| 'month'
+	| 'day'
+	| 'hour'
+	| 'minute'
+	| 'second'
+	| 'quarter'
+	| 'week'
+	| 'dayofweek';
+
+export type DurationUnit = 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
+
+export type TimeDirection = 'add' | 'subtract';
+
 export interface TimeSeriesConfig {
 	column?: string;
-	operation_type?: string;
+	operation_type: TimeseriesOperationType;
 	new_column?: string;
-	component?: string | null;
+	component?: TimeComponent | null;
 	value?: number | null;
-	unit?: string | null;
+	unit?: DurationUnit | null;
+	direction?: TimeDirection | null;
 	column2?: string | null;
 }
 
+export type StringTransformMethod =
+	| 'uppercase'
+	| 'lowercase'
+	| 'title'
+	| 'strip'
+	| 'lstrip'
+	| 'rstrip'
+	| 'length'
+	| 'slice'
+	| 'replace'
+	| 'extract'
+	| 'split'
+	| 'split_take';
+
 export interface StringTransformConfig {
 	column?: string;
-	method?: string;
+	method: StringTransformMethod;
 	new_column?: string;
 	start?: number | null;
 	end?: number | null;

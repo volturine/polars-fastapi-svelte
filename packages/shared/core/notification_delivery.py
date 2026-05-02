@@ -3,7 +3,7 @@ from email.message import EmailMessage
 from typing import Final
 
 from core import http as http_client
-from core.settings_service import (
+from core.settings_store import (
     get_resolved_smtp,
     get_resolved_telegram_settings,
     get_resolved_telegram_token,
@@ -27,7 +27,7 @@ def render_template(template: str, context: dict[str, object]) -> str:
     return template
 
 
-class NotificationService:
+class NotificationDelivery:
     def send_email(
         self,
         *,
@@ -102,4 +102,5 @@ class NotificationService:
             file_response.raise_for_status()
 
 
-notification_service = NotificationService()
+NotificationService = NotificationDelivery
+notification_service = NotificationDelivery()

@@ -35,12 +35,13 @@ from contracts.engine_runs.models import EngineRun
 from contracts.engine_runs.schemas import EngineRunKind, EngineRunStatus
 from contracts.healthcheck_models import HealthCheck, HealthCheckResult
 from contracts.udf_models import Udf
-from core import engine_runs_service as engine_run_service, healthcheck_service
+from core import engine_runs_service as engine_run_service
 from core.config import settings
 from core.database import get_db
 from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError, PipelineExecutionError, PipelineValidationError
+from core.healthcheck_runner import run_healthchecks
 from core.namespace import get_namespace, namespace_paths
-from core.notification_service import notification_service, render_template
+from core.notification_delivery import notification_service, render_template
 
 logger = logging.getLogger(__name__)
 
@@ -556,7 +557,7 @@ def _send_pipeline_notifications(
     if datasource_id:
         try:
             from core.database import run_db
-            from core.telegram_service import get_notification_chat_ids, list_subscribers
+            from core.telegram_store import get_notification_chat_ids, list_subscribers
 
             pairs: list[tuple[str, str]] = run_db(get_notification_chat_ids, datasource_id)
             excluded: set[str] = set()
@@ -2077,7 +2078,7 @@ def export_data(
             if hc_lf is None:
                 raise ValueError('Unsupported healthcheck export format: parquet')
             try:
-                hc_results = healthcheck_service.run_healthchecks(session, hc_checks, hc_lf)
+                hc_results = run_healthchecks(session, hc_checks, hc_lf)
             except Exception as exc:
                 if any(check.critical for check in hc_checks):
                     raise PipelineExecutionError(

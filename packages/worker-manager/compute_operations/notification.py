@@ -6,8 +6,8 @@ import polars as pl
 from pydantic import ConfigDict, Field, model_validator
 
 from contracts.compute.base import OperationHandler, OperationParams
-from core.notification_service import notification_service
-from core.settings_service import get_resolved_telegram_settings
+from core.notification_delivery import notification_service
+from core.settings_store import get_resolved_telegram_settings
 
 logger = logging.getLogger(__name__)
 

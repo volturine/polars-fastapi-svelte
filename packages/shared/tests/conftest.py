@@ -72,7 +72,7 @@ def _settings_tables() -> list[Any]:
 def _reset_settings_state(engine: Engine) -> None:
     from modules.chat.sessions import session_store
 
-    from core.settings_service import invalidate_resolved_settings_cache
+    from core.settings_store import invalidate_resolved_settings_cache
 
     for live in session_store._live.values():
         live.cancel_task()

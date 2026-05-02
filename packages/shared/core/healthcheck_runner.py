@@ -4,121 +4,18 @@ from datetime import UTC, datetime
 from typing import TypeAlias
 
 import polars as pl
-from sqlalchemy import select
 from sqlmodel import Session
 
-from contracts.datasource.models import DataSource
 from contracts.healthcheck_models import HealthCheck, HealthCheckResult
-from contracts.healthcheck_schemas import HealthCheckCreate, HealthCheckResponse, HealthCheckResultResponse, HealthCheckUpdate
-from core.exceptions import HealthcheckNotFoundError, HealthcheckValidationError
 
 HealthcheckDetails: TypeAlias = dict[str, object]
 HealthcheckEvaluator: TypeAlias = Callable[[HealthCheck, pl.DataFrame], tuple[bool, str, HealthcheckDetails]]
 
 
-def list_healthchecks(session: Session, datasource_id: str) -> list[HealthCheckResponse]:
-    datasource = session.get(DataSource, datasource_id)
-    if not datasource:
-        return []
-    result = session.execute(select(HealthCheck).where(HealthCheck.datasource_id == datasource_id))  # type: ignore[arg-type]
-    checks = result.scalars().all()
-    return [HealthCheckResponse.model_validate(check) for check in checks]
-
-
-def list_all_healthchecks(session: Session) -> list[HealthCheckResponse]:
-    result = session.execute(select(HealthCheck))
-    checks = result.scalars().all()
-    return [HealthCheckResponse.model_validate(check) for check in checks]
-
-
-def create_healthcheck(session: Session, payload: HealthCheckCreate) -> HealthCheckResponse:
-    _ensure_unique_row_count(session, payload.datasource_id, payload.check_type)
-    record = HealthCheck(
-        id=str(uuid.uuid4()),
-        datasource_id=payload.datasource_id,
-        name=payload.name,
-        check_type=payload.check_type,
-        config=payload.config,
-        enabled=payload.enabled,
-        critical=payload.critical,
-        created_at=datetime.now(UTC),
-    )
-    session.add(record)
-    session.commit()
-    session.refresh(record)
-    return HealthCheckResponse.model_validate(record)
-
-
-def update_healthcheck(
-    session: Session,
-    healthcheck_id: str,
-    payload: HealthCheckUpdate,
-) -> HealthCheckResponse:
-    check = session.get(HealthCheck, healthcheck_id)
-    if not check:
-        raise HealthcheckNotFoundError(healthcheck_id)
-    check_type = payload.check_type or check.check_type
-    if check_type == 'row_count':
-        _ensure_unique_row_count(session, check.datasource_id, check_type, exclude_id=healthcheck_id)
-    for key, value in payload.model_dump(exclude_none=True).items():
-        setattr(check, key, value)
-    session.add(check)
-    session.commit()
-    session.refresh(check)
-    return HealthCheckResponse.model_validate(check)
-
-
-def delete_healthcheck(session: Session, healthcheck_id: str) -> None:
-    check = session.get(HealthCheck, healthcheck_id)
-    if not check:
-        raise HealthcheckNotFoundError(healthcheck_id)
-    session.delete(check)
-    session.commit()
-
-
-def list_results(session: Session, datasource_id: str, limit: int = 10) -> list[HealthCheckResultResponse]:
-    """Get recent healthcheck results for one datasource."""
-    datasource = session.get(DataSource, datasource_id)
-    if not datasource:
-        return []
-    query = select(HealthCheckResult).order_by(HealthCheckResult.checked_at.desc()).limit(limit)  # type: ignore[union-attr, attr-defined]
-    checks = session.execute(
-        select(HealthCheck.id).where(HealthCheck.datasource_id == datasource_id),  # type: ignore[arg-type, call-overload]
-    )
-    check_ids = checks.scalars().all()
-    if not check_ids:
-        return []
-    results = session.execute(
-        query.where(HealthCheckResult.healthcheck_id.in_(check_ids)),  # type: ignore[union-attr, attr-defined]
-    )
-    return [HealthCheckResultResponse.model_validate(r) for r in results.scalars().all()]
-
-
-def list_all_results(session: Session, limit: int = 10) -> list[HealthCheckResultResponse]:
-    """Get recent healthcheck results across all datasources."""
-    query = select(HealthCheckResult).order_by(HealthCheckResult.checked_at.desc()).limit(limit)  # type: ignore[union-attr, attr-defined]
-    results = session.execute(query)
-    return [HealthCheckResultResponse.model_validate(r) for r in results.scalars().all()]
-
-
-def list_results_for_check(session: Session, healthcheck_id: str, limit: int = 10) -> list[HealthCheckResultResponse]:
-    """Get recent results for a single healthcheck."""
-    check = session.get(HealthCheck, healthcheck_id)
-    if not check:
-        return []
-    results = session.execute(
-        select(HealthCheckResult)
-        .where(HealthCheckResult.healthcheck_id == healthcheck_id)  # type: ignore[arg-type]
-        .order_by(HealthCheckResult.checked_at.desc())  # type: ignore[union-attr, attr-defined]
-        .limit(limit),
-    )
-    return [HealthCheckResultResponse.model_validate(r) for r in results.scalars().all()]
-
-
 def _build_expressions(checks: list[HealthCheck], schema_names: set[str]) -> tuple[list[pl.Expr], list[HealthCheck]]:
     """Build Polars aggregation expressions for all valid checks.
 
-    Returns (expressions, valid_checks).  Checks whose referenced column is
+    Returns (expressions, valid_checks). Checks whose referenced column is
     missing from the schema are excluded so the caller can create immediate-
     failure results for them.
     """
@@ -329,14 +226,7 @@ def run_healthchecks(
     *,
     critical_only: bool = False,
 ) -> list[HealthCheckResult]:
-    """Run all health checks in a single LazyFrame evaluation.
-
-    1. Validate referenced columns against the LazyFrame schema.
-    2. Build one combined set of Polars aggregation expressions.
-    3. Collect once — single materialisation for all checks.
-    4. Evaluate each check against the collected scalars.
-    5. Persist and return ``HealthCheckResult`` rows.
-    """
+    """Run all health checks in a single LazyFrame evaluation."""
     selected = checks
     if critical_only:
         selected = [check for check in checks if check.critical]
@@ -387,22 +277,3 @@ def run_healthchecks(
 
     session.commit()
     return results
-
-
-def _ensure_unique_row_count(
-    session: Session,
-    datasource_id: str,
-    check_type: str,
-    exclude_id: str | None = None,
-) -> None:
-    if check_type != 'row_count':
-        return
-    query = select(HealthCheck).where(
-        HealthCheck.datasource_id == datasource_id,  # type: ignore[arg-type]
-        HealthCheck.check_type == 'row_count',  # type: ignore[arg-type]
-    )
-    if exclude_id:
-        query = query.where(HealthCheck.id != exclude_id)  # type: ignore[arg-type]
-    existing = session.execute(query).scalars().first()
-    if existing:
-        raise HealthcheckValidationError('Only one row_count healthcheck is allowed per datasource')

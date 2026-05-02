@@ -70,7 +70,6 @@ def deactivate_subscriber(session: Session, subscriber_id: int) -> None:
 
 
 def delete_subscriber(session: Session, subscriber_id: int) -> None:
-    # Delete listeners first
     listeners = (
         session.execute(
             select(TelegramListener).where(TelegramListener.subscriber_id == subscriber_id),  # type: ignore[arg-type]

@@ -7,7 +7,7 @@ from compute_service import _build_subscriber_message, _resolve_build_status
 from contracts.compute.schemas import BuildStatus
 from contracts.datasource.models import DataSource
 from contracts.healthcheck_models import HealthCheck, HealthCheckResult
-from core.healthcheck_service import run_healthchecks
+from core.healthcheck_runner import run_healthchecks
 
 
 def _create_datasource(session, ds_id: str | None = None) -> DataSource:

@@ -3,10 +3,10 @@
 from fastapi import Depends
 from sqlmodel import Session
 
-from core import telegram_service as service
+from core import telegram_store
 from core.database import get_db
 from core.error_handlers import handle_errors
-from core.settings_service import get_resolved_telegram_settings
+from core.settings_store import get_resolved_telegram_settings
 from core.validation import DataSourceId, parse_datasource_id
 from modules.mcp.router import MCPRouter
 from modules.telegram.schemas import (
@@ -23,7 +23,7 @@ router = MCPRouter(prefix='/telegram', tags=['telegram'])
 @handle_errors(operation='get bot status')
 def bot_status(session: Session = Depends(get_db)) -> BotStatusResponse:
     """Get Telegram bot status: whether the bot is running, token is configured, and active subscriber count."""
-    subs = service.list_subscribers(session)
+    subs = telegram_store.list_subscribers(session)
     active = sum(1 for s in subs if s.is_active)
     telegram_settings = get_resolved_telegram_settings()
     token_configured = bool(telegram_settings['token'])
@@ -39,14 +39,14 @@ def bot_status(session: Session = Depends(get_db)) -> BotStatusResponse:
 @handle_errors(operation='list subscribers')
 def get_subscribers(session: Session = Depends(get_db)) -> list[SubscriberResponse]:
     """List all Telegram subscribers (chats that have interacted with the bot)."""
-    return [SubscriberResponse.model_validate(item) for item in service.list_subscribers(session)]
+    return [SubscriberResponse.model_validate(item) for item in telegram_store.list_subscribers(session)]
 
 
 @router.delete('/subscribers/{subscriber_id}', status_code=204, mcp=True)
 @handle_errors(operation='delete subscriber')
 def delete_subscriber(subscriber_id: int, session: Session = Depends(get_db)) -> None:
     """Remove a Telegram subscriber by ID. Use GET /telegram/subscribers to find subscriber IDs."""
-    service.delete_subscriber(session, subscriber_id)
+    telegram_store.delete_subscriber(session, subscriber_id)
 
 
 @router.get('/listeners', response_model=list[ListenerResponse], mcp=True)
@@ -62,7 +62,7 @@ def get_listeners(
     """
     return [
         ListenerResponse.model_validate(item)
-        for item in service.list_listeners(session, subscriber_id, parse_datasource_id(datasource_id) if datasource_id else None)
+        for item in telegram_store.list_listeners(session, subscriber_id, parse_datasource_id(datasource_id) if datasource_id else None)
     ]
 
 
@@ -74,7 +74,7 @@ def create_listener(payload: ListenerCreate, session: Session = Depends(get_db))
     Requires subscriber_id (from GET /telegram/subscribers) and datasource_id
     (from GET /datasource). The subscriber will receive notifications when the datasource is built.
     """
-    created = service.add_listener(session, service.ListenerCreate.model_validate(payload.model_dump()))
+    created = telegram_store.add_listener(session, telegram_store.ListenerCreate.model_validate(payload.model_dump()))
     return ListenerResponse.model_validate(created)
 
 
@@ -82,4 +82,4 @@ def create_listener(payload: ListenerCreate, session: Session = Depends(get_db))
 @handle_errors(operation='delete listener')
 def delete_listener(listener_id: int, session: Session = Depends(get_db)) -> None:
     """Remove a notification listener by ID. Use GET /telegram/listeners to find listener IDs."""
-    service.remove_listener(session, listener_id)
+    telegram_store.remove_listener(session, listener_id)

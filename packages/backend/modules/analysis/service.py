@@ -14,14 +14,14 @@ from sqlmodel import Session, col
 from contracts.analysis.models import Analysis, AnalysisDataSource, AnalysisStatus
 from contracts.analysis.pipeline_types import PipelineDefinition, PipelineStep, PipelineTab, TabDatasource, TabOutput
 from contracts.datasource.models import DataSource
-from core.ai_service import AIError, get_ai_client
+from core.ai_clients import AIError, get_ai_client
 from core.exceptions import (
     AnalysisCycleError,
     AnalysisNotFoundError,
     AnalysisValidationError,
     DataSourceNotFoundError,
 )
-from core.settings_service import (
+from core.settings_store import (
     get_resolved_huggingface_settings,
     get_resolved_ollama_settings,
     get_resolved_openai_settings,

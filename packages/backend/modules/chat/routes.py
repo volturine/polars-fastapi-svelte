@@ -17,7 +17,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
 from contracts.auth_models import User
-from core.ai_service import get_ai_client
+from core.ai_clients import get_ai_client
 from core.error_handlers import handle_errors
 from core.namespace import get_namespace
 from modules.auth.dependencies import get_current_user

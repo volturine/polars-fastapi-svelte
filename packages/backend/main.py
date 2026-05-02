@@ -155,7 +155,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     from modules.telegram.bot import telegram_bot
 
     def _check_bot_enabled(session: Session) -> tuple[bool, str]:
-        from core.settings_service import get_resolved_telegram_settings
+        from core.settings_store import get_resolved_telegram_settings
 
         del session
         resolved = get_resolved_telegram_settings()

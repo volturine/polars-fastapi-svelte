@@ -12,7 +12,7 @@ from sqlmodel import Session
 
 from contracts.telegram_models import TelegramSubscriber
 from contracts.telegram_schemas import ListenerCreate
-from core.telegram_service import (
+from core.telegram_store import (
     add_listener,
     add_subscriber,
     auto_populate_listeners,

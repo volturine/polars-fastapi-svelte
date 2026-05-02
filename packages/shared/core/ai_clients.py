@@ -264,7 +264,6 @@ class HuggingFaceClient(AIClient):
         return self._extract_generated_text(response.json())
 
     def list_models(self) -> list[dict]:
-        # The searchable HF model index lives on huggingface.co, not the inference host.
         hub_url = 'https://huggingface.co/api/models?sort=downloads&direction=-1&limit=100'
         try:
             response = _retry_request('GET', hub_url, headers=self._headers(), retries=0)
@@ -309,13 +308,13 @@ def get_ai_client(
     normalized = provider.strip().lower()
 
     if normalized == 'ollama':
-        from core.settings_service import get_resolved_ollama_settings
+        from core.settings_store import get_resolved_ollama_settings
 
         resolved = get_resolved_ollama_settings()
         return OllamaClient(endpoint_url or resolved['endpoint_url'] or settings.ollama_base_url)
 
     if normalized == 'openai':
-        from core.settings_service import get_resolved_openai_settings
+        from core.settings_store import get_resolved_openai_settings
 
         resolved = get_resolved_openai_settings()
         resolved_key = api_key if api_key is not None else resolved['api_key'] or settings.openai_api_key
@@ -328,7 +327,7 @@ def get_ai_client(
         )
 
     if normalized == 'openrouter':
-        from core.settings_service import get_resolved_openrouter_key
+        from core.settings_store import get_resolved_openrouter_key
 
         resolved_key = api_key if api_key is not None else get_resolved_openrouter_key() or settings.openrouter_api_key
         if not resolved_key:
@@ -336,7 +335,7 @@ def get_ai_client(
         return OpenRouterClient(resolved_key)
 
     if normalized in {'huggingface', 'huggingface-api'}:
-        from core.settings_service import get_resolved_huggingface_settings
+        from core.settings_store import get_resolved_huggingface_settings
 
         resolved = get_resolved_huggingface_settings()
         return HuggingFaceClient(

@@ -73,7 +73,7 @@ def clear_engine_override():
 def set_settings_engine_override(test_engine: Engine):
     global _settings_engine_override
     _settings_engine_override = test_engine
-    from core.settings_service import invalidate_resolved_settings_cache
+    from core.settings_store import invalidate_resolved_settings_cache
 
     invalidate_resolved_settings_cache()
 
@@ -81,7 +81,7 @@ def set_settings_engine_override(test_engine: Engine):
 def clear_settings_engine_override():
     global _settings_engine_override
     _settings_engine_override = None
-    from core.settings_service import invalidate_resolved_settings_cache
+    from core.settings_store import invalidate_resolved_settings_cache
 
     invalidate_resolved_settings_cache()
 
@@ -300,7 +300,7 @@ def _init_postgres_namespace(namespace: str) -> None:
 def _seed_shared_state() -> None:
     from core.auth_seed import ensure_default_user
     from core.namespaces_service import register_namespace
-    from core.settings_service import invalidate_resolved_settings_cache, seed_settings_from_env
+    from core.settings_store import invalidate_resolved_settings_cache, seed_settings_from_env
 
     def _seed(session: Session) -> None:
         seed_settings_from_env(session)
@@ -366,7 +366,7 @@ def _bootstrap_sqlite() -> None:
 
 def _bootstrap_postgres() -> None:
     from core.migrations import migrate_runtime
-    from core.settings_service import invalidate_resolved_settings_cache
+    from core.settings_store import invalidate_resolved_settings_cache
 
     namespaces = list_namespaces()
     if settings.default_namespace not in namespaces:

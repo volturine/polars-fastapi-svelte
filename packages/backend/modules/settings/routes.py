@@ -9,7 +9,7 @@ from sqlmodel import Session
 
 from contracts.auth_models import User
 from contracts.settings_schemas import SettingsUpdate as CoreSettingsUpdate
-from core import http as http_client, settings_service
+from core import http as http_client, settings_store
 from core.database import get_settings_db
 from core.error_handlers import handle_errors
 from core.smtp import send_smtp_message
@@ -47,7 +47,7 @@ def read_settings(
     user: User = Depends(get_current_user),
 ) -> SettingsResponse:
     """Get application settings including SMTP config, Telegram token, OpenRouter API key, and feature flags."""
-    return SettingsResponse.model_validate(settings_service.get_settings(session))
+    return SettingsResponse.model_validate(settings_store.get_settings(session))
 
 
 @router.put('', response_model=SettingsResponse, mcp=True)
@@ -60,14 +60,14 @@ def write_settings(
     """Update application settings. Only provided fields are changed; omitted fields keep current values."""
     from modules.telegram.bot import telegram_bot
 
-    result = settings_service.update_settings(
+    result = settings_store.update_settings(
         session,
         CoreSettingsUpdate.model_validate(data.model_dump(exclude_unset=True)),
     )
     typed_result = SettingsResponse.model_validate(result)
     invalidate_config_cache()
 
-    token = settings_service.get_resolved_telegram_settings().get('token', '')
+    token = settings_store.get_resolved_telegram_settings().get('token', '')
 
     try:
         _apply_telegram_bot_runtime(typed_result.telegram_bot_enabled, str(token), telegram_bot)
@@ -82,7 +82,7 @@ def write_settings(
 @handle_errors(operation='test smtp')
 async def test_smtp(body: TestSmtpRequest, user: User = Depends(get_current_user)) -> TestResult:
     """Send a test email via SMTP to verify email notification settings. Requires 'to' address in body."""
-    smtp = settings_service.get_resolved_smtp()
+    smtp = settings_store.get_resolved_smtp()
     host = str(smtp.get('host', ''))
     port = int(str(smtp.get('port', 587)))
     smtp_user = str(smtp.get('user', ''))
@@ -108,7 +108,7 @@ async def test_smtp(body: TestSmtpRequest, user: User = Depends(get_current_user
 @handle_errors(operation='test telegram')
 async def test_telegram(body: TestTelegramRequest, user: User = Depends(get_current_user)) -> TestResult:
     """Send a test message to a Telegram chat to verify bot settings. Requires chat_id in body."""
-    resolved = settings_service.get_resolved_telegram_settings()
+    resolved = settings_store.get_resolved_telegram_settings()
     token = str(resolved.get('token', ''))
     if not resolved.get('enabled'):
         return TestResult(success=False, message='Telegram bot token not configured')
@@ -142,7 +142,7 @@ async def detect_telegram_chat(user: User = Depends(get_current_user)) -> Detect
     """
     from modules.telegram.bot import telegram_bot
 
-    resolved = settings_service.get_resolved_telegram_settings()
+    resolved = settings_store.get_resolved_telegram_settings()
     token = str(resolved.get('token', ''))
     if not resolved.get('enabled'):
         return DetectTelegramResponse(success=False, message='Telegram bot token not configured')

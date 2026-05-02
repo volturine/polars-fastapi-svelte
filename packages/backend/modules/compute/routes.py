@@ -667,7 +667,6 @@ def delete_iceberg_snapshot(
 async def start_active_build(
     request: schemas.BuildRequest,
     session: Session = Depends(get_db),
-    _manager: ProcessManager = Depends(get_manager),
     user: User = Depends(get_current_user),
 ):
     pipeline = _build_pipeline_payload(request)

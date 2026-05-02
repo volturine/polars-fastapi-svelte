@@ -100,6 +100,25 @@ async function waitForBuildRowById(
 	throw new Error(`Timed out waiting for build row ${runId} to reach ${status}`);
 }
 
+async function waitForAnalysisBuildRow(
+	page: Page,
+	panel: ReturnType<Page['locator']>,
+	analysisId: string,
+	status: 'running' | 'completed' | 'failed' | 'cancelled',
+	timeout = 60_000
+) {
+	const started = Date.now();
+	while (Date.now() - started < timeout) {
+		const row = panel
+			.locator(`[data-build-analysis-id="${analysisId}"][data-build-status="${status}"]`)
+			.last();
+		if (await row.isVisible().catch(() => false)) return row;
+		await refreshBuildHistory(page);
+		await page.waitForTimeout(1_000);
+	}
+	throw new Error(`Timed out waiting for analysis ${analysisId} to reach ${status}`);
+}
+
 test.describe('Cancel Build – e2e', () => {
 	test.describe.configure({ mode: 'serial' });
 
@@ -153,14 +172,12 @@ test.describe('Cancel Build – e2e', () => {
 		try {
 			await startBuildFromAnalysisPage(page, analysisId);
 
-			// Navigate to monitoring and find the current running build row for this analysis.
+			// Monitoring history is explicit-refresh only, so refresh until the current build
+			// appears as a running row before attempting the cancel action.
 			await gotoMonitoringBuilds(page, analysisId);
 			const panel = page.locator('#panel-builds');
-			const runningRow = panel.locator(
-				`[data-build-analysis-id="${analysisId}"][data-build-status="running"]`
-			);
-			await expect(runningRow.last()).toBeVisible({ timeout: 60_000 });
-			const targetRow = runningRow.last();
+			const targetRow = await waitForAnalysisBuildRow(page, panel, analysisId, 'running', 60_000);
+			await expect(targetRow).toBeVisible({ timeout: 10_000 });
 			await expect(targetRow).toHaveAttribute('data-build-status', 'running', { timeout: 30_000 });
 			await expect(targetRow.getByLabel('Cancel build')).toBeVisible({ timeout: 30_000 });
 			const runId = await targetRow.getAttribute('data-build-row');

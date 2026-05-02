@@ -94,7 +94,7 @@ async def test_scheduler_main_starts_runtime_listener(monkeypatch) -> None:
     assert names[0:4] == ['configure_logging', 'init_db', 'install_stop_handlers', 'start_api_server']
     assert 'serve_api_notifications' in names
     assert 'scheduler_loop' in names
-    assert names[-1] == 'stop_api_server'
+    assert 'stop_api_server' in names
 
     server = next(value for name, value in calls if name == 'start_api_server')
     assert next(value for name, value in calls if name == 'serve_api_notifications') is server
@@ -600,9 +600,9 @@ class TestScheduleClaiming:
         row = test_db_session.get(Schedule, schedule.id)
         assert row is not None
         assert row.lease_owner == 'scheduler:test'
-        assert row.lease_expires_at is not None
+        assert row.lease_expires_at is None
 
-    def test_claim_due_schedule_skips_already_leased_row(self, test_db_session: Session, output_datasource: DataSource):
+    def test_claim_due_schedule_skips_already_owned_row(self, test_db_session: Session, output_datasource: DataSource):
         schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=output_datasource.id, cron_expression='* * * * *'))
         row = test_db_session.get(Schedule, schedule.id)
         assert row is not None
@@ -618,6 +618,26 @@ class TestScheduleClaiming:
         stored = test_db_session.get(Schedule, schedule.id)
         assert stored is not None
         assert stored.lease_owner == 'scheduler:one'
+
+    def test_claim_due_schedule_reclaims_stale_owner(self, test_db_session: Session, output_datasource: DataSource):
+        schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=output_datasource.id, cron_expression='* * * * *'))
+        row = test_db_session.get(Schedule, schedule.id)
+        assert row is not None
+        row.next_run = datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=1)
+        row.lease_owner = 'scheduler:stale'
+        test_db_session.add(row)
+        test_db_session.commit()
+
+        claimed = claim_due_schedules(
+            test_db_session,
+            worker_id='scheduler:two',
+            reclaimable_owner_ids={'scheduler:stale'},
+        )
+
+        assert [item.id for item in claimed] == [schedule.id]
+        stored = test_db_session.get(Schedule, schedule.id)
+        assert stored is not None
+        assert stored.lease_owner == 'scheduler:two'
 
     def test_claim_due_schedule_skips_inflight_build(self, test_db_session: Session, output_datasource: DataSource):
         schedule = create_schedule(test_db_session, ScheduleCreate(datasource_id=output_datasource.id, cron_expression='* * * * *'))

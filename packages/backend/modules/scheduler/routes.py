@@ -118,7 +118,6 @@ def create_schedule(payload: schemas.ScheduleCreate, session: Session = Depends(
         last_run=None,
         next_run=_compute_next_run(payload.cron_expression),
         created_at=datetime.now(UTC),
-        analysis_id=datasource.created_by_analysis_id,
     )
     session.add(schedule)
     session.commit()
@@ -141,14 +140,12 @@ def update_schedule(schedule_id: ScheduleId, payload: schemas.ScheduleUpdate, se
         datasource = session.get(DataSource, payload.datasource_id)
         if datasource is None:
             raise DataSourceNotFoundError(payload.datasource_id)
-        schedule.analysis_id = datasource.created_by_analysis_id
     if payload.depends_on and session.get(Schedule, payload.depends_on) is None:
         raise ScheduleValidationError('Dependency schedule not found', details={'depends_on': payload.depends_on})
     if payload.trigger_on_datasource_id and session.get(DataSource, payload.trigger_on_datasource_id) is None:
         raise DataSourceNotFoundError(payload.trigger_on_datasource_id)
     for key, value in payload.model_dump(exclude_unset=True).items():
-        if key != 'analysis_id':
-            setattr(schedule, key, value)
+        setattr(schedule, key, value)
     if payload.cron_expression:
         schedule.next_run = _compute_next_run(payload.cron_expression)
     session.add(schedule)

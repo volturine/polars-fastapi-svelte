@@ -5,6 +5,7 @@ import contextlib
 import logging
 import os
 import socket
+import threading
 import uuid
 
 import scheduler_service
@@ -30,7 +31,17 @@ async def scheduler_loop(
     heartbeat_seconds: float = 5.0,
 ) -> None:
     _register_worker(worker_id=worker_id)
-    heartbeat_task = asyncio.create_task(_heartbeat_loop(stop_event, worker_id=worker_id, heartbeat_seconds=heartbeat_seconds))
+    heartbeat_stop = threading.Event()
+    heartbeat_thread = threading.Thread(
+        target=_heartbeat_loop_sync,
+        kwargs={
+            'stop_signal': heartbeat_stop,
+            'worker_id': worker_id,
+            'heartbeat_seconds': heartbeat_seconds,
+        },
+        daemon=True,
+    )
+    heartbeat_thread.start()
     last_seen = build_job_hub.version()
     try:
         while not stop_event.is_set():
@@ -52,8 +63,8 @@ async def scheduler_loop(
                     if task is wait_task and isinstance(value, int):
                         last_seen = value
     finally:
-        heartbeat_task.cancel()
-        await asyncio.gather(heartbeat_task, return_exceptions=True)
+        heartbeat_stop.set()
+        heartbeat_thread.join()
         _stop_worker(worker_id)
 
 
@@ -102,7 +113,15 @@ async def _run_once(*, worker_id: str) -> bool:
 
 
 def _claim_due_schedule_refs(session: Session, *, worker_id: str) -> list[tuple[str, str]]:
-    schedules = scheduler_service.claim_due_schedules(session, worker_id=worker_id)
+    reclaimable_owner_ids = run_settings_db(
+        runtime_worker_service.reclaimable_worker_ids,
+        kind=RuntimeWorkerKind.SCHEDULER,
+    )
+    schedules = scheduler_service.claim_due_schedules(
+        session,
+        worker_id=worker_id,
+        reclaimable_owner_ids=reclaimable_owner_ids,
+    )
     return [(schedule.id, schedule.datasource_id) for schedule in schedules]
 
 
@@ -138,12 +157,8 @@ def _stop_worker(worker_id: str) -> None:
     run_settings_db(_stop)
 
 
-async def _heartbeat_loop(stop_event: asyncio.Event, *, worker_id: str, heartbeat_seconds: float) -> None:
-    while not stop_event.is_set():
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(stop_event.wait(), timeout=heartbeat_seconds)
-        if stop_event.is_set():
-            return
+def _heartbeat_loop_sync(*, stop_signal: threading.Event, worker_id: str, heartbeat_seconds: float) -> None:
+    while not stop_signal.wait(heartbeat_seconds):
         _heartbeat_worker(worker_id=worker_id)
 
 
@@ -178,10 +193,9 @@ async def main() -> None:
         await scheduler_loop(stop_event, scheduler_id())
     finally:
         stop_event.set()
-        if ipc_task is not None:
-            with contextlib.suppress(asyncio.TimeoutError):
-                await asyncio.wait_for(ipc_task, timeout=5)
         await runtime_ipc.stop_api_server(ipc_server)
+        if ipc_task is not None:
+            await asyncio.gather(ipc_task, return_exceptions=True)
 
 
 if __name__ == '__main__':

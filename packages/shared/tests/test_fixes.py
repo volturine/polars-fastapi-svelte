@@ -125,7 +125,6 @@ class TestNotificationHandler:
         assert params.output_column == 'notification_status'
         assert params.message_template == '{{message}}'
         assert params.batch_size == 10
-        assert params.timeout_seconds == 20
 
 
 # render_template and _send_pipeline_notifications tests moved to test_notification.py

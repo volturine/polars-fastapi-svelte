@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
-from contracts.build_jobs.models import BuildJob, BuildJobStatus
+from contracts.build_jobs.models import BuildJobStatus
 from contracts.compute.base import EngineStatusInfo
 from contracts.runtime_workers.models import RuntimeWorkerKind
 from core import (
@@ -12,7 +12,7 @@ from core import (
     runtime_workers_service as runtime_worker_service,
 )
 from core.database import run_db, run_settings_db
-from core.namespace import namespace_paths, reset_namespace, set_namespace_context
+from core.namespace import namespace_paths
 
 
 def test_runtime_overview_reports_runtime_state(client, monkeypatch) -> None:
@@ -57,16 +57,22 @@ def test_runtime_overview_reports_runtime_state(client, monkeypatch) -> None:
 
     queued_id = str(uuid.uuid4())
     run_db(build_job_service.create_job, build_id=queued_id, namespace='default')
-    leased_id = str(uuid.uuid4())
-    run_db(build_job_service.create_job, build_id=leased_id, namespace='default')
-    leased = run_db(build_job_service.claim_next_job, worker_id='build-worker-1', lease_seconds=60)
-    assert leased is not None
-    running = run_db(build_job_service.mark_job_running, leased.id)
-    token = set_namespace_context('default')
-    try:
-        run_db(_expire_job, running.id)
-    finally:
-        reset_namespace(token)
+    running_id = str(uuid.uuid4())
+    run_db(build_job_service.create_job, build_id=running_id, namespace='default')
+    run_db(_set_running_job_owner, running_id, 'build-worker-1')
+
+    orphaned_id = str(uuid.uuid4())
+    run_db(build_job_service.create_job, build_id=orphaned_id, namespace='default')
+    run_db(_set_running_job_owner, orphaned_id, 'dead-worker')
+    run_settings_db(
+        runtime_worker_service.register_worker,
+        worker_id='dead-worker',
+        kind=RuntimeWorkerKind.BUILD_WORKER,
+        hostname='worker-host',
+        pid=333,
+        capacity=1,
+        now=datetime.now(UTC).replace(year=2024),
+    )
 
     response = client.get('/api/v1/runtime/overview')
 
@@ -80,7 +86,7 @@ def test_runtime_overview_reports_runtime_state(client, monkeypatch) -> None:
     assert any(item['analysis_id'] == 'analysis-live' for item in body['engines'])
     assert body['queue']['totals']['queued'] == 1
     assert body['queue']['totals']['running'] == 1
-    assert body['queue']['totals']['expired_leases'] == 1
+    assert body['queue']['totals']['orphaned'] == 1
     assert body['queue']['totals']['oldest_queued_age_seconds'] is not None
 
 
@@ -97,11 +103,11 @@ def test_runtime_overview_reports_single_process_mode(client, monkeypatch) -> No
     assert response.json()['mode'] == 'single_process'
 
 
-def _expire_job(session, job_id: str) -> None:
-    job = session.get(BuildJob, job_id)
+def _set_running_job_owner(session, build_id: str, worker_id: str) -> None:
+    job = build_job_service.get_job_by_build_id(session, build_id)
     assert job is not None
     job.status = BuildJobStatus.RUNNING
-    job.lease_expires_at = datetime.now(UTC) - timedelta(seconds=30)
+    job.lease_owner = worker_id
     session.add(job)
     session.commit()
 

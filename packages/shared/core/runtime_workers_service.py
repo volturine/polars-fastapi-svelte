@@ -97,6 +97,13 @@ def list_workers(session: Session, *, kind: RuntimeWorkerKind | None = None) -> 
     return list(session.execute(stmt).scalars().all())
 
 
+def _worker_reclaimable(worker: RuntimeWorker, *, now: datetime, heartbeat_seconds: float) -> bool:
+    if worker.stopped_at is not None:
+        return True
+    heartbeat = worker.last_heartbeat_at.replace(tzinfo=UTC)
+    return now - heartbeat > timedelta(seconds=heartbeat_seconds)
+
+
 def worker_available(
     session: Session,
     *,
@@ -105,9 +112,21 @@ def worker_available(
 ) -> bool:
     now = _utcnow()
     for worker in reversed(list_workers(session, kind=kind)):
-        if worker.stopped_at is not None:
+        if _worker_reclaimable(worker, now=now, heartbeat_seconds=heartbeat_seconds):
             continue
-        heartbeat = worker.last_heartbeat_at.replace(tzinfo=UTC)
-        if now - heartbeat <= timedelta(seconds=heartbeat_seconds):
-            return True
+        return True
     return False
+
+
+def reclaimable_worker_ids(
+    session: Session,
+    *,
+    kind: RuntimeWorkerKind,
+    heartbeat_seconds: float = 15.0,
+) -> set[str]:
+    now = _utcnow()
+    return {
+        worker.id
+        for worker in list_workers(session, kind=kind)
+        if _worker_reclaimable(worker, now=now, heartbeat_seconds=heartbeat_seconds)
+    }

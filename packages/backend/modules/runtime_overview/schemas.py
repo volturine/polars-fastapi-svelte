@@ -45,20 +45,16 @@ class EngineInstanceSummary(BaseModel):
 class QueueNamespaceSummary(BaseModel):
     namespace: str
     queued: int
-    leased: int
     running: int
-    active_leases: int
-    expired_leases: int
+    orphaned: int
     oldest_queued_at: datetime | None
     oldest_queued_age_seconds: float | None
 
 
 class QueueTotalsSummary(BaseModel):
     queued: int
-    leased: int
     running: int
-    active_leases: int
-    expired_leases: int
+    orphaned: int
     oldest_queued_at: datetime | None
     oldest_queued_age_seconds: float | None
 

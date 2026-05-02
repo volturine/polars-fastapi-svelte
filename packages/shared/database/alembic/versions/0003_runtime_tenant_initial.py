@@ -16,6 +16,8 @@ down_revision: str | Sequence[str] | None = '0002_runtime_tenant'
 branch_labels: str | Sequence[str] | None = ('tenant',)
 depends_on: str | Sequence[str] | None = None
 
+__all__ = ('revision', 'down_revision', 'branch_labels', 'depends_on', 'upgrade', 'downgrade')
+
 
 def _scope() -> str:
     config = op.get_context().config

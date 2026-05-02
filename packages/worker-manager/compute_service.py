@@ -342,9 +342,6 @@ def _resolve_build_status(
 def _coerce_build_status(status: object) -> BuildStatus:
     if isinstance(status, BuildStatus):
         return status
-    # Backward-compatible aliases still sent by legacy callers/tests.
-    if status == 'done':
-        return BuildStatus.SUCCESS
     try:
         return BuildStatus(str(status))
     except ValueError as exc:

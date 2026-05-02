@@ -18,9 +18,10 @@ from contracts.compute import schemas as compute_schemas
 from contracts.compute_requests.live import request_hub
 from contracts.compute_requests.models import ComputeRequestKind
 from contracts.runtime import ipc as runtime_ipc
-from core import compute_requests_service
+from contracts.runtime_workers.models import RuntimeWorkerKind
+from core import compute_requests_service, runtime_workers_service
 from core.config import settings
-from core.database import get_db, run_db
+from core.database import get_db, run_db, run_settings_db
 from core.error_handlers import EXCEPTION_STATUS_MAP
 from core.exceptions import AppError, EngineNotFoundError
 from core.namespace import reset_namespace, set_namespace_context
@@ -48,13 +49,21 @@ def _optional_dict(value: object) -> dict[str, object] | None:
     return dict(value) if isinstance(value, dict) else None
 
 
-def next_compute_request(worker_id: str, *, lease_seconds: int = 30) -> ClaimedComputeRequest | None:
+def next_compute_request(worker_id: str) -> ClaimedComputeRequest | None:
+    reclaimable_owner_ids = run_settings_db(
+        runtime_workers_service.reclaimable_worker_ids,
+        kind=RuntimeWorkerKind.BUILD_MANAGER,
+    )
     for namespace in runtime_namespaces():
         token = set_namespace_context(namespace)
         try:
 
             def _claim(session: Session) -> ClaimedComputeRequest | None:
-                request = compute_requests_service.claim_next_request(session, worker_id=worker_id, lease_seconds=lease_seconds)
+                request = compute_requests_service.claim_next_request(
+                    session,
+                    worker_id=worker_id,
+                    reclaimable_owner_ids=reclaimable_owner_ids,
+                )
                 if request is None:
                     return None
                 return ClaimedComputeRequest(
@@ -77,55 +86,44 @@ async def compute_request_loop(
     *,
     worker_id: str,
     manager: ProcessManager,
-    lease_seconds: int = 30,
 ) -> None:
     last_seen = request_hub.version()
-    while not stop_event.is_set():
-        handled = await _run_once(worker_id=worker_id, manager=manager, lease_seconds=lease_seconds)
-        if handled:
-            last_seen = request_hub.version()
-            continue
-        wait_task = asyncio.create_task(request_hub.wait(last_seen))
-        stop_task = asyncio.create_task(stop_event.wait())
-        done, pending = await asyncio.wait({wait_task, stop_task}, return_when=asyncio.FIRST_COMPLETED)
-        for task in pending:
-            task.cancel()
-        if pending:
-            await asyncio.gather(*pending, return_exceptions=True)
-        if stop_task in done:
-            return
-        with contextlib.suppress(asyncio.CancelledError):
-            value = await wait_task
-            if isinstance(value, int):
-                last_seen = value
+    try:
+        while not stop_event.is_set():
+            handled = await _run_once(worker_id=worker_id, manager=manager)
+            if handled:
+                last_seen = request_hub.version()
+                continue
+            wait_task = asyncio.create_task(request_hub.wait(last_seen))
+            stop_task = asyncio.create_task(stop_event.wait())
+            done, pending = await asyncio.wait({wait_task, stop_task}, return_when=asyncio.FIRST_COMPLETED)
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+            if stop_task in done:
+                return
+            with contextlib.suppress(asyncio.CancelledError):
+                value = await wait_task
+                if isinstance(value, int):
+                    last_seen = value
+    finally:
+        release_worker_requests(worker_id)
 
 
-async def _run_once(*, worker_id: str, manager: ProcessManager, lease_seconds: int) -> bool:
-    claimed = next_compute_request(worker_id, lease_seconds=lease_seconds)
+async def _run_once(*, worker_id: str, manager: ProcessManager) -> bool:
+    claimed = next_compute_request(worker_id)
     if claimed is None:
         return False
-
-    renew_stop = asyncio.Event()
-    renew_task = asyncio.create_task(_renew_request_lease_loop(claimed.namespace, claimed.id, worker_id, renew_stop, lease_seconds))
-    try:
-        await _execute_request(claimed, manager)
-    finally:
-        renew_stop.set()
-        with contextlib.suppress(asyncio.CancelledError):
-            await renew_task
+    await _execute_request(claimed, manager)
     return True
 
 
-async def _renew_request_lease_loop(namespace: str, request_id: str, worker_id: str, stop_event: asyncio.Event, lease_seconds: int) -> None:
-    interval = max(1.0, lease_seconds / 2)
-    while not stop_event.is_set():
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(stop_event.wait(), timeout=interval)
-        if stop_event.is_set():
-            return
+def release_worker_requests(worker_id: str) -> None:
+    for namespace in runtime_namespaces():
         token = set_namespace_context(namespace)
         try:
-            run_db(compute_requests_service.renew_request_lease, request_id, worker_id=worker_id, lease_seconds=lease_seconds)
+            run_db(compute_requests_service.release_worker_requests, worker_id=worker_id)
         finally:
             reset_namespace(token)
 

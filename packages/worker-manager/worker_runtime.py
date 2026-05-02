@@ -5,6 +5,7 @@ import contextlib
 import logging
 import os
 import socket
+import threading
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -39,18 +40,27 @@ async def build_worker_loop(
     *,
     capacity: int = 1,
     heartbeat_seconds: float = 5.0,
-    lease_seconds: int = 30,
     idle_exit_seconds: float | None = None,
     max_jobs: int | None = None,
 ) -> None:
     _register_worker(worker_id=worker_id, capacity=capacity)
-    heartbeat_task = asyncio.create_task(_heartbeat_loop(stop_event, worker_id=worker_id, heartbeat_seconds=heartbeat_seconds))
+    heartbeat_stop = threading.Event()
+    heartbeat_thread = threading.Thread(
+        target=_heartbeat_loop_sync,
+        kwargs={
+            'stop_signal': heartbeat_stop,
+            'worker_id': worker_id,
+            'heartbeat_seconds': heartbeat_seconds,
+        },
+        daemon=True,
+    )
+    heartbeat_thread.start()
     last_seen = build_job_hub.version()
     handled_jobs = 0
     try:
         while not stop_event.is_set():
             try:
-                handled = await _run_once(worker_id=worker_id, run_job=run_job, lease_seconds=lease_seconds)
+                handled = await _run_once(worker_id=worker_id, run_job=run_job)
                 if handled:
                     handled_jobs += 1
                     last_seen = build_job_hub.version()
@@ -65,29 +75,27 @@ async def build_worker_loop(
                     return
                 wait_task = asyncio.create_task(build_job_hub.wait(last_seen))
                 stop_task = asyncio.create_task(stop_event.wait())
-                heartbeat_sleep = asyncio.create_task(asyncio.sleep(heartbeat_seconds))
                 done, pending = await asyncio.wait(
-                    {wait_task, stop_task, heartbeat_sleep},
+                    {wait_task, stop_task},
                     return_when=asyncio.FIRST_COMPLETED,
                 )
                 for task in pending:
                     task.cancel()
-                for task in pending:
-                    with contextlib.suppress(asyncio.CancelledError):
-                        await task
-                for task in done:
-                    with contextlib.suppress(asyncio.CancelledError):
-                        value = await task
-                        if task is wait_task and isinstance(value, int):
-                            last_seen = value
+                if pending:
+                    await asyncio.gather(*pending, return_exceptions=True)
+                if stop_task in done:
+                    continue
+                with contextlib.suppress(asyncio.CancelledError):
+                    value = await wait_task
+                    if isinstance(value, int):
+                        last_seen = value
             except Exception as exc:
                 logger.error('Build worker loop error: %s', exc, exc_info=True)
                 await asyncio.sleep(0.1)
     finally:
-        heartbeat_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await heartbeat_task
-        _expire_worker_jobs(worker_id)
+        heartbeat_stop.set()
+        heartbeat_thread.join()
+        _release_worker_jobs(worker_id)
         _stop_worker(worker_id)
 
 
@@ -95,30 +103,14 @@ async def _run_once(
     *,
     worker_id: str,
     run_job: Callable[[str], Awaitable[None]],
-    lease_seconds: int,
 ) -> bool:
-    job = next_job(worker_id, lease_seconds=lease_seconds)
+    job = next_job(worker_id)
     if job is None:
         return False
 
     _heartbeat_worker(worker_id=worker_id, active_jobs=1)
     token = set_namespace_context(job.namespace)
     try:
-
-        def _mark_running(session):
-            return build_job_service.mark_job_running(session, job.id)
-
-        run_db(_mark_running)
-        renew_stop = asyncio.Event()
-        renew_task = asyncio.create_task(
-            _renew_job_lease_loop(
-                namespace=job.namespace,
-                worker_id=worker_id,
-                job_id=job.id,
-                stop_event=renew_stop,
-                lease_seconds=lease_seconds,
-            )
-        )
         await run_job(job.build_id)
     except Exception as exc:
         logger.error('Build job %s failed: %s', job.build_id, exc, exc_info=True)
@@ -130,9 +122,6 @@ async def _run_once(
         run_db(_mark_failed)
         raise
     finally:
-        renew_stop.set()
-        with contextlib.suppress(asyncio.CancelledError):
-            await renew_task
         _heartbeat_worker(worker_id=worker_id, active_jobs=0)
         reset_namespace(token)
 
@@ -155,13 +144,21 @@ async def _run_once(
     return True
 
 
-def next_job(worker_id: str, *, lease_seconds: int = 30) -> ClaimedJob | None:
+def next_job(worker_id: str) -> ClaimedJob | None:
+    reclaimable_owner_ids = run_settings_db(
+        runtime_worker_service.reclaimable_worker_ids,
+        kind=RuntimeWorkerKind.BUILD_WORKER,
+    )
     for namespace in runtime_namespaces():
         token = set_namespace_context(namespace)
         try:
 
             def _claim(session):
-                job = build_job_service.claim_next_job(session, worker_id=worker_id, lease_seconds=lease_seconds)
+                job = build_job_service.claim_next_job(
+                    session,
+                    worker_id=worker_id,
+                    reclaimable_owner_ids=reclaimable_owner_ids,
+                )
                 if job is None:
                     return None
                 return ClaimedJob(id=job.id, build_id=job.build_id, namespace=job.namespace)
@@ -233,52 +230,22 @@ def _stop_worker(worker_id: str) -> None:
     run_settings_db(_stop)
 
 
-def _expire_worker_jobs(worker_id: str) -> None:
+def _release_worker_jobs(worker_id: str) -> None:
     for namespace in runtime_namespaces():
         token = set_namespace_context(namespace)
         try:
 
-            def _expire(session):
-                return build_job_service.expire_worker_jobs(session, worker_id=worker_id)
+            def _release(session):
+                return build_job_service.release_worker_jobs(session, worker_id=worker_id)
 
-            run_db(_expire)
+            run_db(_release)
         finally:
             reset_namespace(token)
 
 
-async def _heartbeat_loop(stop_event: asyncio.Event, *, worker_id: str, heartbeat_seconds: float) -> None:
-    while not stop_event.is_set():
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(stop_event.wait(), timeout=heartbeat_seconds)
-        if stop_event.is_set():
-            return
+def _heartbeat_loop_sync(*, stop_signal: threading.Event, worker_id: str, heartbeat_seconds: float) -> None:
+    while not stop_signal.wait(heartbeat_seconds):
         _heartbeat_worker(worker_id=worker_id)
-
-
-async def _renew_job_lease_loop(
-    *,
-    namespace: str,
-    worker_id: str,
-    job_id: str,
-    stop_event: asyncio.Event,
-    lease_seconds: int,
-) -> None:
-    interval = max(0.1, lease_seconds / 3)
-    while not stop_event.is_set():
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(stop_event.wait(), timeout=interval)
-        if stop_event.is_set():
-            return
-
-        token = set_namespace_context(namespace)
-        try:
-
-            def _renew(session):
-                return build_job_service.renew_job_lease(session, job_id, worker_id=worker_id, lease_seconds=lease_seconds)
-
-            run_db(_renew)
-        finally:
-            reset_namespace(token)
 
 
 def worker_id() -> str:

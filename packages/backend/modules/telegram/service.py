@@ -1,89 +1,27 @@
-import logging
-from datetime import UTC, datetime
-
-from sqlalchemy import select
 from sqlmodel import Session
 
-from contracts.telegram_models import TelegramListener, TelegramSubscriber
+from core import telegram_service as shared_telegram_service
 from modules.telegram.schemas import ListenerCreate, ListenerResponse, SubscriberResponse
-
-logger = logging.getLogger(__name__)
 
 
 def list_subscribers(session: Session, bot_token: str | None = None) -> list[SubscriberResponse]:
-    query = select(TelegramSubscriber)
-    if bot_token:
-        query = query.where(TelegramSubscriber.bot_token == bot_token)  # type: ignore[arg-type]
-    rows = session.execute(query).scalars().all()
-    return [SubscriberResponse.model_validate(s) for s in rows]
+    return [SubscriberResponse.model_validate(item) for item in shared_telegram_service.list_subscribers(session, bot_token)]
 
 
-def get_subscriber_by_chat(session: Session, chat_id: str, bot_token: str) -> TelegramSubscriber | None:
-    return (
-        session.execute(
-            select(TelegramSubscriber)
-            .where(TelegramSubscriber.chat_id == chat_id)  # type: ignore[arg-type]
-            .where(TelegramSubscriber.bot_token == bot_token),  # type: ignore[arg-type]
-        )
-        .scalars()
-        .first()
-    )
+def get_subscriber_by_chat(session: Session, chat_id: str, bot_token: str):
+    return shared_telegram_service.get_subscriber_by_chat(session, chat_id, bot_token)
 
 
 def add_subscriber(session: Session, chat_id: str, title: str, bot_token: str) -> SubscriberResponse:
-    existing = get_subscriber_by_chat(session, chat_id, bot_token)
-    if existing:
-        existing.is_active = True
-        existing.title = title
-        session.add(existing)
-        session.commit()
-        session.refresh(existing)
-        return SubscriberResponse.model_validate(existing)
-    sub = TelegramSubscriber(
-        chat_id=chat_id,
-        title=title,
-        bot_token=bot_token,
-        is_active=True,
-        subscribed_at=datetime.now(UTC).replace(tzinfo=None),
-    )
-    session.add(sub)
-    session.commit()
-    session.refresh(sub)
-    return SubscriberResponse.model_validate(sub)
+    return SubscriberResponse.model_validate(shared_telegram_service.add_subscriber(session, chat_id, title, bot_token))
 
 
 def deactivate_subscriber(session: Session, subscriber_id: int) -> None:
-    sub = session.get(TelegramSubscriber, subscriber_id)
-    if not sub:
-        return
-    sub.is_active = False
-    for listener in (
-        session.execute(
-            select(TelegramListener).where(TelegramListener.subscriber_id == subscriber_id),  # type: ignore[arg-type]
-        )
-        .scalars()
-        .all()
-    ):
-        session.delete(listener)
-    session.add(sub)
-    session.commit()
+    shared_telegram_service.deactivate_subscriber(session, subscriber_id)
 
 
 def delete_subscriber(session: Session, subscriber_id: int) -> None:
-    # Delete listeners first
-    listeners = (
-        session.execute(
-            select(TelegramListener).where(TelegramListener.subscriber_id == subscriber_id),  # type: ignore[arg-type]
-        )
-        .scalars()
-        .all()
-    )
-    for listener in listeners:
-        session.delete(listener)
-    sub = session.get(TelegramSubscriber, subscriber_id)
-    if sub:
-        session.delete(sub)
-    session.commit()
+    shared_telegram_service.delete_subscriber(session, subscriber_id)
 
 
 def list_listeners(
@@ -91,75 +29,24 @@ def list_listeners(
     subscriber_id: int | None = None,
     datasource_id: str | None = None,
 ) -> list[ListenerResponse]:
-    query = select(TelegramListener)
-    if subscriber_id is not None:
-        query = query.where(TelegramListener.subscriber_id == subscriber_id)  # type: ignore[arg-type]
-    if datasource_id:
-        query = query.where(TelegramListener.datasource_id == datasource_id)  # type: ignore[arg-type]
-    rows = session.execute(query).scalars().all()
-    return [ListenerResponse.model_validate(row) for row in rows]
+    return [ListenerResponse.model_validate(item) for item in shared_telegram_service.list_listeners(session, subscriber_id, datasource_id)]
 
 
 def add_listener(session: Session, data: ListenerCreate) -> ListenerResponse:
-    existing = (
-        session.execute(
-            select(TelegramListener)
-            .where(TelegramListener.subscriber_id == data.subscriber_id)  # type: ignore[arg-type]
-            .where(TelegramListener.datasource_id == data.datasource_id),  # type: ignore[arg-type]
-        )
-        .scalars()
-        .first()
+    created = shared_telegram_service.add_listener(
+        session,
+        shared_telegram_service.ListenerCreate.model_validate(data.model_dump()),
     )
-    if existing:
-        return ListenerResponse.model_validate(existing)
-    listener = TelegramListener(subscriber_id=data.subscriber_id, datasource_id=data.datasource_id)
-    session.add(listener)
-    session.commit()
-    session.refresh(listener)
-    return ListenerResponse.model_validate(listener)
+    return ListenerResponse.model_validate(created)
 
 
 def remove_listener(session: Session, listener_id: int) -> None:
-    listener = session.get(TelegramListener, listener_id)
-    if not listener:
-        return
-    session.delete(listener)
-    session.commit()
+    shared_telegram_service.remove_listener(session, listener_id)
 
 
 def auto_populate_listeners(session: Session, datasource_id: str) -> list[ListenerResponse]:
-    subs = (
-        session.execute(
-            select(TelegramSubscriber).where(TelegramSubscriber.is_active == True),  # type: ignore[arg-type]  # noqa: E712
-        )
-        .scalars()
-        .all()
-    )
-    results: list[ListenerResponse] = []
-    for sub in subs:
-        data = ListenerCreate(subscriber_id=sub.id, datasource_id=datasource_id)  # type: ignore[arg-type]
-        results.append(add_listener(session, data))
-    return results
+    return [ListenerResponse.model_validate(item) for item in shared_telegram_service.auto_populate_listeners(session, datasource_id)]
 
 
 def get_notification_chat_ids(session: Session, datasource_id: str) -> list[tuple[str, str]]:
-    listeners = (
-        session.execute(
-            select(TelegramListener).where(TelegramListener.datasource_id == datasource_id),  # type: ignore[arg-type]
-        )
-        .scalars()
-        .all()
-    )
-    sub_ids = {listener.subscriber_id for listener in listeners}
-    if not sub_ids:
-        return []
-    subs = (
-        session.execute(
-            select(TelegramSubscriber)
-            .where(TelegramSubscriber.id.in_(sub_ids))  # type: ignore[union-attr]
-            .where(TelegramSubscriber.is_active == True),  # type: ignore[arg-type]  # noqa: E712
-        )
-        .scalars()
-        .all()
-    )
-    return [(s.chat_id, s.bot_token) for s in subs]
+    return shared_telegram_service.get_notification_chat_ids(session, datasource_id)

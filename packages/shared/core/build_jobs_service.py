@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any, cast
 
 from sqlalchemy import and_, desc, or_, select, update
@@ -47,30 +47,28 @@ def get_job_by_build_id(session: Session, build_id: str) -> BuildJob | None:
     return session.execute(stmt).scalars().first()
 
 
-def claim_next_job(session: Session, *, worker_id: str, lease_seconds: int = 30) -> BuildJob | None:
+def claim_next_job(
+    session: Session,
+    *,
+    worker_id: str,
+    reclaimable_owner_ids: set[str] | None = None,
+) -> BuildJob | None:
     now = _utcnow()
-    lease_until = now + timedelta(seconds=lease_seconds)
     table = BuildJob.metadata.tables[BuildJob.__tablename__]
+    reclaimable = set(reclaimable_owner_ids or ())
+    queued_clause = table.c.status == BuildJobStatus.QUEUED
+    reclaimable_clause = and_(
+        table.c.status.in_([BuildJobStatus.LEASED, BuildJobStatus.RUNNING]),
+        or_(
+            table.c.lease_owner.is_(None),
+            table.c.lease_owner.in_(reclaimable),
+        ),
+        table.c.attempts < table.c.max_attempts,
+    )
     base = (
         select(BuildJob)
         .where(BuildJob.available_at <= now)  # type: ignore[arg-type]
-        .where(
-            or_(
-                table.c.status == BuildJobStatus.QUEUED,
-                and_(
-                    table.c.status == BuildJobStatus.LEASED,
-                    table.c.lease_expires_at.is_not(None),
-                    table.c.lease_expires_at <= now,
-                    table.c.attempts < table.c.max_attempts,
-                ),
-                and_(
-                    table.c.status == BuildJobStatus.RUNNING,
-                    table.c.lease_expires_at.is_not(None),
-                    table.c.lease_expires_at <= now,
-                    table.c.attempts < table.c.max_attempts,
-                ),
-            )
-        )
+        .where(or_(queued_clause, reclaimable_clause))
         .order_by(desc(BuildJob.priority), BuildJob.created_at)  # type: ignore[arg-type]
         .limit(1)
     )
@@ -82,7 +80,6 @@ def claim_next_job(session: Session, *, worker_id: str, lease_seconds: int = 30)
     current_attempts = row.attempts
     previous_status = row.status
     previous_owner = row.lease_owner
-    previous_expires = row.lease_expires_at
     claim = (
         update(BuildJob)
         .where(BuildJob.id == row.id)
@@ -92,17 +89,13 @@ def claim_next_job(session: Session, *, worker_id: str, lease_seconds: int = 30)
     claim = (
         claim.where(table.c.lease_owner.is_(None)) if previous_owner is None else claim.where(BuildJob.lease_owner == previous_owner)  # type: ignore[arg-type]
     )
-    if previous_expires is None:
-        claim = claim.where(table.c.lease_expires_at.is_(None))
-    else:
-        claim = claim.where(BuildJob.lease_expires_at == previous_expires)  # type: ignore[arg-type]
     result = cast(
         CursorResult[Any],
         session.execute(
             claim.values(
-                status=BuildJobStatus.LEASED,
+                status=BuildJobStatus.RUNNING,
                 lease_owner=worker_id,
-                lease_expires_at=lease_until,
+                lease_expires_at=None,
                 attempts=current_attempts + 1,
                 updated_at=now,
             )
@@ -124,23 +117,6 @@ def mark_job_running(session: Session, job_id: str) -> BuildJob:
         raise ValueError(f'Build job {job_id} not found')
     job.status = BuildJobStatus.RUNNING
     job.updated_at = _utcnow()
-    session.add(job)
-    session.commit()
-    session.refresh(job)
-    return job
-
-
-def renew_job_lease(session: Session, job_id: str, *, worker_id: str, lease_seconds: int = 30) -> BuildJob | None:
-    job = session.get(BuildJob, job_id)
-    if job is None:
-        return None
-    if job.lease_owner != worker_id:
-        return None
-    if job.status not in {BuildJobStatus.LEASED, BuildJobStatus.RUNNING}:
-        return None
-    now = _utcnow()
-    job.lease_expires_at = now + timedelta(seconds=lease_seconds)
-    job.updated_at = now
     session.add(job)
     session.commit()
     session.refresh(job)
@@ -195,7 +171,7 @@ def queued_job_count(session: Session) -> int:
     return len(session.execute(stmt).scalars().all())
 
 
-def expire_worker_jobs(session: Session, *, worker_id: str) -> list[BuildJob]:
+def release_worker_jobs(session: Session, *, worker_id: str) -> list[BuildJob]:
     now = _utcnow()
     table = BuildJob.metadata.tables[BuildJob.__tablename__]
     stmt = (

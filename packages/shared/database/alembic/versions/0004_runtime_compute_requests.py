@@ -16,6 +16,8 @@ down_revision: str | Sequence[str] | None = '0003_runtime_tenant_initial'
 branch_labels: str | Sequence[str] | None = ('tenant',)
 depends_on: str | Sequence[str] | None = None
 
+__all__ = ('revision', 'down_revision', 'branch_labels', 'depends_on', 'upgrade', 'downgrade')
+
 
 COMPUTE_REQUEST_KIND = sa.Enum(
     'preview',
@@ -23,6 +25,10 @@ COMPUTE_REQUEST_KIND = sa.Enum(
     'row_count',
     'download',
     'export',
+    'create_file_datasource',
+    'create_database_datasource',
+    'create_iceberg_datasource',
+    'refresh_datasource',
     'spawn_engine',
     'keepalive_engine',
     'configure_engine',

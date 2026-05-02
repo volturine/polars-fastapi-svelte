@@ -5,6 +5,7 @@ from sqlmodel import Session
 
 from contracts.settings_models import AppSettings
 from contracts.settings_schemas import SettingsResponse, SettingsUpdate
+from core.exceptions import SettingsConfigurationError
 from core.secrets import (
     decrypt_secret,
     encrypt_secret,
@@ -77,94 +78,330 @@ def _masked_settings_response(row: AppSettings) -> SettingsResponse:
     )
 
 
-def get_settings(session: Session) -> SettingsResponse:
-    row = session.get(AppSettings, 1)
-    if not row:
-        row = AppSettings(id=1)
-        session.add(row)
-        session.commit()
-        session.refresh(row)
-    return _masked_settings_response(row)
+def _active_settings_engine_id() -> int:
+    from core.database import get_settings_engine
+
+    return id(get_settings_engine())
 
 
-def resolve_settings(session: Session) -> dict[str, object]:
+def _load_resolved_snapshot(session: Session) -> dict[str, object]:
     row = session.get(AppSettings, 1)
     if not row:
-        row = AppSettings(id=1)
-        session.add(row)
-        session.commit()
-        session.refresh(row)
-    key = id(session.get_bind())
-    with _RESOLVED_LOCK:
-        cached = _RESOLVED_CACHE.get(key)
-        if cached is not None:
-            return cached
-    resolved = {
+        return {
+            'exists': False,
+            'smtp_host': '',
+            'smtp_port': 587,
+            'smtp_user': '',
+            'smtp_password': '',
+            'telegram_bot_enabled': False,
+            'telegram_bot_token': '',
+            'openrouter_api_key': '',
+            'openrouter_default_model': '',
+            'openai_api_key': '',
+            'openai_endpoint_url': 'https://api.openai.com',
+            'openai_default_model': 'gpt-4o-mini',
+            'openai_organization_id': '',
+            'ollama_endpoint_url': 'http://localhost:11434',
+            'ollama_default_model': 'llama3.2',
+            'huggingface_api_token': '',
+            'huggingface_default_model': 'google/flan-t5-base',
+        }
+
+    return {
+        'exists': True,
         'smtp_host': row.smtp_host,
         'smtp_port': row.smtp_port,
         'smtp_user': row.smtp_user,
         'smtp_password': _read_secret(row, 'smtp_password'),
-        'telegram_bot_token': _read_secret(row, 'telegram_bot_token'),
         'telegram_bot_enabled': row.telegram_bot_enabled,
+        'telegram_bot_token': _read_secret(row, 'telegram_bot_token'),
         'openrouter_api_key': _read_secret(row, 'openrouter_api_key'),
         'openrouter_default_model': row.openrouter_default_model,
         'openai_api_key': _read_secret(row, 'openai_api_key'),
-        'openai_endpoint_url': row.openai_endpoint_url,
-        'openai_default_model': row.openai_default_model,
-        'openai_organization_id': row.openai_organization_id,
-        'ollama_endpoint_url': row.ollama_endpoint_url,
-        'ollama_default_model': row.ollama_default_model,
+        'openai_endpoint_url': row.openai_endpoint_url or 'https://api.openai.com',
+        'openai_default_model': row.openai_default_model or 'gpt-4o-mini',
+        'openai_organization_id': row.openai_organization_id or '',
+        'ollama_endpoint_url': row.ollama_endpoint_url or 'http://localhost:11434',
+        'ollama_default_model': row.ollama_default_model or 'llama3.2',
         'huggingface_api_token': _read_secret(row, 'huggingface_api_token'),
-        'huggingface_default_model': row.huggingface_default_model,
-        'public_idb_debug': row.public_idb_debug,
+        'huggingface_default_model': row.huggingface_default_model or 'google/flan-t5-base',
     }
+
+
+def _get_resolved_snapshot() -> dict[str, object]:
+    from core.database import run_settings_db
+
+    key = _active_settings_engine_id()
     with _RESOLVED_LOCK:
-        _RESOLVED_CACHE[key] = resolved
-    return resolved
+        cached = _RESOLVED_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    snapshot = run_settings_db(_load_resolved_snapshot)
+    with _RESOLVED_LOCK:
+        _RESOLVED_CACHE[key] = snapshot
+    return snapshot
 
 
 def seed_settings_from_env(session: Session) -> None:
-    from core.config import settings
+    """Seed app_settings from ENV vars on first run.
 
+    Bootstrap ENV-backed settings into the DB once for a new settings row.
+
+    Existing rows are treated as user-owned state and are not re-seeded on
+    restart, even when a saved value is empty, False, or a default like 587.
+    """
+    from core.config import settings as app_settings
+
+    row = session.get(AppSettings, 1)
+    if row and row.env_bootstrap_complete:
+        return
+    if not row:
+        row = AppSettings(id=1, env_bootstrap_complete=False)
+        session.add(row)
+
+    changed = False
+
+    if not row.smtp_host and app_settings.smtp_host:
+        row.smtp_host = app_settings.smtp_host
+        changed = True
+    if row.smtp_port == 587 and app_settings.smtp_port != 587:
+        row.smtp_port = app_settings.smtp_port
+        changed = True
+    if not row.smtp_user and app_settings.smtp_user:
+        row.smtp_user = app_settings.smtp_user
+        changed = True
+    bootstrap_complete = True
+    if not row.smtp_password and app_settings.smtp_password:
+        try:
+            _write_secret(row, 'smtp_password', app_settings.smtp_password)
+            changed = True
+        except SettingsConfigurationError:
+            bootstrap_complete = False
+            _warn_bootstrap_secret_missing('SMTP password')
+    if not row.telegram_bot_token and app_settings.telegram_bot_token:
+        try:
+            _write_secret(row, 'telegram_bot_token', app_settings.telegram_bot_token)
+            changed = True
+        except SettingsConfigurationError:
+            bootstrap_complete = False
+            _warn_bootstrap_secret_missing('Telegram token')
+    if not row.telegram_bot_enabled and app_settings.telegram_bot_enabled:
+        row.telegram_bot_enabled = app_settings.telegram_bot_enabled
+        changed = True
+    if not row.openrouter_api_key and app_settings.openrouter_api_key:
+        try:
+            _write_secret(row, 'openrouter_api_key', app_settings.openrouter_api_key)
+            changed = True
+        except SettingsConfigurationError:
+            bootstrap_complete = False
+            _warn_bootstrap_secret_missing('OpenRouter key')
+    if not row.openrouter_default_model and app_settings.openrouter_default_model:
+        row.openrouter_default_model = app_settings.openrouter_default_model
+        changed = True
+    if not row.openai_api_key and app_settings.openai_api_key:
+        try:
+            _write_secret(row, 'openai_api_key', app_settings.openai_api_key)
+            changed = True
+        except SettingsConfigurationError:
+            bootstrap_complete = False
+            _warn_bootstrap_secret_missing('OpenAI key')
+    if not row.openai_endpoint_url and app_settings.openai_base_url:
+        row.openai_endpoint_url = app_settings.openai_base_url
+        changed = True
+    if not row.openai_default_model and app_settings.openai_default_model:
+        row.openai_default_model = app_settings.openai_default_model
+        changed = True
+    if not row.openai_organization_id and app_settings.openai_organization_id:
+        row.openai_organization_id = app_settings.openai_organization_id
+        changed = True
+    if not row.ollama_endpoint_url and app_settings.ollama_base_url:
+        row.ollama_endpoint_url = app_settings.ollama_base_url
+        changed = True
+    if not row.ollama_default_model and app_settings.ollama_default_model:
+        row.ollama_default_model = app_settings.ollama_default_model
+        changed = True
+    if not row.huggingface_api_token and app_settings.huggingface_api_token:
+        try:
+            _write_secret(row, 'huggingface_api_token', app_settings.huggingface_api_token)
+            changed = True
+        except SettingsConfigurationError:
+            bootstrap_complete = False
+            _warn_bootstrap_secret_missing('Hugging Face token')
+    if not row.huggingface_default_model and app_settings.huggingface_default_model:
+        row.huggingface_default_model = app_settings.huggingface_default_model
+        changed = True
+    if row.env_bootstrap_complete != bootstrap_complete:
+        row.env_bootstrap_complete = bootstrap_complete
+        changed = True
+
+    if changed:
+        session.commit()
+        session.refresh(row)
+        invalidate_resolved_settings_cache()
+
+
+def get_settings(session: Session) -> SettingsResponse:
+    row = session.get(AppSettings, 1)
+    if not row:
+        row = AppSettings(
+            id=1,
+            public_idb_debug=False,
+        )
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+        invalidate_resolved_settings_cache()
+
+    migrated = False
+    for field in (
+        'smtp_password',
+        'telegram_bot_token',
+        'openrouter_api_key',
+        'openai_api_key',
+        'huggingface_api_token',
+    ):
+        stored = str(getattr(row, field, '') or '')
+        if should_migrate_secret(stored):
+            _read_secret(row, field)
+            migrated = True
+    if migrated:
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+        invalidate_resolved_settings_cache()
+
+    return _masked_settings_response(row)
+
+
+def update_settings(session: Session, data: SettingsUpdate) -> SettingsResponse:
     row = session.get(AppSettings, 1)
     if not row:
         row = AppSettings(id=1)
         session.add(row)
-    if settings.smtp_host:
-        row.smtp_host = settings.smtp_host
-    if settings.smtp_port:
-        row.smtp_port = settings.smtp_port
-    if settings.smtp_user:
-        row.smtp_user = settings.smtp_user
-    if settings.smtp_password:
-        _write_secret(row, 'smtp_password', settings.smtp_password)
-    if settings.telegram_bot_token:
-        _write_secret(row, 'telegram_bot_token', settings.telegram_bot_token)
-    if settings.openrouter_api_key:
-        _write_secret(row, 'openrouter_api_key', settings.openrouter_api_key)
-    if settings.openai_api_key:
-        _write_secret(row, 'openai_api_key', settings.openai_api_key)
-    if settings.huggingface_api_token:
-        _write_secret(row, 'huggingface_api_token', settings.huggingface_api_token)
-    session.add(row)
-    session.commit()
-    invalidate_resolved_settings_cache()
 
+    if data.smtp_host is not None:
+        row.smtp_host = data.smtp_host
+    if data.smtp_port is not None:
+        row.smtp_port = data.smtp_port
+    if data.smtp_user is not None:
+        row.smtp_user = data.smtp_user
+    smtp_password = _resolve_updated_secret(row, 'smtp_password', data.smtp_password)
+    telegram_bot_token = _resolve_updated_secret(row, 'telegram_bot_token', data.telegram_bot_token)
+    openrouter_api_key = _resolve_updated_secret(row, 'openrouter_api_key', data.openrouter_api_key)
+    openai_api_key = _resolve_updated_secret(row, 'openai_api_key', data.openai_api_key)
+    huggingface_api_token = _resolve_updated_secret(row, 'huggingface_api_token', data.huggingface_api_token)
+    _write_secret(row, 'smtp_password', smtp_password)
+    _write_secret(row, 'telegram_bot_token', telegram_bot_token)
+    _write_secret(row, 'openrouter_api_key', openrouter_api_key)
+    _write_secret(row, 'openai_api_key', openai_api_key)
+    _write_secret(row, 'huggingface_api_token', huggingface_api_token)
+    if data.telegram_bot_enabled is not None:
+        row.telegram_bot_enabled = data.telegram_bot_enabled
+    if data.openrouter_default_model is not None:
+        row.openrouter_default_model = data.openrouter_default_model
+    if data.openai_endpoint_url is not None:
+        row.openai_endpoint_url = data.openai_endpoint_url
+    if data.openai_default_model is not None:
+        row.openai_default_model = data.openai_default_model
+    if data.openai_organization_id is not None:
+        row.openai_organization_id = data.openai_organization_id
+    if data.ollama_endpoint_url is not None:
+        row.ollama_endpoint_url = data.ollama_endpoint_url
+    if data.ollama_default_model is not None:
+        row.ollama_default_model = data.ollama_default_model
+    if data.huggingface_default_model is not None:
+        row.huggingface_default_model = data.huggingface_default_model
+    row.env_bootstrap_complete = True
+    if data.public_idb_debug is not None:
+        row.public_idb_debug = data.public_idb_debug
 
-def update_settings(session: Session, payload: SettingsUpdate) -> SettingsResponse:
-    row = session.get(AppSettings, 1)
-    if not row:
-        row = AppSettings(id=1)
-        session.add(row)
-    data = payload.model_dump(exclude_unset=True)
-    for key, value in data.items():
-        if key.endswith('password') or key.endswith('token') or key.endswith('api_key'):
-            if value is not None:
-                _write_secret(row, key, _resolve_updated_secret(row, key, value))
-            continue
-        setattr(row, key, value)
-    session.add(row)
     session.commit()
     session.refresh(row)
     invalidate_resolved_settings_cache()
     return _masked_settings_response(row)
+
+
+def get_resolved_smtp() -> dict[str, object]:
+    resolved = _get_resolved_snapshot()
+    port = resolved['smtp_port']
+    if bool(resolved['exists']) and bool(resolved['smtp_host']):
+        return {
+            'host': str(resolved['smtp_host']),
+            'port': port if isinstance(port, int) else 587,
+            'user': str(resolved['smtp_user']),
+            'password': str(resolved['smtp_password']),
+        }
+    return {
+        'host': '',
+        'port': 587,
+        'user': '',
+        'password': '',
+    }
+
+
+def get_resolved_telegram_token() -> str:
+    resolved = get_resolved_telegram_settings()
+    return str(resolved['token'])
+
+
+def get_resolved_telegram_settings() -> dict[str, object]:
+    resolved = _get_resolved_snapshot()
+    if not bool(resolved['exists']):
+        return {'enabled': False, 'token': ''}
+    token = str(resolved['telegram_bot_token'])
+    enabled = bool(resolved['telegram_bot_enabled'] and token)
+    return {'enabled': enabled, 'token': token}
+
+
+def get_resolved_openrouter_key() -> str:
+    resolved = _get_resolved_snapshot()
+    return str(resolved['openrouter_api_key']) if bool(resolved['exists']) else ''
+
+
+def get_resolved_openai_settings() -> dict[str, str]:
+    resolved = _get_resolved_snapshot()
+    if not bool(resolved['exists']):
+        return {
+            'api_key': '',
+            'endpoint_url': 'https://api.openai.com',
+            'default_model': 'gpt-4o-mini',
+            'organization_id': '',
+        }
+    return {
+        'api_key': str(resolved['openai_api_key']),
+        'endpoint_url': str(resolved['openai_endpoint_url']),
+        'default_model': str(resolved['openai_default_model']),
+        'organization_id': str(resolved['openai_organization_id']),
+    }
+
+
+def get_resolved_ollama_settings() -> dict[str, str]:
+    resolved = _get_resolved_snapshot()
+    if not bool(resolved['exists']):
+        return {
+            'endpoint_url': 'http://localhost:11434',
+            'default_model': 'llama3.2',
+        }
+    return {
+        'endpoint_url': str(resolved['ollama_endpoint_url']),
+        'default_model': str(resolved['ollama_default_model']),
+    }
+
+
+def get_resolved_huggingface_settings() -> dict[str, str]:
+    resolved = _get_resolved_snapshot()
+    if not bool(resolved['exists']):
+        return {
+            'api_token': '',
+            'default_model': 'google/flan-t5-base',
+        }
+    return {
+        'api_token': str(resolved['huggingface_api_token']),
+        'default_model': str(resolved['huggingface_default_model']),
+    }
+
+
+def get_resolved_default_model() -> str:
+    resolved = _get_resolved_snapshot()
+    return str(resolved['openrouter_default_model']) if bool(resolved['exists']) else ''

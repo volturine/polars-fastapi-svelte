@@ -1,21 +1,6 @@
-"""Sort rows operation."""
+# ruff: noqa: I001
+import sys
+import compute_operations.sort as _impl
+from compute_operations.sort import *  # noqa: F401,F403
 
-import polars as pl
-
-from contracts.compute.base import OperationHandler, OperationParams
-
-
-class SortParams(OperationParams):
-    columns: list[str]
-    descending: list[bool] | bool = False
-
-
-class SortHandler(OperationHandler):
-    def __call__(
-        self,
-        lf: pl.LazyFrame,
-        params: dict,
-        **_,
-    ) -> pl.LazyFrame:
-        validated = SortParams.model_validate(params)
-        return lf.sort(validated.columns, descending=validated.descending)
+sys.modules[__name__] = _impl

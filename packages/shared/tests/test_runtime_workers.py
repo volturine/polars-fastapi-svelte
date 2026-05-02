@@ -57,52 +57,82 @@ def test_register_heartbeat_and_stop_worker(test_db_session) -> None:
     assert stopped.stopped_at is not None
 
 
-def test_claim_next_job_reclaims_expired_lease(test_db_session) -> None:
+def test_claim_next_job_reclaims_stopped_worker_job(test_db_session) -> None:
+    runtime_worker_service.register_worker(
+        test_db_session,
+        worker_id='dead-worker',
+        kind=RuntimeWorkerKind.BUILD_WORKER,
+        hostname='host',
+        pid=100,
+        capacity=1,
+    )
+    runtime_worker_service.mark_worker_stopped(test_db_session, worker_id='dead-worker')
     job = build_job_service.create_job(
         test_db_session,
         build_id=str(uuid.uuid4()),
         namespace='default',
     )
-    expired_at = datetime.now(UTC) - timedelta(seconds=1)
-    job.status = BuildJobStatus.LEASED
-    job.lease_owner = 'dead-worker'
-    job.lease_expires_at = expired_at
-    job.attempts = 0
-    test_db_session.add(job)
-    test_db_session.commit()
-    test_db_session.refresh(job)
-
-    claimed = build_job_service.claim_next_job(test_db_session, worker_id='worker-2', lease_seconds=10)
-
-    assert claimed is not None
-    assert claimed.id == job.id
-    assert claimed.status == BuildJobStatus.LEASED
-    assert claimed.lease_owner == 'worker-2'
-    assert claimed.attempts == 1
-    assert claimed.lease_expires_at is not None
-    assert claimed.lease_expires_at > expired_at.replace(tzinfo=None)
-
-
-def test_claim_next_job_reclaims_expired_running_job(test_db_session) -> None:
-    job = build_job_service.create_job(
-        test_db_session,
-        build_id=str(uuid.uuid4()),
-        namespace='default',
-    )
-    expired_at = datetime.now(UTC) - timedelta(seconds=1)
     job.status = BuildJobStatus.RUNNING
     job.lease_owner = 'dead-worker'
-    job.lease_expires_at = expired_at
     job.attempts = 0
     test_db_session.add(job)
     test_db_session.commit()
     test_db_session.refresh(job)
 
-    claimed = build_job_service.claim_next_job(test_db_session, worker_id='worker-2', lease_seconds=10)
+    reclaimable = runtime_worker_service.reclaimable_worker_ids(
+        test_db_session,
+        kind=RuntimeWorkerKind.BUILD_WORKER,
+    )
+    claimed = build_job_service.claim_next_job(
+        test_db_session,
+        worker_id='worker-2',
+        reclaimable_owner_ids=reclaimable,
+    )
 
     assert claimed is not None
     assert claimed.id == job.id
-    assert claimed.status == BuildJobStatus.LEASED
+    assert claimed.status == BuildJobStatus.RUNNING
+    assert claimed.lease_owner == 'worker-2'
+    assert claimed.attempts == 1
+    assert claimed.lease_expires_at is None
+
+
+def test_claim_next_job_reclaims_stale_running_job(test_db_session) -> None:
+    stale_at = datetime.now(UTC) - timedelta(seconds=30)
+    runtime_worker_service.register_worker(
+        test_db_session,
+        worker_id='dead-worker',
+        kind=RuntimeWorkerKind.BUILD_WORKER,
+        hostname='host',
+        pid=101,
+        capacity=1,
+        now=stale_at,
+    )
+    job = build_job_service.create_job(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+    )
+    job.status = BuildJobStatus.RUNNING
+    job.lease_owner = 'dead-worker'
+    job.attempts = 0
+    test_db_session.add(job)
+    test_db_session.commit()
+    test_db_session.refresh(job)
+
+    reclaimable = runtime_worker_service.reclaimable_worker_ids(
+        test_db_session,
+        kind=RuntimeWorkerKind.BUILD_WORKER,
+    )
+    claimed = build_job_service.claim_next_job(
+        test_db_session,
+        worker_id='worker-2',
+        reclaimable_owner_ids=reclaimable,
+    )
+
+    assert claimed is not None
+    assert claimed.id == job.id
+    assert claimed.status == BuildJobStatus.RUNNING
     assert claimed.lease_owner == 'worker-2'
 
 
@@ -114,8 +144,8 @@ def test_claim_next_job_skips_already_leased_job(test_db_session) -> None:
         namespace='default',
     )
 
-    first = build_job_service.claim_next_job(test_db_session, worker_id='worker-1', lease_seconds=30)
-    second = build_job_service.claim_next_job(test_db_session, worker_id='worker-2', lease_seconds=30)
+    first = build_job_service.claim_next_job(test_db_session, worker_id='worker-1')
+    second = build_job_service.claim_next_job(test_db_session, worker_id='worker-2')
 
     assert first is not None
     assert second is None
@@ -124,27 +154,36 @@ def test_claim_next_job_skips_already_leased_job(test_db_session) -> None:
     assert stored.lease_owner == 'worker-1'
 
 
-def test_renew_job_lease_requires_owner_and_active_status(test_db_session) -> None:
-    build_job_service.create_job(
+def test_claim_next_job_does_not_reclaim_live_running_job(test_db_session) -> None:
+    runtime_worker_service.register_worker(
+        test_db_session,
+        worker_id='live-worker',
+        kind=RuntimeWorkerKind.BUILD_WORKER,
+        hostname='host',
+        pid=102,
+        capacity=1,
+    )
+    job = build_job_service.create_job(
         test_db_session,
         build_id=str(uuid.uuid4()),
         namespace='default',
     )
-    claimed = build_job_service.claim_next_job(test_db_session, worker_id='worker-1', lease_seconds=1)
+    job.status = BuildJobStatus.RUNNING
+    job.lease_owner = 'live-worker'
+    test_db_session.add(job)
+    test_db_session.commit()
 
-    assert claimed is not None
-    previous_expiry = claimed.lease_expires_at
-    renewed = build_job_service.renew_job_lease(test_db_session, claimed.id, worker_id='worker-1', lease_seconds=30)
+    reclaimable = runtime_worker_service.reclaimable_worker_ids(
+        test_db_session,
+        kind=RuntimeWorkerKind.BUILD_WORKER,
+    )
+    claimed = build_job_service.claim_next_job(
+        test_db_session,
+        worker_id='worker-1',
+        reclaimable_owner_ids=reclaimable,
+    )
 
-    assert renewed is not None
-    assert renewed.lease_expires_at is not None
-    assert previous_expiry is not None
-    assert renewed.lease_expires_at > previous_expiry
-    assert build_job_service.renew_job_lease(test_db_session, claimed.id, worker_id='worker-2', lease_seconds=30) is None
-
-    build_job_service.mark_job_completed(test_db_session, claimed.id)
-
-    assert build_job_service.renew_job_lease(test_db_session, claimed.id, worker_id='worker-1', lease_seconds=30) is None
+    assert claimed is None
 
 
 @pytest.mark.asyncio
@@ -169,7 +208,6 @@ async def test_build_worker_loop_tracks_runtime_worker_lifecycle(test_db_session
             'worker-1',
             run_job,
             heartbeat_seconds=0.01,
-            lease_seconds=1,
         )
     )
     await task
@@ -218,18 +256,68 @@ def test_expire_worker_jobs_releases_owned_running_jobs(test_db_session) -> None
         build_id=build_id,
         namespace='default',
     )
-    claimed = build_job_service.claim_next_job(test_db_session, worker_id='worker-1', lease_seconds=30)
+    claimed = build_job_service.claim_next_job(test_db_session, worker_id='worker-1')
 
     assert claimed is not None
-    running = build_job_service.mark_job_running(test_db_session, claimed.id)
-    expired = build_job_service.expire_worker_jobs(test_db_session, worker_id='worker-1')
+    released = build_job_service.release_worker_jobs(test_db_session, worker_id='worker-1')
 
-    assert [job.id for job in expired] == [running.id]
+    assert [job.id for job in released] == [claimed.id]
     refreshed = build_job_service.get_job_by_build_id(test_db_session, build_id)
     assert refreshed is not None
     assert refreshed.status == BuildJobStatus.QUEUED
     assert refreshed.lease_owner is None
     assert refreshed.lease_expires_at is None
+
+
+def test_stop_worker_process_escalates_when_child_does_not_ack(monkeypatch) -> None:
+    calls: list[tuple[str, object]] = []
+
+    class FakeProcess:
+        def __init__(self) -> None:
+            self.pid = 321
+            self._alive = True
+
+        def is_alive(self) -> bool:
+            return self._alive
+
+        def join(self, timeout=None) -> None:
+            calls.append(('join', timeout))
+
+        def terminate(self) -> None:
+            calls.append(('terminate', None))
+            self._alive = False
+
+        def kill(self) -> None:
+            calls.append(('kill', None))
+            self._alive = False
+
+    class FakeStopSignal:
+        def set(self) -> None:
+            calls.append(('stop', None))
+
+    class FakeStoppedSignal:
+        def is_set(self) -> bool:
+            return False
+
+        def wait(self, timeout=None) -> bool:
+            calls.append(('wait', timeout))
+            return False
+
+    monotonic_values = iter([0.0, 0.0, 5.0, 5.0, 5.0, 5.1, 5.1])
+    monkeypatch.setattr(runtime_process.time, 'monotonic', lambda: next(monotonic_values))
+
+    child = runtime_process.ManagedWorkerProcess(
+        process=FakeProcess(),
+        stop_signal=FakeStopSignal(),
+        stopped_signal=FakeStoppedSignal(),
+    )
+
+    runtime_process._stop_worker_process(child)
+
+    names = [name for name, _ in calls]
+    assert names[0] == 'stop'
+    assert 'terminate' in names
+    assert 'kill' not in names
 
 
 def test_next_job_claims_from_non_default_namespace() -> None:
@@ -241,7 +329,7 @@ def test_next_job_claims_from_non_default_namespace() -> None:
     finally:
         reset_namespace(token)
 
-    claimed = next_job('worker-1', lease_seconds=10)
+    claimed = next_job('worker-1')
 
     assert claimed is not None
     assert claimed.namespace == 'beta'
@@ -363,6 +451,16 @@ async def test_run_build_manager_process_tracks_manager_and_spawns_workers(monke
             self.set_calls += 1
             calls.append(('child_stop_signal', self.set_calls))
 
+    class FakeStoppedSignal:
+        def __init__(self, stop_signal: FakeStopSignal) -> None:
+            self._stop_signal = stop_signal
+
+        def is_set(self) -> bool:
+            return self._stop_signal.set_calls > 0
+
+        def wait(self, _timeout=None) -> bool:
+            return self.is_set()
+
     async def fake_init_db() -> None:
         calls.append(('init_db', None))
 
@@ -382,7 +480,12 @@ async def test_run_build_manager_process_tracks_manager_and_spawns_workers(monke
     def fake_spawn_worker_process():
         calls.append(('child_start', None))
         stop_event.set()
-        return runtime_process.ManagedWorkerProcess(process=FakeProcess(), stop_signal=FakeStopSignal())
+        stop_signal = FakeStopSignal()
+        return runtime_process.ManagedWorkerProcess(
+            process=FakeProcess(),
+            stop_signal=stop_signal,
+            stopped_signal=FakeStoppedSignal(stop_signal),
+        )
 
     monkeypatch.setattr(runtime_process, 'init_db', fake_init_db)
     monkeypatch.setattr(runtime_process.runtime_ipc, 'start_api_server', fake_start_api_server)

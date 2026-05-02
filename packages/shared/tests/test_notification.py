@@ -39,7 +39,6 @@ class TestNotificationParams:
         assert params.message_template == '{{message}}'
         assert params.subject_template == 'Notification'
         assert params.batch_size == 10
-        assert params.timeout_seconds == 20
 
     def test_telegram_method(self):
         params = NotificationParams.model_validate(
@@ -252,7 +251,7 @@ class TestNotificationHandler:
             )
             collected = result.collect()
         assert collected['notification_status'].to_list() == ['sent']
-        mock_svc.send_telegram.assert_called_once_with(chat_id='99999', message='hi')
+        mock_svc.send_telegram.assert_called_once_with(chat_id='99999', message='hi', bot_token=None)
 
     def test_multi_column_template(self):
         handler = NotificationHandler()
@@ -423,7 +422,7 @@ class TestNotificationHandler:
             collected = result.collect()
 
         assert collected['notification_status'].to_list() == ['sent']
-        mock_svc.send_telegram.assert_called_once_with(chat_id='888', message='hi')
+        mock_svc.send_telegram.assert_called_once_with(chat_id='888', message='hi', bot_token=None)
 
     def test_recipient_column_array(self):
         handler = NotificationHandler()
@@ -455,7 +454,6 @@ class TestNotificationHandler:
         lf = pl.DataFrame({'msg': ['hi']}).lazy()
 
         with (
-            patch('modules.compute.operations.notification.http_client.post') as mock_post,
             patch('modules.compute.operations.notification.notification_service') as mock_svc,
             patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
         ):
@@ -472,18 +470,17 @@ class TestNotificationHandler:
             )
             collected = result.collect()
         assert collected['notification_status'].to_list() == ['sent']
-        mock_svc.send_telegram.assert_not_called()
-        mock_post.assert_called_once()
-        call_args = mock_post.call_args
-        assert 'custom-token-123' in call_args.args[0]
-        assert call_args.kwargs['json']['chat_id'] == '12345'
+        mock_svc.send_telegram.assert_called_once_with(
+            chat_id='12345',
+            message='hi',
+            bot_token='custom-token-123',
+        )
 
     def test_telegram_custom_bot_multi_recipients(self):
         handler = NotificationHandler()
         lf = pl.DataFrame({'msg': ['test']}).lazy()
 
         with (
-            patch('modules.compute.operations.notification.http_client.post') as mock_post,
             patch('modules.compute.operations.notification.notification_service') as mock_svc,
             patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
         ):
@@ -500,10 +497,10 @@ class TestNotificationHandler:
             )
             collected = result.collect()
         assert collected['notification_status'].to_list() == ['sent']
-        mock_svc.send_telegram.assert_not_called()
-        assert mock_post.call_count == 2
-        sent_ids = [c.kwargs['json']['chat_id'] for c in mock_post.call_args_list]
+        assert mock_svc.send_telegram.call_count == 2
+        sent_ids = [c.kwargs['chat_id'] for c in mock_svc.send_telegram.call_args_list]
         assert sent_ids == ['aaa', 'bbb']
+        assert all(c.kwargs['bot_token'] == 'tok123' for c in mock_svc.send_telegram.call_args_list)
 
 
 class TestConvertNotificationConfig:
@@ -600,7 +597,7 @@ class TestSendPipelineNotifications:
             mock_run_db.side_effect = [[], [MockSubscriber('99999', 'tok')]]
             _send_pipeline_notifications(
                 steps=[],
-                context={'analysis_name': 'A', 'status': 'done', 'datasource_id': 'ds-1'},
+                context={'analysis_name': 'A', 'status': 'success', 'datasource_id': 'ds-1'},
                 output_notification={
                     'method': 'telegram',
                     'recipient': '',

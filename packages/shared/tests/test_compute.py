@@ -16,7 +16,7 @@ from build_execution import _run_queued_build_job
 from compute_live import ActiveBuild as ComputeActiveBuild
 from main import app
 from modules.compute.engine import PolarsComputeEngine
-from modules.compute.engine_live import create_snapshot_notifier, load_engine_snapshot
+from modules.compute.engine_live import create_snapshot_notifier, load_engine_snapshot, registry as engine_registry
 from modules.compute.live import ActiveBuild as RouteActiveBuild, registry as active_build_registry
 from modules.compute.manager import ProcessManager
 from modules.compute.operations.datasource import _analysis_stack_var
@@ -1074,11 +1074,19 @@ class TestComputePreview:
 
         assert response.status_code == 409
 
-    def test_engine_list_websocket_sends_snapshot_and_updates(self, client):
+    def test_engine_list_websocket_sends_snapshot_and_updates(self, client, monkeypatch):
         manager = app.state.manager
         original_factory = manager._engine_factory
         manager._engine_factory = FakeEngine
         analysis_id = str(uuid.uuid4())
+        app.dependency_overrides[get_manager] = lambda: manager
+
+        def fake_load_engine_snapshot(_session, *, namespace: str, defaults: dict[str, object]):
+            del namespace, defaults
+            statuses = [compute_schemas.EngineStatusSchema.model_validate(status) for status in manager.list_all_engine_statuses()]
+            return compute_schemas.EngineListSnapshotMessage(engines=statuses, total=len(statuses))
+
+        monkeypatch.setattr('modules.compute.routes.load_engine_snapshot', fake_load_engine_snapshot)
         try:
             with client.websocket_connect('/api/v1/compute/ws/engines?namespace=default') as websocket:
                 initial = websocket.receive_json()
@@ -1086,6 +1094,7 @@ class TestComputePreview:
 
                 spawn = client.post(f'/api/v1/compute/engine/spawn/{analysis_id}')
                 assert spawn.status_code == 200
+                asyncio.run(engine_registry.publish_snapshot('default', manager.list_all_engine_statuses()))
                 spawned = websocket.receive_json()
                 assert spawned['type'] == 'snapshot'
                 assert spawned['total'] == 1
@@ -1094,9 +1103,11 @@ class TestComputePreview:
 
                 shutdown = client.delete(f'/api/v1/compute/engine/{analysis_id}')
                 assert shutdown.status_code == 204
+                asyncio.run(engine_registry.publish_snapshot('default', manager.list_all_engine_statuses()))
                 cleared = websocket.receive_json()
                 assert cleared == {'type': 'snapshot', 'engines': [], 'total': 0}
         finally:
+            app.dependency_overrides.pop(get_manager, None)
             manager._engine_factory = original_factory
             manager.shutdown_all()
 
@@ -1987,7 +1998,7 @@ def test_start_active_build_persists_durable_build_run(client, sample_datasource
     assert stored.analysis_name == 'Durable Start Analysis'
     assert stored.current_tab_id == 'tab1'
     assert job.build_id == body['build_id']
-    assert job.status in {'queued', 'leased', 'running'}
+    assert job.status in {'queued', 'running'}
 
 
 def test_terminal_active_build_event_persists_to_db(client, sample_datasource: DataSource, test_user, test_db_session) -> None:

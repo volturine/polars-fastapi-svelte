@@ -25,7 +25,6 @@ def test_query_plan_merges_eager_segments(test_db_session, tmp_path):
                 'message_template': '{{name}}',
                 'subject_template': 'Notification',
                 'batch_size': 10,
-                'timeout_seconds': 1,
             },
             'depends_on': ['s1'],
         },

@@ -436,7 +436,6 @@ class NotificationConfig(BaseModel):
     message_template: str = '{{message}}'
     subject_template: str = 'Notification'
     batch_size: int = 10
-    timeout_seconds: int = 20
 
 
 class AIConfig(BaseModel):

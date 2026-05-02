@@ -7,9 +7,10 @@ from sqlmodel import Session, select
 
 from contracts.build_jobs.models import BuildJob, BuildJobStatus
 from contracts.engine_instances.models import EngineInstance
-from contracts.runtime_workers.models import RuntimeWorker
+from contracts.runtime_workers.models import RuntimeWorker, RuntimeWorkerKind
+from core import runtime_workers_service
 from core.config import settings
-from core.database import run_db, supports_distributed_runtime
+from core.database import run_db, run_settings_db, supports_distributed_runtime
 from core.namespace import list_namespaces, reset_namespace, set_namespace_context
 
 from . import schemas
@@ -103,38 +104,40 @@ def queue_summary() -> schemas.QueueSummary:
 
 
 def _queue_namespace_summary(namespace: str) -> schemas.QueueNamespaceSummary:
+    reclaimable_worker_ids = run_settings_db(
+        runtime_workers_service.reclaimable_worker_ids,
+        kind=RuntimeWorkerKind.BUILD_WORKER,
+    )
     token = set_namespace_context(namespace)
     try:
-        return run_db(_read_queue_namespace_summary, namespace=namespace)
+        return run_db(
+            _read_queue_namespace_summary,
+            namespace=namespace,
+            reclaimable_worker_ids=reclaimable_worker_ids,
+        )
     finally:
         reset_namespace(token)
 
 
-def _read_queue_namespace_summary(session: Session, *, namespace: str) -> schemas.QueueNamespaceSummary:
+def _read_queue_namespace_summary(
+    session: Session,
+    *,
+    namespace: str,
+    reclaimable_worker_ids: set[str],
+) -> schemas.QueueNamespaceSummary:
     now = _utcnow()
     stmt = select(BuildJob).where(BuildJob.namespace == namespace)  # type: ignore[arg-type]
     rows = list(session.execute(stmt).scalars().all())
     queued = [row for row in rows if row.status == BuildJobStatus.QUEUED]
     oldest = min((row.created_at for row in queued), default=None)
-    active_leases = 0
-    expired_leases = 0
-    for row in rows:
-        if row.status not in {BuildJobStatus.LEASED, BuildJobStatus.RUNNING}:
-            continue
-        if row.lease_expires_at is None:
-            continue
-        if _as_utc(row.lease_expires_at) > now:
-            active_leases += 1
-            continue
-        expired_leases += 1
+    active_rows = [row for row in rows if row.status in {BuildJobStatus.LEASED, BuildJobStatus.RUNNING}]
+    orphaned = [row for row in active_rows if row.lease_owner is None or row.lease_owner in reclaimable_worker_ids]
     age = None if oldest is None else _age_seconds(oldest, now=now)
     return schemas.QueueNamespaceSummary(
         namespace=namespace,
         queued=len(queued),
-        leased=sum(1 for row in rows if row.status == BuildJobStatus.LEASED),
-        running=sum(1 for row in rows if row.status == BuildJobStatus.RUNNING),
-        active_leases=active_leases,
-        expired_leases=expired_leases,
+        running=len(active_rows) - len(orphaned),
+        orphaned=len(orphaned),
         oldest_queued_at=oldest,
         oldest_queued_age_seconds=age,
     )
@@ -146,10 +149,8 @@ def _queue_totals(items: list[schemas.QueueNamespaceSummary]) -> schemas.QueueTo
     age = None if oldest is None else _age_seconds(oldest, now=now)
     return schemas.QueueTotalsSummary(
         queued=sum(item.queued for item in items),
-        leased=sum(item.leased for item in items),
         running=sum(item.running for item in items),
-        active_leases=sum(item.active_leases for item in items),
-        expired_leases=sum(item.expired_leases for item in items),
+        orphaned=sum(item.orphaned for item in items),
         oldest_queued_at=oldest,
         oldest_queued_age_seconds=age,
     )

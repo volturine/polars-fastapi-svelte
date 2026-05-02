@@ -1,20 +1,6 @@
-"""View passthrough operation."""
+# ruff: noqa: I001
+import sys
+import compute_operations.view as _impl
+from compute_operations.view import *  # noqa: F401,F403
 
-import polars as pl
-
-from contracts.compute.base import OperationHandler, OperationParams
-
-
-class ViewParams(OperationParams):
-    rowLimit: int | None = None
-
-
-class ViewHandler(OperationHandler):
-    def __call__(
-        self,
-        lf: pl.LazyFrame,
-        params: dict,
-        **_,
-    ) -> pl.LazyFrame:
-        ViewParams.model_validate(params)
-        return lf
+sys.modules[__name__] = _impl

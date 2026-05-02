@@ -1,5 +1,6 @@
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.engine import CursorResult
@@ -39,25 +40,24 @@ def get_request(session: Session, request_id: str) -> ComputeRequest | None:
     return session.get(ComputeRequest, request_id)
 
 
-def claim_next_request(session: Session, *, worker_id: str, lease_seconds: int = 30) -> ComputeRequest | None:
+def claim_next_request(
+    session: Session,
+    *,
+    worker_id: str,
+    reclaimable_owner_ids: set[str] | None = None,
+) -> ComputeRequest | None:
     now = _utcnow()
-    lease_until = now + timedelta(seconds=lease_seconds)
     table = ComputeRequest.metadata.tables[ComputeRequest.__tablename__]
-    base = (
-        select(ComputeRequest)
-        .where(
-            or_(
-                table.c.status == ComputeRequestStatus.QUEUED,
-                and_(
-                    table.c.status == ComputeRequestStatus.RUNNING,
-                    table.c.lease_expires_at.is_not(None),
-                    table.c.lease_expires_at <= now,
-                ),
-            )
-        )
-        .order_by(table.c.created_at)
-        .limit(1)
+    reclaimable = set(reclaimable_owner_ids or ())
+    queued_clause = table.c.status == ComputeRequestStatus.QUEUED
+    reclaimable_clause = and_(
+        table.c.status == ComputeRequestStatus.RUNNING,
+        or_(
+            table.c.lease_owner.is_(None),
+            table.c.lease_owner.in_(reclaimable),
+        ),
     )
+    base = select(ComputeRequest).where(or_(queued_clause, reclaimable_clause)).order_by(table.c.created_at).limit(1)
     dialect = session.get_bind().dialect.name
     stmt = base.with_for_update(skip_locked=True) if dialect == 'postgresql' else base
     row = session.execute(stmt).scalars().first()
@@ -65,43 +65,27 @@ def claim_next_request(session: Session, *, worker_id: str, lease_seconds: int =
         return None
     previous_status = row.status
     previous_owner = row.lease_owner
-    previous_expires = row.lease_expires_at
     claim = update(ComputeRequest).where(ComputeRequest.id == row.id).where(ComputeRequest.status == previous_status)  # type: ignore[arg-type]
     claim = (
-        claim.where(table.c.lease_owner.is_(None)) if previous_owner is None else claim.where(ComputeRequest.lease_owner == previous_owner)
-    )  # type: ignore[arg-type]
-    if previous_expires is None:
-        claim = claim.where(table.c.lease_expires_at.is_(None))
-    else:
-        claim = claim.where(ComputeRequest.lease_expires_at == previous_expires)  # type: ignore[arg-type]
-    result = session.execute(
-        claim.values(
-            status=ComputeRequestStatus.RUNNING,
-            lease_owner=worker_id,
-            lease_expires_at=lease_until,
-            updated_at=now,
-        )
+        claim.where(table.c.lease_owner.is_(None)) if previous_owner is None else claim.where(ComputeRequest.lease_owner == previous_owner)  # type: ignore[arg-type]
     )
-    if not isinstance(result, CursorResult) or result.rowcount != 1:
+    result = cast(
+        CursorResult[Any],
+        session.execute(
+            claim.values(
+                status=ComputeRequestStatus.RUNNING,
+                lease_owner=worker_id,
+                lease_expires_at=None,
+                updated_at=now,
+            )
+        ),
+    )
+    if result.rowcount != 1:
         session.rollback()
         return None
     session.commit()
     claimed = session.get(ComputeRequest, row.id)
     return claimed
-
-
-def renew_request_lease(session: Session, request_id: str, *, worker_id: str, lease_seconds: int = 30) -> ComputeRequest | None:
-    request = session.get(ComputeRequest, request_id)
-    if request is None:
-        return None
-    if request.lease_owner != worker_id or request.status != ComputeRequestStatus.RUNNING:
-        return None
-    request.lease_expires_at = _utcnow() + timedelta(seconds=lease_seconds)
-    request.updated_at = _utcnow()
-    session.add(request)
-    session.commit()
-    session.refresh(request)
-    return request
 
 
 def mark_request_completed(
@@ -158,6 +142,26 @@ def mark_request_failed(
 def queued_request_count(session: Session) -> int:
     stmt = select(ComputeRequest).where(ComputeRequest.status == ComputeRequestStatus.QUEUED)  # type: ignore[arg-type]
     return len(session.execute(stmt).scalars().all())
+
+
+def release_worker_requests(session: Session, *, worker_id: str) -> list[ComputeRequest]:
+    now = _utcnow()
+    stmt = (
+        select(ComputeRequest)
+        .where(ComputeRequest.status == ComputeRequestStatus.RUNNING)  # type: ignore[arg-type]
+        .where(ComputeRequest.lease_owner == worker_id)  # type: ignore[arg-type]
+    )
+    rows = list(session.execute(stmt).scalars().all())
+    for row in rows:
+        row.status = ComputeRequestStatus.QUEUED
+        row.lease_owner = None
+        row.lease_expires_at = None
+        row.updated_at = now
+        session.add(row)
+    session.commit()
+    for row in rows:
+        session.refresh(row)
+    return rows
 
 
 def cleanup_completed_requests(session: Session, *, older_than_seconds: int) -> int:

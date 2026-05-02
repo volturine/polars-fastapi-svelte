@@ -361,7 +361,6 @@ def convert_notification_config(config: dict) -> dict:
         'message_template': config.get('message_template', '{{message}}'),
         'subject_template': config.get('subject_template', 'Notification'),
         'batch_size': config.get('batch_size', 10),
-        'timeout_seconds': config.get('timeout_seconds', 20),
     }
 
 

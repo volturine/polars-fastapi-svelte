@@ -2,11 +2,11 @@ import logging
 import uuid
 from collections import deque
 from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any, cast
 
 import croniter  # type: ignore[import-untyped]
-from sqlalchemy import and_, or_, select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlmodel import Session, col
 
@@ -21,7 +21,6 @@ from contracts.runtime import ipc as runtime_ipc
 from contracts.scheduler.models import Schedule
 from contracts.scheduler.schemas import ScheduleCreate, ScheduleResponse, ScheduleUpdate
 from core import build_jobs_service as build_job_service, build_runs_service as build_run_service
-from core.config import settings
 from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, ScheduleNotFoundError, ScheduleValidationError
 from core.namespace import get_namespace
 
@@ -43,10 +42,6 @@ def _utcnow() -> datetime:
 
 def _naive_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=None) if value.tzinfo is not None else value
-
-
-def _lease_seconds() -> int:
-    return max(settings.scheduler_check_interval * 2, 30)
 
 
 def _schedule_starter(schedule_id: str) -> compute_schemas.BuildStarter:
@@ -460,8 +455,6 @@ def create_schedule(session: Session, payload: ScheduleCreate) -> ScheduleRespon
         last_run=None,
         next_run=next_run,
         created_at=datetime.now(UTC),
-        # Backward compatibility: store analysis_id for existing code
-        analysis_id=datasource.created_by_analysis_id,
     )
     session.add(record)
     session.commit()
@@ -479,8 +472,6 @@ def update_schedule(session: Session, schedule_id: str, payload: ScheduleUpdate)
         datasource = session.get(DataSource, payload.datasource_id)
         if not datasource:
             raise DataSourceNotFoundError(payload.datasource_id)
-        # Update backward-compat analysis_id
-        schedule.analysis_id = datasource.created_by_analysis_id
 
     # Validate dependency if provided
     if payload.depends_on:
@@ -496,8 +487,7 @@ def update_schedule(session: Session, schedule_id: str, payload: ScheduleUpdate)
 
     update_data = payload.model_dump(exclude_unset=True)
     for key, value in update_data.items():
-        if key != 'analysis_id':  # Don't allow direct analysis_id updates
-            setattr(schedule, key, value)
+        setattr(schedule, key, value)
 
     if payload.cron_expression:
         schedule.next_run = _compute_next_run(payload.cron_expression)
@@ -664,22 +654,21 @@ def claim_due_schedules(
     session: Session,
     *,
     worker_id: str,
+    reclaimable_owner_ids: set[str] | None = None,
     limit: int = 100,
     now: datetime | None = None,
-    lease_seconds: int | None = None,
 ) -> list[Schedule]:
     stamp = now or _utcnow()
     naive_stamp = _naive_utc(stamp)
-    ttl = lease_seconds or _lease_seconds()
-    lease_until = stamp + timedelta(seconds=ttl)
     table = Schedule.metadata.tables[Schedule.__tablename__]
+    reclaimable = set(reclaimable_owner_ids or ())
     base = (
         select(Schedule)
         .where(col(Schedule.enabled) == True)  # type: ignore[arg-type]  # noqa: E712
         .where(
             or_(
                 table.c.lease_owner.is_(None),
-                and_(table.c.lease_expires_at.is_not(None), table.c.lease_expires_at <= naive_stamp),
+                table.c.lease_owner.in_(reclaimable),
             )
         )
     )
@@ -698,16 +687,12 @@ def claim_due_schedules(
             if schedule.lease_owner is None
             else claim.where(Schedule.lease_owner == schedule.lease_owner)  # type: ignore[arg-type]
         )
-        if schedule.lease_expires_at is None:
-            claim = claim.where(table.c.lease_expires_at.is_(None))
-        else:
-            claim = claim.where(Schedule.lease_expires_at == schedule.lease_expires_at)  # type: ignore[arg-type]
         result = cast(
             CursorResult[Any],
             session.execute(
                 claim.values(
                     lease_owner=worker_id,
-                    lease_expires_at=_naive_utc(lease_until),
+                    lease_expires_at=None,
                     last_claimed_at=naive_stamp,
                 )
             ),
@@ -749,9 +734,7 @@ def enqueue_schedule_run(session: Session, schedule_id: str, *, worker_id: str) 
     stamp = _utcnow()
     naive_stamp = _naive_utc(stamp)
     if schedule.lease_owner != worker_id:
-        raise ValueError(f'Schedule {schedule_id} is not leased by {worker_id}')
-    if schedule.lease_expires_at is not None and _naive_utc(schedule.lease_expires_at) <= naive_stamp:
-        raise ValueError(f'Schedule {schedule_id} lease has expired')
+        raise ValueError(f'Schedule {schedule_id} is not owned by {worker_id}')
 
     target_kind, analysis_id, _ = _resolve_schedule_target(session, schedule.datasource_id)
     namespace = get_namespace()

@@ -1,21 +1,6 @@
-"""Download operation - downloads the LazyFrame at any point in the pipeline."""
+# ruff: noqa: I001
+import sys
+import compute_operations.download as _impl
+from compute_operations.download import *  # noqa: F401,F403
 
-import polars as pl
-
-from contracts.compute.base import OperationHandler, OperationParams
-
-
-class DownloadParams(OperationParams):
-    format: str = 'csv'
-    filename: str = 'download'
-
-
-class DownloadHandler(OperationHandler):
-    def __call__(
-        self,
-        lf: pl.LazyFrame,
-        params: dict,
-        **_,
-    ) -> pl.LazyFrame:
-        DownloadParams.model_validate(params)
-        return lf
+sys.modules[__name__] = _impl

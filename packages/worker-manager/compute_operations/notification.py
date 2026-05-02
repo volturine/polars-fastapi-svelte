@@ -8,7 +8,6 @@ from pydantic import ConfigDict, Field, model_validator
 from settings_service import get_resolved_telegram_settings
 
 from contracts.compute.base import OperationHandler, OperationParams
-from core import http as http_client
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,6 @@ class NotificationParams(OperationParams):
     message_template: str = '{{message}}'
     subject_template: str = 'Notification'
     batch_size: int = 10
-    timeout_seconds: int = 20
 
     @model_validator(mode='after')
     def _validate(self) -> 'NotificationParams':
@@ -131,18 +129,12 @@ class NotificationHandler(OperationHandler):
                                 subject=subject,
                                 body=message,
                             )
-                        elif validated.bot_token:
-                            for cid in recipients:
-                                http_client.post(
-                                    f'https://api.telegram.org/bot{validated.bot_token}/sendMessage',
-                                    json={'chat_id': cid, 'text': message, 'parse_mode': 'HTML'},
-                                    timeout=validated.timeout_seconds,
-                                )
                         else:
                             for cid in recipients:
                                 notification_service.send_telegram(
                                     chat_id=cid,
                                     message=message,
+                                    bot_token=validated.bot_token or None,
                                 )
                         results.append('sent')
                     except Exception as exc:

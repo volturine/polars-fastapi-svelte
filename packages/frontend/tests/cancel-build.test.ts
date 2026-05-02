@@ -100,25 +100,6 @@ async function waitForBuildRowById(
 	throw new Error(`Timed out waiting for build row ${runId} to reach ${status}`);
 }
 
-async function waitForAnalysisBuildRow(
-	page: Page,
-	panel: ReturnType<Page['locator']>,
-	analysisId: string,
-	status: 'running' | 'completed' | 'failed' | 'cancelled',
-	timeout = 60_000
-) {
-	const started = Date.now();
-	while (Date.now() - started < timeout) {
-		const row = panel
-			.locator(`[data-build-analysis-id="${analysisId}"][data-build-status="${status}"]`)
-			.last();
-		if (await row.isVisible().catch(() => false)) return row;
-		await refreshBuildHistory(page);
-		await page.waitForTimeout(1_000);
-	}
-	throw new Error(`Timed out waiting for analysis ${analysisId} to reach ${status}`);
-}
-
 test.describe('Cancel Build – e2e', () => {
 	test.describe.configure({ mode: 'serial' });
 
@@ -171,17 +152,23 @@ test.describe('Cancel Build – e2e', () => {
 		const analysisId = await createLongRunningAnalysis(request, analysisName, dsId);
 		try {
 			await startBuildFromAnalysisPage(page, analysisId);
+			const openPreviewBtn = page.locator('[data-testid="output-build-preview-trigger"]');
+			await expect(openPreviewBtn).toBeVisible({ timeout: 10_000 });
+			await openPreviewBtn.click();
+			const preview = page.locator('[data-testid="build-preview"]');
+			await expect(preview).toBeVisible({ timeout: 10_000 });
+			const runId = await previewBuildId(preview);
+			await page.keyboard.press('Escape');
+			await expect(preview).not.toBeVisible({ timeout: 10_000 });
 
-			// Monitoring history is explicit-refresh only, so refresh until the current build
+			// Monitoring history is explicit-refresh only, so refresh until this specific build id
 			// appears as a running row before attempting the cancel action.
 			await gotoMonitoringBuilds(page, analysisId);
 			const panel = page.locator('#panel-builds');
-			const targetRow = await waitForAnalysisBuildRow(page, panel, analysisId, 'running', 60_000);
+			const targetRow = await waitForBuildRowById(page, panel, runId, 'running', 90_000);
 			await expect(targetRow).toBeVisible({ timeout: 10_000 });
 			await expect(targetRow).toHaveAttribute('data-build-status', 'running', { timeout: 30_000 });
 			await expect(targetRow.getByLabel('Cancel build')).toBeVisible({ timeout: 30_000 });
-			const runId = await targetRow.getAttribute('data-build-row');
-			if (!runId) throw new Error('Expected running build row id');
 			await openCancelDialogFromRow(page, targetRow);
 
 			const dialog = cancelDialog(page);

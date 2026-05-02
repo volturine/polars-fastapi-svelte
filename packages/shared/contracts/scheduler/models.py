@@ -23,8 +23,3 @@ class Schedule(SQLModel, table=True):  # type: ignore[call-arg, assignment]
     last_failure_at: dt.datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
     last_successful_build_id: str | None = Field(default=None, sa_column=Column(String, nullable=True))
     created_at: dt.datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
-
-    # Backward compatibility: analysis_id is kept but deprecated
-    # New code should derive analysis from datasource at runtime
-    # This will be removed in a future migration
-    analysis_id: str | None = Field(default=None, sa_column=Column(String, nullable=True))

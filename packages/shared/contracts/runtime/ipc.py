@@ -70,7 +70,10 @@ async def _serve_unix_notifications(server: socket.socket, stop_event, handler: 
             await asyncio.gather(*pending, return_exceptions=True)
         if stop_task in done:
             return
-        conn, _ = await accept_task
+        try:
+            conn, _ = await accept_task
+        except (asyncio.CancelledError, OSError):
+            return
         try:
             data = await loop.sock_recv(conn, 4096)
             if not data:
@@ -90,7 +93,10 @@ async def _serve_postgres_notifications(
     handler: Callable[[dict[str, object]], Awaitable[None]],
 ) -> None:
     while not stop_event.is_set():
-        notifications = await asyncio.to_thread(lambda: list(connection.notifies(timeout=0.5, stop_after=100)))
+        try:
+            notifications = await asyncio.to_thread(lambda: list(connection.notifies(timeout=0.5, stop_after=100)))
+        except (asyncio.CancelledError, psycopg.Error):
+            return
         if not notifications:
             continue
         for notify in notifications:

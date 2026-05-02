@@ -1,20 +1,6 @@
-"""Drop columns operation."""
+# ruff: noqa: I001
+import sys
+import compute_operations.drop as _impl
+from compute_operations.drop import *  # noqa: F401,F403
 
-import polars as pl
-
-from contracts.compute.base import OperationHandler, OperationParams
-
-
-class DropParams(OperationParams):
-    columns: list[str]
-
-
-class DropHandler(OperationHandler):
-    def __call__(
-        self,
-        lf: pl.LazyFrame,
-        params: dict,
-        **_,
-    ) -> pl.LazyFrame:
-        validated = DropParams.model_validate(params)
-        return lf.drop(validated.columns)
+sys.modules[__name__] = _impl

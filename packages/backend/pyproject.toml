@@ -3,10 +3,14 @@ name = "dataforge-backend"
 version = "1.0.0"
 description = "Data-Forge FastAPI application package"
 requires-python = ">=3.11"
-dependencies = ["dataforge-shared"]
+dependencies = [
+    "dataforge-shared",
+    "dataforge-worker-manager",
+]
 
 [tool.uv.sources]
 dataforge-shared = { path = "../shared", editable = true }
+dataforge-worker-manager = { path = "../worker-manager", editable = true }
 
 [build-system]
 requires = ["hatchling"]

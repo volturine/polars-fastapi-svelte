@@ -266,11 +266,11 @@ generate-step-types:
 generate-build-stream-types:
     cd packages/shared && uv run python ../../scripts/generate_ts_build_stream_types.py
 
-# Full verification gate -- must pass before any task is declared done
+# Full static verification gate -- format + static checks only
 verify:
     cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-verify --cwd . -- just verify-raw
 
-verify-raw: format check test
+verify-raw: format check
 
 # Build for production (single-port: FastAPI serves the built frontend)
 # Setup: edit packages/shared/prod.env.

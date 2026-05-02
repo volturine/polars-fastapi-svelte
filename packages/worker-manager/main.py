@@ -8,6 +8,8 @@ import multiprocessing.process
 import os
 import signal
 import socket
+import threading
+import time
 import uuid
 from multiprocessing.synchronize import Event as ProcessEvent
 
@@ -31,12 +33,17 @@ from core.namespace import reset_namespace, set_namespace_context
 
 logger = logging.getLogger(__name__)
 _SPAWN = multiprocessing.get_context('spawn')
+_CHILD_STOP_POLL_SECONDS = 0.05
+_CHILD_COOPERATIVE_STOP_SECONDS = 5.0
+_CHILD_TERMINATE_SECONDS = 2.0
+_CHILD_KILL_SECONDS = 1.0
 
 
 class ManagedWorkerProcess:
-    def __init__(self, process: multiprocessing.process.BaseProcess, stop_signal: ProcessEvent) -> None:
+    def __init__(self, process: multiprocessing.process.BaseProcess, stop_signal: ProcessEvent, stopped_signal: ProcessEvent) -> None:
         self.process = process
         self.stop_signal = stop_signal
+        self.stopped_signal = stopped_signal
 
 
 def _persist_engine_snapshot(worker_id: str, namespace: str, statuses) -> None:
@@ -106,14 +113,9 @@ async def _engine_cleanup_loop(stop_event: asyncio.Event, manager: ProcessManage
         manager.cleanup_idle_engines()
 
 
-async def _manager_heartbeat_loop(stop_event: asyncio.Event, worker_id: str, *, heartbeat_seconds: float = 5.0) -> None:
-    while not stop_event.is_set():
-        active_children = 0
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(stop_event.wait(), timeout=heartbeat_seconds)
-        if stop_event.is_set():
-            return
-        _heartbeat_manager(worker_id, active_jobs=active_children)
+def _manager_heartbeat_loop(stop_signal: threading.Event, worker_id: str, *, heartbeat_seconds: float = 5.0) -> None:
+    while not stop_signal.wait(heartbeat_seconds):
+        _heartbeat_manager(worker_id, active_jobs=0)
 
 
 async def _watch_process_stop_signal(stop_signal: ProcessEvent, stop_event: asyncio.Event) -> None:
@@ -121,7 +123,7 @@ async def _watch_process_stop_signal(stop_signal: ProcessEvent, stop_event: asyn
     stop_event.set()
 
 
-def _worker_main(stop_signal: ProcessEvent) -> None:
+def _worker_main(stop_signal: ProcessEvent, stopped_signal: ProcessEvent) -> None:
     async def _run() -> None:
         stop_event = asyncio.Event()
         install_stop_handlers(stop_event)
@@ -133,6 +135,7 @@ def _worker_main(stop_signal: ProcessEvent) -> None:
             stop_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await stop_task
+            stopped_signal.set()
 
     asyncio.run(_run())
 
@@ -174,36 +177,60 @@ async def run_build_worker_process(
     finally:
         local_stop.set()
         if not task.done():
-            with contextlib.suppress(asyncio.TimeoutError):
-                _ = await asyncio.wait_for(task, timeout=5)
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
         manager.shutdown_all()
         logger.info('Build worker process shutdown complete')
 
 
 def _spawn_worker_process() -> ManagedWorkerProcess:
     stop_signal = _SPAWN.Event()
-    process = _SPAWN.Process(target=_worker_main, args=(stop_signal,))
+    stopped_signal = _SPAWN.Event()
+    process = _SPAWN.Process(target=_worker_main, args=(stop_signal, stopped_signal))
     process.start()
-    return ManagedWorkerProcess(process=process, stop_signal=stop_signal)
+    return ManagedWorkerProcess(process=process, stop_signal=stop_signal, stopped_signal=stopped_signal)
+
+
+def _wait_for_child_stop(child: ManagedWorkerProcess, *, timeout_seconds: float, require_ack: bool) -> bool:
+    deadline = time.monotonic() + timeout_seconds
+    acknowledged = not require_ack
+    while child.process.is_alive():
+        acknowledged = acknowledged or child.stopped_signal.is_set()
+        if require_ack and not acknowledged:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return False
+            child.stopped_signal.wait(min(_CHILD_STOP_POLL_SECONDS, remaining))
+            continue
+        child.process.join(timeout=_CHILD_STOP_POLL_SECONDS)
+        if child.process.is_alive() and time.monotonic() >= deadline:
+            return False
+    child.process.join(timeout=0)
+    if require_ack and not acknowledged:
+        logger.error('Build worker process %s exited without sending a stop acknowledgement', child.process.pid)
+    return True
 
 
 def _stop_worker_process(child: ManagedWorkerProcess) -> None:
     child.stop_signal.set()
-    child.process.join(timeout=10)
-    if child.process.is_alive():
-        logger.warning('Build worker process %s did not stop cooperatively; escalating shutdown', child.process.pid)
-        child.process.terminate()
-        child.process.join(timeout=5)
-    if child.process.is_alive():
-        child.process.kill()
-        child.process.join(timeout=5)
+    if _wait_for_child_stop(child, timeout_seconds=_CHILD_COOPERATIVE_STOP_SECONDS, require_ack=True):
+        return
+    logger.error('Build worker process %s did not stop cooperatively; escalating shutdown', child.process.pid)
+    child.process.terminate()
+    if _wait_for_child_stop(child, timeout_seconds=_CHILD_TERMINATE_SECONDS, require_ack=False):
+        return
+    logger.error('Build worker process %s ignored terminate(); killing', child.process.pid)
+    child.process.kill()
+    if _wait_for_child_stop(child, timeout_seconds=_CHILD_KILL_SECONDS, require_ack=False):
+        return
+    raise RuntimeError(f'Build worker process {child.process.pid} could not be stopped')
 
 
 def _reap_dead_children(children: dict[int, ManagedWorkerProcess]) -> None:
     stale = [pid for pid, child in children.items() if not child.process.is_alive()]
     for pid in stale:
         child = children.pop(pid)
-        child.process.join(timeout=1)
+        child.process.join()
 
 
 async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) -> None:
@@ -223,7 +250,16 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
             persist=lambda namespace, statuses: _persist_engine_snapshot(worker_id, namespace, statuses),
         )
     )
-    heartbeat_task = asyncio.create_task(_manager_heartbeat_loop(local_stop, worker_id))
+    heartbeat_stop = threading.Event()
+    heartbeat_thread = threading.Thread(
+        target=_manager_heartbeat_loop,
+        kwargs={
+            'stop_signal': heartbeat_stop,
+            'worker_id': worker_id,
+        },
+        daemon=True,
+    )
+    heartbeat_thread.start()
     cleanup_task = asyncio.create_task(_engine_cleanup_loop(local_stop, manager))
     request_task = asyncio.create_task(compute_request_loop(local_stop, worker_id=worker_id, manager=manager))
     children: dict[int, ManagedWorkerProcess] = {}
@@ -261,22 +297,20 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
             await asyncio.sleep(0.1)
     finally:
         local_stop.set()
-        heartbeat_task.cancel()
+        heartbeat_stop.set()
+        heartbeat_thread.join()
         cleanup_task.cancel()
-        request_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await heartbeat_task
         with contextlib.suppress(asyncio.CancelledError):
             await cleanup_task
-        with contextlib.suppress(asyncio.CancelledError):
-            await request_task
+        await runtime_ipc.stop_api_server(ipc_server, listener='job')
         for child in children.values():
             _stop_worker_process(child)
-        if ipc_task is not None:
-            with contextlib.suppress(asyncio.TimeoutError):
-                await asyncio.wait_for(ipc_task, timeout=5)
-        await runtime_ipc.stop_api_server(ipc_server)
         manager.shutdown_all()
+        request_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await request_task
+        if ipc_task is not None:
+            await asyncio.gather(ipc_task, return_exceptions=True)
         _stop_manager(worker_id)
         logger.info('Build worker manager shutdown complete')
 

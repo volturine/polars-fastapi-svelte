@@ -320,6 +320,50 @@ def test_stop_worker_process_escalates_when_child_does_not_ack(monkeypatch) -> N
     assert 'kill' not in names
 
 
+def test_next_idle_child_pid_skips_busy_workers(monkeypatch) -> None:
+    class FakeProcess:
+        def __init__(self, pid: int) -> None:
+            self.pid = pid
+
+        def is_alive(self) -> bool:
+            return True
+
+        def join(self, timeout=None) -> None:
+            del timeout
+
+    children = {
+        101: runtime_process.ManagedWorkerProcess(
+            process=FakeProcess(101),
+            stop_signal=SimpleNamespace(),
+            stopped_signal=SimpleNamespace(),
+        ),
+        202: runtime_process.ManagedWorkerProcess(
+            process=FakeProcess(202),
+            stop_signal=SimpleNamespace(),
+            stopped_signal=SimpleNamespace(),
+        ),
+    }
+
+    monkeypatch.setattr(
+        runtime_process,
+        'run_settings_db',
+        lambda fn, **kwargs: [
+            SimpleNamespace(pid=101, active_jobs=1, stopped_at=None),
+            SimpleNamespace(pid=202, active_jobs=0, stopped_at=None),
+        ],
+    )
+
+    assert runtime_process._next_idle_child_pid(children) == 202
+
+    monkeypatch.setattr(
+        runtime_process,
+        'run_settings_db',
+        lambda fn, **kwargs: [SimpleNamespace(pid=101, active_jobs=1, stopped_at=None)],
+    )
+
+    assert runtime_process._next_idle_child_pid(children) is None
+
+
 def test_next_job_claims_from_non_default_namespace() -> None:
     token = set_namespace_context('beta')
     try:

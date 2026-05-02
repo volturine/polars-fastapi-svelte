@@ -52,12 +52,6 @@ async function openCancelDialogFromPreview(page: Page, preview: ReturnType<Page[
 	await expect(cancelDialog(page)).toBeVisible({ timeout: 10_000 });
 }
 
-async function previewBuildId(preview: ReturnType<Page['locator']>) {
-	const id = preview.locator('[data-testid="build-preview-engine-run-id"]');
-	await expect(id).toHaveText(/\S+/, { timeout: 30_000 });
-	return (await id.textContent())?.trim() ?? '';
-}
-
 function cancelDialog(page: Page) {
 	const title = page.getByRole('heading', { name: 'Cancel this build?' });
 	return page.getByRole('dialog').filter({ has: title });
@@ -83,21 +77,29 @@ async function confirmCancelDialog(page: Page) {
 	return responsePromise;
 }
 
-async function waitForBuildRowById(
+async function waitForBuildRowByAnalysisId(
 	page: Page,
 	panel: ReturnType<Page['locator']>,
-	runId: string,
+	analysisId: string,
 	status: 'running' | 'completed' | 'failed' | 'cancelled',
 	timeout = 30_000
 ) {
-	const row = panel.locator(`[data-build-row="${runId}"][data-build-status="${status}"]`);
+	const row = panel.locator(
+		`[data-build-analysis-id="${analysisId}"][data-build-status="${status}"]`
+	);
 	const started = Date.now();
 	while (Date.now() - started < timeout) {
-		if (await row.isVisible().catch(() => false)) return row;
+		if (
+			await row
+				.first()
+				.isVisible()
+				.catch(() => false)
+		)
+			return row.first();
 		await refreshBuildHistory(page);
 		await page.waitForTimeout(1_000);
 	}
-	throw new Error(`Timed out waiting for build row ${runId} to reach ${status}`);
+	throw new Error(`Timed out waiting for analysis ${analysisId} to reach ${status}`);
 }
 
 test.describe('Cancel Build – e2e', () => {
@@ -110,7 +112,7 @@ test.describe('Cancel Build – e2e', () => {
 		test.setTimeout(240_000);
 		const dsName = `e2e-cancel-preview-ds-${uid()}`;
 		const analysisName = `E2E Cancel Preview ${uid()}`;
-		const dsId = await createLargeDatasource(request, dsName, 225_000);
+		const dsId = await createLargeDatasource(request, dsName, 2_000_000);
 		const analysisId = await createLongRunningAnalysis(request, analysisName, dsId);
 		try {
 			await startBuildFromAnalysisPage(page, analysisId);
@@ -120,7 +122,6 @@ test.describe('Cancel Build – e2e', () => {
 
 			const preview = page.locator('[data-testid="build-preview"]');
 			await expect(preview).toBeVisible({ timeout: 10_000 });
-			const runId = await previewBuildId(preview);
 			await openCancelDialogFromPreview(page, preview);
 
 			const dialog = cancelDialog(page);
@@ -133,7 +134,13 @@ test.describe('Cancel Build – e2e', () => {
 
 			await gotoMonitoringBuilds(page, analysisId);
 			const panel = page.locator('#panel-builds');
-			const cancelledRow = await waitForBuildRowById(page, panel, runId, 'cancelled', 30_000);
+			const cancelledRow = await waitForBuildRowByAnalysisId(
+				page,
+				panel,
+				analysisId,
+				'cancelled',
+				30_000
+			);
 			await expect(cancelledRow).toHaveAttribute('data-build-status', 'cancelled', {
 				timeout: 30_000
 			});
@@ -148,24 +155,22 @@ test.describe('Cancel Build – e2e', () => {
 		test.setTimeout(240_000);
 		const dsName = `e2e-cancel-history-ds-${uid()}`;
 		const analysisName = `E2E Cancel History ${uid()}`;
-		const dsId = await createLargeDatasource(request, dsName, 250_000);
+		const dsId = await createLargeDatasource(request, dsName, 1_100_000);
 		const analysisId = await createLongRunningAnalysis(request, analysisName, dsId);
 		try {
 			await startBuildFromAnalysisPage(page, analysisId);
-			const openPreviewBtn = page.locator('[data-testid="output-build-preview-trigger"]');
-			await expect(openPreviewBtn).toBeVisible({ timeout: 10_000 });
-			await openPreviewBtn.click();
-			const preview = page.locator('[data-testid="build-preview"]');
-			await expect(preview).toBeVisible({ timeout: 10_000 });
-			const runId = await previewBuildId(preview);
-			await page.keyboard.press('Escape');
-			await expect(preview).not.toBeVisible({ timeout: 10_000 });
 
-			// Monitoring history is explicit-refresh only, so refresh until this specific build id
-			// appears as a running row before attempting the cancel action.
+			// Monitoring history is explicit-refresh only, so refresh until the analysis row
+			// appears as running before attempting the cancel action.
 			await gotoMonitoringBuilds(page, analysisId);
 			const panel = page.locator('#panel-builds');
-			const targetRow = await waitForBuildRowById(page, panel, runId, 'running', 90_000);
+			const targetRow = await waitForBuildRowByAnalysisId(
+				page,
+				panel,
+				analysisId,
+				'running',
+				90_000
+			);
 			await expect(targetRow).toBeVisible({ timeout: 10_000 });
 			await expect(targetRow).toHaveAttribute('data-build-status', 'running', { timeout: 30_000 });
 			await expect(targetRow.getByLabel('Cancel build')).toBeVisible({ timeout: 30_000 });
@@ -181,7 +186,13 @@ test.describe('Cancel Build – e2e', () => {
 				timeout: 5_000
 			});
 
-			const cancelledRow = await waitForBuildRowById(page, panel, runId, 'cancelled', 30_000);
+			const cancelledRow = await waitForBuildRowByAnalysisId(
+				page,
+				panel,
+				analysisId,
+				'cancelled',
+				30_000
+			);
 			await expect(cancelledRow).toHaveAttribute('data-build-status', 'cancelled', {
 				timeout: 30_000
 			});

@@ -233,6 +233,18 @@ def _reap_dead_children(children: dict[int, ManagedWorkerProcess]) -> None:
         child.process.join()
 
 
+def _next_idle_child_pid(children: dict[int, ManagedWorkerProcess]) -> int | None:
+    workers = run_settings_db(runtime_worker_service.list_workers, kind=RuntimeWorkerKind.BUILD_WORKER)
+    idle_pids = {worker.pid for worker in workers if worker.stopped_at is None and worker.active_jobs == 0}
+    for pid, child in children.items():
+        process_pid = child.process.pid
+        if process_pid is None:
+            continue
+        if process_pid in idle_pids:
+            return pid
+    return None
+
+
 async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) -> None:
     configure_logging()
     logger.info('Starting build worker manager process...')
@@ -274,8 +286,10 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
                 child = _spawn_worker_process()
                 children[child.process.pid or id(child.process)] = child
             while len(children) > desired:
-                pid, child = next(iter(children.items()))
-                children.pop(pid)
+                idle_pid = _next_idle_child_pid(children)
+                if idle_pid is None:
+                    break
+                child = children.pop(idle_pid)
                 _stop_worker_process(child)
 
             if len(children) >= desired and queued == 0:

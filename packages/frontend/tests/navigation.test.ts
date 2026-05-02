@@ -1,9 +1,6 @@
+import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures.js';
-import {
-	createLongRunningAnalysis,
-	createLargeDatasource,
-	waitForNoActiveBuild
-} from './utils/api.js';
+import { createLongRunningAnalysis, createLargeDatasource } from './utils/api.js';
 import { screenshot } from './utils/visual.js';
 import { waitForAppShell } from './utils/readiness.js';
 import { gotoAnalysisEditor } from './utils/analysis.js';
@@ -108,6 +105,61 @@ test.describe('Navigation – profile access', () => {
 	});
 });
 
+async function gotoMonitoringBuilds(page: Page, analysisId?: string) {
+	const params = new URLSearchParams({ tab: 'builds' });
+	if (analysisId) params.set('analysis_id', analysisId);
+	await page.goto(`/monitoring?${params.toString()}`);
+	await waitForAppShell(page);
+	await expect(page.getByRole('tab', { name: 'Builds', selected: true })).toBeVisible({
+		timeout: 15_000
+	});
+	await expect(page.locator('#panel-builds')).toBeVisible({ timeout: 15_000 });
+}
+
+async function refreshBuildHistory(page: Page) {
+	await page.getByRole('button', { name: /Refresh History/i }).click({ timeout: 15_000 });
+}
+
+function cancelBuildDialog(page: Page) {
+	const title = page.getByRole('heading', { name: 'Cancel this build?' });
+	return page.getByRole('dialog').filter({ has: title });
+}
+
+async function confirmCancelBuild(page: Page) {
+	const dialog = cancelBuildDialog(page);
+	const confirmButton = dialog.getByRole('button', { name: 'Cancel Build', exact: true });
+	await expect(dialog).toBeVisible({ timeout: 10_000 });
+	await expect(confirmButton).toBeVisible({ timeout: 10_000 });
+	await expect(confirmButton).toBeEnabled({ timeout: 10_000 });
+	await confirmButton.click({ force: true, timeout: 10_000 });
+	await expect(dialog).not.toBeVisible({ timeout: 15_000 });
+}
+
+async function previewBuildId(page: Page) {
+	const preview = page.locator('[data-testid="build-preview"]');
+	await expect(preview).toBeVisible({ timeout: 10_000 });
+	const id = preview.locator('[data-testid="build-preview-engine-run-id"]');
+	await expect(id).toHaveText(/\S+/, { timeout: 30_000 });
+	return (await id.textContent())?.trim() ?? '';
+}
+
+async function waitForBuildRowById(
+	page: Page,
+	panel: ReturnType<Page['locator']>,
+	runId: string,
+	status: 'running' | 'completed' | 'failed' | 'cancelled',
+	timeout = 30_000
+) {
+	const row = panel.locator(`[data-build-row="${runId}"][data-build-status="${status}"]`);
+	const started = Date.now();
+	while (Date.now() - started < timeout) {
+		if (await row.isVisible().catch(() => false)) return row;
+		await refreshBuildHistory(page);
+		await page.waitForTimeout(1_000);
+	}
+	throw new Error(`Timed out waiting for build row ${runId} to reach ${status}`);
+}
+
 test.describe('Navigation – engines live monitor', () => {
 	test('engines popup lists running engines on demand', async ({ page, request }) => {
 		test.setTimeout(120_000);
@@ -117,19 +169,22 @@ test.describe('Navigation – engines live monitor', () => {
 		const analysisId = await createLongRunningAnalysis(request, analysisName, datasourceId);
 
 		try {
-			// Start a build from the analysis editor — this spawns a compute engine
 			await gotoAnalysisEditor(page, analysisId);
 			await waitForAppShell(page);
 			const buildBtn = page.locator('[data-testid="output-build-button"]');
 			await expect(buildBtn).toBeVisible({ timeout: 10_000 });
 			await buildBtn.click();
-			await expect(page.locator('[data-testid="output-build-preview-trigger"]')).toBeVisible({
-				timeout: 30_000
+			const openPreviewBtn = page.locator('[data-testid="output-build-preview-trigger"]');
+			await expect(openPreviewBtn).toBeVisible({ timeout: 30_000 });
+			await openPreviewBtn.click();
+			const runId = await previewBuildId(page);
+			await page.keyboard.press('Escape');
+			await expect(page.locator('[data-testid="build-preview"]')).not.toBeVisible({
+				timeout: 10_000
 			});
-			await page.goto('/monitoring');
-			await waitForAppShell(page);
 
-			// Open engine popup and verify the engine is listed
+			await gotoMonitoringBuilds(page, analysisId);
+
 			const engineButton = page.getByRole('button', { name: 'Engine Monitor' });
 			await expect(engineButton).toBeVisible({ timeout: 10_000 });
 			const enginePopup = page.locator('[data-engines-popup="true"]');
@@ -144,14 +199,20 @@ test.describe('Navigation – engines live monitor', () => {
 			}
 			expect(open).toBe(true);
 			await expect(page.getByTestId('engine-monitor-count')).toBeVisible({ timeout: 15_000 });
-			const engineRow = enginePopup.locator('[data-engine-row]').first();
-			await expect(engineRow).toBeVisible({
+			await expect(enginePopup.locator('[data-engine-row]').first()).toBeVisible({
 				timeout: 10_000
 			});
 
-			// Wait for the active job to finish before cleanup. The test only needs to prove
-			// that the popup lists the running engine while the build is active.
-			await waitForNoActiveBuild(request, analysisId);
+			const panel = page.locator('#panel-builds');
+			const runningRow = await waitForBuildRowById(page, panel, runId, 'running', 90_000);
+			const cancelButton = runningRow.getByLabel('Cancel build');
+			await expect(cancelButton).toBeVisible({ timeout: 10_000 });
+			await expect(cancelButton).toBeEnabled({ timeout: 10_000 });
+			await cancelButton.click({ force: true, timeout: 10_000 });
+			await confirmCancelBuild(page);
+
+			const cancelledRow = await waitForBuildRowById(page, panel, runId, 'cancelled', 30_000);
+			await expect(cancelledRow.getByText('Cancelled')).toBeVisible({ timeout: 15_000 });
 		} finally {
 			await deleteAnalysisViaUI(page, analysisName);
 			await deleteDatasourceViaUI(page, dsName);

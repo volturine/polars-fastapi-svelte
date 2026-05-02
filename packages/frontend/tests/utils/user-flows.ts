@@ -72,18 +72,18 @@ export async function uploadDatasourceViaUi(
 	}
 	const uploadBtn = page.getByRole('button', { name: 'Upload', exact: true });
 	await expect(uploadBtn).toBeEnabled({ timeout: 10_000 });
-	const [response] = await Promise.all([
-		page.waitForResponse(
-			(resp) =>
-				resp.url().includes('/api/v1/datasource/upload') && resp.request().method() === 'POST'
-		),
-		uploadBtn.click()
-	]);
-	const payload = (await response.json()) as { id: string };
+	await uploadBtn.click();
 	await expect(page).toHaveURL(/\/datasources/, { timeout: 30_000 });
 	await waitForDatasourceList(page);
-	await expect(page.locator(`[data-ds-row="${name}"]`)).toBeVisible({ timeout: 15_000 });
-	return payload;
+	const row = page.locator(`[data-ds-row="${name}"]`);
+	await expect(row).toBeVisible({ timeout: 15_000 });
+	await row.click();
+	await expect(page).toHaveURL(/id=/, { timeout: 15_000 });
+	const datasourceId = new URL(page.url()).searchParams.get('id');
+	if (!datasourceId) {
+		throw new Error(`Could not extract datasource id after uploading ${name}`);
+	}
+	return { id: datasourceId };
 }
 
 export async function uploadDatasourceWithDatesViaUi(

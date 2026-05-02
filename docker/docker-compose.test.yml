@@ -213,7 +213,6 @@ services:
       PLAYWRIGHT_FRONTEND_ORIGIN: ${DF_E2E_FRONTEND_ORIGIN}
       PLAYWRIGHT_COOKIE_DOMAIN: frontend-e2e
       PLAYWRIGHT_DISABLE_WEB_SERVER: "true"
-      PLAYWRIGHT_WORKERS: "3"
     command: ["npx", "playwright", "test"]
 
 volumes:

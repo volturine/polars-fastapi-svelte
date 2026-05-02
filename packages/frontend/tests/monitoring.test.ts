@@ -84,7 +84,8 @@ function buildRowByName(
 	name: string
 ) {
 	return panel.locator(
-		`[data-build-datasource-name="${name}"], [data-build-output-name="${name}"]`
+		`[data-build-kind="datasource_create"][data-build-datasource-name="${name}"], ` +
+			`[data-build-kind="datasource_create"][data-build-output-name="${name}"]`
 	);
 }
 

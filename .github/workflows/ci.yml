@@ -78,7 +78,7 @@ jobs:
         run: bun run test:unit
 
   e2e:
-    name: e2e / shard ${{ matrix.shard }} of ${{ matrix.total }}
+    name: e2e / shard ${{ matrix.shard }} of 4
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.base_ref == 'master'
     timeout-minutes: 30
@@ -87,20 +87,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - shard: 1
-            total: 4
-          - shard: 2
-            total: 4
-          - shard: 3
-            total: 4
-          - shard: 4
-            total: 4
+        shard: [1, 2, 3, 4]
     env:
       PORT: '8001'
       FRONTEND_PORT: '3001'
-      PLAYWRIGHT_SHARD_CURRENT: '${{ matrix.shard }}'
-      PLAYWRIGHT_SHARD_TOTAL: '${{ matrix.total }}'
     steps:
       - uses: actions/checkout@v5
 
@@ -133,7 +123,7 @@ jobs:
           set -o pipefail
           mkdir -p packages/frontend/tests/ci-artifacts
           export E2E_LOG_DIR="$PWD/packages/frontend/tests/ci-artifacts/services"
-          just test-e2e 2>&1 | tee packages/frontend/tests/ci-artifacts/e2e.log
+          just test-e2e ${{ matrix.shard }}/4 2>&1 | tee packages/frontend/tests/ci-artifacts/e2e.log
           status=${PIPESTATUS[0]}
           if [ "$status" -eq 124 ]; then
             echo "e2e step hit the shared 27 minute harness timeout before the 30 minute job timeout"

@@ -2,21 +2,30 @@
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
+const DEFAULT_E2E_WORKERS = 4;
+
+function shardSuffixFromArgs(): string {
+	const shardFlagIndex = process.argv.findIndex((arg) => arg === '--shard');
+	if (shardFlagIndex === -1) return '';
+	const shardValue = process.argv[shardFlagIndex + 1];
+	if (!shardValue) return '';
+	const [current, total] = shardValue.split('/');
+	if (!current || !total) return '';
+	return `-shard-${current}-of-${total}`;
+}
+
 const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${port}`;
 const ciArgs = process.env.CI ? ['--disable-dev-shm-usage', '--disable-gpu'] : [];
-const workers = parseInt(process.env.PLAYWRIGHT_WORKERS || '3', 10);
-const shardCurrent = process.env.PLAYWRIGHT_SHARD_CURRENT;
-const shardTotal = process.env.PLAYWRIGHT_SHARD_TOTAL;
-const shardSuffix = shardCurrent && shardTotal ? `-shard-${shardCurrent}-of-${shardTotal}` : '';
 const artifactsRoot = path.resolve(process.cwd(), '..', '..');
+const shardSuffix = shardSuffixFromArgs();
 
 export default defineConfig({
 	testDir: './tests',
 	timeout: 30_000,
 	expect: { timeout: 10_000 },
 	fullyParallel: false,
-	workers,
+	workers: DEFAULT_E2E_WORKERS,
 	retries: 1,
 	outputDir: path.join(artifactsRoot, `test-results${shardSuffix}`),
 	reporter: [

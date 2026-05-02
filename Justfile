@@ -85,36 +85,16 @@ check:
 
 
 # Run pure user-driven e2e tests with backend + frontend lifecycle managed by Just
-test-e2e:
-    cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-test-e2e --cwd . -- just test-e2e-raw
+test-e2e shard='':
+    cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-test-e2e --cwd . -- just test-e2e-raw {{shard}}
 
-test-e2e-raw:
+test-e2e-raw shard='':
     #!/usr/bin/env bash
     set -euo pipefail
-    EXPLICIT_PLAYWRIGHT_WORKERS="${PLAYWRIGHT_WORKERS:-}"
-    EXPLICIT_PLAYWRIGHT_SHARD_CURRENT="${PLAYWRIGHT_SHARD_CURRENT:-}"
-    EXPLICIT_PLAYWRIGHT_SHARD_TOTAL="${PLAYWRIGHT_SHARD_TOTAL:-}"
     set -a; source packages/shared/e2e.env; set +a
-    if [ -n "$EXPLICIT_PLAYWRIGHT_WORKERS" ]; then
-        export PLAYWRIGHT_WORKERS="$EXPLICIT_PLAYWRIGHT_WORKERS"
-    elif [ -n "${CI:-}" ]; then
-        export PLAYWRIGHT_WORKERS="${PLAYWRIGHT_WORKERS_CI:-$PLAYWRIGHT_WORKERS}"
-    else
-        export PLAYWRIGHT_WORKERS="${PLAYWRIGHT_WORKERS_LOCAL:-$PLAYWRIGHT_WORKERS}"
-    fi
-    if [ -n "$EXPLICIT_PLAYWRIGHT_SHARD_CURRENT" ]; then
-        export PLAYWRIGHT_SHARD_CURRENT="$EXPLICIT_PLAYWRIGHT_SHARD_CURRENT"
-    fi
-    if [ -n "$EXPLICIT_PLAYWRIGHT_SHARD_TOTAL" ]; then
-        export PLAYWRIGHT_SHARD_TOTAL="$EXPLICIT_PLAYWRIGHT_SHARD_TOTAL"
-    fi
     PLAYWRIGHT_CMD=(npx playwright test --config=playwright.config.ts)
-    if [ -n "${PLAYWRIGHT_SHARD_CURRENT:-}" ] || [ -n "${PLAYWRIGHT_SHARD_TOTAL:-}" ]; then
-        if [ -z "${PLAYWRIGHT_SHARD_CURRENT:-}" ] || [ -z "${PLAYWRIGHT_SHARD_TOTAL:-}" ]; then
-            echo "PLAYWRIGHT_SHARD_CURRENT and PLAYWRIGHT_SHARD_TOTAL must both be set" >&2
-            exit 1
-        fi
-        PLAYWRIGHT_CMD+=(--shard "${PLAYWRIGHT_SHARD_CURRENT}/${PLAYWRIGHT_SHARD_TOTAL}")
+    if [ -n "{{shard}}" ]; then
+        PLAYWRIGHT_CMD+=(--shard "{{shard}}")
     fi
     unset VIRTUAL_ENV
     export UV_PYTHON="${E2E_PYTHON_VERSION}"
@@ -207,7 +187,11 @@ test-e2e-raw:
     wait_for_url "http://127.0.0.1:${FRONTEND_PORT}" "frontend"
     echo "Frontend is ready"
     echo "Starting Playwright e2e tests"
-    echo "Using Playwright workers=${PLAYWRIGHT_WORKERS}${PLAYWRIGHT_SHARD_CURRENT:+ shard=${PLAYWRIGHT_SHARD_CURRENT}/${PLAYWRIGHT_SHARD_TOTAL}}"
+    if [ -n "{{shard}}" ]; then
+        echo "Using Playwright default workers=4 shard={{shard}}"
+    else
+        echo "Using Playwright default workers=4"
+    fi
     set +e
     (
         cd packages/frontend && \

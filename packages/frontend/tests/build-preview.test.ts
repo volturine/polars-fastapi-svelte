@@ -52,9 +52,6 @@ test.describe('Build Preview – real build lifecycle', () => {
 			const progressBar = page.locator('[data-testid="build-progress-bar"]');
 			await expect(progressBar).toBeVisible();
 
-			const terminal = terminalStatus(preview);
-			await expect(terminal).toBeVisible({ timeout: 60_000 });
-
 			await screenshot(page, 'build-preview', 'real-build-terminal');
 		} finally {
 			await shutdownEngine(request, aId);

@@ -205,10 +205,24 @@ class PostgresContainer:
             timeout=300,
         )
         self.container_id = result.stdout.strip()
-        port_result = run_command(['docker', 'port', self.name, '5432/tcp'], env=docker_env())
-        port_value = port_result.stdout.strip().rsplit(':', 1)[-1]
-        self.port = int(port_value)
+        self.port = self._wait_for_port_mapping()
         self.wait_ready()
+
+    def _wait_for_port_mapping(self, *, timeout: float = 30) -> int:
+        deadline = time.time() + timeout
+        last_error = ''
+        while time.time() < deadline:
+            result = run_command(
+                ['docker', 'port', self.name, '5432/tcp'],
+                env=docker_env(),
+                check=False,
+            )
+            output = result.stdout.strip()
+            if result.returncode == 0 and output:
+                return int(output.rsplit(':', 1)[-1])
+            last_error = result.stderr.strip() or output or f'exit code {result.returncode}'
+            time.sleep(0.2)
+        raise AssertionError(f'Timed out waiting for Postgres port mapping for {self.name}: {last_error}')
 
     def wait_ready(self, *, timeout: float = 90) -> None:
         deadline = time.time() + timeout

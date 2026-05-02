@@ -1,10 +1,6 @@
-from compute_core.exports import ExportFormat, get_export_format
-from contracts.compute.base import ComputeEngine, OperationHandler, OperationParams
+import sys
 
-__all__ = [
-    'ComputeEngine',
-    'ExportFormat',
-    'OperationHandler',
-    'OperationParams',
-    'get_export_format',
-]
+import runtime_compute.core as _impl
+from runtime_compute.core import *  # noqa: F403
+
+sys.modules[__name__] = _impl

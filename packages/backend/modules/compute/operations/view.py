@@ -1,20 +1,6 @@
-"""View passthrough operation."""
+import sys
 
-import polars as pl
+import runtime_compute.operations.view as _impl
+from runtime_compute.operations.view import *  # noqa: F403
 
-from contracts.compute.base import OperationHandler, OperationParams
-
-
-class ViewParams(OperationParams):
-    rowLimit: int | None = None
-
-
-class ViewHandler(OperationHandler):
-    def __call__(
-        self,
-        lf: pl.LazyFrame,
-        params: dict,
-        **_,
-    ) -> pl.LazyFrame:
-        ViewParams.model_validate(params)
-        return lf
+sys.modules[__name__] = _impl

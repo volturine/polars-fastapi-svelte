@@ -1,20 +1,6 @@
-"""Rename columns operation."""
+import sys
 
-import polars as pl
+import runtime_compute.operations.rename as _impl
+from runtime_compute.operations.rename import *  # noqa: F403
 
-from contracts.compute.base import OperationHandler, OperationParams
-
-
-class RenameParams(OperationParams):
-    mapping: dict[str, str]
-
-
-class RenameHandler(OperationHandler):
-    def __call__(
-        self,
-        lf: pl.LazyFrame,
-        params: dict,
-        **_,
-    ) -> pl.LazyFrame:
-        validated = RenameParams.model_validate(params)
-        return lf.rename(validated.mapping)
+sys.modules[__name__] = _impl

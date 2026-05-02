@@ -1,23 +1,6 @@
-"""Export passthrough operation."""
+import sys
 
-import polars as pl
+import runtime_compute.operations.export as _impl
+from runtime_compute.operations.export import *  # noqa: F403
 
-from contracts.compute.base import OperationHandler, OperationParams
-
-
-class ExportParams(OperationParams):
-    format: str = 'csv'
-    filename: str = 'export'
-    destination: str = 'download'
-    iceberg_options: dict | None = None
-
-
-class ExportHandler(OperationHandler):
-    def __call__(
-        self,
-        lf: pl.LazyFrame,
-        params: dict,
-        **_,
-    ) -> pl.LazyFrame:
-        ExportParams.model_validate(params)
-        return lf
+sys.modules[__name__] = _impl

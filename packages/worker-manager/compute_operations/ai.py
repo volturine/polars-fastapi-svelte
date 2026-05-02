@@ -30,19 +30,13 @@ class AIProvider(StrEnum):
 
 
 class AIParams(OperationParams):
-    """Parameters for the AI UDF handler.
-
-    Supports multiple input columns via ``input_columns``.  The legacy
-    ``input_column`` (singular) field is accepted for backward compatibility
-    and automatically promoted into the list.
-    """
+    """Parameters for the AI UDF handler."""
 
     model_config = ConfigDict(extra='forbid')
 
     provider: AIProvider = AIProvider.OLLAMA
     model: str = 'llama2'
     input_columns: list[str] = Field(default_factory=list)
-    input_column: str | None = None  # legacy — promoted into input_columns
     output_column: str = 'ai_result'
     error_column: str = 'ai_error'
     prompt_template: str = 'Classify this text: {{text}}'
@@ -61,12 +55,7 @@ class AIParams(OperationParams):
         return parse_request_options(v)
 
     @model_validator(mode='after')
-    def _promote_legacy_input(self) -> 'AIParams':
-        """Merge legacy ``input_column`` into ``input_columns``."""
-        if self.input_column and self.input_column not in self.input_columns:
-            self.input_columns = [self.input_column, *self.input_columns]
-        # Clear legacy field so it's not serialized twice
-        self.input_column = None
+    def _validate_input_columns(self) -> 'AIParams':
         if not self.input_columns:
             raise ValueError('At least one input column is required (input_columns)')
         return self

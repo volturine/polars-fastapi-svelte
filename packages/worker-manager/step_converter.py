@@ -112,12 +112,7 @@ def convert_filter_config(config: dict) -> dict:
 
 
 def convert_groupby_config(config: dict) -> dict:
-    """Convert groupby config from frontend to backend format.
-
-    Canonical: {group_by: [...], aggregations: [{column, function, alias}]}
-    Legacy fallback: {groupBy: [...], aggregations: [{column, function, alias}]}
-    Backend: {group_by: [...], aggregations: [{column, function, alias}]}
-    """
+    """Convert groupby config from frontend to backend format."""
     return {
         'group_by': config.get('group_by', []),
         'aggregations': [

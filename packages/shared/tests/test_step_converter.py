@@ -11,11 +11,10 @@ from modules.compute.step_converter import (
 )
 
 
-def test_convert_groupby_config_prefers_group_by() -> None:
+def test_convert_groupby_config_uses_group_by() -> None:
     result = convert_groupby_config(
         {
             'group_by': ['team'],
-            'groupBy': ['legacy_team'],
             'aggregations': [{'column': 'score', 'function': 'sum', 'alias': 'total'}],
         },
     )
@@ -23,10 +22,9 @@ def test_convert_groupby_config_prefers_group_by() -> None:
     assert result['aggregations'] == [{'column': 'score', 'function': 'sum', 'alias': 'total'}]
 
 
-def test_convert_groupby_config_ignores_legacy_groupby() -> None:
+def test_convert_groupby_config_defaults_group_by_to_empty() -> None:
     result = convert_groupby_config(
         {
-            'groupBy': ['team'],
             'aggregations': [{'column': 'score', 'function': 'sum'}],
         },
     )

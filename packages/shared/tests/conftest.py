@@ -27,6 +27,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     os.environ.pop('POLARS_STREAMING_CHUNK_SIZE', None)
     os.environ.setdefault('ENV_FILE', '')
     os.environ.setdefault('SETTINGS_ENCRYPTION_KEY', 'test-key')
+    os.environ.setdefault('DATAFORGE_SKIP_RUNTIME_PREFLIGHT', '1')
 
 
 def _settings():

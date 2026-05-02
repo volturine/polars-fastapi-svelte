@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -10,10 +12,35 @@ from contracts.compute import schemas as compute_schemas
 from contracts.compute_requests.live import response_hub
 from contracts.compute_requests.models import ComputeRequestKind, ComputeRequestStatus
 from contracts.runtime import ipc as runtime_ipc
-from core import compute_requests_service
-from core.exceptions import JobTimeoutError, PipelineExecutionError
+from contracts.runtime_workers.models import RuntimeWorkerKind
+from core import compute_requests_service, runtime_workers_service
+from core.database import run_settings_db
+from core.exceptions import PipelineExecutionError
 from core.namespace import get_namespace
 from modules.datasource import schemas as datasource_schemas
+
+
+def _runtime_available(*, kind: RuntimeWorkerKind, heartbeat_seconds: float = 15.0) -> bool:
+    def _read(settings_session: Session) -> bool:
+        workers = runtime_workers_service.list_workers(settings_session, kind=kind)
+        now = datetime.now(UTC)
+        for worker in reversed(workers):
+            if worker.stopped_at is not None:
+                continue
+            heartbeat = worker.last_heartbeat_at.replace(tzinfo=UTC)
+            if now - heartbeat <= timedelta(seconds=heartbeat_seconds):
+                return True
+        return False
+
+    return bool(run_settings_db(_read))
+
+
+def _ensure_runtime_available() -> None:
+    if os.getenv('DATAFORGE_SKIP_RUNTIME_PREFLIGHT') == '1':
+        return
+    if _runtime_available(kind=RuntimeWorkerKind.BUILD_MANAGER):
+        return
+    raise HTTPException(status_code=503, detail='Compute runtime unavailable')
 
 
 async def _submit_and_wait(
@@ -21,8 +48,8 @@ async def _submit_and_wait(
     *,
     kind: ComputeRequestKind,
     request_json: dict[str, object],
-    timeout: int,
 ):
+    _ensure_runtime_available()
     request = compute_requests_service.create_request(
         session,
         namespace=get_namespace(),
@@ -31,10 +58,7 @@ async def _submit_and_wait(
     )
     wait_task = asyncio.create_task(response_hub.wait(request.id))
     await asyncio.to_thread(runtime_ipc.notify_compute_request, request.id)
-    try:
-        await asyncio.wait_for(wait_task, timeout=timeout)
-    except TimeoutError as exc:
-        raise JobTimeoutError(request.id, timeout) from exc
+    await wait_task
     session.expire_all()
     completed = compute_requests_service.get_request(session, request.id)
     if completed is None:
@@ -54,7 +78,6 @@ async def preview_step(session: Session, request: compute_schemas.StepPreviewReq
         session,
         kind=ComputeRequestKind.PREVIEW,
         request_json=request.model_dump(mode='json'),
-        timeout=180,
     )
     return compute_schemas.StepPreviewResponse.model_validate(completed.response_json)
 
@@ -64,7 +87,6 @@ async def get_step_schema(session: Session, request: compute_schemas.StepSchemaR
         session,
         kind=ComputeRequestKind.SCHEMA,
         request_json=request.model_dump(mode='json'),
-        timeout=180,
     )
     return compute_schemas.StepSchemaResponse.model_validate(completed.response_json)
 
@@ -74,7 +96,6 @@ async def get_step_row_count(session: Session, request: compute_schemas.StepRowC
         session,
         kind=ComputeRequestKind.ROW_COUNT,
         request_json=request.model_dump(mode='json'),
-        timeout=180,
     )
     return compute_schemas.StepRowCountResponse.model_validate(completed.response_json)
 
@@ -84,7 +105,6 @@ async def download_step(session: Session, request: compute_schemas.DownloadReque
         session,
         kind=ComputeRequestKind.DOWNLOAD,
         request_json=request.model_dump(mode='json'),
-        timeout=180,
     )
     if not completed.artifact_path or not completed.artifact_name or not completed.artifact_content_type:
         raise PipelineExecutionError('Download artifact missing from compute response')
@@ -99,7 +119,6 @@ async def export_data(session: Session, request: compute_schemas.ExportRequest) 
         session,
         kind=ComputeRequestKind.EXPORT,
         request_json=request.model_dump(mode='json'),
-        timeout=180,
     )
     return compute_schemas.ExportResponse.model_validate(completed.response_json)
 
@@ -145,7 +164,6 @@ async def create_file_datasource(
             'cell_range': cell_range,
             'owner_id': owner_id,
         },
-        timeout=180,
     )
     return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
 
@@ -171,7 +189,6 @@ async def create_database_datasource(
             'branch': branch,
             'owner_id': owner_id,
         },
-        timeout=180,
     )
     return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
 
@@ -195,7 +212,6 @@ async def create_iceberg_datasource(
             'branch': branch,
             'owner_id': owner_id,
         },
-        timeout=180,
     )
     return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
 
@@ -205,7 +221,6 @@ async def refresh_datasource(session: Session, *, datasource_id: str) -> datasou
         session,
         kind=ComputeRequestKind.REFRESH_DATASOURCE,
         request_json={'datasource_id': datasource_id},
-        timeout=180,
     )
     return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
 
@@ -220,7 +235,6 @@ async def spawn_engine(
         session,
         kind=ComputeRequestKind.SPAWN_ENGINE,
         request_json={'analysis_id': analysis_id, 'resource_config': resource_config or {}},
-        timeout=60,
     )
     return compute_schemas.EngineStatusSchema.model_validate(completed.response_json)
 
@@ -230,7 +244,6 @@ async def keepalive_engine(session: Session, *, analysis_id: str) -> compute_sch
         session,
         kind=ComputeRequestKind.KEEPALIVE_ENGINE,
         request_json={'analysis_id': analysis_id},
-        timeout=30,
     )
     return compute_schemas.EngineStatusSchema.model_validate(completed.response_json)
 
@@ -245,7 +258,6 @@ async def configure_engine(
         session,
         kind=ComputeRequestKind.CONFIGURE_ENGINE,
         request_json={'analysis_id': analysis_id, 'resource_config': resource_config},
-        timeout=60,
     )
     return compute_schemas.EngineStatusSchema.model_validate(completed.response_json)
 
@@ -255,5 +267,4 @@ async def shutdown_engine(session: Session, *, analysis_id: str) -> None:
         session,
         kind=ComputeRequestKind.SHUTDOWN_ENGINE,
         request_json={'analysis_id': analysis_id},
-        timeout=60,
     )

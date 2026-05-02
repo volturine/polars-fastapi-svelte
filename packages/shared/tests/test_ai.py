@@ -60,14 +60,13 @@ class TestAIParams:
     def test_basic_validation(self):
         params = AIParams.model_validate(
             {
-                'input_column': 'text',
+                'input_columns': ['text'],
                 'output_column': 'result',
             },
         )
         assert params.provider == 'ollama'
         assert params.model == 'llama2'
         assert params.input_columns == ['text']
-        assert params.input_column is None  # legacy field cleared
         assert params.output_column == 'result'
         assert params.batch_size == 10
         assert params.request_options is None
@@ -81,16 +80,6 @@ class TestAIParams:
         )
         assert params.input_columns == ['title', 'body']
 
-    def test_legacy_input_column_promoted(self):
-        params = AIParams.model_validate(
-            {
-                'input_column': 'text',
-                'output_column': 'result',
-            },
-        )
-        assert params.input_columns == ['text']
-        assert params.input_column is None
-
     def test_no_input_raises(self):
         with pytest.raises(ValidationError, match='input'):
             AIParams.model_validate(
@@ -102,7 +91,7 @@ class TestAIParams:
     def test_request_options_string_to_dict(self):
         params = AIParams.model_validate(
             {
-                'input_column': 'text',
+                'input_columns': ['text'],
                 'output_column': 'result',
                 'request_options': '{"temperature": 0.3}',
             },
@@ -112,7 +101,7 @@ class TestAIParams:
     def test_request_options_dict_passthrough(self):
         params = AIParams.model_validate(
             {
-                'input_column': 'text',
+                'input_columns': ['text'],
                 'output_column': 'result',
                 'request_options': {'temperature': 0.3},
             },
@@ -122,7 +111,7 @@ class TestAIParams:
     def test_request_options_none(self):
         params = AIParams.model_validate(
             {
-                'input_column': 'text',
+                'input_columns': ['text'],
                 'output_column': 'result',
                 'request_options': None,
             },
@@ -132,7 +121,7 @@ class TestAIParams:
     def test_request_options_empty_string(self):
         params = AIParams.model_validate(
             {
-                'input_column': 'text',
+                'input_columns': ['text'],
                 'output_column': 'result',
                 'request_options': '',
             },
@@ -144,7 +133,7 @@ class TestAIParams:
             AIParams.model_validate(
                 {
                     'provider': 'invalid',
-                    'input_column': 'text',
+                    'input_columns': ['text'],
                     'output_column': 'result',
                 },
             )
@@ -153,7 +142,7 @@ class TestAIParams:
         with pytest.raises(ValidationError):
             AIParams.model_validate(
                 {
-                    'input_column': 'text',
+                    'input_columns': ['text'],
                     'output_column': 'result',
                     'unknown_field': 'value',
                 },
@@ -400,7 +389,7 @@ class TestAIHandler:
                 {
                     'provider': 'ollama',
                     'model': 'llama2',
-                    'input_column': 'text',
+                    'input_columns': ['text'],
                     'output_column': 'result',
                     'prompt_template': 'Classify: {{text}}',
                     'batch_size': 10,
@@ -423,7 +412,7 @@ class TestAIHandler:
                 {
                     'provider': 'ollama',
                     'model': 'llama2',
-                    'input_column': 'text',
+                    'input_columns': ['text'],
                     'output_column': 'result',
                     'prompt_template': '{{text}}',
                     'batch_size': 10,
@@ -440,7 +429,7 @@ class TestAIHandler:
         result = handler(
             df.lazy(),
             {
-                'input_column': 'text',
+                'input_columns': ['text'],
                 'output_column': 'result',
                 'prompt_template': '{{text}}',
                 'batch_size': 5,
@@ -458,7 +447,7 @@ class TestAIHandler:
             handler(
                 df.lazy(),
                 {
-                    'input_column': 'text',
+                    'input_columns': ['text'],
                     'output_column': 'result',
                     'prompt_template': '{{text}}',
                     'batch_size': 5,
@@ -473,7 +462,7 @@ class TestAIHandler:
             handler(
                 df.lazy(),
                 {
-                    'input_column': 'text',
+                    'input_columns': ['text'],
                     'output_column': 'result',
                     'prompt_template': '{{text}}',
                     'batch_size': 0,
@@ -497,7 +486,7 @@ class TestAIHandler:
             result = handler(
                 df.lazy(),
                 {
-                    'input_column': 'text',
+                    'input_columns': ['text'],
                     'output_column': 'result',
                     'prompt_template': '{{text}}',
                     'batch_size': 2,
@@ -525,7 +514,7 @@ class TestAIHandler:
             result = handler(
                 df.lazy(),
                 {
-                    'input_column': 'text',
+                    'input_columns': ['text'],
                     'output_column': 'result',
                     'prompt_template': '{{text}}',
                     'batch_size': 2,
@@ -546,7 +535,7 @@ class TestAIHandler:
             result = handler(
                 df.lazy(),
                 {
-                    'input_column': 'text',
+                    'input_columns': ['text'],
                     'output_column': 'result',
                     'prompt_template': 'Analyze: {{text}} now',
                     'batch_size': 10,
@@ -567,7 +556,7 @@ class TestAIHandler:
             result = handler(
                 df.lazy(),
                 {
-                    'input_column': 'text',
+                    'input_columns': ['text'],
                     'output_column': 'result',
                     'prompt_template': '{{text}}',
                     'batch_size': 10,
@@ -663,18 +652,8 @@ class TestConvertAIConfig:
         result = convert_ai_config(config)
         assert result['input_columns'] == ['title', 'body']
 
-    def test_legacy_input_column_is_ignored_when_input_columns_present(self):
+    def test_input_columns_preserved_when_present(self):
         config = {
-            'input_column': 'extra',
-            'input_columns': ['title', 'body'],
-            'output_column': 'result',
-        }
-        result = convert_ai_config(config)
-        assert result['input_columns'] == ['title', 'body']
-
-    def test_legacy_no_duplicate(self):
-        config = {
-            'input_column': 'title',
             'input_columns': ['title', 'body'],
             'output_column': 'result',
         }
@@ -683,7 +662,7 @@ class TestConvertAIConfig:
 
     def test_empty_request_options(self):
         config = {
-            'input_column': 'text',
+            'input_columns': ['text'],
             'output_column': 'result',
             'request_options': '',
         }
@@ -698,7 +677,7 @@ class TestConvertAIConfig:
         assert result['batch_size'] == 10
 
     def test_none_request_options(self):
-        config = {'input_column': 'text', 'request_options': None}
+        config = {'input_columns': ['text'], 'request_options': None}
         result = convert_ai_config(config)
         assert result['request_options'] is None
 

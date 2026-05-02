@@ -193,6 +193,8 @@ def client(test_db_session, test_user):
 
     if hasattr(app.state, 'mcp_registry'):
         del app.state.mcp_registry
+
+    app.state.manager = ProcessManager()
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = lambda: test_user
     with TestClient(app) as ac:
@@ -202,6 +204,7 @@ def client(test_db_session, test_user):
         finally:
             runtime_stop.set()
             runtime_thread.join(timeout=10)
+            app.state.manager.shutdown_all()
     app.dependency_overrides.clear()
 
 

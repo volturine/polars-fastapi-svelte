@@ -12,18 +12,12 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-from modules.compute.engine_live import create_snapshot_notifier
-from modules.compute.manager import ProcessManager
 from modules.udf.seed import ensure_udf_seeds
 from sqlmodel import Session, text
 
 from contracts.runtime import ipc as runtime_ipc
 from contracts.runtime_workers.models import RuntimeWorkerKind
-from core import (
-    build_runs_service as build_run_service,
-    engine_instances_service as engine_instance_service,
-    runtime_workers_service as runtime_worker_service,
-)
+from core import build_runs_service as build_run_service, runtime_workers_service as runtime_worker_service
 from core.config import settings
 from core.database import get_settings_db, init_db, run_db, run_settings_db, supports_distributed_runtime
 from core.error_handlers import app_error_handler, generic_error_handler, validation_error_handler
@@ -35,20 +29,6 @@ from core.namespaces_service import register_namespace
 
 ROOT = Path(__file__).resolve().parents[2]
 logger = logging.getLogger(__name__)
-
-
-def _persist_engine_snapshot(worker_id: str, namespace: str, statuses) -> None:
-    from core.database import run_settings_db
-
-    def _write(session: Session) -> None:
-        engine_instance_service.persist_engine_snapshot(
-            session,
-            worker_id=worker_id,
-            namespace=namespace,
-            statuses=list(statuses),
-        )
-
-    run_settings_db(_write)
 
 
 def _register_api_worker(worker_id: str) -> None:
@@ -142,26 +122,6 @@ async def chat_sweep_loop(stop_event: asyncio.Event) -> None:
             logger.error('Chat sweep error: %s', e, exc_info=True)
 
 
-async def engine_cleanup_loop(stop_event: asyncio.Event, manager: ProcessManager) -> None:
-    """Periodically check and clean up idle engines."""
-    idle_timeout = settings.engine_idle_timeout
-    while not stop_event.is_set():
-        timeout = max(1.0, manager.next_idle_deadline_seconds(idle_timeout))
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(stop_event.wait(), timeout=timeout)
-        if stop_event.is_set():
-            break
-        try:
-            cleaned = manager.cleanup_idle_engines()
-            if cleaned:
-                for analysis_id in cleaned:
-                    logger.info(f'Cleaned up idle engine {analysis_id}')
-            else:
-                logger.debug('No idle engines to clean up')
-        except Exception as e:
-            logger.error(f'Error in engine cleanup: {e}', exc_info=True)
-
-
 async def api_worker_heartbeat_loop(stop_event: asyncio.Event, worker_id: str, *, heartbeat_seconds: float = 5.0) -> None:
     while not stop_event.is_set():
         with contextlib.suppress(TimeoutError):
@@ -177,12 +137,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info('Starting application...')
     api_worker_id = f'api:{os.getpid()}'
     app.state.api_worker_id = api_worker_id
-    app.state.manager = ProcessManager(
-        on_snapshot=create_snapshot_notifier(
-            asyncio.get_running_loop(),
-            persist=lambda namespace, statuses: _persist_engine_snapshot(api_worker_id, namespace, statuses),
-        )
-    )
     await init_db()
     await asyncio.to_thread(_register_api_worker, api_worker_id)
     await asyncio.to_thread(run_db, ensure_udf_seeds)
@@ -191,7 +145,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     stop_event = asyncio.Event()
     ipc_server = await runtime_ipc.start_api_server(listener='api')
 
-    cleanup_task = asyncio.create_task(engine_cleanup_loop(stop_event, app.state.manager))
     chat_sweep_task = asyncio.create_task(chat_sweep_loop(stop_event))
     api_heartbeat_task = asyncio.create_task(api_worker_heartbeat_loop(stop_event, api_worker_id))
     ipc_task = None
@@ -227,8 +180,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     stop_event.set()
     with contextlib.suppress(asyncio.TimeoutError):
-        await asyncio.wait_for(cleanup_task, timeout=5)
-    with contextlib.suppress(asyncio.TimeoutError):
         await asyncio.wait_for(chat_sweep_task, timeout=5)
     with contextlib.suppress(asyncio.TimeoutError):
         await asyncio.wait_for(api_heartbeat_task, timeout=5)
@@ -239,9 +190,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await close_clients()
     await asyncio.to_thread(_stop_api_worker, api_worker_id)
 
-    # Cleanup compute processes on shutdown
-    logger.info('Shutting down compute processes...')
-    app.state.manager.shutdown_all()
     logger.info('Application shutdown complete')
 
 
@@ -310,9 +258,9 @@ async def health() -> dict[str, str]:
 
 
 @app.get('/health/ready')
-async def readiness(request: Request, session: Session = Depends(get_settings_db)) -> JSONResponse:
+async def readiness(session: Session = Depends(get_settings_db)) -> JSONResponse:
     """Readiness check - verifies app can handle requests.
-    Checks database connectivity, engine manager, and filesystem.
+    Checks database connectivity and filesystem.
     """
     checks = {}
     is_ready = True
@@ -323,16 +271,6 @@ async def readiness(request: Request, session: Session = Depends(get_settings_db
         checks['database'] = 'ok'
     except Exception as e:
         checks['database'] = f'error: {e!s}'
-        is_ready = False
-
-    # Check engine manager
-    try:
-        manager = request.app.state.manager
-        engine_count = len(manager.list_engines())
-        checks['engine_manager'] = 'ok'
-        checks['active_engines'] = str(engine_count)
-    except Exception as e:
-        checks['engine_manager'] = f'error: {e!s}'
         is_ready = False
 
     # Check filesystem (data directories)

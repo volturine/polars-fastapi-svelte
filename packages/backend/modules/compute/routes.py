@@ -87,18 +87,14 @@ async def _wait_for_websocket_disconnect(websocket: WebSocket) -> None:
             return
 
 
-def _has_manager_override(container) -> bool:
+def _override_manager(container) -> ProcessManager | None:
     overrides = getattr(container.app, 'dependency_overrides', None)
     if not isinstance(overrides, dict):
-        return False
-    return get_manager in overrides
-
-
-def _get_websocket_manager(websocket: WebSocket) -> ProcessManager:
-    override = websocket.app.dependency_overrides.get(get_manager)
-    if override is not None:
-        return override()
-    return websocket.app.state.manager
+        return None
+    override = overrides.get(get_manager)
+    if override is None:
+        return None
+    return override()
 
 
 def _resolve_websocket_session_token(websocket: WebSocket) -> str | None:
@@ -316,8 +312,7 @@ def _get_latest_build_namespace_update(namespace: str) -> str | None:
     return str(latest)
 
 
-async def _send_engine_snapshot(websocket: WebSocket, manager: ProcessManager) -> None:
-    del manager
+async def _send_engine_snapshot(websocket: WebSocket) -> None:
     session_gen = get_settings_db()
     session = next(session_gen)
     try:
@@ -552,7 +547,6 @@ async def preview_step(
     request: schemas.StepPreviewRequest,
     http_request: Request,
     session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
 ):
     """Preview the result of a pipeline step with pagination.
 
@@ -562,7 +556,8 @@ async def preview_step(
     """
     analysis_id = request.analysis_id if request.analysis_id is not None else request.analysis_pipeline.analysis_id
     normalized = request.model_copy(update={'analysis_id': analysis_id})
-    if _has_manager_override(http_request):
+    manager = _override_manager(http_request)
+    if manager is not None:
         return service.preview_step(
             session=session,
             manager=manager,
@@ -584,7 +579,6 @@ async def get_step_schema(
     request: schemas.StepSchemaRequest,
     http_request: Request,
     session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
 ):
     """Get the output column schema of a pipeline step without fetching data.
 
@@ -593,7 +587,8 @@ async def get_step_schema(
     """
     analysis_id = request.analysis_id if request.analysis_id is not None else request.analysis_pipeline.analysis_id
     normalized = request.model_copy(update={'analysis_id': analysis_id})
-    if _has_manager_override(http_request):
+    manager = _override_manager(http_request)
+    if manager is not None:
         return service.get_step_schema(
             session=session,
             manager=manager,
@@ -611,12 +606,12 @@ async def get_step_row_count(
     request: schemas.StepRowCountRequest,
     http_request: Request,
     session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
 ):
     """Get the row count of a pipeline step result without fetching data. Faster than a full preview."""
     analysis_id = request.analysis_id if request.analysis_id is not None else request.analysis_pipeline.analysis_id
     normalized = request.model_copy(update={'analysis_id': analysis_id})
-    if _has_manager_override(http_request):
+    manager = _override_manager(http_request)
+    if manager is not None:
         return service.get_step_row_count(
             session=session,
             manager=manager,
@@ -856,7 +851,6 @@ async def spawn_engine(
     http_request: Request,
     request: schemas.SpawnEngineRequest | None = None,
     session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
 ):
     """Spawn a compute engine for an analysis (called when analysis page opens).
 
@@ -864,7 +858,8 @@ async def spawn_engine(
     """
     resource_config = request.resource_config.model_dump() if request and request.resource_config else None
     analysis_id_value = parse_analysis_id(analysis_id)
-    if _has_manager_override(http_request):
+    manager = _override_manager(http_request)
+    if manager is not None:
         manager.spawn_engine(analysis_id_value, resource_config=resource_config)
         return manager.get_engine_status(analysis_id_value)
     return await executor_client.spawn_engine(session, analysis_id=analysis_id_value, resource_config=resource_config)
@@ -876,11 +871,11 @@ async def keepalive(
     analysis_id: AnalysisId,
     http_request: Request,
     session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
 ):
     """Send keepalive ping for an analysis engine."""
     analysis_id_value = parse_analysis_id(analysis_id)
-    if _has_manager_override(http_request):
+    manager = _override_manager(http_request)
+    if manager is not None:
         info = manager.keepalive(analysis_id_value)
         if not info:
             raise EngineNotFoundError(analysis_id_value)
@@ -895,7 +890,6 @@ async def configure_engine(
     request: schemas.EngineResourceConfig,
     http_request: Request,
     session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
 ):
     """Update engine resource configuration (restarts the engine).
 
@@ -904,7 +898,8 @@ async def configure_engine(
     """
     resource_config = request.model_dump()
     analysis_id_value = parse_analysis_id(analysis_id)
-    if _has_manager_override(http_request):
+    manager = _override_manager(http_request)
+    if manager is not None:
         manager.restart_engine_with_config(analysis_id_value, resource_config)
         return manager.get_engine_status(analysis_id_value)
     return await executor_client.configure_engine(session, analysis_id=analysis_id_value, resource_config=resource_config)
@@ -916,11 +911,11 @@ async def shutdown_engine(
     analysis_id: AnalysisId,
     http_request: Request,
     session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
 ):
     """Shutdown an analysis engine."""
     analysis_id_value = parse_analysis_id(analysis_id)
-    if _has_manager_override(http_request):
+    manager = _override_manager(http_request)
+    if manager is not None:
         engine = manager.get_engine(analysis_id_value)
         if not engine:
             raise EngineNotFoundError(analysis_id_value)
@@ -935,17 +930,16 @@ async def shutdown_engine(
 async def engine_list_stream(websocket: WebSocket) -> None:
     token = set_namespace_context(websocket.headers.get('X-Namespace') or websocket.query_params.get('namespace'))
     namespace = get_namespace()
-    manager = _get_websocket_manager(websocket)
     await websocket.accept()
     try:
         await engine_registry.add_watcher(namespace, websocket)
         last_seen = await engine_registry.current_version(namespace)
-        await _send_engine_snapshot(websocket, manager)
+        await _send_engine_snapshot(websocket)
         while True:
             updated = await _wait_for_engine_notification(websocket, namespace, last_seen)
             if updated is None:
                 return
-            await _send_engine_snapshot(websocket, manager)
+            await _send_engine_snapshot(websocket)
             last_seen = updated
     except WebSocketDisconnect:
         return
@@ -1112,7 +1106,6 @@ async def export_data(
     request: schemas.ExportRequest,
     http_request: Request,
     session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
 ):
     """Export pipeline results to a file download or output datasource.
 
@@ -1128,7 +1121,8 @@ async def export_data(
             format=request.format,
             filename=request.filename,
         )
-        if _has_manager_override(http_request):
+        manager = _override_manager(http_request)
+        if manager is not None:
             file_bytes, filename, content_type = service.download_step(
                 session=session,
                 manager=manager,
@@ -1148,7 +1142,8 @@ async def export_data(
             headers={'Content-Disposition': f'attachment; filename="{safe_name}"'},
         )
 
-    if _has_manager_override(http_request):
+    manager = _override_manager(http_request)
+    if manager is not None:
         result = service.export_data(
             session=session,
             manager=manager,
@@ -1179,14 +1174,14 @@ async def download_step(
     request: schemas.DownloadRequest,
     http_request: Request,
     session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
 ):
     """Download pipeline step result as a file.
 
     Returns the file bytes with appropriate Content-Type header.
     Supported formats: csv, parquet, json, ndjson, duckdb, excel.
     """
-    if _has_manager_override(http_request):
+    manager = _override_manager(http_request)
+    if manager is not None:
         file_bytes, filename, content_type = service.download_step(
             session=session,
             manager=manager,

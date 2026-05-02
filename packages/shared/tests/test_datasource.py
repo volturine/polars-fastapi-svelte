@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import polars as pl
 from main import app
@@ -250,6 +250,34 @@ class TestDataSourceConnect:
         body = response.json()
         assert body['source_type'] == 'iceberg'
         assert body['config']['source']['source_type'] == 'file'
+
+
+class TestDatasourceRefreshRoute:
+    @patch('modules.datasource.routes.refresh_remote_datasource', new_callable=AsyncMock)
+    def test_refresh_route_delegates_to_worker_manager(self, mock_refresh, client):
+        datasource_id = str(uuid.uuid4())
+        created_at = datetime.now(UTC).isoformat()
+        mock_refresh.return_value = {
+            'id': datasource_id,
+            'name': 'Refreshed datasource',
+            'description': None,
+            'source_type': 'iceberg',
+            'config': {'branch': 'master', 'metadata_path': '/tmp/master'},
+            'schema_cache': None,
+            'created_by_analysis_id': None,
+            'created_by': 'import',
+            'is_hidden': False,
+            'created_at': created_at,
+            'output_of_tab_id': None,
+        }
+
+        response = client.post(f'/api/v1/datasource/{datasource_id}/refresh')
+
+        assert response.status_code == 200
+        mock_refresh.assert_awaited_once()
+        assert mock_refresh.await_args.kwargs['datasource_id'] == datasource_id
+        assert response.json()['id'] == datasource_id
+        assert response.json()['name'] == 'Refreshed datasource'
 
 
 class TestDataSourceList:

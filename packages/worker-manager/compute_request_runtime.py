@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import compute_service as service
+import datasource_service
 from compute_manager import ProcessManager
 from fastapi import HTTPException
 from sqlmodel import Session
@@ -222,6 +223,14 @@ async def _execute_request(claimed: ClaimedComputeRequest, manager: ProcessManag
                 session,
                 claimed.id,
                 response_json=export_response.model_dump(mode='json'),
+            )
+        elif claimed.kind == ComputeRequestKind.REFRESH_DATASOURCE:
+            datasource_id = str(claimed.request_json['datasource_id'])
+            datasource_response = datasource_service.refresh_external_datasource(session, datasource_id)
+            compute_requests_service.mark_request_completed(
+                session,
+                claimed.id,
+                response_json=datasource_response.model_dump(mode='json'),
             )
         elif claimed.kind == ComputeRequestKind.SPAWN_ENGINE:
             analysis_id = str(claimed.request_json['analysis_id'])

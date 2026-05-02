@@ -798,8 +798,8 @@ class TestIsHidden:
 
 
 class TestDatasourceRefresh:
-    @patch('modules.datasource.service.load_datasource')
-    @patch('modules.datasource.service._write_iceberg_table')
+    @patch('datasource_service.load_datasource')
+    @patch('datasource_service._write_iceberg_table')
     def test_refresh_external_datasource_updates_snapshot_fields(
         self,
         mock_write,
@@ -807,7 +807,7 @@ class TestDatasourceRefresh:
         test_db_session,
         sample_csv_file: Path,
     ):
-        from modules.datasource.service import refresh_external_datasource
+        from datasource_service import refresh_external_datasource
 
         class _Snap:
             snapshot_id = 222

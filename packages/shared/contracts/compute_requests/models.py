@@ -15,6 +15,7 @@ class ComputeRequestKind(StrEnum):
     ROW_COUNT = 'row_count'
     DOWNLOAD = 'download'
     EXPORT = 'export'
+    REFRESH_DATASOURCE = 'refresh_datasource'
     SPAWN_ENGINE = 'spawn_engine'
     KEEPALIVE_ENGINE = 'keepalive_engine'
     CONFIGURE_ENGINE = 'configure_engine'

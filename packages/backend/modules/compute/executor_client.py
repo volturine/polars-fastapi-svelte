@@ -13,6 +13,7 @@ from contracts.runtime import ipc as runtime_ipc
 from core import compute_requests_service
 from core.exceptions import JobTimeoutError, PipelineExecutionError
 from core.namespace import get_namespace
+from modules.datasource import schemas as datasource_schemas
 
 
 async def _submit_and_wait(
@@ -101,6 +102,16 @@ async def export_data(session: Session, request: compute_schemas.ExportRequest) 
         timeout=180,
     )
     return compute_schemas.ExportResponse.model_validate(completed.response_json)
+
+
+async def refresh_datasource(session: Session, *, datasource_id: str) -> datasource_schemas.DataSourceResponse:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.REFRESH_DATASOURCE,
+        request_json={'datasource_id': datasource_id},
+        timeout=180,
+    )
+    return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
 
 
 async def spawn_engine(

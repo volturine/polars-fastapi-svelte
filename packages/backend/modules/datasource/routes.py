@@ -19,7 +19,7 @@ from core.exceptions import AppError
 from core.namespace import namespace_paths
 from core.validation import DataSourceId, PreflightId, parse_datasource_id, parse_preflight_id
 from modules.auth.dependencies import get_optional_user
-from modules.compute.executor_client import shutdown_engine as shutdown_remote_engine
+from modules.compute.executor_client import refresh_datasource as refresh_remote_datasource, shutdown_engine as shutdown_remote_engine
 from modules.datasource import schemas, service
 from modules.datasource.preflight import clear_preflight, create_preflight, get_preflight
 from modules.datasource.source_types import DataSourceType
@@ -766,12 +766,12 @@ def update_datasource(
 
 @router.post('/{datasource_id}/refresh', response_model=schemas.DataSourceResponse, mcp=True)
 @handle_errors(operation='refresh datasource')
-def refresh_datasource(
+async def refresh_datasource(
     datasource_id: DataSourceId,
     session: Session = Depends(get_db),
 ):
     """Refresh an external datasource (re-read schema from source). Useful after upstream data changes."""
-    return service.refresh_external_datasource(session, parse_datasource_id(datasource_id))
+    return await refresh_remote_datasource(session, datasource_id=parse_datasource_id(datasource_id))
 
 
 @router.delete('/{datasource_id}', status_code=204, mcp=True)

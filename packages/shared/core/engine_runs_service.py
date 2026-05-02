@@ -10,6 +10,7 @@ from sqlalchemy import desc, select
 from sqlmodel import Session
 
 from contracts.analysis.step_types import get_step_type_label
+from contracts.compute import schemas as compute_schemas
 from contracts.engine_runs.models import EngineRun
 from contracts.engine_runs.schemas import (
     BuildComparisonResponse,
@@ -174,6 +175,82 @@ def build_execution_entries(
 
 def _copy_result_json(value: dict[str, Any] | None) -> dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
+
+
+def _latest_completed_step_name(result_json: dict[str, Any]) -> str | None:
+    raw_steps = result_json.get('steps')
+    if not isinstance(raw_steps, list):
+        return None
+    completed_steps = [step for step in raw_steps if isinstance(step, dict) and step.get('state') == 'completed']
+    if not completed_steps:
+        return None
+
+    def step_sort_key(step: dict[str, Any]) -> int:
+        index = step.get('build_step_index')
+        return index if isinstance(index, int) else -1
+
+    completed_steps.sort(key=step_sort_key)
+    latest = completed_steps[-1]
+    step_name = latest.get('step_name')
+    return step_name if isinstance(step_name, str) else None
+
+
+def cancel_engine_run(session: Session, run_id: str, *, cancelled_by: str | None) -> compute_schemas.CancelBuildResponse:
+    run = session.get(EngineRun, run_id)
+    if run is None:
+        raise ValueError('Engine run not found')
+    session.refresh(run)
+    if run.status != EngineRunStatus.RUNNING:
+        raise ValueError('Only running builds can be cancelled')
+
+    now = datetime.now(UTC)
+    reason = f'Cancelled by {cancelled_by}' if cancelled_by else 'Cancelled'
+    existing = _copy_result_json(run.result_json)
+    existing.pop('data', None)
+    existing.pop('schema', None)
+    existing['results'] = []
+    existing['cancelled_at'] = now.isoformat()
+    existing['cancelled_by'] = cancelled_by
+    last_completed_step = _latest_completed_step_name(existing)
+    if last_completed_step is not None:
+        existing['last_completed_step'] = last_completed_step
+    existing_logs = existing.get('logs')
+    logs = [entry for entry in existing_logs if isinstance(entry, dict)] if isinstance(existing_logs, list) else []
+    logs.append(
+        {
+            'timestamp': now.isoformat(),
+            'level': 'warning',
+            'message': reason,
+            'step_name': None,
+            'step_id': None,
+            'tab_id': None,
+            'tab_name': None,
+        }
+    )
+    existing['logs'] = logs
+
+    created_at = run.created_at if run.created_at.tzinfo is not None else run.created_at.replace(tzinfo=UTC)
+    duration_ms = max(int((now - created_at).total_seconds() * 1000), 0)
+    update_engine_run(
+        session,
+        run_id,
+        status=EngineRunStatus.CANCELLED,
+        result_json=existing,
+        merge_result_json=False,
+        error_message=reason,
+        completed_at=now,
+        duration_ms=duration_ms,
+        progress=run.progress,
+        current_step=run.current_step,
+    )
+
+    return compute_schemas.CancelBuildResponse(
+        id=run_id,
+        status='cancelled',
+        duration_ms=duration_ms,
+        cancelled_at=now,
+        cancelled_by=cancelled_by,
+    )
 
 
 def _serialize_run(run: EngineRun) -> EngineRunResponseSchema:

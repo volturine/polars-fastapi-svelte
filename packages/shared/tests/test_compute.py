@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import polars as pl
 import pytest
+from build_execution import _run_queued_build_job
 from main import app
 from modules.compute import service as compute_service
 from modules.compute.engine import PolarsComputeEngine
@@ -19,7 +20,6 @@ from modules.compute.manager import ProcessManager
 from modules.compute.operations.datasource import _analysis_stack_var
 from modules.compute.routes import (
     _emit_active_build_event,
-    _run_queued_build_job,
     _safe_close_websocket,
     _safe_send_json,
     _wait_for_build_notification,
@@ -1891,7 +1891,7 @@ def test_build_stream_websocket_emits_snapshot_and_terminal_event(
         }
 
     with (
-        patch('modules.compute.routes.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
+        patch('build_execution.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
         patch('modules.compute.routes._build_analysis_name', return_value='Stream Analysis'),
         client.websocket_connect('/api/v1/compute/ws/builds?namespace=default') as _list_ws,
     ):
@@ -1966,7 +1966,7 @@ def test_start_active_build_persists_durable_build_run(client, sample_datasource
         return {'analysis_id': build.analysis_id, 'tabs_built': 0, 'results': []}
 
     with (
-        patch('modules.compute.routes.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
+        patch('build_execution.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
         patch('modules.compute.routes._build_analysis_name', return_value='Durable Start Analysis'),
     ):
         response = client.post('/api/v1/compute/builds/active', json=payload)
@@ -2049,7 +2049,7 @@ def test_terminal_active_build_event_persists_to_db(client, sample_datasource: D
         return {'analysis_id': build.analysis_id, 'tabs_built': 1, 'results': []}
 
     with (
-        patch('modules.compute.routes.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
+        patch('build_execution.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
         patch('modules.compute.routes._build_analysis_name', return_value='Durable Complete Analysis'),
     ):
         response = client.post('/api/v1/compute/builds/active', json=payload)
@@ -2112,7 +2112,7 @@ def test_start_active_build_notifies_active_build_list_watchers(client, sample_d
         return {'analysis_id': 'analysis-list-watch', 'tabs_built': 1, 'results': []}
 
     with (
-        patch('modules.compute.routes.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
+        patch('build_execution.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
         patch('modules.compute.routes._build_analysis_name', return_value='List Watch Analysis'),
         client.websocket_connect('/api/v1/compute/ws/builds?namespace=default') as websocket,
     ):
@@ -2358,7 +2358,7 @@ def test_build_hub_publishes_notification_on_emitted_build_event(client, sample_
         return {'analysis_id': build.analysis_id, 'tabs_built': 0, 'results': []}
 
     with (
-        patch('modules.compute.routes.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
+        patch('build_execution.service.run_analysis_build_stream', side_effect=fake_run_analysis_build_stream),
         patch('modules.compute.routes._build_analysis_name', return_value='Notify Analysis'),
         patch('modules.compute.routes.build_hub.publish', wraps=build_hub.publish) as publish,
     ):

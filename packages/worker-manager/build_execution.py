@@ -7,25 +7,12 @@ import compute_service as service
 from compute_live import ActiveBuild, ActiveBuildContext, registry as build_registry
 from compute_manager import ProcessManager
 
-from contracts.build_runs.live import BuildNotification, hub as build_hub
 from contracts.compute import schemas
-from contracts.runtime import ipc as runtime_ipc
-from core import build_runs_service as build_run_service
+from core import build_event_service, build_runs_service as build_run_service
 from core.database import get_db
 from core.namespace import get_namespace, reset_namespace, set_namespace_context
 
 logger = logging.getLogger(__name__)
-
-
-async def _publish_build_notification(namespace: str, build_id: str, latest_sequence: int) -> None:
-    await build_hub.publish(
-        BuildNotification(
-            namespace=namespace,
-            build_id=build_id,
-            latest_sequence=latest_sequence,
-        )
-    )
-    await asyncio.to_thread(runtime_ipc.notify_api_build, namespace, build_id, latest_sequence)
 
 
 async def _emit_active_build_event(
@@ -39,8 +26,9 @@ async def _emit_active_build_event(
     session_gen = get_db()
     session = next(session_gen)
     try:
-        event_row = build_run_service.append_build_event(
+        persisted = await build_event_service.persist_build_event(
             session,
+            namespace=namespace,
             build_id=build_id,
             event=payload,
             resource_config_json=(
@@ -51,14 +39,14 @@ async def _emit_active_build_event(
         session.close()
         session_gen.close()
         reset_namespace(token)
-    if event_row is None:
+    if persisted is None:
         return
-    normalized = build_run_service.serialize_event_row(event_row)
+    normalized, _latest_sequence = persisted
     context = await build_registry.apply_event(build_id, normalized)
     if context is not None:
         normalized.update(context.payload())
         await build_registry.publish(build_id, normalized)
-    await _publish_build_notification(namespace, build_id, latest_sequence=event_row.sequence)
+    del _latest_sequence
 
 
 def _build_pipeline_payload(request: schemas.BuildRequest) -> dict:
@@ -173,7 +161,7 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
         session_gen.close()
     if build is None or pipeline is None or starter is None or request_payload is None or namespace is None:
         return
-    await _publish_build_notification(namespace, build_id, latest_sequence=0)
+    await build_event_service.publish_build_notification(namespace, build_id, latest_sequence=0)
     current_kind = build.current_kind or ''
     if current_kind in {'raw', 'datasource_update'}:
         datasource_id = build.current_datasource_id

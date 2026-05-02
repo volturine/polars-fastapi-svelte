@@ -1,0 +1,10 @@
+[
+  {
+    "scope": "just-test-e2e",
+    "pattern": "Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set\\."
+  },
+  {
+    "scope": "just-test-e2e",
+    "pattern": "resource_tracker: There appear to be \\d+ leaked semaphore objects to clean up at shutdown"
+  }
+]

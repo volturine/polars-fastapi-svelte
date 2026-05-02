@@ -1,6 +1,22 @@
-import sys
+"""Top-K rows operation."""
 
-import runtime_compute.operations.topk as _impl
-from runtime_compute.operations.topk import *  # noqa: F403
+import polars as pl
 
-sys.modules[__name__] = _impl
+from contracts.compute.base import OperationHandler, OperationParams
+
+
+class TopKParams(OperationParams):
+    column: str
+    k: int = 10
+    descending: bool = False
+
+
+class TopKHandler(OperationHandler):
+    def __call__(
+        self,
+        lf: pl.LazyFrame,
+        params: dict,
+        **_,
+    ) -> pl.LazyFrame:
+        validated = TopKParams.model_validate(params)
+        return lf.sort(validated.column, descending=validated.descending).head(validated.k)

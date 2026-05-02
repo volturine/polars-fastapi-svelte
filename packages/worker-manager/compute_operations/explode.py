@@ -1,6 +1,23 @@
-import sys
+"""Explode list columns operation."""
 
-import runtime_compute.operations.explode as _impl
-from runtime_compute.operations.explode import *  # noqa: F403
+import polars as pl
 
-sys.modules[__name__] = _impl
+from contracts.compute.base import OperationHandler, OperationParams
+
+
+class ExplodeParams(OperationParams):
+    columns: list[str] | str
+
+
+class ExplodeHandler(OperationHandler):
+    def __call__(
+        self,
+        lf: pl.LazyFrame,
+        params: dict,
+        **_,
+    ) -> pl.LazyFrame:
+        validated = ExplodeParams.model_validate(params)
+        columns = [validated.columns] if isinstance(validated.columns, str) else validated.columns
+        if not columns:
+            raise ValueError('Explode requires at least one column')
+        return lf.explode(columns)

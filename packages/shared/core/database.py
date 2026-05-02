@@ -216,6 +216,7 @@ def _tenant_tables():
     from contracts.analysis_versions.models import AnalysisVersion
     from contracts.build_jobs.models import BuildJob
     from contracts.build_runs.models import BuildEvent, BuildRun
+    from contracts.compute_requests.models import ComputeRequest
     from contracts.datasource.models import DataSource, DataSourceColumnMetadata
     from contracts.engine_runs.models import EngineRun
     from contracts.healthcheck_models import HealthCheck, HealthCheckResult
@@ -231,6 +232,7 @@ def _tenant_tables():
         BuildEvent.__tablename__,
         BuildJob.__tablename__,
         BuildRun.__tablename__,
+        ComputeRequest.__tablename__,
         DataSource.__tablename__,
         DataSourceColumnMetadata.__tablename__,
         EngineRun.__tablename__,

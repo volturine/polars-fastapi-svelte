@@ -143,6 +143,18 @@ async def handle_api_payload(payload: dict[str, object]) -> None:
         if isinstance(namespace, str):
             await engine_registry.publish_snapshot(namespace, [])
         return
+    if kind == 'compute_request':
+        from contracts.compute_requests.live import request_hub
+
+        request_hub.publish()
+        return
+    if kind == 'compute_response':
+        from contracts.compute_requests.live import response_hub
+
+        request_id = payload.get('request_id')
+        if isinstance(request_id, str):
+            response_hub.publish(request_id)
+        return
     if kind == 'job':
         from contracts.build_jobs.live import hub as build_job_hub
 
@@ -173,6 +185,14 @@ def notify_api_engine(namespace: str) -> None:
 
 def notify_build_job() -> None:
     _send_api_message({'kind': 'job'}, listener='job')
+
+
+def notify_compute_request(request_id: str) -> None:
+    _send_api_message({'kind': 'compute_request', 'request_id': request_id}, listener='job')
+
+
+def notify_compute_response(request_id: str) -> None:
+    _send_api_message({'kind': 'compute_response', 'request_id': request_id}, listener='api')
 
 
 def _send_api_message(payload: dict[str, object], *, listener: ListenerKind) -> None:

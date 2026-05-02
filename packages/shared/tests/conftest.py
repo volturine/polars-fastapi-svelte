@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
+import threading
 import uuid
 from collections.abc import Generator
 from datetime import UTC, datetime
@@ -119,21 +121,87 @@ def test_user() -> User:
 
 @pytest.fixture(scope='function')
 def client(test_db_session, test_user):
+    from compute_manager import ProcessManager
+    from compute_request_runtime import compute_request_loop
+    from engine_live import create_snapshot_notifier
     from main import app
     from modules.auth.dependencies import get_current_user
 
-    from core.database import get_db
+    from contracts.runtime import ipc as runtime_ipc
+    from core import engine_instances_service
+    from core.database import get_db, init_db, run_settings_db
 
     def override_get_db():
         with Session(test_db_session.bind) as session:
             yield session
+
+    def start_test_runtime() -> tuple[threading.Thread, threading.Event]:
+        stop_flag = threading.Event()
+        ready_flag = threading.Event()
+
+        def run() -> None:
+            async def _runner() -> None:
+                await init_db()
+                worker_id = f'test-runtime:{uuid.uuid4()}'
+                stop_event = asyncio.Event()
+                stop_task = asyncio.create_task(asyncio.to_thread(stop_flag.wait))
+                stop_task.add_done_callback(lambda _task: stop_event.set())
+
+                def persist(namespace: str, statuses: list[Any]) -> None:
+                    def _write(session) -> None:
+                        engine_instances_service.persist_engine_snapshot(
+                            session,
+                            worker_id=worker_id,
+                            namespace=namespace,
+                            statuses=list(statuses),
+                        )
+
+                    run_settings_db(_write)
+                    runtime_ipc.notify_api_engine(namespace)
+
+                manager = ProcessManager(on_snapshot=create_snapshot_notifier(asyncio.get_running_loop(), persist=persist))
+                ipc_server = await runtime_ipc.start_api_server(listener='job')
+                ipc_task = None
+                if ipc_server is not None:
+                    ipc_task = asyncio.create_task(
+                        runtime_ipc.serve_api_notifications(ipc_server, stop_event, runtime_ipc.handle_api_payload)
+                    )
+                request_task = asyncio.create_task(compute_request_loop(stop_event, worker_id=worker_id, manager=manager))
+                ready_flag.set()
+                try:
+                    await stop_event.wait()
+                finally:
+                    request_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await request_task
+                    if ipc_task is not None:
+                        with contextlib.suppress(asyncio.TimeoutError):
+                            await asyncio.wait_for(ipc_task, timeout=5)
+                    await runtime_ipc.stop_api_server(ipc_server, listener='job')
+                    manager.shutdown_all()
+                    stop_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await stop_task
+
+            asyncio.run(_runner())
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        if not ready_flag.wait(timeout=5):
+            raise RuntimeError('Timed out starting test compute runtime')
+        return thread, stop_flag
 
     if hasattr(app.state, 'mcp_registry'):
         del app.state.mcp_registry
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = lambda: test_user
     with TestClient(app) as ac:
-        yield ac
+        runtime_thread, runtime_stop = start_test_runtime()
+        try:
+            yield ac
+        finally:
+            runtime_stop.set()
+            runtime_thread.join(timeout=10)
     app.dependency_overrides.clear()
 
 
@@ -171,6 +239,17 @@ def clear_build_job_hub():
     asyncio.run(hub.clear())
     yield
     asyncio.run(hub.clear())
+
+
+@pytest.fixture(autouse=True, scope='function')
+def clear_compute_request_hubs():
+    from contracts.compute_requests.live import request_hub, response_hub
+
+    asyncio.run(request_hub.clear())
+    asyncio.run(response_hub.clear())
+    yield
+    asyncio.run(request_hub.clear())
+    asyncio.run(response_hub.clear())
 
 
 @pytest.fixture(autouse=True, scope='function')

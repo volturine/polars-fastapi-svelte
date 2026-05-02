@@ -24,7 +24,7 @@ from core.exceptions import EngineNotFoundError
 from core.namespace import get_namespace, reset_namespace, set_namespace_context
 from core.validation import AnalysisId, DataSourceId, EngineRunId, parse_analysis_id, parse_datasource_id, parse_engine_run_id
 from modules.auth.dependencies import get_current_user
-from modules.compute import service
+from modules.compute import executor_client, service
 from modules.compute.engine_live import load_engine_snapshot, registry as engine_registry
 from modules.compute.live import ActiveBuild, ActiveBuildContext, registry as build_registry
 from modules.compute.manager import ProcessManager
@@ -85,6 +85,13 @@ async def _wait_for_websocket_disconnect(websocket: WebSocket) -> None:
             raise
         if message.get('type') == 'websocket.disconnect':
             return
+
+
+def _has_manager_override(container) -> bool:
+    overrides = getattr(container.app, 'dependency_overrides', None)
+    if not isinstance(overrides, dict):
+        return False
+    return get_manager in overrides
 
 
 def _get_websocket_manager(websocket: WebSocket) -> ProcessManager:
@@ -541,8 +548,9 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
 
 @router.post('/preview', response_model=schemas.StepPreviewResponse, mcp=True)
 @handle_errors(operation='preview step')
-def preview_step(
+async def preview_step(
     request: schemas.StepPreviewRequest,
+    http_request: Request,
     session: Session = Depends(get_db),
     manager: ProcessManager = Depends(get_manager),
 ):
@@ -553,25 +561,28 @@ def preview_step(
     and total row count. Use row_limit and page for pagination.
     """
     analysis_id = request.analysis_id if request.analysis_id is not None else request.analysis_pipeline.analysis_id
-
-    return service.preview_step(
-        session=session,
-        manager=manager,
-        target_step_id=request.target_step_id,
-        analysis_pipeline=request.analysis_pipeline.model_dump(mode='json'),
-        row_limit=request.row_limit,
-        page=request.page,
-        analysis_id=analysis_id,
-        resource_config=request.resource_config.model_dump() if request.resource_config else None,
-        tab_id=request.tab_id,
-        request_json=request.model_dump(mode='json'),
-    )
+    normalized = request.model_copy(update={'analysis_id': analysis_id})
+    if _has_manager_override(http_request):
+        return service.preview_step(
+            session=session,
+            manager=manager,
+            target_step_id=normalized.target_step_id,
+            analysis_pipeline=normalized.analysis_pipeline.model_dump(mode='json'),
+            row_limit=normalized.row_limit,
+            page=normalized.page,
+            analysis_id=analysis_id,
+            resource_config=normalized.resource_config.model_dump() if normalized.resource_config else None,
+            tab_id=normalized.tab_id,
+            request_json=normalized.model_dump(mode='json'),
+        )
+    return await executor_client.preview_step(session, normalized)
 
 
 @router.post('/schema', response_model=schemas.StepSchemaResponse, mcp=True)
 @handle_errors(operation='get step schema')
-def get_step_schema(
+async def get_step_schema(
     request: schemas.StepSchemaRequest,
+    http_request: Request,
     session: Session = Depends(get_db),
     manager: ProcessManager = Depends(get_manager),
 ):
@@ -581,36 +592,41 @@ def get_step_schema(
     (e.g., pivot, unpivot, select). Returns column names and their Polars dtypes.
     """
     analysis_id = request.analysis_id if request.analysis_id is not None else request.analysis_pipeline.analysis_id
-
-    return service.get_step_schema(
-        session=session,
-        manager=manager,
-        target_step_id=request.target_step_id,
-        analysis_id=analysis_id,
-        analysis_pipeline=request.analysis_pipeline.model_dump(mode='json'),
-        tab_id=request.tab_id,
-    )
+    normalized = request.model_copy(update={'analysis_id': analysis_id})
+    if _has_manager_override(http_request):
+        return service.get_step_schema(
+            session=session,
+            manager=manager,
+            target_step_id=normalized.target_step_id,
+            analysis_id=analysis_id,
+            analysis_pipeline=normalized.analysis_pipeline.model_dump(mode='json'),
+            tab_id=normalized.tab_id,
+        )
+    return await executor_client.get_step_schema(session, normalized)
 
 
 @router.post('/row-count', response_model=schemas.StepRowCountResponse, mcp=True)
 @handle_errors(operation='get step row count')
-def get_step_row_count(
+async def get_step_row_count(
     request: schemas.StepRowCountRequest,
+    http_request: Request,
     session: Session = Depends(get_db),
     manager: ProcessManager = Depends(get_manager),
 ):
     """Get the row count of a pipeline step result without fetching data. Faster than a full preview."""
     analysis_id = request.analysis_id if request.analysis_id is not None else request.analysis_pipeline.analysis_id
-
-    return service.get_step_row_count(
-        session=session,
-        manager=manager,
-        target_step_id=request.target_step_id,
-        analysis_id=analysis_id,
-        analysis_pipeline=request.analysis_pipeline.model_dump(mode='json'),
-        tab_id=request.tab_id,
-        request_json=request.model_dump(mode='json'),
-    )
+    normalized = request.model_copy(update={'analysis_id': analysis_id})
+    if _has_manager_override(http_request):
+        return service.get_step_row_count(
+            session=session,
+            manager=manager,
+            target_step_id=normalized.target_step_id,
+            analysis_id=analysis_id,
+            analysis_pipeline=normalized.analysis_pipeline.model_dump(mode='json'),
+            tab_id=normalized.tab_id,
+            request_json=normalized.model_dump(mode='json'),
+        )
+    return await executor_client.get_step_row_count(session, normalized)
 
 
 @router.get('/iceberg/{datasource_id}/snapshots', response_model=schemas.IcebergSnapshotsResponse, mcp=True)
@@ -836,9 +852,11 @@ async def get_active_build_by_engine_run(
 
 @router.post('/engine/spawn/{analysis_id}', response_model=schemas.EngineStatusSchema, mcp=True)
 @handle_errors(operation='spawn engine')
-def spawn_engine(
+async def spawn_engine(
     analysis_id: AnalysisId,
+    http_request: Request,
     request: schemas.SpawnEngineRequest | None = None,
+    session: Session = Depends(get_db),
     manager: ProcessManager = Depends(get_manager),
 ):
     """Spawn a compute engine for an analysis (called when analysis page opens).
@@ -847,26 +865,37 @@ def spawn_engine(
     """
     resource_config = request.resource_config.model_dump() if request and request.resource_config else None
     analysis_id_value = parse_analysis_id(analysis_id)
-    manager.spawn_engine(analysis_id_value, resource_config=resource_config)
-    return manager.get_engine_status(analysis_id_value)
+    if _has_manager_override(http_request):
+        manager.spawn_engine(analysis_id_value, resource_config=resource_config)
+        return manager.get_engine_status(analysis_id_value)
+    return await executor_client.spawn_engine(session, analysis_id=analysis_id_value, resource_config=resource_config)
 
 
 @router.post('/engine/keepalive/{analysis_id}', response_model=schemas.EngineStatusSchema, mcp=True)
 @handle_errors(operation='keepalive engine')
-def keepalive(analysis_id: AnalysisId, manager: ProcessManager = Depends(get_manager)):
+async def keepalive(
+    analysis_id: AnalysisId,
+    http_request: Request,
+    session: Session = Depends(get_db),
+    manager: ProcessManager = Depends(get_manager),
+):
     """Send keepalive ping for an analysis engine."""
     analysis_id_value = parse_analysis_id(analysis_id)
-    info = manager.keepalive(analysis_id_value)
-    if not info:
-        raise EngineNotFoundError(analysis_id_value)
-    return manager.get_engine_status(analysis_id_value)
+    if _has_manager_override(http_request):
+        info = manager.keepalive(analysis_id_value)
+        if not info:
+            raise EngineNotFoundError(analysis_id_value)
+        return manager.get_engine_status(analysis_id_value)
+    return await executor_client.keepalive_engine(session, analysis_id=analysis_id_value)
 
 
 @router.post('/engine/configure/{analysis_id}', response_model=schemas.EngineStatusSchema, mcp=True)
 @handle_errors(operation='configure engine')
-def configure_engine(
+async def configure_engine(
     analysis_id: AnalysisId,
     request: schemas.EngineResourceConfig,
+    http_request: Request,
+    session: Session = Depends(get_db),
     manager: ProcessManager = Depends(get_manager),
 ):
     """Update engine resource configuration (restarts the engine).
@@ -876,21 +905,31 @@ def configure_engine(
     """
     resource_config = request.model_dump()
     analysis_id_value = parse_analysis_id(analysis_id)
-    manager.restart_engine_with_config(analysis_id_value, resource_config)
-    return manager.get_engine_status(analysis_id_value)
+    if _has_manager_override(http_request):
+        manager.restart_engine_with_config(analysis_id_value, resource_config)
+        return manager.get_engine_status(analysis_id_value)
+    return await executor_client.configure_engine(session, analysis_id=analysis_id_value, resource_config=resource_config)
 
 
 @router.delete('/engine/{analysis_id}', status_code=204, mcp=True)
 @handle_errors(operation='shutdown engine')
-def shutdown_engine(analysis_id: AnalysisId, manager: ProcessManager = Depends(get_manager)):
+async def shutdown_engine(
+    analysis_id: AnalysisId,
+    http_request: Request,
+    session: Session = Depends(get_db),
+    manager: ProcessManager = Depends(get_manager),
+):
     """Shutdown an analysis engine."""
     analysis_id_value = parse_analysis_id(analysis_id)
-    engine = manager.get_engine(analysis_id_value)
-    if not engine:
-        raise EngineNotFoundError(analysis_id_value)
-    if engine.current_job_id and engine.is_process_alive():
-        raise HTTPException(status_code=409, detail='Engine has an active job')
-    manager.shutdown_engine(analysis_id_value)
+    if _has_manager_override(http_request):
+        engine = manager.get_engine(analysis_id_value)
+        if not engine:
+            raise EngineNotFoundError(analysis_id_value)
+        if engine.current_job_id and engine.is_process_alive():
+            raise HTTPException(status_code=409, detail='Engine has an active job')
+        manager.shutdown_engine(analysis_id_value)
+        return
+    await executor_client.shutdown_engine(session, analysis_id=analysis_id_value)
 
 
 @router.websocket('/ws/engines')
@@ -1070,8 +1109,9 @@ def get_engine_defaults():
 
 @router.post('/export', mcp=True)
 @handle_errors(operation='export data')
-def export_data(
+async def export_data(
     request: schemas.ExportRequest,
+    http_request: Request,
     session: Session = Depends(get_db),
     manager: ProcessManager = Depends(get_manager),
 ):
@@ -1081,6 +1121,73 @@ def export_data(
     For destination='datasource': writes to an Iceberg output datasource (requires result_id and iceberg_options).
     """
     if request.destination == schemas.ExportDestination.DOWNLOAD:
+        download_request = schemas.DownloadRequest(
+            analysis_id=request.analysis_id,
+            target_step_id=request.target_step_id,
+            analysis_pipeline=request.analysis_pipeline,
+            tab_id=request.tab_id,
+            format=request.format,
+            filename=request.filename,
+        )
+        if _has_manager_override(http_request):
+            file_bytes, filename, content_type = service.download_step(
+                session=session,
+                manager=manager,
+                target_step_id=download_request.target_step_id,
+                analysis_pipeline=download_request.analysis_pipeline.model_dump(mode='json'),
+                export_format=download_request.format.value,
+                filename=download_request.filename,
+                analysis_id=download_request.analysis_id,
+                tab_id=download_request.tab_id,
+            )
+        else:
+            file_bytes, filename, content_type = await executor_client.download_step(session, download_request)
+        safe_name = quote(filename)
+        return Response(
+            content=file_bytes,
+            media_type=content_type,
+            headers={'Content-Disposition': f'attachment; filename="{safe_name}"'},
+        )
+
+    if _has_manager_override(http_request):
+        result = service.export_data(
+            session=session,
+            manager=manager,
+            target_step_id=request.target_step_id,
+            analysis_pipeline=request.analysis_pipeline.model_dump(mode='json'),
+            filename=request.filename,
+            iceberg_options=request.iceberg_options.model_dump() if request.iceberg_options else None,
+            analysis_id=request.analysis_id,
+            tab_id=request.tab_id,
+            request_json=request.model_dump(mode='json'),
+            result_id=request.result_id,
+        )
+        return schemas.ExportResponse(
+            success=True,
+            filename=result.datasource_name,
+            format='iceberg',
+            destination=request.destination.value,
+            message=f'Created datasource {result.datasource_name}',
+            datasource_id=result.datasource_id,
+            datasource_name=result.result_meta.get('datasource_name') if isinstance(result.result_meta, dict) else None,
+        )
+    return await executor_client.export_data(session, request)
+
+
+@router.post('/download', mcp=True)
+@handle_errors(operation='download step')
+async def download_step(
+    request: schemas.DownloadRequest,
+    http_request: Request,
+    session: Session = Depends(get_db),
+    manager: ProcessManager = Depends(get_manager),
+):
+    """Download pipeline step result as a file.
+
+    Returns the file bytes with appropriate Content-Type header.
+    Supported formats: csv, parquet, json, ndjson, duckdb, excel.
+    """
+    if _has_manager_override(http_request):
         file_bytes, filename, content_type = service.download_step(
             session=session,
             manager=manager,
@@ -1091,58 +1198,8 @@ def export_data(
             analysis_id=request.analysis_id,
             tab_id=request.tab_id,
         )
-        safe_name = quote(filename)
-        return Response(
-            content=file_bytes,
-            media_type=content_type,
-            headers={'Content-Disposition': f'attachment; filename="{safe_name}"'},
-        )
-
-    result = service.export_data(
-        session=session,
-        manager=manager,
-        target_step_id=request.target_step_id,
-        analysis_pipeline=request.analysis_pipeline.model_dump(mode='json'),
-        filename=request.filename,
-        iceberg_options=request.iceberg_options.model_dump() if request.iceberg_options else None,
-        analysis_id=request.analysis_id,
-        tab_id=request.tab_id,
-        request_json=request.model_dump(mode='json'),
-        result_id=request.result_id,
-    )
-    return schemas.ExportResponse(
-        success=True,
-        filename=result.datasource_name,
-        format='iceberg',
-        destination=request.destination.value,
-        message=f'Created datasource {result.datasource_name}',
-        datasource_id=result.datasource_id,
-        datasource_name=result.result_meta.get('datasource_name') if isinstance(result.result_meta, dict) else None,
-    )
-
-
-@router.post('/download', mcp=True)
-@handle_errors(operation='download step')
-def download_step(
-    request: schemas.DownloadRequest,
-    session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
-):
-    """Download pipeline step result as a file.
-
-    Returns the file bytes with appropriate Content-Type header.
-    Supported formats: csv, parquet, json, ndjson, duckdb, excel.
-    """
-    file_bytes, filename, content_type = service.download_step(
-        session=session,
-        manager=manager,
-        target_step_id=request.target_step_id,
-        analysis_pipeline=request.analysis_pipeline.model_dump(mode='json'),
-        export_format=request.format.value,
-        filename=request.filename,
-        analysis_id=request.analysis_id,
-        tab_id=request.tab_id,
-    )
+    else:
+        file_bytes, filename, content_type = await executor_client.download_step(session, request)
 
     if file_bytes is None or filename is None or content_type is None:
         from fastapi import HTTPException

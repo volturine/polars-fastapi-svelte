@@ -1,5 +1,5 @@
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from contracts.datasource.models import DataSource
 
@@ -40,8 +40,7 @@ def test_preview_analysis_uses_pipeline_payload(client, sample_datasource: DataS
             total_rows=1,
         )
 
-    with patch('modules.analysis.routes.compute_service.preview_step') as mock_preview:
-        mock_preview.side_effect = fake_preview_step
+    with patch('modules.analysis.routes.executor_client.preview_step', new=AsyncMock(side_effect=fake_preview_step)) as mock_preview:
         analysis_id = str(uuid.uuid4())
         response = client.post(
             f'/api/v1/analysis/{analysis_id}/preview',
@@ -54,6 +53,7 @@ def test_preview_analysis_uses_pipeline_payload(client, sample_datasource: DataS
         assert payload['row_count'] == 1
         assert payload['rows'] == [{'name': 'Alice'}]
         assert mock_preview.call_count == 1
-        _, kwargs = mock_preview.call_args
-        assert kwargs['analysis_pipeline']['analysis_id'] == analysis_id
-        assert kwargs['analysis_pipeline']['tabs'][0]['datasource']['config']['snapshot_id'] == '123'
+        args, _kwargs = mock_preview.call_args
+        request = args[1]
+        assert request.analysis_pipeline.analysis_id == analysis_id
+        assert request.analysis_pipeline.tabs[0].datasource.config.model_extra['snapshot_id'] == '123'

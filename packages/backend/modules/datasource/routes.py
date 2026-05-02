@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import os
 import uuid
@@ -13,13 +14,12 @@ from starlette.concurrency import run_in_threadpool
 from contracts.auth_models import User
 from core.config import settings
 from core.database import get_db, run_db
-from core.dependencies import get_manager
 from core.error_handlers import handle_errors
 from core.exceptions import AppError
 from core.namespace import namespace_paths
 from core.validation import DataSourceId, PreflightId, parse_datasource_id, parse_preflight_id
 from modules.auth.dependencies import get_optional_user
-from modules.compute.manager import ProcessManager
+from modules.compute.executor_client import shutdown_engine as shutdown_remote_engine
 from modules.datasource import schemas, service
 from modules.datasource.preflight import clear_preflight, create_preflight, get_preflight
 from modules.datasource.source_types import DataSourceType
@@ -776,14 +776,13 @@ def refresh_datasource(
 
 @router.delete('/{datasource_id}', status_code=204, mcp=True)
 @handle_errors(operation='delete datasource')
-def delete_datasource(
+async def delete_datasource(
     datasource_id: DataSourceId,
     session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
 ):
     """Delete a datasource and its associated files. Use GET /datasource to find IDs."""
     datasource_id_value = parse_datasource_id(datasource_id)
     service.delete_datasource(session, datasource_id_value)
     preview_key = f'__preview__{datasource_id_value}'
-    if manager.get_engine(preview_key):
-        manager.shutdown_engine(preview_key)
+    with contextlib.suppress(HTTPException):
+        await shutdown_remote_engine(session, analysis_id=preview_key)

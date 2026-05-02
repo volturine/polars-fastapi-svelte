@@ -5,16 +5,16 @@ from pydantic import BaseModel, Field, field_validator
 from sqlmodel import Session
 
 from contracts.auth_models import User
+from contracts.compute import schemas as compute_schemas
 from core.database import get_db
-from core.dependencies import get_manager, get_optional_lock_owner_id
+from core.dependencies import get_optional_lock_owner_id
 from core.error_handlers import handle_errors
 from core.validation import AnalysisId, parse_analysis_id
 from modules.analysis import schemas, service
 from modules.analysis.step_schemas import get_config_model, get_step_catalog
 from modules.analysis.step_types import is_step_type
 from modules.auth.dependencies import get_optional_user
-from modules.compute import service as compute_service
-from modules.compute.manager import ProcessManager
+from modules.compute import executor_client
 from modules.export import service as export_service
 from modules.locks import service as lock_service
 from modules.mcp.router import MCPRouter
@@ -204,7 +204,6 @@ async def delete_analysis(
     analysis_id: AnalysisId,
     _lock: None = Depends(require_analysis_lock),
     session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
 ):
     """Delete an analysis and its associated data."""
     analysis_id_value = parse_analysis_id(analysis_id)
@@ -212,8 +211,8 @@ async def delete_analysis(
         service.delete_analysis(session, analysis_id_value)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    if manager.get_engine(analysis_id_value):
-        manager.shutdown_engine(analysis_id_value)
+    with contextlib.suppress(HTTPException):
+        await executor_client.shutdown_engine(session, analysis_id=analysis_id_value)
 
 
 @router.post('/{analysis_id}/preview', mcp=True)
@@ -222,7 +221,6 @@ async def preview_analysis(
     analysis_id: AnalysisId,
     request: Request,
     session: Session = Depends(get_db),
-    manager: ProcessManager = Depends(get_manager),
 ):
     """Preview the analysis pipeline and return results with schema, rows, and row count."""
     analysis_payload = None
@@ -262,15 +260,16 @@ async def preview_analysis(
     if not isinstance(output_config, dict):
         raise HTTPException(status_code=400, detail='Analysis tab output must be a dict')
 
-    preview = compute_service.preview_step(
-        session=session,
-        manager=manager,
-        target_step_id=steps[-1]['id'] if steps else 'source',
-        row_limit=50,
-        page=1,
-        analysis_id=analysis_id_value,
-        analysis_pipeline=analysis_payload,
-        tab_id=None,
+    preview = await executor_client.preview_step(
+        session,
+        compute_schemas.StepPreviewRequest(
+            analysis_id=analysis_id_value,
+            target_step_id=steps[-1]['id'] if steps else 'source',
+            analysis_pipeline=compute_schemas.AnalysisPipelinePayload.model_validate(analysis_payload),
+            row_limit=50,
+            page=1,
+            tab_id=None,
+        ),
     )
 
     return {

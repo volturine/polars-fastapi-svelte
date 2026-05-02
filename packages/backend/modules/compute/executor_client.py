@@ -1,0 +1,152 @@
+from __future__ import annotations
+
+import asyncio
+from pathlib import Path
+
+from fastapi import HTTPException
+from sqlmodel import Session
+
+from contracts.compute import schemas as compute_schemas
+from contracts.compute_requests.live import response_hub
+from contracts.compute_requests.models import ComputeRequestKind, ComputeRequestStatus
+from contracts.runtime import ipc as runtime_ipc
+from core import compute_requests_service
+from core.exceptions import JobTimeoutError, PipelineExecutionError
+from core.namespace import get_namespace
+
+
+async def _submit_and_wait(
+    session: Session,
+    *,
+    kind: ComputeRequestKind,
+    request_json: dict[str, object],
+    timeout: int,
+):
+    request = compute_requests_service.create_request(
+        session,
+        namespace=get_namespace(),
+        kind=kind,
+        request_json=request_json,
+    )
+    wait_task = asyncio.create_task(response_hub.wait(request.id))
+    await asyncio.to_thread(runtime_ipc.notify_compute_request, request.id)
+    try:
+        await asyncio.wait_for(wait_task, timeout=timeout)
+    except TimeoutError as exc:
+        raise JobTimeoutError(request.id, timeout) from exc
+    session.expire_all()
+    completed = compute_requests_service.get_request(session, request.id)
+    if completed is None:
+        raise PipelineExecutionError(f'Compute request {request.id} disappeared')
+    if completed.status == ComputeRequestStatus.COMPLETED:
+        return completed
+    payload = completed.response_json or {}
+    message = str(payload.get('error') or completed.error_message or 'Compute request failed')
+    status_code = payload.get('status_code')
+    if isinstance(status_code, int):
+        raise HTTPException(status_code=status_code, detail=message)
+    raise PipelineExecutionError(message)
+
+
+async def preview_step(session: Session, request: compute_schemas.StepPreviewRequest) -> compute_schemas.StepPreviewResponse:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.PREVIEW,
+        request_json=request.model_dump(mode='json'),
+        timeout=180,
+    )
+    return compute_schemas.StepPreviewResponse.model_validate(completed.response_json)
+
+
+async def get_step_schema(session: Session, request: compute_schemas.StepSchemaRequest) -> compute_schemas.StepSchemaResponse:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.SCHEMA,
+        request_json=request.model_dump(mode='json'),
+        timeout=180,
+    )
+    return compute_schemas.StepSchemaResponse.model_validate(completed.response_json)
+
+
+async def get_step_row_count(session: Session, request: compute_schemas.StepRowCountRequest) -> compute_schemas.StepRowCountResponse:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.ROW_COUNT,
+        request_json=request.model_dump(mode='json'),
+        timeout=180,
+    )
+    return compute_schemas.StepRowCountResponse.model_validate(completed.response_json)
+
+
+async def download_step(session: Session, request: compute_schemas.DownloadRequest) -> tuple[bytes, str, str]:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.DOWNLOAD,
+        request_json=request.model_dump(mode='json'),
+        timeout=180,
+    )
+    if not completed.artifact_path or not completed.artifact_name or not completed.artifact_content_type:
+        raise PipelineExecutionError('Download artifact missing from compute response')
+    path = Path(completed.artifact_path)
+    data = path.read_bytes()
+    path.unlink(missing_ok=True)
+    return data, completed.artifact_name, completed.artifact_content_type
+
+
+async def export_data(session: Session, request: compute_schemas.ExportRequest) -> compute_schemas.ExportResponse:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.EXPORT,
+        request_json=request.model_dump(mode='json'),
+        timeout=180,
+    )
+    return compute_schemas.ExportResponse.model_validate(completed.response_json)
+
+
+async def spawn_engine(
+    session: Session,
+    *,
+    analysis_id: str,
+    resource_config: dict[str, object] | None,
+) -> compute_schemas.EngineStatusSchema:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.SPAWN_ENGINE,
+        request_json={'analysis_id': analysis_id, 'resource_config': resource_config or {}},
+        timeout=60,
+    )
+    return compute_schemas.EngineStatusSchema.model_validate(completed.response_json)
+
+
+async def keepalive_engine(session: Session, *, analysis_id: str) -> compute_schemas.EngineStatusSchema:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.KEEPALIVE_ENGINE,
+        request_json={'analysis_id': analysis_id},
+        timeout=30,
+    )
+    return compute_schemas.EngineStatusSchema.model_validate(completed.response_json)
+
+
+async def configure_engine(
+    session: Session,
+    *,
+    analysis_id: str,
+    resource_config: dict[str, object],
+) -> compute_schemas.EngineStatusSchema:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.CONFIGURE_ENGINE,
+        request_json={'analysis_id': analysis_id, 'resource_config': resource_config},
+        timeout=60,
+    )
+    return compute_schemas.EngineStatusSchema.model_validate(completed.response_json)
+
+
+async def shutdown_engine(session: Session, *, analysis_id: str) -> None:
+    await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.SHUTDOWN_ENGINE,
+        request_json={'analysis_id': analysis_id},
+        timeout=60,
+    )

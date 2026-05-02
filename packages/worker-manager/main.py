@@ -12,6 +12,7 @@ import uuid
 from multiprocessing.synchronize import Event as ProcessEvent
 
 from compute_manager import ProcessManager
+from compute_request_runtime import compute_request_loop
 from engine_live import create_snapshot_notifier
 from worker_runtime import build_worker_loop, runtime_namespaces, worker_id as build_worker_id
 
@@ -92,6 +93,17 @@ def queued_job_count() -> int:
         finally:
             reset_namespace(token)
     return count
+
+
+async def _engine_cleanup_loop(stop_event: asyncio.Event, manager: ProcessManager) -> None:
+    idle_timeout = settings.engine_idle_timeout
+    while not stop_event.is_set():
+        timeout = max(1.0, manager.next_idle_deadline_seconds(idle_timeout))
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(stop_event.wait(), timeout=timeout)
+        if stop_event.is_set():
+            return
+        manager.cleanup_idle_engines()
 
 
 async def _manager_heartbeat_loop(stop_event: asyncio.Event, worker_id: str, *, heartbeat_seconds: float = 5.0) -> None:
@@ -205,7 +217,15 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
         ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, local_stop, runtime_ipc.handle_api_payload))
     worker_id = manager_id()
     _register_manager(worker_id)
+    manager = ProcessManager(
+        on_snapshot=create_snapshot_notifier(
+            asyncio.get_running_loop(),
+            persist=lambda namespace, statuses: _persist_engine_snapshot(worker_id, namespace, statuses),
+        )
+    )
     heartbeat_task = asyncio.create_task(_manager_heartbeat_loop(local_stop, worker_id))
+    cleanup_task = asyncio.create_task(_engine_cleanup_loop(local_stop, manager))
+    request_task = asyncio.create_task(compute_request_loop(local_stop, worker_id=worker_id, manager=manager))
     children: dict[int, ManagedWorkerProcess] = {}
     last_seen = build_job_hub.version()
     try:
@@ -242,14 +262,21 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
     finally:
         local_stop.set()
         heartbeat_task.cancel()
+        cleanup_task.cancel()
+        request_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await heartbeat_task
+        with contextlib.suppress(asyncio.CancelledError):
+            await cleanup_task
+        with contextlib.suppress(asyncio.CancelledError):
+            await request_task
         for child in children.values():
             _stop_worker_process(child)
         if ipc_task is not None:
             with contextlib.suppress(asyncio.TimeoutError):
                 await asyncio.wait_for(ipc_task, timeout=5)
         await runtime_ipc.stop_api_server(ipc_server)
+        manager.shutdown_all()
         _stop_manager(worker_id)
         logger.info('Build worker manager shutdown complete')
 

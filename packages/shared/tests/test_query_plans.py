@@ -1,4 +1,4 @@
-from modules.compute.engine import PolarsComputeEngine
+from compute_engine import PolarsComputeEngine
 
 
 def test_query_plan_merges_eager_segments(test_db_session, tmp_path):

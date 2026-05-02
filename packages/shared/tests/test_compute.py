@@ -13,13 +13,14 @@ import compute_service
 import polars as pl
 import pytest
 from build_execution import _run_queued_build_job
+from compute_engine import PolarsComputeEngine
 from compute_live import ActiveBuild as ComputeActiveBuild
+from compute_manager import ProcessManager
+from compute_operations.datasource import _analysis_stack_var
+from compute_utils import await_engine_result
+from engine_live import create_snapshot_notifier, load_engine_snapshot, registry as engine_registry
 from main import app
-from modules.compute.engine import PolarsComputeEngine
-from modules.compute.engine_live import create_snapshot_notifier, load_engine_snapshot, registry as engine_registry
 from modules.compute.live import ActiveBuild as RouteActiveBuild, registry as active_build_registry
-from modules.compute.manager import ProcessManager
-from modules.compute.operations.datasource import _analysis_stack_var
 from modules.compute.routes import (
     _emit_active_build_event,
     _safe_close_websocket,
@@ -31,7 +32,6 @@ from modules.compute.routes import (
     build_list_stream,
     engine_list_stream,
 )
-from modules.compute.utils import await_engine_result
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
@@ -3061,7 +3061,7 @@ def test_cleanup_idle_engines_persists_snapshot_before_notifying(monkeypatch) ->
         calls.append(f'notify:{namespace}')
 
     manager._snapshot_persist = persist
-    monkeypatch.setattr('modules.compute.manager.runtime_ipc.notify_api_engine', notify)
+    monkeypatch.setattr('compute_manager.runtime_ipc.notify_api_engine', notify)
 
     try:
         cleaned = manager.cleanup_idle_engines()
@@ -3459,8 +3459,8 @@ def _build_fake_dataframe() -> MagicMock:
     return fake_df
 
 
-@patch('modules.compute.engine.load_datasource')
-@patch('modules.compute.engine.PolarsComputeEngine._apply_step')
+@patch('compute_engine.load_datasource')
+@patch('compute_engine.PolarsComputeEngine._apply_step')
 def test_pipeline_cycle_detection(mock_apply_step: MagicMock, mock_load: MagicMock):
     mock_load.return_value = MagicMock()
     mock_apply_step.side_effect = lambda frame, _step, **kwargs: frame
@@ -3479,8 +3479,8 @@ def test_pipeline_cycle_detection(mock_apply_step: MagicMock, mock_load: MagicMo
         PolarsComputeEngine._build_pipeline({}, steps, 'job', MagicMock())
 
 
-@patch('modules.compute.engine.load_datasource')
-@patch('modules.compute.engine.PolarsComputeEngine._apply_step')
+@patch('compute_engine.load_datasource')
+@patch('compute_engine.PolarsComputeEngine._apply_step')
 def test_pipeline_multiple_dependencies_collapsed(mock_apply_step: MagicMock, mock_load: MagicMock):
     """Multi-dependency steps are collapsed to single-dep by apply_steps()."""
     fake_lf = MagicMock()
@@ -3511,8 +3511,8 @@ def test_pipeline_multiple_dependencies_collapsed(mock_apply_step: MagicMock, mo
     assert result == fake_lf
 
 
-@patch('modules.compute.engine.load_datasource')
-@patch('modules.compute.engine.PolarsComputeEngine._apply_step')
+@patch('compute_engine.load_datasource')
+@patch('compute_engine.PolarsComputeEngine._apply_step')
 def test_pipeline_topological_order(mock_apply_step: MagicMock, mock_load: MagicMock):
     fake_lf = MagicMock()
     fake_lf.collect_schema.return_value = {}

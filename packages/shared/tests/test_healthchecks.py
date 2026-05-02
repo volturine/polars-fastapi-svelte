@@ -3,11 +3,11 @@ from datetime import UTC, datetime, timedelta
 
 import polars as pl
 from compute_service import _build_subscriber_message, _resolve_build_status
-from modules.healthcheck.service import run_healthchecks
 
 from contracts.compute.schemas import BuildStatus
 from contracts.datasource.models import DataSource
 from contracts.healthcheck_models import HealthCheck, HealthCheckResult
+from core.healthcheck_service import run_healthchecks
 
 
 def _create_datasource(session, ds_id: str | None = None) -> DataSource:

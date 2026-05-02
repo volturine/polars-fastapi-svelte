@@ -12,10 +12,10 @@ import time
 from enum import StrEnum
 
 import polars as pl
-from ai_service import AIError, get_ai_client, parse_request_options
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from contracts.compute.base import OperationHandler, OperationParams
+from core.ai_service import AIError, get_ai_client, parse_request_options
 
 logger = logging.getLogger(__name__)
 

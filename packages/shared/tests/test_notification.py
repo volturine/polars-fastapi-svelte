@@ -3,17 +3,17 @@ from unittest.mock import patch
 
 import polars as pl
 import pytest
-from compute_service import _send_pipeline_notifications
-from modules.compute.operations.notification import (
+from compute_operations.notification import (
     NotificationHandler,
     NotificationParams,
     _build_message,
 )
-from modules.compute.step_converter import convert_notification_config
-from modules.notification.service import NotificationService, render_template
+from compute_service import _send_pipeline_notifications
 from pydantic import ValidationError
+from step_converter import convert_notification_config
 
 from core.exceptions import PipelineExecutionError
+from core.notification_service import NotificationService, render_template
 
 
 @dataclass(frozen=True)
@@ -189,7 +189,7 @@ class TestNotificationHandler:
         handler = NotificationHandler()
         lf = pl.DataFrame({'body': ['hello', 'world', 'test']}).lazy()
 
-        with patch('modules.compute.operations.notification.notification_service') as mock_svc:
+        with patch('compute_operations.notification.notification_service') as mock_svc:
             result = handler(
                 lf,
                 {
@@ -215,7 +215,7 @@ class TestNotificationHandler:
         handler = NotificationHandler()
         lf = pl.DataFrame({'body': ['hello']}).lazy()
 
-        with patch('modules.compute.operations.notification.notification_service') as mock_svc:
+        with patch('compute_operations.notification.notification_service') as mock_svc:
             result = handler(
                 lf,
                 {
@@ -236,8 +236,8 @@ class TestNotificationHandler:
         lf = pl.DataFrame({'msg': ['hi']}).lazy()
 
         with (
-            patch('modules.compute.operations.notification.notification_service') as mock_svc,
-            patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
+            patch('compute_operations.notification.notification_service') as mock_svc,
+            patch('compute_operations.notification.get_resolved_telegram_settings') as mock_settings,
         ):
             mock_settings.return_value = {'enabled': True, 'token': 'tok'}
             result = handler(
@@ -262,7 +262,7 @@ class TestNotificationHandler:
             },
         ).lazy()
 
-        with patch('modules.compute.operations.notification.notification_service') as mock_svc:
+        with patch('compute_operations.notification.notification_service') as mock_svc:
             result = handler(
                 lf,
                 {
@@ -283,7 +283,7 @@ class TestNotificationHandler:
         handler = NotificationHandler()
         lf = pl.DataFrame({'col': ['ok', 'bad', 'ok2']}).lazy()
 
-        with patch('modules.compute.operations.notification.notification_service') as mock_svc:
+        with patch('compute_operations.notification.notification_service') as mock_svc:
             mock_svc.send_email.side_effect = [None, RuntimeError('SMTP down'), None]
             result = handler(
                 lf,
@@ -305,7 +305,7 @@ class TestNotificationHandler:
         handler = NotificationHandler()
         lf = pl.DataFrame({'col': []}).cast({'col': pl.Utf8}).lazy()
 
-        with patch('modules.compute.operations.notification.notification_service') as mock_svc:
+        with patch('compute_operations.notification.notification_service') as mock_svc:
             result = handler(
                 lf,
                 {
@@ -340,7 +340,7 @@ class TestNotificationHandler:
         handler = NotificationHandler()
         lf = pl.DataFrame({'v': list(range(25))}).lazy()
 
-        with patch('modules.compute.operations.notification.notification_service') as mock_svc:
+        with patch('compute_operations.notification.notification_service') as mock_svc:
             result = handler(
                 lf,
                 {
@@ -360,7 +360,7 @@ class TestNotificationHandler:
         handler = NotificationHandler()
         lf = pl.DataFrame({'a': [1, 2], 'b': ['x', 'y']}).lazy()
 
-        with patch('modules.compute.operations.notification.notification_service'):
+        with patch('compute_operations.notification.notification_service'):
             result = handler(
                 lf,
                 {
@@ -381,8 +381,8 @@ class TestNotificationHandler:
         lf = pl.DataFrame({'msg': ['hello']}).lazy()
 
         with (
-            patch('modules.compute.operations.notification.notification_service') as mock_svc,
-            patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
+            patch('compute_operations.notification.notification_service') as mock_svc,
+            patch('compute_operations.notification.get_resolved_telegram_settings') as mock_settings,
         ):
             mock_settings.return_value = {'enabled': True, 'token': 'tok'}
             result = handler(
@@ -405,8 +405,8 @@ class TestNotificationHandler:
         lf = pl.DataFrame({'msg': ['hi'], 'chat_id': ['888']}).lazy()
 
         with (
-            patch('modules.compute.operations.notification.notification_service') as mock_svc,
-            patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
+            patch('compute_operations.notification.notification_service') as mock_svc,
+            patch('compute_operations.notification.get_resolved_telegram_settings') as mock_settings,
         ):
             mock_settings.return_value = {'enabled': True, 'token': 'tok'}
             result = handler(
@@ -429,8 +429,8 @@ class TestNotificationHandler:
         lf = pl.DataFrame({'msg': ['hi'], 'chat_ids': [['111', '222']]}).lazy()
 
         with (
-            patch('modules.compute.operations.notification.notification_service') as mock_svc,
-            patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
+            patch('compute_operations.notification.notification_service') as mock_svc,
+            patch('compute_operations.notification.get_resolved_telegram_settings') as mock_settings,
         ):
             mock_settings.return_value = {'enabled': True, 'token': 'tok'}
             result = handler(
@@ -454,8 +454,8 @@ class TestNotificationHandler:
         lf = pl.DataFrame({'msg': ['hi']}).lazy()
 
         with (
-            patch('modules.compute.operations.notification.notification_service') as mock_svc,
-            patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
+            patch('compute_operations.notification.notification_service') as mock_svc,
+            patch('compute_operations.notification.get_resolved_telegram_settings') as mock_settings,
         ):
             mock_settings.return_value = {'enabled': True, 'token': 'tok'}
             result = handler(
@@ -481,8 +481,8 @@ class TestNotificationHandler:
         lf = pl.DataFrame({'msg': ['test']}).lazy()
 
         with (
-            patch('modules.compute.operations.notification.notification_service') as mock_svc,
-            patch('modules.compute.operations.notification.get_resolved_telegram_settings') as mock_settings,
+            patch('compute_operations.notification.notification_service') as mock_svc,
+            patch('compute_operations.notification.get_resolved_telegram_settings') as mock_settings,
         ):
             mock_settings.return_value = {'enabled': True, 'token': 'tok'}
             result = handler(
@@ -792,7 +792,7 @@ class TestNotificationService:
 
         with (
             patch(
-                'modules.notification.service.get_resolved_smtp',
+                'core.notification_service.get_resolved_smtp',
                 return_value={'host': 'smtp.example.com', 'port': 587, 'user': 'user@example.com', 'password': 'secret'},
             ),
             patch('smtplib.SMTP') as mock_smtp,

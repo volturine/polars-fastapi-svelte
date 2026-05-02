@@ -3,7 +3,7 @@ import time
 import uuid
 
 import compute_service
-from modules.compute.manager import ProcessManager
+from compute_manager import ProcessManager
 
 
 def _measure(func, *args, **kwargs):

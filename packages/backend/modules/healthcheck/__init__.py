@@ -1,5 +1,4 @@
-from modules.healthcheck.routes import router
-from modules.healthcheck.service import (
+from core.healthcheck_service import (
     create_healthcheck,
     delete_healthcheck,
     list_all_healthchecks,
@@ -9,6 +8,7 @@ from modules.healthcheck.service import (
     run_healthchecks,
     update_healthcheck,
 )
+from modules.healthcheck.routes import router
 
 __all__ = [
     'create_healthcheck',

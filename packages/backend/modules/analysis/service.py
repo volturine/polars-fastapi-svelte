@@ -14,13 +14,19 @@ from sqlmodel import Session, col
 from contracts.analysis.models import Analysis, AnalysisDataSource, AnalysisStatus
 from contracts.analysis.pipeline_types import PipelineDefinition, PipelineStep, PipelineTab, TabDatasource, TabOutput
 from contracts.datasource.models import DataSource
+from core.ai_service import AIError, get_ai_client
 from core.exceptions import (
     AnalysisCycleError,
     AnalysisNotFoundError,
     AnalysisValidationError,
     DataSourceNotFoundError,
 )
-from modules.ai.service import AIError, get_ai_client
+from core.settings_service import (
+    get_resolved_huggingface_settings,
+    get_resolved_ollama_settings,
+    get_resolved_openai_settings,
+    get_resolved_openrouter_key,
+)
 from modules.analysis.schemas import (
     AnalysisCreateSchema,
     AnalysisGalleryItemSchema,
@@ -35,12 +41,6 @@ from modules.analysis.schemas import (
 from modules.analysis.step_schemas import validate_step
 from modules.analysis.templates import AnalysisTemplate, get_template, list_templates
 from modules.analysis_versions import service as version_service
-from modules.settings.service import (
-    get_resolved_huggingface_settings,
-    get_resolved_ollama_settings,
-    get_resolved_openai_settings,
-    get_resolved_openrouter_key,
-)
 
 
 def _to_response(analysis: Analysis) -> AnalysisResponseSchema:

@@ -10,8 +10,8 @@ from pydantic import BaseModel
 
 from core.config import settings
 from core.error_handlers import handle_errors
+from core.settings_service import get_settings
 from modules.mcp.router import MCPRouter
-from modules.settings.service import get_settings
 
 router = MCPRouter(prefix='/config', tags=['config'])
 

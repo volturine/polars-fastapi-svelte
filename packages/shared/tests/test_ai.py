@@ -4,16 +4,17 @@ from unittest.mock import MagicMock, patch
 
 import polars as pl
 import pytest
-from modules.ai.service import (
+from compute_operations.ai import AIHandler, AIParams
+from pydantic import ValidationError
+from step_converter import convert_ai_config
+
+from core.ai_service import (
     AIError,
     OllamaClient,
     OpenAIClient,
     get_ai_client,
     parse_request_options,
 )
-from modules.compute.operations.ai import AIHandler, AIParams
-from modules.compute.step_converter import convert_ai_config
-from pydantic import ValidationError
 
 # ---------------------------------------------------------------------------
 # parse_request_options
@@ -175,7 +176,7 @@ class TestGetAIClient:
         assert client.base_url == 'https://custom.api.com'
 
     def test_openai_no_key_raises(self):
-        with patch('modules.ai.service.settings') as mock_settings:
+        with patch('core.ai_service.settings') as mock_settings:
             mock_settings.openai_api_key = ''
             with pytest.raises(ValueError, match='OPENAI_API_KEY'):
                 get_ai_client('openai')
@@ -197,7 +198,7 @@ class TestOllamaClient:
         mock_response.json.return_value = {'response': 'Hello world'}
         mock_response.raise_for_status = MagicMock()
 
-        with patch('modules.ai.service._retry_request', return_value=mock_response) as mock_req:
+        with patch('core.ai_service._retry_request', return_value=mock_response) as mock_req:
             result = client.generate('Say hello', model='llama2')
             assert result == 'Hello world'
             mock_req.assert_called_once_with(
@@ -212,7 +213,7 @@ class TestOllamaClient:
         mock_response.json.return_value = {'response': 'result'}
         mock_response.raise_for_status = MagicMock()
 
-        with patch('modules.ai.service._retry_request', return_value=mock_response) as mock_req:
+        with patch('core.ai_service._retry_request', return_value=mock_response) as mock_req:
             client.generate('prompt', model='llama2', options={'temperature': 0.1})
             call_payload = mock_req.call_args[1]['payload']
             assert call_payload['options'] == {'temperature': 0.1}
@@ -223,7 +224,7 @@ class TestOllamaClient:
         mock_response.json.return_value = {}
         mock_response.raise_for_status = MagicMock()
 
-        with patch('modules.ai.service._retry_request', return_value=mock_response):
+        with patch('core.ai_service._retry_request', return_value=mock_response):
             result = client.generate('prompt', model='llama2')
             assert result == ''
 
@@ -238,7 +239,7 @@ class TestOllamaClient:
         }
         mock_response.raise_for_status = MagicMock()
 
-        with patch('modules.ai.service._retry_request', return_value=mock_response):
+        with patch('core.ai_service._retry_request', return_value=mock_response):
             models = client.list_models()
             assert len(models) == 2
             assert models[0]['name'] == 'llama2'
@@ -246,7 +247,7 @@ class TestOllamaClient:
 
     def test_list_models_error_returns_empty(self):
         client = OllamaClient('http://localhost:11434')
-        with patch('modules.ai.service._retry_request', side_effect=AIError('connection failed')):
+        with patch('core.ai_service._retry_request', side_effect=AIError('connection failed')):
             models = client.list_models()
             assert models == []
 
@@ -256,14 +257,14 @@ class TestOllamaClient:
         mock_response.json.return_value = {'models': [{'name': 'llama2'}]}
         mock_response.raise_for_status = MagicMock()
 
-        with patch('modules.ai.service.http_client.get', return_value=mock_response):
+        with patch('core.ai_service.http_client.get', return_value=mock_response):
             result = client.test_connection()
             assert result['ok'] is True
             assert '1 model(s)' in result['detail']
 
     def test_test_connection_failure(self):
         client = OllamaClient('http://localhost:11434')
-        with patch('modules.ai.service.http_client.get', side_effect=ConnectionError('refused')):
+        with patch('core.ai_service.http_client.get', side_effect=ConnectionError('refused')):
             result = client.test_connection()
             assert result['ok'] is False
 
@@ -280,7 +281,7 @@ class TestOpenAIClient:
         mock_response.json.return_value = {'choices': [{'message': {'content': 'AI response'}}]}
         mock_response.raise_for_status = MagicMock()
 
-        with patch('modules.ai.service._retry_request', return_value=mock_response) as mock_req:
+        with patch('core.ai_service._retry_request', return_value=mock_response) as mock_req:
             result = client.generate('Hello', model='gpt-4o')
             assert result == 'AI response'
             call_args = mock_req.call_args
@@ -294,7 +295,7 @@ class TestOpenAIClient:
         mock_response.json.return_value = {'choices': [{'message': {'content': 'result'}}]}
         mock_response.raise_for_status = MagicMock()
 
-        with patch('modules.ai.service._retry_request', return_value=mock_response) as mock_req:
+        with patch('core.ai_service._retry_request', return_value=mock_response) as mock_req:
             client.generate('prompt', model='gpt-4o', options={'temperature': 0.5})
             call_payload = mock_req.call_args[1]['payload']
             assert call_payload['temperature'] == 0.5
@@ -305,7 +306,7 @@ class TestOpenAIClient:
         mock_response.json.return_value = {'choices': []}
         mock_response.raise_for_status = MagicMock()
 
-        with patch('modules.ai.service._retry_request', return_value=mock_response):
+        with patch('core.ai_service._retry_request', return_value=mock_response):
             result = client.generate('prompt', model='gpt-4o')
             assert result == ''
 
@@ -320,14 +321,14 @@ class TestOpenAIClient:
         }
         mock_response.raise_for_status = MagicMock()
 
-        with patch('modules.ai.service._retry_request', return_value=mock_response):
+        with patch('core.ai_service._retry_request', return_value=mock_response):
             models = client.list_models()
             assert len(models) == 2
             assert models[0]['name'] == 'gpt-4o'
 
     def test_list_models_error_returns_empty(self):
         client = OpenAIClient('sk-test')
-        with patch('modules.ai.service._retry_request', side_effect=AIError('auth failed')):
+        with patch('core.ai_service._retry_request', side_effect=AIError('auth failed')):
             models = client.list_models()
             assert models == []
 
@@ -341,13 +342,13 @@ class TestOpenAIClient:
         mock_response.json.return_value = {'data': [{'id': 'gpt-4o'}]}
         mock_response.raise_for_status = MagicMock()
 
-        with patch('modules.ai.service.http_client.get', return_value=mock_response):
+        with patch('core.ai_service.http_client.get', return_value=mock_response):
             result = client.test_connection()
             assert result['ok'] is True
 
     def test_test_connection_failure(self):
         client = OpenAIClient('sk-test')
-        with patch('modules.ai.service.http_client.get', side_effect=Exception('timeout')):
+        with patch('core.ai_service.http_client.get', side_effect=Exception('timeout')):
             result = client.test_connection()
             assert result['ok'] is False
 
@@ -383,7 +384,7 @@ class TestAIHandler:
         mock_client = MagicMock()
         mock_client.generate_batch.return_value = ['classified: Hello', 'classified: World']
 
-        with patch('modules.compute.operations.ai.get_ai_client', return_value=mock_client):
+        with patch('compute_operations.ai.get_ai_client', return_value=mock_client):
             result = handler(
                 df.lazy(),
                 {
@@ -406,7 +407,7 @@ class TestAIHandler:
         mock_client = MagicMock()
         mock_client.generate_batch.return_value = ['ok1', 'ok2']
 
-        with patch('modules.compute.operations.ai.get_ai_client', return_value=mock_client):
+        with patch('compute_operations.ai.get_ai_client', return_value=mock_client):
             result = handler(
                 df.lazy(),
                 {
@@ -480,8 +481,8 @@ class TestAIHandler:
         ]
 
         with (
-            patch('modules.compute.operations.ai.get_ai_client', return_value=mock_client),
-            patch('modules.compute.operations.ai.time.sleep'),
+            patch('compute_operations.ai.get_ai_client', return_value=mock_client),
+            patch('compute_operations.ai.time.sleep'),
         ):
             result = handler(
                 df.lazy(),
@@ -510,7 +511,7 @@ class TestAIHandler:
             ['r5'],
         ]
 
-        with patch('modules.compute.operations.ai.get_ai_client', return_value=mock_client):
+        with patch('compute_operations.ai.get_ai_client', return_value=mock_client):
             result = handler(
                 df.lazy(),
                 {
@@ -531,7 +532,7 @@ class TestAIHandler:
         mock_client = MagicMock()
         mock_client.generate_batch.return_value = ['result']
 
-        with patch('modules.compute.operations.ai.get_ai_client', return_value=mock_client):
+        with patch('compute_operations.ai.get_ai_client', return_value=mock_client):
             result = handler(
                 df.lazy(),
                 {
@@ -552,7 +553,7 @@ class TestAIHandler:
         mock_client = MagicMock()
         mock_client.generate_batch.return_value = ['result']
 
-        with patch('modules.compute.operations.ai.get_ai_client', return_value=mock_client):
+        with patch('compute_operations.ai.get_ai_client', return_value=mock_client):
             result = handler(
                 df.lazy(),
                 {
@@ -574,7 +575,7 @@ class TestAIHandler:
         mock_client = MagicMock()
         mock_client.generate_batch.return_value = ['result']
 
-        with patch('modules.compute.operations.ai.get_ai_client', return_value=mock_client):
+        with patch('compute_operations.ai.get_ai_client', return_value=mock_client):
             result = handler(
                 df.lazy(),
                 {

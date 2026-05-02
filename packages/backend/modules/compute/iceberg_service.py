@@ -1,12 +1,12 @@
 from pathlib import Path
 
+from compute_operations.datasource import resolve_iceberg_branch_metadata_path, resolve_iceberg_metadata_path
 from pyiceberg.catalog import load_catalog
 from sqlmodel import Session
 
 from contracts.compute import schemas
 from contracts.datasource.models import DataSource
 from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError
-from modules.compute.operations.datasource import resolve_iceberg_branch_metadata_path, resolve_iceberg_metadata_path
 
 
 def list_iceberg_snapshots(session: Session, datasource_id: str, branch: str | None = None) -> schemas.IcebergSnapshotsResponse:

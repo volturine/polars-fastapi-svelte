@@ -11,6 +11,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 import polars as pl
+from compute_operations.datasource import load_datasource
 from openpyxl import load_workbook
 from openpyxl.utils.cell import get_column_letter, range_boundaries
 from pyiceberg.catalog import load_catalog
@@ -28,7 +29,6 @@ from core.exceptions import (
     FileError,
 )
 from core.namespace import get_namespace, namespace_paths
-from modules.compute.operations.datasource import load_datasource
 from modules.datasource.schemas import (
     BatchColumnDescriptionUpdate,
     ColumnSchema,
@@ -108,7 +108,7 @@ def _build_iceberg_config(paths, target_path: Path, branch: str, source_config: 
 
 
 def _sync_iceberg_schema(table: Table, new_schema: Any) -> None:
-    from modules.compute.iceberg_reader import sync_iceberg_schema
+    from iceberg_reader import sync_iceberg_schema
 
     sync_iceberg_schema(table, new_schema)
 

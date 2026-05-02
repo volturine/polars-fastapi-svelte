@@ -3,6 +3,9 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TypeAlias, cast
 
+from compute_operations.strings import StringTransformMethod
+from compute_operations.timeseries import DurationUnit, TimeComponent, TimeDirection, TimeseriesOperationType
+from compute_operations.with_columns import WithColumnsExprType
 from pydantic import BaseModel, ConfigDict, Field
 
 from modules.analysis.step_types import (
@@ -11,9 +14,6 @@ from modules.analysis.step_types import (
     is_step_type,
     iter_step_types,
 )
-from modules.compute.operations.strings import StringTransformMethod
-from modules.compute.operations.timeseries import DurationUnit, TimeComponent, TimeDirection, TimeseriesOperationType
-from modules.compute.operations.with_columns import WithColumnsExprType
 
 __all__ = ['get_config_model', 'get_step_catalog', 'validate_step']
 

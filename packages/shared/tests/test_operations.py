@@ -2,18 +2,18 @@ from typing import Any
 
 import polars as pl
 import pytest
-from modules.compute.operations.expression import parse_expression
-from modules.compute.operations.fill_null import FillNullHandler
-from modules.compute.operations.filter import FilterHandler
-from modules.compute.operations.groupby import GroupByHandler
-from modules.compute.operations.join import JoinHandler
-from modules.compute.operations.pivot import PivotHandler
-from modules.compute.operations.select import SelectHandler
-from modules.compute.operations.sort import SortHandler
-from modules.compute.operations.strings import StringTransformHandler, StringTransformMethod
-from modules.compute.operations.timeseries import TimeComponent, TimeseriesHandler, TimeseriesOperationType
-from modules.compute.operations.union import UnionByNameHandler
-from modules.compute.operations.with_columns import WithColumnsExprType, WithColumnsHandler
+from compute_operations.expression import parse_expression
+from compute_operations.fill_null import FillNullHandler
+from compute_operations.filter import FilterHandler
+from compute_operations.groupby import GroupByHandler
+from compute_operations.join import JoinHandler
+from compute_operations.pivot import PivotHandler
+from compute_operations.select import SelectHandler
+from compute_operations.sort import SortHandler
+from compute_operations.strings import StringTransformHandler, StringTransformMethod
+from compute_operations.timeseries import TimeComponent, TimeseriesHandler, TimeseriesOperationType
+from compute_operations.union import UnionByNameHandler
+from compute_operations.with_columns import WithColumnsExprType, WithColumnsHandler
 from pydantic import ValidationError
 
 
@@ -578,7 +578,7 @@ def test_pivot_handler_auto_discovers_on_columns_for_small_cardinality():
 
 def test_pivot_handler_rejects_unbounded_auto_discovery(monkeypatch: pytest.MonkeyPatch):
     handler = PivotHandler()
-    monkeypatch.setattr('modules.compute.operations.pivot._MAX_AUTO_PIVOT_VALUES', 2)
+    monkeypatch.setattr('compute_operations.pivot._MAX_AUTO_PIVOT_VALUES', 2)
     with pytest.raises(ValueError, match='requires explicit on_columns'):
         handler(
             pl.DataFrame({'idx': ['a', 'a', 'a'], 'col': ['x', 'y', 'z'], 'val': [1, 2, 3]}).lazy(),

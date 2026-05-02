@@ -217,7 +217,7 @@ class TelegramBot:
 
     def _handle_subscribe(self, chat_id: str, title: str) -> None:
         from core.database import run_db
-        from modules.telegram.service import add_subscriber
+        from core.telegram_service import add_subscriber
 
         def _add(session) -> None:  # type: ignore[no-untyped-def]
             add_subscriber(session, chat_id, title, self._token)
@@ -232,7 +232,7 @@ class TelegramBot:
 
     def _handle_unsubscribe(self, chat_id: str) -> None:
         from core.database import run_db
-        from modules.telegram.service import get_subscriber_by_chat
+        from core.telegram_service import get_subscriber_by_chat
 
         def _remove(session) -> None:  # type: ignore[no-untyped-def]
             sub = get_subscriber_by_chat(session, chat_id, self._token)

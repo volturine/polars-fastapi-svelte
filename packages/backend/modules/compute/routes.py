@@ -6,6 +6,8 @@ import uuid
 from datetime import UTC, datetime
 from urllib.parse import quote
 
+from compute_manager import ProcessManager
+from engine_live import load_engine_snapshot, registry as engine_registry
 from fastapi import Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
@@ -33,13 +35,11 @@ from core.namespace import get_namespace, reset_namespace, set_namespace_context
 from core.validation import AnalysisId, DataSourceId, EngineRunId, parse_analysis_id, parse_datasource_id, parse_engine_run_id
 from modules.auth.dependencies import get_current_user
 from modules.compute import executor_client
-from modules.compute.engine_live import load_engine_snapshot, registry as engine_registry
 from modules.compute.iceberg_service import (
     delete_iceberg_snapshot as delete_iceberg_snapshot_info,
     list_iceberg_snapshots as list_iceberg_snapshots_info,
 )
 from modules.compute.live import ActiveBuildContext, registry as build_registry
-from modules.compute.manager import ProcessManager
 from modules.mcp.router import MCPRouter
 
 logger = logging.getLogger(__name__)

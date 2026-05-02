@@ -13,7 +13,7 @@ from core.config import settings
 from core.database import get_settings_db
 
 if TYPE_CHECKING:
-    from modules.compute.manager import ProcessManager
+    from compute_manager import ProcessManager
 
 
 class RuntimeAvailabilityProbe(Protocol):

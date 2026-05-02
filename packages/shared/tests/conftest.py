@@ -71,7 +71,8 @@ def _settings_tables() -> list[Any]:
 
 def _reset_settings_state(engine: Engine) -> None:
     from modules.chat.sessions import session_store
-    from modules.settings.service import invalidate_resolved_settings_cache
+
+    from core.settings_service import invalidate_resolved_settings_cache
 
     for live in session_store._live.values():
         live.cancel_task()
@@ -273,7 +274,7 @@ def clear_compute_request_hubs():
 
 @pytest.fixture(autouse=True, scope='function')
 def clear_engine_registry():
-    from modules.compute.engine_live import registry
+    from engine_live import registry
 
     asyncio.run(registry.clear())
     yield

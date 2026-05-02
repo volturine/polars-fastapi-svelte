@@ -1,7 +1,7 @@
 import dataclasses
 
 import pytest
-from modules.compute.step_converter import (
+from step_converter import (
     BackendStep,
     FrontendStep,
     convert_filter_config,

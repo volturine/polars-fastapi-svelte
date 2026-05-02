@@ -14,7 +14,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final, TypedDict, cast
 
-import healthcheck_service
 import polars as pl
 import pyarrow as pa  # type: ignore[import-untyped]
 from compute_live import ActiveBuild
@@ -22,7 +21,6 @@ from compute_manager import ProcessManager
 from compute_monitor import monitor_engine_resources
 from compute_operations.datasource import resolve_iceberg_branch_metadata_path, resolve_iceberg_metadata_path
 from compute_utils import apply_steps, await_engine_result, find_step_index, resolve_applied_target
-from notification_service import notification_service, render_template
 from pyiceberg.catalog import load_catalog
 from pyiceberg.table import Table as IcebergTable
 from sqlalchemy import select
@@ -37,11 +35,12 @@ from contracts.engine_runs.models import EngineRun
 from contracts.engine_runs.schemas import EngineRunKind, EngineRunStatus
 from contracts.healthcheck_models import HealthCheck, HealthCheckResult
 from contracts.udf_models import Udf
-from core import engine_runs_service as engine_run_service
+from core import engine_runs_service as engine_run_service, healthcheck_service
 from core.config import settings
 from core.database import get_db
 from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError, PipelineExecutionError, PipelineValidationError
 from core.namespace import get_namespace, namespace_paths
+from core.notification_service import notification_service, render_template
 
 logger = logging.getLogger(__name__)
 
@@ -556,9 +555,8 @@ def _send_pipeline_notifications(
     datasource_id = str(context.get('datasource_id', ''))
     if datasource_id:
         try:
-            from telegram_service import get_notification_chat_ids, list_subscribers
-
             from core.database import run_db
+            from core.telegram_service import get_notification_chat_ids, list_subscribers
 
             pairs: list[tuple[str, str]] = run_db(get_notification_chat_ids, datasource_id)
             excluded: set[str] = set()

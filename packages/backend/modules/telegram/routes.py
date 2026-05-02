@@ -3,12 +3,12 @@
 from fastapi import Depends
 from sqlmodel import Session
 
+from core import telegram_service as service
 from core.database import get_db
 from core.error_handlers import handle_errors
+from core.settings_service import get_resolved_telegram_settings
 from core.validation import DataSourceId, parse_datasource_id
 from modules.mcp.router import MCPRouter
-from modules.settings.service import get_resolved_telegram_settings
-from modules.telegram import service
 from modules.telegram.schemas import (
     BotStatusResponse,
     ListenerCreate,
@@ -39,7 +39,7 @@ def bot_status(session: Session = Depends(get_db)) -> BotStatusResponse:
 @handle_errors(operation='list subscribers')
 def get_subscribers(session: Session = Depends(get_db)) -> list[SubscriberResponse]:
     """List all Telegram subscribers (chats that have interacted with the bot)."""
-    return service.list_subscribers(session)
+    return [SubscriberResponse.model_validate(item) for item in service.list_subscribers(session)]
 
 
 @router.delete('/subscribers/{subscriber_id}', status_code=204, mcp=True)
@@ -60,7 +60,10 @@ def get_listeners(
 
     A listener links a Telegram subscriber to a datasource for build notifications.
     """
-    return service.list_listeners(session, subscriber_id, parse_datasource_id(datasource_id) if datasource_id else None)
+    return [
+        ListenerResponse.model_validate(item)
+        for item in service.list_listeners(session, subscriber_id, parse_datasource_id(datasource_id) if datasource_id else None)
+    ]
 
 
 @router.post('/listeners', response_model=ListenerResponse, mcp=True)
@@ -71,7 +74,8 @@ def create_listener(payload: ListenerCreate, session: Session = Depends(get_db))
     Requires subscriber_id (from GET /telegram/subscribers) and datasource_id
     (from GET /datasource). The subscriber will receive notifications when the datasource is built.
     """
-    return service.add_listener(session, payload)
+    created = service.add_listener(session, service.ListenerCreate.model_validate(payload.model_dump()))
+    return ListenerResponse.model_validate(created)
 
 
 @router.delete('/listeners/{listener_id}', status_code=204, mcp=True)

@@ -629,7 +629,7 @@ def validate_verification_token(session: Session, token: str, token_type: Verifi
 
 async def send_verification_email(user_email: str, token: str) -> bool:
     try:
-        from modules.settings.service import get_resolved_smtp
+        from core.settings_service import get_resolved_smtp
 
         smtp = get_resolved_smtp()
     except Exception:
@@ -690,7 +690,7 @@ def create_password_reset_token(session: Session, email: str) -> str | None:
 
 async def send_password_reset_email(user_email: str, token: str) -> bool:
     try:
-        from modules.settings.service import get_resolved_smtp
+        from core.settings_service import get_resolved_smtp
 
         smtp = get_resolved_smtp()
     except Exception:

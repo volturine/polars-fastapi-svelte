@@ -7,9 +7,9 @@ from unittest.mock import patch
 
 import polars as pl
 import pytest
-from modules.compute.engine import PolarsComputeEngine
-from modules.compute.operations.notification import NotificationHandler, NotificationParams
-from modules.compute.operations.plot import ChartHandler, ChartParams, compute_chart_data
+from compute_engine import PolarsComputeEngine
+from compute_operations.notification import NotificationHandler, NotificationParams
+from compute_operations.plot import ChartHandler, ChartParams, compute_chart_data
 from pydantic import ValidationError
 from sqlalchemy import select
 
@@ -76,7 +76,7 @@ class TestNotificationHandler:
         """NotificationHandler sends per-row and adds output status column."""
         handler = NotificationHandler()
         lf = pl.DataFrame({'msg': ['hello', 'world']}).lazy()
-        with patch('modules.compute.operations.notification.notification_service') as mock_svc:
+        with patch('compute_operations.notification.notification_service') as mock_svc:
             result = handler(
                 lf,
                 {
@@ -959,7 +959,7 @@ class TestSafeBuiltinsUdf:
         from typing import Any
 
         import polars as pl
-        from modules.compute.operations.with_columns import _SAFE_BUILTINS
+        from compute_operations.with_columns import _SAFE_BUILTINS
 
         scope: dict[str, Any] = {'pl': pl, '__builtins__': _SAFE_BUILTINS}
         local_scope: dict[str, Any] = {}
@@ -988,7 +988,7 @@ class TestSafeBuiltinsUdf:
             self._run_udf('def udf(): return open("/etc/passwd")')
 
     def test_dunder_escape_blocked_before_exec(self):
-        from modules.compute.operations.with_columns import WithColumnsHandler
+        from compute_operations.with_columns import WithColumnsHandler
 
         handler = WithColumnsHandler()
         with pytest.raises(ValueError, match='forbidden dunder access'):
@@ -1010,12 +1010,12 @@ class TestValidateRegexPattern:
     """Shared _validation.validate_regex_pattern helper."""
 
     def test_valid_pattern_passes(self):
-        from modules.compute.operations._validation import validate_regex_pattern
+        from compute_operations._validation import validate_regex_pattern
 
         validate_regex_pattern(r'\d+')
 
     def test_invalid_pattern_raises(self):
-        from modules.compute.operations._validation import validate_regex_pattern
+        from compute_operations._validation import validate_regex_pattern
 
         with pytest.raises(ValueError, match='Invalid regex pattern'):
             validate_regex_pattern(r'[unclosed')
@@ -1025,7 +1025,7 @@ class TestAssertSelectOnly:
     """SQL read-only guard in datasource operations."""
 
     def _check(self, query: str):
-        from modules.compute.operations.datasource import _assert_select_only
+        from compute_operations.datasource import _assert_select_only
 
         _assert_select_only(query)
 
@@ -1057,25 +1057,25 @@ class TestParseDatetimeString:
     def test_iso8601(self):
         from datetime import datetime
 
-        from modules.compute.operations.filter import _parse_datetime_string
+        from compute_operations.filter import _parse_datetime_string
 
         dt = _parse_datetime_string('2024-06-15T12:30:00')
         assert dt == datetime(2024, 6, 15, 12, 30, 0)
 
     def test_z_suffix(self):
-        from modules.compute.operations.filter import _parse_datetime_string
+        from compute_operations.filter import _parse_datetime_string
 
         dt = _parse_datetime_string('2024-06-15T12:30:00Z')
         assert dt.year == 2024 and dt.month == 6 and dt.day == 15
 
     def test_non_iso_rejected(self):
-        from modules.compute.operations.filter import _parse_datetime_string
+        from compute_operations.filter import _parse_datetime_string
 
         with pytest.raises(ValueError, match='Accepted format: ISO 8601'):
             _parse_datetime_string('2024-06-15 12:30:00')
 
     def test_invalid_raises(self):
-        from modules.compute.operations.filter import _parse_datetime_string
+        from compute_operations.filter import _parse_datetime_string
 
         with pytest.raises(ValueError, match='Cannot parse datetime string'):
             _parse_datetime_string('not-a-date')
@@ -1085,18 +1085,18 @@ class TestCoerceValueNumber:
     """coerce_value handles scientific notation strings correctly."""
 
     def test_integer_string(self):
-        from modules.compute.operations.filter import coerce_value
+        from compute_operations.filter import coerce_value
 
         assert coerce_value('42', 'number') == 42
         assert isinstance(coerce_value('42', 'number'), int)
 
     def test_float_string(self):
-        from modules.compute.operations.filter import coerce_value
+        from compute_operations.filter import coerce_value
 
         assert coerce_value('3.14', 'number') == pytest.approx(3.14)
 
     def test_scientific_notation(self):
-        from modules.compute.operations.filter import coerce_value
+        from compute_operations.filter import coerce_value
 
         val = coerce_value('1e5', 'number')
         assert val == pytest.approx(100000.0)

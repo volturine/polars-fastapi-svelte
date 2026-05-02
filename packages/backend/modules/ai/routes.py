@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
+from core.ai_service import get_ai_client
 from core.error_handlers import handle_errors
-from modules.ai.service import get_ai_client
 from modules.mcp.router import MCPRouter
 
 router = MCPRouter(prefix='/ai', tags=['ai'])
@@ -34,7 +34,7 @@ class AIProviderStatus(BaseModel):
 @router.post('/providers', response_model=list[AIProviderStatus], mcp=True)
 @handle_errors(operation='list ai providers')
 def list_providers() -> list[AIProviderStatus]:
-    from modules.settings.service import (
+    from core.settings_service import (
         get_resolved_huggingface_settings,
         get_resolved_ollama_settings,
         get_resolved_openai_settings,

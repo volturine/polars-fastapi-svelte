@@ -1,5 +1,6 @@
+from compute_core.exports import ExportFormat, get_export_format
+
 from contracts.compute.base import ComputeEngine, OperationHandler, OperationParams
-from modules.compute.core.exports import ExportFormat, get_export_format
 
 __all__ = [
     'ComputeEngine',

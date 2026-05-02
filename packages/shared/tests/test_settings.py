@@ -141,7 +141,7 @@ class TestUpdateSettings:
         assert resp.json()['public_idb_debug'] is True
 
     def test_preserves_masked_secrets_on_partial_update(self, client: TestClient, monkeypatch) -> None:
-        from modules.settings.service import get_resolved_openrouter_key, get_resolved_smtp, get_resolved_telegram_token
+        from core.settings_service import get_resolved_openrouter_key, get_resolved_smtp, get_resolved_telegram_token
 
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         client.put(
@@ -733,10 +733,9 @@ class TestSeedSettingsFromEnv:
         return engine
 
     def test_seeds_all_fields_when_db_is_empty(self, monkeypatch) -> None:
-        from modules.settings.service import seed_settings_from_env
-
         from contracts.settings_models import AppSettings
         from core.config import settings as app_settings
+        from core.settings_service import seed_settings_from_env
 
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         monkeypatch.setattr(app_settings, 'settings_encryption_key', 'test-key', raising=False)
@@ -763,10 +762,9 @@ class TestSeedSettingsFromEnv:
             assert row.env_bootstrap_complete is True
 
     def test_does_not_overwrite_existing_db_values(self, monkeypatch) -> None:
-        from modules.settings.service import seed_settings_from_env
-
         from contracts.settings_models import AppSettings
         from core.config import settings as app_settings
+        from core.settings_service import seed_settings_from_env
 
         monkeypatch.setattr(app_settings, 'smtp_host', 'env.example.com', raising=False)
         monkeypatch.setattr(app_settings, 'openrouter_api_key', 'sk-or-env', raising=False)
@@ -794,10 +792,9 @@ class TestSeedSettingsFromEnv:
             assert row.openrouter_default_model == 'db/model'
 
     def test_seeds_openrouter_default_model_field(self, monkeypatch) -> None:
-        from modules.settings.service import seed_settings_from_env
-
         from contracts.settings_models import AppSettings
         from core.config import settings as app_settings
+        from core.settings_service import seed_settings_from_env
 
         monkeypatch.setattr(app_settings, 'openrouter_default_model', 'anthropic/claude-3-5-sonnet', raising=False)
 
@@ -809,10 +806,9 @@ class TestSeedSettingsFromEnv:
             assert row.openrouter_default_model == 'anthropic/claude-3-5-sonnet'
 
     def test_seed_is_idempotent(self, monkeypatch) -> None:
-        from modules.settings.service import seed_settings_from_env
-
         from contracts.settings_models import AppSettings
         from core.config import settings as app_settings
+        from core.settings_service import seed_settings_from_env
 
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         monkeypatch.setattr(app_settings, 'settings_encryption_key', 'test-key', raising=False)
@@ -830,10 +826,9 @@ class TestSeedSettingsFromEnv:
             assert row.env_bootstrap_complete is True
 
     def test_existing_row_preserves_explicit_default_values(self, monkeypatch) -> None:
-        from modules.settings.service import seed_settings_from_env
-
         from contracts.settings_models import AppSettings
         from core.config import settings as app_settings
+        from core.settings_service import seed_settings_from_env
 
         monkeypatch.setattr(app_settings, 'smtp_port', 465, raising=False)
         monkeypatch.setattr(app_settings, 'telegram_bot_enabled', True, raising=False)
@@ -856,10 +851,9 @@ class TestSeedSettingsFromEnv:
             assert row.telegram_bot_enabled is False
 
     def test_password_seed_logs_warning_until_encryption_key_exists(self, monkeypatch, caplog) -> None:
-        from modules.settings.service import seed_settings_from_env
-
         from contracts.settings_models import AppSettings
         from core.config import settings as app_settings
+        from core.settings_service import seed_settings_from_env
 
         monkeypatch.setattr(app_settings, 'smtp_host', 'mail.example.com', raising=False)
         monkeypatch.setattr(app_settings, 'smtp_password', 'secret', raising=False)
@@ -898,18 +892,17 @@ class TestSeedSettingsFromEnv:
 
         monkeypatch.setattr(database, 'settings_engine', engine, raising=False)
 
-        from modules.settings.service import get_resolved_telegram_settings
+        from core.settings_service import get_resolved_telegram_settings
 
         resolved = get_resolved_telegram_settings()
         assert resolved['enabled'] is True
         assert resolved['token'] == 'bot:tok'
 
     def test_update_settings_disables_future_env_bootstrap(self, monkeypatch) -> None:
-        from modules.settings.schemas import SettingsUpdate
-        from modules.settings.service import seed_settings_from_env, update_settings
-
         from contracts.settings_models import AppSettings
+        from contracts.settings_schemas import SettingsUpdate
         from core.config import settings as app_settings
+        from core.settings_service import seed_settings_from_env, update_settings
 
         monkeypatch.setattr(app_settings, 'smtp_port', 465, raising=False)
         monkeypatch.setattr(app_settings, 'telegram_bot_enabled', True, raising=False)
@@ -973,10 +966,9 @@ class TestSettingsRuntimeCaches:
         first.dispose()
 
     def test_resolved_settings_cache_invalidates_after_update(self, monkeypatch) -> None:
-        from modules.settings.schemas import SettingsUpdate
-        from modules.settings.service import get_resolved_smtp, update_settings
-
+        from contracts.settings_schemas import SettingsUpdate
         from core.database import clear_settings_engine_override, set_settings_engine_override
+        from core.settings_service import get_resolved_smtp, update_settings
 
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         engine = self._make_engine()
@@ -1022,10 +1014,9 @@ class TestSettingsRuntimeCaches:
             clear_settings_engine_override()
 
     def test_resolved_settings_cache_invalidates_after_bootstrap(self, monkeypatch) -> None:
-        from modules.settings.service import get_resolved_default_model, get_resolved_openrouter_key, seed_settings_from_env
-
         from core.config import settings as app_settings
         from core.database import clear_settings_engine_override, set_settings_engine_override
+        from core.settings_service import get_resolved_default_model, get_resolved_openrouter_key, seed_settings_from_env
 
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
         monkeypatch.setattr(app_settings, 'settings_encryption_key', 'test-key', raising=False)

@@ -7,8 +7,12 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 from modules.telegram.bot import TelegramBot
-from modules.telegram.schemas import ListenerCreate
-from modules.telegram.service import (
+from sqlalchemy.exc import SQLAlchemyError
+from sqlmodel import Session
+
+from contracts.telegram_models import TelegramSubscriber
+from contracts.telegram_schemas import ListenerCreate
+from core.telegram_service import (
     add_listener,
     add_subscriber,
     auto_populate_listeners,
@@ -20,10 +24,6 @@ from modules.telegram.service import (
     list_subscribers,
     remove_listener,
 )
-from sqlalchemy.exc import SQLAlchemyError
-from sqlmodel import Session
-
-from contracts.telegram_models import TelegramSubscriber
 
 # ---------------------------------------------------------------------------
 # Service tests (direct DB calls)

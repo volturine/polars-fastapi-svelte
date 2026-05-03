@@ -491,8 +491,6 @@ polars_max_threads: int = Field(default=0)  # 0 = auto
 polars_max_memory_mb: int = Field(default=0)  # 0 = unlimited
 polars_streaming_chunk_size: int = Field(default=0)  # 0 = auto
 
-# Job execution
-job_timeout: int = Field(default=300)  # seconds
 ```
 
 ---

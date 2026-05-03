@@ -157,7 +157,6 @@ Common settings:
 - `PORT` - Backend HTTP port
 - `CORS_ORIGINS` - Allowed browser origins
 - `UPLOAD_CHUNK_SIZE` - Upload chunk size in bytes
-- `JOB_TIMEOUT` - Job execution timeout in seconds
 - `AUTH_REQUIRED` - Whether authenticated routes require login
 
 Override in `dev.env`, `prod.env`, or process environment variables. Use `ENV_FILE` to point to a specific env file (set to empty to disable env-file loading).

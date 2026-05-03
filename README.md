@@ -163,7 +163,6 @@ just dev
 |----------|---------|-------------|
 | `DEBUG` | `false` | Enable debug logging and SQL echo |
 | `PROD_MODE_ENABLED` | `false` | Serve static frontend from `frontend/build` |
-| `JOB_TIMEOUT` | `300` | Max job execution time in seconds |
 | `AUTH_REQUIRED` | `false` | Require login before accessing routes |
 | `DATA_DIR` | — | Base directory for all data storage |
 | `DATABASE_URL` | SQLite under `DATA_DIR` or Postgres URL | Runtime database connection |

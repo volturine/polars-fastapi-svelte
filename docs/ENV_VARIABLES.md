@@ -165,7 +165,6 @@ just dev
 | Variable                          | Default | Notes                                                           |
 | --------------------------------- | ------- | --------------------------------------------------------------- |
 | `SCHEDULER_CHECK_INTERVAL`        | `60`    | Seconds between scheduler polls.                                |
-| `JOB_TIMEOUT`                     | `300`   | Maximum job runtime in seconds.                                 |
 | `LOCK_TTL_SECONDS`                | `30`    | Lock lease duration.                                            |
 | `LOCK_HEARTBEAT_INTERVAL_SECONDS` | `10`    | Must stay lower than `LOCK_TTL_SECONDS`.                        |
 | `POLARS_MAX_THREADS`              | `0`     | `0` means auto-detect.                                          |

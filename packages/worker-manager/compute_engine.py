@@ -130,7 +130,7 @@ class PolarsComputeEngine:
         if self.process:
             # Clean up the dead process
             with contextlib.suppress(Exception):
-                self.process.join(timeout=1.0)
+                self.process.join()
             with contextlib.suppress(Exception):
                 self.process.close()
             self.process = None
@@ -374,7 +374,7 @@ class PolarsComputeEngine:
         acknowledged = False
         try:
             if self.command_queue is not None:
-                self.command_queue.put(ShutdownCommand(), timeout=1)
+                self.command_queue.put(ShutdownCommand())
                 acknowledged = self._await_shutdown_ack()
         except Exception as exc:
             logger.debug(f'Failed to enqueue shutdown command: {exc}', exc_info=True)
@@ -449,10 +449,7 @@ class PolarsComputeEngine:
         try:
             while True:
                 try:
-                    try:
-                        command = command_queue.get(timeout=1)
-                    except Empty:
-                        continue
+                    command = command_queue.get()
 
                     if isinstance(command, ShutdownCommand):
                         result_queue.put(ShutdownAck())

@@ -2963,8 +2963,8 @@ def _start_stream_tasks(
         return None, None
 
     try:
-        return future.result(timeout=5)
-    except (concurrent.futures.TimeoutError, RuntimeError) as exc:
+        return future.result()
+    except RuntimeError as exc:
         logger.warning('Skipping build stream tasks for job %s because scheduling did not complete: %s', job_id, exc)
         return None, None
 

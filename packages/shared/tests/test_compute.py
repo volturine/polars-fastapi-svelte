@@ -420,7 +420,7 @@ def test_engine_shutdown_waits_for_ack_before_escalating() -> None:
 
     engine.shutdown()
 
-    assert ('ShutdownCommand', 1) in calls
+    assert ('ShutdownCommand', None) in calls
     assert ('join', 5) in calls
     assert ('terminate', None) not in calls
     assert ('kill', None) not in calls

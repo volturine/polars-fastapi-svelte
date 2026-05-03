@@ -603,11 +603,7 @@ async def stream(session_id: str, user: User = Depends(get_current_user)) -> Str
         try:
             heartbeat_task = asyncio.create_task(_heartbeat_loop())
             while True:
-                try:
-                    event = await asyncio.wait_for(queue.get(), timeout=HEARTBEAT_INTERVAL * 3)
-                except TimeoutError:
-                    yield b': heartbeat\n\n'
-                    continue
+                event = await queue.get()
                 if event is None:
                     break
                 if event.get('_heartbeat'):

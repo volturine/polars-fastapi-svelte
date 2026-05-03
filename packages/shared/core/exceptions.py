@@ -112,8 +112,7 @@ class EngineTimeoutError(ComputeError):
     """Raised when engine operation times out."""
 
     def __init__(self, message: str, timeout: int, details: dict | None = None):
-        details = details or {}
-        details['timeout_seconds'] = timeout
+        del timeout
         super().__init__(message=message, error_code='ENGINE_TIMEOUT', details=details)
 
 
@@ -151,7 +150,7 @@ class JobTimeoutError(JobError):
         super().__init__(
             message=f'Job {job_id} timed out after {timeout} seconds',
             error_code='JOB_TIMEOUT',
-            details={'job_id': job_id, 'timeout_seconds': timeout},
+            details={'job_id': job_id},
         )
 
 

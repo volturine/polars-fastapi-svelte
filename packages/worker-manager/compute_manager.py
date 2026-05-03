@@ -14,7 +14,6 @@ from core.namespace import get_namespace, reset_namespace, set_namespace_context
 logger = logging.getLogger(__name__)
 
 _RESOURCE_KEYS = frozenset({'max_threads', 'max_memory_mb', 'streaming_chunk_size'})
-_SPAWN_WAIT_TIMEOUT_SECONDS = 30
 
 EngineFactory = Callable[[str, dict | None], ComputeEngine]
 EngineSnapshotListener = Callable[[list[EngineStatusInfo]], None]
@@ -111,8 +110,8 @@ class ProcessManager:
                         del self._engines[key]
                     break
 
-            if wait_event is not None and not wait_event.wait(timeout=_SPAWN_WAIT_TIMEOUT_SECONDS):
-                raise RuntimeError(f'Timed out waiting for engine spawn to finish for analysis {analysis_id}')
+            if wait_event is not None:
+                wait_event.wait()
 
         if reused_info is not None:
             self._emit_snapshot()

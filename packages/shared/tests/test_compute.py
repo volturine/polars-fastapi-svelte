@@ -360,6 +360,7 @@ def test_engine_shutdown_waits_for_ack_before_escalating() -> None:
     class FakeProcess:
         exitcode = 0
         pid = 123
+        sentinel = None
 
         def __init__(self) -> None:
             self._alive = True

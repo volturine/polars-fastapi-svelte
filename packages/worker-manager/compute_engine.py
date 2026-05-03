@@ -9,7 +9,9 @@ import uuid
 from collections import deque
 from collections.abc import Callable
 from datetime import UTC, datetime
+from multiprocessing.connection import wait as wait_handles
 from multiprocessing.process import BaseProcess
+from multiprocessing.queues import Queue as MPQueue
 from queue import Empty
 
 import polars as pl
@@ -251,8 +253,40 @@ class PolarsComputeEngine:
             )
         )
 
+    def _wait_for_queue_message(self, queue: MPQueue | None, *, timeout: float | None) -> tuple[str, object | None]:
+        if queue is None:
+            return 'timeout', None
+        reader = getattr(queue, '_reader', None)
+        process = self.process
+        sentinel = process.sentinel if process is not None else None
+        waitables = [item for item in (reader, sentinel) if item is not None]
+        if not waitables:
+            try:
+                message = queue.get() if timeout is None else queue.get(timeout=timeout)
+            except Empty:
+                return 'timeout', None
+            except Exception as exc:
+                logger.warning('Error getting queue message: %s', exc, exc_info=True)
+                return 'timeout', None
+            return 'message', message
+
+        ready = wait_handles(waitables, timeout=timeout)
+        if reader is not None and reader in ready:
+            try:
+                return 'message', queue.get_nowait()
+            except Empty:
+                if sentinel is not None and sentinel in ready:
+                    return 'process_exit', None
+                return 'timeout', None
+            except Exception as exc:
+                logger.warning('Error getting queue message: %s', exc, exc_info=True)
+                return 'timeout', None
+        if sentinel is not None and sentinel in ready:
+            return 'process_exit', None
+        return 'timeout', None
+
     def get_result(self, timeout: float = 1.0, job_id: str | None = None) -> EngineResult | None:
-        """Get result from result queue (non-blocking)."""
+        """Get result from result queue."""
         if self.current_job_id and not self.is_process_alive():
             exit_code = self.process.exitcode if self.process else None
             self._reset_state()
@@ -278,19 +312,28 @@ class PolarsComputeEngine:
             remaining = max(0.0, deadline - time.monotonic())
             if remaining == 0:
                 return None
-            try:
-                if self.result_queue is None:
-                    return None
-                result = self.result_queue.get(timeout=remaining)
-            except Empty:
+            status, payload = self._wait_for_queue_message(self.result_queue, timeout=remaining)
+            if status == 'timeout':
                 return None
-            except Exception as e:
-                logger.warning(f'Error getting result from queue: {e}', exc_info=True)
-                return None
-            if isinstance(result, ShutdownAck):
+            if status == 'process_exit':
+                exit_code = self.process.exitcode if self.process else None
+                self._reset_state()
+                return EngineResult(
+                    job_id=job_id,
+                    data=None,
+                    error=(
+                        'Compute process died unexpectedly '
+                        f'(exit code: {exit_code}). This may be due to out of memory or another system error.'
+                    ),
+                    error_kind='engine_process_died',
+                    error_details={'exit_code': exit_code},
+                )
+            message = payload
+            if isinstance(message, ShutdownAck):
                 continue
-            if not isinstance(result, EngineResult):
+            if not isinstance(message, EngineResult):
                 continue
+            result = message
             if expected and result.job_id and result.job_id != expected:
                 self._store_pending_result(result)
                 continue
@@ -310,20 +353,10 @@ class PolarsComputeEngine:
             remaining = max(0.0, deadline - time.monotonic())
             if remaining == 0:
                 return None
-            try:
-                if self.progress_queue is None:
-                    return None
-                event = self.progress_queue.get(timeout=remaining)
-            except Empty:
+            status, payload = self._wait_for_queue_message(self.progress_queue, timeout=remaining)
+            if status != 'message':
                 return None
-            except ValueError as e:
-                if 'is closed' in str(e):
-                    return None
-                logger.warning(f'Error getting progress event from queue: {e}', exc_info=True)
-                return None
-            except Exception as e:
-                logger.warning(f'Error getting progress event from queue: {e}', exc_info=True)
-                return None
+            event = payload
             if not isinstance(event, EngineProgressEvent):
                 continue
             if expected and event.job_id != expected:
@@ -350,15 +383,15 @@ class PolarsComputeEngine:
         while time.monotonic() < deadline:
             if self.process is not None and not self.process.is_alive():
                 return self.process.exitcode == 0
-            try:
-                if self.result_queue is None:
-                    return False
-                message = self.result_queue.get(timeout=min(0.1, max(0.0, deadline - time.monotonic())))
-            except Empty:
-                continue
-            except Exception as exc:
-                logger.debug(f'Failed while waiting for compute shutdown acknowledgement: {exc}', exc_info=True)
+            remaining = max(0.0, deadline - time.monotonic())
+            if remaining == 0:
                 return False
+            status, payload = self._wait_for_queue_message(self.result_queue, timeout=remaining)
+            if status == 'timeout':
+                return False
+            if status == 'process_exit':
+                return self.process is not None and self.process.exitcode == 0
+            message = payload
             if isinstance(message, ShutdownAck):
                 return True
             if isinstance(message, EngineResult):

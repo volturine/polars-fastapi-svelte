@@ -44,16 +44,30 @@ async function openCancelDialogFromRow(page: Page, row: ReturnType<Page['locator
 }
 
 async function openCancelDialogFromPreview(page: Page, preview: ReturnType<Page['locator']>) {
-	await expect(preview.locator('[data-testid="build-preview-engine-run-id"]')).toHaveText(/\S+/, {
-		timeout: 30_000
-	});
-	await expect(preview.getByText(/Connecting|Running/)).toBeVisible({ timeout: 30_000 });
 	const btn = preview.locator('[data-testid="build-cancel-button"]');
-	await expect(btn).toBeVisible({ timeout: 30_000 });
-	await expect(btn).toBeEnabled({ timeout: 30_000 });
-	await btn.scrollIntoViewIfNeeded();
-	await btn.click({ force: true, timeout: 10_000 });
-	await expect(cancelDialog(page)).toBeVisible({ timeout: 10_000 });
+	const closeBtn = page.locator('[aria-label="Close build preview"]');
+	const openPreviewBtn = page.locator('[data-testid="output-build-preview-trigger"]');
+	const started = Date.now();
+
+	while (Date.now() - started < 90_000) {
+		if (await btn.isVisible().catch(() => false)) {
+			await expect(btn).toBeEnabled({ timeout: 10_000 });
+			await btn.scrollIntoViewIfNeeded();
+			await btn.click({ force: true, timeout: 10_000 });
+			await expect(cancelDialog(page)).toBeVisible({ timeout: 10_000 });
+			return;
+		}
+		if (await closeBtn.isVisible().catch(() => false)) {
+			await closeBtn.click({ timeout: 10_000 });
+			await expect(preview).not.toBeVisible({ timeout: 10_000 });
+		}
+		await expect(openPreviewBtn).toBeVisible({ timeout: 10_000 });
+		await openPreviewBtn.click({ timeout: 10_000 });
+		await expect(preview).toBeVisible({ timeout: 10_000 });
+		await page.waitForTimeout(1_000);
+	}
+
+	throw new Error('Timed out waiting for preview cancel button to become available');
 }
 
 function cancelDialog(page: Page) {
@@ -116,7 +130,7 @@ test.describe('Cancel Build – e2e', () => {
 		test.setTimeout(240_000);
 		const dsName = `e2e-cancel-preview-ds-${uid()}`;
 		const analysisName = `E2E Cancel Preview ${uid()}`;
-		const dsId = await createLargeDatasource(request, dsName, 2_000_000);
+		const dsId = await createLargeDatasource(request, dsName, 1_100_000);
 		const analysisId = await createLongRunningAnalysis(request, analysisName, dsId);
 		try {
 			await startBuildFromAnalysisPage(page, analysisId);

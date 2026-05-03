@@ -78,6 +78,8 @@ class SqliteLogWriter:
         self._lock = threading.Lock()
         self._queue: queue.Queue[tuple[str, list[dict[str, Any]]]] = queue.Queue(maxsize=settings.log_queue_max_size)
         self._stop_event = threading.Event()
+        self._flush_timer_lock = threading.Lock()
+        self._flush_timer: threading.Timer | None = None
         self._overflow_policy = overflow_policy
         self._dropped_count = 0
         self._base_path = Path(base_path)
@@ -218,8 +220,9 @@ class SqliteLogWriter:
 
     def stop(self) -> None:
         self._stop_event.set()
+        self._cancel_flush_timer()
         self._queue.put(('__stop__', []))
-        self._worker.join(timeout=5)
+        self._worker.join()
         self.flush()
         if self._conn:
             self._conn.close()
@@ -236,22 +239,47 @@ class SqliteLogWriter:
                     dropped = self._dropped_count
                 if dropped % 100 == 1:
                     _logger.warning(f'Log queue full, dropped {dropped} rows total')
+                return
         else:
             self._queue.put((kind, rows))
+        self._ensure_flush_timer()
+
+    def _enqueue_flush(self) -> None:
+        with self._flush_timer_lock:
+            self._flush_timer = None
+        if self._stop_event.is_set():
+            return
+        self._queue.put(('__flush__', []))
+
+    def _ensure_flush_timer(self) -> None:
+        if self._flush_interval <= 0:
+            return
+        with self._flush_timer_lock:
+            if self._flush_timer is not None or self._stop_event.is_set():
+                return
+            timer = threading.Timer(self._flush_interval, self._enqueue_flush)
+            timer.daemon = True
+            self._flush_timer = timer
+            timer.start()
+
+    def _cancel_flush_timer(self) -> None:
+        with self._flush_timer_lock:
+            timer = self._flush_timer
+            self._flush_timer = None
+        if timer is not None:
+            timer.cancel()
 
     def _run(self) -> None:
         while True:
-            if self._stop_event.is_set() and self._queue.empty():
-                break
-            try:
-                kind, rows = self._queue.get(timeout=0.5)
-            except queue.Empty:
-                kind, rows = '', []
+            kind, rows = self._queue.get()
             if kind == '__stop__':
                 break
+            if kind == '__flush__':
+                self.flush()
+                continue
             if rows:
                 self._buffer_rows(kind, rows)
-            self._maybe_flush()
+        self._cancel_flush_timer()
         self.flush()
 
     def _buffer_rows(self, kind: str, rows: list[dict[str, Any]]) -> None:
@@ -261,11 +289,6 @@ class SqliteLogWriter:
                 key = (kind, day)
                 buffer = self._buffers.setdefault(key, [])
                 buffer.append(row)
-
-    def _maybe_flush(self) -> None:
-        if time.monotonic() - self._last_flush < self._flush_interval:
-            return
-        self.flush()
 
     def _insert_rows(self, kind: str, day: date, rows: list[dict[str, Any]]) -> None:
         if not rows:

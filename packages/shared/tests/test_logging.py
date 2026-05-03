@@ -1,10 +1,11 @@
+import sqlite3
 from collections.abc import AsyncIterator
 
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 
-from core.logging import RequestLoggingMiddleware, redact_logged_body
+from core.logging import RequestLoggingMiddleware, SqliteLogWriter, redact_logged_body
 
 
 class TestLoggingRedaction:
@@ -31,6 +32,35 @@ class _InMemoryWriter:
 
     def write_request_log(self, payload: dict) -> None:
         self.payloads.append(payload)
+
+
+def test_sqlite_log_writer_stop_flushes_pending_rows(tmp_path) -> None:
+    writer = SqliteLogWriter(str(tmp_path), flush_interval=60)
+    writer.write_request_log(
+        {
+            'ts': '2026-01-01T00:00:00Z',
+            'method': 'GET',
+            'path': '/health',
+            'status': 200,
+            'duration_ms': 1.0,
+            'request_id': 'req-1',
+            'client_id': 'client-1',
+            'user_agent': 'pytest',
+            'ip': '127.0.0.1',
+            'referer': None,
+            'error': None,
+            'request_json': None,
+            'response_json': None,
+            'chunk_index': 0,
+        }
+    )
+
+    writer.stop()
+
+    with sqlite3.connect(str(tmp_path / 'logs.db')) as connection:
+        count = connection.execute('SELECT COUNT(*) FROM request_logs').fetchone()[0]
+
+    assert count == 1
 
 
 class TestRequestLoggingMiddleware:

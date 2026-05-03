@@ -6,6 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from urllib.parse import quote
 
+from compute_live import ActiveBuildContext, registry as build_registry
 from compute_manager import ProcessManager
 from engine_live import load_engine_snapshot, registry as engine_registry
 from fastapi import Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -39,7 +40,6 @@ from modules.compute.iceberg_service import (
     delete_iceberg_snapshot as delete_iceberg_snapshot_info,
     list_iceberg_snapshots as list_iceberg_snapshots_info,
 )
-from modules.compute.live import ActiveBuildContext, registry as build_registry
 from modules.mcp.router import MCPRouter
 
 logger = logging.getLogger(__name__)

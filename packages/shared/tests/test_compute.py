@@ -14,13 +14,12 @@ import polars as pl
 import pytest
 from build_execution import _run_queued_build_job
 from compute_engine import PolarsComputeEngine
-from compute_live import ActiveBuild as ComputeActiveBuild
+from compute_live import ActiveBuild as ComputeActiveBuild, ActiveBuild as RouteActiveBuild, registry as active_build_registry
 from compute_manager import ProcessManager
 from compute_operations.datasource import _analysis_stack_var
 from compute_utils import await_engine_result
 from engine_live import create_snapshot_notifier, load_engine_snapshot, registry as engine_registry
 from main import app
-from modules.compute.live import ActiveBuild as RouteActiveBuild, registry as active_build_registry
 from modules.compute.routes import (
     _emit_active_build_event,
     _safe_close_websocket,

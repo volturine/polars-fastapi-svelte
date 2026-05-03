@@ -237,7 +237,7 @@ def test_await_engine_result_returns_immediate_result_before_poll_loop() -> None
         def shutdown(self) -> None:
             raise AssertionError('shutdown should not be called')
 
-    result = await_engine_result(ReadyEngine(), timeout=1, job_id='job-1')
+    result = await_engine_result(ReadyEngine(), job_id='job-1')
 
     assert result == {
         'job_id': 'job-1',

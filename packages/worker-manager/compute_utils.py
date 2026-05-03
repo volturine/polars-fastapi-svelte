@@ -1,11 +1,10 @@
-import time
 from typing import Any
 
 import polars as pl
 
 from contracts.compute.base import ComputeEngine, EngineResult
 from core.config import settings
-from core.exceptions import EngineTimeoutError, StepNotFoundError
+from core.exceptions import StepNotFoundError
 
 
 def find_step_index(steps: list[dict], target_step_id: str) -> int:
@@ -119,8 +118,7 @@ def _engine_result_to_dict(result: EngineResult) -> dict[str, Any]:
     }
 
 
-def await_engine_result(engine: ComputeEngine, timeout: int, job_id: str | None = None) -> dict:
-    deadline = time.monotonic() + timeout
+def await_engine_result(engine: ComputeEngine, job_id: str | None = None) -> dict:
     result = engine.get_result(timeout=0, job_id=job_id)
     if result is not None:
         return _engine_result_to_dict(result)
@@ -133,12 +131,7 @@ def await_engine_result(engine: ComputeEngine, timeout: int, job_id: str | None 
                 'error_details': {},
                 'job_id': job_id,
             }
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            raise EngineTimeoutError(f'Operation timed out after {timeout} seconds', timeout)
-
-        poll_timeout = min(0.1, max(0.01, remaining))
-        result = engine.get_result(timeout=poll_timeout, job_id=job_id)
+        result = engine.get_result(timeout=0.1, job_id=job_id)
         if result is not None:
             return _engine_result_to_dict(result)
 

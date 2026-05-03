@@ -11,7 +11,6 @@ from pydantic_settings.sources import DotEnvSettingsSource
 _NUMERIC_CONSTRAINTS: list[tuple[str, int | None, int | None]] = [
     ('port', 1, 65535),
     ('engine_idle_timeout', 1, None),
-    ('job_timeout', 1, None),
     ('scheduler_check_interval', 1, None),
     ('lock_ttl_seconds', 1, None),
     ('lock_heartbeat_interval_seconds', 1, None),
@@ -122,10 +121,6 @@ class Settings(BaseSettings):
     # Resource lock defaults
     lock_ttl_seconds: int = Field(default=30, alias='LOCK_TTL_SECONDS')
     lock_heartbeat_interval_seconds: int = Field(default=10, alias='LOCK_HEARTBEAT_INTERVAL_SECONDS')
-
-    # Job execution timeout in seconds (default 5 minutes)
-    # Jobs that exceed this duration will be terminated
-    job_timeout: int = Field(default=300, alias='JOB_TIMEOUT')
 
     # Polars Engine Resource Configuration
     # Maximum threads per engine (0 = auto-detect, uses all available cores)

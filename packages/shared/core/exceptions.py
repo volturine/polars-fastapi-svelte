@@ -108,14 +108,6 @@ class EngineStartError(ComputeError):
         super().__init__(message=message, error_code='ENGINE_START_ERROR', details=details)
 
 
-class EngineTimeoutError(ComputeError):
-    """Raised when engine operation times out."""
-
-    def __init__(self, message: str, timeout: int, details: dict | None = None):
-        del timeout
-        super().__init__(message=message, error_code='ENGINE_TIMEOUT', details=details)
-
-
 # Job Exceptions
 class JobError(AppError):
     """Base exception for job-related errors."""
@@ -139,17 +131,6 @@ class JobCancelledError(JobError):
         super().__init__(
             message=f'Job {job_id} was cancelled',
             error_code='JOB_CANCELLED',
-            details={'job_id': job_id},
-        )
-
-
-class JobTimeoutError(JobError):
-    """Raised when a job times out."""
-
-    def __init__(self, job_id: str, timeout: int):
-        super().__init__(
-            message=f'Job {job_id} timed out after {timeout} seconds',
-            error_code='JOB_TIMEOUT',
             details={'job_id': job_id},
         )
 

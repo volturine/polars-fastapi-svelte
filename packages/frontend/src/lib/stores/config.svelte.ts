@@ -36,10 +36,6 @@ export class ConfigStore {
 		return this.config?.engine_idle_timeout ?? 300; // 5min default
 	}
 
-	get jobTimeout(): number {
-		return this.config?.job_timeout ?? 300; // 5min default
-	}
-
 	get timezone(): string {
 		return this.config?.timezone ?? 'UTC';
 	}

@@ -29,7 +29,6 @@ class TestSettings:
                 'DEFAULT_NAMESPACE',
                 'UPLOAD_CHUNK_SIZE',
                 'ENGINE_IDLE_TIMEOUT',
-                'JOB_TIMEOUT',
                 'LOG_LEVEL',
                 'LOG_ICEBERG_PATH',
                 'PUBLIC_IDB_DEBUG',
@@ -45,7 +44,6 @@ class TestSettings:
         assert settings.database_url == f'sqlite:///{settings.data_dir / "app.db"}'
         assert settings.data_dir.exists()
         assert settings.upload_chunk_size == 5 * 1024 * 1024
-        assert settings.job_timeout == 300
         assert settings.engine_idle_timeout == 60
         assert settings.lock_ttl_seconds == 30
         assert settings.lock_heartbeat_interval_seconds == 10
@@ -64,7 +62,6 @@ class TestSettings:
         monkeypatch.setenv('DATA_DIR', str(data_dir))
         monkeypatch.setenv('DEFAULT_NAMESPACE', 'acme')
         monkeypatch.setenv('UPLOAD_CHUNK_SIZE', '2000000')
-        monkeypatch.setenv('JOB_TIMEOUT', '3600')
         monkeypatch.setenv('PUBLIC_IDB_DEBUG', 'true')
 
         settings = Settings()
@@ -75,7 +72,6 @@ class TestSettings:
         assert settings.data_dir == data_dir
         assert settings.default_namespace == 'acme'
         assert settings.upload_chunk_size == 2000000
-        assert settings.job_timeout == 3600
         assert settings.public_idb_debug is True
 
     def test_sql_echo_from_env(self, monkeypatch, tmp_path):
@@ -200,14 +196,6 @@ class TestSettings:
 
         with pytest.raises(ValidationError, match='engine_idle_timeout must be >= 1'):
             Settings()
-
-        monkeypatch.setenv('ENGINE_IDLE_TIMEOUT', '300')
-        monkeypatch.setenv('JOB_TIMEOUT', '-50')
-
-        with pytest.raises(ValidationError, match='job_timeout must be >= 1'):
-            Settings()
-
-        monkeypatch.setenv('JOB_TIMEOUT', '300')
 
     def test_port_must_be_in_valid_range(self, monkeypatch, tmp_path):
         _set_isolated_settings_env(monkeypatch, tmp_path)

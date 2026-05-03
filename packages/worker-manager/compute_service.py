@@ -36,7 +36,6 @@ from contracts.engine_runs.schemas import EngineRunKind, EngineRunStatus
 from contracts.healthcheck_models import HealthCheck, HealthCheckResult
 from contracts.udf_models import Udf
 from core import engine_runs_service as engine_run_service
-from core.config import settings
 from core.database import get_db
 from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError, PipelineExecutionError, PipelineValidationError
 from core.healthcheck_runner import run_healthchecks
@@ -1491,7 +1490,6 @@ def preview_step(
     analysis_pipeline: dict,
     row_limit: int = 1000,
     page: int = 1,
-    timeout: int | None = None,
     analysis_id: str | None = None,
     resource_config: dict | None = None,
     tab_id: str | None = None,
@@ -1500,9 +1498,6 @@ def preview_step(
 ):
     """Preview the result of executing pipeline up to a specific step with pagination."""
     from contracts.compute.schemas import StepPreviewResponse
-
-    if timeout is None:
-        timeout = settings.job_timeout
 
     started_at = datetime.now(UTC)
     started_perf = time.perf_counter()
@@ -1584,7 +1579,7 @@ def preview_step(
     query_plan: str | None = None
     result_data: dict | None = None
     try:
-        result_data = await_engine_result(engine, timeout, job_id=job_id)
+        result_data = await_engine_result(engine, job_id=job_id)
         step_timings = result_data.get('step_timings', {}) if isinstance(result_data, dict) else {}
         query_plan = result_data.get('query_plan') if isinstance(result_data, dict) else None
         _raise_engine_failure(
@@ -1687,14 +1682,10 @@ def get_step_schema(
     target_step_id: str,
     analysis_id: str,
     analysis_pipeline: dict,
-    timeout: int | None = None,
     tab_id: str | None = None,
 ):
     """Get the output schema of a pipeline step without returning data."""
     from contracts.compute.schemas import StepSchemaResponse
-
-    if timeout is None:
-        timeout = settings.job_timeout
 
     resolved = _resolve_pipeline_request(analysis_pipeline, session, tab_id, target_step_id)
     datasource_id = resolved['datasource_id']
@@ -1735,7 +1726,7 @@ def get_step_schema(
         additional_datasources=additional_datasources,
     )
 
-    result_data = await_engine_result(engine, timeout, job_id=job_id)
+    result_data = await_engine_result(engine, job_id=job_id)
     _raise_engine_failure(
         result_data,
         operation='schema',
@@ -1758,16 +1749,12 @@ def get_step_row_count(
     target_step_id: str,
     analysis_id: str,
     analysis_pipeline: dict,
-    timeout: int | None = None,
     tab_id: str | None = None,
     request_json: dict | None = None,
     triggered_by: str | None = None,
 ):
     """Get the row count of a pipeline step without collecting full data."""
     from contracts.compute.schemas import StepRowCountResponse
-
-    if timeout is None:
-        timeout = settings.job_timeout
 
     started_at = datetime.now(UTC)
     started_perf = time.perf_counter()
@@ -1839,7 +1826,7 @@ def get_step_row_count(
     current_step_id: str | None = None
     query_plan: str | None = None
     try:
-        result_data = await_engine_result(engine, timeout, job_id=job_id)
+        result_data = await_engine_result(engine, job_id=job_id)
         step_timings = result_data.get('step_timings', {}) if isinstance(result_data, dict) else {}
         query_plan = result_data.get('query_plan') if isinstance(result_data, dict) else None
         _raise_engine_failure(
@@ -1929,7 +1916,6 @@ def export_data(
     analysis_pipeline: dict,
     filename: str = 'export',
     iceberg_options: dict | None = None,
-    timeout: int | None = None,
     analysis_id: str | None = None,
     tab_id: str | None = None,
     request_json: dict | None = None,
@@ -1945,8 +1931,6 @@ def export_data(
         raise ValueError('Output exports require result_id')
     if not iceberg_options or not isinstance(iceberg_options.get('branch'), str):
         raise ValueError('Iceberg exports require iceberg_options with an explicit branch')
-    if timeout is None:
-        timeout = settings.job_timeout
 
     started_at = datetime.now(UTC)
     started_perf = time.perf_counter()
@@ -2043,7 +2027,7 @@ def export_data(
                 }
             )
 
-        result_data = await_engine_result(engine, timeout, job_id=job_id)
+        result_data = await_engine_result(engine, job_id=job_id)
         step_timings = result_data.get('step_timings', {}) if isinstance(result_data, dict) else {}
         query_plan = result_data.get('query_plan') if isinstance(result_data, dict) else None
         _raise_engine_failure(
@@ -2373,7 +2357,6 @@ def download_step(
     analysis_pipeline: dict,
     export_format: str = 'csv',
     filename: str = 'download',
-    timeout: int | None = None,
     analysis_id: str | None = None,
     tab_id: str | None = None,
 ):
@@ -2382,9 +2365,6 @@ def download_step(
 
     started_at = datetime.now(UTC)
     started_perf = time.perf_counter()
-
-    if timeout is None:
-        timeout = settings.job_timeout
 
     resolved = _resolve_pipeline_request(analysis_pipeline, session, tab_id, target_step_id)
     datasource_id = resolved['datasource_id']
@@ -2481,7 +2461,7 @@ def download_step(
             additional_datasources=additional_datasources,
         )
 
-        result_data = await_engine_result(engine, timeout, job_id=job_id)
+        result_data = await_engine_result(engine, job_id=job_id)
         step_timings = result_data.get('step_timings', {}) if isinstance(result_data, dict) else {}
         query_plan = result_data.get('query_plan') if isinstance(result_data, dict) else None
         _raise_engine_failure(

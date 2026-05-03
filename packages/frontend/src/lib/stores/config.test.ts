@@ -12,7 +12,6 @@ const { ConfigStore } = await import('./config.svelte');
 function makeConfig(overrides: Partial<FrontendConfig> = {}): FrontendConfig {
 	return {
 		engine_idle_timeout: 600,
-		job_timeout: 120,
 		timezone: 'Europe/Berlin',
 		normalize_tz: true,
 		log_client_batch_size: 50,
@@ -73,10 +72,6 @@ describe('ConfigStore', () => {
 	describe('getter defaults before fetch', () => {
 		test('engineIdleTimeout returns 300', () => {
 			expect(store.engineIdleTimeout).toBe(300);
-		});
-
-		test('jobTimeout returns 300', () => {
-			expect(store.jobTimeout).toBe(300);
 		});
 
 		test('timezone returns UTC', () => {

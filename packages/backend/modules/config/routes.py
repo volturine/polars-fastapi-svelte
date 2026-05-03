@@ -20,7 +20,6 @@ class FrontendConfig(BaseModel):
     """Configuration values exposed to frontend."""
 
     engine_idle_timeout: int  # seconds
-    job_timeout: int  # seconds
     timezone: str
     normalize_tz: bool
     log_client_batch_size: int
@@ -67,7 +66,7 @@ def generate_uuid(count: int = Query(default=1, ge=1, le=20)) -> UuidResponse:
 @router.get('', response_model=FrontendConfig, mcp=True)
 @handle_errors(operation='get config')
 def get_config() -> FrontendConfig:
-    """Get application configuration: timeouts, logging settings, feature flags, and default namespace."""
+    """Get application configuration: runtime settings, logging settings, feature flags, and default namespace."""
     global _config_cache, _config_cache_time  # noqa: PLW0603
 
     now = time.monotonic()
@@ -79,7 +78,6 @@ def get_config() -> FrontendConfig:
     db_settings = run_settings_db(get_settings)
     config = FrontendConfig(
         engine_idle_timeout=settings.engine_idle_timeout,
-        job_timeout=settings.job_timeout,
         timezone=settings.timezone,
         normalize_tz=settings.normalize_tz,
         log_client_batch_size=settings.log_client_batch_size,

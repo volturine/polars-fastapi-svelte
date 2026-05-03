@@ -269,7 +269,40 @@ def test_expire_worker_jobs_releases_owned_running_jobs(test_db_session) -> None
     assert refreshed.lease_expires_at is None
 
 
-def test_stop_worker_process_escalates_when_child_does_not_ack(monkeypatch) -> None:
+def test_wait_for_child_stop_joins_once_after_ack(monkeypatch) -> None:
+    calls: list[tuple[str, object]] = []
+
+    class FakeProcess:
+        def __init__(self) -> None:
+            self.pid = 123
+            self._alive = True
+
+        def is_alive(self) -> bool:
+            return self._alive
+
+        def join(self, timeout=None) -> None:
+            calls.append(('join', timeout))
+            self._alive = False
+
+    class FakeStoppedSignal:
+        def wait(self, timeout=None) -> bool:
+            calls.append(('wait', timeout))
+            return True
+
+    monotonic_values = iter([10.0, 10.0, 10.0])
+    monkeypatch.setattr(runtime_process.time, 'monotonic', lambda: next(monotonic_values))
+
+    child = runtime_process.ManagedWorkerProcess(
+        process=FakeProcess(),
+        stop_signal=SimpleNamespace(),
+        stopped_signal=FakeStoppedSignal(),
+    )
+
+    assert runtime_process._wait_for_child_stop(child, timeout_seconds=5.0, require_ack=True) is True
+    assert calls == [('wait', 5.0), ('join', 5.0), ('join', None)]
+
+
+def test_stop_worker_process_escalates_when_child_does_not_ack() -> None:
     calls: list[tuple[str, object]] = []
 
     class FakeProcess:
@@ -296,15 +329,9 @@ def test_stop_worker_process_escalates_when_child_does_not_ack(monkeypatch) -> N
             calls.append(('stop', None))
 
     class FakeStoppedSignal:
-        def is_set(self) -> bool:
-            return False
-
         def wait(self, timeout=None) -> bool:
             calls.append(('wait', timeout))
             return False
-
-    monotonic_values = iter([0.0, 0.0, 5.0, 5.0, 5.0, 5.1, 5.1])
-    monkeypatch.setattr(runtime_process.time, 'monotonic', lambda: next(monotonic_values))
 
     child = runtime_process.ManagedWorkerProcess(
         process=FakeProcess(),
@@ -316,6 +343,11 @@ def test_stop_worker_process_escalates_when_child_does_not_ack(monkeypatch) -> N
 
     names = [name for name, _ in calls]
     assert names[0] == 'stop'
+    assert calls[1][0] == 'wait'
+    assert calls[1][1] == pytest.approx(runtime_process._CHILD_COOPERATIVE_STOP_SECONDS)
+    terminate_join = next(timeout for name, timeout in calls if name == 'join' and timeout is not None)
+    assert terminate_join == pytest.approx(runtime_process._CHILD_TERMINATE_SECONDS)
+    assert ('join', None) in calls
     assert 'terminate' in names
     assert 'kill' not in names
 

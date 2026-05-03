@@ -33,7 +33,6 @@ from core.namespace import reset_namespace, set_namespace_context
 
 logger = logging.getLogger(__name__)
 _SPAWN = multiprocessing.get_context('spawn')
-_CHILD_STOP_POLL_SECONDS = 0.05
 _CHILD_COOPERATIVE_STOP_SECONDS = 5.0
 _CHILD_TERMINATE_SECONDS = 2.0
 _CHILD_KILL_SECONDS = 1.0
@@ -202,18 +201,15 @@ def _spawn_worker_process() -> ManagedWorkerProcess:
 def _wait_for_child_stop(child: ManagedWorkerProcess, *, timeout_seconds: float, require_ack: bool) -> bool:
     deadline = time.monotonic() + timeout_seconds
     acknowledged = not require_ack
-    while child.process.is_alive():
-        acknowledged = acknowledged or child.stopped_signal.is_set()
-        if require_ack and not acknowledged:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                return False
-            child.stopped_signal.wait(min(_CHILD_STOP_POLL_SECONDS, remaining))
-            continue
-        child.process.join(timeout=_CHILD_STOP_POLL_SECONDS)
-        if child.process.is_alive() and time.monotonic() >= deadline:
+    if require_ack and child.process.is_alive():
+        acknowledged = child.stopped_signal.wait(max(0.0, deadline - time.monotonic()))
+        if not acknowledged and child.process.is_alive():
             return False
-    child.process.join(timeout=0)
+    remaining = max(0.0, deadline - time.monotonic())
+    child.process.join(timeout=remaining)
+    if child.process.is_alive():
+        return False
+    child.process.join()
     if require_ack and not acknowledged:
         logger.error('Build worker process %s exited without sending a stop acknowledgement', child.process.pid)
     return True

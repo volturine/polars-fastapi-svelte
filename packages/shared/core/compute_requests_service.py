@@ -123,6 +123,7 @@ def mark_request_failed(
     error_message: str,
     response_json: dict[str, object] | None = None,
 ) -> ComputeRequest:
+    session.rollback()
     request = session.get(ComputeRequest, request_id)
     if request is None:
         raise ValueError(f'Compute request {request_id} not found')

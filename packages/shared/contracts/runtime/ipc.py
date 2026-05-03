@@ -87,6 +87,41 @@ async def _serve_unix_notifications(server: socket.socket, stop_event, handler: 
             conn.close()
 
 
+def _postgres_connection_socket(connection: psycopg.Connection) -> int:
+    fileno = getattr(connection, 'fileno', None)
+    if callable(fileno):
+        socket_fd = fileno()
+        if isinstance(socket_fd, int) and socket_fd >= 0:
+            return socket_fd
+    pgconn = getattr(connection, 'pgconn', None)
+    socket_fd = getattr(pgconn, 'socket', None)
+    if isinstance(socket_fd, int) and socket_fd >= 0:
+        return socket_fd
+    raise RuntimeError('Unable to determine Postgres runtime IPC socket')
+
+
+async def _wait_for_postgres_socket(connection: psycopg.Connection, stop_event) -> bool:
+    loop = asyncio.get_running_loop()
+    ready = asyncio.Event()
+    socket_fd = _postgres_connection_socket(connection)
+
+    def _mark_ready() -> None:
+        ready.set()
+
+    loop.add_reader(socket_fd, _mark_ready)
+    ready_task = asyncio.create_task(ready.wait())
+    stop_task = asyncio.create_task(stop_event.wait())
+    try:
+        done, pending = await asyncio.wait({ready_task, stop_task}, return_when=asyncio.FIRST_COMPLETED)
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+        return ready_task in done
+    finally:
+        loop.remove_reader(socket_fd)
+
+
 async def _serve_postgres_notifications(
     connection: psycopg.Connection,
     stop_event,
@@ -94,7 +129,9 @@ async def _serve_postgres_notifications(
 ) -> None:
     while not stop_event.is_set():
         try:
-            notifications = await asyncio.to_thread(lambda: list(connection.notifies(timeout=0.5, stop_after=100)))
+            if not await _wait_for_postgres_socket(connection, stop_event):
+                return
+            notifications = list(connection.notifies(timeout=0, stop_after=100))
         except (asyncio.CancelledError, psycopg.Error):
             return
         if not notifications:

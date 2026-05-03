@@ -44,6 +44,10 @@ async function openCancelDialogFromRow(page: Page, row: ReturnType<Page['locator
 }
 
 async function openCancelDialogFromPreview(page: Page, preview: ReturnType<Page['locator']>) {
+	await expect(preview.locator('[data-testid="build-preview-engine-run-id"]')).toHaveText(/\S+/, {
+		timeout: 30_000
+	});
+	await expect(preview.getByText(/Connecting|Running/)).toBeVisible({ timeout: 30_000 });
 	const btn = preview.locator('[data-testid="build-cancel-button"]');
 	await expect(btn).toBeVisible({ timeout: 30_000 });
 	await expect(btn).toBeEnabled({ timeout: 30_000 });

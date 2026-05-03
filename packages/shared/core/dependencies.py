@@ -17,7 +17,8 @@ if TYPE_CHECKING:
 
 
 class RuntimeAvailabilityProbe(Protocol):
-    def available(self, *, kind: RuntimeWorkerKind) -> bool: ...
+    def available(self, *, kind: RuntimeWorkerKind) -> bool:
+        pass
 
 
 class PersistedRuntimeAvailabilityProbe:

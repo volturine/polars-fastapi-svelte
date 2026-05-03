@@ -1,5 +1,4 @@
 import asyncio
-import contextlib
 import logging
 import os
 import socket
@@ -107,14 +106,23 @@ def _mark_running_builds_orphaned_across_namespaces() -> int:
     return count
 
 
+async def _wait_until_stopped(stop_event: asyncio.Event, delay_seconds: float) -> bool:
+    stop_task = asyncio.create_task(stop_event.wait())
+    delay_task = asyncio.create_task(asyncio.sleep(delay_seconds))
+    done, pending = await asyncio.wait({stop_task, delay_task}, return_when=asyncio.FIRST_COMPLETED)
+    for task in pending:
+        task.cancel()
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+    return stop_task in done
+
+
 async def chat_sweep_loop(stop_event: asyncio.Event) -> None:
     """Periodically sweep expired chat sessions."""
     from modules.chat.sessions import session_store
 
     while not stop_event.is_set():
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(stop_event.wait(), timeout=300)
-        if stop_event.is_set():
+        if await _wait_until_stopped(stop_event, 300):
             break
         try:
             session_store.sweep()
@@ -124,9 +132,7 @@ async def chat_sweep_loop(stop_event: asyncio.Event) -> None:
 
 async def api_worker_heartbeat_loop(stop_event: asyncio.Event, worker_id: str, *, heartbeat_seconds: float = 5.0) -> None:
     while not stop_event.is_set():
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(stop_event.wait(), timeout=heartbeat_seconds)
-        if stop_event.is_set():
+        if await _wait_until_stopped(stop_event, heartbeat_seconds):
             return
         _heartbeat_api_worker(worker_id)
 
@@ -179,13 +185,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     telegram_bot.stop()
 
     stop_event.set()
-    with contextlib.suppress(asyncio.TimeoutError):
-        await asyncio.wait_for(chat_sweep_task, timeout=5)
-    with contextlib.suppress(asyncio.TimeoutError):
-        await asyncio.wait_for(api_heartbeat_task, timeout=5)
+    await chat_sweep_task
+    await api_heartbeat_task
     if ipc_task is not None:
-        with contextlib.suppress(asyncio.TimeoutError):
-            await asyncio.wait_for(ipc_task, timeout=5)
+        await ipc_task
     await runtime_ipc.stop_api_server(ipc_server, listener='api')
     await close_clients()
     await asyncio.to_thread(_stop_api_worker, api_worker_id)

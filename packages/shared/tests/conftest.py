@@ -193,9 +193,8 @@ def client(test_db_session, test_user):
                             await asyncio.wait_for(ipc_task, timeout=5)
                     await runtime_ipc.stop_api_server(ipc_server, listener='job')
                     manager.shutdown_all()
-                    stop_task.cancel()
-                    with contextlib.suppress(asyncio.CancelledError):
-                        await stop_task
+                    stop_flag.set()
+                    await stop_task
 
             asyncio.run(_runner())
 

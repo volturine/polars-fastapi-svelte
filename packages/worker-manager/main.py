@@ -102,13 +102,22 @@ def queued_job_count() -> int:
     return count
 
 
+async def _wait_until_stopped(stop_event: asyncio.Event, delay_seconds: float) -> bool:
+    stop_task = asyncio.create_task(stop_event.wait())
+    delay_task = asyncio.create_task(asyncio.sleep(delay_seconds))
+    done, pending = await asyncio.wait({stop_task, delay_task}, return_when=asyncio.FIRST_COMPLETED)
+    for task in pending:
+        task.cancel()
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+    return stop_task in done
+
+
 async def _engine_cleanup_loop(stop_event: asyncio.Event, manager: ProcessManager) -> None:
     idle_timeout = settings.engine_idle_timeout
     while not stop_event.is_set():
-        timeout = max(1.0, manager.next_idle_deadline_seconds(idle_timeout))
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(stop_event.wait(), timeout=timeout)
-        if stop_event.is_set():
+        delay_seconds = max(1.0, manager.next_idle_deadline_seconds(idle_timeout))
+        if await _wait_until_stopped(stop_event, delay_seconds):
             return
         manager.cleanup_idle_engines()
 
@@ -177,8 +186,7 @@ async def run_build_worker_process(
     finally:
         local_stop.set()
         if not task.done():
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
+            await task
         manager.shutdown_all()
         logger.info('Build worker process shutdown complete')
 
@@ -313,18 +321,14 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
         local_stop.set()
         heartbeat_stop.set()
         heartbeat_thread.join()
-        cleanup_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await cleanup_task
+        await cleanup_task
+        if ipc_task is not None:
+            await ipc_task
         await runtime_ipc.stop_api_server(ipc_server, listener='job')
         for child in children.values():
             _stop_worker_process(child)
         manager.shutdown_all()
-        request_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await request_task
-        if ipc_task is not None:
-            await asyncio.gather(ipc_task, return_exceptions=True)
+        await request_task
         _stop_manager(worker_id)
         logger.info('Build worker manager shutdown complete')
 

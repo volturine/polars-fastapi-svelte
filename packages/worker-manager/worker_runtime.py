@@ -33,6 +33,17 @@ class ClaimedJob:
     namespace: str
 
 
+async def _wait_until_stopped(stop_event: asyncio.Event, delay_seconds: float) -> bool:
+    stop_task = asyncio.create_task(stop_event.wait())
+    delay_task = asyncio.create_task(asyncio.sleep(delay_seconds))
+    done, pending = await asyncio.wait({stop_task, delay_task}, return_when=asyncio.FIRST_COMPLETED)
+    for task in pending:
+        task.cancel()
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+    return stop_task in done
+
+
 async def build_worker_loop(
     stop_event: asyncio.Event,
     worker_id: str,
@@ -68,9 +79,7 @@ async def build_worker_loop(
                         return
                     continue
                 if idle_exit_seconds is not None:
-                    with contextlib.suppress(TimeoutError):
-                        await asyncio.wait_for(stop_event.wait(), timeout=idle_exit_seconds)
-                    if stop_event.is_set():
+                    if await _wait_until_stopped(stop_event, idle_exit_seconds):
                         continue
                     return
                 wait_task = asyncio.create_task(build_job_hub.wait(last_seen))

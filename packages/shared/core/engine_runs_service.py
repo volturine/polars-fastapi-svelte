@@ -246,6 +246,8 @@ def cancel_engine_run(session: Session, run_id: str, *, cancelled_by: str | None
 
     return compute_schemas.CancelBuildResponse(
         id=run_id,
+        build_id=None,
+        engine_run_id=run_id,
         status='cancelled',
         duration_ms=duration_ms,
         cancelled_at=now,

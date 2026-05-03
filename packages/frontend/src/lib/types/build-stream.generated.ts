@@ -352,6 +352,8 @@ export interface ActiveBuildDetail {
 	results: BuildTabResult[];
 	duration_ms: number | null;
 	error: string | null;
+	request_json: Record<string, unknown> | null;
+	result_json: Record<string, unknown> | null;
 }
 
 export interface BuildDetailSnapshot {

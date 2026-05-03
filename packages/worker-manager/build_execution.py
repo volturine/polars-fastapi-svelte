@@ -131,7 +131,7 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
         if run is None:
             return
         marked = build_run_service.mark_build_running(session, build_id, now=service._utcnow())
-        if marked is None:
+        if marked is None or marked.status != build_run_service.BuildRunStatus.RUNNING:
             return
         request_payload = schemas.BuildRequest.model_validate(run.request_json)
         pipeline = _build_pipeline_payload(request_payload)

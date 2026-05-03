@@ -248,7 +248,10 @@
 
 	const selectedCount = $derived(activeSubscribers.length);
 	const buildBusy = $derived(
-		buildStarting || buildStore.status === 'connecting' || buildStore.status === 'running'
+		buildStarting ||
+			buildStore.status === 'connecting' ||
+			buildStore.status === 'queued' ||
+			buildStore.status === 'running'
 	);
 	const hasBuildSession = $derived(
 		buildBusy ||
@@ -258,11 +261,13 @@
 			buildStore.status === 'cancelled'
 	);
 	const canCancelRunningBuild = $derived(
-		(buildStore.status === 'connecting' || buildStore.status === 'running') &&
-			!!buildStore.engineRunId
+		(buildStore.status === 'connecting' ||
+			buildStore.status === 'queued' ||
+			buildStore.status === 'running') &&
+			!!buildStore.buildId
 	);
 	const buildSessionLabel = $derived.by(() => {
-		if (buildBusy) return 'Engine Run';
+		if (buildBusy) return 'Active Build';
 		if (buildStore.status === 'completed') return 'Last Build';
 		if (buildStore.status === 'failed') return 'Last Build';
 		if (buildStore.status === 'cancelled') return 'Last Build';
@@ -289,7 +294,9 @@
 		if (!hasBuildSession) return;
 		previewOpen = true;
 		if (
-			(buildStore.status !== 'connecting' && buildStore.status !== 'running') ||
+			(buildStore.status !== 'connecting' &&
+				buildStore.status !== 'queued' &&
+				buildStore.status !== 'running') ||
 			!buildStore.buildId
 		)
 			return;
@@ -475,12 +482,12 @@
 	}
 
 	async function confirmCancelBuild(): Promise<void> {
-		const runId = buildStore.engineRunId;
-		if (!runId || cancelPending) return;
+		const buildId = buildStore.buildId;
+		if (!buildId || cancelPending) return;
 		cancelConfirmOpen = false;
 		cancelPending = true;
 		error = null;
-		const result = await cancelBuild(runId);
+		const result = await cancelBuild(buildId);
 		result.match(
 			(cancelled) => {
 				buildStore.markCancelled(cancelled);

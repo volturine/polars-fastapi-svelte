@@ -83,6 +83,13 @@
 		return () => engineRunsStore.close();
 	});
 
+	// Network: switching to the Runs tab is an explicit user refresh point, so reload once
+	// to pick up runs that may have been persisted just after the datasource was selected.
+	$effect(() => {
+		if (activeTab !== 'runs' || !datasource.id) return;
+		engineRunsStore.refresh();
+	});
+
 	const healthChecksQuery = createQuery(() => ({
 		queryKey: ['datasource-healthchecks-count', datasource.id],
 		queryFn: async () => {

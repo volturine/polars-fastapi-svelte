@@ -913,6 +913,21 @@ def _raise_if_engine_run_cancelled(session: Session, run_id: str) -> None:
     raise BuildCancelledError(run_id, cancelled_at=cancelled_at, cancelled_by=cancelled_by)
 
 
+def _cancel_started_engine_run_if_build_cancelled(build: ActiveBuild, *, run_id: str) -> None:
+    if build.status != compute_schemas.ActiveBuildStatus.CANCELLED:
+        return
+    session_gen = get_db()
+    session = next(session_gen)
+    try:
+        run = engine_run_service.get_engine_run(session, run_id)
+        if run is None or run.status != EngineRunStatus.RUNNING:
+            return
+        engine_run_service.cancel_engine_run(session, run_id, cancelled_by=build.cancelled_by)
+    finally:
+        session.close()
+        session_gen.close()
+
+
 def _parse_cancelled_at(value: str | None) -> datetime | None:
     if value is None:
         return None
@@ -3170,6 +3185,9 @@ async def run_analysis_build_stream(
                     return
                 if isinstance(run_id, str):
                     build.current_engine_run_id = run_id
+                    _cancel_started_engine_run_if_build_cancelled(build, run_id=run_id)
+                    if build.status == compute_schemas.ActiveBuildStatus.CANCELLED:
+                        return
 
                 async def emit_run_started() -> None:
                     payload: dict[str, object] = {

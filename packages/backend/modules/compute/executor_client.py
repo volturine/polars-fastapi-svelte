@@ -265,21 +265,6 @@ async def spawn_engine(
     return compute_schemas.EngineStatusSchema.model_validate(completed.response_json)
 
 
-async def keepalive_engine(
-    session: Session,
-    *,
-    analysis_id: str,
-    runtime_probe: RuntimeAvailabilityProbe,
-) -> compute_schemas.EngineStatusSchema:
-    completed = await _submit_and_wait(
-        session,
-        kind=ComputeRequestKind.KEEPALIVE_ENGINE,
-        request_json={'analysis_id': analysis_id},
-        runtime_probe=runtime_probe,
-    )
-    return compute_schemas.EngineStatusSchema.model_validate(completed.response_json)
-
-
 async def configure_engine(
     session: Session,
     *,

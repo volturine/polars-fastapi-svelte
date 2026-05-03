@@ -1399,57 +1399,79 @@ def test_get_active_build_returns_resource_config_summary(client, test_db_sessio
     }
 
 
-def test_get_active_build_by_engine_run_returns_detail(client, test_db_session, test_user) -> None:
+def test_get_build_returns_request_and_engine_result_payloads(client, test_db_session, test_user) -> None:
     created = engine_run_service.create_engine_run(
         test_db_session,
         engine_run_service.create_engine_run_payload(
-            analysis_id='analysis-live-by-run',
-            datasource_id='output-ds-live-by-run',
+            analysis_id='analysis-payloads',
+            datasource_id='output-ds-payloads',
             kind='datasource_create',
-            status='running',
+            status='success',
             request_json={'kind': 'datasource_create'},
-            result_json={},
+            result_json={'metadata': {'branch': 'feature/test'}, 'results': [{'output_name': 'Created output'}]},
+            completed_at=datetime.now(UTC),
+            duration_ms=250,
         ),
     )
-    test_db_session.commit()
     run = build_run_service.create_build_run(
         test_db_session,
         build_id=str(uuid.uuid4()),
         namespace='default',
-        analysis_id='analysis-live-by-run',
-        analysis_name='Analysis Live By Run',
-        request_json={'analysis_id': 'analysis-live-by-run'},
+        analysis_id='analysis-payloads',
+        analysis_name='Analysis Payloads',
+        request_json={'analysis_id': 'analysis-payloads', 'kind': 'datasource_create'},
         starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_engine_run_id=created.id,
         current_kind='datasource_create',
         total_tabs=1,
         created_at=datetime.now(UTC),
         started_at=datetime.now(UTC),
     )
-    build_run_service.append_build_event(
-        test_db_session,
-        build_id=run.id,
-        event=compute_schemas.BuildProgressEvent(
-            build_id=run.id,
-            analysis_id='analysis-live-by-run',
-            emitted_at=datetime.now(UTC),
-            current_kind='datasource_create',
-            current_datasource_id='output-ds-live-by-run',
-            engine_run_id=created.id,
-            progress=0.25,
-            elapsed_ms=900,
-            total_steps=3,
-            current_step='Load source',
-            current_step_index=0,
-        ),
-    )
 
-    response = client.get(f'/api/v1/compute/builds/active/by-engine-run/{created.id}')
+    response = client.get(f'/api/v1/compute/builds/{run.id}')
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload['build_id'] == run.id
-    assert payload['current_engine_run_id'] == created.id
-    assert payload['status'] == 'running'
+    assert payload['request_json'] == {'analysis_id': 'analysis-payloads', 'kind': 'datasource_create'}
+    assert payload['result_json']['metadata']['branch'] == 'feature/test'
+
+
+def test_list_builds_returns_terminal_history(client, test_db_session, test_user) -> None:
+    running = build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+        analysis_id='analysis-history',
+        analysis_name='Analysis History',
+        request_json={'analysis_id': 'analysis-history'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        status=build_run_service.BuildRunStatus.RUNNING,
+        current_kind='preview',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
+    )
+    cancelled = build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+        analysis_id='analysis-history',
+        analysis_name='Analysis History',
+        request_json={'analysis_id': 'analysis-history'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        status=build_run_service.BuildRunStatus.CANCELLED,
+        current_kind='datasource_create',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
+    )
+
+    response = client.get('/api/v1/compute/builds', params={'analysis_id': 'analysis-history'})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['total'] == 2
+    assert {item['build_id'] for item in payload['builds']} == {running.id, cancelled.id}
 
 
 def test_get_active_build_falls_back_to_durable_db(client, test_db_session, test_user) -> None:
@@ -1507,62 +1529,7 @@ def test_get_active_build_falls_back_to_durable_db(client, test_db_session, test
     assert payload['results'][0]['output_name'] == 'Output 1'
 
 
-def test_get_active_build_by_engine_run_falls_back_to_durable_db(client, test_db_session, test_user) -> None:
-    created = engine_run_service.create_engine_run(
-        test_db_session,
-        engine_run_service.create_engine_run_payload(
-            analysis_id='analysis-db-by-run',
-            datasource_id='output-ds-db-by-run',
-            kind='datasource_create',
-            status='running',
-            request_json={'kind': 'datasource_create'},
-            result_json={},
-            created_at=datetime.now(UTC),
-        ),
-    )
-    run = build_run_service.create_build_run(
-        test_db_session,
-        build_id=str(uuid.uuid4()),
-        namespace='default',
-        analysis_id='analysis-db-by-run',
-        analysis_name='Analysis DB By Run',
-        request_json={'analysis_id': 'analysis-db-by-run'},
-        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
-        current_kind='preview',
-        total_tabs=1,
-        created_at=datetime.now(UTC),
-        started_at=datetime.now(UTC),
-    )
-    build_run_service.append_build_event(
-        test_db_session,
-        build_id=run.id,
-        event=compute_schemas.BuildProgressEvent(
-            build_id=run.id,
-            analysis_id=run.analysis_id,
-            emitted_at=datetime.now(UTC),
-            current_kind='preview',
-            current_datasource_id='source-1',
-            tab_id='tab-1',
-            tab_name='Tab 1',
-            engine_run_id=created.id,
-            progress=0.4,
-            elapsed_ms=400,
-            total_steps=2,
-            current_step='Load',
-            current_step_index=0,
-        ),
-    )
-
-    response = client.get(f'/api/v1/compute/builds/active/by-engine-run/{created.id}')
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload['build_id'] == run.id
-    assert payload['current_engine_run_id'] == created.id
-    assert payload['status'] == 'running'
-
-
-def test_cancel_build_marks_running_run_cancelled(client, test_db_session, test_user) -> None:
+def test_cancel_build_marks_running_build_cancelled(client, test_db_session, test_user) -> None:
     created = engine_run_service.create_engine_run(
         test_db_session,
         engine_run_service.create_engine_run_payload(
@@ -1589,11 +1556,26 @@ def test_cancel_build_marks_running_run_cancelled(client, test_db_session, test_
             current_step='Filter rows',
         ),
     )
-    response = client.post(f'/api/v1/compute/cancel/{created.id}')
+    build = build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+        analysis_id='analysis-cancel',
+        analysis_name='Analysis Cancel',
+        request_json={'analysis_id': 'analysis-cancel'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_engine_run_id=created.id,
+        current_kind='datasource_update',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
+    )
+    response = client.post(f'/api/v1/compute/builds/active/{build.id}/cancel')
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload['id'] == created.id
+    assert payload['build_id'] == build.id
+    assert payload['engine_run_id'] == created.id
     assert payload['status'] == 'cancelled'
     assert payload['cancelled_by'] == test_user.email
 
@@ -1629,6 +1611,7 @@ def test_cancel_build_persists_durable_cancelled_build(client, test_db_session, 
         analysis_name='Analysis Cancel Durable',
         request_json={'analysis_id': 'analysis-cancel-durable'},
         starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        current_engine_run_id=created.id,
         current_kind='datasource_update',
         total_tabs=1,
         created_at=datetime.now(UTC),
@@ -1653,7 +1636,7 @@ def test_cancel_build_persists_durable_cancelled_build(client, test_db_session, 
             current_step_index=1,
         ),
     )
-    response = client.post(f'/api/v1/compute/cancel/{created.id}')
+    response = client.post(f'/api/v1/compute/builds/active/{run.id}/cancel')
 
     assert response.status_code == 200
     test_db_session.expire_all()
@@ -1670,24 +1653,63 @@ def test_cancel_build_persists_durable_cancelled_build(client, test_db_session, 
     assert detail['cancelled_by'] == test_user.email
 
 
-def test_cancel_build_requires_running_status(client, test_db_session) -> None:
-    created = engine_run_service.create_engine_run(
+def test_cancel_build_marks_queued_build_cancelled_before_engine_run_exists(client, test_db_session, test_user) -> None:
+    run = build_run_service.create_build_run(
         test_db_session,
-        engine_run_service.create_engine_run_payload(
-            analysis_id='analysis-not-running',
-            datasource_id='output-ds-2',
-            kind='datasource_update',
-            status='success',
-            request_json={'kind': 'datasource_update'},
-            result_json={},
-            created_at=datetime.now(UTC),
-        ),
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+        analysis_id='analysis-cancel-queued',
+        analysis_name='Analysis Cancel Queued',
+        request_json={'analysis_id': 'analysis-cancel-queued'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        status=build_run_service.BuildRunStatus.QUEUED,
+        current_kind='preview',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
+    )
+    job = build_job_service.create_job(test_db_session, build_id=run.id, namespace='default')
+
+    response = client.post(f'/api/v1/compute/builds/active/{run.id}/cancel')
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['build_id'] == run.id
+    assert payload['engine_run_id'] is None
+    assert payload['status'] == 'cancelled'
+    assert payload['cancelled_by'] == test_user.email
+
+    test_db_session.expire_all()
+    stored = test_db_session.get(BuildRun, run.id)
+    stored_job = build_job_service.get_job_by_build_id(test_db_session, run.id)
+    assert stored is not None
+    assert stored.status == 'cancelled'
+    assert stored.cancelled_by == test_user.email
+    assert stored_job is not None
+    assert stored_job.id == job.id
+    assert stored_job.status == build_job_service.BuildJobStatus.CANCELLED
+
+
+def test_cancel_build_requires_active_status(client, test_db_session, test_user) -> None:
+    run = build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+        analysis_id='analysis-not-active',
+        analysis_name='Analysis Not Active',
+        request_json={'analysis_id': 'analysis-not-active'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        status=build_run_service.BuildRunStatus.CANCELLED,
+        current_kind='preview',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
     )
 
-    response = client.post(f'/api/v1/compute/cancel/{created.id}')
+    response = client.post(f'/api/v1/compute/builds/active/{run.id}/cancel')
 
     assert response.status_code == 400
-    assert response.json()['detail'] == 'Only running builds can be cancelled'
+    assert response.json()['detail'] == 'Only active builds can be cancelled'
 
 
 def test_cancel_build_updates_active_build_registry(client, test_db_session, test_user) -> None:
@@ -1746,7 +1768,7 @@ def test_cancel_build_updates_active_build_registry(client, test_db_session, tes
             ),
         )
     )
-    response = client.post(f'/api/v1/compute/cancel/{created.id}')
+    response = client.post(f'/api/v1/compute/builds/active/{build.build_id}/cancel')
 
     assert response.status_code == 200
     deadline = time.time() + 5
@@ -1999,6 +2021,30 @@ def test_start_active_build_persists_durable_build_run(client, sample_datasource
     assert stored.current_tab_id == 'tab1'
     assert job.build_id == body['build_id']
     assert job.status in {'queued', 'running'}
+
+
+def test_run_queued_build_job_skips_cancelled_build(client, test_db_session, test_user) -> None:
+    run = build_run_service.create_build_run(
+        test_db_session,
+        build_id=str(uuid.uuid4()),
+        namespace='default',
+        analysis_id='analysis-cancelled-before-start',
+        analysis_name='Cancelled Before Start',
+        request_json={'analysis_id': 'analysis-cancelled-before-start'},
+        starter_json=compute_service._build_starter(test_user).model_dump(mode='json'),
+        status=build_run_service.BuildRunStatus.CANCELLED,
+        current_kind='preview',
+        total_tabs=1,
+        created_at=datetime.now(UTC),
+        started_at=datetime.now(UTC),
+    )
+    build_job_service.create_job(test_db_session, build_id=run.id, namespace='default')
+
+    with patch('build_execution.service.run_analysis_build_stream') as run_stream:
+        asyncio.run(_run_queued_build_job(manager=client.app.state.manager, build_id=run.id))
+
+    run_stream.assert_not_called()
+    assert asyncio.run(active_build_registry.get_build(run.id)) is None
 
 
 def test_terminal_active_build_event_persists_to_db(client, sample_datasource: DataSource, test_user, test_db_session) -> None:
@@ -3044,14 +3090,10 @@ def test_load_engine_snapshot_dedupes_analysis_rows_across_workers(test_db_sessi
     assert snapshot.engines[0].resource_config.max_threads == 2
 
 
-def test_cleanup_idle_engines_persists_snapshot_before_notifying(monkeypatch) -> None:
+def test_shutdown_engine_persists_snapshot_before_notifying(monkeypatch) -> None:
     manager = ProcessManager()
     manager._engine_factory = FakeEngine
     manager.spawn_engine('analysis-cleanup-order')
-    info = manager.get_engine_info('analysis-cleanup-order')
-    assert info is not None
-    info.last_activity = datetime.now(UTC) - timedelta(seconds=600)
-
     calls: list[str] = []
 
     def persist(namespace: str, statuses: list[EngineStatusInfo]) -> None:
@@ -3063,12 +3105,7 @@ def test_cleanup_idle_engines_persists_snapshot_before_notifying(monkeypatch) ->
     manager._snapshot_persist = persist
     monkeypatch.setattr('compute_manager.runtime_ipc.notify_api_engine', notify)
 
-    try:
-        cleaned = manager.cleanup_idle_engines()
-    finally:
-        manager.shutdown_all()
-
-    assert cleaned == ['default:analysis-cleanup-order']
+    manager.shutdown_engine('analysis-cleanup-order')
     assert calls[:2] == ['persist:default:0', 'notify:default']
 
 
@@ -3683,25 +3720,6 @@ class TestEngineLifecycle:
         result = response.json()
         assert result['analysis_id'] == analysis_id
         assert result['status'] == 'healthy'
-
-    def test_keepalive_engine(self, client):
-        analysis_id = str(uuid.uuid4())
-        mock_manager = MagicMock()
-        mock_manager.keepalive.return_value = MagicMock()
-        mock_manager.get_engine_status.return_value = {
-            'analysis_id': analysis_id,
-            'status': 'healthy',
-            'process_id': 12345,
-            'last_activity': '2024-01-01T00:00:00',
-            'current_job_id': None,
-        }
-        app.dependency_overrides[get_manager] = lambda: mock_manager
-
-        response = client.post(f'/api/v1/compute/engine/keepalive/{analysis_id}')
-
-        assert response.status_code == 200
-        result = response.json()
-        assert result['analysis_id'] == analysis_id
 
     def test_remote_spawn_engine_returns_503_when_runtime_unavailable(self, client):
         class UnavailableProbe:

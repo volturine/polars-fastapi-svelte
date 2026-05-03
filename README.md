@@ -163,7 +163,6 @@ just dev
 |----------|---------|-------------|
 | `DEBUG` | `false` | Enable debug logging and SQL echo |
 | `PROD_MODE_ENABLED` | `false` | Serve static frontend from `frontend/build` |
-| `ENGINE_IDLE_TIMEOUT` | `60` | Seconds before idle engines are cleaned up |
 | `JOB_TIMEOUT` | `300` | Max job execution time in seconds |
 | `AUTH_REQUIRED` | `false` | Require login before accessing routes |
 | `DATA_DIR` | — | Base directory for all data storage |

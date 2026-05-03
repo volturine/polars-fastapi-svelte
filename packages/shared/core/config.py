@@ -10,7 +10,6 @@ from pydantic_settings.sources import DotEnvSettingsSource
 # (field_name, min_inclusive, max_inclusive) — None means no bound
 _NUMERIC_CONSTRAINTS: list[tuple[str, int | None, int | None]] = [
     ('port', 1, 65535),
-    ('engine_idle_timeout', 1, None),
     ('scheduler_check_interval', 1, None),
     ('lock_ttl_seconds', 1, None),
     ('lock_heartbeat_interval_seconds', 1, None),
@@ -109,10 +108,6 @@ class Settings(BaseSettings):
 
     upload_chunk_size: int = Field(default=5 * 1024 * 1024, alias='UPLOAD_CHUNK_SIZE')
     upload_max_file_size_bytes: int = Field(default=2 * 1024 * 1024 * 1024, alias='UPLOAD_MAX_FILE_SIZE_BYTES')
-
-    # Engine idle timeout in seconds (default 60s)
-    # Engines will be terminated after this duration of inactivity (reset on save)
-    engine_idle_timeout: int = Field(default=60, alias='ENGINE_IDLE_TIMEOUT')
 
     # Scheduler check interval in seconds (default 60 seconds)
     # How often to check for schedules that need to run

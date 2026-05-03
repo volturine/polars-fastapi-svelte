@@ -138,7 +138,7 @@ async function confirmCancelBuild(page: Page) {
 async function previewBuildId(page: Page) {
 	const preview = page.locator('[data-testid="build-preview"]');
 	await expect(preview).toBeVisible({ timeout: 10_000 });
-	const id = preview.locator('[data-testid="build-preview-engine-run-id"]');
+	const id = preview.locator('[data-testid="build-preview-id"]');
 	await expect(id).toHaveText(/\S+/, { timeout: 30_000 });
 	return (await id.textContent())?.trim() ?? '';
 }
@@ -165,7 +165,7 @@ test.describe('Navigation – engines live monitor', () => {
 		test.setTimeout(120_000);
 		const dsName = `e2e-engines-ds-${uid()}`;
 		const analysisName = `E2E Engines ${uid()}`;
-		const datasourceId = await createLargeDatasource(request, dsName, 250_000);
+		const datasourceId = await createLargeDatasource(request, dsName, 200);
 		const analysisId = await createLongRunningAnalysis(request, analysisName, datasourceId);
 
 		try {

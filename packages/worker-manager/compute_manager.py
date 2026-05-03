@@ -24,7 +24,7 @@ def _default_engine_factory(analysis_id: str, resource_config: dict | None = Non
 
 
 class EngineInfo:
-    """Tracks engine and activity timestamp."""
+    """Tracks engine metadata for reuse and eviction decisions."""
 
     def __init__(self, engine: ComputeEngine):
         self.engine = engine
@@ -33,16 +33,6 @@ class EngineInfo:
     def touch(self) -> None:
         """Update last activity timestamp."""
         self.last_activity = datetime.now(UTC)
-
-    def is_idle_for(self, seconds: int) -> bool:
-        """Check if engine has been idle for more than N seconds."""
-        elapsed = (datetime.now(UTC) - self.last_activity).total_seconds()
-        return elapsed > seconds
-
-    def seconds_until_idle(self, seconds: int) -> float:
-        """Return seconds remaining before this engine becomes idle."""
-        elapsed = (datetime.now(UTC) - self.last_activity).total_seconds()
-        return max(0.0, seconds - elapsed)
 
 
 class ProcessManager:
@@ -220,17 +210,6 @@ class ProcessManager:
         with self._engines_lock:
             return self._engines.get(key)
 
-    def keepalive(self, analysis_id: str) -> EngineInfo | None:
-        """Update last activity for an engine (keepalive ping)."""
-        key = self._key(analysis_id)
-        with self._engines_lock:
-            info = self._engines.get(key)
-            if info:
-                info.touch()
-        if info:
-            self._emit_snapshot()
-        return info
-
     def _get_defaults(self) -> dict:
         """Get default resource settings from environment."""
         from core.config import settings
@@ -321,48 +300,6 @@ class ProcessManager:
                 reset_namespace(token)
         if shutdown_targets:
             self._emit_snapshot()
-
-    def cleanup_idle_engines(self) -> list[str]:
-        """Shutdown idle engines across namespaces. Returns namespaced engine keys."""
-        from core.config import settings  # Import here to avoid circular import
-
-        cleaned = []
-        shutdown_targets: list[tuple[str, str, ComputeEngine]] = []
-        with self._engines_lock:
-            for key, info in list(self._engines.items()):
-                namespace, analysis_id = self._split_key(key)
-                info.engine.check_health()
-
-                if info.engine.current_job_id and info.engine.is_process_alive():
-                    continue
-
-                if not info.is_idle_for(settings.engine_idle_timeout):
-                    continue
-
-                shutdown_targets.append((namespace, analysis_id, info.engine))
-                del self._engines[key]
-                cleaned.append(key)
-
-        for namespace, analysis_id, engine in shutdown_targets:
-            logger.info(f'Shutting down engine for analysis {analysis_id} in namespace {namespace}')
-            engine.shutdown()
-        changed_namespaces = {namespace for namespace, _analysis_id, _engine in shutdown_targets}
-        for namespace in changed_namespaces:
-            token = set_namespace_context(namespace)
-            try:
-                persist_engine_snapshot(self._snapshot_persist, namespace=namespace, statuses=self.list_all_engine_statuses())
-                runtime_ipc.notify_api_engine(namespace)
-                self._emit_snapshot()
-            finally:
-                reset_namespace(token)
-        return cleaned
-
-    def next_idle_deadline_seconds(self, idle_timeout: int) -> float:
-        """Return the nearest idle deadline across engines, or idle_timeout when none exist."""
-        with self._engines_lock:
-            if not self._engines:
-                return float(idle_timeout)
-            return min(info.seconds_until_idle(idle_timeout) for info in self._engines.values())
 
     def list_engines(self) -> list[str]:
         """List all active engine analysis_ids."""

@@ -105,7 +105,9 @@ const DETAIL_BASE: ActiveBuildDetail = {
 	logs: [],
 	results: [],
 	duration_ms: null,
-	error: null
+	error: null,
+	request_json: null,
+	result_json: null
 };
 
 const MINIMAL_BUILD_REQUEST = {
@@ -363,7 +365,9 @@ describe('BuildStreamStore', () => {
 				],
 				results: [],
 				duration_ms: null,
-				error: null
+				error: null,
+				request_json: null,
+				result_json: null
 			}
 		};
 		socket.emit('message', { data: JSON.stringify(snapshot) });
@@ -755,7 +759,8 @@ describe('BuildStreamStore', () => {
 		});
 
 		store.markCancelled({
-			id: 'run-1',
+			build_id: 'build-1',
+			engine_run_id: 'run-1',
 			status: 'cancelled',
 			cancelled_at: '2026-04-10T11:00:00Z',
 			cancelled_by: 'test@example.com',
@@ -1009,7 +1014,9 @@ describe('BuildStreamStore', () => {
 			logs: [],
 			results: [],
 			duration_ms: null,
-			error: null
+			error: null,
+			request_json: null,
+			result_json: null
 		};
 		store.applySnapshot(detail);
 		expect(store.buildId).toBe('b-1');
@@ -1121,7 +1128,9 @@ describe('BuildStreamStore', () => {
 			logs: [],
 			results: [],
 			duration_ms: null,
-			error: null
+			error: null,
+			request_json: null,
+			result_json: null
 		};
 
 		store.applySnapshot(detail);

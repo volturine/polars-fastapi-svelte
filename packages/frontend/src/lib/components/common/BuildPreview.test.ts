@@ -58,6 +58,8 @@ function makeDetail(overrides: Partial<ActiveBuildDetail> = {}): ActiveBuildDeta
 		results: [],
 		duration_ms: null,
 		error: null,
+		request_json: null,
+		result_json: null,
 		...overrides
 	};
 }

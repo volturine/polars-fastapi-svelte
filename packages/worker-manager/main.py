@@ -101,26 +101,6 @@ def queued_job_count() -> int:
     return count
 
 
-async def _wait_until_stopped(stop_event: asyncio.Event, delay_seconds: float) -> bool:
-    stop_task = asyncio.create_task(stop_event.wait())
-    delay_task = asyncio.create_task(asyncio.sleep(delay_seconds))
-    done, pending = await asyncio.wait({stop_task, delay_task}, return_when=asyncio.FIRST_COMPLETED)
-    for task in pending:
-        task.cancel()
-    if pending:
-        await asyncio.gather(*pending, return_exceptions=True)
-    return stop_task in done
-
-
-async def _engine_cleanup_loop(stop_event: asyncio.Event, manager: ProcessManager) -> None:
-    idle_timeout = settings.engine_idle_timeout
-    while not stop_event.is_set():
-        delay_seconds = max(1.0, manager.next_idle_deadline_seconds(idle_timeout))
-        if await _wait_until_stopped(stop_event, delay_seconds):
-            return
-        manager.cleanup_idle_engines()
-
-
 def _manager_heartbeat_loop(stop_signal: threading.Event, worker_id: str, *, heartbeat_seconds: float = 5.0) -> None:
     while not stop_signal.wait(heartbeat_seconds):
         _heartbeat_manager(worker_id, active_jobs=0)
@@ -276,7 +256,6 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
         daemon=True,
     )
     heartbeat_thread.start()
-    cleanup_task = asyncio.create_task(_engine_cleanup_loop(local_stop, manager))
     request_task = asyncio.create_task(compute_request_loop(local_stop, worker_id=worker_id, manager=manager))
     children: dict[int, ManagedWorkerProcess] = {}
     last_seen = build_job_hub.version()
@@ -317,7 +296,6 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
         local_stop.set()
         heartbeat_stop.set()
         heartbeat_thread.join()
-        await cleanup_task
         if ipc_task is not None:
             await ipc_task
         await runtime_ipc.stop_api_server(ipc_server, listener='job')

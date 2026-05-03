@@ -308,13 +308,6 @@ async def _execute_request(claimed: ClaimedComputeRequest, manager: ProcessManag
             manager.spawn_engine(analysis_id, resource_config=resource_config if isinstance(resource_config, dict) else None)
             response = compute_schemas.EngineStatusSchema.model_validate(manager.get_engine_status(analysis_id))
             compute_requests_service.mark_request_completed(session, claimed.id, response_json=response.model_dump(mode='json'))
-        elif claimed.kind == ComputeRequestKind.KEEPALIVE_ENGINE:
-            analysis_id = str(claimed.request_json['analysis_id'])
-            info = manager.keepalive(analysis_id)
-            if info is None:
-                raise EngineNotFoundError(analysis_id)
-            response = compute_schemas.EngineStatusSchema.model_validate(manager.get_engine_status(analysis_id))
-            compute_requests_service.mark_request_completed(session, claimed.id, response_json=response.model_dump(mode='json'))
         elif claimed.kind == ComputeRequestKind.CONFIGURE_ENGINE:
             analysis_id = str(claimed.request_json['analysis_id'])
             resource_config = claimed.request_json.get('resource_config')

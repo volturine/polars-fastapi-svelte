@@ -28,7 +28,6 @@ class TestSettings:
                 'DATA_DIR',
                 'DEFAULT_NAMESPACE',
                 'UPLOAD_CHUNK_SIZE',
-                'ENGINE_IDLE_TIMEOUT',
                 'LOG_LEVEL',
                 'LOG_ICEBERG_PATH',
                 'PUBLIC_IDB_DEBUG',
@@ -44,7 +43,6 @@ class TestSettings:
         assert settings.database_url == f'sqlite:///{settings.data_dir / "app.db"}'
         assert settings.data_dir.exists()
         assert settings.upload_chunk_size == 5 * 1024 * 1024
-        assert settings.engine_idle_timeout == 60
         assert settings.lock_ttl_seconds == 30
         assert settings.lock_heartbeat_interval_seconds == 10
         assert settings.public_idb_debug is False
@@ -190,11 +188,11 @@ class TestSettings:
         with pytest.raises(ValidationError, match='BUILD_WORKER_MAX_PROCESSES must be <= MAX_CONCURRENT_ENGINES'):
             Settings()
 
-    def test_negative_timeout_values(self, monkeypatch, tmp_path):
+    def test_negative_scheduler_interval_rejected(self, monkeypatch, tmp_path):
         _set_isolated_settings_env(monkeypatch, tmp_path)
-        monkeypatch.setenv('ENGINE_IDLE_TIMEOUT', '-100')
+        monkeypatch.setenv('SCHEDULER_CHECK_INTERVAL', '-100')
 
-        with pytest.raises(ValidationError, match='engine_idle_timeout must be >= 1'):
+        with pytest.raises(ValidationError, match='scheduler_check_interval must be >= 1'):
             Settings()
 
     def test_port_must_be_in_valid_range(self, monkeypatch, tmp_path):

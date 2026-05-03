@@ -466,6 +466,8 @@ class ActiveBuildDetail(ActiveBuildSummary):
     results: list[BuildTabResult] = Field(default_factory=list)
     duration_ms: int | None = None
     error: str | None = None
+    request_json: dict[str, object] | None = None
+    result_json: dict[str, object] | None = None
 
 
 class ActiveBuildListResponse(BaseModel):
@@ -623,6 +625,8 @@ BuildEventAdapter: TypeAdapter[BuildEvent] = TypeAdapter(BuildEvent)
 
 class CancelBuildResponse(BaseModel):
     id: str
+    build_id: str | None = None
+    engine_run_id: str | None = None
     status: Literal['cancelled'] = 'cancelled'
     duration_ms: int | None = None
     cancelled_at: datetime

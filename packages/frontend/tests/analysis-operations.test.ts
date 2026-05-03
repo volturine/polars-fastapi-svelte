@@ -988,13 +988,23 @@ test.describe('Analyses – join config editing', () => {
 				.getByRole('group', { name: 'Left Column' })
 				.locator('button[aria-expanded]');
 			await leftDropdown.click();
-			await page.locator('[data-column-option="id"]').click({ timeout: 5_000 });
+			const leftListbox = page
+				.getByRole('listbox')
+				.filter({ has: page.locator('[data-column-option="id"]') })
+				.last();
+			await expect(leftListbox).toBeVisible({ timeout: 5_000 });
+			await leftListbox.locator('[data-column-option="id"]').click({ timeout: 5_000 });
 
 			const rightDropdown = colGroup
 				.getByRole('group', { name: 'Right Column' })
 				.locator('button[aria-expanded]');
 			await rightDropdown.click();
-			await page.locator('[data-column-option="id"]').click({ timeout: 5_000 });
+			const rightListbox = page
+				.getByRole('listbox')
+				.filter({ has: page.locator('[data-column-option="id"]') })
+				.last();
+			await expect(rightListbox).toBeVisible({ timeout: 5_000 });
+			await rightListbox.locator('[data-column-option="id"]').click({ timeout: 5_000 });
 
 			const suffixInput = configPanel.locator('[data-testid="join-suffix-input"]');
 			await expect(suffixInput).toHaveValue('_right');

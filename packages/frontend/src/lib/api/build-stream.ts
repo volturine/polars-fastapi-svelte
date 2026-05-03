@@ -58,7 +58,7 @@ function parseBuildMessage(data: string): BuildStreamMessage | null {
 }
 
 export function startActiveBuild(request: BuildRequest): ResultAsync<ActiveBuildDetail, ApiError> {
-	return apiRequest<ActiveBuildDetail>('/v1/compute/builds/active', {
+	return apiRequest<ActiveBuildDetail>('/v1/compute/builds', {
 		method: 'POST',
 		body: JSON.stringify(request)
 	});
@@ -99,11 +99,5 @@ export function connectBuildDetailStream(
 }
 
 export function getActiveBuild(buildId: string): ResultAsync<ActiveBuildDetail, ApiError> {
-	return apiRequest<ActiveBuildDetail>(`/v1/compute/builds/active/${buildId}`);
-}
-
-export function getActiveBuildByEngineRun(
-	engineRunId: string
-): ResultAsync<ActiveBuildDetail, ApiError> {
-	return apiRequest<ActiveBuildDetail>(`/v1/compute/builds/active/by-engine-run/${engineRunId}`);
+	return apiRequest<ActiveBuildDetail>(`/v1/compute/builds/${buildId}`);
 }

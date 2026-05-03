@@ -33,7 +33,7 @@ from core.dependencies import RuntimeAvailabilityProbe, get_manager, get_runtime
 from core.error_handlers import handle_errors
 from core.exceptions import EngineNotFoundError
 from core.namespace import get_namespace, reset_namespace, set_namespace_context
-from core.validation import AnalysisId, DataSourceId, EngineRunId, parse_analysis_id, parse_datasource_id, parse_engine_run_id
+from core.validation import AnalysisId, DataSourceId, parse_analysis_id, parse_datasource_id
 from modules.auth.dependencies import get_current_user
 from modules.compute import executor_client
 from modules.compute.iceberg_service import (
@@ -179,6 +179,41 @@ def _get_durable_build_detail(session: Session, build_id: str) -> schemas.Active
     if build_run is None or build_run.namespace != get_namespace():
         return None
     return build_run_service.fold_build_detail(session, build_run)
+
+
+def _cancel_duration_ms(detail: schemas.ActiveBuildDetail, *, cancelled_at: datetime) -> int:
+    started_at = detail.started_at if detail.started_at.tzinfo is not None else detail.started_at.replace(tzinfo=UTC)
+    elapsed_from_start = max(int((cancelled_at - started_at).total_seconds() * 1000), 0)
+    return max(detail.elapsed_ms, elapsed_from_start)
+
+
+def _build_cancelled_event(
+    detail: schemas.ActiveBuildDetail,
+    *,
+    cancelled_at: datetime,
+    cancelled_by: str | None,
+    duration_ms: int,
+) -> schemas.BuildCancelledEvent:
+    return schemas.BuildCancelledEvent(
+        build_id=detail.build_id,
+        analysis_id=detail.analysis_id,
+        emitted_at=_utcnow(),
+        current_kind=detail.current_kind,
+        current_datasource_id=detail.current_datasource_id,
+        tab_id=detail.current_tab_id,
+        tab_name=detail.current_tab_name,
+        current_output_id=detail.current_output_id,
+        current_output_name=detail.current_output_name,
+        engine_run_id=detail.current_engine_run_id,
+        progress=detail.progress,
+        elapsed_ms=duration_ms,
+        total_steps=detail.total_steps,
+        tabs_built=len(detail.results),
+        results=detail.results,
+        duration_ms=duration_ms,
+        cancelled_at=cancelled_at,
+        cancelled_by=cancelled_by,
+    )
 
 
 def _list_durable_active_builds(session: Session, namespace: str) -> list[schemas.ActiveBuildSummary]:
@@ -496,6 +531,7 @@ def delete_iceberg_snapshot(
     return delete_iceberg_snapshot_info(session, parse_datasource_id(datasource_id), str(snapshot_id))
 
 
+@router.post('/builds', response_model=schemas.ActiveBuildDetail)
 @router.post('/builds/active', response_model=schemas.ActiveBuildDetail)
 @handle_errors(operation='start active build')
 async def start_active_build(
@@ -568,68 +604,86 @@ async def start_active_build(
     return detail
 
 
-@router.post('/cancel/{engine_run_id}', response_model=schemas.CancelBuildResponse, mcp=True)
+@router.post('/builds/{build_id}/cancel', response_model=schemas.CancelBuildResponse, mcp=True)
+@router.post('/builds/active/{build_id}/cancel', response_model=schemas.CancelBuildResponse, mcp=True)
 @handle_errors(operation='cancel build')
 async def cancel_build(
-    engine_run_id: EngineRunId,
+    build_id: str,
     session: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    run_id = parse_engine_run_id(engine_run_id)
-    run = engine_run_service.get_engine_run(session, run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail='Engine run not found')
-    if run.status != EngineRunStatus.RUNNING:
-        raise HTTPException(status_code=400, detail='Only running builds can be cancelled')
+    detail = _get_durable_build_detail(session, build_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail='Build not found')
+    if detail.status not in {schemas.ActiveBuildStatus.QUEUED, schemas.ActiveBuildStatus.RUNNING}:
+        raise HTTPException(status_code=400, detail='Only active builds can be cancelled')
 
     cancelled_by = user.email or user.display_name or user.id
-    cancelled = engine_run_service.cancel_engine_run(
-        session,
-        run_id,
+    cancelled_at = _utcnow()
+    duration_ms = _cancel_duration_ms(detail, cancelled_at=cancelled_at)
+
+    if detail.current_engine_run_id is not None:
+        run = engine_run_service.get_engine_run(session, detail.current_engine_run_id)
+        if run is not None and run.status == EngineRunStatus.RUNNING:
+            cancelled = engine_run_service.cancel_engine_run(
+                session,
+                detail.current_engine_run_id,
+                cancelled_by=cancelled_by,
+            )
+            cancelled_at = cancelled.cancelled_at
+            duration_ms = cancelled.duration_ms or duration_ms
+    else:
+        job = build_job_service.get_job_by_build_id(session, build_id)
+        if job is not None and job.status == build_job_service.BuildJobStatus.QUEUED:
+            build_job_service.mark_job_cancelled(session, job.id)
+
+    await _emit_active_build_event(
+        detail.build_id,
+        detail.analysis_id,
+        _build_cancelled_event(
+            detail,
+            cancelled_at=cancelled_at,
+            cancelled_by=cancelled_by,
+            duration_ms=duration_ms,
+        ),
+    )
+
+    return schemas.CancelBuildResponse(
+        id=detail.build_id,
+        build_id=detail.build_id,
+        engine_run_id=detail.current_engine_run_id,
+        status='cancelled',
+        duration_ms=duration_ms,
+        cancelled_at=cancelled_at,
         cancelled_by=cancelled_by,
     )
 
-    active = await build_registry.list_builds()
-    match = next(
-        (
-            item
-            for item in active
-            if item.namespace == get_namespace()
-            and item.current_engine_run_id == run_id
-            and item.status == schemas.ActiveBuildStatus.RUNNING
-        ),
-        None,
-    )
-    live = await build_registry.get_build(match.build_id) if match is not None else None
-    durable = _get_durable_build_detail_by_engine_run(session, run_id)
-    target = live.detail() if live is not None and live.namespace == get_namespace() else durable
-    if target is not None:
-        await _emit_active_build_event(
-            target.build_id,
-            target.analysis_id,
-            schemas.BuildCancelledEvent(
-                build_id=target.build_id,
-                analysis_id=target.analysis_id,
-                emitted_at=_utcnow(),
-                current_kind=target.current_kind,
-                current_datasource_id=target.current_datasource_id,
-                tab_id=target.current_tab_id,
-                tab_name=target.current_tab_name,
-                current_output_id=target.current_output_id,
-                current_output_name=target.current_output_name,
-                engine_run_id=run_id,
-                progress=target.progress,
-                elapsed_ms=cancelled.duration_ms or target.elapsed_ms,
-                total_steps=target.total_steps,
-                tabs_built=len(target.results),
-                results=target.results,
-                duration_ms=cancelled.duration_ms or target.elapsed_ms,
-                cancelled_at=cancelled.cancelled_at,
-                cancelled_by=cancelled.cancelled_by,
-            ),
-        )
 
-    return cancelled
+@router.get('/builds', response_model=schemas.ActiveBuildListResponse, mcp=True)
+@handle_errors(operation='list builds')
+async def list_builds(
+    request: Request,
+    analysis_id: str | None = None,
+    datasource_id: str | None = None,
+    kind: str | None = None,
+    status: schemas.ActiveBuildStatus | None = None,
+    limit: int = 100,
+    offset: int = 0,
+    session: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    del request
+    runs = build_run_service.list_build_runs(
+        session,
+        analysis_id=analysis_id.strip() if analysis_id else None,
+        datasource_id=parse_datasource_id(datasource_id) if datasource_id else None,
+        kind=kind,
+        status=status,
+        limit=limit,
+        offset=offset,
+    )
+    visible = [build_run_service.build_summary(run) for run in runs if run.namespace == get_namespace()]
+    return schemas.ActiveBuildListResponse(builds=visible, total=len(visible))
 
 
 @router.get('/builds/active', response_model=schemas.ActiveBuildListResponse, mcp=True)
@@ -653,6 +707,7 @@ async def list_active_builds(
     return schemas.ActiveBuildListResponse(builds=visible, total=len(visible))
 
 
+@router.get('/builds/{build_id}', response_model=schemas.ActiveBuildDetail, mcp=True)
 @router.get('/builds/active/{build_id}', response_model=schemas.ActiveBuildDetail, mcp=True)
 @handle_errors(operation='get active build')
 async def get_active_build(
@@ -661,20 +716,6 @@ async def get_active_build(
     _user: User = Depends(get_current_user),
 ):
     detail = _get_durable_build_detail(session, build_id)
-    if detail is None:
-        raise HTTPException(status_code=404, detail='Active build not found')
-    return detail
-
-
-@router.get('/builds/active/by-engine-run/{engine_run_id}', response_model=schemas.ActiveBuildDetail, mcp=True)
-@handle_errors(operation='get active build by engine run')
-async def get_active_build_by_engine_run(
-    engine_run_id: EngineRunId,
-    session: Session = Depends(get_db),
-    _user: User = Depends(get_current_user),
-):
-    run_id = parse_engine_run_id(engine_run_id)
-    detail = _get_durable_build_detail_by_engine_run(session, run_id)
     if detail is None:
         raise HTTPException(status_code=404, detail='Active build not found')
     return detail
@@ -708,25 +749,6 @@ async def spawn_engine(
         resource_config=resource_config,
         runtime_probe=runtime_probe,
     )
-
-
-@router.post('/engine/keepalive/{analysis_id}', response_model=schemas.EngineStatusSchema, mcp=True)
-@handle_errors(operation='keepalive engine')
-async def keepalive(
-    analysis_id: AnalysisId,
-    http_request: Request,
-    session: Session = Depends(get_db),
-    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
-):
-    """Send keepalive ping for an analysis engine."""
-    analysis_id_value = parse_analysis_id(analysis_id)
-    manager = _override_manager(http_request)
-    if manager is not None:
-        info = manager.keepalive(analysis_id_value)
-        if not info:
-            raise EngineNotFoundError(analysis_id_value)
-        return manager.get_engine_status(analysis_id_value)
-    return await executor_client.keepalive_engine(session, analysis_id=analysis_id_value, runtime_probe=runtime_probe)
 
 
 @router.post('/engine/configure/{analysis_id}', response_model=schemas.EngineStatusSchema, mcp=True)

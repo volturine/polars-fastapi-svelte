@@ -19,7 +19,6 @@ router = MCPRouter(prefix='/config', tags=['config'])
 class FrontendConfig(BaseModel):
     """Configuration values exposed to frontend."""
 
-    engine_idle_timeout: int  # seconds
     timezone: str
     normalize_tz: bool
     log_client_batch_size: int
@@ -77,7 +76,6 @@ def get_config() -> FrontendConfig:
 
     db_settings = run_settings_db(get_settings)
     config = FrontendConfig(
-        engine_idle_timeout=settings.engine_idle_timeout,
         timezone=settings.timezone,
         normalize_tz=settings.normalize_tz,
         log_client_batch_size=settings.log_client_batch_size,

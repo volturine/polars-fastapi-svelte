@@ -2,11 +2,12 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import desc, func, select, update
+from sqlalchemy import desc, func, or_, select, update
 from sqlmodel import Session
 
 from contracts.build_runs.models import BuildEvent, BuildRun, BuildRunStatus
 from contracts.compute import schemas as compute_schemas
+from contracts.engine_runs.models import EngineRun
 
 _TERMINAL_STATUSES = frozenset(
     {
@@ -115,6 +116,8 @@ def list_build_runs(
     session: Session,
     *,
     analysis_id: str | None = None,
+    datasource_id: str | None = None,
+    kind: str | None = None,
     status: BuildRunStatus | str | None = None,
     current_engine_run_id: str | None = None,
     limit: int = 100,
@@ -123,6 +126,15 @@ def list_build_runs(
     stmt = select(BuildRun)
     if analysis_id is not None:
         stmt = stmt.where(BuildRun.analysis_id == analysis_id)  # type: ignore[arg-type]
+    if datasource_id is not None:
+        stmt = stmt.where(
+            or_(
+                BuildRun.current_datasource_id == datasource_id,  # type: ignore[arg-type]
+                BuildRun.current_output_id == datasource_id,  # type: ignore[arg-type]
+            )
+        )
+    if kind is not None:
+        stmt = stmt.where(BuildRun.current_kind == kind)  # type: ignore[arg-type]
     if status is not None:
         stmt = stmt.where(BuildRun.status == _coerce_status(status))  # type: ignore[arg-type]
     if current_engine_run_id is not None:
@@ -545,6 +557,8 @@ def fold_build_detail(session: Session, build_run: BuildRun) -> compute_schemas.
         else None
     )
     starter = compute_schemas.BuildStarter.model_validate(build_run.starter_json)
+    engine_run = session.get(EngineRun, build_run.current_engine_run_id) if build_run.current_engine_run_id is not None else None
+    result_json = dict(engine_run.result_json) if engine_run is not None and isinstance(engine_run.result_json, dict) else None
     return compute_schemas.ActiveBuildDetail(
         build_id=build_run.id,
         analysis_id=build_run.analysis_id,
@@ -578,6 +592,8 @@ def fold_build_detail(session: Session, build_run: BuildRun) -> compute_schemas.
         results=results,
         duration_ms=build_run.duration_ms,
         error=error,
+        request_json=dict(build_run.request_json),
+        result_json=result_json,
     )
 
 

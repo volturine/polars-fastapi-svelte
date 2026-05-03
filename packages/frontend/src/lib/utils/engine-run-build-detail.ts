@@ -255,6 +255,8 @@ export function engineRunBuildDetail(run: EngineRun): ActiveBuildDetail {
 		logs,
 		results,
 		duration_ms: run.duration_ms,
-		error: run.error_message
+		error: run.error_message,
+		request_json: run.request_json,
+		result_json: run.result_json
 	};
 }

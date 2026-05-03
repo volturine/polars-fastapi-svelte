@@ -72,14 +72,6 @@ export function configureEngine(
 	);
 }
 
-export function sendKeepalive(analysisId: string): ResultAsync<EngineStatusResponse, ApiError> {
-	return computeActivityStore.track(
-		apiRequest<EngineStatusResponse>(`/v1/compute/engine/keepalive/${analysisId}`, {
-			method: 'POST'
-		})
-	);
-}
-
 export function shutdownEngine(analysisId: string): ResultAsync<void, ApiError> {
 	return computeActivityStore.track(
 		apiRequest<void>(`/v1/compute/engine/${analysisId}`, {
@@ -241,7 +233,8 @@ export function getStepRowCount(
 }
 
 export interface CancelBuildResponse {
-	id: string;
+	build_id: string;
+	engine_run_id: string | null;
 	status: 'cancelled';
 	duration_ms: number | null;
 	cancelled_at: string;
@@ -284,9 +277,9 @@ export function connectEnginesStream(callbacks: EnginesStreamCallbacks): StreamH
 	});
 }
 
-export function cancelBuild(engineRunId: string): ResultAsync<CancelBuildResponse, ApiError> {
+export function cancelBuild(buildId: string): ResultAsync<CancelBuildResponse, ApiError> {
 	return computeActivityStore.track(
-		apiRequest<CancelBuildResponse>(`/v1/compute/cancel/${engineRunId}`, {
+		apiRequest<CancelBuildResponse>(`/v1/compute/builds/${buildId}/cancel`, {
 			method: 'POST'
 		})
 	);

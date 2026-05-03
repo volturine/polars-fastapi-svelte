@@ -20,7 +20,6 @@ class ComputeRequestKind(StrEnum):
     CREATE_ICEBERG_DATASOURCE = 'create_iceberg_datasource'
     REFRESH_DATASOURCE = 'refresh_datasource'
     SPAWN_ENGINE = 'spawn_engine'
-    KEEPALIVE_ENGINE = 'keepalive_engine'
     CONFIGURE_ENGINE = 'configure_engine'
     SHUTDOWN_ENGINE = 'shutdown_engine'
 

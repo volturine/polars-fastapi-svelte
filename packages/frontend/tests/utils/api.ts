@@ -236,14 +236,10 @@ export async function createLongRunningAnalysis(
 	datasourceId: string
 ): Promise<string> {
 	const sourceRef = `source-${crypto.randomUUID()}`;
-	const rightRef = `right-${crypto.randomUUID()}`;
 	const viewId = crypto.randomUUID();
-	const joinId = crypto.randomUUID();
+	const sleepStepOneId = crypto.randomUUID();
+	const sleepStepTwoId = crypto.randomUUID();
 	const sortId = crypto.randomUUID();
-	const withColumnsId = crypto.randomUUID();
-	const deduplicateId = crypto.randomUUID();
-	const groupById = crypto.randomUUID();
-	const finalSortId = crypto.randomUUID();
 	return createImportedAnalysis(
 		request,
 		name,
@@ -258,75 +254,49 @@ export async function createLongRunningAnalysis(
 					steps: [
 						{ id: viewId, type: 'view', config: {}, depends_on: [], is_applied: true },
 						{
-							id: joinId,
-							type: 'join',
+							id: sleepStepOneId,
+							type: 'with_columns',
 							config: {
-								how: 'inner',
-								right_source: rightRef,
-								join_columns: [{ id: crypto.randomUUID(), left_column: 'id', right_column: 'id' }],
-								right_columns: ['age', 'city'],
-								suffix: '_right'
+								expressions: [
+									{
+										name: 'slow_name',
+										type: 'udf',
+										args: ['name'],
+										code: 'def udf(value):\n' + '    sleep(0.05)\n' + '    return value\n'
+									}
+								]
 							},
 							depends_on: [viewId],
 							is_applied: true
 						},
 						{
-							id: sortId,
-							type: 'sort',
-							config: { columns: ['name'], descending: [false] },
-							depends_on: [joinId],
-							is_applied: true
-						},
-						{
-							id: withColumnsId,
+							id: sleepStepTwoId,
 							type: 'with_columns',
 							config: {
 								expressions: [
 									{
-										name: 'city_name',
+										name: 'slow_city',
 										type: 'udf',
-										args: ['city', 'name'],
-										code:
-											'def udf(column_city, column_name):\n' +
-											'    total = 0\n' +
-											'    for i in range(1000):\n' +
-											'        total += i\n' +
-											'    return column_city + "-" + column_name + str(total)\n'
+										args: ['city'],
+										code: 'def udf(value):\n' + '    sleep(0.05)\n' + '    return value\n'
 									}
 								]
 							},
-							depends_on: [sortId],
+							depends_on: [sleepStepOneId],
 							is_applied: true
 						},
 						{
-							id: deduplicateId,
-							type: 'deduplicate',
-							config: { columns: ['city_name'], keep: 'first' },
-							depends_on: [withColumnsId],
-							is_applied: true
-						},
-						{
-							id: groupById,
-							type: 'groupby',
-							config: {
-								group_columns: ['city'],
-								aggregations: [{ column: 'age', function: 'mean', alias: 'avg_age' }]
-							},
-							depends_on: [deduplicateId],
-							is_applied: true
-						},
-						{
-							id: finalSortId,
+							id: sortId,
 							type: 'sort',
-							config: { columns: ['avg_age'], descending: [true] },
-							depends_on: [groupById],
+							config: { columns: ['age'], descending: [true] },
+							depends_on: [sleepStepTwoId],
 							is_applied: true
 						}
 					]
 				}
 			]
 		},
-		{ [sourceRef]: datasourceId, [rightRef]: datasourceId }
+		{ [sourceRef]: datasourceId }
 	);
 }
 

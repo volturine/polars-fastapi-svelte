@@ -1,6 +1,7 @@
 """With columns operation for adding/modifying columns."""
 
 import builtins
+import time
 from collections.abc import Callable
 from enum import StrEnum
 from functools import partial
@@ -97,7 +98,7 @@ class WithColumnsHandler(OperationHandler):
                 exprs.append(pl.col(expr.column).alias(expr.name))
             elif expr.type == WithColumnsExprType.UDF and expr.code:
                 validate_no_reflection_escape(expr.code, label='UDF code')
-                scope: dict[str, Any] = {'pl': pl, '__builtins__': _SAFE_BUILTINS}
+                scope: dict[str, Any] = {'pl': pl, 'sleep': time.sleep, '__builtins__': _SAFE_BUILTINS}
                 local_scope: dict[str, Any] = {}
                 exec(expr.code, scope, local_scope)
                 udf = local_scope.get('udf') or scope.get('udf')

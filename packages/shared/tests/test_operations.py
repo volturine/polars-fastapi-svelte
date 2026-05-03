@@ -514,6 +514,31 @@ def test_with_columns_accepts_enum_expression_type() -> None:
     assert lf.collect()['copy_id'].to_list() == [1]
 
 
+def test_with_columns_udf_can_use_sleep_helper(monkeypatch: pytest.MonkeyPatch) -> None:
+    handler = WithColumnsHandler()
+    calls: list[float] = []
+
+    monkeypatch.setattr('compute_operations.with_columns.time.sleep', lambda seconds: calls.append(seconds))
+
+    lf = handler(
+        pl.DataFrame({'id': [1, 2, 3]}).lazy(),
+        {
+            'expressions': [
+                {
+                    'name': 'copy_id',
+                    'type': 'udf',
+                    'args': ['id'],
+                    'code': 'def udf(value):\n    sleep(0.01)\n    return value',
+                }
+            ]
+        },
+    )
+
+    assert lf.collect()['copy_id'].to_list() == [1, 2, 3]
+    assert len(calls) >= 3
+    assert all(call == 0.01 for call in calls)
+
+
 def test_expression_rejects_dunder_escape() -> None:
     with pytest.raises(ValueError, match='forbidden dunder access'):
         parse_expression('pl.col("age").__class__')

@@ -427,7 +427,6 @@ result_queue.put({
 
 ### Cleanup
 
-- **Idle timeout**: Engines are cleaned up after `engine_idle_timeout` seconds of inactivity
 - **Manual shutdown**: On app shutdown, all engines are terminated
 - **Unexpected death**: Health check detects dead process, resets state
 
@@ -485,7 +484,6 @@ Key settings in `backend/core/config.py`:
 
 ```python
 # Engine lifecycle
-engine_idle_timeout: int = Field(default=60)  # seconds
 max_concurrent_engines: int = Field(default=10)
 
 # Resource limits

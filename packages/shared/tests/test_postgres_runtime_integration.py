@@ -565,11 +565,12 @@ def test_postgres_runtime_supports_cross_api_cancellation(tmp_path: Path) -> Non
             assert isinstance(engine_run_id, str) and engine_run_id
 
             with httpx.Client(base_url=f'http://127.0.0.1:{api_two_port}', timeout=30) as client_two:
-                cancelled = client_two.post(f'/api/v1/compute/cancel/{engine_run_id}')
+                cancelled = client_two.post(f'/api/v1/compute/builds/active/{build_id}/cancel')
 
                 assert cancelled.status_code == 200, cancelled.text
                 payload = dict(cancelled.json())
-                assert payload['id'] == engine_run_id
+                assert payload['build_id'] == build_id
+                assert payload['engine_run_id'] == engine_run_id
                 assert payload['status'] == 'cancelled'
 
                 detail = wait_for_condition(

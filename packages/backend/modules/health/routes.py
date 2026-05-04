@@ -1,6 +1,5 @@
+from backend_core.error_handlers import handle_errors
 from fastapi import APIRouter
-
-from core.error_handlers import handle_errors
 
 from .schemas import HealthResponse
 from .service import get_health_status

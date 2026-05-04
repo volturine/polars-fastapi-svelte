@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 
 import polars as pl
-from modules.datasource.service import compare_iceberg_snapshots
+from datasource_service import compare_iceberg_snapshots
 
 from contracts.datasource.models import DataSource
 
@@ -41,7 +41,7 @@ def test_compare_iceberg_snapshots(test_db_session, monkeypatch):
             ).lazy()
         return pl.DataFrame({'id': []}).lazy()
 
-    monkeypatch.setattr('modules.datasource.service.load_datasource', fake_load_datasource)
+    monkeypatch.setattr('datasource_service.load_datasource', fake_load_datasource)
 
     result = compare_iceberg_snapshots(test_db_session, datasource_id, '1', '2', 100)
 

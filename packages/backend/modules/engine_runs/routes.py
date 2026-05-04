@@ -1,3 +1,5 @@
+from backend_core.error_handlers import handle_errors
+from backend_core.validation import EngineRunId, parse_analysis_id, parse_datasource_id, parse_engine_run_id
 from fastapi import Depends, HTTPException
 from sqlmodel import Session
 
@@ -5,8 +7,6 @@ from contracts.engine_runs import schemas
 from contracts.engine_runs.schemas import EngineRunKind, EngineRunStatus
 from core import engine_runs_service as service
 from core.database import get_db
-from core.error_handlers import handle_errors
-from core.validation import EngineRunId, parse_analysis_id, parse_datasource_id, parse_engine_run_id
 from modules.mcp.router import MCPRouter
 
 router = MCPRouter(prefix='/engine-runs', tags=['engine-runs'])

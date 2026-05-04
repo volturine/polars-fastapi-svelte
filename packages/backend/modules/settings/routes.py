@@ -3,15 +3,16 @@
 import logging
 from email.message import EmailMessage
 
+from backend_core import settings_store
+from backend_core.error_handlers import handle_errors
 from fastapi import Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from sqlmodel import Session
 
 from contracts.auth_models import User
 from contracts.settings_schemas import SettingsUpdate as CoreSettingsUpdate
-from core import http as http_client, settings_store
+from core import http as http_client
 from core.database import get_settings_db
-from core.error_handlers import handle_errors
 from core.smtp import send_smtp_message
 from modules.auth.dependencies import get_current_user
 from modules.config.routes import invalidate_config_cache

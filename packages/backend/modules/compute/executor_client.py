@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
+from backend_core.dependencies import RuntimeAvailabilityProbe
 from fastapi import HTTPException
 from sqlmodel import Session
 
@@ -12,7 +13,6 @@ from contracts.compute_requests.models import ComputeRequestKind, ComputeRequest
 from contracts.runtime import ipc as runtime_ipc
 from contracts.runtime_workers.models import RuntimeWorkerKind
 from core import compute_requests_service
-from core.dependencies import RuntimeAvailabilityProbe
 from core.exceptions import PipelineExecutionError
 from core.namespace import get_namespace
 from modules.datasource import schemas as datasource_schemas
@@ -247,6 +247,75 @@ async def refresh_datasource(
         runtime_probe=runtime_probe,
     )
     return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
+
+
+async def get_datasource_schema(
+    session: Session,
+    *,
+    datasource_id: str,
+    sheet_name: str | None,
+    refresh: bool,
+    runtime_probe: RuntimeAvailabilityProbe,
+) -> datasource_schemas.SchemaInfo:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.DATASOURCE_SCHEMA,
+        request_json={
+            'datasource_id': datasource_id,
+            'sheet_name': sheet_name,
+            'refresh': refresh,
+        },
+        runtime_probe=runtime_probe,
+    )
+    return datasource_schemas.SchemaInfo.model_validate(completed.response_json)
+
+
+async def get_column_stats(
+    session: Session,
+    *,
+    datasource_id: str,
+    column_name: str,
+    use_sample: bool,
+    sample_size: int,
+    datasource_config: dict[str, object] | None,
+    runtime_probe: RuntimeAvailabilityProbe,
+) -> datasource_schemas.ColumnStatsResponse:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.DATASOURCE_COLUMN_STATS,
+        request_json={
+            'datasource_id': datasource_id,
+            'column_name': column_name,
+            'use_sample': use_sample,
+            'sample_size': sample_size,
+            'datasource_config': datasource_config or {},
+        },
+        runtime_probe=runtime_probe,
+    )
+    return datasource_schemas.ColumnStatsResponse.model_validate(completed.response_json)
+
+
+async def compare_iceberg_snapshots(
+    session: Session,
+    *,
+    datasource_id: str,
+    snapshot_a: str,
+    snapshot_b: str,
+    row_limit: int,
+    runtime_probe: RuntimeAvailabilityProbe,
+) -> datasource_schemas.SnapshotCompareResponse:
+    completed = await _submit_and_wait(
+        session,
+        kind=ComputeRequestKind.COMPARE_ICEBERG_SNAPSHOTS,
+        request_json={
+            'datasource_id': datasource_id,
+            'snapshot_a': snapshot_a,
+            'snapshot_b': snapshot_b,
+            'row_limit': row_limit,
+        },
+        runtime_probe=runtime_probe,
+    )
+    return datasource_schemas.SnapshotCompareResponse.model_validate(completed.response_json)
 
 
 async def spawn_engine(

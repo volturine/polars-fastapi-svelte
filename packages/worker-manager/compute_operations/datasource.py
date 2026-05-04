@@ -8,11 +8,11 @@ from enum import StrEnum
 from threading import Lock
 
 import polars as pl
+from datasource_loading import _assert_select_only as shared_assert_select_only, load_datasource_frame
 from pydantic import ConfigDict
 from step_converter import convert_step_format
 
 from contracts.compute.base import OperationHandler, OperationParams
-from core.datasource_loading import _assert_select_only as shared_assert_select_only, load_datasource_frame
 from core.iceberg_metadata import resolve_iceberg_branch_metadata_path
 
 

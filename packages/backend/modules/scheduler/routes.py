@@ -2,6 +2,8 @@ import uuid
 from datetime import UTC, datetime
 
 import croniter  # type: ignore[import-untyped]
+from backend_core.error_handlers import handle_errors
+from backend_core.validation import DataSourceId, ScheduleId, parse_datasource_id, parse_schedule_id
 from fastapi import Depends
 from sqlalchemy import select
 from sqlmodel import Session, col
@@ -12,9 +14,7 @@ from contracts.runtime import ipc as runtime_ipc
 from contracts.scheduler import schemas
 from contracts.scheduler.models import Schedule
 from core.database import get_db
-from core.error_handlers import handle_errors
 from core.exceptions import DataSourceNotFoundError, ScheduleNotFoundError, ScheduleValidationError
-from core.validation import DataSourceId, ScheduleId, parse_datasource_id, parse_schedule_id
 from modules.mcp.router import MCPRouter
 
 router = MCPRouter(prefix='/schedules', tags=['schedules'])

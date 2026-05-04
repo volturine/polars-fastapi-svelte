@@ -423,7 +423,7 @@ async def test_run_build_worker_process_starts_runtime_listener(monkeypatch) -> 
     async def fake_serve_api_notifications(server: object, local_stop: asyncio.Event, handler) -> None:
         calls.append(('serve_api_notifications', server))
         assert local_stop is stop_event
-        assert handler is runtime_process.runtime_ipc.handle_api_payload
+        assert handler is runtime_process.handle_runtime_payload
         await local_stop.wait()
 
     async def fake_stop_api_server(server: object) -> None:

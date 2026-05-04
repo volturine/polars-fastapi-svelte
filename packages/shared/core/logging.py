@@ -20,7 +20,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import StreamingResponse
 
 from core.config import settings
-from core.proxy import client_ip
 
 _writer: DatabaseLogWriter | None = None
 _listener: logging.handlers.QueueListener | None = None
@@ -49,6 +48,18 @@ _REDACTED = '[REDACTED]'
 
 class RequestLogWriter(Protocol):
     def write_request_log(self, payload: dict[str, Any]) -> None: ...
+
+
+def _client_ip(request: Request) -> str | None:
+    forwarded = request.headers.get('x-forwarded-for')
+    if forwarded and settings.trusted_proxy_hops > 0:
+        parts = [item.strip() for item in forwarded.split(',') if item.strip()]
+        if len(parts) > settings.trusted_proxy_hops:
+            return parts[-(settings.trusted_proxy_hops + 1)][:128]
+        return parts[0][:128]
+    if request.client:
+        return str(request.client.host)
+    return None
 
 
 def _adapt_datetime(value: datetime) -> str:
@@ -527,7 +538,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         status = response.status_code if response else 500
         if not error and response and status >= 400:
             error = f'HTTP {status}'
-        ip = client_ip(request)
+        ip = _client_ip(request)
         if isinstance(ip, str):
             parts = ip.split('.') if '.' in ip else []
             if len(parts) == 4:

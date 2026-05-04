@@ -2,11 +2,11 @@
 
 from typing import Any
 
+from backend_core.error_handlers import handle_errors
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel
 
 from contracts.auth_models import User
-from core.error_handlers import handle_errors
 from core.namespace import get_namespace
 from modules.auth.dependencies import get_current_user
 from modules.mcp.executor import build_tool_context, call_tool

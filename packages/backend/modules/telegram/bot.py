@@ -216,8 +216,9 @@ class TelegramBot:
             self._send_message(chat_id, 'Welcome! Use /subscribe to receive build notifications.')
 
     def _handle_subscribe(self, chat_id: str, title: str) -> None:
+        from backend_core.telegram_store import add_subscriber
+
         from core.database import run_db
-        from core.telegram_store import add_subscriber
 
         def _add(session) -> None:  # type: ignore[no-untyped-def]
             add_subscriber(session, chat_id, title, self._token)
@@ -231,8 +232,9 @@ class TelegramBot:
             self._send_message(chat_id, 'Failed to subscribe. Please try again.')
 
     def _handle_unsubscribe(self, chat_id: str) -> None:
+        from backend_core.telegram_store import get_subscriber_by_chat
+
         from core.database import run_db
-        from core.telegram_store import get_subscriber_by_chat
 
         def _remove(session) -> None:  # type: ignore[no-untyped-def]
             sub = get_subscriber_by_chat(session, chat_id, self._token)

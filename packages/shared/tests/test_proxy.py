@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from backend_core.proxy import client_ip, request_scheme
 from fastapi import Request
 from starlette.types import Scope
-
-from core.proxy import client_ip, request_scheme
 
 
 def _request(scope_overrides: dict[str, Any] | None = None) -> Request:

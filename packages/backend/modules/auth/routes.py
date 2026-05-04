@@ -3,6 +3,8 @@ import secrets
 import time
 from urllib.parse import urlencode
 
+from backend_core.error_handlers import handle_errors
+from backend_core.proxy import client_ip, request_scheme
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
@@ -11,9 +13,7 @@ from contracts.auth_models import AuthProvider, AuthProviderName, User, UserStat
 from core import http as http_client
 from core.config import settings
 from core.database import get_settings_db, run_settings_db
-from core.error_handlers import handle_errors
 from core.exceptions import AccountDisabledError, InvalidCredentialsError, OAuthError
-from core.proxy import client_ip, request_scheme
 from modules.auth.dependencies import get_current_user
 from modules.auth.schemas import (
     ChangePasswordRequest,

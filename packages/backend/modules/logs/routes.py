@@ -1,6 +1,6 @@
+from backend_core.error_handlers import handle_errors
 from fastapi import APIRouter, Request
 
-from core.error_handlers import handle_errors
 from modules.logs.schemas import ClientLogBatch
 from modules.logs.service import save_client_logs
 

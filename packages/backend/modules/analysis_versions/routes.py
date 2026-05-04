@@ -1,10 +1,10 @@
+from backend_core.dependencies import get_optional_lock_owner_id
+from backend_core.error_handlers import handle_errors
+from backend_core.validation import AnalysisId, parse_analysis_id
 from fastapi import Depends, HTTPException
 from sqlmodel import Session
 
 from core.database import get_db
-from core.dependencies import get_optional_lock_owner_id
-from core.error_handlers import handle_errors
-from core.validation import AnalysisId, parse_analysis_id
 from modules.analysis import schemas as analysis_schemas
 from modules.analysis_versions import schemas, service
 from modules.locks import service as lock_service

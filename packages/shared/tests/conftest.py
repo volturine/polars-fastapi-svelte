@@ -121,9 +121,8 @@ def _settings_tables() -> list[Any]:
 
 
 def _reset_settings_state(engine: Engine) -> None:
+    from backend_core.settings_store import invalidate_resolved_settings_cache
     from modules.chat.sessions import session_store
-
-    from core.settings_store import invalidate_resolved_settings_cache
 
     for live in session_store._live.values():
         live.cancel_task()
@@ -218,13 +217,13 @@ def test_user() -> User:
 def client(test_db_session, test_user):
     from compute_manager import ProcessManager
     from compute_request_runtime import compute_request_loop
+    from engine_notifications import create_snapshot_notifier
     from main import app
     from modules.auth.dependencies import get_current_user
+    from runtime_notifications import handle_runtime_payload
 
     from contracts.runtime import ipc as runtime_ipc
-    from core import engine_instances_service
-    from core.database import get_db, init_db, run_settings_db
-    from core.engine_live import create_snapshot_notifier
+    from core.database import get_db, init_db
 
     def override_get_db():
         yield test_db_session
@@ -241,25 +240,16 @@ def client(test_db_session, test_user):
                 stop_task = asyncio.create_task(asyncio.to_thread(stop_flag.wait))
                 stop_task.add_done_callback(lambda _task: stop_event.set())
 
-                def persist(namespace: str, statuses: list[Any]) -> None:
-                    def _write(session) -> None:
-                        engine_instances_service.persist_engine_snapshot(
-                            session,
-                            worker_id=worker_id,
-                            namespace=namespace,
-                            statuses=list(statuses),
-                        )
-
-                    run_settings_db(_write)
-                    runtime_ipc.notify_api_engine(namespace)
-
-                manager = ProcessManager(on_snapshot=create_snapshot_notifier(asyncio.get_running_loop(), persist=persist))
+                manager = ProcessManager(
+                    on_snapshot=create_snapshot_notifier(
+                        asyncio.get_running_loop(),
+                        worker_id=worker_id,
+                    )
+                )
                 ipc_server = await runtime_ipc.start_api_server(listener='job')
                 ipc_task = None
                 if ipc_server is not None:
-                    ipc_task = asyncio.create_task(
-                        runtime_ipc.serve_api_notifications(ipc_server, stop_event, runtime_ipc.handle_api_payload)
-                    )
+                    ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, stop_event, handle_runtime_payload))
                 request_task = asyncio.create_task(compute_request_loop(stop_event, worker_id=worker_id, manager=manager))
                 ready_flag.set()
                 try:
@@ -314,7 +304,7 @@ def clear_lock_watchers():
 
 @pytest.fixture(autouse=True, scope='function')
 def clear_active_build_registry():
-    from core.build_live import registry
+    from build_live import registry
 
     asyncio.run(registry.clear())
     yield
@@ -352,7 +342,7 @@ def clear_compute_request_hubs():
 
 @pytest.fixture(autouse=True, scope='function')
 def clear_engine_registry():
-    from core.engine_live import registry
+    from backend_core.engine_live import registry
 
     asyncio.run(registry.clear())
     yield

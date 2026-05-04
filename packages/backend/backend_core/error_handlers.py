@@ -10,84 +10,17 @@ from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from core.app_error_status import status_for_app_error
 from core.exceptions import (
-    AccountDisabledError,
-    AnalysisCycleError,
-    AnalysisNotFoundError,
-    AnalysisValidationError,
-    AnalysisVersionNotFoundError,
     AppError,
-    DataFileNotFoundError,
-    DataSourceConnectionError,
-    DataSourceNotFoundError,
     DataSourceSnapshotError,
-    DataSourceValidationError,
-    DefaultUserDeletionError,
-    EmailAlreadyExistsError,
     EngineNotFoundError,
-    EngineStartError,
-    FileSizeExceededError,
-    FileValidationError,
-    HealthcheckNotFoundError,
-    HealthcheckValidationError,
     InvalidCredentialsError,
     InvalidIdError,
-    JobNotFoundError,
-    OAuthError,
-    PipelineExecutionError,
     PipelineValidationError,
-    ProviderUnlinkError,
-    ScheduleNotFoundError,
-    ScheduleValidationError,
-    SessionExpiredError,
-    SettingsConfigurationError,
-    StepNotFoundError,
-    TokenExpiredError,
-    TokenInvalidError,
-    UdfNotFoundError,
-    UdfValidationError,
-    UnsupportedExportFormatError,
 )
 
 logger = logging.getLogger(__name__)
-
-EXCEPTION_STATUS_MAP: dict[type[AppError], int] = {
-    DataSourceNotFoundError: 404,
-    JobNotFoundError: 404,
-    AnalysisNotFoundError: 404,
-    AnalysisVersionNotFoundError: 404,
-    EngineNotFoundError: 404,
-    DataFileNotFoundError: 404,
-    StepNotFoundError: 404,
-    ScheduleNotFoundError: 404,
-    PipelineValidationError: 400,
-    FileValidationError: 400,
-    UnsupportedExportFormatError: 400,
-    ScheduleValidationError: 400,
-    DataSourceValidationError: 400,
-    AnalysisValidationError: 400,
-    AnalysisCycleError: 422,
-    DataSourceConnectionError: 502,
-    DataSourceSnapshotError: 409,
-    InvalidCredentialsError: 401,
-    EmailAlreadyExistsError: 409,
-    SessionExpiredError: 401,
-    AccountDisabledError: 403,
-    DefaultUserDeletionError: 403,
-    ProviderUnlinkError: 400,
-    OAuthError: 400,
-    TokenExpiredError: 400,
-    TokenInvalidError: 400,
-    FileSizeExceededError: 413,
-    PipelineExecutionError: 500,
-    UdfNotFoundError: 404,
-    UdfValidationError: 400,
-    HealthcheckNotFoundError: 404,
-    HealthcheckValidationError: 400,
-    SettingsConfigurationError: 500,
-    InvalidIdError: 400,
-    EngineStartError: 500,
-}
 
 
 def _error_body(message: str, error_code: str | None = None, details: dict | None = None) -> dict[str, Any]:
@@ -101,7 +34,7 @@ def _error_body(message: str, error_code: str | None = None, details: dict | Non
 
 
 def _status_for(exc: AppError) -> int:
-    return EXCEPTION_STATUS_MAP.get(type(exc), 500)
+    return status_for_app_error(exc)
 
 
 def _log_app_error(exc: AppError, status: int) -> None:

@@ -6,6 +6,10 @@ from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import quote
 
+from backend_core.dependencies import RuntimeAvailabilityProbe, get_manager, get_runtime_availability_probe
+from backend_core.engine_live import load_engine_snapshot, registry as engine_registry
+from backend_core.error_handlers import handle_errors
+from backend_core.validation import AnalysisId, DataSourceId, parse_analysis_id, parse_datasource_id
 from fastapi import Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
@@ -24,15 +28,10 @@ from core import (
     build_runs_service as build_run_service,
     engine_runs_service as engine_run_service,
 )
-from core.build_live import ActiveBuildContext, registry as build_registry
 from core.config import settings
 from core.database import get_db, get_settings_db
-from core.dependencies import RuntimeAvailabilityProbe, get_manager, get_runtime_availability_probe
-from core.engine_live import load_engine_snapshot, registry as engine_registry
-from core.error_handlers import handle_errors
 from core.exceptions import EngineNotFoundError
 from core.namespace import get_namespace, reset_namespace, set_namespace_context
-from core.validation import AnalysisId, DataSourceId, parse_analysis_id, parse_datasource_id
 from modules.auth.dependencies import get_current_user
 from modules.compute import executor_client
 from modules.compute.iceberg_service import (
@@ -144,33 +143,26 @@ async def _emit_active_build_event(
     build_id: str,
     analysis_id: str,
     payload: schemas.BuildEvent,
+    *,
+    namespace: str,
+    resource_config_json: dict[str, object] | None = None,
 ) -> None:
-    build = await build_registry.get_build(build_id)
-    namespace = build.namespace if build is not None else get_namespace()
+    del analysis_id
     token = set_namespace_context(namespace)
     session_gen = get_db()
     session = next(session_gen)
     try:
-        persisted = await build_event_service.persist_build_event(
+        await build_event_service.persist_build_event(
             session,
             namespace=namespace,
             build_id=build_id,
             event=payload,
-            resource_config_json=(
-                build.resource_config.model_dump(mode='json') if build is not None and build.resource_config is not None else None
-            ),
+            resource_config_json=resource_config_json,
         )
     finally:
         session.close()
         session_gen.close()
         reset_namespace(token)
-    if persisted is None:
-        return
-    normalized, _latest_sequence = persisted
-    context = await build_registry.apply_event(build_id, normalized)
-    if context is not None:
-        normalized.update(context.payload())
-        await build_registry.publish(build_id, normalized)
 
 
 def _get_durable_build_detail(session: Session, build_id: str) -> schemas.ActiveBuildDetail | None:
@@ -553,22 +545,20 @@ async def start_active_build(
         None,
     )
     active_tab = selected_tab if isinstance(selected_tab, dict) else next((tab for tab in tabs if isinstance(tab, dict)), None)
-    context = ActiveBuildContext(
-        current_kind=EngineRunKind.PREVIEW.value,
-        current_datasource_id=None,
-        current_tab_id=None,
-        current_tab_name=None,
-        current_output_id=None,
-        current_output_name=None,
-    )
+    current_kind = EngineRunKind.PREVIEW.value
+    current_datasource_id: str | None = None
+    current_tab_id: str | None = None
+    current_tab_name: str | None = None
+    current_output_id: str | None = None
+    current_output_name: str | None = None
     if isinstance(active_tab, dict):
         datasource = active_tab.get('datasource')
         if isinstance(datasource, dict) and isinstance(datasource.get('id'), str):
-            context.current_datasource_id = datasource.get('id')
+            current_datasource_id = datasource.get('id')
         if isinstance(active_tab.get('id'), str):
-            context.current_tab_id = active_tab.get('id')
+            current_tab_id = active_tab.get('id')
         if isinstance(active_tab.get('name'), str):
-            context.current_tab_name = active_tab.get('name')
+            current_tab_name = active_tab.get('name')
     starter = _build_starter(user)
     build_run_service.create_build_run(
         session,
@@ -579,12 +569,12 @@ async def start_active_build(
         request_json=request.model_dump(mode='json'),
         starter_json=starter.model_dump(mode='json'),
         status=build_run_service.BuildRunStatus.QUEUED,
-        current_kind=context.current_kind,
-        current_datasource_id=context.current_datasource_id,
-        current_tab_id=context.current_tab_id,
-        current_tab_name=context.current_tab_name,
-        current_output_id=context.current_output_id,
-        current_output_name=context.current_output_name,
+        current_kind=current_kind,
+        current_datasource_id=current_datasource_id,
+        current_tab_id=current_tab_id,
+        current_tab_name=current_tab_name,
+        current_output_id=current_output_id,
+        current_output_name=current_output_name,
         total_tabs=len(tabs),
         created_at=started_at,
         started_at=started_at,
@@ -647,6 +637,8 @@ async def cancel_build(
             cancelled_by=cancelled_by,
             duration_ms=duration_ms,
         ),
+        namespace=detail.namespace,
+        resource_config_json=detail.resource_config.model_dump(mode='json') if detail.resource_config is not None else None,
     )
 
     return schemas.CancelBuildResponse(

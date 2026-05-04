@@ -7,9 +7,7 @@ from compute_engine import PolarsComputeEngine
 
 from contracts.compute.base import ComputeEngine, EngineStatusInfo
 from contracts.compute.schemas import EngineStatus
-from contracts.runtime import ipc as runtime_ipc
-from core.engine_live import persist_engine_snapshot
-from core.namespace import get_namespace, reset_namespace, set_namespace_context
+from core.namespace import get_namespace
 
 logger = logging.getLogger(__name__)
 
@@ -262,7 +260,6 @@ class ProcessManager:
         """Shutdown and remove an engine."""
         removed = False
         key = self._key(analysis_id)
-        namespace = get_namespace()
         with self._engines_lock:
             if key in self._engines:
                 logger.info(f'Shutting down engine for analysis {analysis_id}')
@@ -273,31 +270,19 @@ class ProcessManager:
                 logger.info(f'Engine shutdown complete for analysis {analysis_id}')
             else:
                 logger.debug(f'No engine found to shutdown for analysis {analysis_id}')
-        if removed:
-            persist_engine_snapshot(self._snapshot_persist, namespace=namespace, statuses=self.list_all_engine_statuses())
-            runtime_ipc.notify_api_engine(namespace)
         if removed and emit_snapshot:
             self._emit_snapshot()
 
     def shutdown_all(self) -> None:
         """Shutdown all engines."""
-        namespaces: set[str] = set()
         with self._engines_lock:
             shutdown_targets = [(analysis_id, info.engine) for analysis_id, info in self._engines.items()]
-            namespaces = {namespace for key in self._engines for namespace, _analysis_id in [self._split_key(key)]}
             self._engines.clear()
 
         for key, engine in shutdown_targets:
             _namespace, analysis_id = self._split_key(key)
             logger.info(f'Shutting down engine for analysis {analysis_id}')
             engine.shutdown()
-        for namespace in namespaces:
-            token = set_namespace_context(namespace)
-            try:
-                persist_engine_snapshot(self._snapshot_persist, namespace=namespace, statuses=[])
-                runtime_ipc.notify_api_engine(namespace)
-            finally:
-                reset_namespace(token)
         if shutdown_targets:
             self._emit_snapshot()
 

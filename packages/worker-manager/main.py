@@ -15,19 +15,16 @@ from multiprocessing.synchronize import Event as ProcessEvent
 
 from compute_manager import ProcessManager
 from compute_request_runtime import compute_request_loop
+from engine_notifications import create_snapshot_notifier
+from runtime_notifications import handle_runtime_payload
 from worker_runtime import build_worker_loop, runtime_namespaces, worker_id as build_worker_id
 
 from contracts.build_jobs.live import hub as build_job_hub
 from contracts.runtime import ipc as runtime_ipc
 from contracts.runtime_workers.models import RuntimeWorkerKind
-from core import (
-    build_jobs_service as build_job_service,
-    engine_instances_service as engine_instance_service,
-    runtime_workers_service as runtime_worker_service,
-)
+from core import build_jobs_service as build_job_service, runtime_workers_service as runtime_worker_service
 from core.config import settings
 from core.database import init_db, run_db, run_settings_db
-from core.engine_live import create_snapshot_notifier
 from core.logging import configure_logging
 from core.namespace import reset_namespace, set_namespace_context
 
@@ -43,19 +40,6 @@ class ManagedWorkerProcess:
         self.process = process
         self.stop_signal = stop_signal
         self.stopped_signal = stopped_signal
-
-
-def _persist_engine_snapshot(worker_id: str, namespace: str, statuses) -> None:
-    def _write(session) -> None:
-        engine_instance_service.persist_engine_snapshot(
-            session,
-            worker_id=worker_id,
-            namespace=namespace,
-            statuses=list(statuses),
-        )
-
-    run_settings_db(_write)
-    runtime_ipc.notify_api_engine(namespace)
 
 
 def _register_manager(worker_id: str) -> None:
@@ -141,7 +125,7 @@ async def run_build_worker_process(
     manager = ProcessManager(
         on_snapshot=create_snapshot_notifier(
             asyncio.get_running_loop(),
-            persist=lambda namespace, statuses: _persist_engine_snapshot(worker_id, namespace, statuses),
+            worker_id=worker_id,
         )
     )
 
@@ -236,13 +220,13 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
     ipc_server = await runtime_ipc.start_api_server(listener='job')
     ipc_task = None
     if ipc_server is not None:
-        ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, local_stop, runtime_ipc.handle_api_payload))
+        ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, local_stop, handle_runtime_payload))
     worker_id = manager_id()
     _register_manager(worker_id)
     manager = ProcessManager(
         on_snapshot=create_snapshot_notifier(
             asyncio.get_running_loop(),
-            persist=lambda namespace, statuses: _persist_engine_snapshot(worker_id, namespace, statuses),
+            worker_id=worker_id,
         )
     )
     heartbeat_stop = threading.Event()

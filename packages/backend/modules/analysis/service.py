@@ -5,6 +5,12 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any
 
+from backend_core.settings_store import (
+    get_resolved_huggingface_settings,
+    get_resolved_ollama_settings,
+    get_resolved_openai_settings,
+    get_resolved_openrouter_key,
+)
 from pydantic import ValidationError
 from sqlalchemy import delete, select
 from sqlalchemy.orm import defer
@@ -20,12 +26,6 @@ from core.exceptions import (
     AnalysisNotFoundError,
     AnalysisValidationError,
     DataSourceNotFoundError,
-)
-from core.settings_store import (
-    get_resolved_huggingface_settings,
-    get_resolved_ollama_settings,
-    get_resolved_openai_settings,
-    get_resolved_openrouter_key,
 )
 from modules.analysis.schemas import (
     AnalysisCreateSchema,

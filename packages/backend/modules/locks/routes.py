@@ -1,5 +1,7 @@
 import logging
 
+from backend_core.dependencies import get_lock_owner_id, resolve_lock_owner_id
+from backend_core.error_handlers import handle_errors
 from fastapi import Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import run_in_threadpool
 from pydantic import ValidationError
@@ -7,8 +9,6 @@ from sqlmodel import Session
 from starlette.websockets import WebSocketState
 
 from core.database import get_db, run_db, run_settings_db
-from core.dependencies import get_lock_owner_id, resolve_lock_owner_id
-from core.error_handlers import handle_errors
 from core.namespace import get_namespace, reset_namespace, set_namespace_context
 from modules.locks import schemas, service, watchers
 from modules.mcp.router import MCPRouter

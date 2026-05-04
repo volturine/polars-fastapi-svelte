@@ -7,6 +7,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from api import router
+from backend_core.error_handlers import app_error_handler, generic_error_handler, validation_error_handler
+from backend_core.runtime_notifications import handle_runtime_payload
+from backend_core.settings_store import invalidate_resolved_settings_cache, seed_settings_from_env
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,13 +21,23 @@ from contracts.runtime import ipc as runtime_ipc
 from contracts.runtime_workers.models import RuntimeWorkerKind
 from core import build_runs_service as build_run_service, runtime_workers_service as runtime_worker_service
 from core.config import settings
-from core.database import get_settings_db, init_db, run_db, run_settings_db, supports_distributed_runtime
-from core.error_handlers import app_error_handler, generic_error_handler, validation_error_handler
+from core.database import (
+    get_settings_db,
+    init_db,
+    register_settings_bootstrap_hook,
+    register_settings_cache_invalidator,
+    run_db,
+    run_settings_db,
+    supports_distributed_runtime,
+)
 from core.exceptions import AppError
 from core.http import close_clients
 from core.logging import RequestLoggingMiddleware, configure_logging
 from core.namespace import list_namespaces, namespace_paths, reset_namespace, set_namespace_context
 from core.namespaces_service import register_namespace
+
+register_settings_bootstrap_hook(seed_settings_from_env)
+register_settings_cache_invalidator(invalidate_resolved_settings_cache)
 
 ROOT = Path(__file__).resolve().parents[2]
 logger = logging.getLogger(__name__)
@@ -155,13 +168,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     api_heartbeat_task = asyncio.create_task(api_worker_heartbeat_loop(stop_event, api_worker_id))
     ipc_task = None
     if ipc_server is not None:
-        ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, stop_event, runtime_ipc.handle_api_payload))
+        ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, stop_event, handle_runtime_payload))
 
     # Start Telegram bot only if explicitly enabled in settings
     from modules.telegram.bot import telegram_bot
 
     def _check_bot_enabled(session: Session) -> tuple[bool, str]:
-        from core.settings_store import get_resolved_telegram_settings
+        from backend_core.settings_store import get_resolved_telegram_settings
 
         del session
         resolved = get_resolved_telegram_settings()

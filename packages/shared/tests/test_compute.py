@@ -12,11 +12,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import compute_service
 import polars as pl
 import pytest
+from backend_core.dependencies import get_manager
+from backend_core.engine_live import load_engine_snapshot, registry as engine_registry
 from build_execution import _run_queued_build_job
+from build_live import ActiveBuild as ComputeActiveBuild, ActiveBuild as RouteActiveBuild, registry as active_build_registry
 from compute_engine import PolarsComputeEngine
 from compute_manager import ProcessManager
 from compute_operations.datasource import _analysis_stack_var
 from compute_utils import await_engine_result
+from engine_notifications import create_snapshot_notifier
 from main import app
 from modules.compute.routes import (
     _emit_active_build_event,
@@ -46,10 +50,7 @@ from core import (
     engine_instances_service as engine_instance_service,
     engine_runs_service as engine_run_service,
 )
-from core.build_live import ActiveBuild as ComputeActiveBuild, ActiveBuild as RouteActiveBuild, registry as active_build_registry
 from core.database import get_db
-from core.dependencies import get_manager
-from core.engine_live import create_snapshot_notifier, load_engine_snapshot, registry as engine_registry
 from core.exceptions import PipelineValidationError
 from core.namespace import namespace_paths, reset_namespace, set_namespace_context
 
@@ -1766,22 +1767,18 @@ def test_cancel_build_updates_active_build_registry(client, test_db_session, tes
                 current_step='Sort',
                 current_step_index=1,
             ),
+            namespace='default',
         )
     )
     response = client.post(f'/api/v1/compute/builds/active/{build.build_id}/cancel')
 
     assert response.status_code == 200
-    deadline = time.time() + 5
-    updated = None
-    while time.time() < deadline:
-        updated = asyncio.run(active_build_registry.get_build(build.build_id))
-        if updated is not None and updated.status == compute_schemas.ActiveBuildStatus.CANCELLED:
-            break
-        time.sleep(0.01)
-    assert updated is not None
-    assert updated.status == compute_schemas.ActiveBuildStatus.CANCELLED
-    assert updated.cancelled_by == test_user.email
-    assert updated.current_engine_run_id == created.id
+    detail_response = client.get(f'/api/v1/compute/builds/active/{build.build_id}')
+    assert detail_response.status_code == 200
+    updated = detail_response.json()
+    assert updated['status'] == compute_schemas.ActiveBuildStatus.CANCELLED.value
+    assert updated['cancelled_by'] == test_user.email
+    assert updated['current_engine_run_id'] == created.id
 
 
 def test_build_stream_websocket_emits_snapshot_and_terminal_event(
@@ -2301,6 +2298,7 @@ def test_active_build_monitor_websocket_sends_snapshot_and_updates(client, test_
                     current_step='Sort',
                     current_step_index=2,
                 ),
+                namespace='default',
             )
         )
         update = websocket.receive_json()
@@ -2544,6 +2542,7 @@ def test_active_build_list_websocket_sends_snapshot_and_updates(client, test_db_
                     current_step='hello',
                     current_step_index=0,
                 ),
+                namespace='default',
             )
         )
         update = websocket.receive_json()
@@ -3090,23 +3089,19 @@ def test_load_engine_snapshot_dedupes_analysis_rows_across_workers(test_db_sessi
     assert snapshot.engines[0].resource_config.max_threads == 2
 
 
-def test_shutdown_engine_persists_snapshot_before_notifying(monkeypatch) -> None:
+def test_shutdown_engine_emits_snapshot_after_removing_engine() -> None:
     manager = ProcessManager()
     manager._engine_factory = FakeEngine
     manager.spawn_engine('analysis-cleanup-order')
-    calls: list[str] = []
+    calls: list[int] = []
 
-    def persist(namespace: str, statuses: list[EngineStatusInfo]) -> None:
-        calls.append(f'persist:{namespace}:{len(statuses)}')
+    def on_snapshot(statuses: list[EngineStatusInfo]) -> None:
+        calls.append(len(statuses))
 
-    def notify(namespace: str) -> None:
-        calls.append(f'notify:{namespace}')
-
-    manager._snapshot_persist = persist
-    monkeypatch.setattr('compute_manager.runtime_ipc.notify_api_engine', notify)
+    manager._on_snapshot = on_snapshot
 
     manager.shutdown_engine('analysis-cleanup-order')
-    assert calls[:2] == ['persist:default:0', 'notify:default']
+    assert calls == [0]
 
 
 def test_upsert_engine_status_retries_after_duplicate_insert(test_db_session: Session) -> None:
@@ -3784,8 +3779,8 @@ class TestBuildAnalysisPipelinePayloadDerived:
     def test_derived_tab_datasource_contains_analysis_metadata(self, test_db_session, sample_datasource: DataSource):
         from datetime import UTC, datetime
 
-        from compute_service import build_analysis_pipeline_payload
         from modules.datasource.service import create_placeholder_output_datasource
+        from scheduler_service import build_analysis_pipeline_payload
 
         from contracts.analysis.models import Analysis, AnalysisStatus
 

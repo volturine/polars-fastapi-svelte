@@ -331,14 +331,10 @@ version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "dataforge-shared" },
-    { name = "dataforge-worker-manager" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "dataforge-shared", editable = "../shared" },
-    { name = "dataforge-worker-manager", editable = "../worker-manager" },
-]
+requires-dist = [{ name = "dataforge-shared", editable = "../shared" }]
 
 [[package]]
 name = "dataforge-shared"
@@ -410,17 +406,6 @@ dev = [
     { name = "types-jsonschema", specifier = ">=4.26.0.20260202" },
     { name = "types-openpyxl", specifier = ">=3.1.5.20250919" },
 ]
-
-[[package]]
-name = "dataforge-worker-manager"
-version = "1.0.0"
-source = { editable = "../worker-manager" }
-dependencies = [
-    { name = "dataforge-shared" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "dataforge-shared", editable = "../shared" }]
 
 [[package]]
 name = "duckdb"

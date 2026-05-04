@@ -6,22 +6,25 @@ import uuid
 from pathlib import Path
 from shutil import copy2
 
+from backend_core.dependencies import RuntimeAvailabilityProbe, get_runtime_availability_probe
+from backend_core.error_handlers import handle_errors
+from backend_core.validation import DataSourceId, PreflightId, parse_datasource_id, parse_preflight_id
 from fastapi import Depends, Form, HTTPException, UploadFile
 from sqlmodel import Session
 
 from contracts.auth_models import User
 from core.config import settings
 from core.database import get_db
-from core.dependencies import RuntimeAvailabilityProbe, get_runtime_availability_probe
-from core.error_handlers import handle_errors
 from core.exceptions import AppError
 from core.namespace import namespace_paths
-from core.validation import DataSourceId, PreflightId, parse_datasource_id, parse_preflight_id
 from modules.auth.dependencies import get_optional_user
 from modules.compute.executor_client import (
+    compare_iceberg_snapshots as compare_remote_iceberg_snapshots,
     create_database_datasource as create_remote_database_datasource,
     create_file_datasource as create_remote_file_datasource,
     create_iceberg_datasource as create_remote_iceberg_datasource,
+    get_column_stats as get_remote_column_stats,
+    get_datasource_schema as get_remote_datasource_schema,
     refresh_datasource as refresh_remote_datasource,
     shutdown_engine as shutdown_remote_engine,
 )
@@ -676,87 +679,110 @@ async def get_datasource_schema(
                     datasource_id=datasource_id_value,
                     runtime_probe=runtime_probe,
                 )
-    return service.get_datasource_schema(session, datasource_id_value, sheet_name=sheet_name, refresh=False)
+    schema = await get_remote_datasource_schema(
+        session,
+        datasource_id=datasource_id_value,
+        sheet_name=sheet_name,
+        refresh=False,
+        runtime_probe=runtime_probe,
+    )
+    return service.attach_column_descriptions(session, datasource_id_value, schema)
 
 
 @router.patch('/{datasource_id}/column-metadata', response_model=schemas.SchemaInfo, mcp=True)
 @handle_errors(operation='update datasource column metadata', value_error_status=400)
-def update_datasource_column_metadata(
+async def update_datasource_column_metadata(
     datasource_id: DataSourceId,
     payload: schemas.BatchColumnDescriptionUpdate,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Update one or more datasource column descriptions and return the active schema."""
-    return service.update_column_descriptions(session, parse_datasource_id(datasource_id), payload)
+    datasource_id_value = parse_datasource_id(datasource_id)
+    schema = await get_remote_datasource_schema(
+        session,
+        datasource_id=datasource_id_value,
+        sheet_name=None,
+        refresh=False,
+        runtime_probe=runtime_probe,
+    )
+    return service.update_column_descriptions(session, datasource_id_value, payload, schema)
 
 
 @router.post('/{datasource_id}/compare-snapshots', response_model=schemas.SnapshotCompareResponse, mcp=True)
 @handle_errors(operation='compare datasource snapshots')
-def compare_snapshots(
+async def compare_snapshots(
     datasource_id: DataSourceId,
     payload: schemas.SnapshotCompareRequest,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Compare two Iceberg snapshots of a datasource.
 
     Returns row count deltas, schema differences, column stats, and data previews for both snapshots.
     Use GET /compute/iceberg/{id}/snapshots to find snapshot IDs.
     """
-    return service.compare_iceberg_snapshots(
+    return await compare_remote_iceberg_snapshots(
         session,
-        parse_datasource_id(datasource_id),
-        payload.snapshot_a,
-        payload.snapshot_b,
-        payload.row_limit,
+        datasource_id=parse_datasource_id(datasource_id),
+        snapshot_a=payload.snapshot_a,
+        snapshot_b=payload.snapshot_b,
+        row_limit=payload.row_limit,
+        runtime_probe=runtime_probe,
     )
 
 
-def _handle_column_stats(
+async def _handle_column_stats(
     datasource_id: DataSourceId,
     column_name: str,
     sample: bool,
     payload: schemas.ColumnStatsRequest | None,
     session: Session,
+    runtime_probe: RuntimeAvailabilityProbe,
 ):
     datasource = payload.datasource if payload else None
     config = None
     if isinstance(datasource, dict):
         config = datasource.get('config')
-    return service.get_column_stats(
-        session=session,
+    return await get_remote_column_stats(
+        session,
         datasource_id=parse_datasource_id(datasource_id),
         column_name=column_name,
         use_sample=sample,
+        sample_size=10000,
         datasource_config=config if isinstance(config, dict) else None,
+        runtime_probe=runtime_probe,
     )
 
 
 @router.get('/{datasource_id}/column/{column_name}/stats', response_model=schemas.ColumnStatsResponse, mcp=True)
 @handle_errors(operation='get column stats')
-def get_column_stats(
+async def get_column_stats(
     datasource_id: DataSourceId,
     column_name: str,
     sample: bool = True,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Get statistics for a single column: count, nulls, unique values, min/max, mean, histogram.
 
     Set sample=false for exact stats (slower on large datasets).
     """
-    return _handle_column_stats(datasource_id, column_name, sample, None, session)
+    return await _handle_column_stats(datasource_id, column_name, sample, None, session, runtime_probe)
 
 
 @router.post('/{datasource_id}/column/{column_name}/stats', response_model=schemas.ColumnStatsResponse, mcp=True)
 @handle_errors(operation='get column stats')
-def get_column_stats_with_config(
+async def get_column_stats_with_config(
     datasource_id: DataSourceId,
     column_name: str,
     payload: schemas.ColumnStatsRequest,
     sample: bool = True,
     session: Session = Depends(get_db),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     """Get column statistics with custom datasource config (e.g., different branch or snapshot)."""
-    return _handle_column_stats(datasource_id, column_name, sample, payload, session)
+    return await _handle_column_stats(datasource_id, column_name, sample, payload, session, runtime_probe)
 
 
 @router.get('/file/list', response_model=schemas.FileListResponse, mcp=True)

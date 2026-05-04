@@ -4,49 +4,45 @@ import asyncio
 import logging
 
 import compute_service as service
+from build_live import ActiveBuild
 from compute_manager import ProcessManager
 
 from contracts.compute import schemas
 from core import build_event_service, build_runs_service as build_run_service
-from core.build_live import ActiveBuild, ActiveBuildContext, registry as build_registry
 from core.database import get_db
-from core.namespace import get_namespace, reset_namespace, set_namespace_context
+from core.namespace import reset_namespace, set_namespace_context
 
 logger = logging.getLogger(__name__)
 
 
 async def _emit_active_build_event(
+    namespace: str,
     build_id: str,
-    analysis_id: str,
     payload: schemas.BuildEvent,
+    *,
+    resource_config_json: dict[str, object] | None = None,
 ) -> None:
-    build = await build_registry.get_build(build_id)
-    namespace = build.namespace if build is not None else get_namespace()
     token = set_namespace_context(namespace)
     session_gen = get_db()
     session = next(session_gen)
     try:
-        persisted = await build_event_service.persist_build_event(
+        await build_event_service.persist_build_event(
             session,
             namespace=namespace,
             build_id=build_id,
             event=payload,
-            resource_config_json=(
-                build.resource_config.model_dump(mode='json') if build is not None and build.resource_config is not None else None
-            ),
+            resource_config_json=resource_config_json,
         )
     finally:
         session.close()
         session_gen.close()
         reset_namespace(token)
-    if persisted is None:
-        return
-    normalized, _latest_sequence = persisted
-    context = await build_registry.apply_event(build_id, normalized)
-    if context is not None:
-        normalized.update(context.payload())
-        await build_registry.publish(build_id, normalized)
-    del _latest_sequence
+
+
+def _resource_config_json(build: ActiveBuild) -> dict[str, object] | None:
+    if build.resource_config is None:
+        return None
+    return build.resource_config.model_dump(mode='json')
 
 
 def _build_pipeline_payload(request: schemas.BuildRequest) -> dict:
@@ -59,40 +55,38 @@ def _build_pipeline_payload(request: schemas.BuildRequest) -> dict:
 async def _run_active_build_task(
     *,
     manager: ProcessManager,
-    build_id: str,
-    analysis_id: str,
-    namespace: str,
+    build: ActiveBuild,
     pipeline: dict,
     triggered_by: str | None,
 ) -> None:
-    token = set_namespace_context(namespace)
+    token = set_namespace_context(build.namespace)
     session_gen = None
     session = None
     try:
-        build = await build_registry.get_build(build_id)
-        if build is None:
-            return
-        active_build = build
         session_gen = get_db()
         session = next(session_gen)
         await service.run_analysis_build_stream(
             session=session,
             manager=manager,
             pipeline=pipeline,
-            build=active_build,
-            emitter=lambda payload: _emit_active_build_event(active_build.build_id, analysis_id, payload),
+            build=build,
+            emitter=lambda payload: _emit_active_build_event(
+                build.namespace,
+                build.build_id,
+                payload,
+                resource_config_json=_resource_config_json(build),
+            ),
             triggered_by=triggered_by,
         )
     except Exception as exc:
         logger.error('Active build task error: %s', exc, exc_info=True)
-        build = await build_registry.get_build(build_id)
-        if build is not None and build.status == schemas.ActiveBuildStatus.RUNNING:
+        if build.status == schemas.ActiveBuildStatus.RUNNING:
             await _emit_active_build_event(
+                build.namespace,
                 build.build_id,
-                analysis_id,
                 schemas.BuildFailedEvent(
                     build_id=build.build_id,
-                    analysis_id=analysis_id,
+                    analysis_id=build.analysis_id,
                     emitted_at=service._utcnow(),
                     current_kind=build.current_kind,
                     current_datasource_id=build.current_datasource_id,
@@ -109,6 +103,7 @@ async def _run_active_build_task(
                     duration_ms=build.elapsed_ms,
                     error='Build failed due to an internal error',
                 ),
+                resource_config_json=_resource_config_json(build),
             )
     finally:
         if session is not None:
@@ -125,7 +120,6 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
     pipeline: dict | None = None
     starter: schemas.BuildStarter | None = None
     request_payload: schemas.BuildRequest | None = None
-    namespace: str | None = None
     try:
         run = build_run_service.get_build_run(session, build_id)
         if run is None:
@@ -136,32 +130,28 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
         request_payload = schemas.BuildRequest.model_validate(run.request_json)
         pipeline = _build_pipeline_payload(request_payload)
         starter = schemas.BuildStarter.model_validate(run.starter_json)
-        namespace = run.namespace
-        context = ActiveBuildContext(
+        build = ActiveBuild(
+            build_id=run.id,
+            analysis_id=run.analysis_id,
+            analysis_name=run.analysis_name,
+            namespace=run.namespace,
+            starter=starter,
+            total_tabs=run.total_tabs,
             current_kind=run.current_kind,
             current_datasource_id=run.current_datasource_id,
             current_tab_id=run.current_tab_id,
             current_tab_name=run.current_tab_name,
             current_output_id=run.current_output_id,
             current_output_name=run.current_output_name,
-        )
-        build = await build_registry.create_build(
-            analysis_id=run.analysis_id,
-            analysis_name=run.analysis_name,
-            namespace=namespace,
-            starter=starter,
-            total_tabs=run.total_tabs,
-            context=context,
-            build_id=run.id,
             started_at=run.started_at,
+            status=schemas.ActiveBuildStatus.RUNNING,
         )
-        build.status = schemas.ActiveBuildStatus.RUNNING
     finally:
         session.close()
         session_gen.close()
-    if build is None or pipeline is None or starter is None or request_payload is None or namespace is None:
+    if build is None or pipeline is None or starter is None or request_payload is None:
         return
-    await build_event_service.publish_build_notification(namespace, build_id, latest_sequence=0)
+    await build_event_service.publish_build_notification(build.namespace, build_id, latest_sequence=0)
     current_kind = build.current_kind or ''
     if current_kind in {'raw', 'datasource_update'}:
         datasource_id = build.current_datasource_id
@@ -182,8 +172,8 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
                         datasource_id,
                     )
                 await _emit_active_build_event(
+                    build.namespace,
                     build.build_id,
-                    build.analysis_id,
                     schemas.BuildCompleteEvent(
                         build_id=build.build_id,
                         analysis_id=build.analysis_id,
@@ -209,12 +199,13 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
                         ],
                         duration_ms=build.elapsed_ms,
                     ),
+                    resource_config_json=_resource_config_json(build),
                 )
                 return
             except Exception as exc:
                 await _emit_active_build_event(
+                    build.namespace,
                     build.build_id,
-                    build.analysis_id,
                     schemas.BuildFailedEvent(
                         build_id=build.build_id,
                         analysis_id=build.analysis_id,
@@ -234,6 +225,7 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
                         duration_ms=build.elapsed_ms,
                         error=str(exc),
                     ),
+                    resource_config_json=_resource_config_json(build),
                 )
                 return
         finally:
@@ -241,9 +233,7 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
             session_gen.close()
     await _run_active_build_task(
         manager=manager,
-        build_id=build.build_id,
-        analysis_id=build.analysis_id,
-        namespace=build.namespace,
+        build=build,
         pipeline=pipeline,
         triggered_by=starter.user_id or starter.email or starter.display_name or starter.triggered_by,
     )

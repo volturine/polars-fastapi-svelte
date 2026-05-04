@@ -3,11 +3,11 @@ import re
 from enum import StrEnum
 
 import polars as pl
+from notification_delivery import notification_service
 from pydantic import ConfigDict, Field, model_validator
+from runtime_settings import get_resolved_telegram_settings
 
 from contracts.compute.base import OperationHandler, OperationParams
-from core.notification_delivery import notification_service
-from core.settings_store import get_resolved_telegram_settings
 
 logger = logging.getLogger(__name__)
 

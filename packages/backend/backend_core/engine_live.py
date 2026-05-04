@@ -1,40 +1,25 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
-
-from fastapi import WebSocket
 
 from contracts.compute import schemas
-from contracts.compute.base import EngineStatusInfo
 from core import engine_instances_service as engine_instance_service
-from core.namespace import get_namespace
 
 
 class EngineRegistry:
     def __init__(self) -> None:
-        self._watchers: dict[str, set[WebSocket]] = {}
         self._waiters: dict[str, list[asyncio.Future[str]]] = {}
         self._lock = asyncio.Lock()
         self._version: dict[str, int] = {}
 
-    async def add_watcher(self, namespace: str, websocket: WebSocket) -> None:
-        async with self._lock:
-            self._watchers.setdefault(namespace, set()).add(websocket)
+    async def add_watcher(self, namespace: str, websocket) -> None:
+        del namespace, websocket
 
-    async def remove_watcher(self, namespace: str, websocket: WebSocket) -> None:
-        async with self._lock:
-            watchers = self._watchers.get(namespace)
-            if not watchers:
-                return
-            watchers.discard(websocket)
-            if watchers:
-                return
-            self._watchers.pop(namespace, None)
+    async def remove_watcher(self, namespace: str, websocket) -> None:
+        del namespace, websocket
 
     async def clear(self) -> None:
         async with self._lock:
-            self._watchers.clear()
             waiters = self._waiters
             self._waiters = {}
             self._version = {}
@@ -59,8 +44,7 @@ class EngineRegistry:
         finally:
             await self._discard_waiter(namespace, future)
 
-    async def publish_snapshot(self, namespace: str, statuses: list[EngineStatusInfo]) -> None:
-        del statuses
+    async def publish_namespace(self, namespace: str) -> None:
         async with self._lock:
             version = self._version.get(namespace, 0) + 1
             self._version[namespace] = version
@@ -69,6 +53,10 @@ class EngineRegistry:
             if future.done():
                 continue
             future.set_result(str(version))
+
+    async def publish_snapshot(self, namespace: str, statuses: list[object]) -> None:
+        del statuses
+        await self.publish_namespace(namespace)
 
     async def _discard_waiter(self, namespace: str, future: asyncio.Future[str]) -> None:
         async with self._lock:
@@ -90,34 +78,6 @@ class EngineRegistry:
 
 
 registry = EngineRegistry()
-
-
-def create_snapshot_notifier(
-    loop: asyncio.AbstractEventLoop,
-    persist: Callable[[str, list[EngineStatusInfo]], None] | None = None,
-) -> Callable[[list[EngineStatusInfo]], None]:
-    def notify(statuses: list[EngineStatusInfo]) -> None:
-        if loop.is_closed():
-            return
-        namespace = get_namespace()
-        if persist is not None:
-            persist(namespace, statuses)
-        if not loop.is_running():
-            return
-        loop.call_soon_threadsafe(loop.create_task, registry.publish_snapshot(namespace, statuses))
-
-    notify._persist = persist  # type: ignore[attr-defined]
-    return notify
-
-
-def persist_engine_snapshot(
-    persist: Callable[[str, list[EngineStatusInfo]], None] | None,
-    *,
-    namespace: str,
-    statuses: list[EngineStatusInfo],
-) -> None:
-    if persist is not None:
-        persist(namespace, statuses)
 
 
 def load_engine_snapshot(session, *, namespace: str, defaults: dict[str, object]) -> schemas.EngineListSnapshotMessage:

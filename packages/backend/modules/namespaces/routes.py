@@ -1,6 +1,6 @@
+from backend_core.error_handlers import handle_errors
 from pydantic import BaseModel
 
-from core.error_handlers import handle_errors
 from core.namespace import list_namespaces
 from modules.mcp.router import MCPRouter
 

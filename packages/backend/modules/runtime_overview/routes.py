@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from backend_core.error_handlers import handle_errors
 from fastapi import Depends, Request
 from sqlmodel import Session
 
 from core.database import get_settings_db
-from core.error_handlers import handle_errors
 from modules.mcp.router import MCPRouter
 
 from . import schemas, service

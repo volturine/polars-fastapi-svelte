@@ -20,9 +20,9 @@ from contracts.compute_requests.models import ComputeRequestKind
 from contracts.runtime import ipc as runtime_ipc
 from contracts.runtime_workers.models import RuntimeWorkerKind
 from core import compute_requests_service, runtime_workers_service
+from core.app_error_status import EXCEPTION_STATUS_MAP
 from core.config import settings
 from core.database import get_db, run_db, run_settings_db
-from core.error_handlers import EXCEPTION_STATUS_MAP
 from core.exceptions import AppError, EngineNotFoundError
 from core.namespace import reset_namespace, set_namespace_context
 
@@ -301,6 +301,45 @@ async def _execute_request(claimed: ClaimedComputeRequest, manager: ProcessManag
                 session,
                 claimed.id,
                 response_json=datasource_response.model_dump(mode='json'),
+            )
+        elif claimed.kind == ComputeRequestKind.DATASOURCE_SCHEMA:
+            schema_response = datasource_service.get_datasource_schema(
+                session,
+                str(claimed.request_json['datasource_id']),
+                sheet_name=_optional_str(claimed.request_json.get('sheet_name')),
+                refresh=bool(claimed.request_json.get('refresh', False)),
+            )
+            compute_requests_service.mark_request_completed(
+                session,
+                claimed.id,
+                response_json=schema_response.model_dump(mode='json'),
+            )
+        elif claimed.kind == ComputeRequestKind.DATASOURCE_COLUMN_STATS:
+            stats_response = datasource_service.get_column_stats(
+                session=session,
+                datasource_id=str(claimed.request_json['datasource_id']),
+                column_name=str(claimed.request_json['column_name']),
+                use_sample=bool(claimed.request_json.get('use_sample', True)),
+                sample_size=_optional_int(claimed.request_json.get('sample_size')) or 10000,
+                datasource_config=_optional_dict(claimed.request_json.get('datasource_config')),
+            )
+            compute_requests_service.mark_request_completed(
+                session,
+                claimed.id,
+                response_json=stats_response.model_dump(mode='json'),
+            )
+        elif claimed.kind == ComputeRequestKind.COMPARE_ICEBERG_SNAPSHOTS:
+            compare_response = datasource_service.compare_iceberg_snapshots(
+                session,
+                str(claimed.request_json['datasource_id']),
+                str(claimed.request_json['snapshot_a']),
+                str(claimed.request_json['snapshot_b']),
+                _optional_int(claimed.request_json.get('row_limit')) or 10,
+            )
+            compute_requests_service.mark_request_completed(
+                session,
+                claimed.id,
+                response_json=compare_response.model_dump(mode='json'),
             )
         elif claimed.kind == ComputeRequestKind.SPAWN_ENGINE:
             analysis_id = str(claimed.request_json['analysis_id'])

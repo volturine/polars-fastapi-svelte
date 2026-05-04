@@ -62,7 +62,7 @@ async def test_scheduler_main_starts_runtime_listener(monkeypatch) -> None:
 
     async def fake_serve_api_notifications(server: object, stop_event: asyncio.Event, handler) -> None:
         calls.append(('serve_api_notifications', server))
-        assert handler is runtime_scheduler.runtime_ipc.handle_api_payload
+        assert handler is runtime_scheduler.handle_runtime_payload
         await stop_event.wait()
 
     async def fake_stop_api_server(server: object) -> None:

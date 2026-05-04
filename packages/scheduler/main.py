@@ -166,6 +166,11 @@ def scheduler_id() -> str:
     return f'scheduler:{uuid.uuid4()}'
 
 
+async def handle_runtime_payload(payload: dict[str, object]) -> None:
+    if payload.get('kind') == 'job':
+        build_job_hub.publish()
+
+
 def install_stop_handlers(stop_event: asyncio.Event) -> None:
     loop = asyncio.get_running_loop()
 
@@ -188,7 +193,7 @@ async def main() -> None:
     ipc_server = await runtime_ipc.start_api_server()
     ipc_task = None
     if ipc_server is not None:
-        ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, stop_event, runtime_ipc.handle_api_payload))
+        ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, stop_event, handle_runtime_payload))
     try:
         await scheduler_loop(stop_event, scheduler_id())
     finally:

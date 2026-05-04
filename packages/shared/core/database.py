@@ -42,6 +42,23 @@ _initialized_namespaces_lock = Lock()
 
 _engine_override: Engine | None = None
 _settings_engine_override: Engine | None = None
+_settings_bootstrap_hook: Callable[[Session], None] | None = None
+_settings_cache_invalidator: Callable[[], None] | None = None
+
+
+def register_settings_bootstrap_hook(hook: Callable[[Session], None] | None) -> None:
+    global _settings_bootstrap_hook
+    _settings_bootstrap_hook = hook
+
+
+def register_settings_cache_invalidator(hook: Callable[[], None] | None) -> None:
+    global _settings_cache_invalidator
+    _settings_cache_invalidator = hook
+
+
+def _invalidate_settings_cache() -> None:
+    if _settings_cache_invalidator is not None:
+        _settings_cache_invalidator()
 
 
 def set_engine_override(test_engine: Engine):
@@ -57,17 +74,13 @@ def clear_engine_override():
 def set_settings_engine_override(test_engine: Engine):
     global _settings_engine_override
     _settings_engine_override = test_engine
-    from core.settings_store import invalidate_resolved_settings_cache
-
-    invalidate_resolved_settings_cache()
+    _invalidate_settings_cache()
 
 
 def clear_settings_engine_override():
     global _settings_engine_override
     _settings_engine_override = None
-    from core.settings_store import invalidate_resolved_settings_cache
-
-    invalidate_resolved_settings_cache()
+    _invalidate_settings_cache()
 
 
 def _set_postgres_search_path(raw_connection: object, namespace: str) -> None:
@@ -253,15 +266,15 @@ def _init_postgres_namespace(namespace: str) -> None:
 def _seed_shared_state() -> None:
     from core.auth_seed import ensure_default_user
     from core.namespaces_service import register_namespace
-    from core.settings_store import invalidate_resolved_settings_cache, seed_settings_from_env
 
     def _seed(session: Session) -> None:
-        seed_settings_from_env(session)
+        if _settings_bootstrap_hook is not None:
+            _settings_bootstrap_hook(session)
         register_namespace(session, settings.default_namespace)
         ensure_default_user(session)
 
     run_settings_db(_seed)
-    invalidate_resolved_settings_cache()
+    _invalidate_settings_cache()
 
 
 def _run_postgres_init_locked(func) -> None:
@@ -308,7 +321,6 @@ def _init_namespace_db_unlocked(namespace: str) -> None:
 
 def _bootstrap_postgres() -> None:
     from core.migrations import migrate_runtime
-    from core.settings_store import invalidate_resolved_settings_cache
 
     namespaces = list_namespaces()
     if settings.default_namespace not in namespaces:
@@ -318,7 +330,7 @@ def _bootstrap_postgres() -> None:
     for namespace in normalized:
         namespace_paths(namespace)
         _mark_namespace_initialized(namespace)
-    invalidate_resolved_settings_cache()
+    _invalidate_settings_cache()
 
 
 async def init_db() -> None:

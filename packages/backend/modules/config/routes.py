@@ -5,12 +5,12 @@ from __future__ import annotations
 import time
 import uuid
 
+from backend_core.error_handlers import handle_errors
+from backend_core.settings_store import get_settings
 from fastapi import Query
 from pydantic import BaseModel
 
 from core.config import settings
-from core.error_handlers import handle_errors
-from core.settings_store import get_settings
 from modules.mcp.router import MCPRouter
 
 router = MCPRouter(prefix='/config', tags=['config'])

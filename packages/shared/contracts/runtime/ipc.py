@@ -109,48 +109,6 @@ async def stop_api_server(server: psycopg.Connection | None, *, listener: Listen
     server.close()
 
 
-async def handle_api_payload(payload: dict[str, object]) -> None:
-    kind = payload.get('kind')
-    if kind == 'build':
-        from contracts.build_runs.live import BuildNotification, hub as build_hub
-
-        namespace = payload.get('namespace')
-        build_id = payload.get('build_id')
-        latest_sequence = payload.get('latest_sequence')
-        if isinstance(namespace, str) and isinstance(build_id, str) and isinstance(latest_sequence, int):
-            await build_hub.publish(
-                BuildNotification(
-                    namespace=namespace,
-                    build_id=build_id,
-                    latest_sequence=latest_sequence,
-                )
-            )
-        return
-    if kind == 'engine':
-        from core.engine_live import registry as engine_registry
-
-        namespace = payload.get('namespace')
-        if isinstance(namespace, str):
-            await engine_registry.publish_snapshot(namespace, [])
-        return
-    if kind == 'compute_request':
-        from contracts.compute_requests.live import request_hub
-
-        request_hub.publish()
-        return
-    if kind == 'compute_response':
-        from contracts.compute_requests.live import response_hub
-
-        request_id = payload.get('request_id')
-        if isinstance(request_id, str):
-            response_hub.publish(request_id)
-        return
-    if kind == 'job':
-        from contracts.build_jobs.live import hub as build_job_hub
-
-        build_job_hub.publish()
-
-
 def notify_api_build(namespace: str, build_id: str, latest_sequence: int) -> None:
     _send_api_message(
         {

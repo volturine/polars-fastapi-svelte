@@ -9,11 +9,11 @@ from compute_operations.notification import (
     _build_message,
 )
 from compute_service import _send_pipeline_notifications
+from notification_delivery import NotificationService, render_template
 from pydantic import ValidationError
 from step_converter import convert_notification_config
 
 from core.exceptions import PipelineExecutionError
-from core.notification_delivery import NotificationService, render_template
 
 
 @dataclass(frozen=True)
@@ -792,7 +792,7 @@ class TestNotificationService:
 
         with (
             patch(
-                'core.notification_delivery.get_resolved_smtp',
+                'notification_delivery.get_resolved_smtp',
                 return_value={'host': 'smtp.example.com', 'port': 587, 'user': 'user@example.com', 'password': 'secret'},
             ),
             patch('smtplib.SMTP') as mock_smtp,

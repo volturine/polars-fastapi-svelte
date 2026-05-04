@@ -1,13 +1,12 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from email.message import EmailMessage
 from typing import Final
 
+from runtime_settings import get_resolved_smtp, get_resolved_telegram_settings, get_resolved_telegram_token
+
 from core import http as http_client
-from core.settings_store import (
-    get_resolved_smtp,
-    get_resolved_telegram_settings,
-    get_resolved_telegram_token,
-)
 from core.smtp import send_smtp_message
 
 
@@ -43,7 +42,6 @@ class NotificationDelivery:
         port = int(str(smtp.get('port', 587)))
         user = str(smtp.get('user', ''))
         password = str(smtp.get('password', ''))
-
         if not host:
             raise ValueError('SMTP not configured (host missing)')
         if not user:
@@ -91,7 +89,6 @@ class NotificationDelivery:
             timeout=20,
         )
         response.raise_for_status()
-
         for attachment in attachments or []:
             file_response = http_client.post(
                 f'{base}/sendDocument',

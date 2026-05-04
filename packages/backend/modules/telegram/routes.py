@@ -1,13 +1,13 @@
 """Telegram subscriber/listener API routes."""
 
+from backend_core import telegram_store
+from backend_core.error_handlers import handle_errors
+from backend_core.settings_store import get_resolved_telegram_settings
+from backend_core.validation import DataSourceId, parse_datasource_id
 from fastapi import Depends
 from sqlmodel import Session
 
-from core import telegram_store
 from core.database import get_db
-from core.error_handlers import handle_errors
-from core.settings_store import get_resolved_telegram_settings
-from core.validation import DataSourceId, parse_datasource_id
 from modules.mcp.router import MCPRouter
 from modules.telegram.schemas import (
     BotStatusResponse,

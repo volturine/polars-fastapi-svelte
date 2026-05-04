@@ -12,13 +12,15 @@ from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Final, TypedDict, cast
+from typing import Final, TypedDict, cast
 
 import polars as pl
 import pyarrow as pa  # type: ignore[import-untyped]
+from build_live import ActiveBuild
 from compute_manager import ProcessManager
 from compute_monitor import monitor_engine_resources
 from compute_utils import apply_steps, await_engine_result, find_step_index, resolve_applied_target
+from notification_delivery import notification_service, render_template
 from pyiceberg.catalog import load_catalog
 from pyiceberg.table import Table as IcebergTable
 from sqlalchemy import select
@@ -34,15 +36,12 @@ from contracts.engine_runs.schemas import EngineRunKind, EngineRunStatus
 from contracts.healthcheck_models import HealthCheck, HealthCheckResult
 from contracts.udf_models import Udf
 from core import engine_runs_service as engine_run_service
-from core.analysis_pipeline_payloads import build_analysis_pipeline_payload as _build_analysis_pipeline_payload
-from core.build_live import ActiveBuild
 from core.config import settings
 from core.database import get_db
 from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError, PipelineExecutionError, PipelineValidationError
 from core.healthcheck_runner import run_healthchecks
 from core.iceberg_metadata import resolve_iceberg_branch_metadata_path, resolve_iceberg_metadata_path, sync_iceberg_schema
 from core.namespace import get_namespace, namespace_paths
-from core.notification_delivery import notification_service, render_template
 
 logger = logging.getLogger(__name__)
 
@@ -557,17 +556,29 @@ def _send_pipeline_notifications(
     datasource_id = str(context.get('datasource_id', ''))
     if datasource_id:
         try:
-            from core.database import run_db
-            from core.telegram_store import get_notification_chat_ids, list_subscribers
+            from telegram_targets import get_notification_chat_targets, list_active_subscriber_targets
 
-            pairs: list[tuple[str, str]] = run_db(get_notification_chat_ids, datasource_id)
+            from core.database import run_db
+
+            raw_targets = run_db(get_notification_chat_targets, datasource_id)
             excluded: set[str] = set()
             if output_notification and output_notification.get('method') == 'telegram':
-                subs = run_db(list_subscribers)
-                pairs = [(s.chat_id, s.bot_token) for s in subs if s.is_active]
+                raw_targets = run_db(list_active_subscriber_targets)
                 excluded_raw = output_notification.get('excluded_recipients')
                 if isinstance(excluded_raw, list):
                     excluded = {str(item) for item in excluded_raw}
+
+            def _normalize_target(value: object) -> tuple[str, str] | None:
+                if isinstance(value, tuple) and len(value) == 2:
+                    chat_id, token = value
+                    return str(chat_id), str(token)
+                chat_id = getattr(value, 'chat_id', None)
+                token = getattr(value, 'bot_token', None)
+                if isinstance(chat_id, str) and isinstance(token, str):
+                    return chat_id, token
+                return None
+
+            pairs = [item for item in (_normalize_target(value) for value in raw_targets) if item is not None]
             if excluded:
                 pairs = [(cid, token) for cid, token in pairs if cid not in excluded]
             if pairs:
@@ -1375,10 +1386,6 @@ def _resolve_pipeline_request(
         'target_step_id': resolved_target,
         'datasource_config': merged,
     }
-
-
-def build_analysis_pipeline_payload(session: Session, analysis: Analysis, datasource_id: str | None = None) -> dict[str, Any]:
-    return _build_analysis_pipeline_payload(session, analysis, datasource_id=datasource_id)
 
 
 def preview_step(

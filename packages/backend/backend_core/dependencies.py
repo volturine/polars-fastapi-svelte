@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import Any, Protocol
 
 from fastapi import Depends, HTTPException, Request
 from modules.auth.dependencies import _resolve_session_token
@@ -11,9 +11,6 @@ from contracts.runtime_workers.models import RuntimeWorkerKind
 from core import runtime_workers_service
 from core.config import settings
 from core.database import get_settings_db
-
-if TYPE_CHECKING:
-    from compute_manager import ProcessManager
 
 
 class RuntimeAvailabilityProbe(Protocol):
@@ -34,7 +31,7 @@ class PersistedRuntimeAvailabilityProbe:
         )
 
 
-def get_manager(request: Request) -> ProcessManager:
+def get_manager(request: Request) -> Any:
     """FastAPI dependency that returns the ProcessManager from app state."""
     return request.app.state.manager
 

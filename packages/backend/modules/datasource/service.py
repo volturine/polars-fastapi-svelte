@@ -2,56 +2,39 @@ import logging
 import os
 import shutil
 import uuid
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import polars as pl
-import psycopg
 from openpyxl import load_workbook
 from openpyxl.utils.cell import get_column_letter, range_boundaries
 from pyiceberg.catalog import load_catalog
 from pyiceberg.table import Table
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.orm import defer
 from sqlmodel import Session, col
 
 from contracts.datasource.models import DataSource, DataSourceColumnMetadata
 from core import engine_runs_service as engine_run_service
 from core.config import settings
-from core.datasource_loading import load_datasource_frame
-from core.exceptions import (
-    DataSourceConnectionError,
-    DataSourceNotFoundError,
-    DataSourceValidationError,
-    FileError,
-)
+from core.exceptions import DataSourceNotFoundError, DataSourceValidationError, FileError
 from core.iceberg_metadata import sync_iceberg_schema
 from core.namespace import get_namespace, namespace_paths
 from modules.datasource.schemas import (
     BatchColumnDescriptionUpdate,
-    ColumnSchema,
-    ColumnStats,
-    ColumnStatsResponse,
     DataSourceListItem,
     DataSourceResponse,
     DataSourceUpdate,
     FileListItem,
     FileListResponse,
-    SchemaDiff,
-    SchemaDiffStatus,
     SchemaInfo,
-    SnapshotCompareResponse,
-    SnapshotPreview,
     normalize_datasource_description,
 )
-from modules.datasource.source_types import FILE_BASED_CATEGORIES, SOURCE_TYPE_CATEGORY, DataSourceType
+from modules.datasource.source_types import DataSourceType
 
 logger = logging.getLogger(__name__)
-
-load_datasource = load_datasource_frame
 
 
 def _open_excel_workbook(file_path: Path, *, table_name: str | None) -> Any:
@@ -569,7 +552,7 @@ def _get_column_metadata_map(session: Session, datasource_id: str) -> dict[str, 
     return {row.column_name: row.description for row in rows}
 
 
-def _attach_column_descriptions(
+def attach_column_descriptions(
     session: Session,
     datasource_id: str,
     schema_info: SchemaInfo,
@@ -579,62 +562,16 @@ def _attach_column_descriptions(
     return schema_info.model_copy(update={'columns': columns})
 
 
-def _schema_cache_payload(schema_info: SchemaInfo) -> dict[str, Any]:
-    columns = [col.model_dump(exclude={'description'}) for col in schema_info.columns]
-    return schema_info.model_dump(exclude={'columns'}) | {'columns': columns}
-
-
-def get_datasource_schema(
-    session: Session,
-    datasource_id: str,
-    sheet_name: str | None = None,
-    refresh: bool = False,
-) -> SchemaInfo:
-    datasource = session.get(DataSource, datasource_id)
-
-    if not datasource:
-        raise DataSourceNotFoundError(datasource_id)
-
-    # Check if we have cached schema with row_count and sample_value
-    if datasource.schema_cache and sheet_name is None and not refresh:
-        try:
-            cached = SchemaInfo.model_validate(datasource.schema_cache)
-        except Exception:
-            cached = None
-        if cached:
-            # Re-extract if row_count or sample_value is missing
-            has_samples = cached.columns and any(c.sample_value is not None for c in cached.columns)
-            if cached.row_count is not None and has_samples:
-                logger.debug(f'Using cached schema for datasource {datasource_id}')
-                return _attach_column_descriptions(session, datasource_id, cached)
-
-    logger.info(f'Extracting schema for datasource {datasource_id}')
-    schema_info = _extract_schema(datasource, sheet_name=sheet_name)
-
-    if sheet_name is None:
-        schema_cache = _schema_cache_payload(schema_info)
-        session.execute(
-            update(DataSource)
-            .where(DataSource.id == datasource_id)  # type: ignore[arg-type]
-            .values(schema_cache=schema_cache),
-        )
-        session.commit()
-        datasource.schema_cache = schema_cache
-
-    logger.info(f'Schema extracted and cached for datasource {datasource_id}: {len(schema_info.columns)} columns')
-    return _attach_column_descriptions(session, datasource_id, schema_info)
-
-
 def update_column_descriptions(
     session: Session,
     datasource_id: str,
     payload: BatchColumnDescriptionUpdate,
+    schema_info: SchemaInfo,
 ) -> SchemaInfo:
     datasource = session.get(DataSource, datasource_id)
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
 
-    schema_info = get_datasource_schema(session, datasource_id)
     active_columns = {column.name for column in schema_info.columns}
 
     for patch in payload.columns:
@@ -674,115 +611,7 @@ def update_column_descriptions(
         session.add(row)
 
     session.commit()
-    return get_datasource_schema(session, datasource_id)
-
-
-def _get_first_non_null_samples(lazy: pl.LazyFrame, max_rows: int = 1000) -> dict[str, str | None]:
-    columns = lazy.collect_schema().names()
-    exprs = [pl.col(col).drop_nulls().first().alias(col) for col in columns]
-    result = lazy.head(max_rows).select(exprs).collect()
-    if result.height == 0:
-        return dict.fromkeys(columns)
-    return {col: (str(result[col][0]) if result[col][0] is not None else None) for col in columns}
-
-
-def _extract_schema(datasource: DataSource, sheet_name: str | None = None) -> SchemaInfo:
-    try:
-        source_type = DataSourceType(datasource.source_type)
-    except ValueError as exc:
-        raise DataSourceConnectionError(
-            'Unsupported datasource type for schema extraction',
-            details={'datasource_id': datasource.id, 'source_type': datasource.source_type},
-        ) from exc
-    handler = _SCHEMA_HANDLERS.get(source_type)
-    if not handler:
-        raise DataSourceConnectionError(
-            'Unsupported datasource type for schema extraction',
-            details={'datasource_id': datasource.id, 'source_type': datasource.source_type},
-        )
-    return handler(datasource, sheet_name)
-
-
-def _schema_from_analysis(datasource: DataSource, sheet_name: str | None) -> SchemaInfo:
-    raise DataSourceValidationError(
-        'Schema extraction not supported for analysis datasources',
-        details={'datasource_id': datasource.id},
-    )
-
-
-def _schema_from_database(datasource: DataSource, sheet_name: str | None) -> SchemaInfo:
-    connection_string = datasource.config['connection_string']
-    query = datasource.config['query']
-    if not connection_string.lower().startswith('postgresql://'):
-        raise DataSourceConnectionError('Database datasource connection string must be PostgreSQL')
-    try:
-        with psycopg.connect(connection_string, autocommit=True) as connection:
-            frame = pl.read_database(query, connection)
-    except Exception as e:
-        raise DataSourceConnectionError(
-            'Failed to query database datasource',
-            details={'datasource_id': datasource.id, 'source_type': datasource.source_type},
-        ) from e
-    schema = frame.schema
-    row_count = frame.height
-
-    sample_values = _get_first_non_null_samples(frame.lazy())
-
-    columns = [
-        ColumnSchema(
-            name=name,
-            dtype=str(dtype),
-            nullable=True,
-            sample_value=sample_values.get(name),
-        )
-        for name, dtype in schema.items()
-    ]
-
-    return SchemaInfo(columns=columns, row_count=row_count)
-
-
-def _schema_from_file(datasource: DataSource, sheet_name: str | None) -> SchemaInfo:
-    config = {
-        'source_type': datasource.source_type,
-        **datasource.config,
-    }
-    if sheet_name:
-        config = {**config, 'sheet_name': sheet_name}
-    try:
-        lazy = load_datasource(config)
-    except Exception as e:
-        category = SOURCE_TYPE_CATEGORY.get(DataSourceType(datasource.source_type))
-        label = category.value if category else 'datasource'
-        raise DataSourceConnectionError(
-            f'Failed to load {label} datasource',
-            details={'datasource_id': datasource.id, 'source_type': datasource.source_type},
-        ) from e
-
-    schema = lazy.collect_schema()
-    row_count = lazy.select(pl.len()).collect().item()
-    sample_values = _get_first_non_null_samples(lazy)
-    columns = [
-        ColumnSchema(
-            name=name,
-            dtype=str(dtype),
-            nullable=True,
-            sample_value=sample_values.get(name),
-        )
-        for name, dtype in schema.items()
-    ]
-    return SchemaInfo(columns=columns, row_count=row_count)
-
-
-_SCHEMA_HANDLERS: dict[DataSourceType, Callable[[DataSource, str | None], SchemaInfo]] = {
-    DataSourceType.ANALYSIS: _schema_from_analysis,
-    DataSourceType.DATABASE: _schema_from_database,
-    **{
-        source_type: _schema_from_file
-        for source_type in SOURCE_TYPE_CATEGORY
-        if SOURCE_TYPE_CATEGORY[source_type] in FILE_BASED_CATEGORIES
-        and source_type not in {DataSourceType.ANALYSIS, DataSourceType.DATABASE}
-    },
-}
+    return attach_column_descriptions(session, datasource_id, schema_info)
 
 
 def list_data_files(path: str | None) -> FileListResponse:
@@ -805,199 +634,6 @@ def list_data_files(path: str | None) -> FileListResponse:
         for item in sorted(resolved.iterdir(), key=lambda entry: (not entry.is_dir(), entry.name.lower()))
     ]
     return FileListResponse(base_path=str(resolved), entries=entries)
-
-
-def compare_iceberg_snapshots(
-    session: Session,
-    datasource_id: str,
-    snapshot_a: str,
-    snapshot_b: str,
-    row_limit: int,
-) -> SnapshotCompareResponse:
-    datasource = session.get(DataSource, datasource_id)
-
-    if not datasource:
-        raise DataSourceNotFoundError(datasource_id)
-    if datasource.source_type != DataSourceType.ICEBERG:
-        raise DataSourceValidationError(
-            'Snapshot comparison is only available for Iceberg datasources',
-            details={'datasource_id': datasource_id},
-        )
-
-    config_base = {
-        'source_type': datasource.source_type,
-        **datasource.config,
-    }
-    config_a = {**config_base, 'snapshot_id': snapshot_a}
-    config_b = {**config_base, 'snapshot_id': snapshot_b}
-
-    lf_a = load_datasource(config_a)
-    lf_b = load_datasource(config_b)
-
-    schema_a = lf_a.collect_schema()
-    schema_b = lf_b.collect_schema()
-
-    row_count_a = lf_a.select(pl.len()).collect().item()
-    row_count_b = lf_b.select(pl.len()).collect().item()
-
-    stats_a = _build_snapshot_stats(lf_a, schema_a)
-    stats_b = _build_snapshot_stats(lf_b, schema_b)
-
-    preview_a = _build_snapshot_preview(lf_a, schema_a, row_limit)
-    preview_b = _build_snapshot_preview(lf_b, schema_b, row_limit)
-
-    diff = _build_schema_diff(schema_a, schema_b)
-
-    return SnapshotCompareResponse(
-        datasource_id=datasource_id,
-        snapshot_a=snapshot_a,
-        snapshot_b=snapshot_b,
-        row_count_a=row_count_a,
-        row_count_b=row_count_b,
-        row_count_delta=row_count_b - row_count_a,
-        schema_diff=diff,
-        stats_a=stats_a,
-        stats_b=stats_b,
-        preview_a=preview_a,
-        preview_b=preview_b,
-    )
-
-
-def _build_snapshot_preview(
-    lazy: pl.LazyFrame,
-    schema: pl.Schema,
-    row_limit: int,
-) -> SnapshotPreview:
-    data = lazy.limit(row_limit).collect().to_dicts()
-    return SnapshotPreview(
-        columns=list(schema.keys()),
-        column_types={name: str(dtype) for name, dtype in schema.items()},
-        data=data,
-        row_count=len(data),
-    )
-
-
-def _supports_min_max(dtype: pl.DataType) -> bool:
-    return isinstance(
-        dtype,
-        (
-            pl.Int8,
-            pl.Int16,
-            pl.Int32,
-            pl.Int64,
-            pl.UInt8,
-            pl.UInt16,
-            pl.UInt32,
-            pl.UInt64,
-            pl.Float32,
-            pl.Float64,
-            pl.Utf8,
-            pl.Date,
-            pl.Datetime,
-            pl.Time,
-        ),
-    )
-
-
-def _supports_unique(dtype: pl.DataType) -> bool:
-    return isinstance(
-        dtype,
-        (
-            pl.Int8,
-            pl.Int16,
-            pl.Int32,
-            pl.Int64,
-            pl.UInt8,
-            pl.UInt16,
-            pl.UInt32,
-            pl.UInt64,
-            pl.Float32,
-            pl.Float64,
-            pl.Utf8,
-            pl.Boolean,
-            pl.Date,
-            pl.Datetime,
-            pl.Time,
-        ),
-    )
-
-
-def _build_snapshot_stats(lazy: pl.LazyFrame, schema: pl.Schema) -> list[ColumnStats]:
-    exprs: list[pl.Expr] = []
-    for name, dtype in schema.items():
-        exprs.append(pl.col(name).null_count().alias(f'{name}__null_count'))
-        if _supports_unique(dtype):
-            exprs.append(pl.col(name).drop_nulls().n_unique().alias(f'{name}__unique_count'))
-        if _supports_min_max(dtype):
-            exprs.append(pl.col(name).min().alias(f'{name}__min'))
-            exprs.append(pl.col(name).max().alias(f'{name}__max'))
-
-    stats_frame = lazy.select(exprs).collect()
-    results: list[ColumnStats] = []
-    for name, dtype in schema.items():
-        null_count = int(stats_frame[f'{name}__null_count'][0])
-        unique_count = None
-        if f'{name}__unique_count' in stats_frame.columns:
-            unique_count = int(stats_frame[f'{name}__unique_count'][0])
-        min_val = None
-        max_val = None
-        if f'{name}__min' in stats_frame.columns:
-            min_val = stats_frame[f'{name}__min'][0]
-        if f'{name}__max' in stats_frame.columns:
-            max_val = stats_frame[f'{name}__max'][0]
-        results.append(
-            ColumnStats(
-                column=name,
-                dtype=str(dtype),
-                null_count=null_count,
-                unique_count=unique_count,
-                min=min_val,
-                max=max_val,
-            ),
-        )
-    return results
-
-
-def _build_schema_diff(schema_a: pl.Schema, schema_b: pl.Schema) -> list[SchemaDiff]:
-    diffs: list[SchemaDiff] = []
-    cols_a = set(schema_a.keys())
-    cols_b = set(schema_b.keys())
-
-    for name in sorted(cols_a - cols_b):
-        diffs.append(
-            SchemaDiff(
-                column=name,
-                status=SchemaDiffStatus.REMOVED,
-                type_a=str(schema_a[name]),
-                type_b=None,
-            ),
-        )
-
-    for name in sorted(cols_b - cols_a):
-        diffs.append(
-            SchemaDiff(
-                column=name,
-                status=SchemaDiffStatus.ADDED,
-                type_a=None,
-                type_b=str(schema_b[name]),
-            ),
-        )
-
-    for name in sorted(cols_a & cols_b):
-        dtype_a = str(schema_a[name])
-        dtype_b = str(schema_b[name])
-        if dtype_a == dtype_b:
-            continue
-        diffs.append(
-            SchemaDiff(
-                column=name,
-                status=SchemaDiffStatus.TYPE_CHANGED,
-                type_a=dtype_a,
-                type_b=dtype_b,
-            ),
-        )
-
-    return diffs
 
 
 def get_datasource(session: Session, datasource_id: str) -> DataSourceResponse:
@@ -1194,139 +830,6 @@ def update_datasource(
     response = DataSourceResponse.model_validate(datasource)
     response.output_of_tab_id = datasource.config.get('analysis_tab_id') if isinstance(datasource.config, dict) else None
     return response
-
-
-def _compute_histogram(series: pl.Series, bins: int = 20) -> list[dict[str, object]]:
-    if series.is_empty():
-        return []
-    stats = series.drop_nulls()
-    if stats.is_empty():
-        return []
-    stats = stats.cast(pl.Float64, strict=False)
-    min_raw: Any = stats.min()
-    max_raw: Any = stats.max()
-    if min_raw is None or max_raw is None:
-        return []
-    min_val = float(min_raw)
-    max_val = float(max_raw)
-    if min_val == max_val:
-        return [{'start': min_val, 'end': max_val, 'count': stats.len()}]
-    width = (max_val - min_val) / bins
-    result: list[dict[str, object]] = []
-    for i in range(bins):
-        start = min_val + i * width
-        end = min_val + (i + 1) * width
-        bin_count = (
-            series.filter((series >= start) & (series <= end)).len()
-            if i == bins - 1
-            else series.filter((series >= start) & (series < end)).len()
-        )
-        result.append({'start': round(start, 4), 'end': round(end, 4), 'count': bin_count})
-    return result
-
-
-def get_column_stats(
-    session: Session,
-    datasource_id: str,
-    column_name: str,
-    use_sample: bool = True,
-    sample_size: int = 10000,
-    datasource_config: dict | None = None,
-) -> ColumnStatsResponse:
-    datasource = session.get(DataSource, datasource_id)
-
-    if not datasource:
-        raise DataSourceNotFoundError(datasource_id)
-
-    config = {
-        'source_type': datasource.source_type,
-        **datasource.config,
-    }
-    if datasource_config:
-        config = {**config, **datasource_config}
-    lazy = load_datasource(config)
-
-    schema = lazy.collect_schema()
-    if column_name not in schema:
-        raise ValueError(f'Column not found: {column_name}')
-
-    if use_sample:
-        lazy = lazy.head(sample_size)  # type: ignore[attr-defined]
-
-    frame = lazy.select([pl.col(column_name)]).collect()
-    series = frame[column_name]
-    dtype = schema[column_name]
-
-    count = series.len()
-    null_count = series.null_count()
-    null_percentage = (null_count / count * 100.0) if count > 0 else 0.0
-
-    stats: dict[str, object] = {
-        'column': column_name,
-        'dtype': str(dtype),
-        'count': count,
-        'null_count': null_count,
-        'null_percentage': null_percentage,
-    }
-
-    if isinstance(dtype, (pl.Int8, pl.Int16, pl.Int32, pl.Int64, pl.UInt8, pl.UInt16, pl.UInt32, pl.UInt64, pl.Float32, pl.Float64)):
-        non_null = series.drop_nulls()
-        stats.update(
-            {
-                'mean': series.mean(),
-                'std': series.std(),
-                'min': series.min(),
-                'max': series.max(),
-                'median': series.median(),
-                'q25': series.quantile(0.25),
-                'q75': series.quantile(0.75),
-                'histogram': _compute_histogram(non_null),
-            },
-        )
-        return ColumnStatsResponse.model_validate(stats)
-
-    if isinstance(dtype, pl.Utf8):
-        length_series = series.str.len_chars()  # type: ignore[attr-defined]
-        stats.update(
-            {
-                'unique': series.n_unique(),
-                'min_length': length_series.min(),
-                'max_length': length_series.max(),
-                'avg_length': length_series.mean(),
-                'top_values': (series.value_counts().sort('count', descending=True).head(5).to_dicts()),
-            },
-        )
-        return ColumnStatsResponse.model_validate(stats)
-
-    if isinstance(dtype, pl.Datetime):
-        stats.update(
-            {
-                'min': series.min(),
-                'max': series.max(),
-            },
-        )
-        return ColumnStatsResponse.model_validate(stats)
-
-    if isinstance(dtype, pl.Boolean):
-        value_counts = series.value_counts().to_dicts()
-        true_count = 0
-        false_count = 0
-        for item in value_counts:
-            value = item.get(column_name)
-            if value is True:
-                true_count = int(item.get('count', 0))
-            if value is False:
-                false_count = int(item.get('count', 0))
-        stats.update(
-            {
-                'true_count': true_count,
-                'false_count': false_count,
-            },
-        )
-        return ColumnStatsResponse.model_validate(stats)
-
-    stats.update({'unique': series.n_unique()})
-    return ColumnStatsResponse.model_validate(stats)
 
 
 def delete_datasource(session: Session, datasource_id: str) -> None:

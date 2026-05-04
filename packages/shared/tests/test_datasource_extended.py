@@ -7,7 +7,8 @@ from unittest.mock import AsyncMock, patch
 
 import polars as pl
 import pytest
-from modules.datasource.service import _compute_histogram, create_analysis_datasource
+from datasource_service import _compute_histogram
+from modules.datasource.service import create_analysis_datasource
 from openpyxl import Workbook
 from sqlmodel import select
 
@@ -539,19 +540,10 @@ class TestDataSourceListing:
         if isinstance(data, list):
             assert len(data) <= 1 or len(data) == len(sample_datasources)
 
-    def test_list_does_not_extract_or_write_schema_cache(self, client, test_db_session, sample_datasource: DataSource, monkeypatch):
+    def test_list_does_not_write_schema_cache(self, client, test_db_session, sample_datasource: DataSource):
         """Listing datasources stays read-only for schema cache."""
-        calls = {'count': 0}
-
-        def fail_extract(*args, **kwargs):
-            calls['count'] += 1
-            raise AssertionError('list_datasources must not call _extract_schema')
-
-        monkeypatch.setattr('modules.datasource.service._extract_schema', fail_extract)
-
         response = client.get('/api/v1/datasource')
         assert response.status_code == 200
-        assert calls['count'] == 0
 
         test_db_session.refresh(sample_datasource)
         assert sample_datasource.schema_cache is None

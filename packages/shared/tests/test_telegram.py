@@ -5,14 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
-from fastapi.testclient import TestClient
-from modules.telegram.bot import TelegramBot
-from sqlalchemy.exc import SQLAlchemyError
-from sqlmodel import Session
-
-from contracts.telegram_models import TelegramSubscriber
-from contracts.telegram_schemas import ListenerCreate
-from core.telegram_store import (
+from backend_core.telegram_store import (
     add_listener,
     add_subscriber,
     auto_populate_listeners,
@@ -24,6 +17,13 @@ from core.telegram_store import (
     list_subscribers,
     remove_listener,
 )
+from fastapi.testclient import TestClient
+from modules.telegram.bot import TelegramBot
+from sqlalchemy.exc import SQLAlchemyError
+from sqlmodel import Session
+
+from contracts.telegram_models import TelegramSubscriber
+from contracts.telegram_schemas import ListenerCreate
 
 # ---------------------------------------------------------------------------
 # Service tests (direct DB calls)

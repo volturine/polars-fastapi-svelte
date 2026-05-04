@@ -3,10 +3,10 @@ from __future__ import annotations
 from collections import deque
 from typing import Any, TypedDict, cast
 
+from scheduler_service import build_analysis_pipeline_payload
 from sqlmodel import Session
 
 from contracts.analysis.models import Analysis
-from core.analysis_pipeline_payloads import build_analysis_pipeline_payload
 from core.exceptions import AnalysisNotFoundError, ScheduleValidationError
 
 

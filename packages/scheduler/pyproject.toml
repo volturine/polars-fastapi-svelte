@@ -3,14 +3,10 @@ name = "dataforge-scheduler"
 version = "1.0.0"
 description = "Data-Forge scheduler runtime package"
 requires-python = ">=3.11"
-dependencies = [
-    "dataforge-shared",
-    "dataforge-worker-manager",
-]
+dependencies = ["dataforge-shared"]
 
 [tool.uv.sources]
 dataforge-shared = { path = "../shared", editable = true }
-dataforge-worker-manager = { path = "../worker-manager", editable = true }
 
 [build-system]
 requires = ["hatchling"]

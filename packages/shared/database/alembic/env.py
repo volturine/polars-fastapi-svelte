@@ -2,7 +2,7 @@ from logging.config import fileConfig
 from typing import Any
 
 from alembic import context
-from modules.analysis import models as analysis_models
+from modules.analysis import models  # noqa: F401
 from modules.auth import models as auth_models
 from modules.chat.sessions import ChatSession
 from modules.datasource import models as datasource_models
@@ -23,7 +23,6 @@ from contracts.runtime_workers import models as runtime_workers_models
 from contracts.scheduler import models as scheduler_models
 from core.config import settings
 
-del analysis_models
 del analysis_versions_models
 del auth_models
 del build_jobs_models

@@ -27,7 +27,12 @@ services:
       SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
     volumes:
       - backend-test-data:/app/data
-    command: ["python", "-m", "pytest", "--tb=short", "-q", "-k", "not docker_bootstrap and not postgres_runtime_integration"]
+    command:
+      [
+        "sh",
+        "-lc",
+        "cd /app/packages/shared && python -m pytest -c pyproject.toml --tb=short -q tests ../backend/tests ../worker-manager/tests ../scheduler/tests /app/tests/integration -k 'not docker_bootstrap and not postgres_runtime_integration'",
+      ]
     healthcheck:
       disable: true
 
@@ -124,7 +129,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-      target: api
+      target: backend-test
       args:
         INSTALL_DEV: "true"
     image: polars-analysis-api:test
@@ -147,7 +152,12 @@ services:
       RUNTIME_TEST_DB_URL: ${DF_RUNTIME_TEST_DB_URL}
     volumes:
       - backend-test-data:/app/data
-    command: ["python", "-m", "pytest", "--tb=short", "-q", "tests/test_docker_bootstrap.py"]
+    command:
+      [
+        "sh",
+        "-lc",
+        "cd /app/packages/shared && python -m pytest -c pyproject.toml --tb=short -q /app/tests/integration/test_docker_bootstrap.py",
+      ]
     healthcheck:
       disable: true
 

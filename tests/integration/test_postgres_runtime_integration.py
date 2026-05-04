@@ -14,7 +14,7 @@ from sqlalchemy import text
 from sqlmodel import Session
 from websockets.asyncio.client import connect
 
-from tests.postgres_harness import (
+from postgres_harness import (
     BACKEND_ROOT,
     CORE_ROOT,
     WORKER_ROOT,

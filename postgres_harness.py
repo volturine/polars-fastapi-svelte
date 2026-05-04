@@ -14,7 +14,7 @@ from pathlib import Path
 import httpx
 import psycopg
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parent
 CORE_ROOT = REPO_ROOT / 'packages' / 'shared'
 BACKEND_ROOT = REPO_ROOT / 'packages' / 'backend'
 SCHEDULER_ROOT = REPO_ROOT / 'packages' / 'scheduler'

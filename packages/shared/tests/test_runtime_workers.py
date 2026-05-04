@@ -210,7 +210,7 @@ async def test_build_worker_loop_tracks_runtime_worker_lifecycle(test_db_session
             heartbeat_seconds=0.01,
         )
     )
-    await task
+    await asyncio.gather(task)
 
     assert seen == [build_id]
     stored = run_settings_db(lambda session: runtime_worker_service.get_worker(session, 'worker-1'))

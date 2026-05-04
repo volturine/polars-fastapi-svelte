@@ -40,7 +40,7 @@ async def _submit_and_wait(
     )
     wait_task = asyncio.create_task(response_hub.wait(request.id))
     await asyncio.to_thread(runtime_ipc.notify_compute_request, request.id)
-    await wait_task
+    await asyncio.gather(wait_task)
     session.expire_all()
     completed = compute_requests_service.get_request(session, request.id)
     if completed is None:

@@ -185,10 +185,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     telegram_bot.stop()
 
     stop_event.set()
-    await chat_sweep_task
-    await api_heartbeat_task
+    shutdown_tasks = [chat_sweep_task, api_heartbeat_task]
     if ipc_task is not None:
-        await ipc_task
+        shutdown_tasks.append(ipc_task)
+    await asyncio.gather(*shutdown_tasks)
     await runtime_ipc.stop_api_server(ipc_server, listener='api')
     await close_clients()
     await asyncio.to_thread(_stop_api_worker, api_worker_id)

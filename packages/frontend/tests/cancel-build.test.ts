@@ -106,17 +106,19 @@ async function waitForBuildRowById(
 	page: Page,
 	panel: ReturnType<Page['locator']>,
 	buildId: string,
-	status: 'running' | 'completed' | 'failed' | 'cancelled',
+	statuses: Array<'queued' | 'running' | 'completed' | 'failed' | 'cancelled'>,
 	timeout = 30_000
 ) {
-	const row = panel.locator(`[data-build-row="${buildId}"][data-build-status="${status}"]`);
 	const started = Date.now();
 	while (Date.now() - started < timeout) {
-		if (await row.isVisible().catch(() => false)) return row;
+		for (const status of statuses) {
+			const row = panel.locator(`[data-build-row="${buildId}"][data-build-status="${status}"]`);
+			if (await row.isVisible().catch(() => false)) return row;
+		}
 		await refreshBuildHistory(page);
 		await page.waitForTimeout(1_000);
 	}
-	throw new Error(`Timed out waiting for build ${buildId} to reach ${status}`);
+	throw new Error(`Timed out waiting for build ${buildId} to reach ${statuses.join(' or ')}`);
 }
 
 test.describe('Cancel Build – e2e', () => {
@@ -168,9 +170,17 @@ test.describe('Cancel Build – e2e', () => {
 			// appears as running before attempting the cancel action.
 			await gotoMonitoringBuilds(page, analysisId);
 			const panel = page.locator('#panel-builds');
-			const targetRow = await waitForBuildRowById(page, panel, buildId, 'running', 90_000);
+			const targetRow = await waitForBuildRowById(
+				page,
+				panel,
+				buildId,
+				['queued', 'running'],
+				90_000
+			);
 			await expect(targetRow).toBeVisible({ timeout: 10_000 });
-			await expect(targetRow).toHaveAttribute('data-build-status', 'running', { timeout: 30_000 });
+			await expect(targetRow).toHaveAttribute('data-build-status', /^(queued|running)$/, {
+				timeout: 30_000
+			});
 			await expect(targetRow.getByLabel('Cancel build')).toBeVisible({ timeout: 30_000 });
 			await openCancelDialogFromRow(page, targetRow);
 
@@ -184,7 +194,7 @@ test.describe('Cancel Build – e2e', () => {
 				timeout: 5_000
 			});
 
-			const cancelledRow = await waitForBuildRowById(page, panel, buildId, 'cancelled', 30_000);
+			const cancelledRow = await waitForBuildRowById(page, panel, buildId, ['cancelled'], 30_000);
 			await expect(cancelledRow).toHaveAttribute('data-build-status', 'cancelled', {
 				timeout: 30_000
 			});

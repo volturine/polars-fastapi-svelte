@@ -10,7 +10,6 @@ from typing import Any
 
 import polars as pl
 import psycopg
-from compute_operations.datasource import load_datasource
 from openpyxl import load_workbook
 from openpyxl.utils.cell import get_column_letter, range_boundaries
 from pyiceberg.catalog import load_catalog
@@ -22,6 +21,7 @@ from sqlmodel import Session, col
 from contracts.datasource.models import DataSource, DataSourceColumnMetadata
 from core import engine_runs_service as engine_run_service
 from core.config import settings
+from core.datasource_loading import load_datasource_frame
 from core.exceptions import (
     DataSourceConnectionError,
     DataSourceNotFoundError,
@@ -50,6 +50,8 @@ from modules.datasource.schemas import (
 from modules.datasource.source_types import FILE_BASED_CATEGORIES, SOURCE_TYPE_CATEGORY, DataSourceType
 
 logger = logging.getLogger(__name__)
+
+load_datasource = load_datasource_frame
 
 
 def _open_excel_workbook(file_path: Path, *, table_name: str | None) -> Any:

@@ -1,12 +1,12 @@
 import polars as pl
 import pytest
-from compute_core.exports import get_export_format
 from compute_operations.fill_null import cast_value, get_fill_strategy, get_polars_type
 from compute_operations.filter import get_operator
 from compute_operations.groupby import get_aggregation
 from compute_operations.timeseries import get_duration, get_extractor
 
 from core.config import settings
+from core.export_formats import get_export_format
 from core.iceberg_metadata import resolve_iceberg_branch_metadata_path, resolve_iceberg_metadata_path
 from core.namespace import namespace_paths
 

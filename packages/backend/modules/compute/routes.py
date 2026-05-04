@@ -1,14 +1,11 @@
 import asyncio
 import concurrent.futures
-import importlib
 import logging
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 from urllib.parse import quote
 
-from compute_live import ActiveBuildContext, registry as build_registry
-from compute_manager import ProcessManager
-from engine_live import load_engine_snapshot, registry as engine_registry
 from fastapi import Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
@@ -27,9 +24,11 @@ from core import (
     build_runs_service as build_run_service,
     engine_runs_service as engine_run_service,
 )
+from core.build_live import ActiveBuildContext, registry as build_registry
 from core.config import settings
 from core.database import get_db, get_settings_db
 from core.dependencies import RuntimeAvailabilityProbe, get_manager, get_runtime_availability_probe
+from core.engine_live import load_engine_snapshot, registry as engine_registry
 from core.error_handlers import handle_errors
 from core.exceptions import EngineNotFoundError
 from core.namespace import get_namespace, reset_namespace, set_namespace_context
@@ -99,7 +98,7 @@ async def _wait_for_websocket_disconnect(websocket: WebSocket) -> None:
             return
 
 
-def _override_manager(container) -> ProcessManager | None:
+def _override_manager(container) -> Any | None:
     overrides = getattr(container.app, 'dependency_overrides', None)
     if not isinstance(overrides, dict):
         return None
@@ -322,10 +321,6 @@ def _build_starter(user: User | None) -> schemas.BuildStarter:
     )
 
 
-def _runtime_compute_service():
-    return importlib.import_module('compute_service')
-
-
 def _build_analysis_name(pipeline: dict) -> str:
     analysis_id = pipeline.get('analysis_id')
     if not isinstance(analysis_id, str) or not analysis_id:
@@ -430,7 +425,9 @@ async def preview_step(
     normalized = request.model_copy(update={'analysis_id': analysis_id})
     manager = _override_manager(http_request)
     if manager is not None:
-        return _runtime_compute_service().preview_step(
+        from test_support_runtime_compute import preview_step as preview_step_with_manager
+
+        return preview_step_with_manager(
             session=session,
             manager=manager,
             target_step_id=normalized.target_step_id,
@@ -462,7 +459,9 @@ async def get_step_schema(
     normalized = request.model_copy(update={'analysis_id': analysis_id})
     manager = _override_manager(http_request)
     if manager is not None:
-        return _runtime_compute_service().get_step_schema(
+        from test_support_runtime_compute import get_step_schema as get_step_schema_with_manager
+
+        return get_step_schema_with_manager(
             session=session,
             manager=manager,
             target_step_id=normalized.target_step_id,
@@ -486,7 +485,9 @@ async def get_step_row_count(
     normalized = request.model_copy(update={'analysis_id': analysis_id})
     manager = _override_manager(http_request)
     if manager is not None:
-        return _runtime_compute_service().get_step_row_count(
+        from test_support_runtime_compute import get_step_row_count as get_step_row_count_with_manager
+
+        return get_step_row_count_with_manager(
             session=session,
             manager=manager,
             target_step_id=normalized.target_step_id,
@@ -999,7 +1000,9 @@ async def export_data(
         )
         manager = _override_manager(http_request)
         if manager is not None:
-            file_bytes, filename, content_type = _runtime_compute_service().download_step(
+            from test_support_runtime_compute import download_step as download_step_with_manager
+
+            file_bytes, filename, content_type = download_step_with_manager(
                 session=session,
                 manager=manager,
                 target_step_id=download_request.target_step_id,
@@ -1024,7 +1027,9 @@ async def export_data(
 
     manager = _override_manager(http_request)
     if manager is not None:
-        result = _runtime_compute_service().export_data(
+        from test_support_runtime_compute import export_data as export_data_with_manager
+
+        result = export_data_with_manager(
             session=session,
             manager=manager,
             target_step_id=request.target_step_id,
@@ -1063,7 +1068,9 @@ async def download_step(
     """
     manager = _override_manager(http_request)
     if manager is not None:
-        file_bytes, filename, content_type = _runtime_compute_service().download_step(
+        from test_support_runtime_compute import download_step as download_step_with_manager
+
+        file_bytes, filename, content_type = download_step_with_manager(
             session=session,
             manager=manager,
             target_step_id=request.target_step_id,

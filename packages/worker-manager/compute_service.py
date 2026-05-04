@@ -16,7 +16,6 @@ from typing import Any, Final, TypedDict, cast
 
 import polars as pl
 import pyarrow as pa  # type: ignore[import-untyped]
-from compute_live import ActiveBuild
 from compute_manager import ProcessManager
 from compute_monitor import monitor_engine_resources
 from compute_utils import apply_steps, await_engine_result, find_step_index, resolve_applied_target
@@ -36,6 +35,7 @@ from contracts.healthcheck_models import HealthCheck, HealthCheckResult
 from contracts.udf_models import Udf
 from core import engine_runs_service as engine_run_service
 from core.analysis_pipeline_payloads import build_analysis_pipeline_payload as _build_analysis_pipeline_payload
+from core.build_live import ActiveBuild
 from core.config import settings
 from core.database import get_db
 from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError, PipelineExecutionError, PipelineValidationError
@@ -2255,7 +2255,7 @@ def download_step(
     tab_id: str | None = None,
 ):
     """Download the result of a pipeline step in a specific format."""
-    from compute_core.exports import get_export_format
+    from core.export_formats import get_export_format
 
     started_at = datetime.now(UTC)
     started_perf = time.perf_counter()

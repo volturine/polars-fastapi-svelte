@@ -14,11 +14,9 @@ import polars as pl
 import pytest
 from build_execution import _run_queued_build_job
 from compute_engine import PolarsComputeEngine
-from compute_live import ActiveBuild as ComputeActiveBuild, ActiveBuild as RouteActiveBuild, registry as active_build_registry
 from compute_manager import ProcessManager
 from compute_operations.datasource import _analysis_stack_var
 from compute_utils import await_engine_result
-from engine_live import create_snapshot_notifier, load_engine_snapshot, registry as engine_registry
 from main import app
 from modules.compute.routes import (
     _emit_active_build_event,
@@ -48,8 +46,10 @@ from core import (
     engine_instances_service as engine_instance_service,
     engine_runs_service as engine_run_service,
 )
+from core.build_live import ActiveBuild as ComputeActiveBuild, ActiveBuild as RouteActiveBuild, registry as active_build_registry
 from core.database import get_db
 from core.dependencies import get_manager
+from core.engine_live import create_snapshot_notifier, load_engine_snapshot, registry as engine_registry
 from core.exceptions import PipelineValidationError
 from core.namespace import namespace_paths, reset_namespace, set_namespace_context
 

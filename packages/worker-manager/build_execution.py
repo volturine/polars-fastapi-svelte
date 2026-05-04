@@ -4,11 +4,11 @@ import asyncio
 import logging
 
 import compute_service as service
-from compute_live import ActiveBuild, ActiveBuildContext, registry as build_registry
 from compute_manager import ProcessManager
 
 from contracts.compute import schemas
 from core import build_event_service, build_runs_service as build_run_service
+from core.build_live import ActiveBuild, ActiveBuildContext, registry as build_registry
 from core.database import get_db
 from core.namespace import get_namespace, reset_namespace, set_namespace_context
 

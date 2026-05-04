@@ -15,7 +15,6 @@ from multiprocessing.synchronize import Event as ProcessEvent
 
 from compute_manager import ProcessManager
 from compute_request_runtime import compute_request_loop
-from engine_live import create_snapshot_notifier
 from worker_runtime import build_worker_loop, runtime_namespaces, worker_id as build_worker_id
 
 from contracts.build_jobs.live import hub as build_job_hub
@@ -28,6 +27,7 @@ from core import (
 )
 from core.config import settings
 from core.database import init_db, run_db, run_settings_db
+from core.engine_live import create_snapshot_notifier
 from core.logging import configure_logging
 from core.namespace import reset_namespace, set_namespace_context
 

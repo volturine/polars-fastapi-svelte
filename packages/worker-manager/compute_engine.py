@@ -15,7 +15,6 @@ from multiprocessing.queues import Queue as MPQueue
 from queue import Empty
 
 import polars as pl
-from compute_core.exports import get_export_format
 from compute_operations import HANDLERS
 from compute_operations.datasource import load_datasource
 from compute_operations.plot import ChartParams, compute_chart_data, compute_overlay_datasets
@@ -34,6 +33,7 @@ from contracts.compute.base import (
     ShutdownCommand,
 )
 from core.exceptions import PipelineValidationError
+from core.export_formats import get_export_format
 from core.iceberg_metadata import IcebergMetadataPathNotFoundError
 
 logger = logging.getLogger(__name__)

@@ -218,13 +218,13 @@ def test_user() -> User:
 def client(test_db_session, test_user):
     from compute_manager import ProcessManager
     from compute_request_runtime import compute_request_loop
-    from engine_live import create_snapshot_notifier
     from main import app
     from modules.auth.dependencies import get_current_user
 
     from contracts.runtime import ipc as runtime_ipc
     from core import engine_instances_service
     from core.database import get_db, init_db, run_settings_db
+    from core.engine_live import create_snapshot_notifier
 
     def override_get_db():
         yield test_db_session
@@ -314,7 +314,7 @@ def clear_lock_watchers():
 
 @pytest.fixture(autouse=True, scope='function')
 def clear_active_build_registry():
-    from compute_live import registry
+    from core.build_live import registry
 
     asyncio.run(registry.clear())
     yield
@@ -352,7 +352,7 @@ def clear_compute_request_hubs():
 
 @pytest.fixture(autouse=True, scope='function')
 def clear_engine_registry():
-    from engine_live import registry
+    from core.engine_live import registry
 
     asyncio.run(registry.clear())
     yield

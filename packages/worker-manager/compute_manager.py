@@ -4,11 +4,11 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 from compute_engine import PolarsComputeEngine
-from engine_live import persist_engine_snapshot
 
 from contracts.compute.base import ComputeEngine, EngineStatusInfo
 from contracts.compute.schemas import EngineStatus
 from contracts.runtime import ipc as runtime_ipc
+from core.engine_live import persist_engine_snapshot
 from core.namespace import get_namespace, reset_namespace, set_namespace_context
 
 logger = logging.getLogger(__name__)

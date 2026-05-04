@@ -127,7 +127,7 @@ async def handle_api_payload(payload: dict[str, object]) -> None:
             )
         return
     if kind == 'engine':
-        from engine_live import registry as engine_registry
+        from core.engine_live import registry as engine_registry
 
         namespace = payload.get('namespace')
         if isinstance(namespace, str):

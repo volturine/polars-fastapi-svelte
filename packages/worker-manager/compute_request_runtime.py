@@ -10,7 +10,6 @@ import compute_service as service
 import datasource_service
 from compute_manager import ProcessManager
 from datasource_schemas import CSVOptions
-from fastapi import HTTPException
 from sqlmodel import Session
 from worker_runtime import runtime_namespaces
 
@@ -20,10 +19,10 @@ from contracts.compute_requests.models import ComputeRequestKind
 from contracts.runtime import ipc as runtime_ipc
 from contracts.runtime_workers.models import RuntimeWorkerKind
 from core import compute_requests_service, runtime_workers_service
-from core.app_error_status import EXCEPTION_STATUS_MAP
+from core.app_error_status import status_for_app_error
 from core.config import settings
 from core.database import get_db, run_db, run_settings_db
-from core.exceptions import AppError, EngineNotFoundError
+from core.exceptions import AppError, EngineBusyError, EngineNotFoundError
 from core.namespace import reset_namespace, set_namespace_context
 
 logger = logging.getLogger(__name__)
@@ -361,7 +360,7 @@ async def _execute_request(claimed: ClaimedComputeRequest, manager: ProcessManag
             if engine is None:
                 raise EngineNotFoundError(analysis_id)
             if engine.current_job_id and engine.is_process_alive():
-                raise HTTPException(status_code=409, detail='Engine has an active job')
+                raise EngineBusyError(analysis_id)
             manager.shutdown_engine(analysis_id)
             compute_requests_service.mark_request_completed(session, claimed.id, response_json={'success': True})
         else:
@@ -397,20 +396,16 @@ def _write_artifact(request_id: str, filename: str, content: bytes) -> Path:
 
 
 def _error_message(exc: Exception) -> str:
-    if isinstance(exc, HTTPException):
-        return str(exc.detail)
     if isinstance(exc, AppError):
         return exc.message
     return str(exc)
 
 
 def _error_payload(exc: Exception) -> dict[str, object]:
-    if isinstance(exc, HTTPException):
-        return {'error': str(exc.detail), 'status_code': exc.status_code}
     if isinstance(exc, AppError):
         return {
             'error': exc.message,
-            'status_code': EXCEPTION_STATUS_MAP.get(type(exc), 500),
+            'status_code': status_for_app_error(exc),
             'error_code': exc.error_code,
             'details': exc.details or {},
         }

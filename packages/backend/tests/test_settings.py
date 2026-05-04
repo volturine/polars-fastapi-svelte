@@ -912,10 +912,10 @@ class TestSeedSettingsFromEnv:
         assert resolved['token'] == 'bot:tok'
 
     def test_update_settings_disables_future_env_bootstrap(self, monkeypatch) -> None:
+        from backend_core.settings_schemas import SettingsUpdate
         from backend_core.settings_store import seed_settings_from_env, update_settings
 
         from contracts.settings_models import AppSettings
-        from contracts.settings_schemas import SettingsUpdate
         from core.config import settings as app_settings
 
         monkeypatch.setattr(app_settings, 'smtp_port', 465, raising=False)
@@ -972,9 +972,9 @@ class TestSettingsRuntimeCaches:
         first.dispose()
 
     def test_resolved_settings_cache_invalidates_after_update(self, monkeypatch) -> None:
+        from backend_core.settings_schemas import SettingsUpdate
         from backend_core.settings_store import get_resolved_smtp, update_settings
 
-        from contracts.settings_schemas import SettingsUpdate
         from core.database import clear_settings_engine_override, set_settings_engine_override
 
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')

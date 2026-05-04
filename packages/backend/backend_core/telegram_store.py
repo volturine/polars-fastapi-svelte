@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlmodel import Session
 
+from backend_core.telegram_schemas import ListenerCreate, ListenerResponse, SubscriberResponse
 from contracts.telegram_models import TelegramListener, TelegramSubscriber
-from contracts.telegram_schemas import ListenerCreate, ListenerResponse, SubscriberResponse
 
 logger = logging.getLogger(__name__)
 

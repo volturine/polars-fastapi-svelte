@@ -1,3 +1,5 @@
+"""Backend-owned healthcheck API schemas."""
+
 import datetime as dt
 from enum import StrEnum
 from typing import Any

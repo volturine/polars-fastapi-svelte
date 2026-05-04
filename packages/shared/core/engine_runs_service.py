@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Final
 
-from fastapi import HTTPException as FastAPIHTTPException
 from sqlalchemy import desc, select
 from sqlmodel import Session
 
@@ -26,6 +25,7 @@ from contracts.engine_runs.schemas import (
     TimingDiff,
 )
 from core.engine_runs_utils import normalize_step_timings
+from core.exceptions import EngineRunComparisonError, EngineRunNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -345,7 +345,7 @@ def update_engine_run(
 ) -> EngineRunResponseSchema:
     run = session.get(EngineRun, run_id)
     if run is None:
-        raise FastAPIHTTPException(status_code=404, detail=f'Engine run {run_id} not found')
+        raise EngineRunNotFoundError(run_id)
     session.refresh(run)
 
     if not isinstance(analysis_id, _UnsetType):
@@ -475,11 +475,20 @@ def compare_engine_runs(
     run_b = session.get(EngineRun, run_b_id)
     if not run_a or not run_b:
         missing = run_a_id if not run_a else run_b_id
-        raise FastAPIHTTPException(status_code=404, detail=f'Engine run {missing} not found')
+        raise EngineRunNotFoundError(missing)
     if run_a.datasource_id != run_b.datasource_id:
-        raise FastAPIHTTPException(status_code=400, detail='Engine runs must belong to the same datasource')
+        raise EngineRunComparisonError(
+            'Engine runs must belong to the same datasource',
+            run_a_id=run_a_id,
+            run_b_id=run_b_id,
+        )
     if datasource_id and (run_a.datasource_id != datasource_id or run_b.datasource_id != datasource_id):
-        raise FastAPIHTTPException(status_code=400, detail='Engine runs do not match datasource')
+        raise EngineRunComparisonError(
+            'Engine runs do not match datasource',
+            run_a_id=run_a_id,
+            run_b_id=run_b_id,
+            datasource_id=datasource_id,
+        )
 
     result_a = _load_result_summary(run_a.result_json)
     result_b = _load_result_summary(run_b.result_json)

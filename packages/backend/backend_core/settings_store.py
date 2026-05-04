@@ -3,8 +3,8 @@ from threading import Lock
 
 from sqlmodel import Session
 
+from backend_core.settings_schemas import SettingsResponse, SettingsUpdate
 from contracts.settings_models import AppSettings
-from contracts.settings_schemas import SettingsResponse, SettingsUpdate
 from core.exceptions import SettingsConfigurationError
 from core.secrets import (
     decrypt_secret,

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+from backend_core.telegram_schemas import ListenerCreate
 from backend_core.telegram_store import (
     add_listener,
     add_subscriber,
@@ -23,7 +24,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 
 from contracts.telegram_models import TelegramSubscriber
-from contracts.telegram_schemas import ListenerCreate
 
 # ---------------------------------------------------------------------------
 # Service tests (direct DB calls)

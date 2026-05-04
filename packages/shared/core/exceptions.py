@@ -108,6 +108,35 @@ class EngineStartError(ComputeError):
         super().__init__(message=message, error_code='ENGINE_START_ERROR', details=details)
 
 
+class EngineBusyError(ComputeError):
+    """Raised when an engine cannot accept the requested operation."""
+
+    def __init__(self, analysis_id: str | None = None):
+        details = {'analysis_id': analysis_id} if analysis_id is not None else None
+        super().__init__(message='Engine has an active job', error_code='ENGINE_BUSY', details=details)
+
+
+class EngineRunNotFoundError(ComputeError):
+    """Raised when an engine run is not found."""
+
+    def __init__(self, run_id: str):
+        super().__init__(message=f'Engine run {run_id} not found', error_code='ENGINE_RUN_NOT_FOUND', details={'run_id': run_id})
+
+
+class EngineRunComparisonError(ComputeError):
+    """Raised when engine runs cannot be compared."""
+
+    def __init__(self, message: str, *, run_a_id: str | None = None, run_b_id: str | None = None, datasource_id: str | None = None):
+        details: dict[str, str] = {}
+        if run_a_id is not None:
+            details['run_a_id'] = run_a_id
+        if run_b_id is not None:
+            details['run_b_id'] = run_b_id
+        if datasource_id is not None:
+            details['datasource_id'] = datasource_id
+        super().__init__(message=message, error_code='ENGINE_RUN_COMPARISON_ERROR', details=details)
+
+
 # Job Exceptions
 class JobError(AppError):
     """Base exception for job-related errors."""

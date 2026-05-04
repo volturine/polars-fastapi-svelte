@@ -3,18 +3,13 @@
 from backend_core import telegram_store
 from backend_core.error_handlers import handle_errors
 from backend_core.settings_store import get_resolved_telegram_settings
+from backend_core.telegram_schemas import BotStatusResponse, ListenerCreate, ListenerResponse, SubscriberResponse
 from backend_core.validation import DataSourceId, parse_datasource_id
 from fastapi import Depends
 from sqlmodel import Session
 
 from core.database import get_db
 from modules.mcp.router import MCPRouter
-from modules.telegram.schemas import (
-    BotStatusResponse,
-    ListenerCreate,
-    ListenerResponse,
-    SubscriberResponse,
-)
 
 router = MCPRouter(prefix='/telegram', tags=['telegram'])
 

@@ -1,5 +1,6 @@
 import uuid
 
+from backend_core import healthcheck_schemas as schemas
 from backend_core.error_handlers import handle_errors
 from backend_core.validation import HealthcheckId, parse_datasource_id, parse_healthcheck_id
 from fastapi import Depends
@@ -7,7 +8,7 @@ from sqlmodel import Session
 
 from core.database import get_db
 from core.exceptions import InvalidIdError
-from modules.healthcheck import schemas, service
+from modules.healthcheck import service
 from modules.mcp.router import MCPRouter
 
 router = MCPRouter(prefix='/healthchecks', tags=['healthchecks'])

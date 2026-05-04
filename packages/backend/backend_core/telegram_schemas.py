@@ -1,4 +1,4 @@
-"""Telegram schemas."""
+"""Backend-owned Telegram API schemas."""
 
 import datetime as dt
 

@@ -1,11 +1,9 @@
-"""Settings schemas — Pydantic in, Pydantic out."""
+"""Backend-owned settings API schemas."""
 
 from pydantic import BaseModel, ConfigDict
 
 
 class SettingsResponse(BaseModel):
-    """Settings returned to the frontend."""
-
     model_config = ConfigDict(from_attributes=True)
 
     smtp_host: str
@@ -28,8 +26,6 @@ class SettingsResponse(BaseModel):
 
 
 class SettingsUpdate(BaseModel):
-    """Settings update payload from the frontend."""
-
     smtp_host: str | None = None
     smtp_port: int | None = None
     smtp_user: str | None = None
@@ -50,27 +46,19 @@ class SettingsUpdate(BaseModel):
 
 
 class TestSmtpRequest(BaseModel):
-    """Request to send a test email."""
-
     to: str
 
 
 class TestTelegramRequest(BaseModel):
-    """Request to send a test Telegram message."""
-
     chat_id: str
 
 
 class TestResult(BaseModel):
-    """Result of a test notification."""
-
     success: bool
     message: str
 
 
 class TelegramChat(BaseModel):
-    """A detected Telegram chat from getUpdates."""
-
     model_config = ConfigDict(from_attributes=True)
 
     chat_id: str
@@ -78,8 +66,6 @@ class TelegramChat(BaseModel):
 
 
 class DetectTelegramResponse(BaseModel):
-    """Response from the detect-telegram-chat endpoint."""
-
     model_config = ConfigDict(from_attributes=True)
 
     success: bool
@@ -88,6 +74,4 @@ class DetectTelegramResponse(BaseModel):
 
 
 class DetectCustomBotRequest(BaseModel):
-    """Request to detect chat_id from a custom bot token."""
-
     bot_token: str

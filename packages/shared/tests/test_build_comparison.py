@@ -13,6 +13,7 @@ from core.engine_runs_service import (
     _safe_int,
     compare_engine_runs,
 )
+from core.exceptions import EngineRunComparisonError, EngineRunNotFoundError
 
 
 def _create_run(
@@ -196,13 +197,13 @@ class TestCompareEngineRuns:
     def test_compare_run_not_found(self, test_db_session: Session) -> None:
         run_a = _create_run(test_db_session, result_json={})
         missing_id = str(uuid.uuid4())
-        with pytest.raises(Exception, match='not found'):
+        with pytest.raises(EngineRunNotFoundError, match='not found'):
             compare_engine_runs(test_db_session, run_a.id, missing_id)
 
     def test_compare_requires_same_datasource(self, test_db_session: Session) -> None:
         run_a = _create_run(test_db_session, result_json={'row_count': 1})
         run_b = _create_run(test_db_session, result_json={'row_count': 2})
-        with pytest.raises(Exception, match='same datasource'):
+        with pytest.raises(EngineRunComparisonError, match='same datasource'):
             compare_engine_runs(test_db_session, run_a.id, run_b.id)
 
     def test_compare_identical_runs(self, test_db_session: Session) -> None:

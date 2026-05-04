@@ -14,7 +14,10 @@ from core.exceptions import (
     DataSourceValidationError,
     DefaultUserDeletionError,
     EmailAlreadyExistsError,
+    EngineBusyError,
     EngineNotFoundError,
+    EngineRunComparisonError,
+    EngineRunNotFoundError,
     EngineStartError,
     FileSizeExceededError,
     FileValidationError,
@@ -45,6 +48,7 @@ EXCEPTION_STATUS_MAP: dict[type[AppError], int] = {
     AnalysisNotFoundError: 404,
     AnalysisVersionNotFoundError: 404,
     EngineNotFoundError: 404,
+    EngineRunNotFoundError: 404,
     DataFileNotFoundError: 404,
     StepNotFoundError: 404,
     ScheduleNotFoundError: 404,
@@ -59,6 +63,7 @@ EXCEPTION_STATUS_MAP: dict[type[AppError], int] = {
     DataSourceSnapshotError: 409,
     InvalidCredentialsError: 401,
     EmailAlreadyExistsError: 409,
+    EngineBusyError: 409,
     SessionExpiredError: 401,
     AccountDisabledError: 403,
     DefaultUserDeletionError: 403,
@@ -75,6 +80,7 @@ EXCEPTION_STATUS_MAP: dict[type[AppError], int] = {
     SettingsConfigurationError: 500,
     InvalidIdError: 400,
     EngineStartError: 500,
+    EngineRunComparisonError: 400,
 }
 
 

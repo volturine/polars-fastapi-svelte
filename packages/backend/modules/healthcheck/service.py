@@ -1,12 +1,12 @@
 import uuid
 from datetime import UTC, datetime
 
+from backend_core.healthcheck_schemas import HealthCheckCreate, HealthCheckResponse, HealthCheckResultResponse, HealthCheckUpdate
 from sqlalchemy import select
 from sqlmodel import Session
 
 from contracts.datasource.models import DataSource
 from contracts.healthcheck_models import HealthCheck, HealthCheckResult
-from contracts.healthcheck_schemas import HealthCheckCreate, HealthCheckResponse, HealthCheckResultResponse, HealthCheckUpdate
 from core.exceptions import HealthcheckNotFoundError, HealthcheckValidationError
 
 

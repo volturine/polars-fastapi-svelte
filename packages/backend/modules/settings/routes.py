@@ -5,11 +5,21 @@ from email.message import EmailMessage
 
 from backend_core import settings_store
 from backend_core.error_handlers import handle_errors
+from backend_core.settings_schemas import (
+    DetectCustomBotRequest,
+    DetectTelegramResponse,
+    SettingsResponse,
+    SettingsUpdate,
+    SettingsUpdate as CoreSettingsUpdate,
+    TelegramChat,
+    TestResult,
+    TestSmtpRequest,
+    TestTelegramRequest,
+)
 from fastapi import Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from sqlmodel import Session
 
-from contracts.settings_schemas import SettingsUpdate as CoreSettingsUpdate
 from core import http as http_client
 from core.database import get_settings_db
 from core.smtp import send_smtp_message
@@ -17,16 +27,6 @@ from modules.auth.dependencies import get_current_user
 from modules.auth.models import User
 from modules.config.routes import invalidate_config_cache
 from modules.mcp.router import MCPRouter
-from modules.settings.schemas import (
-    DetectCustomBotRequest,
-    DetectTelegramResponse,
-    SettingsResponse,
-    SettingsUpdate,
-    TelegramChat,
-    TestResult,
-    TestSmtpRequest,
-    TestTelegramRequest,
-)
 
 logger = logging.getLogger(__name__)
 

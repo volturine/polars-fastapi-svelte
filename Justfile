@@ -102,8 +102,7 @@ test-e2e-raw shard='':
     export DATA_DIR
     LOG_DIR="${E2E_LOG_DIR:-}"
     PG_CONTAINER="dataforge-e2e-pg-$$"
-    PG_PORT="55432"
-    export DATABASE_URL="postgresql+psycopg://dataforge:dataforge@127.0.0.1:${PG_PORT}/dataforge"
+    PG_PORT=""
     kill_tree() {
         local pid="$1"
         if [ -z "$pid" ] || ! kill -0 "$pid" >/dev/null 2>&1; then
@@ -166,8 +165,14 @@ test-e2e-raw shard='':
         -e POSTGRES_DB=dataforge \
         -e POSTGRES_USER=dataforge \
         -e POSTGRES_PASSWORD=dataforge \
-        -p "${PG_PORT}:5432" \
+        -p 127.0.0.1::5432 \
         postgres:18-alpine -c max_connections=300 >/dev/null
+    PG_PORT="$(docker port "${PG_CONTAINER}" 5432/tcp | awk -F: '{print $NF}')"
+    if [ -z "$PG_PORT" ]; then
+        echo "Failed to resolve e2e Postgres host port" >&2
+        exit 1
+    fi
+    export DATABASE_URL="postgresql+psycopg://dataforge:dataforge@127.0.0.1:${PG_PORT}/dataforge"
     deadline=$((SECONDS + 90))
     until docker exec "${PG_CONTAINER}" pg_isready -U dataforge -d dataforge >/dev/null 2>&1; do
         if [ "$SECONDS" -ge "$deadline" ]; then

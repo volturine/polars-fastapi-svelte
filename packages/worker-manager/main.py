@@ -121,8 +121,7 @@ def _worker_main(stop_signal: ProcessEvent, stopped_signal: ProcessEvent) -> Non
         finally:
             stop_event.set()
             stop_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await stop_task
+            await asyncio.gather(stop_task, return_exceptions=True)
             stopped_signal.set()
 
     asyncio.run(_run())
@@ -165,7 +164,7 @@ async def run_build_worker_process(
     finally:
         local_stop.set()
         if not task.done():
-            await task
+            await asyncio.gather(task)
         manager.shutdown_all()
         logger.info('Build worker process shutdown complete')
 
@@ -297,12 +296,12 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
         heartbeat_stop.set()
         heartbeat_thread.join()
         if ipc_task is not None:
-            await ipc_task
+            await asyncio.gather(ipc_task)
         await runtime_ipc.stop_api_server(ipc_server, listener='job')
         for child in children.values():
             _stop_worker_process(child)
         manager.shutdown_all()
-        await request_task
+        await asyncio.gather(request_task)
         _stop_manager(worker_id)
         logger.info('Build worker manager shutdown complete')
 

@@ -17,7 +17,7 @@ from queue import Empty
 import polars as pl
 from compute_core.exports import get_export_format
 from compute_operations import HANDLERS
-from compute_operations.datasource import IcebergMetadataPathNotFoundError, load_datasource
+from compute_operations.datasource import load_datasource
 from compute_operations.plot import ChartParams, compute_chart_data, compute_overlay_datasets
 from compute_utils import apply_steps, normalize_timezones
 from step_converter import BackendStep, convert_config_to_params, convert_step_format, get_chart_type_for_step
@@ -34,6 +34,7 @@ from contracts.compute.base import (
     ShutdownCommand,
 )
 from core.exceptions import PipelineValidationError
+from core.iceberg_metadata import IcebergMetadataPathNotFoundError
 
 logger = logging.getLogger(__name__)
 

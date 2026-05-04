@@ -20,7 +20,6 @@ from scheduler_service import (
     list_schedules,
     mark_schedule_run,
     reconcile_schedule_run,
-    run_analysis_build,
     should_run,
     update_schedule,
 )
@@ -33,6 +32,7 @@ from contracts.scheduler.models import Schedule
 from contracts.scheduler.schemas import ScheduleCreate, ScheduleUpdate
 from core import build_jobs_service as build_job_service, build_runs_service as build_run_service
 from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, ScheduleNotFoundError
+from test_support_scheduler import run_analysis_build
 
 
 def _load_runtime_scheduler():

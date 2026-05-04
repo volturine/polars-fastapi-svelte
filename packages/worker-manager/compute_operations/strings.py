@@ -1,25 +1,10 @@
 from collections.abc import Callable
-from enum import StrEnum
 
 import polars as pl
 
 from compute_operations._validation import validate_regex_pattern
 from contracts.compute.base import OperationHandler, OperationParams
-
-
-class StringTransformMethod(StrEnum):
-    UPPERCASE = 'uppercase'
-    LOWERCASE = 'lowercase'
-    TITLE = 'title'
-    STRIP = 'strip'
-    LSTRIP = 'lstrip'
-    RSTRIP = 'rstrip'
-    LENGTH = 'length'
-    SLICE = 'slice'
-    REPLACE = 'replace'
-    EXTRACT = 'extract'
-    SPLIT = 'split'
-    SPLIT_TAKE = 'split_take'
+from contracts.step_config_enums import StringTransformMethod
 
 
 class StringTransformParams(OperationParams):

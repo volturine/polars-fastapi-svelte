@@ -2,13 +2,10 @@ import asyncio
 import contextvars
 import hashlib
 import json
-import os
 from collections import deque
 from collections.abc import Callable
 from enum import StrEnum
-from pathlib import Path
 from threading import Lock
-from urllib.parse import unquote, urlparse
 
 import polars as pl
 import psycopg
@@ -18,7 +15,7 @@ from pydantic import ConfigDict
 from step_converter import convert_step_format
 
 from contracts.compute.base import OperationHandler, OperationParams
-from core.namespace import namespace_paths
+from core.iceberg_metadata import resolve_iceberg_branch_metadata_path
 
 
 class DatasourceSourceType(StrEnum):
@@ -32,12 +29,6 @@ class DatasourceSourceType(StrEnum):
 class IcebergReader(StrEnum):
     NATIVE = 'native'
     PYICEBERG = 'pyiceberg'
-
-
-class IcebergMetadataPathNotFoundError(ValueError):
-    def __init__(self, metadata_path: str):
-        self.metadata_path = metadata_path
-        super().__init__(f'Iceberg metadata_path not found: {metadata_path}')
 
 
 class DatasourceParams(OperationParams):
@@ -469,67 +460,6 @@ def _collect_analysis_sources(
     return additional
 
 
-def resolve_iceberg_metadata_path(
-    metadata_path: str,
-    *,
-    namespace_name: str | None = None,
-    data_root: str | Path | None = None,
-) -> str:
-    normalized = _strip_file_scheme(metadata_path)
-    path = Path(normalized)
-    resolved = path.resolve()
-    root = _resolve_iceberg_data_root(namespace_name=namespace_name, data_root=data_root)
-    if root not in resolved.parents and root != resolved:
-        raise ValueError('Iceberg metadata_path must be inside data directory')
-    if path.suffix == '.db':
-        raise ValueError('Iceberg metadata_path must point to metadata.json, not catalog.db')
-    if path.is_file():
-        if path.name.endswith('.metadata.json'):
-            return str(path)
-        raise ValueError('Iceberg metadata_path must be a table directory or metadata.json')
-    if not path.exists():
-        raise IcebergMetadataPathNotFoundError(metadata_path)
-    if not path.is_dir():
-        raise ValueError(f'Iceberg metadata_path must be a file or directory: {metadata_path}')
-    if path.name == 'metadata':
-        return _latest_metadata_file(path)
-    metadata_dir = path / 'metadata'
-    if metadata_dir.is_dir():
-        return _latest_metadata_file(metadata_dir)
-    raise ValueError('Iceberg metadata_path must be a table directory containing metadata/')
-
-
-def resolve_iceberg_branch_metadata_path(
-    metadata_path: str,
-    branch: str | None,
-    *,
-    namespace_name: str | None = None,
-    data_root: str | Path | None = None,
-) -> str:
-    normalized = _strip_file_scheme(metadata_path)
-    path = Path(normalized)
-    if path.suffix == '.metadata.json' or path.name == 'metadata' or path.is_file():
-        return resolve_iceberg_metadata_path(metadata_path, namespace_name=namespace_name, data_root=data_root)
-    if branch:
-        branch_path = path / branch
-        if branch_path.exists():
-            return resolve_iceberg_metadata_path(str(branch_path), namespace_name=namespace_name, data_root=data_root)
-    metadata_dir = path / 'metadata'
-    if metadata_dir.is_dir():
-        return resolve_iceberg_metadata_path(str(metadata_dir), namespace_name=namespace_name, data_root=data_root)
-    if path.is_dir():
-        children = [entry for entry in path.iterdir() if entry.is_dir()]
-        if len(children) == 1:
-            return resolve_iceberg_metadata_path(str(children[0]), namespace_name=namespace_name, data_root=data_root)
-    return resolve_iceberg_metadata_path(metadata_path, namespace_name=namespace_name, data_root=data_root)
-
-
-def _resolve_iceberg_data_root(*, namespace_name: str | None = None, data_root: str | Path | None = None) -> Path:
-    if data_root is not None:
-        return Path(os.path.realpath(Path(data_root).resolve()))
-    return Path(os.path.realpath(namespace_paths(namespace_name).base_dir.resolve()))
-
-
 def _read_excel(path: str, opts: dict) -> pl.LazyFrame:
     sheet_name = opts.get('sheet_name')
     table_name = opts.get('table_name')
@@ -612,36 +542,6 @@ DatasourceHandler.SOURCE_LOADERS = {
     'iceberg': DatasourceHandler._load_iceberg,
     'analysis': DatasourceHandler._load_analysis,
 }
-
-
-def _latest_metadata_file(metadata_dir: Path) -> str:
-    candidates = list(metadata_dir.glob('*.metadata.json'))
-    if not candidates:
-        raise ValueError(f'No metadata.json files found in {metadata_dir}')
-    return str(max(candidates, key=_metadata_sort_key))
-
-
-def _strip_file_scheme(metadata_path: str) -> str:
-    if not metadata_path.startswith('file:'):
-        return metadata_path
-    parsed = urlparse(metadata_path)
-    if parsed.scheme != 'file':
-        return metadata_path
-    if parsed.netloc and parsed.netloc != 'localhost':
-        if parsed.path:
-            return unquote(f'/{parsed.netloc}{parsed.path}')
-        return unquote(f'/{parsed.netloc}')
-    if parsed.path:
-        return unquote(parsed.path)
-    return metadata_path
-
-
-def _metadata_sort_key(path: Path) -> tuple[int, int, float]:
-    name = path.name
-    prefix = name.split('-', maxsplit=1)[0]
-    if prefix.isdigit():
-        return (1, int(prefix), path.stat().st_mtime)
-    return (0, 0, path.stat().st_mtime)
 
 
 def _normalize_headers(values: tuple[object | None, ...]) -> list[str]:

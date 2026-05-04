@@ -3,7 +3,6 @@
 import builtins
 import time
 from collections.abc import Callable
-from enum import StrEnum
 from functools import partial
 from typing import Any, cast
 
@@ -12,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from compute_operations._validation import validate_no_reflection_escape
 from contracts.compute.base import OperationHandler, OperationParams
+from contracts.step_config_enums import WithColumnsExprType
 
 # Builtins allowed inside UDF code.
 # Keep this as a narrow allowlist so aliased introspection helpers cannot escape the sandbox.
@@ -56,12 +56,6 @@ _ALLOWED_BUILTINS = frozenset(
     },
 )
 _SAFE_BUILTINS: dict[str, Any] = {name: getattr(builtins, name) for name in _ALLOWED_BUILTINS}
-
-
-class WithColumnsExprType(StrEnum):
-    LITERAL = 'literal'
-    COLUMN = 'column'
-    UDF = 'udf'
 
 
 class WithColumnsExpr(BaseModel):

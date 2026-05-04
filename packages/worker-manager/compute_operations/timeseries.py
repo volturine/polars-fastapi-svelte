@@ -4,49 +4,13 @@ from enum import StrEnum
 import polars as pl
 
 from contracts.compute.base import OperationHandler, OperationParams
-
-
-class TimeseriesOperationType(StrEnum):
-    EXTRACT = 'extract'
-    TIMESTAMP = 'timestamp'
-    ADD = 'add'
-    SUBTRACT = 'subtract'
-    OFFSET = 'offset'
-    DIFF = 'diff'
-    TRUNCATE = 'truncate'
-    ROUND = 'round'
-
-
-class TimeComponent(StrEnum):
-    YEAR = 'year'
-    MONTH = 'month'
-    DAY = 'day'
-    HOUR = 'hour'
-    MINUTE = 'minute'
-    SECOND = 'second'
-    QUARTER = 'quarter'
-    WEEK = 'week'
-    DAYOFWEEK = 'dayofweek'
+from contracts.step_config_enums import DurationUnit, TimeComponent, TimeDirection, TimeseriesOperationType
 
 
 class TimestampUnit(StrEnum):
     NS = 'ns'
     US = 'us'
     MS = 'ms'
-
-
-class DurationUnit(StrEnum):
-    SECONDS = 'seconds'
-    MINUTES = 'minutes'
-    HOURS = 'hours'
-    DAYS = 'days'
-    WEEKS = 'weeks'
-    MONTHS = 'months'
-
-
-class TimeDirection(StrEnum):
-    ADD = 'add'
-    SUBTRACT = 'subtract'
 
 
 class TimeseriesParams(OperationParams):

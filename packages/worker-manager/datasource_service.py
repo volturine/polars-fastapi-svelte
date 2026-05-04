@@ -19,6 +19,7 @@ from contracts.datasource.source_types import FILE_BASED_CATEGORIES, SOURCE_TYPE
 from core import engine_runs_service as engine_run_service
 from core.config import settings
 from core.exceptions import DataSourceConnectionError, DataSourceNotFoundError, DataSourceValidationError
+from core.iceberg_metadata import sync_iceberg_schema
 from core.namespace import get_namespace, namespace_paths
 
 logger = logging.getLogger(__name__)
@@ -72,8 +73,6 @@ def _build_iceberg_config(paths, target_path: Path, branch: str, source_config: 
 
 
 def _sync_iceberg_schema(table: Table, new_schema: Any) -> None:
-    from iceberg_reader import sync_iceberg_schema
-
     sync_iceberg_schema(table, new_schema)
 
 

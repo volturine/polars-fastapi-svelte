@@ -393,7 +393,7 @@ class TestRunAnalysisBuildOutputDatasource:
             patch('compute_service.preview_step', mock_preview),
             patch('compute_service._send_pipeline_notifications', mock_notify),
         ):
-            from scheduler_service import run_analysis_build
+            from test_support_scheduler import run_analysis_build
 
             run_analysis_build(test_db_session, analysis_id)
 
@@ -650,7 +650,7 @@ class TestRunAnalysisBuildOutputDatasource:
         test_db_session.commit()
 
         with patch('compute_service.export_data') as mock_export:
-            from scheduler_service import run_analysis_build
+            from test_support_scheduler import run_analysis_build
 
             result = run_analysis_build(test_db_session, analysis_id)
 

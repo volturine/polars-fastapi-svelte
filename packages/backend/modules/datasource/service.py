@@ -28,6 +28,7 @@ from core.exceptions import (
     DataSourceValidationError,
     FileError,
 )
+from core.iceberg_metadata import sync_iceberg_schema
 from core.namespace import get_namespace, namespace_paths
 from modules.datasource.schemas import (
     BatchColumnDescriptionUpdate,
@@ -104,8 +105,6 @@ def _build_iceberg_config(paths, target_path: Path, branch: str, source_config: 
 
 
 def _sync_iceberg_schema(table: Table, new_schema: Any) -> None:
-    from iceberg_reader import sync_iceberg_schema
-
     sync_iceberg_schema(table, new_schema)
 
 

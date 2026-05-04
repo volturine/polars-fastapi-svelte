@@ -11,7 +11,6 @@ from sqlalchemy.engine import CursorResult
 from sqlmodel import Session, col
 
 from contracts.analysis.models import Analysis
-from contracts.analysis.pipeline_types import PipelineTab
 from contracts.build_jobs.live import hub as build_job_hub
 from contracts.build_runs.models import BuildRunStatus
 from contracts.compute import schemas as compute_schemas
@@ -21,7 +20,8 @@ from contracts.runtime import ipc as runtime_ipc
 from contracts.scheduler.models import Schedule
 from contracts.scheduler.schemas import ScheduleCreate, ScheduleResponse, ScheduleUpdate
 from core import build_jobs_service as build_job_service, build_runs_service as build_run_service
-from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, ScheduleNotFoundError, ScheduleValidationError
+from core.analysis_pipeline_payloads import build_analysis_pipeline_payload
+from core.exceptions import DataSourceNotFoundError, ScheduleNotFoundError, ScheduleValidationError
 from core.namespace import get_namespace
 
 logger = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ def _build_analysis_request(
     if target_tab is None:
         raise ValueError(f'No tab found in analysis {analysis_id} that produces datasource {schedule.datasource_id}')
 
-    pipeline_payload = _build_analysis_pipeline_payload(session, analysis, datasource_id=schedule.datasource_id)
+    pipeline_payload = build_analysis_pipeline_payload(session, analysis, datasource_id=schedule.datasource_id)
     request = compute_schemas.BuildRequest.model_validate(
         {
             'analysis_pipeline': pipeline_payload,
@@ -267,105 +267,6 @@ def _is_reingestable_raw_datasource(datasource: DataSource) -> bool:
     if not isinstance(source, dict):
         return False
     return source.get('source_type') in {'file', 'database'}
-
-
-def _build_analysis_pipeline_payload(session: Session, analysis: Analysis, datasource_id: str | None = None) -> dict[str, object]:
-    pipeline = analysis.pipeline_definition
-    tabs = pipeline.get('tabs', []) if isinstance(pipeline, dict) else []
-    if not isinstance(tabs, list) or not tabs:
-        return {'analysis_id': str(analysis.id), 'tabs': []}
-
-    output_map: dict[str, str] = {}
-    for tab in tabs:
-        if not isinstance(tab, dict):
-            continue
-        tab_id = tab.get('id')
-        output = tab.get('output')
-        if not isinstance(output, dict):
-            raise ValueError('Analysis pipeline tab missing output configuration')
-        output_id = output.get('result_id')
-        if not output_id:
-            raise ValueError('Analysis pipeline tab missing output.result_id')
-        if tab_id:
-            output_map[str(tab_id)] = str(output_id)
-
-    output_to_tab = {output_id: tab_id for tab_id, output_id in output_map.items()}
-
-    def enrich(step: dict[str, object]) -> dict[str, object]:
-        config = step.get('config')
-        if not isinstance(config, dict):
-            return step
-        next_config = dict(config)
-        right_source = next_config.get('right_source') or next_config.get('rightDataSource')
-        if isinstance(right_source, str) and right_source and right_source not in output_to_tab:
-            model = session.get(DataSource, right_source)
-            if model is not None:
-                next_config['right_source_datasource'] = {
-                    'id': right_source,
-                    'analysis_tab_id': None,
-                    'source_type': model.source_type,
-                    'config': dict(model.config),
-                }
-        raw_sources = next_config.get('sources')
-        source_ids = [raw_sources] if isinstance(raw_sources, str) else raw_sources if isinstance(raw_sources, list) else []
-        refs: list[dict[str, object]] = []
-        for source in source_ids:
-            if not isinstance(source, str) or not source or source in output_to_tab:
-                continue
-            model = session.get(DataSource, source)
-            if model is None:
-                continue
-            refs.append({'id': source, 'analysis_tab_id': None, 'source_type': model.source_type, 'config': dict(model.config)})
-        if refs:
-            next_config['source_datasources'] = refs
-        return {**step, 'config': next_config}
-
-    next_tabs: list[dict[str, object]] = []
-    for tab in tabs:
-        if not isinstance(tab, dict):
-            continue
-        datasource = tab.get('datasource')
-        output = tab.get('output')
-        if not isinstance(datasource, dict):
-            raise ValueError('Analysis pipeline tab datasource must be a dict')
-        if not isinstance(output, dict):
-            raise ValueError('Analysis pipeline tab missing output configuration')
-        output_id = output.get('result_id')
-        if not output_id:
-            raise ValueError('Analysis pipeline tab missing output.result_id')
-        config = datasource.get('config')
-        if not isinstance(config, dict):
-            raise ValueError('Analysis pipeline tab datasource.config must be a dict')
-        branch = config.get('branch')
-        if not isinstance(branch, str) or not branch.strip():
-            raise ValueError('Analysis pipeline tab datasource.config.branch is required')
-        tab_datasource_id = datasource.get('id')
-        if not tab_datasource_id:
-            raise ValueError('Analysis pipeline tab missing datasource.id')
-        analysis_tab_id = datasource.get('analysis_tab_id') if isinstance(datasource.get('analysis_tab_id'), str) else None
-        source_type = 'analysis' if analysis_tab_id or str(tab_datasource_id) in output_to_tab else None
-        merged_config = dict(config)
-        if source_type is None:
-            model = session.get(DataSource, str(tab_datasource_id))
-            if model is not None:
-                source_type = model.source_type
-                merged_config = {'branch': branch, **model.config, **config}
-        steps = [enrich(step) for step in tab.get('steps', []) if isinstance(step, dict)]
-        next_tabs.append(
-            {
-                **tab,
-                'datasource': {
-                    **datasource,
-                    'id': tab_datasource_id,
-                    'analysis_tab_id': analysis_tab_id,
-                    'source_type': source_type,
-                    'config': merged_config,
-                },
-                'steps': steps,
-            }
-        )
-
-    return {'analysis_id': str(analysis.id), 'tabs': next_tabs}
 
 
 def _enrich_schedule_response(session: Session, schedule: Schedule) -> ScheduleResponse:
@@ -807,135 +708,6 @@ def reconcile_schedule_run(session: Session, *, build_id: str) -> Schedule | Non
     session.commit()
     session.refresh(schedule)
     return schedule
-
-
-def _resolve_upstream_tabs(tabs: list[PipelineTab], target_tab_id: str) -> set[str]:
-    """Find all tab IDs that the target tab depends on via lazyframe inputs (including itself)."""
-    output_to_tab: dict[str, str] = {}
-    tab_input: dict[str, str] = {}
-
-    for tab in tabs:
-        if tab.id and tab.output.result_id:
-            output_to_tab[tab.output.result_id] = tab.id
-        if tab.id and tab.datasource.id:
-            tab_input[tab.id] = tab.datasource.id
-
-    required: set[str] = set()
-    queue: deque[str] = deque([target_tab_id])
-    while queue:
-        current = queue.popleft()
-        if current in required:
-            continue
-        required.add(current)
-        input_ds = tab_input.get(current)
-        if input_ds and input_ds in output_to_tab:
-            upstream = output_to_tab[input_ds]
-            if upstream not in required:
-                queue.append(upstream)
-
-    return required
-
-
-def run_analysis_build(
-    session: Session,
-    analysis_id: str,
-    manager: Any | None = None,
-    datasource_id: str | None = None,
-    triggered_by: str = 'schedule',
-    tab_id: str | None = None,
-) -> dict:
-    """Execute a full build for an analysis — run all tabs.
-
-    Tabs with output config export data via export_data().
-    Tabs without output config are skipped.
-    Engine runs are tagged with ``triggered_by`` (default 'schedule').
-    If ``tab_id`` is provided, that tab and its upstream lazyframe
-    dependencies are built.
-
-    Returns a dict with build results per tab.
-    """
-    analysis = session.get(Analysis, analysis_id)
-    if not analysis:
-        raise AnalysisNotFoundError(analysis_id)
-
-    import compute_service
-
-    pipeline_payload = compute_service.build_analysis_pipeline_payload(session, analysis, datasource_id=datasource_id)
-
-    pipeline = analysis.pipeline
-    if not pipeline.tabs:
-        logger.warning(f'Scheduler: analysis {analysis_id} has no tabs, skipping build')
-        return {'analysis_id': analysis_id, 'tabs_built': 0, 'results': []}
-
-    required_tabs = _resolve_upstream_tabs(pipeline.tabs, tab_id) if tab_id else None
-
-    results: list[dict] = []
-    tabs_built = 0
-
-    for tab in pipeline.tabs:
-        current_tab_id = tab.id or 'unknown'
-        tab_name = tab.name or 'unnamed'
-        tab_datasource_id = tab.datasource.id
-        tab_output_id = tab.output.result_id
-        has_output = bool(tab.output.filename)
-        steps = tab.steps
-
-        if not tab_datasource_id:
-            continue
-
-        if required_tabs and current_tab_id not in required_tabs:
-            continue
-
-        if datasource_id and tab_output_id != datasource_id:
-            continue
-
-        # Determine the target step (last step, or 'source' if no steps)
-        target_step_id = steps[-1].id if steps else 'source'
-
-        try:
-            if has_output:
-                # Tab has export config — run full export (Iceberg-only)
-                filename = tab.output.filename or f'{tab_name}_out'
-
-                iceberg_cfg = tab.output.to_dict().get('iceberg')
-                iceberg_options = (
-                    {
-                        'table_name': iceberg_cfg.get('table_name', 'exported_data'),
-                        'namespace': iceberg_cfg.get('namespace', 'outputs'),
-                        'branch': iceberg_cfg.get('branch', 'master'),
-                    }
-                    if isinstance(iceberg_cfg, dict)
-                    else None
-                )
-
-                compute_service.export_data(
-                    session=session,
-                    manager=manager,  # type: ignore[arg-type]
-                    target_step_id=target_step_id,
-                    analysis_pipeline=pipeline_payload,
-                    filename=filename,
-                    iceberg_options=iceberg_options,
-                    analysis_id=analysis_id,
-                    request_json={'analysis_pipeline': pipeline_payload, 'tab_id': current_tab_id},
-                    triggered_by=triggered_by,
-                    result_id=tab.output.result_id,
-                    tab_id=current_tab_id,
-                )
-            else:
-                if required_tabs and current_tab_id != tab_id:
-                    tabs_built += 1
-                    results.append({'tab_id': current_tab_id, 'tab_name': tab_name, 'status': 'success'})
-                    continue
-                raise ScheduleValidationError(f'Tab {current_tab_id} missing output configuration')
-
-            tabs_built += 1
-            results.append({'tab_id': current_tab_id, 'tab_name': tab_name, 'status': 'success'})
-            logger.info(f'Scheduler: built tab {tab_name} ({current_tab_id}) for analysis {analysis_id}')
-        except Exception as e:
-            results.append({'tab_id': current_tab_id, 'tab_name': tab_name, 'status': 'failed', 'error': str(e)})
-            logger.error(f'Scheduler: failed to build tab {tab_name} ({current_tab_id}) for analysis {analysis_id}: {e}')
-
-    return {'analysis_id': analysis_id, 'tabs_built': tabs_built, 'results': results}
 
 
 def _compute_next_run(cron_expr: str) -> datetime | None:

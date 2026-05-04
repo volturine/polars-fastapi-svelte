@@ -3,11 +3,16 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TypeAlias, cast
 
-from compute_operations.strings import StringTransformMethod
-from compute_operations.timeseries import DurationUnit, TimeComponent, TimeDirection, TimeseriesOperationType
-from compute_operations.with_columns import WithColumnsExprType
 from pydantic import BaseModel, ConfigDict, Field
 
+from contracts.step_config_enums import (
+    DurationUnit,
+    StringTransformMethod,
+    TimeComponent,
+    TimeDirection,
+    TimeseriesOperationType,
+    WithColumnsExprType,
+)
 from modules.analysis.step_types import (
     STEP_TYPES,
     ChartType,

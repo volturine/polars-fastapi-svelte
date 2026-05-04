@@ -6,7 +6,7 @@ from threading import Lock
 from sqlmodel import Session
 
 from contracts.settings_models import AppSettings
-from core.secrets import decrypt_secret, encrypt_secret, should_migrate_secret
+from core.secrets import decrypt_secret
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +23,7 @@ def _read_secret(row: AppSettings, field: str) -> str:
     stored = str(getattr(row, field, '') or '')
     if not stored:
         return ''
-    value = decrypt_secret(stored)
-    if should_migrate_secret(stored):
-        setattr(row, field, encrypt_secret(value))
-    return value
+    return decrypt_secret(stored)
 
 
 def _active_settings_engine_id() -> int:

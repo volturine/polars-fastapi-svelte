@@ -12,7 +12,7 @@ from typing import Any
 
 from sqlmodel import Session as DbSession, select
 
-from core.secrets import decrypt_secret, encrypt_secret, should_migrate_secret
+from core.secrets import decrypt_secret, encrypt_secret
 from modules.chat.models import ChatSession
 
 logger = logging.getLogger(__name__)
@@ -180,11 +180,6 @@ class SessionStore:
             row = db.exec(select(ChatSession).where(ChatSession.id == session_id)).first()
             if not row:
                 return None
-            if should_migrate_secret(row.api_key):
-                row.api_key = encrypt_secret(decrypt_secret(row.api_key))
-                db.add(row)
-                db.commit()
-                db.refresh(row)
             live = LiveSession(row)
             self._live[session_id] = live
             return live

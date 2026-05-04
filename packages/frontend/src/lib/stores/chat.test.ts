@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { ChatEvent, OpenRouterModel } from '$lib/api/chat';
+import type { ChatEvent, ChatModel } from '$lib/api/chat';
 import type { MCPTool } from '$lib/api/mcp';
 
 vi.mock('$lib/api/chat', () => ({
@@ -243,7 +243,7 @@ describe('ChatStore — pure local logic', () => {
 		test('returns context_length from matching model', () => {
 			store.models = [
 				{ id: 'openai/gpt-4o', name: 'GPT-4o', context_length: 128000 }
-			] satisfies OpenRouterModel[];
+			] satisfies ChatModel[];
 			store.model = 'openai/gpt-4o';
 			expect(store.contextLimit).toBe(128000);
 		});

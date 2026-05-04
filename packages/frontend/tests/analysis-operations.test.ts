@@ -151,8 +151,8 @@ test.describe('Analyses – sort config editing', () => {
 		try {
 			const configPanel = await addStepAndOpenConfig(page, aId, 'sort');
 
-			// Empty state visible
-			await expect(configPanel.getByText(/No sort rules/i)).toBeVisible();
+			const emptyState = configPanel.locator('#sort-empty-state');
+			await expect(emptyState).toBeVisible();
 
 			// Open column dropdown — click the dropdown trigger button
 			const dropdownTrigger = configPanel.locator('button[aria-expanded]');
@@ -168,8 +168,7 @@ test.describe('Analyses – sort config editing', () => {
 
 			// The sort rule should appear in the list
 			await expect(configPanel.getByText('name')).toBeVisible();
-			// Empty state should be gone
-			await expect(configPanel.getByText(/No sort rules/i)).not.toBeVisible();
+			await expect(emptyState).toBeHidden();
 
 			// Apply the config
 			const applyBtn = configPanel.getByRole('button', { name: 'Apply' });
@@ -184,8 +183,8 @@ test.describe('Analyses – sort config editing', () => {
 			const removeBtn = configPanel.locator('[data-testid="sort-remove-rule-0"]');
 			await removeBtn.click();
 
-			// Empty state returns
-			await expect(configPanel.getByText(/No sort rules/i)).toBeVisible();
+			await expect(removeBtn).toBeHidden();
+			await expect(emptyState).toBeVisible();
 			// Apply is now enabled again (change from applied state)
 			await expect(applyBtn).toBeEnabled();
 		} finally {
@@ -1034,7 +1033,7 @@ test.describe('Analyses – timeseries config editing', () => {
 		const aId = await createAnalysis(request, analysis, dsId);
 		try {
 			const configPanel = await addStepAndOpenConfig(page, aId, 'timeseries');
-			await expect(configPanel.getByText('No date/time columns detected in schema')).toBeVisible({
+			await expect(configPanel.locator('#ts-no-columns-warning')).toBeVisible({
 				timeout: 8_000
 			});
 			await screenshot(page, 'analysis/operations', 'timeseries-no-date-warning');
@@ -1055,7 +1054,7 @@ test.describe('Analyses – timeseries config editing', () => {
 		try {
 			const configPanel = await addStepAndOpenConfig(page, aId, 'timeseries');
 
-			await expect(configPanel.getByText('No date/time columns detected in schema')).toBeHidden({
+			await expect(configPanel.locator('#ts-no-columns-warning')).toBeHidden({
 				timeout: 5_000
 			});
 

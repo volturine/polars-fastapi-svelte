@@ -6,13 +6,7 @@ from sqlmodel import Session
 from backend_core.settings_schemas import SettingsResponse, SettingsUpdate
 from contracts.settings_models import AppSettings
 from core.exceptions import SettingsConfigurationError
-from core.secrets import (
-    decrypt_secret,
-    encrypt_secret,
-    is_masked_secret,
-    mask_secret,
-    should_migrate_secret,
-)
+from core.secrets import decrypt_secret, encrypt_secret, is_masked_secret, mask_secret
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +27,7 @@ def _read_secret(row: AppSettings, field: str) -> str:
     stored = str(getattr(row, field, '') or '')
     if not stored:
         return ''
-    value = decrypt_secret(stored)
-    if should_migrate_secret(stored):
-        setattr(row, field, encrypt_secret(value))
-    return value
+    return decrypt_secret(stored)
 
 
 def _write_secret(row: AppSettings, field: str, value: str) -> None:
@@ -248,24 +239,6 @@ def get_settings(session: Session) -> SettingsResponse:
             id=1,
             public_idb_debug=False,
         )
-        session.add(row)
-        session.commit()
-        session.refresh(row)
-        invalidate_resolved_settings_cache()
-
-    migrated = False
-    for field in (
-        'smtp_password',
-        'telegram_bot_token',
-        'openrouter_api_key',
-        'openai_api_key',
-        'huggingface_api_token',
-    ):
-        stored = str(getattr(row, field, '') or '')
-        if should_migrate_secret(stored):
-            _read_secret(row, field)
-            migrated = True
-    if migrated:
         session.add(row)
         session.commit()
         session.refresh(row)

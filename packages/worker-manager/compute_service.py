@@ -504,7 +504,6 @@ def _load_healthcheck_lazy(output_path: str, export_format: str) -> pl.LazyFrame
 
 
 def _send_pipeline_notifications(
-    steps: list[dict],
     context: dict[str, object],
     output_notification: dict | None = None,
 ) -> None:
@@ -524,33 +523,6 @@ def _send_pipeline_notifications(
             except Exception as e:
                 logger.warning(f'Failed to send output {method} notification to {recipient}: {e}', exc_info=True)
                 failed.append(f'output:{method}')
-
-    for step in steps:
-        if step.get('type') != 'notification':
-            continue
-        config = step.get('config', {})
-        if config.get('input_columns'):
-            continue
-        method = config.get('method', 'email')
-        recipient = config.get('recipient', '')
-        if not recipient:
-            continue
-
-        subject_template = config.get('subject_template', 'Build Complete')
-        body_template = config.get('body_template', '')
-        subject = render_template(subject_template, context)
-        body = render_template(body_template, context)
-
-        try:
-            if method == 'email':
-                notification_service.send_email(to=recipient, subject=subject, body=body)
-                logger.info(f'Notification email sent to {recipient}')
-            elif method == 'telegram':
-                notification_service.send_telegram(chat_id=recipient, message=f'{subject}\n\n{body}')
-                logger.info(f'Notification telegram sent to {recipient}')
-        except Exception as e:
-            logger.warning(f'Failed to send {method} notification to {recipient}: {e}', exc_info=True)
-            failed.append(f'step:{method}')
 
     # Subscriber-based notifications (from Telegram bot /subscribe)
     datasource_id = str(context.get('datasource_id', ''))
@@ -2006,7 +1978,6 @@ def export_data(
             output_notification = {**output_notification, 'excluded_recipients': excluded}
 
         _send_pipeline_notifications(
-            steps=apply_steps(export_steps),
             context={
                 'analysis_name': analysis_name,
                 'status': status,

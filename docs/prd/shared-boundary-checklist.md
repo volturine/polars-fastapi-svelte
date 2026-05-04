@@ -65,7 +65,7 @@ Goal: `packages/shared` contains only neutral contracts, persistence primitives,
 ## Remaining strict-separation tasks
 - [ ] Remove `packages/backend/modules/compute/routes.py` test-support imports and replace them with a first-class owner-local test/runtime seam or real-runtime-only tests
 - [ ] Delete `test_support_runtime_compute.py`
-- [ ] Move/inline `test_support_scheduler.py` into owned test locations and delete the root helper
+- [x] Move/inline `test_support_scheduler.py` into owned test locations and delete the root helper
 - [ ] Remove shared-owned auth settings from `packages/shared/core/config.py` and re-home them under backend ownership
 - [ ] Remove auth-only exception classes from `packages/shared/core/exceptions.py` and re-home them under backend ownership
 - [ ] Remove backend auth table definitions from `packages/shared/database/alembic/versions/0001_runtime_public.py`

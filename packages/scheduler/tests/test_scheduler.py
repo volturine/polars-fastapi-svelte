@@ -6,10 +6,8 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
 
 import pytest
-from _test_support import run_analysis_build
 from scheduler_service import (
     claim_due_schedules,
     create_schedule,
@@ -32,7 +30,7 @@ from contracts.datasource.models import DataSource
 from contracts.scheduler.models import Schedule
 from contracts.scheduler.schemas import ScheduleCreate, ScheduleUpdate
 from core import build_jobs_service as build_job_service, build_runs_service as build_run_service
-from core.exceptions import AnalysisNotFoundError, DataSourceNotFoundError, ScheduleNotFoundError
+from core.exceptions import DataSourceNotFoundError, ScheduleNotFoundError
 
 
 def _load_runtime_scheduler():
@@ -781,197 +779,6 @@ class TestGetBuildOrder:
         upstream_idx = order.index(upstream_id) if upstream_id in order else -1
         downstream_idx = order.index(downstream_id) if downstream_id in order else -1
         assert upstream_idx < downstream_idx, 'Upstream must come before downstream'
-
-
-# ---------------------------------------------------------------------------
-# run_analysis_build()
-# ---------------------------------------------------------------------------
-
-
-class TestRunAnalysisBuild:
-    def test_nonexistent_analysis_raises(self, test_db_session: Session):
-        with pytest.raises(AnalysisNotFoundError):
-            run_analysis_build(test_db_session, 'nonexistent')
-
-    def test_analysis_no_tabs(self, test_db_session: Session):
-        """Analysis with no tabs should return 0 tabs built."""
-        analysis_id = str(uuid.uuid4())
-        now = datetime.now(UTC)
-        analysis = Analysis(
-            id=analysis_id,
-            name='Empty',
-            description='',
-            pipeline_definition={},
-            status=AnalysisStatus.DRAFT,
-            created_at=now,
-            updated_at=now,
-        )
-        test_db_session.add(analysis)
-        test_db_session.commit()
-
-        result = run_analysis_build(test_db_session, analysis_id)
-        assert result['tabs_built'] == 0
-        assert result['results'] == []
-
-    def test_missing_output_config_fails(self, test_db_session: Session, sample_analysis: Analysis):
-        """Tabs without output config should fail and be recorded."""
-        result = run_analysis_build(test_db_session, sample_analysis.id)
-        assert result['tabs_built'] == 0
-        assert len(result['results']) > 0
-        assert result['results'][0]['status'] == 'failed'
-
-    @patch('compute_service._send_pipeline_notifications')
-    @patch('compute_service.preview_step')
-    @patch('compute_service.export_data')
-    def test_builds_all_tabs(self, mock_export, mock_preview, mock_notify, test_db_session: Session, analysis_with_output: Analysis):
-        """All tabs with output config should be built — export for output tabs."""
-        mock_export.return_value = None
-        mock_preview.return_value = None
-
-        result = run_analysis_build(test_db_session, analysis_with_output.id)
-        # Both tabs have output config
-        assert result['tabs_built'] == 2
-        assert len(result['results']) == 2
-        assert result['results'][0]['status'] == 'success'
-        assert result['results'][0]['tab_name'] == 'Export Tab'
-        assert result['results'][1]['status'] == 'success'
-        assert result['results'][1]['tab_name'] == 'No Output Tab'
-        assert mock_export.call_count == 2
-        mock_preview.assert_not_called()
-
-    @patch('compute_service._send_pipeline_notifications')
-    @patch('compute_service.preview_step')
-    @patch('compute_service.export_data')
-    def test_export_failure_captured(
-        self,
-        mock_export,
-        mock_preview,
-        mock_notify,
-        test_db_session: Session,
-        analysis_with_output: Analysis,
-    ):
-        """Failed export should be recorded but not crash the build; other tabs still run."""
-        call_count = {'i': 0}
-
-        def _side_effect(*_args, **_kwargs):
-            call_count['i'] += 1
-            if call_count['i'] == 1:
-                raise RuntimeError('Export failed')
-
-        mock_export.side_effect = _side_effect
-        mock_preview.return_value = None
-
-        result = run_analysis_build(test_db_session, analysis_with_output.id)
-        assert result['tabs_built'] == 1
-        assert len(result['results']) == 2
-        failed = [r for r in result['results'] if r['status'] == 'failed']
-        succeeded = [r for r in result['results'] if r['status'] == 'success']
-        assert len(failed) == 1
-        assert len(succeeded) == 1
-
-    @patch('compute_service._send_pipeline_notifications')
-    @patch('compute_service.preview_step')
-    @patch('compute_service.export_data')
-    def test_export_called_only_for_output_tabs(
-        self,
-        mock_export,
-        mock_preview,
-        mock_notify,
-        test_db_session: Session,
-        analysis_with_output: Analysis,
-    ):
-        """export_data is called for tabs with output config."""
-        mock_export.return_value = None
-        mock_preview.return_value = None
-
-        result = run_analysis_build(test_db_session, analysis_with_output.id)
-        assert result['tabs_built'] == 2
-        assert mock_export.call_count == 2
-        mock_preview.assert_not_called()
-
-    @patch('compute_service._send_pipeline_notifications')
-    @patch('compute_service.preview_step')
-    @patch('compute_service.export_data')
-    def test_build_only_matching_datasource_tab(
-        self,
-        mock_export,
-        mock_preview,
-        mock_notify,
-        test_db_session: Session,
-        sample_datasource: DataSource,
-    ):
-        """When datasource_id is provided, only the tab with that output runs."""
-        other_ds_id = str(uuid.uuid4())
-        output_a = str(uuid.uuid4())
-        output_b = str(uuid.uuid4())
-        analysis_id = str(uuid.uuid4())
-        now = datetime.now(UTC)
-        pipeline: dict[str, Any] = {
-            'tabs': [
-                {
-                    'id': 'tab-a',
-                    'name': 'Tab A',
-                    'parent_id': None,
-                    'datasource': {
-                        'id': sample_datasource.id,
-                        'analysis_tab_id': None,
-                        'config': {'branch': 'master'},
-                    },
-                    'output': {
-                        'result_id': output_a,
-                        'datasource_type': 'iceberg',
-                        'format': 'parquet',
-                        'filename': 'tab_a',
-                        'iceberg': {'namespace': 'outputs', 'table_name': 'tab_a'},
-                    },
-                    'steps': [],
-                },
-                {
-                    'id': 'tab-b',
-                    'name': 'Tab B',
-                    'parent_id': None,
-                    'datasource': {
-                        'id': other_ds_id,
-                        'analysis_tab_id': None,
-                        'config': {'branch': 'master'},
-                    },
-                    'output': {
-                        'result_id': output_b,
-                        'datasource_type': 'iceberg',
-                        'format': 'parquet',
-                        'filename': 'tab_b',
-                        'iceberg': {'namespace': 'outputs', 'table_name': 'tab_b'},
-                    },
-                    'steps': [],
-                },
-            ],
-        }
-        analysis = Analysis(
-            id=analysis_id,
-            name='Multi DS',
-            description='',
-            pipeline_definition=pipeline,
-            status=AnalysisStatus.DRAFT,
-            created_at=now,
-            updated_at=now,
-        )
-        test_db_session.add(analysis)
-        test_db_session.commit()
-
-        mock_preview.return_value = None
-
-        # Build only for sample_datasource — tab-a should run, tab-b should be skipped
-        result = run_analysis_build(test_db_session, analysis_id, datasource_id=output_a)
-        assert result['tabs_built'] == 1
-        assert len(result['results']) == 1
-        assert result['results'][0]['tab_name'] == 'Tab A'
-
-        # Without datasource_id filter — both tabs run
-        mock_preview.reset_mock()
-        mock_notify.reset_mock()
-        result_all = run_analysis_build(test_db_session, analysis_id)
-        assert result_all['tabs_built'] == 2
-        assert len(result_all['results']) == 2
 
 
 class TestEnqueueScheduleRun:

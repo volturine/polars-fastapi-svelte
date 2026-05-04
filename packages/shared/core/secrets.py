@@ -62,11 +62,6 @@ def mask_secret(value: str | None) -> str:
     return MASKED_SECRET if value else ''
 
 
-def should_migrate_secret(value: str | None) -> bool:
-    del value
-    return False
-
-
 def encrypt_secret(value: str) -> str:
     if not value:
         return ''

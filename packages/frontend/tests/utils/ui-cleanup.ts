@@ -69,7 +69,7 @@ export async function deleteDatasourceViaUI(page: Page, name: string): Promise<v
 		await row.locator('button[title="Delete"]').click();
 		const dialog = confirmDialog(page, 'Delete Datasource');
 		await dialog.getByRole('button', { name: /^Delete$/ }).click();
-		await dialog.waitFor({ state: 'hidden', timeout: DIALOG_HIDDEN_TIMEOUT });
+		await expect(row).toBeHidden({ timeout: DIALOG_HIDDEN_TIMEOUT });
 	} catch (error) {
 		console.warn(`[ui-cleanup] deleteDatasourceViaUI failed for "${name}":`, error);
 	}
@@ -93,7 +93,7 @@ export async function deleteAnalysisViaUI(
 		await card.getByRole('button', { name: /Delete analysis/ }).click();
 		const dialog = confirmDialog(page, 'Delete Analysis');
 		await dialog.getByRole('button', { name: /^Delete$/ }).click();
-		await dialog.waitFor({ state: 'hidden', timeout: DIALOG_HIDDEN_TIMEOUT });
+		await expect(card).toBeHidden({ timeout: DIALOG_HIDDEN_TIMEOUT });
 	} catch (error) {
 		console.warn(`[ui-cleanup] deleteAnalysisViaUI failed for "${name}":`, error);
 	}
@@ -124,7 +124,7 @@ export async function deleteScheduleViaUI(page: Page, cronOrName: string): Promi
 		await row.getByLabel('Delete schedule').click();
 		const dialog = confirmDialog(page, 'Delete Schedule');
 		await dialog.getByRole('button', { name: /^Delete$/ }).click();
-		await dialog.waitFor({ state: 'hidden', timeout: DIALOG_HIDDEN_TIMEOUT });
+		await expect(row).toBeHidden({ timeout: DIALOG_HIDDEN_TIMEOUT });
 	} catch (error) {
 		console.warn(`[ui-cleanup] deleteScheduleViaUI failed for "${cronOrName}":`, error);
 	}
@@ -139,7 +139,7 @@ export async function deleteHealthCheckViaUI(page: Page, name: string): Promise<
 		await row.getByLabel('Delete check').click();
 		const dialog = confirmDialog(page, 'Delete Health Check');
 		await dialog.getByRole('button', { name: /^Delete$/ }).click();
-		await dialog.waitFor({ state: 'hidden', timeout: DIALOG_HIDDEN_TIMEOUT });
+		await expect(row).toBeHidden({ timeout: DIALOG_HIDDEN_TIMEOUT });
 	} catch (error) {
 		console.warn(`[ui-cleanup] deleteHealthCheckViaUI failed for "${name}":`, error);
 	}

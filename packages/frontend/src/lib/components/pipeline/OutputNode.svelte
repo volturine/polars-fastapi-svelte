@@ -293,13 +293,7 @@
 	function openBuildPreview(): void {
 		if (!hasBuildSession) return;
 		previewOpen = true;
-		if (
-			(buildStore.status !== 'connecting' &&
-				buildStore.status !== 'queued' &&
-				buildStore.status !== 'running') ||
-			!buildStore.buildId
-		)
-			return;
+		if (!buildStore.buildId) return;
 		void apiRequest<ActiveBuildDetail>(`/v1/compute/builds/active/${buildStore.buildId}`).match(
 			(build: ActiveBuildDetail) => {
 				buildStore.applySnapshot(build);

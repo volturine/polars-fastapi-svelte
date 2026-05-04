@@ -1,10 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import {
-	gotoNewAnalysis,
-	waitForDatasourceList,
-	waitForLayoutReady,
-	waitForUdfList
-} from './readiness.js';
+import { gotoNewAnalysis, waitForLayoutReady, waitForUdfList } from './readiness.js';
 
 export const E2E_PASSWORD = 'E2eTestPw12345';
 
@@ -74,9 +69,8 @@ export async function uploadDatasourceViaUi(
 	await expect(uploadBtn).toBeEnabled({ timeout: 10_000 });
 	await uploadBtn.click();
 	await expect(page).toHaveURL(/\/datasources/, { timeout: 30_000 });
-	await waitForDatasourceList(page);
 	const row = page.locator(`[data-ds-row="${name}"]`);
-	await expect(row).toBeVisible({ timeout: 15_000 });
+	await expect(row).toBeVisible({ timeout: 30_000 });
 	await row.click();
 	await expect(page).toHaveURL(/id=/, { timeout: 15_000 });
 	const datasourceId = new URL(page.url()).searchParams.get('id');

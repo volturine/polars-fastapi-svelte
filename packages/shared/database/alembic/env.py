@@ -23,6 +23,8 @@ from contracts.runtime_workers import models as runtime_workers_models
 from contracts.scheduler import models as scheduler_models
 from core.config import settings
 
+_ = analysis_models.__name__
+
 del analysis_models
 del analysis_versions_models
 del auth_models

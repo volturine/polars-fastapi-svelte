@@ -53,74 +53,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
     )
     op.create_table(
-        'users',
-        sa.Column('id', sa.String(), nullable=False),
-        sa.Column('email', sa.String(), nullable=False),
-        sa.Column('display_name', sa.String(), nullable=False),
-        sa.Column('avatar_url', sa.String(), nullable=True),
-        sa.Column('status', sa.String(), nullable=False, server_default='active'),
-        sa.Column('email_verified', sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column('has_password', sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column('preferences', sa.JSON(), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('last_login_at', sa.DateTime(timezone=True), nullable=True),
-        sa.PrimaryKeyConstraint('id'),
-    )
-    op.create_index('ix_users_email', 'users', ['email'], unique=True)
-    op.create_table(
-        'auth_providers',
-        sa.Column('id', sa.String(), nullable=False),
-        sa.Column('user_id', sa.String(), nullable=False),
-        sa.Column('provider', sa.String(), nullable=False),
-        sa.Column('provider_subject', sa.String(), nullable=False),
-        sa.Column('provider_metadata', sa.JSON(), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('provider', 'provider_subject', name='uq_auth_provider_subject'),
-    )
-    op.create_index('ix_auth_providers_user_id', 'auth_providers', ['user_id'])
-    op.create_table(
-        'user_sessions',
-        sa.Column('id', sa.String(), nullable=False),
-        sa.Column('user_id', sa.String(), nullable=False),
-        sa.Column('device_info', sa.String(), nullable=True),
-        sa.Column('ip_address', sa.String(), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('revoked', sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id'),
-    )
-    op.create_index('ix_user_sessions_user_id', 'user_sessions', ['user_id'])
-    op.create_table(
-        'verification_tokens',
-        sa.Column('id', sa.String(), nullable=False),
-        sa.Column('user_id', sa.String(), nullable=False),
-        sa.Column('token', sa.String(), nullable=False),
-        sa.Column('token_type', sa.String(), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('used', sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id'),
-    )
-    op.create_index('ix_verification_tokens_token', 'verification_tokens', ['token'], unique=True)
-    op.create_index('ix_verification_tokens_user_id', 'verification_tokens', ['user_id'])
-    op.create_table(
-        'chat_sessions',
-        sa.Column('id', sa.String(), nullable=False),
-        sa.Column('provider', sa.String(), nullable=False, server_default='openrouter'),
-        sa.Column('model', sa.String(), nullable=False, server_default=''),
-        sa.Column('api_key', sa.String(), nullable=False, server_default=''),
-        sa.Column('messages_json', sa.String(), nullable=False, server_default='[]'),
-        sa.Column('history_json', sa.String(), nullable=False, server_default='[]'),
-        sa.Column('created_at', sa.Float(), nullable=False),
-        sa.Column('system_prompt', sa.String(), nullable=False, server_default=''),
-        sa.PrimaryKeyConstraint('id'),
-    )
-    op.create_table(
         'runtime_workers',
         sa.Column('id', sa.String(), nullable=False),
         sa.Column('kind', sa.String(), nullable=False),
@@ -173,14 +105,4 @@ def downgrade() -> None:
     op.drop_index('ix_runtime_workers_last_heartbeat_at', table_name='runtime_workers')
     op.drop_index('ix_runtime_workers_kind', table_name='runtime_workers')
     op.drop_table('runtime_workers')
-    op.drop_table('chat_sessions')
-    op.drop_index('ix_verification_tokens_user_id', table_name='verification_tokens')
-    op.drop_index('ix_verification_tokens_token', table_name='verification_tokens')
-    op.drop_table('verification_tokens')
-    op.drop_index('ix_user_sessions_user_id', table_name='user_sessions')
-    op.drop_table('user_sessions')
-    op.drop_index('ix_auth_providers_user_id', table_name='auth_providers')
-    op.drop_table('auth_providers')
-    op.drop_index('ix_users_email', table_name='users')
-    op.drop_table('users')
     op.drop_table('app_settings')

@@ -14,7 +14,7 @@ class TestMCPToolListing:
         from main import app
         from modules.auth.dependencies import get_current_user
 
-        monkeypatch.setattr('core.config.settings.auth_required', True)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', True)
         app.dependency_overrides.pop(get_current_user, None)
         response = client.get('/api/v1/mcp/tools')
         assert response.status_code == 401

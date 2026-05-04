@@ -9,6 +9,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from _test_support import run_analysis_build
 from scheduler_service import (
     claim_due_schedules,
     create_schedule,
@@ -24,7 +25,6 @@ from scheduler_service import (
     update_schedule,
 )
 from sqlmodel import Session
-from test_support_scheduler import run_analysis_build
 
 from contracts.analysis.models import Analysis, AnalysisDataSource, AnalysisStatus
 from contracts.build_runs.models import BuildRunStatus

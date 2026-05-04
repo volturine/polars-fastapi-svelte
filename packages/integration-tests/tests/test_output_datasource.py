@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from compute_service import _upsert_output_datasource, export_data
 from modules.analysis.schemas import AnalysisUpdateSchema, TabDatasourceConfig, TabDatasourceSchema, TabOutputSchema, TabSchema
+from scheduler_service import build_analysis_pipeline_payload
 from modules.analysis.service import update_analysis
 from modules.datasource.service import create_analysis_datasource
 from modules.datasource.source_types import DataSourceType
@@ -13,12 +14,77 @@ from contracts.analysis.models import Analysis, AnalysisStatus
 from contracts.compute.base import EngineResult
 from contracts.datasource.models import DataSource
 from contracts.engine_runs.models import EngineRun
+from core.exceptions import AnalysisNotFoundError, ScheduleValidationError
 from core.namespace import namespace_paths
 
 _OUT_A = str(uuid.uuid4())
 _OUT_B = str(uuid.uuid4())
 _OUT_1 = str(uuid.uuid4())
 _OUT_XYZ = str(uuid.uuid4())
+
+
+def _run_analysis_build(
+    session: Session,
+    analysis_id: str,
+    manager=None,
+    datasource_id: str | None = None,
+    triggered_by: str = 'schedule',
+    tab_id: str | None = None,
+) -> dict[str, object]:
+    analysis = session.get(Analysis, analysis_id)
+    if analysis is None:
+        raise AnalysisNotFoundError(analysis_id)
+
+    pipeline_payload = build_analysis_pipeline_payload(session, analysis, datasource_id=datasource_id)
+    pipeline = analysis.pipeline
+    if not pipeline.tabs:
+        return {'analysis_id': analysis_id, 'tabs_built': 0, 'results': []}
+
+    results: list[dict[str, str]] = []
+    tabs_built = 0
+    for tab in pipeline.tabs:
+        current_tab_id = tab.id or 'unknown'
+        tab_name = tab.name or 'unnamed'
+        if datasource_id and tab.output.result_id != datasource_id:
+            continue
+        if tab_id and current_tab_id != tab_id:
+            continue
+        target_step_id = tab.steps[-1].id if tab.steps else 'source'
+        try:
+            if not tab.output.filename:
+                raise ScheduleValidationError(f'Tab {current_tab_id} missing output configuration')
+            iceberg_cfg = tab.output.to_dict().get('iceberg')
+            iceberg_options = (
+                {
+                    'table_name': iceberg_cfg.get('table_name', 'exported_data'),
+                    'namespace': iceberg_cfg.get('namespace', 'outputs'),
+                    'branch': iceberg_cfg.get('branch', 'master'),
+                }
+                if isinstance(iceberg_cfg, dict)
+                else None
+            )
+            import compute_service
+
+            compute_service.export_data(
+                session=session,
+                manager=manager,
+                target_step_id=target_step_id,
+                analysis_pipeline=pipeline_payload,
+                filename=tab.output.filename or f'{tab_name}_out',
+                iceberg_options=iceberg_options,
+                analysis_id=analysis_id,
+                request_json={'analysis_pipeline': pipeline_payload, 'tab_id': current_tab_id},
+                triggered_by=triggered_by,
+                result_id=tab.output.result_id,
+                tab_id=current_tab_id,
+            )
+            tabs_built += 1
+            results.append({'tab_id': current_tab_id, 'tab_name': tab_name, 'status': 'success'})
+        except Exception as exc:
+            results.append({'tab_id': current_tab_id, 'tab_name': tab_name, 'status': 'failed', 'error': str(exc)})
+
+    return {'analysis_id': analysis_id, 'tabs_built': tabs_built, 'results': results}
+
 
 # ---------------------------------------------------------------------------
 # TabSchema
@@ -393,9 +459,7 @@ class TestRunAnalysisBuildOutputDatasource:
             patch('compute_service.preview_step', mock_preview),
             patch('compute_service._send_pipeline_notifications', mock_notify),
         ):
-            from test_support_scheduler import run_analysis_build
-
-            run_analysis_build(test_db_session, analysis_id)
+            _run_analysis_build(test_db_session, analysis_id)
 
             mock_export.assert_called_once()
             call_kwargs = mock_export.call_args
@@ -650,9 +714,7 @@ class TestRunAnalysisBuildOutputDatasource:
         test_db_session.commit()
 
         with patch('compute_service.export_data') as mock_export:
-            from test_support_scheduler import run_analysis_build
-
-            result = run_analysis_build(test_db_session, analysis_id)
+            result = _run_analysis_build(test_db_session, analysis_id)
 
             mock_export.assert_not_called()
             assert result['tabs_built'] == 0

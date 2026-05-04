@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import quote
 
+from backend_core.auth_config import settings as auth_settings
 from backend_core.dependencies import RuntimeAvailabilityProbe, get_manager, get_runtime_availability_probe
 from backend_core.engine_live import load_engine_snapshot, registry as engine_registry
 from backend_core.error_handlers import handle_errors
@@ -107,6 +108,10 @@ def _override_manager(container) -> Any | None:
     return override()
 
 
+def _override_compute_executor(container) -> Any | None:
+    return getattr(container.app.state, 'compute_override_executor', None)
+
+
 def _resolve_websocket_session_token(websocket: WebSocket) -> str | None:
     cookie_token = websocket.cookies.get('session_token')
     if cookie_token:
@@ -130,9 +135,8 @@ def _resolve_websocket_user(websocket: WebSocket) -> User | None:
     def _lookup(session: Session) -> User | None:
         if token:
             return validate_session(session, token)
-        from core.config import settings
 
-        if not settings.auth_required:
+        if not auth_settings.auth_required:
             return ensure_default_user(session)
         return None
 
@@ -417,9 +421,11 @@ async def preview_step(
     normalized = request.model_copy(update={'analysis_id': analysis_id})
     manager = _override_manager(http_request)
     if manager is not None:
-        from test_support_runtime_compute import preview_step as preview_step_with_manager
+        executor = _override_compute_executor(http_request)
+        if executor is None:
+            raise RuntimeError('Missing compute override executor for manager override')
 
-        return preview_step_with_manager(
+        return executor.preview_step(
             session=session,
             manager=manager,
             target_step_id=normalized.target_step_id,
@@ -451,9 +457,11 @@ async def get_step_schema(
     normalized = request.model_copy(update={'analysis_id': analysis_id})
     manager = _override_manager(http_request)
     if manager is not None:
-        from test_support_runtime_compute import get_step_schema as get_step_schema_with_manager
+        executor = _override_compute_executor(http_request)
+        if executor is None:
+            raise RuntimeError('Missing compute override executor for manager override')
 
-        return get_step_schema_with_manager(
+        return executor.get_step_schema(
             session=session,
             manager=manager,
             target_step_id=normalized.target_step_id,
@@ -477,9 +485,11 @@ async def get_step_row_count(
     normalized = request.model_copy(update={'analysis_id': analysis_id})
     manager = _override_manager(http_request)
     if manager is not None:
-        from test_support_runtime_compute import get_step_row_count as get_step_row_count_with_manager
+        executor = _override_compute_executor(http_request)
+        if executor is None:
+            raise RuntimeError('Missing compute override executor for manager override')
 
-        return get_step_row_count_with_manager(
+        return executor.get_step_row_count(
             session=session,
             manager=manager,
             target_step_id=normalized.target_step_id,
@@ -992,9 +1002,11 @@ async def export_data(
         )
         manager = _override_manager(http_request)
         if manager is not None:
-            from test_support_runtime_compute import download_step as download_step_with_manager
+            executor = _override_compute_executor(http_request)
+            if executor is None:
+                raise RuntimeError('Missing compute override executor for manager override')
 
-            file_bytes, filename, content_type = download_step_with_manager(
+            file_bytes, filename, content_type = executor.download_step(
                 session=session,
                 manager=manager,
                 target_step_id=download_request.target_step_id,
@@ -1019,9 +1031,11 @@ async def export_data(
 
     manager = _override_manager(http_request)
     if manager is not None:
-        from test_support_runtime_compute import export_data as export_data_with_manager
+        executor = _override_compute_executor(http_request)
+        if executor is None:
+            raise RuntimeError('Missing compute override executor for manager override')
 
-        result = export_data_with_manager(
+        result = executor.export_data(
             session=session,
             manager=manager,
             target_step_id=request.target_step_id,
@@ -1060,9 +1074,11 @@ async def download_step(
     """
     manager = _override_manager(http_request)
     if manager is not None:
-        from test_support_runtime_compute import download_step as download_step_with_manager
+        executor = _override_compute_executor(http_request)
+        if executor is None:
+            raise RuntimeError('Missing compute override executor for manager override')
 
-        file_bytes, filename, content_type = download_step_with_manager(
+        file_bytes, filename, content_type = executor.download_step(
             session=session,
             manager=manager,
             target_step_id=request.target_step_id,

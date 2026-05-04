@@ -10,12 +10,8 @@ from email.message import EmailMessage
 from string import hexdigits
 from typing import Any, cast
 
-from sqlalchemy import inspect, update
-from sqlmodel import Session, select
-
-from core.config import settings
-from core.database import namespace_connection
-from core.exceptions import (
+from backend_core.auth_config import settings as auth_settings
+from backend_core.auth_exceptions import (
     DefaultUserDeletionError,
     EmailAlreadyExistsError,
     InvalidCredentialsError,
@@ -24,6 +20,11 @@ from core.exceptions import (
     TokenExpiredError,
     TokenInvalidError,
 )
+from sqlalchemy import inspect, update
+from sqlmodel import Session, select
+
+from core.config import settings
+from core.database import namespace_connection
 from core.namespace import list_namespaces
 from core.smtp import send_smtp_message
 from modules.auth.models import (
@@ -173,22 +174,20 @@ def get_default_user(session: Session) -> User | None:
 
 
 def ensure_default_user(session: Session) -> User:
-    desired_email = _normalize_default_user_email(settings.default_user_email)
-    desired_name = _normalize_default_user_name(settings.default_user_name, desired_email)
-    desired_password = settings.default_user_password
+    desired_email = _normalize_default_user_email(auth_settings.default_user_email)
+    desired_name = _normalize_default_user_name(auth_settings.default_user_name, desired_email)
+    desired_password = auth_settings.default_user_password
     now = _utcnow()
     user = get_default_user(session)
     changed = False
 
     if not user:
         email_owner = get_user_by_email(session, desired_email)
-        user_email = desired_email
         if email_owner:
-            user_email = f'{_DEFAULT_USER_ID}@default.local'
-            logger.warning('Default user email %s is already in use; using fallback email %s', desired_email, user_email)
+            raise EmailAlreadyExistsError()
         user = User(
             id=_DEFAULT_USER_ID,
-            email=user_email,
+            email=desired_email,
             display_name=desired_name,
             status=UserStatus.ACTIVE,
             email_verified=True,
@@ -388,7 +387,7 @@ def change_password(session: Session, user_id: str, current_password: str, new_p
 
 def create_session(session: Session, user_id: str, device_info: str | None, ip_address: str | None) -> UserSession:
     now = _utcnow()
-    expires_at = now + timedelta(days=settings.session_max_age_days)
+    expires_at = now + timedelta(days=auth_settings.session_max_age_days)
     user_session = UserSession(
         id=uuid.uuid4().hex,
         user_id=user_id,
@@ -633,7 +632,7 @@ async def send_verification_email(user_email: str, token: str) -> bool:
         logger.debug('SMTP is not configured for verification email')
         return False
 
-    verify_url = f'{settings.auth_frontend_url}/verify?token={token}'
+    verify_url = f'{auth_settings.auth_frontend_url}/verify?token={token}'
     msg = EmailMessage()
     msg['From'] = smtp_user
     msg['To'] = user_email
@@ -693,7 +692,7 @@ async def send_password_reset_email(user_email: str, token: str) -> bool:
     if not host or not smtp_user:
         logger.debug('SMTP is not configured for password reset email')
         return False
-    reset_url = f'{settings.auth_frontend_url}/reset-password?token={token}'
+    reset_url = f'{auth_settings.auth_frontend_url}/reset-password?token={token}'
     msg = EmailMessage()
     msg['From'] = smtp_user
     msg['To'] = user_email

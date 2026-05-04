@@ -103,7 +103,7 @@ ignore = [
 ]
 
 [tool.mypy]
-mypy_path = [".", "../..", "../backend", "../scheduler", "../worker-manager"]
+mypy_path = [".", "../test_support", "../..", "../backend", "../scheduler", "../worker-manager"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -118,7 +118,7 @@ keep-runtime-typing = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-pythonpath = [".", "../..", "../backend", "../scheduler", "../worker-manager"]
+pythonpath = [".", "../test_support", "../..", "../backend", "../scheduler", "../worker-manager"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

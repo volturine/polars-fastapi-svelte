@@ -10,15 +10,19 @@ from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from core.app_error_status import status_for_app_error
-from core.exceptions import (
-    AppError,
-    DataSourceSnapshotError,
-    EngineNotFoundError,
+from backend_core.auth_exceptions import (
+    AccountDisabledError,
+    DefaultUserDeletionError,
+    EmailAlreadyExistsError,
     InvalidCredentialsError,
-    InvalidIdError,
-    PipelineValidationError,
+    OAuthError,
+    ProviderUnlinkError,
+    SessionExpiredError,
+    TokenExpiredError,
+    TokenInvalidError,
 )
+from core.app_error_status import status_for_app_error
+from core.exceptions import AppError, DataSourceSnapshotError, EngineNotFoundError, InvalidIdError, PipelineValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +37,21 @@ def _error_body(message: str, error_code: str | None = None, details: dict | Non
     return body
 
 
+_BACKEND_EXCEPTION_STATUS_MAP: dict[type[AppError], int] = {
+    InvalidCredentialsError: 401,
+    SessionExpiredError: 401,
+    AccountDisabledError: 403,
+    DefaultUserDeletionError: 403,
+    EmailAlreadyExistsError: 409,
+    ProviderUnlinkError: 400,
+    OAuthError: 400,
+    TokenExpiredError: 400,
+    TokenInvalidError: 400,
+}
+
+
 def _status_for(exc: AppError) -> int:
-    return status_for_app_error(exc)
+    return _BACKEND_EXCEPTION_STATUS_MAP.get(type(exc), status_for_app_error(exc))
 
 
 def _log_app_error(exc: AppError, status: int) -> None:

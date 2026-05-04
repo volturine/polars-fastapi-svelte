@@ -222,7 +222,7 @@ class TestUpdateSettings:
         assert row.telegram_bot_token.startswith('enc:v1:')
         assert row.openrouter_api_key.startswith('enc:v1:')
 
-    def test_get_migrates_legacy_secret_storage(self, client: TestClient, monkeypatch) -> None:
+    def test_get_rejects_unsupported_secret_storage_format(self, client: TestClient, monkeypatch) -> None:
         from contracts.settings_models import AppSettings
         from core.database import run_settings_db
 
@@ -232,26 +232,13 @@ class TestUpdateSettings:
             row = session.get(AppSettings, 1)
             assert row is not None
             row.smtp_password = 'enc:07001001000d'
-            row.telegram_bot_token = 'legacy-token'
-            row.openrouter_api_key = 'legacy-key'
             session.commit()
 
         run_settings_db(_seed)
 
         resp = client.get('/api/v1/settings')
-        assert resp.status_code == 200
-        assert resp.json()['smtp_password'] == MASKED_SECRET
-        assert resp.json()['telegram_bot_token'] == MASKED_SECRET
-        assert resp.json()['openrouter_api_key'] == MASKED_SECRET
-
-        def _read(session: Session) -> AppSettings | None:
-            return session.get(AppSettings, 1)
-
-        row = run_settings_db(_read)
-        assert row is not None
-        assert row.smtp_password.startswith('enc:v1:')
-        assert row.telegram_bot_token.startswith('enc:v1:')
-        assert row.openrouter_api_key.startswith('enc:v1:')
+        assert resp.status_code == 500
+        assert resp.json()['detail'] == 'Stored secret is not encrypted with the supported format'
 
 
 class TestTestSmtp:
@@ -430,7 +417,7 @@ class TestConfigEndpointWithDbSettings:
 
     def test_config_reflects_db_settings(self, client: TestClient, monkeypatch) -> None:
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
-        monkeypatch.setattr('core.config.settings.auth_required', True)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', True)
         # Save SMTP settings
         client.put(
             '/api/v1/settings',
@@ -456,8 +443,8 @@ class TestConfigEndpointWithDbSettings:
 
     def test_config_reflects_empty_settings(self, client: TestClient, monkeypatch) -> None:
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
-        monkeypatch.setattr('core.config.settings.auth_required', False)
-        monkeypatch.setattr('core.config.settings.verify_email_address', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.verify_email_address', False)
         client.put(
             '/api/v1/settings',
             json={

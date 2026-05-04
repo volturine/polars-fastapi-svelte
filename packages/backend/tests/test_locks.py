@@ -8,7 +8,7 @@ from core.database import run_settings_db
 
 class TestLockRoutes:
     def test_acquire_heartbeat_release_status_flow(self, client, test_db_session, monkeypatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
         owner = run_settings_db(ensure_default_user)
         acquire = client.post(
             '/api/v1/locks',
@@ -44,7 +44,7 @@ class TestLockRoutes:
         assert test_db_session.get(ResourceLock, ('analysis', 'analysis-1')) is None
 
     def test_no_auth_reacquire_ignores_client_id(self, client, monkeypatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
         owner = run_settings_db(ensure_default_user)
         first = client.post(
             '/api/v1/locks',
@@ -63,7 +63,7 @@ class TestLockRoutes:
         assert second.json()['lock_token'] != first.json()['lock_token']
 
     def test_expired_lock_replacement(self, client, test_db_session, monkeypatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
         owner = run_settings_db(ensure_default_user)
         now = datetime.now(UTC).replace(tzinfo=None)
         lock = ResourceLock(
@@ -89,7 +89,7 @@ class TestLockRoutes:
         assert body['lock_token'] != 'expired-token'
 
     def test_status_handles_aware_postgres_style_timestamps(self, client, test_db_session, monkeypatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
         owner = run_settings_db(ensure_default_user)
         now = datetime.now(UTC)
         lock = ResourceLock(
@@ -112,7 +112,7 @@ class TestLockRoutes:
         assert body['is_expired'] is False
 
     def test_no_auth_resolves_default_user_when_auth_disabled(self, client, monkeypatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
         owner = run_settings_db(ensure_default_user)
 
         response = client.post(
@@ -125,7 +125,7 @@ class TestLockRoutes:
         assert response.json()['owner_id'] == owner.id
 
     def test_release_with_stale_token_is_idempotent(self, client, test_db_session, monkeypatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
         acquire = client.post(
             '/api/v1/locks',
             json={'resource_type': 'analysis', 'resource_id': 'analysis-5'},
@@ -146,7 +146,7 @@ class TestLockRoutes:
 
 class TestLockWebsocket:
     def test_watch_can_acquire_and_release_over_websocket(self, client, monkeypatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
         owner = run_settings_db(ensure_default_user)
 
         with client.websocket_connect('/api/v1/locks/ws') as websocket:
@@ -178,7 +178,7 @@ class TestLockWebsocket:
         }
 
     def test_watch_acquire_succeeds_with_aware_existing_lock(self, client, test_db_session, monkeypatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
         owner = run_settings_db(ensure_default_user)
         now = datetime.now(UTC)
         lock = ResourceLock(
@@ -202,7 +202,7 @@ class TestLockWebsocket:
         assert initial['lock']['lock_token'] == 'aware-existing-token'
 
     def test_watch_receives_initial_and_release_updates(self, client, monkeypatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
         owner = run_settings_db(ensure_default_user)
 
         acquire = client.post(
@@ -238,7 +238,7 @@ class TestLockWebsocket:
         }
 
     def test_disconnect_releases_socket_owned_lock(self, client, test_db_session, monkeypatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
 
         with client.websocket_connect('/api/v1/locks/ws') as websocket:
             assert websocket.receive_json() == {'type': 'connected'}
@@ -261,7 +261,7 @@ class TestLockWebsocket:
         test_db_session,
         monkeypatch,
     ) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
         owner = run_settings_db(ensure_default_user)
 
         acquire = client.post(
@@ -313,7 +313,7 @@ class TestLockWebsocket:
         assert updated.expires_at - updated.last_heartbeat == timedelta(seconds=45)
 
     def test_ping_without_watch_returns_error(self, client, monkeypatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
 
         with client.websocket_connect('/api/v1/locks/ws') as websocket:
             assert websocket.receive_json() == {'type': 'connected'}
@@ -327,7 +327,7 @@ class TestLockWebsocket:
         }
 
     def test_status_lookup_cleanup_notifies_watchers(self, client, test_db_session, monkeypatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
 
         now = datetime.now(UTC).replace(tzinfo=None)
         lock = ResourceLock(

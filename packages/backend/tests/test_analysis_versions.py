@@ -145,7 +145,7 @@ def test_restore_version_rejects_when_analysis_locked_by_other_owner(
     sample_datasource: DataSource,
     monkeypatch,
 ):
-    monkeypatch.setattr('core.config.settings.auth_required', False)
+    monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
     analysis_id = str(uuid.uuid4())
     now = datetime.now(UTC)
     analysis_pipeline: dict[str, Any] = {

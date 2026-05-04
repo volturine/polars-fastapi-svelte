@@ -6,6 +6,14 @@ from unittest.mock import AsyncMock
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from backend_core.auth_exceptions import (
+    DefaultUserDeletionError,
+    EmailAlreadyExistsError,
+    InvalidCredentialsError,
+    ProviderUnlinkError,
+    TokenExpiredError,
+    TokenInvalidError,
+)
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 from main import app
@@ -41,14 +49,6 @@ from contracts.analysis.models import Analysis, AnalysisStatus
 from contracts.datasource.models import DataSource
 from contracts.udf_models import Udf
 from core.database import clear_settings_engine_override, get_settings_db, set_settings_engine_override
-from core.exceptions import (
-    DefaultUserDeletionError,
-    EmailAlreadyExistsError,
-    InvalidCredentialsError,
-    ProviderUnlinkError,
-    TokenExpiredError,
-    TokenInvalidError,
-)
 from core.namespace import namespace_paths
 
 
@@ -182,9 +182,9 @@ class TestUserService:
 
         engine, _schema = _make_postgres_engine('auth')
         monkeypatch.setattr(database, 'settings_engine', engine, raising=False)
-        monkeypatch.setattr('core.config.settings.default_user_email', 'seeded@example.com')
-        monkeypatch.setattr('core.config.settings.default_user_password', 'SeededPass123')
-        monkeypatch.setattr('core.config.settings.default_user_name', 'Seeded User')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_email', 'seeded@example.com')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_password', 'SeededPass123')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_name', 'Seeded User')
 
         ensure_backend_public_tables()
         with Session(engine) as session:
@@ -200,9 +200,9 @@ class TestUserService:
             assert provider is not None
 
     def test_ensure_default_user_seeds_from_env(self, auth_db_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr('core.config.settings.default_user_email', 'guest@example.com')
-        monkeypatch.setattr('core.config.settings.default_user_password', 'GuestPass123')
-        monkeypatch.setattr('core.config.settings.default_user_name', 'Guest User')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_email', 'guest@example.com')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_password', 'GuestPass123')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_name', 'Guest User')
 
         user = ensure_default_user(auth_db_session)
 
@@ -220,14 +220,14 @@ class TestUserService:
         assert verify_password('GuestPass123', cast(str, provider.provider_metadata['password_hash'])) is True
 
     def test_ensure_default_user_updates_existing_account(self, auth_db_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr('core.config.settings.default_user_email', 'first@example.com')
-        monkeypatch.setattr('core.config.settings.default_user_password', 'FirstPass123')
-        monkeypatch.setattr('core.config.settings.default_user_name', 'First User')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_email', 'first@example.com')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_password', 'FirstPass123')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_name', 'First User')
         first = ensure_default_user(auth_db_session)
 
-        monkeypatch.setattr('core.config.settings.default_user_email', 'second@example.com')
-        monkeypatch.setattr('core.config.settings.default_user_password', 'SecondPass123')
-        monkeypatch.setattr('core.config.settings.default_user_name', 'Second User')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_email', 'second@example.com')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_password', 'SecondPass123')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_name', 'Second User')
         updated = ensure_default_user(auth_db_session)
 
         assert updated.id == first.id
@@ -246,15 +246,15 @@ class TestUserService:
         auth_db_session: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr('core.config.settings.default_user_email', 'default@example.com')
-        monkeypatch.setattr('core.config.settings.default_user_password', 'DefaultPass123')
-        monkeypatch.setattr('core.config.settings.default_user_name', 'Default User')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_email', 'default@example.com')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_password', 'DefaultPass123')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_name', 'Default User')
         user = ensure_default_user(auth_db_session)
         create_user(auth_db_session, 'taken@example.com', 'Password123', 'Taken User')
 
-        monkeypatch.setattr('core.config.settings.default_user_email', 'taken@example.com')
-        monkeypatch.setattr('core.config.settings.default_user_password', 'ChangedPass123')
-        monkeypatch.setattr('core.config.settings.default_user_name', 'Renamed Default')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_email', 'taken@example.com')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_password', 'ChangedPass123')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_name', 'Renamed Default')
         updated = ensure_default_user(auth_db_session)
 
         assert updated.id == user.id
@@ -719,10 +719,10 @@ class TestAuthRoutes:
         auth_db_session: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
-        monkeypatch.setattr('core.config.settings.default_user_email', 'guest@example.com')
-        monkeypatch.setattr('core.config.settings.default_user_password', 'GuestPass123')
-        monkeypatch.setattr('core.config.settings.default_user_name', 'Guest User')
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_email', 'guest@example.com')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_password', 'GuestPass123')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_name', 'Guest User')
         ensure_default_user(auth_db_session)
 
         app = FastAPI()
@@ -753,7 +753,7 @@ class TestAuthRoutes:
         auth_db_session: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', True)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', True)
 
         app = FastAPI()
 
@@ -783,10 +783,10 @@ class TestAuthRoutes:
         auth_db_session: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', False)
-        monkeypatch.setattr('core.config.settings.default_user_email', 'guest@example.com')
-        monkeypatch.setattr('core.config.settings.default_user_password', 'GuestPass123')
-        monkeypatch.setattr('core.config.settings.default_user_name', 'Guest User')
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_email', 'guest@example.com')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_password', 'GuestPass123')
+        monkeypatch.setattr('backend_core.auth_config.settings.default_user_name', 'Guest User')
         ensure_default_user(auth_db_session)
 
         response = auth_client.get('/api/v1/auth/me')
@@ -818,7 +818,7 @@ class TestAuthRoutes:
         auth_db_session: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr('core.config.settings.verify_email_address', False)
+        monkeypatch.setattr('backend_core.auth_config.settings.verify_email_address', False)
         send = AsyncMock(return_value=True)
         monkeypatch.setattr('modules.auth.routes.send_verification_email', send)
 
@@ -936,14 +936,14 @@ class TestAuthRoutes:
         assert response.json()['email'] == 'me@example.com'
 
     def test_me_unauthenticated(self, auth_client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', True)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', True)
 
         response = auth_client.get('/api/v1/auth/me')
 
         assert response.status_code == 401
 
     def test_me_unauthenticated_when_auth_required(self, auth_client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', True)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', True)
 
         response = auth_client.get('/api/v1/auth/me')
 
@@ -973,7 +973,7 @@ class TestAuthRoutes:
         auth_db_session: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', True)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', True)
         user = create_user(auth_db_session, 'delete-me@example.com', 'Password123', 'Delete Me')
         current_session = create_session(auth_db_session, user.id, 'pytest-agent', '127.0.0.1')
         create_session(auth_db_session, user.id, 'pytest-agent-2', '127.0.0.2')
@@ -1056,7 +1056,7 @@ class TestAuthRoutes:
         auth_db_session: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        monkeypatch.setattr('core.config.settings.auth_required', True)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', True)
         default_user = ensure_default_user(auth_db_session)
         default_session = create_session(auth_db_session, default_user.id, 'pytest-agent', '127.0.0.1')
         auth_client.cookies.set('session_token', default_session.id)
@@ -1295,7 +1295,7 @@ class TestAuthRoutes:
             )
         )
         monkeypatch.setattr('modules.auth.routes.http_client.get_async_client', lambda: client)
-        monkeypatch.setattr('core.config.settings.auth_frontend_url', 'https://app.example.com')
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_frontend_url', 'https://app.example.com')
 
         response = auth_client.get(
             f'/api/v1/auth/google/callback?code=test-code&state={state}',
@@ -1336,7 +1336,7 @@ class TestAuthRoutes:
             ]
         )
         monkeypatch.setattr('modules.auth.routes.http_client.get_async_client', lambda: client)
-        monkeypatch.setattr('core.config.settings.auth_frontend_url', 'https://app.example.com')
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_frontend_url', 'https://app.example.com')
 
         response = auth_client.get(
             f'/api/v1/auth/github/callback?code=test-code&state={state}',

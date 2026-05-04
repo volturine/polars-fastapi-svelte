@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 import uuid
 
+from backend_core.auth_config import settings as auth_settings
 from backend_core.error_handlers import handle_errors
 from backend_core.settings_store import get_settings
 from fastapi import Query
@@ -84,11 +85,11 @@ def get_config() -> FrontendConfig:
         log_client_flush_cooldown_ms=settings.log_client_flush_cooldown_ms,
         log_queue_max_size=settings.log_queue_max_size,
         public_idb_debug=db_settings.public_idb_debug,
-        auth_required=settings.auth_required,
+        auth_required=auth_settings.auth_required,
         smtp_enabled=bool(db_settings.smtp_host and db_settings.smtp_user),
         telegram_enabled=bool(db_settings.telegram_bot_enabled and db_settings.telegram_bot_token),
         default_namespace=settings.default_namespace,
-        verify_email_address=settings.verify_email_address,
+        verify_email_address=auth_settings.verify_email_address,
     )
     _config_cache = config
     _config_cache_time = now

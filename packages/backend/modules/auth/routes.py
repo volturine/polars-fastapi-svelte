@@ -3,6 +3,8 @@ import secrets
 import time
 from urllib.parse import urlencode
 
+from backend_core.auth_config import settings as auth_settings
+from backend_core.auth_exceptions import AccountDisabledError, InvalidCredentialsError, OAuthError
 from backend_core.error_handlers import handle_errors
 from backend_core.proxy import client_ip, request_scheme
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -10,9 +12,7 @@ from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 
 from core import http as http_client
-from core.config import settings
 from core.database import get_settings_db, run_settings_db
-from core.exceptions import AccountDisabledError, InvalidCredentialsError, OAuthError
 from modules.auth.dependencies import get_current_user
 from modules.auth.models import AuthProvider, AuthProviderName, User, UserStatus, VerificationTokenType
 from modules.auth.schemas import (
@@ -153,7 +153,7 @@ def _request_ip_address(request: Request) -> str | None:
 @router.post('/register', response_model=UserPublic)
 @handle_errors(operation='register')
 async def register(body: RegisterRequest, request: Request, response: Response, session: Session = Depends(get_settings_db)) -> UserPublic:
-    needs_verification = settings.verify_email_address
+    needs_verification = auth_settings.verify_email_address
     user = create_user(session, body.email, body.password, body.display_name, email_verified=not needs_verification)
     if needs_verification:
         token = create_verification_token(session, user_id=user.id, token_type=VerificationTokenType.EMAIL_VERIFY)
@@ -269,7 +269,7 @@ def _resolve_me(session: Session, token: str | None) -> UserPublic:
         user = validate_session(session, token)
         if user:
             return _build_user_public(session, user)
-    if not settings.auth_required:
+    if not auth_settings.auth_required:
         user = ensure_default_user(session)
         return _build_user_public(session, user)
     raise HTTPException(status_code=401, detail='Not authenticated')
@@ -351,8 +351,8 @@ async def revoke_all_sessions_route(
 async def google_oauth_start(request: Request) -> RedirectResponse:
     state = secrets.token_urlsafe(32)
     params = {
-        'client_id': settings.google_client_id,
-        'redirect_uri': settings.google_redirect_uri,
+        'client_id': auth_settings.google_client_id,
+        'redirect_uri': auth_settings.google_redirect_uri,
         'response_type': 'code',
         'scope': 'openid email profile',
         'access_type': 'online',
@@ -377,14 +377,14 @@ async def google_oauth_callback(
     params: OAuthCallbackParams = Depends(),
     session: Session = Depends(get_settings_db),
 ) -> RedirectResponse:
-    redirect_url = f'{settings.auth_frontend_url}/callback'
+    redirect_url = f'{auth_settings.auth_frontend_url}/callback'
     response = RedirectResponse(url=redirect_url)
     _validate_oauth_state(request, response, provider=AuthProviderName.GOOGLE.value, state=params.state)
     token_payload = {
         'code': params.code,
-        'client_id': settings.google_client_id,
-        'client_secret': settings.google_client_secret,
-        'redirect_uri': settings.google_redirect_uri,
+        'client_id': auth_settings.google_client_id,
+        'client_secret': auth_settings.google_client_secret,
+        'redirect_uri': auth_settings.google_redirect_uri,
         'grant_type': 'authorization_code',
     }
     client = http_client.get_async_client()
@@ -430,8 +430,8 @@ async def google_oauth_callback(
 async def github_oauth_start(request: Request) -> RedirectResponse:
     state = secrets.token_urlsafe(32)
     params = {
-        'client_id': settings.github_client_id,
-        'redirect_uri': settings.github_redirect_uri,
+        'client_id': auth_settings.github_client_id,
+        'redirect_uri': auth_settings.github_redirect_uri,
         'scope': 'read:user user:email',
         'state': state,
     }
@@ -453,14 +453,14 @@ async def github_oauth_callback(
     params: OAuthCallbackParams = Depends(),
     session: Session = Depends(get_settings_db),
 ) -> RedirectResponse:
-    redirect_url = f'{settings.auth_frontend_url}/callback'
+    redirect_url = f'{auth_settings.auth_frontend_url}/callback'
     response = RedirectResponse(url=redirect_url)
     _validate_oauth_state(request, response, provider=AuthProviderName.GITHUB.value, state=params.state)
     payload = {
-        'client_id': settings.github_client_id,
-        'client_secret': settings.github_client_secret,
+        'client_id': auth_settings.github_client_id,
+        'client_secret': auth_settings.github_client_secret,
         'code': params.code,
-        'redirect_uri': settings.github_redirect_uri,
+        'redirect_uri': auth_settings.github_redirect_uri,
     }
     headers = {'Accept': 'application/json'}
     client = http_client.get_async_client()

@@ -11,6 +11,8 @@ import pytest
 from fastapi.testclient import TestClient
 from modules.chat.sessions import ChatSession, LiveSession, SessionStore
 
+from core.secrets import encrypt_secret
+
 
 def _session_history(session_id: str) -> list[dict]:
     from modules.chat.sessions import session_store
@@ -53,20 +55,20 @@ async def _wait_for_history_async(
 
 class TestLiveSession:
     def test_add_message_appends_to_messages(self) -> None:
-        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key='key')
+        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key=encrypt_secret('key'))
         s = LiveSession(row)
         s.add_message('user', 'hello')
         assert s.messages == [{'role': 'user', 'content': 'hello'}]
 
     def test_push_event_stores_in_history(self) -> None:
-        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key='key')
+        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key=encrypt_secret('key'))
         s = LiveSession(row)
         s.push_event({'type': 'message', 'role': 'user', 'content': 'hi'})
         assert len(s.get_history()) == 1
         assert s.get_history()[0]['type'] == 'message'
 
     def test_get_history_returns_copy(self) -> None:
-        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key='key')
+        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key=encrypt_secret('key'))
         s = LiveSession(row)
         s.push_event({'type': 'done'})
         history = s.get_history()
@@ -74,20 +76,20 @@ class TestLiveSession:
         assert len(s.get_history()) == 1
 
     def test_push_event_queues_when_not_closed(self) -> None:
-        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key='key')
+        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key=encrypt_secret('key'))
         s = LiveSession(row)
         s.push_event({'type': 'done'})
         assert s._queue.qsize() == 1
 
     def test_push_event_skips_queue_when_closed(self) -> None:
-        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key='key')
+        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key=encrypt_secret('key'))
         s = LiveSession(row)
         s.close_stream()
         s.push_event({'type': 'done'})
         assert s._queue.qsize() == 1
 
     def test_multiple_turns_accumulate_history(self) -> None:
-        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key='key')
+        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key=encrypt_secret('key'))
         s = LiveSession(row)
         s.push_event({'type': 'message', 'role': 'user', 'content': 'hi'})
         s.push_event({'type': 'message', 'role': 'assistant', 'content': 'hello'})
@@ -97,7 +99,7 @@ class TestLiveSession:
         assert len(s.get_history()) == 5
 
     async def test_busy_guard(self) -> None:
-        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key='key')
+        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key=encrypt_secret('key'))
         s = LiveSession(row)
         assert s.busy is False
         await s.set_busy(True)
@@ -106,7 +108,7 @@ class TestLiveSession:
         assert s.busy is False
 
     def test_bounded_messages(self) -> None:
-        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key='key')
+        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key=encrypt_secret('key'))
         s = LiveSession(row)
         for i in range(120):
             s.add_message('user', f'msg-{i}')
@@ -115,7 +117,7 @@ class TestLiveSession:
         assert s.messages[0]['content'] == 'msg-20'
 
     def test_bounded_history(self) -> None:
-        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key='key')
+        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key=encrypt_secret('key'))
         s = LiveSession(row)
         s.close_stream()
         for i in range(520):
@@ -123,7 +125,7 @@ class TestLiveSession:
         assert len(s.get_history()) == 500
 
     def test_reopen_stream(self) -> None:
-        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key='key')
+        row = ChatSession(id='sid', provider='openrouter', model='gpt-4o-mini', api_key=encrypt_secret('key'))
         s = LiveSession(row)
         s.close_stream()
         assert s._closed is True
@@ -226,20 +228,16 @@ class TestSessionStore:
             assert row.api_key != 'key'
             assert row.api_key.startswith('enc:v1:')
 
-    def test_legacy_api_key_migrates_on_load(self) -> None:
+    def test_rejects_unsupported_api_key_storage_format(self) -> None:
+        from core.exceptions import SettingsConfigurationError
+
         store = SessionStore()
         with store._db() as db:
             row = ChatSession(id='legacy', provider='openrouter', model='gpt-4o-mini', api_key='legacy-key')
             db.add(row)
             db.commit()
-        live = store.get('legacy')
-        assert live is not None
-        assert live.api_key == 'legacy-key'
-        with store._db() as db:
-            stored = db.get(ChatSession, 'legacy')
-            assert stored is not None
-            assert stored.api_key != 'legacy-key'
-            assert stored.api_key.startswith('enc:v1:')
+        with pytest.raises(SettingsConfigurationError, match='supported format'):
+            store.get('legacy')
 
 
 class TestChatRoutes:
@@ -247,7 +245,7 @@ class TestChatRoutes:
         from main import app
         from modules.auth.dependencies import get_current_user
 
-        monkeypatch.setattr('core.config.settings.auth_required', True)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', True)
         app.dependency_overrides.pop(get_current_user, None)
         resp = client.get('/api/v1/ai/chat/sessions')
         assert resp.status_code == 401
@@ -555,7 +553,7 @@ class TestModelsRoute:
         from main import app
         from modules.auth.dependencies import get_current_user
 
-        monkeypatch.setattr('core.config.settings.auth_required', True)
+        monkeypatch.setattr('backend_core.auth_config.settings.auth_required', True)
         app.dependency_overrides.pop(get_current_user, None)
         resp = client.post('/api/v1/ai/chat/models', json={'provider': 'openrouter', 'api_key': 'sk-test'})
         assert resp.status_code == 401
@@ -983,7 +981,7 @@ class TestProductionHardening:
 
     def test_truncation_preserves_system_message(self) -> None:
         """System message at index 0 survives truncation."""
-        row = ChatSession(id='sid', provider='openrouter', model='m', api_key='k')
+        row = ChatSession(id='sid', provider='openrouter', model='m', api_key=encrypt_secret('k'))
         s = LiveSession(row)
         s.add_message('system', 'You are helpful.')
         for i in range(120):
@@ -994,7 +992,7 @@ class TestProductionHardening:
 
     async def test_acquire_turn_is_atomic(self) -> None:
         """Two concurrent acquire_turn calls — exactly one wins."""
-        row = ChatSession(id='sid', provider='openrouter', model='m', api_key='k')
+        row = ChatSession(id='sid', provider='openrouter', model='m', api_key=encrypt_secret('k'))
         s = LiveSession(row)
         results = await asyncio.gather(s.acquire_turn(), s.acquire_turn())
         assert sorted(results) == [False, True]
@@ -1098,7 +1096,7 @@ class TestProductionHardening:
 
     def test_reopen_stream_preserves_queued_events(self) -> None:
         """Events queued before reopen_stream are not lost."""
-        row = ChatSession(id='sid', provider='openrouter', model='m', api_key='k')
+        row = ChatSession(id='sid', provider='openrouter', model='m', api_key=encrypt_secret('k'))
         s = LiveSession(row)
         s.push_event({'type': 'message', 'content': 'preserved'})
         s.reopen_stream()
@@ -1384,7 +1382,7 @@ class TestOpenRouterToolMapping:
 
 class TestToolContractFormatting:
     def test_format_output_hint_matches_expected_shape(self) -> None:
-        from modules.chat.tool_contract import format_output_hint, top_level_output_fields
+        from modules.mcp.tool_output import format_output_hint, top_level_output_fields
 
         schema = {
             'type': 'array',
@@ -1528,7 +1526,7 @@ class TestBugFixes:
 
     def test_append_message_enforces_truncation(self) -> None:
         """append_message helper respects MAX_MESSAGES and preserves system message."""
-        row = ChatSession(id='sid', provider='openrouter', model='m', api_key='k')
+        row = ChatSession(id='sid', provider='openrouter', model='m', api_key=encrypt_secret('k'))
         s = LiveSession(row)
         s.append_message({'role': 'system', 'content': 'system'})
         for i in range(120):
@@ -1538,7 +1536,7 @@ class TestBugFixes:
 
     def test_assistant_message_omits_tool_calls_key_when_empty(self) -> None:
         """Assistant messages without tool_calls must not include the key."""
-        row = ChatSession(id='sid', provider='openrouter', model='m', api_key='k')
+        row = ChatSession(id='sid', provider='openrouter', model='m', api_key=encrypt_secret('k'))
         s = LiveSession(row)
         msg: dict = {'role': 'assistant', 'content': 'hello'}
         s.append_message(msg)

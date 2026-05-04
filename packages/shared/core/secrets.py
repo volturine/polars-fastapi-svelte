@@ -12,7 +12,6 @@ from core.exceptions import SettingsConfigurationError
 
 MASKED_SECRET = '••••••••'
 _ENCRYPTED_PREFIX = 'enc:v1:'
-_LEGACY_PREFIX = 'enc:'
 _AAD = b'polars-fastapi-svelte.secret.v1'
 
 
@@ -49,28 +48,8 @@ def _decode_payload(payload: str) -> bytes:
     return base64.urlsafe_b64decode(f'{payload}{padding}'.encode('ascii'))
 
 
-def _xor_bytes(payload: bytes, key: bytes) -> bytes:
-    return bytes(b ^ key[idx % len(key)] for idx, b in enumerate(payload))
-
-
-def _decrypt_legacy_secret(value: str) -> str:
-    try:
-        encrypted = bytes.fromhex(value.removeprefix(_LEGACY_PREFIX))
-    except ValueError as exc:
-        raise SettingsConfigurationError('Stored secret uses an invalid legacy format') from exc
-    raw = _xor_bytes(encrypted, _require_key_material().encode('utf-8'))
-    try:
-        return raw.decode('utf-8')
-    except UnicodeDecodeError as exc:
-        raise SettingsConfigurationError('Stored secret uses an invalid legacy encoding') from exc
-
-
 def is_encrypted_secret(value: str | None) -> bool:
     return bool(value and value.startswith(_ENCRYPTED_PREFIX))
-
-
-def is_legacy_encrypted_secret(value: str | None) -> bool:
-    return bool(value and value.startswith(_LEGACY_PREFIX) and not value.startswith(_ENCRYPTED_PREFIX))
 
 
 def is_masked_secret(value: str | None) -> bool:
@@ -84,7 +63,8 @@ def mask_secret(value: str | None) -> str:
 
 
 def should_migrate_secret(value: str | None) -> bool:
-    return bool(value) and not is_encrypted_secret(value) and encryption_available()
+    del value
+    return False
 
 
 def encrypt_secret(value: str) -> str:
@@ -114,6 +94,4 @@ def decrypt_secret(value: str) -> str:
             raise
         except Exception as exc:
             raise SettingsConfigurationError('Stored secret could not be decrypted') from exc
-    if is_legacy_encrypted_secret(value):
-        return _decrypt_legacy_secret(value)
-    return value
+    raise SettingsConfigurationError('Stored secret is not encrypted with the supported format')

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import importlib
 import os
 import threading
 import uuid
@@ -49,6 +50,23 @@ class _InProcessRuntimeAvailabilityProbe:
         if kind is not RuntimeWorkerKind.BUILD_MANAGER:
             return False
         return self._is_alive()
+
+
+class _InProcessComputeOverrideExecutor:
+    def preview_step(self, **kwargs):
+        return importlib.import_module('compute_service').preview_step(**kwargs)
+
+    def get_step_schema(self, **kwargs):
+        return importlib.import_module('compute_service').get_step_schema(**kwargs)
+
+    def get_step_row_count(self, **kwargs):
+        return importlib.import_module('compute_service').get_step_row_count(**kwargs)
+
+    def download_step(self, **kwargs):
+        return importlib.import_module('compute_service').download_step(**kwargs)
+
+    def export_data(self, **kwargs):
+        return importlib.import_module('compute_service').export_data(**kwargs)
 
 
 def _register_sqlmodel_metadata() -> None:
@@ -278,6 +296,7 @@ def client(test_db_session, test_user):
         del app.state.mcp_registry
 
     app.state.manager = ProcessManager()
+    app.state.compute_override_executor = _InProcessComputeOverrideExecutor()
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = lambda: test_user
     with TestClient(app) as ac:
@@ -290,6 +309,8 @@ def client(test_db_session, test_user):
             runtime_thread.join(timeout=10)
             if hasattr(app.state, 'runtime_availability_probe'):
                 del app.state.runtime_availability_probe
+            if hasattr(app.state, 'compute_override_executor'):
+                del app.state.compute_override_executor
             app.state.manager.shutdown_all()
     app.dependency_overrides.clear()
 

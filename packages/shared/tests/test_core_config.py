@@ -1,6 +1,5 @@
 import os
 import tempfile
-import warnings
 from pathlib import Path
 
 import pytest
@@ -47,8 +46,6 @@ class TestSettings:
         assert settings.lock_ttl_seconds == 30
         assert settings.lock_heartbeat_interval_seconds == 10
         assert settings.public_idb_debug is False
-        assert settings.auth_required is False
-        assert settings.verify_email_address is True
         assert settings.sql_echo is False
         assert settings.prod_mode_enabled is False
 
@@ -80,14 +77,6 @@ class TestSettings:
         settings = Settings()
 
         assert settings.sql_echo is True
-
-    def test_verify_email_address_from_env(self, monkeypatch, tmp_path):
-        _set_isolated_settings_env(monkeypatch, tmp_path)
-        monkeypatch.setenv('VERIFY_EMAIL_ADDRESS', 'false')
-
-        settings = Settings()
-
-        assert settings.verify_email_address is False
 
     def test_polars_settings(self, monkeypatch, tmp_path):
         _set_isolated_settings_env(monkeypatch, tmp_path)
@@ -261,45 +250,6 @@ class TestSettings:
 
         assert settings.app_name == 'Data-Forge Analysis Platform'
         assert settings.app_version == '1.0.0'
-
-    def test_warns_when_auth_required_without_encryption_key(self, monkeypatch, tmp_path):
-        _set_isolated_settings_env(monkeypatch, tmp_path)
-        monkeypatch.setenv('AUTH_REQUIRED', 'true')
-        monkeypatch.delenv('SETTINGS_ENCRYPTION_KEY', raising=False)
-
-        with pytest.warns(UserWarning, match='SETTINGS_ENCRYPTION_KEY is empty while AUTH_REQUIRED=True'):
-            Settings()
-
-    def test_no_warning_when_auth_disabled_without_encryption_key(self, monkeypatch, tmp_path):
-        _set_isolated_settings_env(monkeypatch, tmp_path)
-        monkeypatch.setenv('AUTH_REQUIRED', 'false')
-        monkeypatch.delenv('SETTINGS_ENCRYPTION_KEY', raising=False)
-
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter('always')
-            settings = Settings()
-
-        assert settings.auth_required is False
-        assert not caught
-
-    def test_rejects_production_auth_without_encryption_key(self, monkeypatch, tmp_path):
-        _set_isolated_settings_env(monkeypatch, tmp_path)
-        monkeypatch.setenv('PROD_MODE_ENABLED', 'true')
-        monkeypatch.setenv('AUTH_REQUIRED', 'true')
-        monkeypatch.delenv('SETTINGS_ENCRYPTION_KEY', raising=False)
-
-        with pytest.raises(ValidationError, match='SETTINGS_ENCRYPTION_KEY must be set'):
-            Settings()
-
-    def test_rejects_production_placeholder_default_password(self, monkeypatch, tmp_path):
-        _set_isolated_settings_env(monkeypatch, tmp_path)
-        monkeypatch.setenv('PROD_MODE_ENABLED', 'true')
-        monkeypatch.setenv('AUTH_REQUIRED', 'true')
-        monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'prod-key')
-        monkeypatch.setenv('DEFAULT_USER_PASSWORD', 'ChangeMe123!')
-
-        with pytest.raises(ValidationError, match='DEFAULT_USER_PASSWORD must be changed'):
-            Settings()
 
     def test_trusted_proxy_hops_must_be_non_negative(self, monkeypatch, tmp_path):
         _set_isolated_settings_env(monkeypatch, tmp_path)

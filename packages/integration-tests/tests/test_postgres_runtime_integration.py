@@ -302,6 +302,7 @@ def test_init_db_postgres_shared_seed_is_safe_under_concurrent_startup(monkeypat
 def test_backend_public_bootstrap_creates_auth_tables_and_default_user(monkeypatch, tmp_path: Path) -> None:
     require_docker()
 
+    from backend_core.auth_config import settings as auth_settings
     from backend_core.public_schema import ensure_backend_public_tables
     from modules.auth.service import ensure_default_user
 
@@ -315,9 +316,9 @@ def test_backend_public_bootstrap_creates_auth_tables_and_default_user(monkeypat
         monkeypatch.setattr(settings, 'database_url', container.url, raising=False)
         monkeypatch.setattr(settings, 'data_dir', data_dir, raising=False)
         monkeypatch.setattr(settings, 'distributed_runtime_enabled', True, raising=False)
-        monkeypatch.setattr(settings, 'default_user_email', 'seeded@example.com', raising=False)
-        monkeypatch.setattr(settings, 'default_user_password', 'SeededPass123', raising=False)
-        monkeypatch.setattr(settings, 'default_user_name', 'Seeded User', raising=False)
+        monkeypatch.setattr(auth_settings, 'default_user_email', 'seeded@example.com', raising=False)
+        monkeypatch.setattr(auth_settings, 'default_user_password', 'SeededPass123', raising=False)
+        monkeypatch.setattr(auth_settings, 'default_user_name', 'Seeded User', raising=False)
         database.set_settings_engine_override(database._create_public_engine())
 
         asyncio.run(database.init_db())

@@ -7,9 +7,9 @@ from modules.auth.dependencies import _resolve_session_token
 from modules.auth.service import ensure_default_user, validate_session
 from sqlmodel import Session
 
+from backend_core.auth_config import settings as auth_settings
 from contracts.runtime_workers.models import RuntimeWorkerKind
 from core import runtime_workers_service
-from core.config import settings
 from core.database import get_settings_db
 
 
@@ -41,7 +41,7 @@ def resolve_lock_owner_id(session: Session, token: str | None) -> str | None:
         user = validate_session(session, token)
         if user is not None:
             return user.id
-    if not settings.auth_required:
+    if not auth_settings.auth_required:
         return ensure_default_user(session).id
     return None
 

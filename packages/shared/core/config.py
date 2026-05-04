@@ -215,26 +215,6 @@ class Settings(BaseSettings):
     ollama_default_model_db: str = Field(default='', alias='OLLAMA_DEFAULT_MODEL_DB')
     huggingface_default_model_db: str = Field(default='', alias='HUGGINGFACE_DEFAULT_MODEL_DB')
 
-    # Auth / OAuth
-    auth_required: bool = Field(default=False, alias='AUTH_REQUIRED')
-    verify_email_address: bool = Field(default=True, alias='VERIFY_EMAIL_ADDRESS')
-    default_user_email: str = Field(default='default@example.com', alias='DEFAULT_USER_EMAIL')
-    default_user_password: str = Field(default='ChangeMe123', alias='DEFAULT_USER_PASSWORD')
-    default_user_name: str = Field(default='Default User', alias='DEFAULT_USER_NAME')
-    google_client_id: str = Field(default='', alias='GOOGLE_CLIENT_ID')
-    google_client_secret: str = Field(default='', alias='GOOGLE_CLIENT_SECRET')
-    google_redirect_uri: str = Field(
-        default='http://localhost:8000/api/v1/auth/google/callback',
-        alias='GOOGLE_REDIRECT_URI',
-    )
-    github_client_id: str = Field(default='', alias='GITHUB_CLIENT_ID')
-    github_client_secret: str = Field(default='', alias='GITHUB_CLIENT_SECRET')
-    github_redirect_uri: str = Field(
-        default='http://localhost:8000/api/v1/auth/github/callback',
-        alias='GITHUB_REDIRECT_URI',
-    )
-    auth_frontend_url: str = Field(default='http://localhost:5173', alias='AUTH_FRONTEND_URL')
-    session_max_age_days: int = Field(default=30, alias='SESSION_MAX_AGE_DAYS')
     trusted_proxy_hops: int = Field(default=0, alias='TRUSTED_PROXY_HOPS')
 
     @property
@@ -291,19 +271,6 @@ class Settings(BaseSettings):
             raise ValueError(f'log_queue_overflow must be one of {valid}, got {value}')
         return value.lower()
 
-    @field_validator('default_user_password')
-    @classmethod
-    def _validate_default_user_password(cls, value: str) -> str:
-        if len(value) < 8:
-            raise ValueError('DEFAULT_USER_PASSWORD must be at least 8 characters long')
-        if not any(char.isupper() for char in value):
-            raise ValueError('DEFAULT_USER_PASSWORD must contain at least one uppercase letter')
-        if not any(char.islower() for char in value):
-            raise ValueError('DEFAULT_USER_PASSWORD must contain at least one lowercase letter')
-        if not any(char.isdigit() for char in value):
-            raise ValueError('DEFAULT_USER_PASSWORD must contain at least one digit')
-        return value
-
     @field_validator('trusted_proxy_hops')
     @classmethod
     def _validate_trusted_proxy_hops(cls, value: int) -> int:
@@ -331,22 +298,6 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode='after')
-    def _validate_encryption_key(self) -> 'Settings':
-        encryption_key = self.settings_encryption_key.strip()
-        if self.auth_required and self.prod_mode_enabled and (not encryption_key or encryption_key in _PLACEHOLDER_ENCRYPTION_KEYS):
-            raise ValueError('SETTINGS_ENCRYPTION_KEY must be set to a non-placeholder value when AUTH_REQUIRED=true in production')
-        if self.auth_required and (not encryption_key or encryption_key in _PLACEHOLDER_ENCRYPTION_KEYS):
-            import warnings
-
-            warnings.warn(
-                'SETTINGS_ENCRYPTION_KEY is empty while AUTH_REQUIRED=True. '
-                'Stored secrets (SMTP passwords, API keys) will not be encrypted. '
-                'Set SETTINGS_ENCRYPTION_KEY to a strong random value for production.',
-                stacklevel=2,
-            )
-        return self
-
-    @model_validator(mode='after')
     def _validate_lock_intervals(self) -> 'Settings':
         if self.lock_heartbeat_interval_seconds >= self.lock_ttl_seconds:
             raise ValueError('lock_heartbeat_interval_seconds must be < lock_ttl_seconds')
@@ -360,8 +311,6 @@ class Settings(BaseSettings):
             raise ValueError('BUILD_WORKER_MIN_PROCESSES must be <= BUILD_WORKER_MAX_PROCESSES')
         if self.build_worker_max_processes > self.max_concurrent_engines:
             raise ValueError('BUILD_WORKER_MAX_PROCESSES must be <= MAX_CONCURRENT_ENGINES')
-        if self.prod_mode_enabled and self.auth_required and self.default_user_password.strip().lower() in _PLACEHOLDER_PASSWORDS:
-            raise ValueError('DEFAULT_USER_PASSWORD must be changed from the production placeholder value')
         return self
 
 

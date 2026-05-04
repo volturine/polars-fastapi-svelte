@@ -3,9 +3,9 @@ from backend_core.validation import UdfId, parse_udf_id
 from fastapi import Depends, Query
 from sqlmodel import Session
 
-from contracts.auth_models import User
 from core.database import get_db
 from modules.auth.dependencies import get_optional_user
+from modules.auth.models import User
 from modules.mcp.router import MCPRouter
 from modules.udf import schemas, service
 

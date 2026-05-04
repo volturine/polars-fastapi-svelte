@@ -157,6 +157,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     api_worker_id = f'api:{os.getpid()}'
     app.state.api_worker_id = api_worker_id
     await init_db()
+    from backend_core.public_schema import ensure_backend_public_tables
+    from modules.auth.service import ensure_default_user
+
+    await asyncio.to_thread(ensure_backend_public_tables)
+    await asyncio.to_thread(run_settings_db, ensure_default_user)
     await asyncio.to_thread(_register_api_worker, api_worker_id)
     await asyncio.to_thread(run_db, ensure_udf_seeds)
 
@@ -181,8 +186,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         enabled = bool(resolved.get('enabled'))
         token = str(resolved.get('token', ''))
         return enabled, token
-
-    from core.database import run_settings_db
 
     enabled, token = run_settings_db(_check_bot_enabled)
     if enabled:

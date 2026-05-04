@@ -12,8 +12,8 @@ from typing import Any
 
 from sqlmodel import Session as DbSession, select
 
-from contracts.chat_models import ChatSession
 from core.secrets import decrypt_secret, encrypt_secret, should_migrate_secret
+from modules.chat.models import ChatSession
 
 logger = logging.getLogger(__name__)
 

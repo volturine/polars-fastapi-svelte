@@ -19,8 +19,9 @@ from sqlmodel import Session, create_engine
 from tests.postgres_harness import PostgresContainer, require_docker
 
 if TYPE_CHECKING:
+    from modules.auth.models import User
+
     from contracts.analysis.models import Analysis
-    from contracts.auth_models import User
     from contracts.datasource.models import DataSource
 
 
@@ -51,11 +52,11 @@ class _InProcessRuntimeAvailabilityProbe:
 
 
 def _register_sqlmodel_metadata() -> None:
-    from modules.chat.sessions import ChatSession
+    from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
+    from modules.chat.models import ChatSession
 
     from contracts.analysis.models import Analysis, AnalysisDataSource
     from contracts.analysis_versions.models import AnalysisVersion
-    from contracts.auth_models import AuthProvider, User, UserSession, VerificationToken
     from contracts.build_jobs.models import BuildJob
     from contracts.build_runs.models import BuildEvent, BuildRun
     from contracts.datasource.models import DataSource, DataSourceColumnMetadata
@@ -98,9 +99,9 @@ def _register_sqlmodel_metadata() -> None:
 
 
 def _settings_tables() -> list[Any]:
-    from modules.chat.sessions import ChatSession
+    from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
+    from modules.chat.models import ChatSession
 
-    from contracts.auth_models import AuthProvider, User, UserSession, VerificationToken
     from contracts.engine_instances.models import EngineInstance
     from contracts.namespaces.models import RuntimeNamespace
     from contracts.runtime_workers.models import RuntimeWorker
@@ -197,7 +198,7 @@ def test_db_session(test_engine):
 
 @pytest.fixture(scope='function')
 def test_user() -> User:
-    from contracts.auth_models import User, UserStatus
+    from modules.auth.models import User, UserStatus
 
     now = datetime.now(UTC)
     return User(

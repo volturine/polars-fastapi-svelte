@@ -6,9 +6,9 @@ from backend_core.error_handlers import handle_errors
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel
 
-from contracts.auth_models import User
 from core.namespace import get_namespace
 from modules.auth.dependencies import get_current_user
+from modules.auth.models import User
 from modules.mcp.executor import build_tool_context, call_tool
 from modules.mcp.pending import pending_store
 from modules.mcp.registry import MUTATING_METHODS, build_tool_registry

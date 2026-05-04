@@ -13,15 +13,6 @@ from typing import Any, cast
 from sqlalchemy import inspect, update
 from sqlmodel import Session, select
 
-from contracts.auth_models import (
-    AuthProvider,
-    AuthProviderName,
-    User,
-    UserSession,
-    UserStatus,
-    VerificationToken,
-    VerificationTokenType,
-)
 from core.config import settings
 from core.database import namespace_connection
 from core.exceptions import (
@@ -35,6 +26,15 @@ from core.exceptions import (
 )
 from core.namespace import list_namespaces
 from core.smtp import send_smtp_message
+from modules.auth.models import (
+    AuthProvider,
+    AuthProviderName,
+    User,
+    UserSession,
+    UserStatus,
+    VerificationToken,
+    VerificationTokenType,
+)
 
 
 def _utcnow() -> datetime:

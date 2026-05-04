@@ -12,12 +12,12 @@ from backend_core.validation import DataSourceId, PreflightId, parse_datasource_
 from fastapi import Depends, Form, HTTPException, UploadFile
 from sqlmodel import Session
 
-from contracts.auth_models import User
 from core.config import settings
 from core.database import get_db
 from core.exceptions import AppError
 from core.namespace import namespace_paths
 from modules.auth.dependencies import get_optional_user
+from modules.auth.models import User
 from modules.compute.executor_client import (
     compare_iceberg_snapshots as compare_remote_iceberg_snapshots,
     create_database_datasource as create_remote_database_datasource,

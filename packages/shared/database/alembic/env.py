@@ -8,14 +8,12 @@ from sqlmodel import SQLModel
 from core.config import settings
 
 _MODEL_MODULES = (
-    'modules.analysis.models',
-    'modules.auth.models',
-    'modules.chat.sessions',
-    'modules.datasource.models',
-    'modules.healthcheck.models',
-    'modules.settings.models',
-    'modules.telegram.models',
-    'modules.udf.models',
+    'contracts.analysis.models',
+    'contracts.datasource.models',
+    'contracts.healthcheck_models',
+    'contracts.settings_models',
+    'contracts.telegram_models',
+    'contracts.udf_models',
     'contracts.analysis_versions.models',
     'contracts.build_jobs.models',
     'contracts.build_runs.models',
@@ -37,13 +35,8 @@ if config.config_file_name is not None:
 
 _SHARED_TABLES = {
     'app_settings',
-    'auth_providers',
-    'chat_sessions',
     'engine_instances',
     'runtime_workers',
-    'user_sessions',
-    'users',
-    'verification_tokens',
 }
 _TENANT_TABLES = {
     'analyses',

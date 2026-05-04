@@ -241,7 +241,7 @@ def test_init_db_bootstraps_public_and_tenant_schemas_in_postgres(monkeypatch, t
 
         with container.connect() as connection:
             assert _table_exists(connection, 'public', 'app_settings')
-            assert _table_exists(connection, 'public', 'users')
+            assert not _table_exists(connection, 'public', 'users')
             assert _table_exists(connection, 'public', 'runtime_workers')
             assert _table_exists(connection, 'public', 'engine_instances')
             assert _table_exists(connection, 'default', 'build_runs')
@@ -249,7 +249,6 @@ def test_init_db_bootstraps_public_and_tenant_schemas_in_postgres(monkeypatch, t
             assert _table_exists(connection, 'alpha', 'build_runs')
             assert _table_exists(connection, 'alpha', 'build_jobs')
             assert _query_value(connection, 'SELECT count(*) FROM public.app_settings') == 1
-            assert _query_value(connection, 'SELECT count(*) FROM public.users') == 1
             assert _query_value(connection, 'SELECT version_num FROM public.alembic_version') == '0001_runtime_public'
             assert _query_value(connection, 'SELECT version_num FROM "default".alembic_version') == '0004_runtime_compute_requests'
             assert _query_value(connection, 'SELECT version_num FROM alpha.alembic_version') == '0004_runtime_compute_requests'
@@ -294,6 +293,43 @@ def test_init_db_postgres_shared_seed_is_safe_under_concurrent_startup(monkeypat
 
         with container.connect() as connection:
             assert _query_value(connection, 'SELECT count(*) FROM public.app_settings') == 1
+            assert not _table_exists(connection, 'public', 'users')
+
+        _clear_database_state()
+
+
+@pytest.mark.timeout(300)
+def test_backend_public_bootstrap_creates_auth_tables_and_default_user(monkeypatch, tmp_path: Path) -> None:
+    require_docker()
+
+    from backend_core.public_schema import ensure_backend_public_tables
+    from modules.auth.service import ensure_default_user
+
+    from core import database
+    from core.config import settings
+
+    with PostgresContainer() as container:
+        _clear_database_state()
+        data_dir = tmp_path / 'data'
+        data_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(settings, 'database_url', container.url, raising=False)
+        monkeypatch.setattr(settings, 'data_dir', data_dir, raising=False)
+        monkeypatch.setattr(settings, 'distributed_runtime_enabled', True, raising=False)
+        monkeypatch.setattr(settings, 'default_user_email', 'seeded@example.com', raising=False)
+        monkeypatch.setattr(settings, 'default_user_password', 'SeededPass123', raising=False)
+        monkeypatch.setattr(settings, 'default_user_name', 'Seeded User', raising=False)
+        database.set_settings_engine_override(database._create_public_engine())
+
+        asyncio.run(database.init_db())
+        ensure_backend_public_tables()
+        database.run_settings_db(ensure_default_user)
+
+        with container.connect() as connection:
+            assert _table_exists(connection, 'public', 'users')
+            assert _table_exists(connection, 'public', 'auth_providers')
+            assert _table_exists(connection, 'public', 'user_sessions')
+            assert _table_exists(connection, 'public', 'verification_tokens')
+            assert _table_exists(connection, 'public', 'chat_sessions')
             assert _query_value(connection, 'SELECT count(*) FROM public.users') == 1
 
         _clear_database_state()

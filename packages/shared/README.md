@@ -1,6 +1,6 @@
-# FastAPI Backend
+# Shared Runtime Contracts and Infrastructure
 
-FastAPI backend plus shared runtime contracts for the Postgres-backed Data-Forge runtime.
+Neutral contracts, migrations, persistence primitives, and low-level infrastructure shared by the Postgres-backed Data-Forge runtime.
 
 ## Setup
 

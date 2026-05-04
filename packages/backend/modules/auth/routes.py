@@ -9,12 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 
-from contracts.auth_models import AuthProvider, AuthProviderName, User, UserStatus, VerificationTokenType
 from core import http as http_client
 from core.config import settings
 from core.database import get_settings_db, run_settings_db
 from core.exceptions import AccountDisabledError, InvalidCredentialsError, OAuthError
 from modules.auth.dependencies import get_current_user
+from modules.auth.models import AuthProvider, AuthProviderName, User, UserStatus, VerificationTokenType
 from modules.auth.schemas import (
     ChangePasswordRequest,
     ForgotPasswordRequest,

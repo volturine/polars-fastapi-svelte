@@ -185,8 +185,6 @@ def run_settings_db(func: Callable[Concatenate[Session, P], T], *args: P.args, *
 
 
 def _shared_tables():
-    from contracts.auth_models import AuthProvider, User, UserSession, VerificationToken
-    from contracts.chat_models import ChatSession
     from contracts.engine_instances.models import EngineInstance
     from contracts.namespaces.models import RuntimeNamespace
     from contracts.runtime_workers.models import RuntimeWorker
@@ -194,14 +192,9 @@ def _shared_tables():
 
     table_names = {
         AppSettings.__tablename__,
-        ChatSession.__tablename__,
-        User.__tablename__,
-        AuthProvider.__tablename__,
         EngineInstance.__tablename__,
         RuntimeNamespace.__tablename__,
         RuntimeWorker.__tablename__,
-        UserSession.__tablename__,
-        VerificationToken.__tablename__,
     }
     return [table for table in AppSettings.metadata.sorted_tables if table.name in table_names]
 
@@ -264,14 +257,12 @@ def _init_postgres_namespace(namespace: str) -> None:
 
 
 def _seed_shared_state() -> None:
-    from core.auth_seed import ensure_default_user
     from core.namespaces_service import register_namespace
 
     def _seed(session: Session) -> None:
         if _settings_bootstrap_hook is not None:
             _settings_bootstrap_hook(session)
         register_namespace(session, settings.default_namespace)
-        ensure_default_user(session)
 
     run_settings_db(_seed)
     _invalidate_settings_cache()

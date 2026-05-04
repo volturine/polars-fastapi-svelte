@@ -1,9 +1,9 @@
 from fastapi import Depends, HTTPException, Request
 from sqlmodel import Session
 
-from contracts.auth_models import User
 from core.config import settings
 from core.database import get_settings_db
+from modules.auth.models import User
 from modules.auth.service import ensure_default_user, validate_session
 
 

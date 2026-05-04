@@ -7,13 +7,13 @@ from fastapi import Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlmodel import Session
 
-from contracts.auth_models import User
 from contracts.compute import schemas as compute_schemas
 from core.database import get_db
 from modules.analysis import schemas, service
 from modules.analysis.step_schemas import get_config_model, get_step_catalog
 from modules.analysis.step_types import is_step_type
 from modules.auth.dependencies import get_optional_user
+from modules.auth.models import User
 from modules.compute import executor_client
 from modules.export import service as export_service
 from modules.locks import service as lock_service

@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from contracts.auth_models import AuthProviderName, UserStatus
+from modules.auth.models import AuthProviderName, UserStatus
 
 
 class RegisterRequest(BaseModel):

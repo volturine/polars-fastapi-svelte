@@ -17,10 +17,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
-from contracts.auth_models import User
 from core.ai_clients import get_ai_client
 from core.namespace import get_namespace
 from modules.auth.dependencies import get_current_user
+from modules.auth.models import User
 from modules.chat.openrouter import OpenRouterError, chat_with_tools, list_models
 from modules.chat.sessions import LiveSession, session_store
 from modules.mcp.executor import build_tool_context, call_tool

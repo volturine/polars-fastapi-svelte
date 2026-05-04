@@ -17,7 +17,6 @@ from sqlmodel import Session
 from starlette.websockets import WebSocketState
 
 from contracts.analysis.models import Analysis
-from contracts.auth_models import User
 from contracts.build_runs.live import BuildNotification, hub as build_hub
 from contracts.compute import schemas
 from contracts.engine_runs.schemas import EngineRunKind, EngineRunStatus
@@ -33,6 +32,7 @@ from core.database import get_db, get_settings_db
 from core.exceptions import EngineNotFoundError
 from core.namespace import get_namespace, reset_namespace, set_namespace_context
 from modules.auth.dependencies import get_current_user
+from modules.auth.models import User
 from modules.compute import executor_client
 from modules.compute.iceberg_service import (
     delete_iceberg_snapshot as delete_iceberg_snapshot_info,

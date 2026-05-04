@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 from main import app
 from modules.auth.dependencies import get_current_user, get_optional_user
+from modules.auth.models import AuthProvider, AuthProviderName, User, UserSession, UserStatus, VerificationToken, VerificationTokenType
 from modules.auth.routes import invalidate_me_cache
 from modules.auth.schemas import UserPublic
 from modules.auth.service import (
@@ -37,7 +38,6 @@ from sqlalchemy import text
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from contracts.analysis.models import Analysis, AnalysisStatus
-from contracts.auth_models import AuthProvider, AuthProviderName, User, UserSession, UserStatus, VerificationToken, VerificationTokenType
 from contracts.datasource.models import DataSource
 from contracts.udf_models import Udf
 from core.database import clear_settings_engine_override, get_settings_db, set_settings_engine_override
@@ -175,7 +175,9 @@ class TestPasswordHashing:
 
 
 class TestUserService:
-    def test_init_settings_db_seeds_default_user(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_backend_bootstrap_seeds_default_user(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from backend_core.public_schema import ensure_backend_public_tables
+
         from core import database
 
         engine, _schema = _make_postgres_engine('auth')
@@ -184,7 +186,9 @@ class TestUserService:
         monkeypatch.setattr('core.config.settings.default_user_password', 'SeededPass123')
         monkeypatch.setattr('core.config.settings.default_user_name', 'Seeded User')
 
-        database._seed_shared_state()
+        ensure_backend_public_tables()
+        with Session(engine) as session:
+            ensure_default_user(session)
 
         with Session(engine) as session:
             user = session.exec(select(User).where(User.email == 'seeded@example.com')).first()

@@ -1,46 +1,34 @@
+import importlib
 from logging.config import fileConfig
 from typing import Any
 
 from alembic import context
-from modules.analysis import models as analysis_models
-from modules.auth import models as auth_models
-from modules.chat.sessions import ChatSession
-from modules.datasource import models as datasource_models
-from modules.healthcheck import models as healthcheck_models
-from modules.settings import models as settings_models
-from modules.telegram import models as telegram_models
-from modules.udf import models as udf_models
 from sqlalchemy import create_engine, pool, text
 from sqlmodel import SQLModel
 
-from contracts.analysis_versions import models as analysis_versions_models
-from contracts.build_jobs import models as build_jobs_models
-from contracts.build_runs import models as build_runs_models
-from contracts.engine_instances import models as engine_instances_models
-from contracts.engine_runs import models as engine_runs_models
-from contracts.locks import models as locks_models
-from contracts.runtime_workers import models as runtime_workers_models
-from contracts.scheduler import models as scheduler_models
 from core.config import settings
 
-_ = analysis_models.__name__
+_MODEL_MODULES = (
+    'modules.analysis.models',
+    'modules.auth.models',
+    'modules.chat.sessions',
+    'modules.datasource.models',
+    'modules.healthcheck.models',
+    'modules.settings.models',
+    'modules.telegram.models',
+    'modules.udf.models',
+    'contracts.analysis_versions.models',
+    'contracts.build_jobs.models',
+    'contracts.build_runs.models',
+    'contracts.engine_instances.models',
+    'contracts.engine_runs.models',
+    'contracts.locks.models',
+    'contracts.runtime_workers.models',
+    'contracts.scheduler.models',
+)
 
-del analysis_models
-del analysis_versions_models
-del auth_models
-del build_jobs_models
-del build_runs_models
-del datasource_models
-del engine_instances_models
-del engine_runs_models
-del healthcheck_models
-del locks_models
-del runtime_workers_models
-del scheduler_models
-del settings_models
-del telegram_models
-del udf_models
-del ChatSession
+for module_name in _MODEL_MODULES:
+    importlib.import_module(module_name)
 
 config = context.config
 config.set_main_option('sqlalchemy.url', settings.database_url)

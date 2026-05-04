@@ -132,7 +132,6 @@ class TestSettings:
         settings = Settings()
 
         assert settings.database_url == 'postgresql+psycopg://user:pass@host:5432/db'
-        assert settings.is_postgres is True
 
     def test_distributed_runtime_defaults_disabled(self, monkeypatch, tmp_path):
         _set_isolated_settings_env(monkeypatch, tmp_path)

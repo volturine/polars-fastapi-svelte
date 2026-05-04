@@ -242,14 +242,6 @@ class Settings(BaseSettings):
         """Parse CORS origins from comma-separated string."""
         return [origin.strip() for origin in self.cors_origins.split(',') if origin.strip()]
 
-    @property
-    def database_backend(self) -> str:
-        return 'postgresql'
-
-    @property
-    def is_postgres(self) -> bool:
-        return True
-
     @field_validator('data_dir', mode='before')
     @classmethod
     def _ensure_dirs(cls, value: Path) -> Path:

@@ -1,6 +1,5 @@
 import importlib
 from logging.config import fileConfig
-from typing import Any
 
 from alembic import context
 from sqlalchemy import create_engine, pool, text
@@ -74,11 +73,6 @@ def _target_schema() -> str:
     return str(config.attributes.get('target_schema', 'public'))
 
 
-def _runtime_attributes() -> dict[str, Any]:
-    raw = config.attributes
-    return raw if isinstance(raw, dict) else {}
-
-
 def _table_names() -> set[str]:
     if _runtime_scope() == 'tenant':
         return _TENANT_TABLES
@@ -108,9 +102,8 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={'paramstyle': 'named'},
         include_object=_include_object,
-        version_table_schema=_target_schema() if settings.is_postgres else None,
-        include_schemas=settings.is_postgres,
-        render_as_batch=not settings.is_postgres,
+        version_table_schema=_target_schema(),
+        include_schemas=True,
     )
 
     with context.begin_transaction():
@@ -123,17 +116,15 @@ def run_migrations_online() -> None:
     connectable = create_engine(configuration['sqlalchemy.url'], poolclass=pool.NullPool)
 
     with connectable.connect() as connection:
-        if settings.is_postgres:
-            schema = _target_schema()
-            connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
-            connection.execute(text(f'SET search_path TO "{schema}", public'))
+        schema = _target_schema()
+        connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+        connection.execute(text(f'SET search_path TO "{schema}", public'))
         context.configure(
             connection=connection,
             target_metadata=_target_metadata(),
             include_object=_include_object,
-            version_table_schema=_target_schema() if settings.is_postgres else None,
-            include_schemas=settings.is_postgres,
-            render_as_batch=not settings.is_postgres,
+            version_table_schema=schema,
+            include_schemas=True,
         )
 
         with context.begin_transaction():

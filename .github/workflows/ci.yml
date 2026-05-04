@@ -43,7 +43,7 @@ jobs:
           uv run python -m mypy ../worker-manager
 
       - name: Tests
-        run: uv run python -m pytest --tb=short -q
+        run: uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests
 
   frontend:
     runs-on: ubuntu-latest

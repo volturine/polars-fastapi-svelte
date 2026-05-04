@@ -16,8 +16,7 @@ logger = logging.getLogger(__name__)
 
 _CHANNEL = 'runtime_events'
 ListenerKind = Literal['api', 'job']
-_notify_connection: psycopg.Connection | None = None
-_notify_connection_conninfo: str | None = None
+_notify_connection_state: tuple[psycopg.Connection, str] | None = None
 _notify_connection_lock = threading.Lock()
 
 
@@ -192,25 +191,27 @@ def _send_api_message(payload: dict[str, object], *, listener: ListenerKind) -> 
 
 
 def _get_notify_connection() -> psycopg.Connection:
-    global _notify_connection, _notify_connection_conninfo
+    global _notify_connection_state
     conninfo = _psycopg_conninfo()
     with _notify_connection_lock:
-        if _notify_connection is not None and not _notify_connection.closed and _notify_connection_conninfo == conninfo:
-            return _notify_connection
-        if _notify_connection is not None and not _notify_connection.closed:
-            _notify_connection.close()
-        _notify_connection = psycopg.connect(conninfo, autocommit=True)
-        _notify_connection_conninfo = conninfo
-        return _notify_connection
+        if _notify_connection_state is not None:
+            connection, cached_conninfo = _notify_connection_state
+            if not connection.closed and cached_conninfo == conninfo:
+                return connection
+            if not connection.closed:
+                connection.close()
+        connection = psycopg.connect(conninfo, autocommit=True)
+        _notify_connection_state = (connection, conninfo)
+        return connection
 
 
 def _reset_notify_connection() -> None:
-    global _notify_connection, _notify_connection_conninfo
+    global _notify_connection_state
     with _notify_connection_lock:
-        if _notify_connection is not None:
-            _notify_connection.close()
-        _notify_connection = None
-        _notify_connection_conninfo = None
+        if _notify_connection_state is not None:
+            connection, _conninfo = _notify_connection_state
+            connection.close()
+        _notify_connection_state = None
 
 
 def _send_postgres_message(payload: dict[str, object]) -> None:

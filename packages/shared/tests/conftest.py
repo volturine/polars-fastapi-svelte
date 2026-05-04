@@ -266,15 +266,14 @@ def client(test_db_session, test_user):
                     await stop_event.wait()
                 finally:
                     request_task.cancel()
-                    with contextlib.suppress(asyncio.CancelledError):
-                        await request_task
+                    await asyncio.gather(request_task, return_exceptions=True)
                     if ipc_task is not None:
                         with contextlib.suppress(asyncio.TimeoutError):
                             await asyncio.wait_for(ipc_task, timeout=5)
                     await runtime_ipc.stop_api_server(ipc_server, listener='job')
                     manager.shutdown_all()
                     stop_flag.set()
-                    await stop_task
+                    await asyncio.wait_for(stop_task, timeout=5)
 
             asyncio.run(_runner())
 

@@ -136,7 +136,7 @@
 - ✅ Powered by Polars for fast, memory-efficient computation
 - ✅ Isolated compute subprocess per analysis for safe parallel execution
 - ⬜ S3 storage support — use an S3 path as `DATA_DIR` for cloud-based storage
-- ⬜ PostgreSQL backend — choose PostgreSQL instead of SQLite for metadata storage (required for S3 mode)
+- ✅ PostgreSQL backend — supported metadata storage runtime
 
 ## Dashboards
 

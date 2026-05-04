@@ -1,6 +1,6 @@
 # FastAPI Backend
 
-FastAPI backend plus shared runtime contracts for Postgres-backed production mode and SQLite-backed local single-node development.
+FastAPI backend plus shared runtime contracts for the Postgres-backed Data-Forge runtime.
 
 ## Setup
 
@@ -193,13 +193,13 @@ If you encounter database errors:
 2. View migration history: `./migrate.sh history`
 3. Try downgrading and upgrading: `./migrate.sh downgrade && ./migrate.sh upgrade`
 
-### SQLite Locked
+### PostgreSQL connectivity
 
-SQLite can lock if another process is accessing it. Make sure:
+If the runtime cannot reach PostgreSQL:
 
-- Only one server instance is running
-- No SQLite browser tools are connected
-- Database file has proper permissions
+- Verify `DATABASE_URL` points to a reachable PostgreSQL instance
+- Confirm migrations/bootstrap completed successfully
+- Check connection-pool sizing versus available `max_connections`
 
 ## Resources
 

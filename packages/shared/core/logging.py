@@ -5,17 +5,16 @@ import json
 import logging
 import logging.handlers
 import queue
-import sqlite3
 import threading
 import time
 import uuid
 from collections.abc import Callable
 from contextlib import contextmanager
 from datetime import UTC, date, datetime
-from pathlib import Path
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
+import psycopg
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import StreamingResponse
@@ -23,7 +22,7 @@ from starlette.responses import StreamingResponse
 from core.config import settings
 from core.proxy import client_ip
 
-_writer: SqliteLogWriter | None = None
+_writer: DatabaseLogWriter | None = None
 _listener: logging.handlers.QueueListener | None = None
 _configured = False
 _LOG_RECORD_KEYS = set(logging.LogRecord('', 0, '', 0, '', (), None).__dict__.keys())
@@ -56,9 +55,6 @@ def _adapt_datetime(value: datetime) -> str:
     return value.isoformat()
 
 
-sqlite3.register_adapter(datetime, _adapt_datetime)
-
-
 def _day_from_ts(ts: datetime | None) -> date:
     """Get the date in the configured timezone for daily table partitioning."""
     tz = ZoneInfo(settings.timezone)
@@ -67,10 +63,10 @@ def _day_from_ts(ts: datetime | None) -> date:
     return datetime.now(tz).date()
 
 
-class SqliteLogWriter:
+class DatabaseLogWriter:
     def __init__(
         self,
-        base_path: str,
+        database_url: str,
         *,
         flush_interval: float = _DEFAULT_FLUSH_INTERVAL,
         overflow_policy: str = 'block',
@@ -82,81 +78,77 @@ class SqliteLogWriter:
         self._flush_timer: threading.Timer | None = None
         self._overflow_policy = overflow_policy
         self._dropped_count = 0
-        self._base_path = Path(base_path)
-        self._base_path.mkdir(parents=True, exist_ok=True)
-        self._db_path = (self._base_path / 'logs.db').resolve()
-        self._conn: sqlite3.Connection | None = None
+        self._database_url = database_url.replace('postgresql+psycopg://', 'postgresql://', 1)
+        self._conn: psycopg.Connection | None = None
         self._buffers: dict[tuple[str, date], list[dict[str, Any]]] = {}
         self._flush_interval = flush_interval
         self._last_flush = time.monotonic()
-        self._worker = threading.Thread(target=self._run, name='sqlite-log-writer', daemon=True)
+        self._worker = threading.Thread(target=self._run, name='postgres-log-writer', daemon=True)
         self._init_db()
         self._worker.start()
 
     def _init_db(self) -> None:
-        self._conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
-        self._conn.execute('PRAGMA journal_mode=WAL')
-        self._conn.execute('PRAGMA synchronous=NORMAL')
-        self._conn.execute('PRAGMA cache_size=-64000')
-        self._conn.execute('PRAGMA temp_store=MEMORY')
-
-        self._conn.execute("""
-            CREATE TABLE IF NOT EXISTS request_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ts TEXT NOT NULL,
-                method TEXT,
-                path TEXT,
-                status INTEGER,
-                duration_ms REAL,
-                request_id TEXT,
-                client_id TEXT,
-                user_agent TEXT,
-                ip TEXT,
-                referer TEXT,
-                error TEXT,
-                request_json TEXT,
-                response_json TEXT,
-                chunk_index INTEGER,
-                day TEXT NOT NULL
+        self._conn = psycopg.connect(self._database_url, autocommit=True)
+        with self._conn.cursor() as cursor:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS request_logs (
+                    id BIGSERIAL PRIMARY KEY,
+                    ts TIMESTAMPTZ NOT NULL,
+                    method TEXT,
+                    path TEXT,
+                    status INTEGER,
+                    duration_ms DOUBLE PRECISION,
+                    request_id TEXT,
+                    client_id TEXT,
+                    user_agent TEXT,
+                    ip TEXT,
+                    referer TEXT,
+                    error TEXT,
+                    request_json TEXT,
+                    response_json TEXT,
+                    chunk_index INTEGER,
+                    day DATE NOT NULL
+                )
+                """
             )
-        """)
-        self._conn.execute('CREATE INDEX IF NOT EXISTS idx_request_day ON request_logs(day)')
-
-        self._conn.execute("""
-            CREATE TABLE IF NOT EXISTS app_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ts TEXT NOT NULL,
-                level TEXT,
-                logger TEXT,
-                message TEXT,
-                module TEXT,
-                func TEXT,
-                line INTEGER,
-                extra_json TEXT,
-                day TEXT NOT NULL
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_request_day ON request_logs(day)')
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS app_logs (
+                    id BIGSERIAL PRIMARY KEY,
+                    ts TIMESTAMPTZ NOT NULL,
+                    level TEXT,
+                    logger TEXT,
+                    message TEXT,
+                    module TEXT,
+                    func TEXT,
+                    line INTEGER,
+                    extra_json TEXT,
+                    day DATE NOT NULL
+                )
+                """
             )
-        """)
-        self._conn.execute('CREATE INDEX IF NOT EXISTS idx_app_day ON app_logs(day)')
-
-        self._conn.execute("""
-            CREATE TABLE IF NOT EXISTS client_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ts TEXT NOT NULL,
-                event TEXT,
-                action TEXT,
-                page TEXT,
-                target TEXT,
-                form_id TEXT,
-                fields_json TEXT,
-                client_id TEXT,
-                session_id TEXT,
-                meta_json TEXT,
-                day TEXT NOT NULL
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_app_day ON app_logs(day)')
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS client_logs (
+                    id BIGSERIAL PRIMARY KEY,
+                    ts TIMESTAMPTZ NOT NULL,
+                    event TEXT,
+                    action TEXT,
+                    page TEXT,
+                    target TEXT,
+                    form_id TEXT,
+                    fields_json TEXT,
+                    client_id TEXT,
+                    session_id TEXT,
+                    meta_json TEXT,
+                    day DATE NOT NULL
+                )
+                """
             )
-        """)
-        self._conn.execute('CREATE INDEX IF NOT EXISTS idx_client_day ON client_logs(day)')
-
-        self._conn.commit()
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_client_day ON client_logs(day)')
 
     def write_request_log(self, payload: dict[str, Any]) -> None:
         row = {
@@ -306,96 +298,95 @@ class SqliteLogWriter:
 
     @contextmanager
     def _lock_for_insert(self):
-        conn = sqlite3.connect(str(self._db_path), timeout=30.0)
-        conn.execute('PRAGMA journal_mode=WAL')
-        conn.execute('PRAGMA synchronous=NORMAL')
+        conn = psycopg.connect(self._database_url, autocommit=False)
         try:
             yield conn
+            conn.commit()
         finally:
             conn.close()
 
-    def _insert_request_logs(self, conn: sqlite3.Connection, rows: list[dict[str, Any]], day: date) -> None:
+    def _insert_request_logs(self, conn: psycopg.Connection, rows: list[dict[str, Any]], day: date) -> None:
         day_str = day.isoformat()
-        conn.executemany(
-            """INSERT INTO request_logs
-               (ts, method, path, status, duration_ms, request_id, client_id,
-                user_agent, ip, referer, error, request_json, response_json,
-                chunk_index, day)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            [
-                (
-                    r.get('ts'),
-                    r.get('method'),
-                    r.get('path'),
-                    r.get('status'),
-                    r.get('duration_ms'),
-                    r.get('request_id'),
-                    r.get('client_id'),
-                    r.get('user_agent'),
-                    r.get('ip'),
-                    r.get('referer'),
-                    r.get('error'),
-                    r.get('request_json'),
-                    r.get('response_json'),
-                    r.get('chunk_index'),
-                    day_str,
-                )
-                for r in rows
-            ],
-        )
-        conn.commit()
+        with conn.cursor() as cursor:
+            cursor.executemany(
+                """INSERT INTO request_logs
+                   (ts, method, path, status, duration_ms, request_id, client_id,
+                    user_agent, ip, referer, error, request_json, response_json,
+                    chunk_index, day)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                [
+                    (
+                        r.get('ts'),
+                        r.get('method'),
+                        r.get('path'),
+                        r.get('status'),
+                        r.get('duration_ms'),
+                        r.get('request_id'),
+                        r.get('client_id'),
+                        r.get('user_agent'),
+                        r.get('ip'),
+                        r.get('referer'),
+                        r.get('error'),
+                        r.get('request_json'),
+                        r.get('response_json'),
+                        r.get('chunk_index'),
+                        day_str,
+                    )
+                    for r in rows
+                ],
+            )
 
-    def _insert_app_logs(self, conn: sqlite3.Connection, rows: list[dict[str, Any]], day: date) -> None:
+    def _insert_app_logs(self, conn: psycopg.Connection, rows: list[dict[str, Any]], day: date) -> None:
         day_str = day.isoformat()
-        conn.executemany(
-            """INSERT INTO app_logs 
-               (ts, level, logger, message, module, func, line, extra_json, day)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            [
-                (
-                    r.get('ts'),
-                    r.get('level'),
-                    r.get('logger'),
-                    r.get('message'),
-                    r.get('module'),
-                    r.get('func'),
-                    r.get('line'),
-                    r.get('extra_json'),
-                    day_str,
-                )
-                for r in rows
-            ],
-        )
-        conn.commit()
+        with conn.cursor() as cursor:
+            cursor.executemany(
+                """INSERT INTO app_logs 
+                   (ts, level, logger, message, module, func, line, extra_json, day)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                [
+                    (
+                        r.get('ts'),
+                        r.get('level'),
+                        r.get('logger'),
+                        r.get('message'),
+                        r.get('module'),
+                        r.get('func'),
+                        r.get('line'),
+                        r.get('extra_json'),
+                        day_str,
+                    )
+                    for r in rows
+                ],
+            )
 
-    def _insert_client_logs(self, conn: sqlite3.Connection, rows: list[dict[str, Any]], day: date) -> None:
+    def _insert_client_logs(self, conn: psycopg.Connection, rows: list[dict[str, Any]], day: date) -> None:
         day_str = day.isoformat()
-        conn.executemany(
-            """INSERT INTO client_logs 
-               (ts, event, action, page, target, form_id, fields_json, client_id, session_id, meta_json, day)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            [
-                (
-                    r.get('ts'),
-                    r.get('event'),
-                    r.get('action'),
-                    r.get('page'),
-                    r.get('target'),
-                    r.get('form_id'),
-                    r.get('fields_json'),
-                    r.get('client_id'),
-                    r.get('session_id'),
-                    r.get('meta_json'),
-                    day_str,
-                )
-                for r in rows
-            ],
-        )
-        conn.commit()
+        with conn.cursor() as cursor:
+            cursor.executemany(
+                """INSERT INTO client_logs 
+                   (ts, event, action, page, target, form_id, fields_json, client_id, session_id, meta_json, day)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                [
+                    (
+                        r.get('ts'),
+                        r.get('event'),
+                        r.get('action'),
+                        r.get('page'),
+                        r.get('target'),
+                        r.get('form_id'),
+                        r.get('fields_json'),
+                        r.get('client_id'),
+                        r.get('session_id'),
+                        r.get('meta_json'),
+                        day_str,
+                    )
+                    for r in rows
+                ],
+            )
 
 
-class SqliteLogHandler(logging.Handler):
-    def __init__(self, writer: SqliteLogWriter):
+class DatabaseLogHandler(logging.Handler):
+    def __init__(self, writer: DatabaseLogWriter):
         super().__init__()
         self.writer = writer
 
@@ -414,7 +405,7 @@ class SqliteLogHandler(logging.Handler):
             }
             self.writer.write_app_log(payload)
         except Exception as exc:
-            _logger.error('SQLite log handler failed: %s', exc, exc_info=True)
+            _logger.error('Database log handler failed: %s', exc, exc_info=True)
             self.handleError(record)
 
 
@@ -594,7 +585,7 @@ def redact_logged_body(path: str, body: str | None) -> str | None:
     return json.dumps(_redact_json_value(parsed), default=str)
 
 
-def configure_logging() -> SqliteLogWriter:
+def configure_logging() -> DatabaseLogWriter:
     global _configured, _listener, _writer
     if _configured and _writer:
         return _writer
@@ -606,13 +597,13 @@ def configure_logging() -> SqliteLogWriter:
     )
     logging.getLogger('httpx').setLevel(logging.WARNING)
 
-    _writer = SqliteLogWriter(
-        base_path=str(settings.log_sqlite_path),
-        flush_interval=float(settings.log_sqlite_flush_interval_seconds),
+    _writer = DatabaseLogWriter(
+        database_url=settings.database_url,
+        flush_interval=float(settings.log_flush_interval_seconds),
         overflow_policy=settings.log_queue_overflow,
     )
     queue_handler = logging.handlers.QueueHandler(queue.Queue())
-    _listener = logging.handlers.QueueListener(queue_handler.queue, SqliteLogHandler(_writer))
+    _listener = logging.handlers.QueueListener(queue_handler.queue, DatabaseLogHandler(_writer))
     _listener.start()
     atexit.register(_listener.stop)
     atexit.register(_writer.stop)
@@ -623,7 +614,7 @@ def configure_logging() -> SqliteLogWriter:
     return _writer
 
 
-def get_log_writer() -> SqliteLogWriter:
+def get_log_writer() -> DatabaseLogWriter:
     if _writer:
         return _writer
     return configure_logging()

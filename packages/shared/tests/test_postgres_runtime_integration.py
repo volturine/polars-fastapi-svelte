@@ -11,6 +11,7 @@ from pathlib import Path
 import psycopg
 import pytest
 from sqlalchemy import text
+from sqlmodel import Session
 from websockets.asyncio.client import connect
 
 from tests.postgres_harness import (
@@ -31,9 +32,13 @@ from tests.postgres_harness import (
 def _clear_database_state() -> None:
     from core import database
 
-    for engine in database._namespace_engines.values():
-        engine.dispose()
-    database._namespace_engines.clear()
+    if database.settings_engine is not None:
+        database.settings_engine.dispose()
+        database.settings_engine = None
+    if database.tenant_engine is not None:
+        database.tenant_engine.dispose()
+        database.tenant_engine = None
+    database.clear_namespace_init_cache()
     database.clear_engine_override()
     database.clear_settings_engine_override()
 
@@ -325,7 +330,7 @@ def test_init_db_postgres_namespace_bootstrap_does_not_deadlock(monkeypatch, tmp
 
 
 @pytest.mark.timeout(300)
-def test_namespace_engine_resets_search_path_on_checkout(monkeypatch, tmp_path: Path) -> None:
+def test_namespace_connection_sets_search_path(monkeypatch, tmp_path: Path) -> None:
     require_docker()
 
     from core import database
@@ -341,16 +346,48 @@ def test_namespace_engine_resets_search_path_on_checkout(monkeypatch, tmp_path: 
         database.set_settings_engine_override(database._create_public_engine())
 
         asyncio.run(database.init_db())
-        engine = database._create_postgres_namespace_engine('default')
 
-        with engine.connect() as connection:
-            assert connection.execute(text('SELECT current_schema()')).scalar_one() == 'default'
-            connection.execute(text('SET search_path TO public'))
-
-        with engine.connect() as connection:
+        with database.namespace_connection('default') as connection:
             assert connection.execute(text('SELECT current_schema()')).scalar_one() == 'default'
 
-        engine.dispose()
+        _clear_database_state()
+
+
+@pytest.mark.timeout(300)
+def test_tenant_engine_checkout_tracks_current_namespace(monkeypatch, tmp_path: Path) -> None:
+    require_docker()
+
+    from core import database
+    from core.config import settings
+    from core.namespace import reset_namespace, set_namespace_context
+
+    with PostgresContainer() as container:
+        _clear_database_state()
+        data_dir = tmp_path / 'data'
+        data_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(settings, 'database_url', container.url, raising=False)
+        monkeypatch.setattr(settings, 'data_dir', data_dir, raising=False)
+        monkeypatch.setattr(settings, 'distributed_runtime_enabled', True, raising=False)
+        database.set_settings_engine_override(database._create_public_engine())
+
+        asyncio.run(database.init_db())
+        database._init_namespace_db('alpha')
+        database._init_namespace_db('beta')
+
+        alpha_token = set_namespace_context('alpha')
+        try:
+            with Session(database._get_tenant_engine()) as alpha_session:
+                assert alpha_session.connection().execute(text('SELECT current_schema()')).scalar_one() == 'alpha'
+        finally:
+            reset_namespace(alpha_token)
+
+        beta_token = set_namespace_context('beta')
+        try:
+            with Session(database._get_tenant_engine()) as beta_session:
+                assert beta_session.connection().execute(text('SELECT current_schema()')).scalar_one() == 'beta'
+        finally:
+            reset_namespace(beta_token)
+
         _clear_database_state()
 
 

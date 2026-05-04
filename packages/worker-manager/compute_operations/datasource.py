@@ -3,7 +3,6 @@ import contextvars
 import hashlib
 import json
 import os
-import sqlite3
 from collections import deque
 from collections.abc import Callable
 from enum import StrEnum
@@ -12,6 +11,7 @@ from threading import Lock
 from urllib.parse import unquote, urlparse
 
 import polars as pl
+import psycopg
 from iceberg_reader import scan_iceberg_snapshot
 from openpyxl import load_workbook
 from pydantic import ConfigDict
@@ -126,19 +126,10 @@ class DatasourceHandler(OperationHandler):
         if not config.connection_string or not config.query:
             raise ValueError('Datasource database loading requires connection_string and query')
         _assert_select_only(config.query)
-        if config.connection_string.startswith('sqlite:'):
-            parsed = urlparse(config.connection_string)
-            if not parsed.path:
-                raise ValueError('SQLite connection string must include a database path')
-            connection = sqlite3.connect(parsed.path)
-            try:
-                frame = pl.read_database(config.query, connection)
-            except Exception as exc:
-                raise ValueError('Failed to query database datasource') from exc
-            finally:
-                connection.close()
-            return frame.lazy()
-        return pl.read_database_uri(config.query, config.connection_string).lazy()
+        if not config.connection_string.lower().startswith('postgresql://'):
+            raise ValueError('Database datasource connection string must be PostgreSQL')
+        with psycopg.connect(config.connection_string, autocommit=True) as connection:
+            return pl.read_database(config.query, connection).lazy()
 
     def _load_duckdb(self, config: DatasourceParams) -> pl.LazyFrame:
         import duckdb

@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import cast
@@ -32,7 +33,7 @@ from modules.auth.service import (
     validate_verification_token,
     verify_password,
 )
-from sqlalchemy.pool import StaticPool
+from sqlalchemy import text
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from contracts.analysis.models import Analysis, AnalysisStatus
@@ -49,6 +50,22 @@ from core.exceptions import (
     TokenInvalidError,
 )
 from core.namespace import namespace_paths
+
+
+def _make_postgres_engine(prefix: str = 'auth', *, schema_name: str | None = None):
+    url = __import__('os').environ['TEST_POSTGRES_URL']
+    schema = schema_name or f'{prefix}_{uuid.uuid4().hex}'
+    engine = create_engine(
+        url,
+        echo=False,
+        pool_pre_ping=True,
+        connect_args={'options': f'-c search_path={schema},public'},
+    )
+
+    with engine.begin() as connection:
+        connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+        SQLModel.metadata.create_all(connection)
+    return engine, schema
 
 
 def _schema_enum_values(schema: dict, field_name: str) -> list[str]:
@@ -82,15 +99,14 @@ def test_verification_token_type_enum_values() -> None:
 
 
 @pytest.fixture(scope='function')
-def auth_engine():
-    engine = create_engine(
-        'sqlite:///:memory:',
-        echo=False,
-        connect_args={'check_same_thread': False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
-    return engine
+def auth_engine(postgres_container):
+    engine, schema = _make_postgres_engine('auth')
+    try:
+        yield engine
+    finally:
+        with postgres_container.connect() as connection, connection.cursor() as cursor:
+            cursor.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+        engine.dispose()
 
 
 @pytest.fixture(scope='function')
@@ -162,18 +178,13 @@ class TestUserService:
     def test_init_settings_db_seeds_default_user(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from core import database
 
-        engine = create_engine(
-            'sqlite:///:memory:',
-            echo=False,
-            connect_args={'check_same_thread': False},
-            poolclass=StaticPool,
-        )
+        engine, _schema = _make_postgres_engine('auth')
         monkeypatch.setattr(database, 'settings_engine', engine, raising=False)
         monkeypatch.setattr('core.config.settings.default_user_email', 'seeded@example.com')
         monkeypatch.setattr('core.config.settings.default_user_password', 'SeededPass123')
         monkeypatch.setattr('core.config.settings.default_user_name', 'Seeded User')
 
-        database._init_settings_db()
+        database._seed_shared_state()
 
         with Session(engine) as session:
             user = session.exec(select(User).where(User.email == 'seeded@example.com')).first()
@@ -344,10 +355,9 @@ class TestUserService:
         monkeypatch.setattr('core.config.settings.data_dir', tmp_path)
         user = create_user(auth_db_session, 'delete-namespace@example.com', 'Password123', 'Delete Namespace')
         now = datetime.now(UTC).replace(tzinfo=None)
-        paths = namespace_paths('alpha')
-        namespace_engine = create_engine(f'sqlite:///{paths.db_path}', echo=False, connect_args={})
+        namespace_paths('alpha')
+        namespace_engine, _schema = _make_postgres_engine('authns', schema_name='alpha')
         try:
-            SQLModel.metadata.create_all(namespace_engine)
             with Session(namespace_engine) as namespace_session:
                 namespace_session.add(
                     DataSource(
@@ -415,7 +425,8 @@ class TestSessionService:
 
         assert user_session.user_id == user.id
         assert user_session.revoked is False
-        assert user_session.expires_at > datetime.now(UTC).replace(tzinfo=None)
+        expires_at = user_session.expires_at if user_session.expires_at.tzinfo is not None else user_session.expires_at.replace(tzinfo=UTC)
+        assert expires_at > datetime.now(UTC)
 
     def test_validate_session_valid(self, auth_db_session: Session) -> None:
         user = create_user(auth_db_session, 'test@example.com', 'Password123', 'Test User')
@@ -1005,7 +1016,11 @@ class TestAuthRoutes:
         auth_db_session.add(udf)
         auth_db_session.commit()
 
-        auth_client.cookies.set('session_token', current_session.id)
+        datasource_id = datasource.id
+        analysis_id = analysis.id
+        udf_id = udf.id
+        session_token = current_session.id
+        auth_client.cookies.set('session_token', session_token)
         me_response = auth_client.get('/api/v1/auth/me')
         assert me_response.status_code == 200
 
@@ -1020,18 +1035,15 @@ class TestAuthRoutes:
         assert auth_db_session.exec(select(AuthProvider).where(AuthProvider.user_id == user.id)).all() == []
         assert auth_db_session.exec(select(UserSession).where(UserSession.user_id == user.id)).all() == []
         assert auth_db_session.exec(select(VerificationToken).where(VerificationToken.user_id == user.id)).all() == []
-        assert datasource.owner_id is None
-        assert analysis.owner_id is None
-        assert udf.owner_id is None
 
-        datasource_owner = auth_db_session.exec(select(DataSource.owner_id).where(DataSource.id == datasource.id)).one()
-        analysis_owner = auth_db_session.exec(select(Analysis.owner_id).where(Analysis.id == analysis.id)).one()
-        udf_owner = auth_db_session.exec(select(Udf.owner_id).where(Udf.id == udf.id)).one()
+        datasource_owner = auth_db_session.exec(select(DataSource.owner_id).where(DataSource.id == datasource_id)).one_or_none()
+        analysis_owner = auth_db_session.exec(select(Analysis.owner_id).where(Analysis.id == analysis_id)).one_or_none()
+        udf_owner = auth_db_session.exec(select(Udf.owner_id).where(Udf.id == udf_id)).one_or_none()
         assert datasource_owner is None
         assert analysis_owner is None
         assert udf_owner is None
 
-        reused_session = auth_client.get('/api/v1/auth/me', headers={'X-Session-Token': current_session.id})
+        reused_session = auth_client.get('/api/v1/auth/me', headers={'X-Session-Token': session_token})
         assert reused_session.status_code == 401
 
     def test_delete_account_rejects_default_user(

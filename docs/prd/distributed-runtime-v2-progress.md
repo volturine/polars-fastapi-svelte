@@ -24,7 +24,7 @@ Overall status:
 Current claim:
 
 - Postgres is the supported distributed runtime backend.
-- SQLite/dev mode remains durable but explicitly non-distributed.
+- Local dev/test uses the same Postgres-backed runtime model.
 - One supervised app runtime runs API, scheduler, and a worker manager; build workers spawn dynamically from zero.
 - Durable build state, durable job leasing, DB-backed websocket replay, and scheduler leasing are implemented.
 - `WORKERS > 1` is supported only when distributed runtime is enabled on Postgres.
@@ -65,7 +65,7 @@ Evidence:
 Notes:
 
 - `WORKERS > 1` is still guarded outside Postgres distributed runtime mode
-- accidental split-brain on SQLite/dev remains blocked
+- accidental split-brain outside the supported Postgres runtime remains blocked
 
 ### Phase 1: Schema-Enforced Events
 
@@ -113,7 +113,7 @@ Evidence:
 Notes:
 
 - websocket delivery is a projection of durable state rather than the owner of state
-- SQLite/dev remains same-node only and is not claimed as distributed
+- local dev/test remains same-node only and is not described as a separate distributed mode
 
 ### Phase 4: Dedicated Build Worker
 
@@ -212,7 +212,7 @@ The repository currently supports:
 
 The repository still should not claim:
 
-- distributed SQLite runtime
+- any non-Postgres distributed runtime claim
 
 ## Remaining Work
 

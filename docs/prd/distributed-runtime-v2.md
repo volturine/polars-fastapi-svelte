@@ -103,10 +103,10 @@ Reasons:
 - It supports transactional row leases with `FOR UPDATE SKIP LOCKED`.
 - It supports durable notification wakeups with `LISTEN/NOTIFY`.
 - It supports multiple concurrent API and worker processes safely.
-- It provides better observability and backup tooling than SQLite files.
+- It provides better observability and backup tooling than file-backed metadata stores.
 - It removes per-namespace file-level contention as a production scaling concern.
 
-SQLite can remain useful for local development and unit tests, but it should not be marketed as supporting multi-worker or multi-node distributed runtime.
+Local development and tests should follow the same Postgres-backed runtime model rather than preserving a separate legacy file-backed path.
 
 ### Runtime Version Policy
 
@@ -834,7 +834,7 @@ Tasks:
 - Add per-build websocket replay from `build_events`.
 - Use DB snapshots on websocket connect.
 - Add Postgres `LISTEN/NOTIFY` when Postgres is active.
-- For SQLite/dev, support same-process delivery only, clearly marked as non-distributed.
+- For local development, keep runtime delivery aligned with the supported Postgres-backed model.
 - Replace build list watchers with DB-backed list projection.
 - Replace engine watcher state with DB-backed engine snapshots.
 
@@ -1001,7 +1001,7 @@ Exit criteria:
 Supported while phases 1-3 are under construction:
 
 - One API process.
-- SQLite or Postgres.
+- PostgreSQL.
 - Durable build state enabled.
 - No claim of multi-worker support.
 
@@ -1068,7 +1068,7 @@ For release confidence, add a monitoring tab section or admin endpoint that show
 | Worker dies mid-engine job | Stale running builds | Lease expiry and orphan/retry policy. |
 | Cancellation races success | Incorrect terminal state | CAS transitions and terminal-state authoritative checks. |
 | Websocket misses notification | Stale UI | Replay from `build_events` by sequence. |
-| SQLite used in distributed mode | Split-brain and lock contention | Startup guard and production docs. |
+| Unsupported runtime topology | Split-brain and lock contention | Startup guard and production docs. |
 | Raw dict events reappear | Contract drift | Type signatures, lint/tests, generated frontend types. |
 | Warnings become normalized | Release blind spots | Warning scanner and allowlist ownership. |
 
@@ -1087,9 +1087,9 @@ For release confidence, add a monitoring tab section or admin endpoint that show
    - Do not add Redis as a queue, pub/sub layer, cache dependency, or delivery accelerator for this runtime.
    - Postgres remains the runtime coordination substrate.
 
-4. SQLite should support durable queue mode for everything it can support safely.
-   - SQLite support is valuable for local development, tests, and single-process durable runtime behavior.
-   - SQLite durable queue mode must not be described as distributed or multi-worker safe.
+4. Local development and test runtime behavior should stay aligned with the supported Postgres-backed topology.
+   - Do not preserve a separate legacy runtime mode.
+   - Single-node convenience must not create a second ownership or delivery model.
 
 5. Build workers run one job at a time.
    - Scale execution by running more worker processes.

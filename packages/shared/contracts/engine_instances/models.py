@@ -1,7 +1,7 @@
 import datetime as dt
 from enum import StrEnum
 
-from sqlalchemy import JSON, Column, DateTime, Enum as SAEnum, Integer, String
+from sqlalchemy import BIGINT, JSON, Column, DateTime, Enum as SAEnum, String
 from sqlmodel import Field, SQLModel
 
 
@@ -25,7 +25,7 @@ class EngineInstance(SQLModel, table=True):  # type: ignore[call-arg, assignment
     worker_id: str = Field(sa_column=Column(String, nullable=False, index=True))
     namespace: str = Field(sa_column=Column(String, nullable=False, index=True))
     analysis_id: str = Field(sa_column=Column(String, nullable=False, index=True))
-    process_id: int | None = Field(default=None, sa_column=Column(Integer, nullable=True))
+    process_id: int | None = Field(default=None, sa_column=Column(BIGINT, nullable=True))
     status: EngineInstanceStatus = Field(
         sa_column=Column(
             SAEnum(EngineInstanceStatus, native_enum=False, values_callable=_enum_values),

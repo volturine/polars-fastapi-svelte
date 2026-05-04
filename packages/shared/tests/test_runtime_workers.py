@@ -461,7 +461,7 @@ async def test_run_build_worker_process_starts_runtime_listener(monkeypatch) -> 
 
 
 @pytest.mark.asyncio
-async def test_run_build_worker_process_skips_runtime_listener_outside_postgres(monkeypatch) -> None:
+async def test_run_build_worker_process_runs_without_runtime_listener(monkeypatch) -> None:
     calls: list[str] = []
     stop_event = asyncio.Event()
 
@@ -476,13 +476,9 @@ async def test_run_build_worker_process_skips_runtime_listener_outside_postgres(
         assert kwargs['max_jobs'] is None
         local_stop.set()
 
-    monkeypatch.setattr(runtime_process.settings, 'database_url', 'sqlite:////tmp/test.db', raising=False)
+    monkeypatch.setattr(runtime_process.settings, 'database_url', 'postgresql+psycopg://user:pass@host:5432/db', raising=False)
     monkeypatch.setattr(runtime_process, 'init_db', fake_init_db)
-    monkeypatch.setattr(
-        runtime_process.runtime_ipc,
-        'start_api_server',
-        lambda: pytest.fail('runtime IPC server should not start outside Postgres'),
-    )
+
     monkeypatch.setattr(runtime_process, 'build_worker_loop', fake_build_worker_loop)
     monkeypatch.setattr(runtime_process, 'build_worker_id', lambda: 'worker-1')
     monkeypatch.setattr(

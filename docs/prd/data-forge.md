@@ -345,8 +345,8 @@ Build that tab (with lazyframe deps auto-resolved)
 2. **Isolation:** Compute in engine subprocesses.
 3. **Reliability:** Scheduler and bot lifecycle managed in app lifespan.
 4. **Observability:** All runs logged with status/timings/error context.
-5. **Consistency:** SQLite datetime handling uses naive UTC normalization.
-6. **Namespace Awareness:** All components (frontend/backend) must be namespace-aware; data isolation via per-namespace databases and directories.
+5. **Consistency:** Datetime handling must stay normalized and explicit across the Postgres-backed runtime.
+6. **Namespace Awareness:** All components (frontend/backend) must be namespace-aware; data isolation via per-namespace schemas and directories.
 7. **Branch Awareness:** Datasources, analyses, and lineage must support branch selection and filtering.
 
 ---

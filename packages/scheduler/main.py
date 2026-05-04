@@ -185,7 +185,7 @@ async def main() -> None:
     await init_db()
     stop_event = asyncio.Event()
     install_stop_handlers(stop_event)
-    ipc_server = await runtime_ipc.start_api_server() if settings.is_postgres else None
+    ipc_server = await runtime_ipc.start_api_server()
     ipc_task = None
     if ipc_server is not None:
         ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, stop_event, runtime_ipc.handle_api_payload))

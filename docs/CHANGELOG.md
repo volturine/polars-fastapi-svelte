@@ -91,7 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docker and Docker Compose production deployment
 - Single-container deployment: FastAPI serves pre-built frontend on one port
 - Two-topology support: single-port production and dual-server development
-- SQLAlchemy 2.0 async SQLite persistence
+- SQLAlchemy 2.0 async database persistence
 - Alembic database migrations
 - Graceful shutdown with resource cleanup
 - Configurable worker count and resource limits

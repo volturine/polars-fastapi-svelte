@@ -66,6 +66,7 @@ def _seed_rich_lineage_graph(test_db_session):
     test_db_session.add(ds_output_1)
     test_db_session.add(analysis_2)
     test_db_session.add(ds_output_2)
+    test_db_session.commit()
 
     test_db_session.add(AnalysisDataSource(analysis_id=analysis_1.id, datasource_id=ds_source_a.id))
     test_db_session.add(AnalysisDataSource(analysis_id=analysis_1.id, datasource_id=ds_intermediate.id))
@@ -205,6 +206,7 @@ def test_existing_basic_lineage(test_db_session, client):
 
     test_db_session.add(datasource)
     test_db_session.add(analysis)
+    test_db_session.commit()
     test_db_session.add(AnalysisDataSource(analysis_id=analysis_id, datasource_id=datasource_id))
     test_db_session.commit()
 

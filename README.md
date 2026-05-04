@@ -53,7 +53,7 @@ Data-Forge is a **local-first**, **no-code** data transformation tool. Build mul
 | **API Framework** | FastAPI (async) |
 | **Data Engine** | [Polars](https://pola.rs) + DuckDB |
 | **Storage** | Apache Iceberg via [PyIceberg](https://py.iceberg.apache.org) |
-| **Database** | PostgreSQL 18+ for distributed runtime, SQLite for local single-node development |
+| **Database** | PostgreSQL 18+ |
 | **Schema Validation** | Pydantic V2 |
 | **Frontend Runtime** | [Bun](https://bun.sh) |
 | **UI Framework** | [SvelteKit 2](https://kit.svelte.dev) + [Svelte 5](https://svelte.dev) (runes mode) |
@@ -97,7 +97,7 @@ This starts the Postgres-backed fixed-role runtime topology:
 - `scheduler`
 - `worker`
 
-`postgres` is still required in the checked-in Docker topology. The current supported Docker runtime is Postgres-backed; the role services use `DF_DATABASE_URL` pointing at the `postgres` service and are not configured to run the supported Docker path on SQLite.
+`postgres` is required in the checked-in Docker topology. The supported Docker runtime is Postgres-backed; the role services use `DF_DATABASE_URL` pointing at the `postgres` service.
 
 ### Option 2: Local Development
 
@@ -165,7 +165,7 @@ just dev
 | `PROD_MODE_ENABLED` | `false` | Serve static frontend from `frontend/build` |
 | `AUTH_REQUIRED` | `false` | Require login before accessing routes |
 | `DATA_DIR` | — | Base directory for all data storage |
-| `DATABASE_URL` | SQLite under `DATA_DIR` or Postgres URL | Runtime database connection |
+| `DATABASE_URL` | PostgreSQL connection URL | Runtime database connection |
 | `DISTRIBUTED_RUNTIME_ENABLED` | `false` | Enables supported Postgres distributed runtime mode |
 | `DEFAULT_NAMESPACE` | `default` | Default data namespace |
 

@@ -36,6 +36,7 @@ from contracts.engine_runs.schemas import EngineRunKind, EngineRunStatus
 from contracts.healthcheck_models import HealthCheck, HealthCheckResult
 from contracts.udf_models import Udf
 from core import engine_runs_service as engine_run_service
+from core.config import settings
 from core.database import get_db
 from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError, PipelineExecutionError, PipelineValidationError
 from core.healthcheck_runner import run_healthchecks
@@ -2138,17 +2139,13 @@ def export_data(
         export_base = namespace_paths().exports_dir / str(result_id)
         table_path = export_base / branch_name
         warehouse_path = namespace_paths().exports_dir
-        catalog_path = export_base / 'catalog.db'
-
         export_base.mkdir(parents=True, exist_ok=True)
         table_path.mkdir(parents=True, exist_ok=True)
         warehouse_path.mkdir(parents=True, exist_ok=True)
-        if not catalog_path.exists():
-            catalog_path.touch()
 
         catalog_config = {
             'type': 'sql',
-            'uri': f'sqlite:///{catalog_path}',
+            'uri': settings.database_url,
             'warehouse': f'file://{warehouse_path}',
         }
 
@@ -2192,7 +2189,7 @@ def export_data(
         datasource_name = iceberg_options.get('table_name', 'exported_data')
         iceberg_ds_config = {
             'catalog_type': 'sql',
-            'catalog_uri': f'sqlite:///{catalog_path}',
+            'catalog_uri': settings.database_url,
             'warehouse': f'file://{warehouse_path}',
             'namespace': namespace,
             'table': table_name,

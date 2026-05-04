@@ -1,16 +1,15 @@
 import logging
 import os
 import shutil
-import sqlite3
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 import polars as pl
+import psycopg
 from compute_operations.datasource import load_datasource
 from openpyxl import load_workbook
 from openpyxl.utils.cell import get_column_letter, range_boundaries
@@ -22,6 +21,7 @@ from sqlmodel import Session, col
 
 from contracts.datasource.models import DataSource, DataSourceColumnMetadata
 from core import engine_runs_service as engine_run_service
+from core.config import settings
 from core.exceptions import (
     DataSourceConnectionError,
     DataSourceNotFoundError,
@@ -63,12 +63,9 @@ def _prepare_clean_target(clean_dir: Path, datasource_id: str, branch: str) -> P
 
 
 def _write_iceberg_table(lazy: pl.LazyFrame, table_path: Path, build_mode: str) -> Table:
-    catalog_path = table_path.parent / 'catalog.db'
-    if not catalog_path.exists():
-        catalog_path.touch()
     catalog_config = {
         'type': 'sql',
-        'uri': f'sqlite:///{catalog_path}',
+        'uri': settings.database_url,
         'warehouse': f'file://{table_path.parent}',
     }
     catalog = load_catalog('local', **catalog_config)
@@ -92,10 +89,9 @@ def _write_iceberg_table(lazy: pl.LazyFrame, table_path: Path, build_mode: str) 
 
 
 def _build_iceberg_config(paths, target_path: Path, branch: str, source_config: dict | None = None) -> dict:
-    catalog_path = target_path.parent / 'catalog.db'
     return {
         'catalog_type': 'sql',
-        'catalog_uri': f'sqlite:///{catalog_path}',
+        'catalog_uri': settings.database_url,
         'warehouse': f'file://{paths.clean_dir}',
         'namespace': 'clean',
         'table': target_path.parent.name,
@@ -716,18 +712,11 @@ def _schema_from_analysis(datasource: DataSource, sheet_name: str | None) -> Sch
 def _schema_from_database(datasource: DataSource, sheet_name: str | None) -> SchemaInfo:
     connection_string = datasource.config['connection_string']
     query = datasource.config['query']
+    if not connection_string.lower().startswith('postgresql://'):
+        raise DataSourceConnectionError('Database datasource connection string must be PostgreSQL')
     try:
-        if connection_string.startswith('sqlite:'):
-            parsed = urlparse(connection_string)
-            if not parsed.path:
-                raise DataSourceConnectionError('SQLite connection string must include a database path')
-            connection = sqlite3.connect(parsed.path)
-            try:
-                frame = pl.read_database(query, connection)
-            finally:
-                connection.close()
-        else:
-            frame = pl.read_database_uri(query, connection_string)
+        with psycopg.connect(connection_string, autocommit=True) as connection:
+            frame = pl.read_database(query, connection)
     except Exception as e:
         raise DataSourceConnectionError(
             'Failed to query database datasource',

@@ -1,6 +1,3 @@
-import fcntl
-import threading
-from collections import OrderedDict
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from threading import Lock
@@ -16,45 +13,32 @@ from core.namespace import get_namespace, list_namespaces, namespace_paths, norm
 P = ParamSpec('P')
 T = TypeVar('T')
 
-_MAX_NAMESPACE_ENGINES = 50
 _PUBLIC_SCHEMA = 'public'
 _POSTGRES_INIT_LOCK_KEY = 4815162342
 
 
 def _engine_kwargs() -> dict[str, object]:
-    if settings.is_postgres:
-        return {
-            'pool_pre_ping': True,
-            'pool_size': settings.database_pool_size,
-            'max_overflow': settings.database_max_overflow,
-            'pool_timeout': settings.database_pool_timeout,
-        }
-    return {'connect_args': {}}
+    return {
+        'pool_pre_ping': True,
+        'pool_size': settings.database_pool_size,
+        'max_overflow': settings.database_max_overflow,
+        'pool_timeout': settings.database_pool_timeout,
+    }
 
 
-def _enable_sqlite_pragmas(engine: Engine) -> None:
-    if engine.dialect.name != 'sqlite':
-        return
-
-    @event.listens_for(engine, 'connect')
-    def _on_connect(dbapi_conn, _connection_record):  # type: ignore[no-untyped-def]
-        cursor = dbapi_conn.cursor()
-        cursor.execute('PRAGMA journal_mode=WAL')
-        cursor.execute('PRAGMA busy_timeout=5000')
-        cursor.close()
-
-
-def _create_engine(url: str) -> Engine:
-    engine = create_engine(url, echo=settings.sql_echo, **_engine_kwargs())
-    _enable_sqlite_pragmas(engine)
-    return engine
+def _create_engine(url: str, *, connect_args: dict[str, object] | None = None) -> Engine:
+    kwargs = _engine_kwargs()
+    if connect_args is not None:
+        kwargs['connect_args'] = connect_args
+    return create_engine(url, echo=settings.sql_echo, **kwargs)
 
 
 settings_engine: Engine | None = None
+tenant_engine: Engine | None = None
 _settings_engine_lock = Lock()
-
-_namespace_engines: OrderedDict[str, Engine] = OrderedDict()
-_namespace_engines_lock = threading.Lock()
+_tenant_engine_lock = Lock()
+_initialized_namespaces: set[tuple[str, str]] = set()
+_initialized_namespaces_lock = Lock()
 
 _engine_override: Engine | None = None
 _settings_engine_override: Engine | None = None
@@ -86,37 +70,33 @@ def clear_settings_engine_override():
     invalidate_resolved_settings_cache()
 
 
+def _set_postgres_search_path(raw_connection: object, namespace: str) -> None:
+    cursor = getattr(raw_connection, 'cursor', None)
+    if not callable(cursor):
+        return
+    db_cursor = cursor()
+    try:
+        db_cursor.execute(f'SET search_path TO "{namespace}", {_PUBLIC_SCHEMA}')
+    finally:
+        db_cursor.close()
+
+
 def _apply_postgres_search_path(connection: Connection, namespace: str) -> None:
     if connection.dialect.name != 'postgresql':
         return
     connection.execute(text(f'SET search_path TO "{namespace}", {_PUBLIC_SCHEMA}'))
 
 
-def _set_dbapi_search_path(dbapi_conn, search_path: str) -> None:  # type: ignore[no-untyped-def]
-    cursor = dbapi_conn.cursor()
-    cursor.execute(search_path)
-    cursor.close()
-
-
-def _attach_postgres_search_path(engine: Engine, search_path: str) -> None:
-    @event.listens_for(engine, 'connect')
-    def _on_connect(dbapi_conn, _connection_record):  # type: ignore[no-untyped-def]
-        _set_dbapi_search_path(dbapi_conn, search_path)
-
-    @event.listens_for(engine.pool, 'checkout')
-    def _on_checkout(dbapi_conn, _connection_record, _connection_proxy):  # type: ignore[no-untyped-def]
-        _set_dbapi_search_path(dbapi_conn, search_path)
-
-
-def _create_postgres_namespace_engine(namespace: str) -> Engine:
-    engine = _create_engine(settings.database_url)
-    _attach_postgres_search_path(engine, f'SET search_path TO "{namespace}", {_PUBLIC_SCHEMA}')
-    return engine
-
-
 def _create_public_engine() -> Engine:
-    engine = _create_engine(settings.database_url)
-    _attach_postgres_search_path(engine, f'SET search_path TO {_PUBLIC_SCHEMA}')
+    engine = _create_engine(
+        settings.database_url,
+        connect_args={'options': f'-c search_path={_PUBLIC_SCHEMA}'},
+    )
+
+    @event.listens_for(engine, 'checkout')
+    def _set_public_search_path(dbapi_connection, _connection_record, _connection_proxy) -> None:
+        _set_postgres_search_path(dbapi_connection, _PUBLIC_SCHEMA)
+
     return engine
 
 
@@ -130,44 +110,43 @@ def get_settings_engine() -> Engine:
 
     with _settings_engine_lock:
         if settings_engine is None:
-            settings_engine = _create_public_engine() if settings.is_postgres else _create_engine(settings.database_url)
+            settings_engine = _create_public_engine()
         return settings_engine
 
 
-def _create_sqlite_namespace_engine(namespace: str) -> Engine:
-    paths = namespace_paths(namespace)
-    return _create_engine(f'sqlite:///{paths.db_path}')
+def _get_tenant_engine() -> Engine:
+    global tenant_engine
 
-
-def _get_namespace_engine() -> Engine:
-    namespace = get_namespace()
     if _engine_override is not None:
         return _engine_override
-    with _namespace_engines_lock:
-        if namespace in _namespace_engines:
-            _namespace_engines.move_to_end(namespace)
-            return _namespace_engines[namespace]
-        if len(_namespace_engines) >= _MAX_NAMESPACE_ENGINES:
-            oldest = next(iter(_namespace_engines))
-            _namespace_engines.pop(oldest).dispose()
-        engine = _create_postgres_namespace_engine(namespace) if settings.is_postgres else _create_sqlite_namespace_engine(namespace)
-        _namespace_engines[namespace] = engine
-        _init_namespace_db_unlocked(namespace)
-        return engine
+    if tenant_engine is not None:
+        return tenant_engine
+
+    with _tenant_engine_lock:
+        if tenant_engine is None:
+            tenant_engine = _create_engine(settings.database_url)
+
+            @event.listens_for(tenant_engine, 'checkout')
+            def _set_namespace_search_path(dbapi_connection, _connection_record, _connection_proxy) -> None:
+                _set_postgres_search_path(dbapi_connection, get_namespace())
+
+        return tenant_engine
 
 
 @contextmanager
 def namespace_connection(namespace: str) -> Generator[Connection, None, None]:
-    engine = get_settings_engine() if settings.is_postgres else _get_namespace_engine()
+    engine = _get_tenant_engine()
     with engine.begin() as connection:
-        if settings.is_postgres:
-            _apply_postgres_search_path(connection, namespace)
+        _apply_postgres_search_path(connection, namespace)
         yield connection
 
 
 def get_db():
-    engine_to_use = _engine_override or _get_namespace_engine()
+    namespace = get_namespace()
+    _init_namespace_db(namespace)
+    engine_to_use = _get_tenant_engine()
     with Session(engine_to_use) as session:
+        session.connection()
         yield session
 
 
@@ -178,8 +157,11 @@ def get_settings_db():
 
 
 def run_db(func: Callable[Concatenate[Session, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
-    engine_to_use = _engine_override or _get_namespace_engine()
+    namespace = get_namespace()
+    _init_namespace_db(namespace)
+    engine_to_use = _get_tenant_engine()
     with Session(engine_to_use) as session:
+        session.connection()
         return func(session, *args, **kwargs)
 
 
@@ -247,14 +229,6 @@ def _tenant_tables():
     return [table for table in Analysis.metadata.sorted_tables if table.name in table_names]
 
 
-def _create_shared_tables_sqlite() -> None:
-    engine_to_use = get_settings_engine()
-    metadata = _shared_tables()[0].metadata if _shared_tables() else None
-    if metadata is None:
-        return
-    metadata.create_all(engine_to_use, tables=_shared_tables())
-
-
 def _create_shared_tables_postgres() -> None:
     engine_to_use = get_settings_engine()
     tables = _shared_tables()
@@ -266,35 +240,14 @@ def _create_shared_tables_postgres() -> None:
         metadata.create_all(connection, tables=tables)
 
 
-def _create_tenant_tables_sqlite(namespace: str) -> None:
-    namespace_engine = _namespace_engines.get(namespace)
-    if namespace_engine is None:
-        namespace_engine = _create_sqlite_namespace_engine(namespace)
-        _namespace_engines[namespace] = namespace_engine
-    metadata = _tenant_tables()[0].metadata if _tenant_tables() else None
-    if metadata is None:
-        return
-    metadata.create_all(namespace_engine, tables=_tenant_tables())
-
-
 def _ensure_postgres_schema(connection: Connection, schema: str) -> None:
     connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
 
 
 def _init_postgres_namespace(namespace: str) -> None:
-    tables = _tenant_tables()
-    metadata = tables[0].metadata if tables else None
-    if metadata is None:
-        return
-    with get_settings_engine().begin() as connection:
-        _ensure_postgres_schema(connection, namespace)
-    engine = _namespace_engines.get(namespace)
-    if engine is None:
-        engine = _create_postgres_namespace_engine(namespace)
-        _namespace_engines[namespace] = engine
-    with engine.begin() as connection:
-        _apply_postgres_search_path(connection, namespace)
-        metadata.create_all(connection, tables=tables)
+    from core.migrations import migrate_runtime
+
+    migrate_runtime([namespace])
 
 
 def _seed_shared_state() -> None:
@@ -321,47 +274,36 @@ def _run_postgres_init_locked(func) -> None:
             connection.execute(text('SELECT pg_advisory_unlock(:key)'), {'key': _POSTGRES_INIT_LOCK_KEY})
 
 
-@contextmanager
-def _sqlite_lock(path) -> Generator[None]:
-    with open(path, 'w') as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+def _namespace_init_key(namespace: str) -> tuple[str, str]:
+    return settings.database_url, normalize_namespace(namespace)
 
 
-def _init_settings_db() -> None:
-    if settings.is_postgres:
-        return
-    lock_path = namespace_paths(settings.default_namespace).base_dir / '.settings.init.lock'
-    with _sqlite_lock(lock_path):
-        _create_shared_tables_sqlite()
-        _seed_shared_state()
+def _mark_namespace_initialized(namespace: str) -> None:
+    with _initialized_namespaces_lock:
+        _initialized_namespaces.add(_namespace_init_key(namespace))
+
+
+def clear_namespace_init_cache() -> None:
+    with _initialized_namespaces_lock:
+        _initialized_namespaces.clear()
 
 
 def _init_namespace_db(namespace: str) -> None:
-    with _namespace_engines_lock:
-        _init_namespace_db_unlocked(namespace)
+    if _engine_override is not None:
+        return
+    key = _namespace_init_key(namespace)
+    with _initialized_namespaces_lock:
+        if key in _initialized_namespaces:
+            return
+    _init_namespace_db_unlocked(namespace)
+    _mark_namespace_initialized(namespace)
 
 
 def _init_namespace_db_unlocked(namespace: str) -> None:
-    if settings.is_postgres:
-        _init_postgres_namespace(namespace)
-        return
-    lock_path = namespace_paths(namespace).base_dir / '.init.lock'
-    with _sqlite_lock(lock_path):
-        _create_tenant_tables_sqlite(namespace)
-
-
-def _bootstrap_sqlite() -> None:
-    _init_settings_db()
-    namespaces = list_namespaces()
-    if not namespaces:
-        namespaces = [settings.default_namespace]
-    for namespace in namespaces:
-        namespace_paths(namespace)
-        _init_namespace_db(namespace)
+    with _initialized_namespaces_lock:
+        if _namespace_init_key(namespace) in _initialized_namespaces:
+            return
+        _run_postgres_init_locked(lambda: _init_postgres_namespace(namespace))
 
 
 def _bootstrap_postgres() -> None:
@@ -375,20 +317,18 @@ def _bootstrap_postgres() -> None:
     migrate_runtime(normalized)
     for namespace in normalized:
         namespace_paths(namespace)
+        _mark_namespace_initialized(namespace)
     invalidate_resolved_settings_cache()
 
 
 async def init_db() -> None:
-    if settings.is_postgres:
 
-        def _init_postgres() -> None:
-            _bootstrap_postgres()
-            _seed_shared_state()
+    def _init_postgres() -> None:
+        _bootstrap_postgres()
+        _seed_shared_state()
 
-        _run_postgres_init_locked(_init_postgres)
-        return
-    _bootstrap_sqlite()
+    _run_postgres_init_locked(_init_postgres)
 
 
 def supports_distributed_runtime() -> bool:
-    return settings.distributed_runtime_enabled and settings.is_postgres
+    return settings.distributed_runtime_enabled

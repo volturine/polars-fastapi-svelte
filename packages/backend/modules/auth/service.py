@@ -7,12 +7,11 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
-from pathlib import Path
 from string import hexdigits
 from typing import Any, cast
 
 from sqlalchemy import inspect, update
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, select
 
 from contracts.auth_models import (
     AuthProvider,
@@ -24,6 +23,7 @@ from contracts.auth_models import (
     VerificationTokenType,
 )
 from core.config import settings
+from core.database import namespace_connection
 from core.exceptions import (
     DefaultUserDeletionError,
     EmailAlreadyExistsError,
@@ -33,6 +33,7 @@ from core.exceptions import (
     TokenExpiredError,
     TokenInvalidError,
 )
+from core.namespace import list_namespaces
 from core.smtp import send_smtp_message
 
 
@@ -76,22 +77,14 @@ def _clear_owned_resources(session: Session, user_id: str) -> None:
         session.exec(update(model).where(owner_id_column == user_id).values(owner_id=None))
 
 
-def _namespace_db_files() -> list[Path]:
-    base_dir = settings.data_dir / 'namespaces'
-    if not base_dir.exists():
-        return []
-    return sorted(entry / 'namespace.db' for entry in base_dir.iterdir() if entry.is_dir() and (entry / 'namespace.db').exists())
-
-
 def _clear_owned_resources_in_namespaces(user_id: str) -> None:
-    for db_path in _namespace_db_files():
-        engine = create_engine(f'sqlite:///{db_path}', echo=settings.sql_echo, connect_args={})
-        try:
-            with Session(engine) as namespace_session:
-                _clear_owned_resources(namespace_session, user_id)
-                namespace_session.commit()
-        finally:
-            engine.dispose()
+    namespaces = list_namespaces()
+    if settings.default_namespace not in namespaces:
+        namespaces = [*namespaces, settings.default_namespace]
+    for namespace in namespaces:
+        with namespace_connection(namespace) as connection, Session(connection) as namespace_session:
+            _clear_owned_resources(namespace_session, user_id)
+            namespace_session.commit()
 
 
 def hash_password(password: str) -> str:
@@ -342,10 +335,6 @@ def delete_user_account(session: Session, user_id: str) -> None:
 
     _clear_owned_resources(session, user_id)
     _clear_owned_resources_in_namespaces(user_id)
-
-    for model in (AuthProvider, UserSession, VerificationToken):
-        for item in session.exec(select(model).where(model.user_id == user_id)).all():
-            session.delete(item)
 
     session.delete(user)
     session.commit()
@@ -674,7 +663,8 @@ async def resend_verification(session: Session, user_id: str) -> bool:
     last = max(rows, key=lambda row: row.created_at) if rows else None
     if last:
         now = _utcnow()
-        if last.created_at + timedelta(minutes=_RESEND_COOLDOWN_MINUTES) > now:
+        created_at = _naive_utc(last.created_at)
+        if created_at + timedelta(minutes=_RESEND_COOLDOWN_MINUTES) > now:
             raise ValueError('Verification email was sent recently. Please wait before requesting again')
 
     token = create_verification_token(session, user_id=user_id, token_type=_EMAIL_VERIFY)

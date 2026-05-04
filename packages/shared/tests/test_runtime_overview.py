@@ -94,7 +94,7 @@ def test_runtime_overview_reports_single_process_mode(client, monkeypatch) -> No
     from core.config import settings
 
     monkeypatch.setattr(settings, 'distributed_runtime_enabled', False, raising=False)
-    monkeypatch.setattr(settings, 'database_url', 'sqlite:////tmp/test.db', raising=False)
+    monkeypatch.setattr(settings, 'database_url', 'postgresql+psycopg://user:pass@host:5432/db', raising=False)
     monkeypatch.setattr(settings, 'embedded_build_worker_enabled', True, raising=False)
 
     response = client.get('/api/v1/runtime/overview')

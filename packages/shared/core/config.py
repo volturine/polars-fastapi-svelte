@@ -167,11 +167,8 @@ class Settings(BaseSettings):
     # Cooldown in milliseconds before logging repeated flush failures
     log_client_flush_cooldown_ms: int = Field(default=3000, alias='LOG_CLIENT_FLUSH_COOLDOWN_MS')
 
-    # Server-side log directory for SQLite logs
-    log_sqlite_path: Path = Field(default=Path(), alias='LOG_SQLITE_PATH')
-
-    # SQLite log flush interval in seconds
-    log_sqlite_flush_interval_seconds: int = Field(default=5, alias='LOG_SQLITE_FLUSH_INTERVAL_SECONDS')
+    # Server-side log flush interval in seconds
+    log_flush_interval_seconds: int = Field(default=5, alias='LOG_FLUSH_INTERVAL_SECONDS')
 
     # Max queued log batches before dropping
     log_queue_max_size: int = Field(default=2000, alias='LOG_QUEUE_MAX_SIZE')
@@ -247,32 +244,16 @@ class Settings(BaseSettings):
 
     @property
     def database_backend(self) -> str:
-        url = self.database_url.lower()
-        if url.startswith('postgresql://') or url.startswith('postgresql+'):
-            return 'postgresql'
-        return 'sqlite'
+        return 'postgresql'
 
     @property
     def is_postgres(self) -> bool:
-        return self.database_backend == 'postgresql'
+        return True
 
     @field_validator('data_dir', mode='before')
     @classmethod
     def _ensure_dirs(cls, value: Path) -> Path:
         return _resolve_dir(value)
-
-    @field_validator('log_sqlite_path', mode='before')
-    @classmethod
-    def _ensure_log_sqlite_path(cls, value: Path | str, info) -> Path:
-        data_dir = info.data.get('data_dir')
-        if str(value) in {'.', ''} and data_dir:
-            value = Path(data_dir) / 'logs'
-        path_value = Path(value)
-        if path_value.suffix in {'.db', '.json'}:
-            raise ValueError('LOG_SQLITE_PATH must be a directory, not a file')
-        if path_value.exists() and path_value.is_file():
-            raise ValueError('LOG_SQLITE_PATH must be a directory, not a file')
-        return _resolve_dir(path_value)
 
     @field_validator('upload_chunk_size')
     @classmethod
@@ -293,13 +274,14 @@ class Settings(BaseSettings):
 
     @field_validator('database_url')
     @classmethod
-    def _validate_database_url(cls, value: str, info) -> str:
-        if value.strip():
-            return value.strip()
-        data_dir = info.data.get('data_dir')
-        if data_dir:
-            return f'sqlite:///{Path(data_dir) / "app.db"}'
-        raise ValueError('data_dir is required to generate database_url')
+    def _validate_database_url(cls, value: str, _info) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError('DATABASE_URL must be set to a PostgreSQL connection string')
+        lower = normalized.lower()
+        if not (lower.startswith('postgresql://') or lower.startswith('postgresql+')):
+            raise ValueError('DATABASE_URL must be a PostgreSQL connection string')
+        return normalized
 
     @field_validator('timezone')
     @classmethod
@@ -380,8 +362,6 @@ class Settings(BaseSettings):
 
     @model_validator(mode='after')
     def _validate_runtime_mode(self) -> 'Settings':
-        if self.distributed_runtime_enabled and not self.is_postgres:
-            raise ValueError('DISTRIBUTED_RUNTIME_ENABLED requires a PostgreSQL DATABASE_URL')
         if self.distributed_runtime_enabled and self.embedded_build_worker_enabled:
             raise ValueError('EMBEDDED_BUILD_WORKER_ENABLED cannot be enabled with DISTRIBUTED_RUNTIME_ENABLED')
         if self.build_worker_min_processes > self.build_worker_max_processes:

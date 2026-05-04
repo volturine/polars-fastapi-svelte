@@ -13,7 +13,7 @@ dependencies = [
     "requests",
     "polars",
     "duckdb",
-    "pyiceberg[sql-sqlite,pyarrow]>=0.7.0",
+    "pyiceberg[pyarrow]>=0.7.0",
     "fsspec",
     "sqlalchemy>=2.0",
     "sqlmodel>=0.0.24",

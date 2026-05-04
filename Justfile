@@ -101,6 +101,9 @@ test-e2e-raw shard='':
     DATA_DIR="${DATA_DIR}-run-$$"
     export DATA_DIR
     LOG_DIR="${E2E_LOG_DIR:-}"
+    PG_CONTAINER="dataforge-e2e-pg-$$"
+    PG_PORT="55432"
+    export DATABASE_URL="postgresql+psycopg://dataforge:dataforge@127.0.0.1:${PG_PORT}/dataforge"
     kill_tree() {
         local pid="$1"
         if [ -z "$pid" ] || ! kill -0 "$pid" >/dev/null 2>&1; then
@@ -145,6 +148,7 @@ test-e2e-raw shard='':
         for pid in ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
             kill_tree_force "$pid"
         done
+        docker rm -f "${PG_CONTAINER}" >/dev/null 2>&1 || true
         lsof -ti "tcp:${PORT}" | xargs -r kill >/dev/null 2>&1 || true
         lsof -ti "tcp:${FRONTEND_PORT}" | xargs -r kill >/dev/null 2>&1 || true
         exit "$status"
@@ -155,6 +159,23 @@ test-e2e-raw shard='':
     if [ -n "$LOG_DIR" ]; then
         mkdir -p "$LOG_DIR"
     fi
+    echo "Starting e2e Postgres"
+    docker rm -f "${PG_CONTAINER}" >/dev/null 2>&1 || true
+    docker run -d --rm \
+        --name "${PG_CONTAINER}" \
+        -e POSTGRES_DB=dataforge \
+        -e POSTGRES_USER=dataforge \
+        -e POSTGRES_PASSWORD=dataforge \
+        -p "${PG_PORT}:5432" \
+        postgres:18-alpine -c max_connections=300 >/dev/null
+    deadline=$((SECONDS + 90))
+    until docker exec "${PG_CONTAINER}" pg_isready -U dataforge -d dataforge >/dev/null 2>&1; do
+        if [ "$SECONDS" -ge "$deadline" ]; then
+            echo "Timed out waiting for e2e Postgres" >&2
+            exit 1
+        fi
+        sleep 1
+    done
     echo "Starting e2e services"
     if [ -n "$LOG_DIR" ]; then
         (cd packages/backend && exec uv run --no-env-file main.py) >"$LOG_DIR/backend.log" 2>&1 & BACKEND_PID=$!

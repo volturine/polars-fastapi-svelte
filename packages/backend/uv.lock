@@ -360,7 +360,7 @@ dependencies = [
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
     { name = "pydantic-settings" },
-    { name = "pyiceberg", extra = ["pyarrow", "sql-sqlite"] },
+    { name = "pyiceberg", extra = ["pyarrow"] },
     { name = "python-multipart" },
     { name = "requests" },
     { name = "sqlalchemy" },
@@ -387,7 +387,7 @@ requires-dist = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.3" },
     { name = "pydantic", specifier = ">=2.12" },
     { name = "pydantic-settings" },
-    { name = "pyiceberg", extras = ["sql-sqlite", "pyarrow"], specifier = ">=0.7.0" },
+    { name = "pyiceberg", extras = ["pyarrow"], specifier = ">=0.7.0" },
     { name = "python-multipart" },
     { name = "requests" },
     { name = "sqlalchemy", specifier = ">=2.0" },
@@ -1219,9 +1219,6 @@ wheels = [
 pyarrow = [
     { name = "pyarrow" },
     { name = "pyiceberg-core" },
-]
-sql-sqlite = [
-    { name = "sqlalchemy" },
 ]
 
 [[package]]

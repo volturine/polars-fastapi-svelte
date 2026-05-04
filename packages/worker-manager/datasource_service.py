@@ -1,14 +1,13 @@
 import logging
 import os
-import sqlite3
 import uuid
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 import polars as pl
+import psycopg
 from compute_operations.datasource import load_datasource
 from datasource_schemas import ColumnSchema, CSVOptions, DataSourceResponse, SchemaInfo, normalize_datasource_description
 from pyiceberg.catalog import load_catalog
@@ -18,6 +17,7 @@ from sqlmodel import Session
 from contracts.datasource.models import DataSource
 from contracts.datasource.source_types import FILE_BASED_CATEGORIES, SOURCE_TYPE_CATEGORY, DataSourceType
 from core import engine_runs_service as engine_run_service
+from core.config import settings
 from core.exceptions import DataSourceConnectionError, DataSourceNotFoundError, DataSourceValidationError
 from core.namespace import get_namespace, namespace_paths
 
@@ -31,13 +31,10 @@ def _prepare_clean_target(clean_dir: Path, datasource_id: str, branch: str) -> P
 
 
 def _write_iceberg_table(lazy: pl.LazyFrame, table_path: Path, build_mode: str) -> Table:
-    catalog_path = table_path.parent / 'catalog.db'
-    if not catalog_path.exists():
-        catalog_path.touch()
     catalog = load_catalog(
         'local',
         type='sql',
-        uri=f'sqlite:///{catalog_path}',
+        uri=settings.database_url,
         warehouse=f'file://{table_path.parent}',
     )
     namespace = 'clean'
@@ -60,10 +57,9 @@ def _write_iceberg_table(lazy: pl.LazyFrame, table_path: Path, build_mode: str) 
 
 
 def _build_iceberg_config(paths, target_path: Path, branch: str, source_config: Mapping[str, object] | None = None) -> dict[str, object]:
-    catalog_path = target_path.parent / 'catalog.db'
     return {
         'catalog_type': 'sql',
-        'catalog_uri': f'sqlite:///{catalog_path}',
+        'catalog_uri': settings.database_url,
         'warehouse': f'file://{paths.clean_dir}',
         'namespace': 'clean',
         'table': target_path.parent.name,
@@ -116,18 +112,11 @@ def _schema_from_database(datasource: DataSource, sheet_name: str | None) -> Sch
     del sheet_name
     connection_string = datasource.config['connection_string']
     query = datasource.config['query']
+    if not connection_string.lower().startswith('postgresql://'):
+        raise DataSourceConnectionError('Database datasource connection string must be PostgreSQL')
     try:
-        if connection_string.startswith('sqlite:'):
-            parsed = urlparse(connection_string)
-            if not parsed.path:
-                raise DataSourceConnectionError('SQLite connection string must include a database path')
-            connection = sqlite3.connect(parsed.path)
-            try:
-                frame = pl.read_database(query, connection)
-            finally:
-                connection.close()
-        else:
-            frame = pl.read_database_uri(query, connection_string)
+        with psycopg.connect(connection_string, autocommit=True) as connection:
+            frame = pl.read_database(query, connection)
     except Exception as exc:
         raise DataSourceConnectionError(
             'Failed to query database datasource',

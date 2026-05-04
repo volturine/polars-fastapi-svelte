@@ -15,6 +15,7 @@ def _set_isolated_settings_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, 
     resolved_data_dir = data_dir or (tmp_path / 'data')
     monkeypatch.setenv('DATA_DIR', str(resolved_data_dir))
     monkeypatch.setenv('ENV_FILE', str(env_file))
+    monkeypatch.setenv('DATABASE_URL', 'postgresql+psycopg://user:pass@host:5432/db')
     return resolved_data_dir
 
 
@@ -40,7 +41,7 @@ class TestSettings:
         settings = Settings()
 
         assert settings.debug is False
-        assert settings.database_url == f'sqlite:///{settings.data_dir / "app.db"}'
+        assert settings.database_url == 'postgresql+psycopg://user:pass@host:5432/db'
         assert settings.data_dir.exists()
         assert settings.upload_chunk_size == 5 * 1024 * 1024
         assert settings.lock_ttl_seconds == 30
@@ -56,7 +57,7 @@ class TestSettings:
         _set_isolated_settings_env(monkeypatch, tmp_path, data_dir)
         monkeypatch.setenv('DEBUG', 'true')
         monkeypatch.setenv('PORT', '8123')
-        monkeypatch.setenv('DATABASE_URL', 'sqlite:///./test.db')
+        monkeypatch.setenv('DATABASE_URL', 'postgresql+psycopg://user:pass@host:5433/test')
         monkeypatch.setenv('DATA_DIR', str(data_dir))
         monkeypatch.setenv('DEFAULT_NAMESPACE', 'acme')
         monkeypatch.setenv('UPLOAD_CHUNK_SIZE', '2000000')
@@ -66,7 +67,7 @@ class TestSettings:
 
         assert settings.debug is True
         assert settings.port == 8123
-        assert settings.database_url == 'sqlite:///./test.db'
+        assert settings.database_url == 'postgresql+psycopg://user:pass@host:5433/test'
         assert settings.data_dir == data_dir
         assert settings.default_namespace == 'acme'
         assert settings.upload_chunk_size == 2000000
@@ -115,15 +116,14 @@ class TestSettings:
         assert settings.cors_origins is not None
         assert len(settings.cors_origins_list) > 0
 
-    def test_database_url_defaults_from_data_dir_when_empty(self, monkeypatch, tmp_path):
+    def test_database_url_must_be_explicit_postgres(self, monkeypatch, tmp_path):
         data_dir = tmp_path / 'data'
         _set_isolated_settings_env(monkeypatch, tmp_path, data_dir)
         monkeypatch.delenv('DATABASE_URL', raising=False)
         monkeypatch.setenv('DATA_DIR', str(data_dir))
 
-        settings = Settings()
-
-        assert settings.database_url == f'sqlite:///{data_dir / "app.db"}'
+        with pytest.raises(ValidationError, match='DATABASE_URL must be set to a PostgreSQL connection string'):
+            Settings()
 
     def test_database_url_uses_explicit_env_value(self, monkeypatch, tmp_path):
         _set_isolated_settings_env(monkeypatch, tmp_path)
@@ -156,11 +156,11 @@ class TestSettings:
         assert settings.database_max_overflow == 7
         assert settings.database_pool_timeout == 12
 
-    def test_distributed_runtime_requires_postgres(self, monkeypatch, tmp_path):
+    def test_database_url_rejects_non_postgres_values(self, monkeypatch, tmp_path):
         _set_isolated_settings_env(monkeypatch, tmp_path)
-        monkeypatch.setenv('DISTRIBUTED_RUNTIME_ENABLED', 'true')
+        monkeypatch.setenv('DATABASE_URL', 'mysql://user:pass@host/db')
 
-        with pytest.raises(ValidationError, match='DISTRIBUTED_RUNTIME_ENABLED requires a PostgreSQL DATABASE_URL'):
+        with pytest.raises(ValidationError, match='DATABASE_URL must be a PostgreSQL connection string'):
             Settings()
 
     def test_distributed_runtime_rejects_embedded_build_worker(self, monkeypatch, tmp_path):
@@ -226,7 +226,7 @@ class TestSettings:
         assert first.data_dir == tmp_path / 'data-forge'
         assert first.data_dir == second.data_dir
         assert first.data_dir.exists()
-        assert second.database_url == f'sqlite:///{second.data_dir / "app.db"}'
+        assert second.database_url == 'postgresql+psycopg://dataforge:dataforge@127.0.0.1:5432/dataforge'
 
     def test_logging_level(self, monkeypatch, tmp_path):
         _set_isolated_settings_env(monkeypatch, tmp_path)
@@ -242,11 +242,11 @@ class TestSettings:
 
         assert settings.log_level == 'info'
 
-    def test_default_log_sqlite_paths(self, monkeypatch, tmp_path):
+    def test_default_log_flush_interval(self, monkeypatch, tmp_path):
         _set_isolated_settings_env(monkeypatch, tmp_path)
         settings = Settings()
 
-        assert 'logs' in str(settings.log_sqlite_path)
+        assert settings.log_flush_interval_seconds == 5
 
     def test_worker_settings(self, monkeypatch, tmp_path):
         _set_isolated_settings_env(monkeypatch, tmp_path)

@@ -74,7 +74,7 @@ Repo-level local runtime:
 
 If you only want the high-value knobs, start with these:
 
-- `DATA_DIR` — where app data, SQLite state, and logs live
+- `DATA_DIR` — where app data, uploads, exports, and logs live
 - `PORT` — backend port
 - `CORS_ORIGINS` — allowed browser origins (only needed in dev or multi-origin setups)
 - `AUTH_REQUIRED` — turn login on/off
@@ -89,7 +89,7 @@ If you only want the high-value knobs, start with these:
 - `Settings()` reads process environment first, then an env file.
 - `ENV_FILE` chooses the env file path. Default: `.env`.
 - Set `ENV_FILE` to an empty value only if you want to rely on process env alone.
-- `DATABASE_URL` is the actual backend database URL. Leave it blank to default to SQLite under `DATA_DIR`, or set a full Postgres URL to enable the Postgres runtime.
+- `DATABASE_URL` is the backend database URL and must be a full PostgreSQL connection string.
 - Some values such as SMTP and provider defaults are **seeded into the database once**. After the UI saves a value, the database value wins until it is cleared.
 
 ### Frontend dev server
@@ -150,7 +150,7 @@ just dev
 | `PROD_MODE_ENABLED`          | `false`                                                                                   | Must be `true` in production. Enables static-file serving from `frontend/build/`. In dev, leave `false` so FastAPI does not try to serve the frontend.        |
 | `PORT`                       | `8000`                                                                                    | Backend HTTP port.                                                                                                                                            |
 | `DATA_DIR`                   | system temp dir + `/data-forge`                                                           | Base writable directory for app data.                                                                                                                         |
-| `DATABASE_URL`               | SQLite under `DATA_DIR`                                                                   | Full backend database URL. Leave blank for local SQLite or set a Postgres URL for distributed runtime.                                                        |
+| `DATABASE_URL`               | none                                                                                      | Full backend PostgreSQL database URL. Required.                                                                                                                |
 | `DF_API_IMAGE`              | `ghcr.io/volturine/data-forge-api:1.0.0`                                                  | Docker compose production image tag for the `api` service. Pull this image before `docker compose up`.                                                         |
 | `DF_SCHEDULER_IMAGE`        | `ghcr.io/volturine/data-forge-scheduler:1.0.0`                                            | Docker compose production image tag for the `scheduler` service.                                                                                                 |
 | `DF_WORKER_IMAGE`           | `ghcr.io/volturine/data-forge-worker:1.0.0`                                               | Docker compose production image tag for the `worker` service.                                                                                                    |
@@ -193,8 +193,7 @@ just dev
 | `LOG_CLIENT_FLUSH_INTERVAL_MS`      | `5000`             | Client audit flush interval.                                                                                             |
 | `LOG_CLIENT_DEDUPE_WINDOW_MS`       | `500`              | Dedupe window for repeated client events.                                                                                |
 | `LOG_CLIENT_FLUSH_COOLDOWN_MS`      | `3000`             | Cooldown before repeating client flush-failure logs.                                                                     |
-| `LOG_SQLITE_PATH`                   | `${DATA_DIR}/logs` | Directory for SQLite-backed logs. Leave blank to use the default under `DATA_DIR`.                                       |
-| `LOG_SQLITE_FLUSH_INTERVAL_SECONDS` | `5`                | Flush interval for SQLite logs.                                                                                          |
+| `LOG_FLUSH_INTERVAL_SECONDS`        | `5`                | Flush interval for database-backed server logs.                                                                          |
 | `LOG_QUEUE_MAX_SIZE`                | `2000`             | Max queued log batches.                                                                                                  |
 | `LOG_QUEUE_OVERFLOW`                | `drop`             | One of `block` or `drop`.                                                                                                |
 | `LOG_MAX_BODY_SIZE`                 | `65536`            | Max request/response body bytes to log. `0` means unlimited.                                                             |

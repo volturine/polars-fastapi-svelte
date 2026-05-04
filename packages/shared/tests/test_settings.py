@@ -1,15 +1,34 @@
 """Tests for the settings module — GET/PUT settings, test SMTP/Telegram."""
 
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.pool import StaticPool
+from sqlalchemy import text
 from sqlmodel import Session, create_engine
 
 from core.secrets import MASKED_SECRET, decrypt_secret, encrypt_secret
+
+
+def _make_postgres_engine(prefix: str = 'settings'):
+    from sqlmodel import SQLModel
+
+    url = __import__('os').environ['TEST_POSTGRES_URL']
+    schema = f'{prefix}_{uuid.uuid4().hex}'
+    engine = create_engine(
+        url,
+        echo=False,
+        pool_pre_ping=True,
+        connect_args={'options': f'-c search_path={schema},public'},
+    )
+
+    with engine.begin() as connection:
+        connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+        SQLModel.metadata.create_all(connection)
+    return engine, schema
 
 
 @pytest.fixture(autouse=True)
@@ -722,14 +741,7 @@ class TestSeedSettingsFromEnv:
     """seed_settings_from_env() writes ENV values to an empty DB row."""
 
     def _make_engine(self):
-        from sqlmodel import SQLModel
-
-        engine = create_engine(
-            'sqlite:///:memory:',
-            connect_args={'check_same_thread': False},
-            poolclass=StaticPool,
-        )
-        SQLModel.metadata.create_all(engine)
+        engine, _schema = _make_postgres_engine('settings')
         return engine
 
     def test_seeds_all_fields_when_db_is_empty(self, monkeypatch) -> None:
@@ -878,12 +890,7 @@ class TestSeedSettingsFromEnv:
         from core.secrets import encrypt_secret
 
         monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
-        engine = create_engine(
-            'sqlite:///:memory:',
-            connect_args={'check_same_thread': False},
-            poolclass=StaticPool,
-        )
-        AppSettings.metadata.create_all(engine)
+        engine, _schema = _make_postgres_engine('settings')
 
         with Session(engine) as session:
             row = AppSettings(id=1, telegram_bot_enabled=True, telegram_bot_token=encrypt_secret('bot:tok'))
@@ -927,14 +934,7 @@ class TestSeedSettingsFromEnv:
 
 class TestSettingsRuntimeCaches:
     def _make_engine(self):
-        from sqlmodel import SQLModel
-
-        engine = create_engine(
-            'sqlite:///:memory:',
-            connect_args={'check_same_thread': False},
-            poolclass=StaticPool,
-        )
-        SQLModel.metadata.create_all(engine)
+        engine, _schema = _make_postgres_engine('settings')
         return engine
 
     def test_secret_derivation_cache_tracks_key_material_changes(self, monkeypatch) -> None:
@@ -953,16 +953,15 @@ class TestSettingsRuntimeCaches:
     def test_get_settings_engine_is_lazy(self, monkeypatch, tmp_path) -> None:
         from core import database
 
-        db_path = tmp_path / 'lazy-settings.db'
         monkeypatch.setattr(database, 'settings_engine', None, raising=False)
-        monkeypatch.setattr('core.config.settings.database_url', f'sqlite:///{db_path}')
+        monkeypatch.setattr('core.config.settings.database_url', __import__('os').environ['TEST_POSTGRES_URL'])
 
         first = database.get_settings_engine()
         second = database.get_settings_engine()
 
         assert first is second
         assert database.settings_engine is first
-        assert first.url.database == str(db_path)
+        assert first.url.drivername.startswith('postgresql')
         first.dispose()
 
     def test_resolved_settings_cache_invalidates_after_update(self, monkeypatch) -> None:

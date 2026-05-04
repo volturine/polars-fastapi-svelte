@@ -574,8 +574,9 @@ class TestAnalysisUpdate:
 
         assert response.status_code == 200
         result = response.json()
-        assert response.headers['X-Analysis-Version'] == result['updated_at']
-        assert response.headers['ETag'] == f'"analysis-{result["id"]}-{result["updated_at"]}"'
+        updated_at = result['updated_at'].replace('Z', '+00:00')
+        assert response.headers['X-Analysis-Version'] == updated_at
+        assert response.headers['ETag'] == f'"analysis-{result["id"]}-{updated_at}"'
 
     def test_update_analysis_rejects_stale_if_match(self, client, sample_analysis: Analysis):
         payload = {

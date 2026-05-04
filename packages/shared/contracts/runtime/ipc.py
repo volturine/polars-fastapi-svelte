@@ -1,14 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
-import hashlib
 import json
 import logging
-import socket
-import tempfile
+import threading
 from collections.abc import Awaitable, Callable
-from pathlib import Path
 from typing import Literal
 
 import psycopg
@@ -20,71 +16,28 @@ logger = logging.getLogger(__name__)
 
 _CHANNEL = 'runtime_events'
 ListenerKind = Literal['api', 'job']
+_notify_connection: psycopg.Connection | None = None
+_notify_connection_conninfo: str | None = None
+_notify_connection_lock = threading.Lock()
 
 
 def _psycopg_conninfo() -> str:
     return settings.database_url.replace('postgresql+psycopg://', 'postgresql://', 1)
 
 
-def _socket_path(listener: ListenerKind) -> Path:
-    digest = hashlib.sha1(f'{settings.data_dir}:{listener}'.encode()).hexdigest()[:12]
-    return Path(tempfile.gettempdir()) / f'df-runtime-{digest}.sock'
-
-
-async def start_api_server(listener: ListenerKind = 'api') -> socket.socket | psycopg.Connection | None:
-    if settings.is_postgres:
-        connection = psycopg.connect(_psycopg_conninfo(), autocommit=True)
-        connection.execute(f'LISTEN {_CHANNEL}')
-        return connection
-    path = _socket_path(listener)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with contextlib.suppress(FileNotFoundError):
-        path.unlink()
-    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    server.bind(str(path))
-    server.listen()
-    server.setblocking(False)
-    return server
+async def start_api_server(listener: ListenerKind = 'api') -> psycopg.Connection | None:
+    del listener
+    connection = psycopg.connect(_psycopg_conninfo(), autocommit=True)
+    connection.execute(f'LISTEN {_CHANNEL}')
+    return connection
 
 
 async def serve_api_notifications(
-    server: socket.socket | psycopg.Connection,
+    server: psycopg.Connection,
     stop_event,
     handler: Callable[[dict[str, object]], Awaitable[None]],
 ) -> None:
-    if isinstance(server, psycopg.Connection):
-        await _serve_postgres_notifications(server, stop_event, handler)
-        return
-    await _serve_unix_notifications(server, stop_event, handler)
-
-
-async def _serve_unix_notifications(server: socket.socket, stop_event, handler: Callable[[dict[str, object]], Awaitable[None]]) -> None:
-    loop = asyncio.get_running_loop()
-    while not stop_event.is_set():
-        accept_task = asyncio.create_task(loop.sock_accept(server))
-        stop_task = asyncio.create_task(stop_event.wait())
-        done, pending = await asyncio.wait({accept_task, stop_task}, return_when=asyncio.FIRST_COMPLETED)
-        for task in pending:
-            task.cancel()
-        if pending:
-            await asyncio.gather(*pending, return_exceptions=True)
-        if stop_task in done:
-            return
-        try:
-            conn, _ = await accept_task
-        except (asyncio.CancelledError, OSError):
-            return
-        try:
-            data = await loop.sock_recv(conn, 4096)
-            if not data:
-                continue
-            payload = json.loads(data.decode('utf-8').strip())
-            if isinstance(payload, dict):
-                await handler(payload)
-        except Exception as exc:
-            logger.debug('Ignoring malformed runtime IPC payload: %s', exc)
-        finally:
-            conn.close()
+    await _serve_postgres_notifications(server, stop_event, handler)
 
 
 def _postgres_connection_socket(connection: psycopg.Connection) -> int:
@@ -150,16 +103,11 @@ def _notify_payload(notify: Notify) -> str:
     return notify.payload
 
 
-async def stop_api_server(server: socket.socket | psycopg.Connection | None, *, listener: ListenerKind = 'api') -> None:
+async def stop_api_server(server: psycopg.Connection | None, *, listener: ListenerKind = 'api') -> None:
+    del listener
     if server is None:
         return
-    if isinstance(server, psycopg.Connection):
-        server.close()
-        return
     server.close()
-    path = _socket_path(listener)
-    with contextlib.suppress(FileNotFoundError):
-        path.unlink()
 
 
 async def handle_api_payload(payload: dict[str, object]) -> None:
@@ -239,24 +187,38 @@ def notify_compute_response(request_id: str) -> None:
 
 
 def _send_api_message(payload: dict[str, object], *, listener: ListenerKind) -> None:
-    if settings.is_postgres:
-        _send_postgres_message(payload)
-        return
-    _send_unix_message(payload, listener=listener)
+    del listener
+    _send_postgres_message(payload)
+
+
+def _get_notify_connection() -> psycopg.Connection:
+    global _notify_connection, _notify_connection_conninfo
+    conninfo = _psycopg_conninfo()
+    with _notify_connection_lock:
+        if _notify_connection is not None and not _notify_connection.closed and _notify_connection_conninfo == conninfo:
+            return _notify_connection
+        if _notify_connection is not None and not _notify_connection.closed:
+            _notify_connection.close()
+        _notify_connection = psycopg.connect(conninfo, autocommit=True)
+        _notify_connection_conninfo = conninfo
+        return _notify_connection
+
+
+def _reset_notify_connection() -> None:
+    global _notify_connection, _notify_connection_conninfo
+    with _notify_connection_lock:
+        if _notify_connection is not None:
+            _notify_connection.close()
+        _notify_connection = None
+        _notify_connection_conninfo = None
 
 
 def _send_postgres_message(payload: dict[str, object]) -> None:
     data = json.dumps(payload)
-    with contextlib.suppress(Exception), psycopg.connect(_psycopg_conninfo(), autocommit=True) as connection:
+    try:
+        connection = _get_notify_connection()
         connection.execute('SELECT pg_notify(%s, %s)', (_CHANNEL, data))
-
-
-def _send_unix_message(payload: dict[str, object], *, listener: ListenerKind) -> None:
-    path = _socket_path(listener)
-    if not path.exists():
-        return
-    data = json.dumps(payload).encode('utf-8') + b'\n'
-    with contextlib.suppress(OSError), socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-        client.settimeout(0.2)
-        client.connect(str(path))
-        client.sendall(data)
+    except psycopg.Error:
+        _reset_notify_connection()
+        connection = _get_notify_connection()
+        connection.execute('SELECT pg_notify(%s, %s)', (_CHANNEL, data))

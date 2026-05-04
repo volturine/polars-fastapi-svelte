@@ -115,8 +115,7 @@ Contribution guidelines covering:
 Deployment guide covering three methods:
 
 1. **Docker Compose** (recommended)
-   - Default (SQLite) setup
-   - With PostgreSQL profile
+   - Default Postgres-backed setup
    - With S3 storage (when available)
    - Environment variable configuration
    - Volume management

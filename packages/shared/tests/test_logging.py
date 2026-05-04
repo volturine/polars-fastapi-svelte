@@ -1,11 +1,11 @@
-import sqlite3
 from collections.abc import AsyncIterator
 
+import psycopg
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 
-from core.logging import RequestLoggingMiddleware, SqliteLogWriter, redact_logged_body
+from core.logging import DatabaseLogWriter, RequestLoggingMiddleware, redact_logged_body
 
 
 class TestLoggingRedaction:
@@ -34,8 +34,8 @@ class _InMemoryWriter:
         self.payloads.append(payload)
 
 
-def test_sqlite_log_writer_stop_flushes_pending_rows(tmp_path) -> None:
-    writer = SqliteLogWriter(str(tmp_path), flush_interval=60)
+def test_database_log_writer_stop_flushes_pending_rows(postgres_container) -> None:
+    writer = DatabaseLogWriter(postgres_container.url, flush_interval=60)
     writer.write_request_log(
         {
             'ts': '2026-01-01T00:00:00Z',
@@ -57,10 +57,11 @@ def test_sqlite_log_writer_stop_flushes_pending_rows(tmp_path) -> None:
 
     writer.stop()
 
-    with sqlite3.connect(str(tmp_path / 'logs.db')) as connection:
-        count = connection.execute('SELECT COUNT(*) FROM request_logs').fetchone()[0]
+    with psycopg.connect(postgres_container.url.replace('+psycopg', ''), autocommit=True) as connection:
+        row = connection.execute("SELECT COUNT(*) FROM request_logs WHERE request_id = 'req-1'").fetchone()
 
-    assert count == 1
+    assert row is not None
+    assert row[0] == 1
 
 
 class TestRequestLoggingMiddleware:

@@ -12,8 +12,11 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, create_engine
+
+from tests.postgres_harness import PostgresContainer, require_docker
 
 if TYPE_CHECKING:
     from contracts.analysis.models import Analysis
@@ -26,6 +29,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     os.environ.pop('POLARS_STREAMING_CHUNK_SIZE', None)
     os.environ.setdefault('ENV_FILE', '')
     os.environ.setdefault('SETTINGS_ENCRYPTION_KEY', 'test-key')
+    os.environ.setdefault('DATABASE_URL', 'postgresql+psycopg://dataforge:dataforge@127.0.0.1:5432/dataforge')
 
 
 def _settings():
@@ -44,6 +48,53 @@ class _InProcessRuntimeAvailabilityProbe:
         if kind is not RuntimeWorkerKind.BUILD_MANAGER:
             return False
         return self._is_alive()
+
+
+def _register_sqlmodel_metadata() -> None:
+    from modules.chat.sessions import ChatSession
+
+    from contracts.analysis.models import Analysis, AnalysisDataSource
+    from contracts.analysis_versions.models import AnalysisVersion
+    from contracts.auth_models import AuthProvider, User, UserSession, VerificationToken
+    from contracts.build_jobs.models import BuildJob
+    from contracts.build_runs.models import BuildEvent, BuildRun
+    from contracts.datasource.models import DataSource, DataSourceColumnMetadata
+    from contracts.engine_instances.models import EngineInstance
+    from contracts.engine_runs.models import EngineRun
+    from contracts.healthcheck_models import HealthCheck, HealthCheckResult
+    from contracts.locks.models import ResourceLock
+    from contracts.namespaces.models import RuntimeNamespace
+    from contracts.runtime_workers.models import RuntimeWorker
+    from contracts.scheduler.models import Schedule
+    from contracts.settings_models import AppSettings
+    from contracts.telegram_models import TelegramListener, TelegramSubscriber
+    from contracts.udf_models import Udf
+
+    del Analysis
+    del AnalysisDataSource
+    del AnalysisVersion
+    del AppSettings
+    del AuthProvider
+    del BuildEvent
+    del BuildJob
+    del BuildRun
+    del ChatSession
+    del DataSource
+    del DataSourceColumnMetadata
+    del EngineInstance
+    del EngineRun
+    del HealthCheck
+    del HealthCheckResult
+    del ResourceLock
+    del RuntimeNamespace
+    del RuntimeWorker
+    del Schedule
+    del TelegramListener
+    del TelegramSubscriber
+    del Udf
+    del User
+    del UserSession
+    del VerificationToken
 
 
 def _settings_tables() -> list[Any]:
@@ -86,21 +137,51 @@ def _reset_settings_state(engine: Engine) -> None:
     invalidate_resolved_settings_cache()
 
 
+@pytest.fixture(scope='session')
+def postgres_container() -> Generator[PostgresContainer, None, None]:
+    require_docker()
+    with PostgresContainer() as container:
+        os.environ['TEST_POSTGRES_URL'] = container.url
+        yield container
+        os.environ.pop('TEST_POSTGRES_URL', None)
+
+
+def _schema_engine(database_url: str, schema: str) -> Engine:
+    engine = create_engine(
+        database_url,
+        echo=False,
+        pool_pre_ping=True,
+        connect_args={'options': f'-c search_path={schema},public'},
+    )
+    with engine.begin() as connection:
+        connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+    return engine
+
+
 @pytest.fixture(scope='function')
-def test_engine(tmp_path: Path):
+def test_engine(postgres_container: PostgresContainer):
     from contracts.locks.models import ResourceLock
     from contracts.udf_models import Udf
 
     del ResourceLock
     del Udf
-    db_path = tmp_path / 'test.db'
-    engine = create_engine(
-        f'sqlite:///{db_path}',
-        echo=False,
-        connect_args={'check_same_thread': False},
-    )
-    SQLModel.metadata.create_all(engine)
-    return engine
+    schema = f'test_{uuid.uuid4().hex}'
+    engine = _schema_engine(postgres_container.url, schema)
+    _register_sqlmodel_metadata()
+    from core import database
+
+    with engine.begin() as connection:
+        connection.execute(text(f'SET search_path TO "{schema}", public'))
+        tenant_tables = database._tenant_tables()
+        tenant_metadata = tenant_tables[0].metadata if tenant_tables else None
+        if tenant_metadata is not None:
+            tenant_metadata.create_all(connection, tables=tenant_tables)
+    try:
+        yield engine
+    finally:
+        with postgres_container.connect() as pg_connection, pg_connection.cursor() as cursor:
+            cursor.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+        engine.dispose()
 
 
 @pytest.fixture(scope='function')
@@ -146,8 +227,7 @@ def client(test_db_session, test_user):
     from core.database import get_db, init_db, run_settings_db
 
     def override_get_db():
-        with Session(test_db_session.bind) as session:
-            yield session
+        yield test_db_session
 
     def start_test_runtime() -> tuple[threading.Thread, threading.Event]:
         stop_flag = threading.Event()
@@ -288,31 +368,24 @@ def temp_upload_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture(autouse=True, scope='function')
-def isolate_data_dir(tmp_path: Path, monkeypatch):
+def isolate_data_dir(tmp_path: Path, monkeypatch, postgres_container: PostgresContainer):
     settings = _settings()
     data_dir = tmp_path / 'data'
     data_dir.mkdir(parents=True, exist_ok=True)
-    log_dir = data_dir / 'logs'
-    log_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv('ENV_FILE', '')
     monkeypatch.setenv('SETTINGS_ENCRYPTION_KEY', 'test-key')
     monkeypatch.setattr(settings, 'settings_encryption_key', 'test-key', raising=False)
     monkeypatch.setattr(settings, 'data_dir', data_dir, raising=False)
-    monkeypatch.setattr(settings, 'database_url', f'sqlite:///{data_dir / "app.db"}', raising=False)
-    monkeypatch.setattr(settings, 'log_sqlite_path', log_dir, raising=False)
+    monkeypatch.setattr(settings, 'database_url', postgres_container.url, raising=False)
 
 
 @pytest.fixture(autouse=True, scope='function')
-def isolate_settings_engine(tmp_path: Path, isolate_data_dir) -> Generator[Engine, None, None]:
+def isolate_settings_engine(tmp_path: Path, isolate_data_dir, postgres_container: PostgresContainer) -> Generator[Engine, None, None]:
     from contracts.settings_models import AppSettings
     from core import database
 
-    settings_db_path = tmp_path / 'settings.db'
-    engine = create_engine(
-        f'sqlite:///{settings_db_path}',
-        echo=False,
-        connect_args={'check_same_thread': False},
-    )
+    schema = f'settings_{uuid.uuid4().hex}'
+    engine = _schema_engine(postgres_container.url, schema)
     AppSettings.metadata.create_all(engine, tables=_settings_tables())
     original = database.settings_engine
     database.settings_engine = engine
@@ -323,6 +396,8 @@ def isolate_settings_engine(tmp_path: Path, isolate_data_dir) -> Generator[Engin
         database.clear_settings_engine_override()
         _reset_settings_state(engine)
         database.settings_engine = original
+        with postgres_container.connect() as pg_connection, pg_connection.cursor() as cursor:
+            cursor.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
         engine.dispose()
 
 
@@ -331,9 +406,10 @@ def cleanup_namespace_engines():
     from core import database
 
     yield
-    for engine in database._namespace_engines.values():
-        engine.dispose()
-    database._namespace_engines.clear()
+    database.clear_namespace_init_cache()
+    if database.tenant_engine is not None:
+        database.tenant_engine.dispose()
+        database.tenant_engine = None
 
 
 @pytest.fixture(scope='function')

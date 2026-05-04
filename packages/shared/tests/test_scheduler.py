@@ -102,7 +102,7 @@ async def test_scheduler_main_starts_runtime_listener(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_scheduler_main_skips_runtime_listener_outside_postgres(monkeypatch) -> None:
+async def test_scheduler_main_invokes_runtime_listener_start(monkeypatch) -> None:
     calls: list[str] = []
 
     async def fake_init_db() -> None:
@@ -113,21 +113,36 @@ async def test_scheduler_main_skips_runtime_listener_outside_postgres(monkeypatc
         assert worker_id == 'scheduler-1'
         stop_event.set()
 
-    monkeypatch.setattr(runtime_scheduler.settings, 'database_url', 'sqlite:////tmp/test.db', raising=False)
+    monkeypatch.setattr(runtime_scheduler.settings, 'database_url', 'postgresql+psycopg://user:pass@host:5432/db', raising=False)
     monkeypatch.setattr(runtime_scheduler, 'configure_logging', lambda: calls.append('configure_logging'))
     monkeypatch.setattr(runtime_scheduler, 'init_db', fake_init_db)
-    monkeypatch.setattr(
-        runtime_scheduler.runtime_ipc,
-        'start_api_server',
-        lambda: pytest.fail('runtime IPC server should not start outside Postgres'),
-    )
+
+    server = object()
+
+    async def fake_start_api_server():
+        calls.append('start_api_server')
+        return server
+
+    async def fake_stop_api_server(_server: object) -> None:
+        calls.append('stop_api_server')
+        assert _server is server
+
+    monkeypatch.setattr(runtime_scheduler.runtime_ipc, 'start_api_server', fake_start_api_server)
+    monkeypatch.setattr(runtime_scheduler.runtime_ipc, 'stop_api_server', fake_stop_api_server)
     monkeypatch.setattr(runtime_scheduler, 'install_stop_handlers', lambda stop_event: calls.append('install_stop_handlers'))
     monkeypatch.setattr(runtime_scheduler, 'scheduler_loop', fake_scheduler_loop)
     monkeypatch.setattr(runtime_scheduler, 'scheduler_id', lambda: 'scheduler-1')
 
     await runtime_scheduler.main()
 
-    assert calls == ['configure_logging', 'init_db', 'install_stop_handlers', 'scheduler_loop']
+    assert calls == [
+        'configure_logging',
+        'init_db',
+        'install_stop_handlers',
+        'start_api_server',
+        'scheduler_loop',
+        'stop_api_server',
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -576,9 +591,9 @@ class TestMarkScheduleRun:
         assert schedule.last_run is not None
         assert schedule.next_run is not None
         # last_run should be very recent (within last 5 seconds)
-        # mark_schedule_run stores naive UTC, so compare with naive UTC
-        now = datetime.now(UTC).replace(tzinfo=None)
-        assert (now - schedule.last_run).total_seconds() < 5
+        last_run = schedule.last_run if schedule.last_run.tzinfo is not None else schedule.last_run.replace(tzinfo=UTC)
+        now = datetime.now(UTC)
+        assert (now - last_run).total_seconds() < 5
 
     def test_nonexistent_schedule_no_error(self, test_db_session: Session):
         """Marking a nonexistent schedule should not raise."""
@@ -755,6 +770,7 @@ class TestGetBuildOrder:
             updated_at=now,
         )
         test_db_session.add(downstream)
+        test_db_session.commit()
 
         # Link downstream to the datasource created by upstream
         link = AnalysisDataSource(analysis_id=downstream_id, datasource_id=ds_id)
@@ -1306,6 +1322,7 @@ class TestGetBuildOrderNoDuplicateInDegree:
             updated_at=now,
         )
         test_db_session.add(downstream)
+        test_db_session.commit()
 
         link_a = AnalysisDataSource(analysis_id=downstream_id, datasource_id=ds_a_id)
         link_b = AnalysisDataSource(analysis_id=downstream_id, datasource_id=ds_b_id)

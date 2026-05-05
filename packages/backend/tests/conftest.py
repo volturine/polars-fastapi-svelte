@@ -9,8 +9,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
-from support import base_fixtures
-from support.base_fixtures import (
+from test_harness import base_fixtures
+from test_harness.base_fixtures import (
     cleanup_namespace_engines,
     isolate_data_dir,
     mock_file_upload,

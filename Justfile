@@ -73,13 +73,13 @@ scheduler:
 # Format code
 format:
     @echo "Formatting backend..."
-    cd packages/shared && uv run ruff format . ../backend ../scheduler ../worker-manager
+    cd packages/shared && uv run ruff format . ../backend ../scheduler ../worker-manager ../../tests ../../test_harness
     @echo "Formatting frontend..."
     cd packages/frontend && bun run format
 
 # Run all linters and type checks
 check:
-    cd packages/shared && uv run ruff format --check . ../backend ../scheduler ../worker-manager && uv run ruff check . ../backend ../scheduler ../worker-manager && uv run python -m mypy . && uv run python -m mypy ../backend && uv run python -m mypy ../scheduler && uv run python -m mypy ../worker-manager
+    cd packages/shared && uv run ruff format --check . ../backend ../scheduler ../worker-manager ../../tests ../../test_harness && uv run ruff check . ../backend ../scheduler ../worker-manager ../../tests ../../test_harness && uv run python -m mypy . && uv run python -m mypy ../backend && uv run python -m mypy ../scheduler && uv run python -m mypy ../worker-manager
     cd packages/shared && uv run python ../../scripts/generate_ts_build_stream_types.py --check
     cd packages/frontend && bun run panda:codegen && bun run check && bun run lint
 
@@ -267,11 +267,11 @@ docker-test:
     docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm e2e-test
 
 test-raw:
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q tests --ignore=tests/integration
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q tests
     cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests
     cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../worker-manager/tests
     cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../scheduler/tests
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q tests/integration
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../../tests/system
     cd packages/frontend && bun run test:unit
 
 # Generate TypeScript types from Pydantic step schemas

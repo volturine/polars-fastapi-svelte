@@ -12,7 +12,7 @@ import psycopg
 import pytest
 from sqlalchemy import text
 from sqlmodel import Session
-from support.postgres_harness import (
+from test_harness.postgres_harness import (
     BACKEND_ROOT,
     CORE_ROOT,
     WORKER_ROOT,

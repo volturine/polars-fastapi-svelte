@@ -35,7 +35,7 @@ services:
       [
         "sh",
         "-lc",
-        "cd /app/packages/shared && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q tests --ignore=tests/integration && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q ../backend/tests && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q ../worker-manager/tests && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q ../scheduler/tests && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q tests/integration -k 'not docker_bootstrap and not postgres_runtime_integration'",
+        "cd /app/packages/shared && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q tests && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q ../backend/tests && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q ../worker-manager/tests && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q ../scheduler/tests && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q ../../tests/system -k 'not docker_bootstrap and not postgres_runtime_integration'",
       ]
     healthcheck:
       disable: true
@@ -136,7 +136,7 @@ services:
       target: backend-test
       args:
         INSTALL_DEV: "true"
-    image: polars-analysis-api:test
+    image: polars-analysis-backend-test:test
     depends_on:
       api:
         condition: service_healthy
@@ -160,7 +160,7 @@ services:
       [
         "sh",
         "-lc",
-        "cd /app/packages/shared && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q tests/integration/test_docker_bootstrap.py",
+        "cd /app/packages/shared && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q ../../tests/system/test_docker_bootstrap.py",
       ]
     healthcheck:
       disable: true

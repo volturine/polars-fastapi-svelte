@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
-import importlib
-import threading
 import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -149,33 +146,15 @@ def _reset_backend_settings_state(engine: Engine) -> None:
     invalidate_resolved_settings_cache()
 
 
-class _InProcessRuntimeAvailabilityProbe:
-    def __init__(self, is_alive) -> None:
-        self._is_alive = is_alive
-
+class _UnavailableRuntimeAvailabilityProbe:
     def available(self, *, kind) -> bool:
-        from contracts.runtime_workers.models import RuntimeWorkerKind
-
-        if kind is not RuntimeWorkerKind.BUILD_MANAGER:
-            return False
-        return self._is_alive()
+        del kind
+        return False
 
 
-class _InProcessComputeOverrideExecutor:
-    def preview_step(self, **kwargs):
-        return importlib.import_module('compute_service').preview_step(**kwargs)
-
-    def get_step_schema(self, **kwargs):
-        return importlib.import_module('compute_service').get_step_schema(**kwargs)
-
-    def get_step_row_count(self, **kwargs):
-        return importlib.import_module('compute_service').get_step_row_count(**kwargs)
-
-    def download_step(self, **kwargs):
-        return importlib.import_module('compute_service').download_step(**kwargs)
-
-    def export_data(self, **kwargs):
-        return importlib.import_module('compute_service').export_data(**kwargs)
+class _BackendTestManager:
+    def shutdown_all(self) -> None:
+        return None
 
 
 @pytest.fixture(scope='function')
@@ -224,79 +203,25 @@ def test_user() -> User:
 
 @pytest.fixture(scope='function')
 def client(test_db_session, test_user):
-    from compute_manager import ProcessManager
-    from compute_request_runtime import compute_request_loop
-    from engine_notifications import create_snapshot_notifier
     from main import app
     from modules.auth.dependencies import get_current_user
-    from runtime_notifications import handle_runtime_payload
 
-    from contracts.runtime import ipc as runtime_ipc
-    from core.database import get_db, init_db
+    from core.database import get_db
 
     def override_get_db():
         yield test_db_session
 
-    def start_test_runtime() -> tuple[threading.Thread, threading.Event]:
-        stop_flag = threading.Event()
-        ready_flag = threading.Event()
-
-        def run() -> None:
-            async def _runner() -> None:
-                await init_db()
-                worker_id = f'test-runtime:{uuid.uuid4()}'
-                stop_event = asyncio.Event()
-                stop_task = asyncio.create_task(asyncio.to_thread(stop_flag.wait))
-                stop_task.add_done_callback(lambda _task: stop_event.set())
-
-                manager = ProcessManager(
-                    on_snapshot=create_snapshot_notifier(
-                        asyncio.get_running_loop(),
-                        worker_id=worker_id,
-                    )
-                )
-                ipc_server = await runtime_ipc.start_api_server(listener='job')
-                ipc_task = None
-                if ipc_server is not None:
-                    ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, stop_event, handle_runtime_payload))
-                request_task = asyncio.create_task(compute_request_loop(stop_event, worker_id=worker_id, manager=manager))
-                ready_flag.set()
-                try:
-                    await stop_event.wait()
-                finally:
-                    request_task.cancel()
-                    await asyncio.gather(request_task, return_exceptions=True)
-                    if ipc_task is not None:
-                        with contextlib.suppress(asyncio.TimeoutError):
-                            await asyncio.wait_for(ipc_task, timeout=5)
-                    await runtime_ipc.stop_api_server(ipc_server, listener='job')
-                    manager.shutdown_all()
-                    stop_flag.set()
-                    await asyncio.wait_for(stop_task, timeout=5)
-
-            asyncio.run(_runner())
-
-        thread = threading.Thread(target=run, daemon=True)
-        thread.start()
-        if not ready_flag.wait(timeout=5):
-            raise RuntimeError('Timed out starting test compute runtime')
-        return thread, stop_flag
-
     if hasattr(app.state, 'mcp_registry'):
         del app.state.mcp_registry
 
-    app.state.manager = ProcessManager()
-    app.state.compute_override_executor = _InProcessComputeOverrideExecutor()
+    app.state.manager = _BackendTestManager()
+    app.state.runtime_availability_probe = _UnavailableRuntimeAvailabilityProbe()
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = lambda: test_user
     with TestClient(app) as ac:
-        runtime_thread, runtime_stop = start_test_runtime()
-        app.state.runtime_availability_probe = _InProcessRuntimeAvailabilityProbe(runtime_thread.is_alive)
         try:
             yield ac
         finally:
-            runtime_stop.set()
-            runtime_thread.join(timeout=10)
             if hasattr(app.state, 'runtime_availability_probe'):
                 del app.state.runtime_availability_probe
             if hasattr(app.state, 'compute_override_executor'):

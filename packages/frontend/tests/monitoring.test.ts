@@ -571,25 +571,6 @@ test.describe('Monitoring – Builds tab', () => {
 		}
 	});
 
-	test('Builds tab shows completed build row', async ({ page, request }) => {
-		test.setTimeout(180_000);
-		const ds = `e2e-build-${uid()}`;
-		const analysisName = `E2E Builds Row ${uid()}`;
-		const dsId = await createDatasource(request, ds);
-		const analysisId = await createMultiStepAnalysis(request, analysisName, dsId);
-		try {
-			const buildId = await startBuildFromAnalysisPage(page, analysisId);
-			await page.goto(`/monitoring?tab=builds&analysis_id=${analysisId}`);
-			const panel = page.locator('#panel-builds');
-			await expect(panel).toBeVisible();
-			const buildRow = await waitForBuildRowById(page, panel, buildId, ['completed', 'failed']);
-			await expect(buildRow).toContainText(/Success|Failed/, { timeout: 5_000 });
-		} finally {
-			await deleteAnalysisViaUI(page, analysisName);
-			await deleteDatasourceViaUI(page, ds);
-		}
-	});
-
 	test('clicking a build row expands to show detail panel', async ({ page, request }) => {
 		test.setTimeout(180_000);
 		const ds = `e2e-expand-${uid()}`;

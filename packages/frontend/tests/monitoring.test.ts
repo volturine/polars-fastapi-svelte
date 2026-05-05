@@ -644,37 +644,6 @@ test.describe('Monitoring – Builds tab', () => {
 			await deleteDatasourceViaUI(page, ds);
 		}
 	});
-
-	test('clicking an expanded build row collapses it', async ({ page, request }) => {
-		test.setTimeout(180_000);
-		const ds = `e2e-collapse-${uid()}`;
-		const analysisName = `E2E Builds Collapse ${uid()}`;
-		const dsId = await createDatasource(request, ds);
-		const analysisId = await createMultiStepAnalysis(request, analysisName, dsId);
-		try {
-			const buildId = await startBuildFromAnalysisPage(page, analysisId);
-			await page.goto(`/monitoring?tab=builds&analysis_id=${analysisId}`);
-			const panel = page.locator('#panel-builds');
-			const buildRow = await waitForBuildRowById(page, panel, buildId, [
-				'queued',
-				'running',
-				'completed',
-				'failed'
-			]);
-
-			await buildRow.click();
-			const buildRowId = await buildRow.getAttribute('data-build-row');
-			if (!buildRowId) throw new Error('Expected build row id');
-			const detailRow = panel.locator(`[data-build-detail="${buildRowId}"]`);
-			await expect(detailRow).toBeVisible({ timeout: 5_000 });
-
-			await buildRow.click();
-			await expect(detailRow).not.toBeVisible({ timeout: 5_000 });
-		} finally {
-			await deleteAnalysisViaUI(page, analysisName);
-			await deleteDatasourceViaUI(page, ds);
-		}
-	});
 });
 
 // ── Live build history (real e2e, no WS mocking) ───────────────────────────

@@ -72,12 +72,12 @@ test.describe('Analyses – multi-user locking', () => {
 				timeout: 10_000
 			});
 		} finally {
+			await viewerPage.close().catch(() => {});
+			await viewerContext.close().catch(() => {});
 			await deleteAnalysisViaUI(ownerPage, analysisName).catch(() => {});
 			await deleteDatasourceViaUI(ownerPage, datasourceName).catch(() => {});
 			await ownerPage.close().catch(() => {});
-			await viewerPage.close().catch(() => {});
 			await ownerContext.close().catch(() => {});
-			await viewerContext.close().catch(() => {});
 		}
 	});
 });

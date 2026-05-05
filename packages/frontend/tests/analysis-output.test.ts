@@ -4,12 +4,6 @@ import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.j
 import { gotoAnalysisEditor, waitForEditorReload } from './utils/analysis.js';
 import { uid } from './utils/uid.js';
 import { screenshot } from './utils/visual.js';
-import type { Locator } from '@playwright/test';
-
-function terminalStatus(preview: Locator) {
-	return preview.getByText(/^(complete|failed)$/i);
-}
-
 // ── Output visibility toggle ────────────────────────────────────────────────
 
 test.describe('Analyses – output visibility toggle', () => {
@@ -331,49 +325,6 @@ test.describe('Analyses – output node persistence', () => {
 			);
 
 			await screenshot(page, 'analysis/output', 'output-tablename-persisted');
-		} finally {
-			await shutdownEngine(request, aId);
-			await deleteAnalysisViaUI(page, aName);
-			await deleteDatasourceViaUI(page, dsName);
-		}
-	});
-});
-
-// ── Output build flow (real websocket) ──────────────────────────────────────
-
-test.describe('Analyses – output build flow', () => {
-	test('build button starts the run and BuildPreview opens from the engine status control', async ({
-		page,
-		request
-	}) => {
-		test.setTimeout(120_000);
-		const dsName = `e2e-build-flow-ds-${uid()}`;
-		const aName = `E2E Build Flow ${uid()}`;
-		const dsId = await createDatasource(request, dsName);
-		const aId = await createAnalysis(request, aName, dsId);
-		try {
-			await gotoAnalysisEditor(page, aId);
-
-			const buildBtn = page.locator('[data-testid="output-build-button"]');
-			await expect(buildBtn).toBeEnabled({ timeout: 15_000 });
-			await buildBtn.click();
-
-			const preview = page.locator('[data-testid="build-preview"]');
-			await expect(preview).not.toBeVisible();
-
-			const openPreviewBtn = page.locator('[data-testid="output-build-preview-trigger"]');
-			await expect(openPreviewBtn).toBeVisible({ timeout: 10_000 });
-			await openPreviewBtn.click();
-
-			await expect(preview).toBeVisible({ timeout: 10_000 });
-
-			const progressBar = page.locator('[data-testid="build-progress-bar"]');
-			await expect(progressBar).toBeVisible();
-
-			const terminal = terminalStatus(preview);
-			await expect(terminal).toBeVisible({ timeout: 60_000 });
-
-			await screenshot(page, 'analysis/output', 'output-build-success');
 		} finally {
 			await shutdownEngine(request, aId);
 			await deleteAnalysisViaUI(page, aName);

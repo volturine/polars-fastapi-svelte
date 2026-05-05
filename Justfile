@@ -81,6 +81,7 @@ format:
 check:
     cd packages/shared && uv run ruff format --check . ../backend ../scheduler ../worker-manager && uv run ruff check . ../backend ../scheduler ../worker-manager && uv run python -m mypy . && uv run python -m mypy ../backend && uv run python -m mypy ../scheduler && uv run python -m mypy ../worker-manager
     cd packages/shared && uv run python ../../scripts/generate_ts_build_stream_types.py --check
+    cd packages/shared && uv run python ../../scripts/check_package_boundaries.py
     cd packages/frontend && bun run panda:codegen && bun run check && bun run lint
 
 

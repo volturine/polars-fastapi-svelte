@@ -8,9 +8,12 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-import base_fixtures
 import pytest
-from base_fixtures import (
+from fastapi.testclient import TestClient
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
+from support import base_fixtures
+from support.base_fixtures import (
     cleanup_namespace_engines,
     isolate_data_dir,
     mock_file_upload,
@@ -27,9 +30,6 @@ from base_fixtures import (
     temp_upload_dir,
     test_db_session,
 )
-from fastapi.testclient import TestClient
-from sqlalchemy import text
-from sqlalchemy.engine import Engine
 
 __all__ = [
     'cleanup_namespace_engines',

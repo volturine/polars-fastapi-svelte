@@ -31,7 +31,7 @@ services:
       [
         "sh",
         "-lc",
-        "cd /app/packages/shared && python -m pytest -c pyproject.toml --tb=short -q tests ../backend/tests ../worker-manager/tests ../scheduler/tests ../integration-tests/tests -k 'not docker_bootstrap and not postgres_runtime_integration'",
+        "cd /app/packages/shared && python -m pytest -c pyproject.toml --tb=short -q tests --ignore=tests/integration && python -m pytest -c pyproject.toml --tb=short -q ../backend/tests && python -m pytest -c pyproject.toml --tb=short -q ../worker-manager/tests && python -m pytest -c pyproject.toml --tb=short -q ../scheduler/tests && python -m pytest -c pyproject.toml --tb=short -q tests/integration -k 'not docker_bootstrap and not postgres_runtime_integration'",
       ]
     healthcheck:
       disable: true
@@ -156,7 +156,7 @@ services:
       [
         "sh",
         "-lc",
-        "cd /app/packages/shared && python -m pytest -c pyproject.toml --tb=short -q ../integration-tests/tests/test_docker_bootstrap.py",
+        "cd /app/packages/shared && python -m pytest -c pyproject.toml --tb=short -q tests/integration/test_docker_bootstrap.py",
       ]
     healthcheck:
       disable: true

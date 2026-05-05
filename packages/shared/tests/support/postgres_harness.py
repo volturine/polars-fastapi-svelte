@@ -14,7 +14,7 @@ from pathlib import Path
 import httpx
 import psycopg
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 CORE_ROOT = REPO_ROOT / 'packages' / 'shared'
 BACKEND_ROOT = REPO_ROOT / 'packages' / 'backend'
 SCHEDULER_ROOT = REPO_ROOT / 'packages' / 'scheduler'
@@ -23,6 +23,8 @@ WORKER_ROOT = REPO_ROOT / 'packages' / 'worker-manager'
 
 def docker_env(extra: dict[str, str] | None = None) -> dict[str, str]:
     env = os.environ.copy()
+    env['DOCKER_CONFIG'] = str(REPO_ROOT / '.docker')
+    env['HOME'] = str(REPO_ROOT / '.docker-home')
     env['PYTHONPATH'] = f'{BACKEND_ROOT}{os.pathsep}{SCHEDULER_ROOT}{os.pathsep}{WORKER_ROOT}{os.pathsep}{CORE_ROOT}'
     if extra is not None:
         env.update(extra)

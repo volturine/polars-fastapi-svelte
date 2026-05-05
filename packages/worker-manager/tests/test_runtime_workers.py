@@ -443,6 +443,7 @@ async def test_run_build_worker_process_starts_runtime_listener(monkeypatch) -> 
         raising=False,
     )
     monkeypatch.setattr(runtime_process, 'init_db', fake_init_db)
+    monkeypatch.setattr(runtime_process, 'configure_logging', lambda: None)
     monkeypatch.setattr(runtime_process.runtime_ipc, 'serve_api_notifications', fake_serve_api_notifications)
     monkeypatch.setattr(runtime_process.runtime_ipc, 'stop_api_server', fake_stop_api_server)
     monkeypatch.setattr(runtime_process, 'build_worker_loop', fake_build_worker_loop)
@@ -478,6 +479,7 @@ async def test_run_build_worker_process_runs_without_runtime_listener(monkeypatc
 
     monkeypatch.setattr(runtime_process.settings, 'database_url', 'postgresql+psycopg://user:pass@host:5432/db', raising=False)
     monkeypatch.setattr(runtime_process, 'init_db', fake_init_db)
+    monkeypatch.setattr(runtime_process, 'configure_logging', lambda: None)
 
     monkeypatch.setattr(runtime_process, 'build_worker_loop', fake_build_worker_loop)
     monkeypatch.setattr(runtime_process, 'build_worker_id', lambda: 'worker-1')

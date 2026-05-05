@@ -4,10 +4,10 @@ from unittest.mock import MagicMock, patch
 
 from compute_service import _upsert_output_datasource, export_data
 from modules.analysis.schemas import AnalysisUpdateSchema, TabDatasourceConfig, TabDatasourceSchema, TabOutputSchema, TabSchema
-from scheduler_service import build_analysis_pipeline_payload
 from modules.analysis.service import update_analysis
 from modules.datasource.service import create_analysis_datasource
 from modules.datasource.source_types import DataSourceType
+from scheduler_service import build_analysis_pipeline_payload
 from sqlmodel import Session, select
 
 from contracts.analysis.models import Analysis, AnalysisStatus
@@ -718,7 +718,9 @@ class TestRunAnalysisBuildOutputDatasource:
 
             mock_export.assert_not_called()
             assert result['tabs_built'] == 0
-            assert result['results'][0]['status'] == 'failed'
+            results = result['results']
+            assert isinstance(results, list)
+            assert results[0]['status'] == 'failed'
 
 
 # ---------------------------------------------------------------------------

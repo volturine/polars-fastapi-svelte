@@ -12,7 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, create_engine
 
-from postgres_harness import PostgresContainer, require_docker
+from support.postgres_harness import PostgresContainer, require_docker
 
 if TYPE_CHECKING:
     from contracts.analysis.models import Analysis
@@ -169,7 +169,16 @@ def isolate_data_dir(tmp_path: Path, monkeypatch, postgres_container: PostgresCo
 
 
 @pytest.fixture(autouse=True, scope='function')
-def isolate_settings_engine(tmp_path: Path, isolate_data_dir, postgres_container: PostgresContainer) -> Generator[Engine, None, None]:
+def isolate_settings_engine(
+    request: pytest.FixtureRequest,
+    tmp_path: Path,
+    isolate_data_dir,
+    postgres_container: PostgresContainer,
+) -> Generator[Engine | None, None, None]:
+    if '/backend/tests/' in request.node.path.as_posix():
+        yield None
+        return
+
     from contracts.settings_models import AppSettings
     from core import database
 

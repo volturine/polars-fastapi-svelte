@@ -12,9 +12,7 @@ import psycopg
 import pytest
 from sqlalchemy import text
 from sqlmodel import Session
-from websockets.asyncio.client import connect
-
-from postgres_harness import (
+from support.postgres_harness import (
     BACKEND_ROOT,
     CORE_ROOT,
     WORKER_ROOT,
@@ -27,6 +25,7 @@ from postgres_harness import (
     wait_for_condition,
     wait_for_http_ready,
 )
+from websockets.asyncio.client import connect
 
 
 def _clear_database_state() -> None:

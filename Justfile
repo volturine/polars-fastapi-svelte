@@ -265,7 +265,11 @@ docker-test:
     docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm e2e-test
 
 test-raw:
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q tests ../backend/tests ../worker-manager/tests ../scheduler/tests ../integration-tests/tests
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q tests --ignore=tests/integration
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../worker-manager/tests
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../scheduler/tests
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q tests/integration
     cd packages/frontend && bun run test:unit
 
 # Generate TypeScript types from Pydantic step schemas

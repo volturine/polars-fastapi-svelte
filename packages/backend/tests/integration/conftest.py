@@ -1,383 +1,220 @@
 from __future__ import annotations
 
-import asyncio
-import contextlib
-import importlib
-import threading
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 
+import polars as pl
 import pytest
-from fastapi.testclient import TestClient
-from harness import base_fixtures
-from harness.base_fixtures import (
-    cleanup_namespace_engines,
-    isolate_data_dir,
-    mock_file_upload,
-    postgres_container,
-    pytest_sessionstart,
-    sample_analyses,
-    sample_analysis,
-    sample_csv_file,
-    sample_datasource,
-    sample_datasources,
-    sample_json_file,
-    sample_ndjson_file,
-    sample_parquet_file,
-    temp_upload_dir,
-    test_db_session,
-)
-from sqlalchemy import text
-from sqlalchemy.engine import Engine
+from modules.datasource.source_types import DataSourceType
+from sqlmodel import Session
 
-__all__ = [
-    'cleanup_namespace_engines',
-    'client',
-    'clear_active_build_registry',
-    'clear_build_job_hub',
-    'clear_build_notification_hub',
-    'clear_compute_request_hubs',
-    'clear_engine_registry',
-    'clear_lock_watchers',
-    'isolate_data_dir',
-    'isolate_settings_engine',
-    'mock_file_upload',
-    'postgres_container',
-    'pytest_sessionstart',
-    'sample_analyses',
-    'sample_analysis',
-    'sample_csv_file',
-    'sample_datasource',
-    'sample_datasources',
-    'sample_json_file',
-    'sample_ndjson_file',
-    'sample_parquet_file',
-    'temp_upload_dir',
-    'test_db_session',
-    'test_engine',
-    'test_user',
-]
-
-if TYPE_CHECKING:
-    from modules.auth.models import User
+from contracts.datasource.models import DataSource
 
 
-def _register_integration_sqlmodel_metadata() -> None:
-    from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
-    from modules.chat.models import ChatSession
+def _clean_dir() -> Path:
+    from core.namespace import namespace_paths
 
-    from contracts.analysis.models import Analysis, AnalysisDataSource
-    from contracts.analysis_versions.models import AnalysisVersion
-    from contracts.build_jobs.models import BuildJob
-    from contracts.build_runs.models import BuildEvent, BuildRun
-    from contracts.datasource.models import DataSource, DataSourceColumnMetadata
-    from contracts.engine_instances.models import EngineInstance
-    from contracts.engine_runs.models import EngineRun
-    from contracts.healthcheck_models import HealthCheck, HealthCheckResult
-    from contracts.locks.models import ResourceLock
-    from contracts.namespaces.models import RuntimeNamespace
-    from contracts.runtime_workers.models import RuntimeWorker
-    from contracts.scheduler.models import Schedule
-    from contracts.settings_models import AppSettings
-    from contracts.telegram_models import TelegramListener, TelegramSubscriber
-    from contracts.udf_models import Udf
-
-    del Analysis
-    del AnalysisDataSource
-    del AnalysisVersion
-    del AppSettings
-    del AuthProvider
-    del BuildEvent
-    del BuildJob
-    del BuildRun
-    del ChatSession
-    del DataSource
-    del DataSourceColumnMetadata
-    del EngineInstance
-    del EngineRun
-    del HealthCheck
-    del HealthCheckResult
-    del ResourceLock
-    del RuntimeNamespace
-    del RuntimeWorker
-    del Schedule
-    del TelegramListener
-    del TelegramSubscriber
-    del Udf
-    del User
-    del UserSession
-    del VerificationToken
+    return namespace_paths().clean_dir
 
 
-def _integration_settings_tables() -> list[Any]:
-    from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
-    from modules.chat.models import ChatSession
-
-    from contracts.engine_instances.models import EngineInstance
-    from contracts.namespaces.models import RuntimeNamespace
-    from contracts.runtime_workers.models import RuntimeWorker
-    from contracts.settings_models import AppSettings
-
-    table_names = {
-        AppSettings.__tablename__,
-        ChatSession.__tablename__,
-        EngineInstance.__tablename__,
-        User.__tablename__,
-        AuthProvider.__tablename__,
-        RuntimeWorker.__tablename__,
-        RuntimeNamespace.__tablename__,
-        UserSession.__tablename__,
-        VerificationToken.__tablename__,
-    }
-    return [table for table in AppSettings.metadata.sorted_tables if table.name in table_names]
+def _read_dataframe(datasource: DataSource) -> pl.DataFrame:
+    config = datasource.config if isinstance(datasource.config, dict) else {}
+    source = config.get('source') if datasource.source_type == DataSourceType.ICEBERG else config
+    if not isinstance(source, dict):
+        source = config
+    file_path = source.get('file_path')
+    file_type = source.get('file_type')
+    if not isinstance(file_path, str):
+        return pl.DataFrame()
+    if file_type == 'parquet':
+        return pl.read_parquet(file_path)
+    if file_type == 'json':
+        return pl.read_json(file_path)
+    if file_type == 'ndjson':
+        return pl.read_ndjson(file_path)
+    if file_type == 'excel':
+        return pl.read_excel(file_path)
+    return pl.read_csv(file_path)
 
 
-def _reset_integration_settings_state(engine: Engine) -> None:
-    from backend_core.settings_store import invalidate_resolved_settings_cache
-    from modules.chat.sessions import session_store
+def _schema_for(datasource: DataSource):
+    from modules.datasource import schemas
 
-    for live in session_store._live.values():
-        live.cancel_task()
-        live.close_stream()
-    session_store._live.clear()
-
-    with engine.begin() as conn:
-        for table in reversed(_integration_settings_tables()):
-            conn.execute(table.delete())
-
-    invalidate_resolved_settings_cache()
-
-
-class _InProcessRuntimeAvailabilityProbe:
-    def __init__(self, is_alive) -> None:
-        self._is_alive = is_alive
-
-    def available(self, *, kind) -> bool:
-        from contracts.runtime_workers.models import RuntimeWorkerKind
-
-        if kind is not RuntimeWorkerKind.BUILD_MANAGER:
-            return False
-        return self._is_alive()
-
-
-class _InProcessComputeOverrideExecutor:
-    def preview_step(self, **kwargs):
-        return importlib.import_module('compute_service').preview_step(**kwargs)
-
-    def get_step_schema(self, **kwargs):
-        return importlib.import_module('compute_service').get_step_schema(**kwargs)
-
-    def get_step_row_count(self, **kwargs):
-        return importlib.import_module('compute_service').get_step_row_count(**kwargs)
-
-    def download_step(self, **kwargs):
-        return importlib.import_module('compute_service').download_step(**kwargs)
-
-    def export_data(self, **kwargs):
-        return importlib.import_module('compute_service').export_data(**kwargs)
-
-
-@pytest.fixture(scope='function')
-def test_engine(postgres_container):
-    from contracts.locks.models import ResourceLock
-    from contracts.udf_models import Udf
-
-    del ResourceLock
-    del Udf
-    schema = f'test_{uuid.uuid4().hex}'
-    engine = base_fixtures._schema_engine(postgres_container.url, schema)
-    _register_integration_sqlmodel_metadata()
-    from core import database
-
-    with engine.begin() as connection:
-        connection.execute(text(f'SET search_path TO "{schema}", public'))
-        tenant_tables = database._tenant_tables()
-        tenant_metadata = tenant_tables[0].metadata if tenant_tables else None
-        if tenant_metadata is not None:
-            tenant_metadata.create_all(connection, tables=tenant_tables)
-    try:
-        yield engine
-    finally:
-        with postgres_container.connect() as pg_connection, pg_connection.cursor() as cursor:
-            cursor.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
-        engine.dispose()
-
-
-@pytest.fixture(scope='function')
-def test_user() -> User:
-    from modules.auth.models import User, UserStatus
-
-    now = datetime.now(UTC)
-    return User(
-        id=uuid.uuid4().hex,
-        email='test@example.com',
-        display_name='Test User',
-        status=UserStatus.ACTIVE,
-        email_verified=True,
-        has_password=True,
-        preferences={},
-        created_at=now,
-        updated_at=now,
+    df = _read_dataframe(datasource)
+    return schemas.SchemaInfo(
+        columns=[
+            schemas.ColumnSchema(
+                name=name,
+                dtype=str(dtype),
+                nullable=True,
+                sample_value=None if df.height == 0 else str(df[name][0]),
+            )
+            for name, dtype in zip(df.columns, df.dtypes, strict=True)
+        ],
+        row_count=df.height,
     )
 
 
-@pytest.fixture(scope='function')
-def client(test_db_session, test_user):
-    from compute_manager import ProcessManager
-    from compute_request_runtime import compute_request_loop
-    from engine_notifications import create_snapshot_notifier
-    from main import app
-    from modules.auth.dependencies import get_current_user
-    from runtime_notifications import handle_runtime_payload
+def _response(datasource: DataSource):
+    from modules.datasource import schemas
 
-    from contracts.runtime import ipc as runtime_ipc
-    from core.database import get_db, init_db
-
-    def override_get_db():
-        yield test_db_session
-
-    def start_test_runtime() -> tuple[threading.Thread, threading.Event]:
-        stop_flag = threading.Event()
-        ready_flag = threading.Event()
-
-        def run() -> None:
-            async def _runner() -> None:
-                await init_db()
-                worker_id = f'test-runtime:{uuid.uuid4()}'
-                stop_event = asyncio.Event()
-                stop_task = asyncio.create_task(asyncio.to_thread(stop_flag.wait))
-                stop_task.add_done_callback(lambda _task: stop_event.set())
-
-                manager = ProcessManager(
-                    on_snapshot=create_snapshot_notifier(
-                        asyncio.get_running_loop(),
-                        worker_id=worker_id,
-                    )
-                )
-                ipc_server = await runtime_ipc.start_api_server(listener='job')
-                ipc_task = None
-                if ipc_server is not None:
-                    ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, stop_event, handle_runtime_payload))
-                request_task = asyncio.create_task(compute_request_loop(stop_event, worker_id=worker_id, manager=manager))
-                ready_flag.set()
-                try:
-                    await stop_event.wait()
-                finally:
-                    request_task.cancel()
-                    await asyncio.gather(request_task, return_exceptions=True)
-                    if ipc_task is not None:
-                        with contextlib.suppress(asyncio.TimeoutError):
-                            await asyncio.wait_for(ipc_task, timeout=5)
-                    await runtime_ipc.stop_api_server(ipc_server, listener='job')
-                    manager.shutdown_all()
-                    stop_flag.set()
-                    await asyncio.wait_for(stop_task, timeout=5)
-
-            asyncio.run(_runner())
-
-        thread = threading.Thread(target=run, daemon=True)
-        thread.start()
-        if not ready_flag.wait(timeout=5):
-            raise RuntimeError('Timed out starting test compute runtime')
-        return thread, stop_flag
-
-    if hasattr(app.state, 'mcp_registry'):
-        del app.state.mcp_registry
-
-    app.state.manager = ProcessManager()
-    app.state.compute_override_executor = _InProcessComputeOverrideExecutor()
-    app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_current_user] = lambda: test_user
-    with TestClient(app) as ac:
-        runtime_thread, runtime_stop = start_test_runtime()
-        app.state.runtime_availability_probe = _InProcessRuntimeAvailabilityProbe(runtime_thread.is_alive)
-        try:
-            yield ac
-        finally:
-            runtime_stop.set()
-            runtime_thread.join(timeout=10)
-            if hasattr(app.state, 'runtime_availability_probe'):
-                del app.state.runtime_availability_probe
-            if hasattr(app.state, 'compute_override_executor'):
-                del app.state.compute_override_executor
-            app.state.manager.shutdown_all()
-    app.dependency_overrides.clear()
+    response = schemas.DataSourceResponse.model_validate(datasource)
+    response.output_of_tab_id = datasource.config.get('analysis_tab_id') if isinstance(datasource.config, dict) else None
+    return response
 
 
-@pytest.fixture(autouse=True, scope='function')
-def clear_lock_watchers():
-    from modules.locks.watchers import registry
-
-    asyncio.run(registry.clear())
-    yield
-    asyncio.run(registry.clear())
-
-
-@pytest.fixture(autouse=True, scope='function')
-def clear_active_build_registry():
-    from build_live import registry
-
-    asyncio.run(registry.clear())
-    yield
-    asyncio.run(registry.clear())
-
-
-@pytest.fixture(autouse=True, scope='function')
-def clear_build_notification_hub():
-    from contracts.build_runs.live import hub
-
-    asyncio.run(hub.clear())
-    yield
-    asyncio.run(hub.clear())
-
-
-@pytest.fixture(autouse=True, scope='function')
-def clear_build_job_hub():
-    from contracts.build_jobs.live import hub
-
-    asyncio.run(hub.clear())
-    yield
-    asyncio.run(hub.clear())
-
-
-@pytest.fixture(autouse=True, scope='function')
-def clear_compute_request_hubs():
-    from contracts.compute_requests.live import request_hub, response_hub
-
-    asyncio.run(request_hub.clear())
-    asyncio.run(response_hub.clear())
-    yield
-    asyncio.run(request_hub.clear())
-    asyncio.run(response_hub.clear())
+async def _fake_create_file_datasource(
+    session: Session,
+    *,
+    name: str,
+    description: str | None,
+    file_path: str,
+    file_type: str,
+    options: dict[str, Any] | None = None,
+    csv_options: dict[str, object] | None = None,
+    owner_id: str | None = None,
+    **kwargs: Any,
+):
+    datasource = DataSource(
+        id=str(uuid.uuid4()),
+        name=name,
+        description=description,
+        source_type=DataSourceType.ICEBERG,
+        config={
+            'metadata_path': str(_clean_dir() / uuid.uuid4().hex / 'master'),
+            'branch': 'master',
+            'source': {
+                'source_type': 'file',
+                'file_path': file_path,
+                'file_type': file_type,
+                'options': options or csv_options or {},
+                **{key: value for key, value in kwargs.items() if value is not None and key not in {'runtime_probe', 'branch'}},
+            },
+        },
+        owner_id=owner_id,
+        created_by='import',
+        created_at=datetime.now(UTC),
+    )
+    datasource.schema_cache = _schema_for(datasource).model_dump(exclude_none=True)
+    Path(datasource.config['metadata_path']).mkdir(parents=True, exist_ok=True)
+    session.add(datasource)
+    session.commit()
+    session.refresh(datasource)
+    return _response(datasource)
 
 
-@pytest.fixture(autouse=True, scope='function')
-def clear_engine_registry():
-    from backend_core.engine_live import registry
+async def _fake_create_database_datasource(
+    session: Session,
+    *,
+    name: str,
+    description: str | None,
+    connection_string: str,
+    query: str,
+    branch: str,
+    owner_id: str | None = None,
+    **kwargs: Any,
+):
+    del kwargs
+    datasource = DataSource(
+        id=str(uuid.uuid4()),
+        name=name,
+        description=description,
+        source_type=DataSourceType.DATABASE,
+        config={'connection_string': connection_string, 'query': query, 'branch': branch},
+        owner_id=owner_id,
+        created_by='import',
+        created_at=datetime.now(UTC),
+    )
+    session.add(datasource)
+    session.commit()
+    session.refresh(datasource)
+    return _response(datasource)
 
-    asyncio.run(registry.clear())
-    yield
-    asyncio.run(registry.clear())
+
+async def _fake_create_iceberg_datasource(
+    session: Session,
+    *,
+    name: str,
+    description: str | None,
+    source: dict[str, object],
+    branch: str,
+    owner_id: str | None = None,
+    **kwargs: Any,
+):
+    return await _fake_create_file_datasource(
+        session,
+        name=name,
+        description=description,
+        file_path=str(source.get('file_path')),
+        file_type=str(source.get('file_type', 'csv')),
+        options=source.get('options') if isinstance(source.get('options'), dict) else {},
+        owner_id=owner_id,
+        branch=branch,
+        **kwargs,
+    )
 
 
-@pytest.fixture(autouse=True, scope='function')
-def isolate_settings_engine(tmp_path, isolate_data_dir, postgres_container):
-    from contracts.settings_models import AppSettings
-    from core import database
+async def _fake_get_datasource_schema(session: Session, *, datasource_id: str, **kwargs: Any):
+    del kwargs
+    datasource = session.get(DataSource, datasource_id)
+    if datasource is None:
+        from core.exceptions import DataSourceNotFoundError
 
-    schema = f'settings_{uuid.uuid4().hex}'
-    engine = base_fixtures._schema_engine(postgres_container.url, schema)
-    AppSettings.metadata.create_all(engine, tables=_integration_settings_tables())
-    original = database.settings_engine
-    database.settings_engine = engine
-    database.clear_settings_engine_override()
-    try:
-        yield engine
-    finally:
-        database.clear_settings_engine_override()
-        _reset_integration_settings_state(engine)
-        database.settings_engine = original
-        with postgres_container.connect() as pg_connection, pg_connection.cursor() as cursor:
-            cursor.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
-        engine.dispose()
+        raise DataSourceNotFoundError(datasource_id)
+    schema = _schema_for(datasource)
+    datasource.schema_cache = schema.model_dump(exclude_none=True)
+    session.add(datasource)
+    session.commit()
+    return schema
+
+
+async def _fake_refresh_datasource(session: Session, *, datasource_id: str, **kwargs: Any):
+    del kwargs
+    datasource = session.get(DataSource, datasource_id)
+    if datasource is None:
+        from core.exceptions import DataSourceNotFoundError
+
+        raise DataSourceNotFoundError(datasource_id)
+    datasource.schema_cache = _schema_for(datasource).model_dump(exclude_none=True)
+    session.add(datasource)
+    session.commit()
+    session.refresh(datasource)
+    return _response(datasource)
+
+
+async def _fake_get_column_stats(session: Session, *, datasource_id: str, column_name: str, **kwargs: Any):
+    del kwargs
+    from modules.datasource import schemas
+
+    datasource = session.get(DataSource, datasource_id)
+    if datasource is None:
+        from core.exceptions import DataSourceNotFoundError
+
+        raise DataSourceNotFoundError(datasource_id)
+    series = _read_dataframe(datasource)[column_name]
+    count = len(series)
+    null_count = series.null_count()
+    return schemas.ColumnStatsResponse(
+        column=column_name,
+        dtype=str(series.dtype),
+        count=count,
+        null_count=null_count,
+        null_percentage=(null_count / count * 100) if count else 0,
+        unique=series.n_unique(),
+        min=series.min(),
+        max=series.max(),
+    )
+
+
+@pytest.fixture(autouse=True)
+def fake_datasource_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
+    from modules.datasource import routes
+
+    monkeypatch.setattr(routes, 'create_remote_file_datasource', _fake_create_file_datasource)
+    monkeypatch.setattr(routes, 'create_remote_database_datasource', _fake_create_database_datasource)
+    monkeypatch.setattr(routes, 'create_remote_iceberg_datasource', _fake_create_iceberg_datasource)
+    monkeypatch.setattr(routes, 'get_remote_datasource_schema', _fake_get_datasource_schema)
+    monkeypatch.setattr(routes, 'refresh_remote_datasource', _fake_refresh_datasource)
+    monkeypatch.setattr(routes, 'get_remote_column_stats', _fake_get_column_stats)

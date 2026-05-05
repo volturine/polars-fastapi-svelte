@@ -171,6 +171,14 @@ class ManagedProcess:
 
 
 @dataclass
+class ExternalPostgres:
+    url: str
+
+    def connect(self) -> psycopg.Connection:
+        return psycopg.connect(self.url.replace('+psycopg', ''), autocommit=True)
+
+
+@dataclass
 class PostgresContainer:
     user: str = 'dataforge'
     password: str = 'dataforge'

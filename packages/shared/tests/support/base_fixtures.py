@@ -12,7 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, create_engine
 
-from support.postgres_harness import PostgresContainer, require_docker
+from support.postgres_harness import ExternalPostgres, PostgresContainer, require_docker
 
 if TYPE_CHECKING:
     from contracts.analysis.models import Analysis
@@ -98,7 +98,12 @@ def _reset_settings_state(engine: Engine) -> None:
 
 
 @pytest.fixture(scope='session')
-def postgres_container() -> Generator[PostgresContainer, None, None]:
+def postgres_container() -> Generator[ExternalPostgres | PostgresContainer, None, None]:
+    external_url = os.environ.get('TEST_POSTGRES_URL')
+    if external_url:
+        yield ExternalPostgres(external_url)
+        return
+
     require_docker()
     with PostgresContainer() as container:
         os.environ['TEST_POSTGRES_URL'] = container.url

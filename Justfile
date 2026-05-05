@@ -255,12 +255,14 @@ docker-test:
     docker buildx build --load --build-arg INSTALL_DEV=true --target api -f docker/Dockerfile -t polars-analysis-api:test .
     docker buildx build --load --build-arg INSTALL_DEV=true --target scheduler -f docker/Dockerfile -t polars-analysis-scheduler:test .
     docker buildx build --load --build-arg INSTALL_DEV=true --target worker -f docker/Dockerfile -t polars-analysis-worker:test .
+    docker buildx build --load --build-arg INSTALL_DEV=true --target backend-test -f docker/Dockerfile -t polars-analysis-backend-test:test .
     docker buildx build --load --target frontend-test -f docker/Dockerfile -t polars-analysis-frontend-test:test .
     docker buildx build --load --target frontend-e2e -f docker/Dockerfile -t polars-analysis-frontend-e2e:test .
     docker buildx build --load --target e2e-test -f docker/Dockerfile -t polars-analysis-e2e-test:test .
     docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm frontend-test
-    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml up -d postgres api scheduler worker frontend-e2e
     docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm backend-test
+    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml down -v --remove-orphans >/dev/null 2>&1 || true
+    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml up -d postgres api scheduler worker frontend-e2e
     docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm runtime-test
     docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm e2e-test
 

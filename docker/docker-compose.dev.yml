@@ -64,6 +64,7 @@ services:
     volumes:
       - data:/app/data
       - ../packages/:/app/packages/
+      - shared-venv:/app/packages/shared/.venv
     healthcheck:
       test:
         [
@@ -89,6 +90,7 @@ services:
     volumes:
       - data:/app/data
       - ../packages/:/app/packages/
+      - shared-venv:/app/packages/shared/.venv
 
   worker:
     image: ${DF_WORKER_IMAGE}
@@ -103,6 +105,7 @@ services:
     volumes:
       - data:/app/data
       - ../packages/:/app/packages/
+      - shared-venv:/app/packages/shared/.venv
 
   frontend:
     image: oven/bun:1
@@ -141,6 +144,8 @@ services:
 
 volumes:
   data:
+    driver: local
+  shared-venv:
     driver: local
   frontend-node-modules:
     driver: local

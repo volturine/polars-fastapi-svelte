@@ -60,6 +60,16 @@ export default defineConfig({
 	},
 	plugins: [sveltekit()],
 
+	build: {
+		rollupOptions: {
+			output: {
+				manualChunks(id) {
+					if (id.includes('/node_modules/svelte/')) return 'svelte-runtime';
+				}
+			}
+		}
+	},
+
 	server: {
 		host: '0.0.0.0',
 		port,

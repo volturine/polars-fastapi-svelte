@@ -116,15 +116,6 @@ async function refreshBuildHistory(page: import('@playwright/test').Page) {
 	await page.getByRole('button', { name: /Refresh History/i }).click();
 }
 
-async function waitForPreviewTerminal(page: import('@playwright/test').Page, timeout = 180_000) {
-	const preview = await openBuildPreview(page);
-	const terminal = preview
-		.getByText('Complete', { exact: true })
-		.or(preview.getByText('Failed', { exact: true }));
-	await expect(terminal).toBeVisible({ timeout });
-	return preview;
-}
-
 async function waitForBuildRowById(
 	page: import('@playwright/test').Page,
 	panel: ReturnType<import('@playwright/test').Page['locator']>,
@@ -564,7 +555,6 @@ test.describe('Monitoring – Builds tab', () => {
 		const analysisId = await createMultiStepAnalysis(request, analysisName, dsId);
 		try {
 			const buildId = await startBuildFromAnalysisPage(page, analysisId);
-			await waitForPreviewTerminal(page);
 			await page.goto(`/monitoring?tab=builds&analysis_id=${analysisId}`);
 			const panel = page.locator('#panel-builds');
 			const buildRow = await waitForBuildRowById(page, panel, buildId, ['completed', 'failed']);
@@ -589,7 +579,6 @@ test.describe('Monitoring – Builds tab', () => {
 		const analysisId = await createMultiStepAnalysis(request, analysisName, dsId);
 		try {
 			const buildId = await startBuildFromAnalysisPage(page, analysisId);
-			await waitForPreviewTerminal(page);
 			await page.goto(`/monitoring?tab=builds&analysis_id=${analysisId}`);
 			const panel = page.locator('#panel-builds');
 			await expect(panel).toBeVisible();

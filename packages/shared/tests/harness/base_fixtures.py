@@ -12,7 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, create_engine
 
-from test_harness.postgres_harness import ExternalPostgres, PostgresContainer, require_docker
+from harness.postgres_harness import ExternalPostgres, PostgresContainer, require_docker
 
 if TYPE_CHECKING:
     from contracts.analysis.models import Analysis

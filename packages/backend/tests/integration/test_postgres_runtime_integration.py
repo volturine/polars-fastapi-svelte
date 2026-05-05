@@ -10,9 +10,7 @@ from pathlib import Path
 
 import psycopg
 import pytest
-from sqlalchemy import text
-from sqlmodel import Session
-from test_harness.postgres_harness import (
+from harness.postgres_harness import (
     BACKEND_ROOT,
     CORE_ROOT,
     WORKER_ROOT,
@@ -25,6 +23,8 @@ from test_harness.postgres_harness import (
     wait_for_condition,
     wait_for_http_ready,
 )
+from sqlalchemy import text
+from sqlmodel import Session
 from websockets.asyncio.client import connect
 
 

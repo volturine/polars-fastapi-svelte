@@ -10,10 +10,8 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import text
-from sqlalchemy.engine import Engine
-from test_harness import base_fixtures
-from test_harness.base_fixtures import (
+from harness import base_fixtures
+from harness.base_fixtures import (
     cleanup_namespace_engines,
     isolate_data_dir,
     mock_file_upload,
@@ -30,6 +28,8 @@ from test_harness.base_fixtures import (
     temp_upload_dir,
     test_db_session,
 )
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
 
 __all__ = [
     'cleanup_namespace_engines',

@@ -104,9 +104,7 @@ CMD ["python3", "../backend/main.py"]
 FROM api AS backend-test
 COPY --chown=appuser:appgroup packages/scheduler/ /app/packages/scheduler/
 COPY --chown=appuser:appgroup packages/worker-manager/ /app/packages/worker-manager/
-COPY --chown=appuser:appgroup packages/integration-tests/ /app/packages/integration-tests/
-COPY --chown=appuser:appgroup packages/test_support/ /app/packages/test_support/
-ENV PYTHONPATH="/app/packages/test_support:/app:/app/packages/backend:/app/packages/scheduler:/app/packages/worker-manager:/app/packages/shared"
+ENV PYTHONPATH="/app:/app/packages/backend:/app/packages/scheduler:/app/packages/worker-manager:/app/packages/shared"
 
 FROM runtime-base AS scheduler
 COPY --chown=appuser:appgroup packages/scheduler/ /app/packages/scheduler/

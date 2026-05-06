@@ -237,6 +237,40 @@ def test_fold_build_detail_reconstructs_snapshot(test_db_session) -> None:
     assert detail.results[0].output_name == 'Output 1'
 
 
+def test_step_failed_event_does_not_make_running_snapshot_terminal(test_db_session) -> None:
+    run = _create_run(test_db_session)
+    emitted_at = datetime.now(UTC)
+    build_run_service.append_build_event(
+        test_db_session,
+        build_id=run.id,
+        event=compute_schemas.BuildStepFailedEvent(
+            build_id=run.id,
+            analysis_id=run.analysis_id,
+            emitted_at=emitted_at,
+            current_kind='preview',
+            current_datasource_id='source-1',
+            tab_id='tab-1',
+            tab_name='Tab 1',
+            build_step_index=0,
+            step_index=0,
+            step_id='step-1',
+            step_name='Filter rows',
+            step_type='filter',
+            total_steps=1,
+            error='Column not found',
+        ),
+    )
+
+    stored = build_run_service.get_build_run(test_db_session, run.id)
+    assert stored is not None
+    detail = build_run_service.fold_build_detail(test_db_session, stored)
+
+    assert detail.status == compute_schemas.ActiveBuildStatus.RUNNING
+    assert detail.error is None
+    assert detail.steps[0].state == compute_schemas.BuildStepState.FAILED
+    assert detail.steps[0].error == 'Column not found'
+
+
 def test_guarded_terminal_update_preserves_cancelled_terminal_state(test_db_session) -> None:
     run = _create_run(test_db_session)
     cancelled = compute_schemas.BuildCancelledEvent(

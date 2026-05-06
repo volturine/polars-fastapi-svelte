@@ -274,7 +274,7 @@ export class BuildStreamStore {
 		this.error = build.error ?? null;
 		if (build.status === 'cancelled') {
 			this.status = 'cancelled';
-		} else if (build.error) {
+		} else if (build.status === 'failed') {
 			this.status = 'failed';
 		} else if (build.status === 'queued') {
 			this.status = 'queued';

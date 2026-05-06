@@ -385,7 +385,6 @@ def append_build_event(
             run.current_step = event.step_name
             run.current_step_index = event.build_step_index
             run.total_steps = event.total_steps
-            run.error_message = event.error
 
         if terminal_status is not None and not _apply_terminal_status(run, event):
             return None

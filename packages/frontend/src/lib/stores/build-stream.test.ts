@@ -688,6 +688,16 @@ describe('BuildStreamStore', () => {
 		expect(mockReleaseActivity).toHaveBeenCalledTimes(1);
 	});
 
+	test('running snapshot with a step error does not mark the build failed', () => {
+		mockStartSuccess(makeDetail({ status: 'running', error: 'step failed before terminal event' }));
+		const store = new BuildStreamStore();
+		store.start(MINIMAL_BUILD_REQUEST);
+
+		expect(store.status).toBe('running');
+		expect(store.error).toBe('step failed before terminal event');
+		expect(store.done).toBe(false);
+	});
+
 	test('applies failed event', () => {
 		const store = new BuildStreamStore();
 		store.start(MINIMAL_BUILD_REQUEST);

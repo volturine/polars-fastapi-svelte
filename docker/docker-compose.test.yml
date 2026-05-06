@@ -80,10 +80,6 @@ services:
     restart: "no"
 
   frontend-test:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: frontend-test
     image: polars-analysis-frontend-test:test
     working_dir: /app
     environment:
@@ -92,10 +88,6 @@ services:
     restart: "no"
 
   frontend-e2e:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: frontend-e2e
     image: polars-analysis-frontend-e2e:test
     ipc: host
     shm_size: 2gb
@@ -107,8 +99,6 @@ services:
       BACKEND_HOST: api
       BACKEND_PORT: "8000"
       CI: "true"
-    ports:
-      - "${DF_E2E_FRONTEND_PORT}:${DF_FRONTEND_PORT}"
     healthcheck:
       test:
         [
@@ -124,10 +114,6 @@ services:
     restart: "no"
 
   e2e-test:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: e2e-test
     image: polars-analysis-e2e-test:test
     ipc: host
     shm_size: 2gb

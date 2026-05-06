@@ -16,7 +16,7 @@ COPY packages/frontend/ .
 
 # Build static site
 # The build will be output to /app/packages/frontend/build
-RUN bun run build
+RUN bun run panda:codegen && bun run build
 
 FROM oven/bun:1.2.22 AS frontend-test
 
@@ -26,7 +26,7 @@ COPY packages/frontend/package.json packages/frontend/bun.lock* ./
 RUN bun install --frozen-lockfile
 COPY packages/frontend/ ./
 ENV CI=true
-CMD ["sh", "-lc", "bunx svelte-kit sync && bun run test:unit"]
+CMD ["sh", "-lc", "bun run panda:codegen && bun run test:unit"]
 
 FROM mcr.microsoft.com/playwright:v1.59.1-noble AS frontend-e2e
 
@@ -35,7 +35,7 @@ WORKDIR /app/packages/frontend
 COPY packages/frontend/package.json packages/frontend/bun.lock* ./
 RUN npm install -g bun && bun install --frozen-lockfile
 COPY packages/frontend/ ./
-RUN bun run build
+RUN bun run panda:codegen && bun run build
 CMD ["sh", "-lc", "bun run preview -- --host 0.0.0.0 --port ${FRONTEND_PORT:-3000}"]
 
 FROM mcr.microsoft.com/playwright:v1.59.1-noble AS e2e-test

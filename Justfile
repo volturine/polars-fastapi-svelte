@@ -237,11 +237,31 @@ test-e2e-raw shard='':
 test:
     cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-test --cwd . -- just test-raw
 
-# Run backend and frontend tests entirely in Docker
-docker-test:
+# Build local app images. Production deploy pulls whatever docker/env/prod.env names;
+# this recipe is only for local image evaluation or self-hosted builds.
+docker-build tag='latest' install_dev='false':
     #!/usr/bin/env bash
     set -euo pipefail
     export DOCKER_CONFIG="${PWD}/.docker"
+    docker buildx build --load --build-arg INSTALL_DEV={{install_dev}} --target api -f docker/Dockerfile -t polars-analysis-api:{{tag}} .
+    docker buildx build --load --build-arg INSTALL_DEV={{install_dev}} --target scheduler -f docker/Dockerfile -t polars-analysis-scheduler:{{tag}} .
+    docker buildx build --load --build-arg INSTALL_DEV={{install_dev}} --target worker -f docker/Dockerfile -t polars-analysis-worker:{{tag}} .
+
+# Build local test runner images. App/runtime images come from docker-build.
+docker-build-test-runners:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOCKER_CONFIG="${PWD}/.docker"
+    docker buildx build --load --target frontend-test -f docker/Dockerfile -t polars-analysis-frontend-test:test .
+    docker buildx build --load --target frontend-e2e -f docker/Dockerfile -t polars-analysis-frontend-e2e:test .
+    docker buildx build --load --target e2e-test -f docker/Dockerfile -t polars-analysis-e2e-test:test .
+
+# Run the full app verification stack: production compose plus test override.
+docker-test: docker-build-test-runners
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOCKER_CONFIG="${PWD}/.docker"
+    just docker-build test true
     COMPOSE=(docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.yml -f docker/docker-compose.test.yml)
     cleanup() {
         status=$?
@@ -254,12 +274,6 @@ docker-test:
     }
     trap cleanup EXIT
     "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
-    docker buildx build --load --build-arg INSTALL_DEV=true --target api -f docker/Dockerfile -t polars-analysis-api:test .
-    docker buildx build --load --build-arg INSTALL_DEV=true --target scheduler -f docker/Dockerfile -t polars-analysis-scheduler:test .
-    docker buildx build --load --build-arg INSTALL_DEV=true --target worker -f docker/Dockerfile -t polars-analysis-worker:test .
-    docker buildx build --load --target frontend-test -f docker/Dockerfile -t polars-analysis-frontend-test:test .
-    docker buildx build --load --target frontend-e2e -f docker/Dockerfile -t polars-analysis-frontend-e2e:test .
-    docker buildx build --load --target e2e-test -f docker/Dockerfile -t polars-analysis-e2e-test:test .
     "${COMPOSE[@]}" run --rm frontend-test
     "${COMPOSE[@]}" run --rm backend-test
     "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
@@ -293,7 +307,7 @@ docker-frontend-test-raw:
     cd packages/frontend && bun run svelte-kit sync && bun run panda:codegen && bun run test:unit
 
 docker-e2e-test-raw:
-    cd packages/frontend && npx playwright test
+    cd packages/frontend && npx playwright test --workers=2 --fail-on-flaky-tests
 
 # Generate TypeScript types from Pydantic step schemas
 generate-step-types:
@@ -322,27 +336,19 @@ prod:
     (cd packages/scheduler && uv run --env-file ../shared/prod.env main.py) & \
     (cd packages/worker-manager && uv run --env-file ../shared/prod.env main.py) & wait
 
-# Run production stack entirely in Docker
+# Deploy the production stack named by docker/env/prod.env.
 docker-prod:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export DOCKER_CONFIG="${PWD}/.docker"
-    docker buildx build --load -f docker/Dockerfile --target api -t polars-analysis-api:latest .
-    docker buildx build --load -f docker/Dockerfile --target scheduler -t polars-analysis-scheduler:latest .
-    docker buildx build --load -f docker/Dockerfile --target worker -t polars-analysis-worker:latest .
-    DF_API_IMAGE=polars-analysis-api:latest DF_SCHEDULER_IMAGE=polars-analysis-scheduler:latest DF_WORKER_IMAGE=polars-analysis-worker:latest DF_POSTGRES_PASSWORD=ChangeMe123! DF_DATABASE_URL=postgresql+psycopg://dataforge:ChangeMe123!@postgres:5432/dataforge DF_DEFAULT_USER_PASSWORD=Admin123! DF_SETTINGS_ENCRYPTION_KEY=dev-only-local-secret-key docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml up -d
+    docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml up -d
+
+# Build local images, then deploy them with production compose.
+docker-prod-local: docker-build
+    DF_API_IMAGE=polars-analysis-api:latest DF_SCHEDULER_IMAGE=polars-analysis-scheduler:latest DF_WORKER_IMAGE=polars-analysis-worker:latest docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml up -d
 
 docker-prod-down:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export DOCKER_CONFIG="${PWD}/.docker"
-    DF_API_IMAGE=polars-analysis-api:latest DF_SCHEDULER_IMAGE=polars-analysis-scheduler:latest DF_WORKER_IMAGE=polars-analysis-worker:latest DF_POSTGRES_PASSWORD=ChangeMe123! DF_DATABASE_URL=postgresql+psycopg://dataforge:ChangeMe123!@postgres:5432/dataforge DF_DEFAULT_USER_PASSWORD=Admin123! DF_SETTINGS_ENCRYPTION_KEY=dev-only-local-secret-key docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml down -v --remove-orphans
+    docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml down -v --remove-orphans
 
 docker-prod-logs:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export DOCKER_CONFIG="${PWD}/.docker"
-    DF_API_IMAGE=polars-analysis-api:latest DF_SCHEDULER_IMAGE=polars-analysis-scheduler:latest DF_WORKER_IMAGE=polars-analysis-worker:latest DF_POSTGRES_PASSWORD=ChangeMe123! DF_DATABASE_URL=postgresql+psycopg://dataforge:ChangeMe123!@postgres:5432/dataforge DF_DEFAULT_USER_PASSWORD=Admin123! DF_SETTINGS_ENCRYPTION_KEY=dev-only-local-secret-key docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml logs -f
+    docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml logs -f
 
 release version *args:
 	#!/usr/bin/env bash

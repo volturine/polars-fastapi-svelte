@@ -68,36 +68,39 @@ Data-Forge is a **local-first**, **no-code** data transformation tool. Build mul
 
 ### Option 1: Docker (Recommended)
 
-```bash
-# Customer install
-# 1) copy docker/docker-compose.yml to compose.yml
-# 2) copy docker/env/prod.env to .env and edit it
-docker compose -f compose.yml pull
-docker compose -f compose.yml up -d
+Docker has one production topology:
 
-# Open the application
+```text
+postgres + api + scheduler + worker
+```
+
+The API container serves both the backend API and the built frontend on port 8000.
+
+```bash
+# 1) Edit docker/env/prod.env and set image tags, passwords, and secrets.
+# 2) Start the production stack.
+just docker-prod
+
+# Open the application.
 open http://localhost:8000
 ```
 
-`docker/docker-compose.yml` is the only production compose file and is customer-facing. Pair it with `docker/env/prod.env`, rename that file to `.env`, set your secrets and release tags, then run `docker compose pull && docker compose up -d`.
-`just docker-prod` still uses the same production compose file and the same `docker/env/prod.env`, but overrides the image tags at runtime to use local builds. GHCR images are for production release publishing only.
-The production topology is Postgres plus three role containers from one codebase:
-- `api`
-- `scheduler`
-- `worker`
+Equivalent raw Compose command:
 
-Default Docker production sizing:
-- API workers: `4` via `docker/env/prod.env`
-- Warm build workers: `0` by default
-- Dynamic build worker max: `10` by default
+```bash
+docker compose --env-file docker/env/prod.env \
+  -p dataforge-prod \
+  -f docker/docker-compose.yml \
+  up -d
+```
 
-This starts the Postgres-backed fixed-role runtime topology:
-- `postgres`
-- `api`
-- `scheduler`
-- `worker`
+For local image validation instead of pulling GHCR images:
 
-`postgres` is required in the checked-in Docker topology. The supported Docker runtime is Postgres-backed; the role services use `DF_DATABASE_URL` pointing at the `postgres` service.
+```bash
+just docker-prod-local
+```
+
+See [`docker/README.md`](docker/README.md) for the Docker production, evaluation, and development model.
 
 ### Option 2: Local Development
 
@@ -128,24 +131,18 @@ just dev
 
 ## Configuration
 
-The app supports two deployment topologies:
+### Production (Docker)
 
-### Production (single port)
-
-FastAPI serves both the API and the pre-built frontend on port 8000.
+Production Docker deployments use `docker/docker-compose.yml` with `docker/env/prod.env`.
+The API serves both the backend API and the pre-built frontend on port 8000.
 
 ```bash
-# Edit backend/prod.env with your settings
-cd frontend && bun run build
-just prod
+just docker-prod
 ```
-
-For supported production deployments, use Postgres. `docker/docker-compose.yml`
-is the fixed-role Docker runtime topology for both customers and local maintainer automation.
 
 The repository defaults are tuned for concurrent clients:
 - Docker production defaults to `4` API workers in the `api` service
-- build throughput scales in the `worker` service up to `BUILD_WORKER_MAX_PROCESSES`
+- build throughput scales in the `worker` service up to `DF_BUILD_WORKER_MAX_PROCESSES`
 - zero warm build workers are kept by default; worker subprocesses spawn on demand and exit when idle
 
 ### Development (local runtime)

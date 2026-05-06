@@ -65,11 +65,28 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}"
 LABEL org.opencontainers.image.source="https://github.com/volturine/data-forge"
 LABEL org.opencontainers.image.licenses="MIT"
 
-RUN pip install --no-cache-dir "uv==${UV_VERSION}"
+RUN pip install --no-cache-dir "uv==${UV_VERSION}" && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
+    arch="$(dpkg --print-architecture)" && \
+    case "$arch" in \
+        amd64) just_arch="x86_64-unknown-linux-musl" ;; \
+        arm64) just_arch="aarch64-unknown-linux-musl" ;; \
+        *) echo "unsupported architecture: $arch" >&2; exit 1 ;; \
+    esac && \
+    curl -fsSL "https://github.com/casey/just/releases/download/1.43.1/just-1.43.1-${just_arch}.tar.gz" \
+        | tar -xz -C /usr/local/bin just && \
+    apt-get purge -y --auto-remove curl && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN addgroup --gid 1000 appgroup && adduser --uid 1000 --gid 1000 --disabled-password --gecos "" appuser
 
 COPY packages/shared/ ./
+COPY packages/backend/ /app/packages/backend/
+COPY packages/scheduler/ /app/packages/scheduler/
+COPY packages/worker-manager/ /app/packages/worker-manager/
+COPY Justfile /app/Justfile
+COPY scripts/ /app/scripts/
 
 RUN if [ "$INSTALL_DEV" = "true" ]; then uv sync --frozen --group dev || uv sync --group dev; else uv sync --frozen || uv sync; fi
 RUN if [ "$INSTALL_DEV" = "true" ]; then uv sync --frozen --group dev; else uv sync --frozen; fi
@@ -94,27 +111,19 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD python3 -c "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"
 
 FROM runtime-base AS api
-COPY --chown=appuser:appgroup packages/backend/ /app/packages/backend/
 COPY --chown=appuser:appgroup --from=frontend-builder /app/packages/frontend/build /app/packages/frontend/build
 ENV PYTHONPATH="/app/packages/backend:/app/packages/shared"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD python3 -c "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"
 CMD ["python3", "../backend/main.py"]
 
-FROM api AS backend-test
-COPY --chown=appuser:appgroup packages/scheduler/ /app/packages/scheduler/
-COPY --chown=appuser:appgroup packages/worker-manager/ /app/packages/worker-manager/
-ENV PYTHONPATH="/app:/app/packages/backend:/app/packages/scheduler:/app/packages/worker-manager:/app/packages/shared"
-
 FROM runtime-base AS scheduler
-COPY --chown=appuser:appgroup packages/scheduler/ /app/packages/scheduler/
 ENV PYTHONPATH="/app/packages/scheduler:/app/packages/shared"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD python3 -c "import sys; from core.docker_healthcheck import worker_healthy; from contracts.runtime_workers.models import RuntimeWorkerKind; sys.exit(0 if worker_healthy(kind=RuntimeWorkerKind.SCHEDULER) else 1)"
 CMD ["python3", "../scheduler/main.py"]
 
 FROM runtime-base AS worker
-COPY --chown=appuser:appgroup packages/worker-manager/ /app/packages/worker-manager/
 ENV PYTHONPATH="/app/packages/worker-manager:/app/packages/shared"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD python3 -c "import sys; from core.docker_healthcheck import worker_healthy; from contracts.runtime_workers.models import RuntimeWorkerKind; sys.exit(0 if worker_healthy(kind=RuntimeWorkerKind.BUILD_MANAGER) else 1)"

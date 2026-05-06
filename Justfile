@@ -256,7 +256,6 @@ docker-test:
     docker buildx build --load --build-arg INSTALL_DEV=true --target api -f docker/Dockerfile -t polars-analysis-api:test .
     docker buildx build --load --build-arg INSTALL_DEV=true --target scheduler -f docker/Dockerfile -t polars-analysis-scheduler:test .
     docker buildx build --load --build-arg INSTALL_DEV=true --target worker -f docker/Dockerfile -t polars-analysis-worker:test .
-    docker buildx build --load --build-arg INSTALL_DEV=true --target backend-test -f docker/Dockerfile -t polars-analysis-backend-test:test .
     docker buildx build --load --target frontend-test -f docker/Dockerfile -t polars-analysis-frontend-test:test .
     docker buildx build --load --target frontend-e2e -f docker/Dockerfile -t polars-analysis-frontend-e2e:test .
     docker buildx build --load --target e2e-test -f docker/Dockerfile -t polars-analysis-e2e-test:test .
@@ -267,13 +266,27 @@ docker-test:
     docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm runtime-test
     docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm e2e-test
 
-test-raw:
+test-raw: test-backend-raw test-frontend-raw
+
+test-backend-raw:
     cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q tests
     cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests --ignore=../backend/tests/integration
     cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests/integration
     cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../worker-manager/tests --ignore=../worker-manager/tests/integration
     cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../scheduler/tests
+
+test-frontend-raw:
     cd packages/frontend && bun run test:unit
+
+docker-backend-test-raw:
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q tests
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests --ignore=../backend/tests/integration
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests/integration -k 'not docker_bootstrap and not postgres_runtime_integration'
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../worker-manager/tests --ignore=../worker-manager/tests/integration
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../scheduler/tests
+
+docker-runtime-test-raw:
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests/integration/test_docker_bootstrap.py
 
 # Generate TypeScript types from Pydantic step schemas
 generate-step-types:

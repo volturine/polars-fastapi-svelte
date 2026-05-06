@@ -17,13 +17,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: backend-test
-      args:
-        INSTALL_DEV: "true"
-    image: polars-analysis-backend-test:test
+    image: polars-analysis-api:test
+    working_dir: /app
     environment:
       ENV_FILE: ""
       DATA_DIR: ${DF_DATA_DIR}
@@ -31,12 +26,7 @@ services:
       SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
     volumes:
       - backend-test-data:/app/data
-    command:
-      [
-        "sh",
-        "-lc",
-        "cd /app/packages/shared && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q tests && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q ../backend/tests --ignore=../backend/tests/integration && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q ../backend/tests/integration -k 'not docker_bootstrap and not postgres_runtime_integration' && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q ../worker-manager/tests --ignore=../worker-manager/tests/integration && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q ../scheduler/tests",
-      ]
+    command: ["just", "-f", "/app/Justfile", "docker-backend-test-raw"]
     healthcheck:
       disable: true
 
@@ -51,7 +41,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    environment: &app-env
+    environment: &api-env
       ENV_FILE: ""
       APP_NAME: ${DF_APP_NAME}
       APP_VERSION: ${DF_APP_VERSION}
@@ -63,7 +53,6 @@ services:
       DISTRIBUTED_RUNTIME_ENABLED: "true"
       DEFAULT_NAMESPACE: ${DF_DEFAULT_NAMESPACE}
       WORKERS: "1"
-      SCHEDULER_CHECK_INTERVAL: "1"
       BUILD_WORKER_MIN_PROCESSES: "1"
       BUILD_WORKER_MAX_PROCESSES: "4"
       BUILD_WORKER_IDLE_EXIT_SECONDS: "5"
@@ -104,9 +93,20 @@ services:
         condition: service_healthy
       api:
         condition: service_started
-    environment:
-      <<: *app-env
+    environment: &scheduler-env
+      ENV_FILE: ""
+      APP_NAME: ${DF_APP_NAME}
+      APP_VERSION: ${DF_APP_VERSION}
+      DEBUG: ${DF_DEBUG}
+      PROD_MODE_ENABLED: "false"
+      DATA_DIR: ${DF_DATA_DIR}
+      DATABASE_URL: ${DF_DATABASE_URL}
+      DISTRIBUTED_RUNTIME_ENABLED: "true"
+      DEFAULT_NAMESPACE: ${DF_DEFAULT_NAMESPACE}
       WORKERS: "1"
+      SCHEDULER_CHECK_INTERVAL: "1"
+      SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
+      LOG_LEVEL: ${DF_LOG_LEVEL}
     volumes:
       - backend-test-data:/app/data
 
@@ -123,20 +123,28 @@ services:
         condition: service_healthy
       api:
         condition: service_started
-    environment:
-      <<: *app-env
+    environment: &worker-env
+      ENV_FILE: ""
+      APP_NAME: ${DF_APP_NAME}
+      APP_VERSION: ${DF_APP_VERSION}
+      DEBUG: ${DF_DEBUG}
+      PROD_MODE_ENABLED: "false"
+      DATA_DIR: ${DF_DATA_DIR}
+      DATABASE_URL: ${DF_DATABASE_URL}
+      DISTRIBUTED_RUNTIME_ENABLED: "true"
+      DEFAULT_NAMESPACE: ${DF_DEFAULT_NAMESPACE}
       WORKERS: "1"
+      BUILD_WORKER_MIN_PROCESSES: "1"
+      BUILD_WORKER_MAX_PROCESSES: "4"
+      BUILD_WORKER_IDLE_EXIT_SECONDS: "5"
+      SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
+      LOG_LEVEL: ${DF_LOG_LEVEL}
     volumes:
       - backend-test-data:/app/data
 
   runtime-test:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: backend-test
-      args:
-        INSTALL_DEV: "true"
-    image: polars-analysis-backend-test:test
+    image: polars-analysis-api:test
+    working_dir: /app
     depends_on:
       api:
         condition: service_healthy
@@ -156,12 +164,7 @@ services:
       RUNTIME_TEST_DB_URL: ${DF_RUNTIME_TEST_DB_URL}
     volumes:
       - backend-test-data:/app/data
-    command:
-      [
-        "sh",
-        "-lc",
-        "cd /app/packages/shared && .venv/bin/python -m pytest -c pyproject.toml --tb=short -q ../backend/tests/integration/test_docker_bootstrap.py",
-      ]
+    command: ["just", "-f", "/app/Justfile", "docker-runtime-test-raw"]
     healthcheck:
       disable: true
 

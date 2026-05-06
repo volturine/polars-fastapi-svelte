@@ -242,29 +242,30 @@ docker-test:
     #!/usr/bin/env bash
     set -euo pipefail
     export DOCKER_CONFIG="${PWD}/.docker"
+    COMPOSE=(docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.yml -f docker/docker-compose.test.yml)
     cleanup() {
         status=$?
         if [ "$status" -ne 0 ]; then
-            docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml ps -a || true
-            docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml logs api scheduler worker || true
+            "${COMPOSE[@]}" ps -a || true
+            "${COMPOSE[@]}" logs api scheduler worker || true
         fi
-        docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml down -v --remove-orphans >/dev/null 2>&1 || true
+        "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
         exit "$status"
     }
     trap cleanup EXIT
-    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml down -v --remove-orphans >/dev/null 2>&1 || true
+    "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
     docker buildx build --load --build-arg INSTALL_DEV=true --target api -f docker/Dockerfile -t polars-analysis-api:test .
     docker buildx build --load --build-arg INSTALL_DEV=true --target scheduler -f docker/Dockerfile -t polars-analysis-scheduler:test .
     docker buildx build --load --build-arg INSTALL_DEV=true --target worker -f docker/Dockerfile -t polars-analysis-worker:test .
     docker buildx build --load --target frontend-test -f docker/Dockerfile -t polars-analysis-frontend-test:test .
     docker buildx build --load --target frontend-e2e -f docker/Dockerfile -t polars-analysis-frontend-e2e:test .
     docker buildx build --load --target e2e-test -f docker/Dockerfile -t polars-analysis-e2e-test:test .
-    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm frontend-test
-    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm backend-test
-    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml down -v --remove-orphans >/dev/null 2>&1 || true
-    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml up -d postgres api scheduler worker frontend-e2e
-    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm runtime-test
-    docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.test.yml run --rm e2e-test
+    "${COMPOSE[@]}" run --rm frontend-test
+    "${COMPOSE[@]}" run --rm backend-test
+    "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+    "${COMPOSE[@]}" up -d postgres api scheduler worker frontend-e2e
+    "${COMPOSE[@]}" run --rm runtime-test
+    "${COMPOSE[@]}" run --rm e2e-test
 
 test-raw: test-backend-raw test-frontend-raw
 
@@ -287,6 +288,12 @@ docker-backend-test-raw:
 
 docker-runtime-test-raw:
     cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests/integration/test_docker_bootstrap.py
+
+docker-frontend-test-raw:
+    cd packages/frontend && bun run svelte-kit sync && bun run panda:codegen && bun run test:unit
+
+docker-e2e-test-raw:
+    cd packages/frontend && npx playwright test
 
 # Generate TypeScript types from Pydantic step schemas
 generate-step-types:

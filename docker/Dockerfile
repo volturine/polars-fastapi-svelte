@@ -22,11 +22,25 @@ FROM oven/bun:1.2.22 AS frontend-test
 
 WORKDIR /app/packages/frontend
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
+    arch="$(dpkg --print-architecture)" && \
+    case "$arch" in \
+        amd64) just_arch="x86_64-unknown-linux-musl" ;; \
+        arm64) just_arch="aarch64-unknown-linux-musl" ;; \
+        *) echo "unsupported architecture: $arch" >&2; exit 1 ;; \
+    esac && \
+    curl -fsSL "https://github.com/casey/just/releases/download/1.43.1/just-1.43.1-${just_arch}.tar.gz" \
+        | tar -xz -C /usr/local/bin just && \
+    apt-get purge -y --auto-remove curl && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY packages/frontend/package.json packages/frontend/bun.lock* ./
 RUN bun install --frozen-lockfile
 COPY packages/frontend/ ./
+COPY Justfile /app/Justfile
 ENV CI=true
-CMD ["sh", "-lc", "bun run panda:codegen && bun run test:unit"]
+CMD ["just", "-f", "/app/Justfile", "docker-frontend-test-raw"]
 
 FROM mcr.microsoft.com/playwright:v1.59.1-noble AS frontend-e2e
 
@@ -42,10 +56,24 @@ FROM mcr.microsoft.com/playwright:v1.59.1-noble AS e2e-test
 
 WORKDIR /app/packages/frontend
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
+    arch="$(dpkg --print-architecture)" && \
+    case "$arch" in \
+        amd64) just_arch="x86_64-unknown-linux-musl" ;; \
+        arm64) just_arch="aarch64-unknown-linux-musl" ;; \
+        *) echo "unsupported architecture: $arch" >&2; exit 1 ;; \
+    esac && \
+    curl -fsSL "https://github.com/casey/just/releases/download/1.43.1/just-1.43.1-${just_arch}.tar.gz" \
+        | tar -xz -C /usr/local/bin just && \
+    apt-get purge -y --auto-remove curl && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY packages/frontend/package.json packages/frontend/bun.lock* ./
 RUN npm install -g bun && bun install --frozen-lockfile
 COPY packages/frontend/ ./
-CMD ["sh", "-lc", "bunx svelte-kit sync && npx playwright test"]
+COPY Justfile /app/Justfile
+CMD ["just", "-f", "/app/Justfile", "docker-e2e-test-raw"]
 
 FROM python:3.13.7-slim AS backend-base
 

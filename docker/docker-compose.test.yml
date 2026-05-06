@@ -1,149 +1,59 @@
 services:
   postgres:
-    image: postgres:18-alpine
-    environment:
-      POSTGRES_DB: ${DF_POSTGRES_DB}
-      POSTGRES_USER: ${DF_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${DF_POSTGRES_PASSWORD}
     volumes:
       - pg-data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DF_POSTGRES_USER} -d ${DF_POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
 
   backend-test:
+    image: ${DF_API_IMAGE}
+    working_dir: /app
     depends_on:
       postgres:
         condition: service_healthy
-    image: polars-analysis-api:test
-    working_dir: /app
     environment:
       ENV_FILE: ""
       DATA_DIR: ${DF_DATA_DIR}
       TEST_POSTGRES_URL: ${DF_DATABASE_URL}
       SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
     volumes:
-      - backend-test-data:/app/data
+      - data:/app/data
     command: ["just", "-f", "/app/Justfile", "docker-backend-test-raw"]
     healthcheck:
       disable: true
+    restart: "no"
 
   api:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: api
-      args:
-        INSTALL_DEV: "true"
-    image: polars-analysis-api:test
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment: &api-env
-      ENV_FILE: ""
-      APP_NAME: ${DF_APP_NAME}
-      APP_VERSION: ${DF_APP_VERSION}
-      DEBUG: ${DF_DEBUG}
+    environment:
       PROD_MODE_ENABLED: "false"
       PORT: "8000"
-      DATA_DIR: ${DF_DATA_DIR}
-      DATABASE_URL: ${DF_DATABASE_URL}
-      DISTRIBUTED_RUNTIME_ENABLED: "true"
-      DEFAULT_NAMESPACE: ${DF_DEFAULT_NAMESPACE}
-      WORKERS: "1"
+      WORKERS: ${DF_WORKERS}
       BUILD_WORKER_MIN_PROCESSES: "1"
       BUILD_WORKER_MAX_PROCESSES: "4"
       BUILD_WORKER_IDLE_EXIT_SECONDS: "5"
       AUTH_REQUIRED: "true"
-      SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
-      DEFAULT_USER_PASSWORD: ${DF_DEFAULT_USER_PASSWORD}
-      DEFAULT_USER_EMAIL: ${DF_DEFAULT_USER_EMAIL}
-      DEFAULT_USER_NAME: ${DF_DEFAULT_USER_NAME}
-      LOG_LEVEL: ${DF_LOG_LEVEL}
       TRUSTED_PROXY_HOPS: "0"
       UVICORN_ACCESS_LOG: "false"
       AUTH_FRONTEND_URL: ${DF_E2E_FRONTEND_ORIGIN}
       CORS_ORIGINS: ${DF_E2E_FRONTEND_ORIGIN}
-      GOOGLE_CLIENT_ID: ${DF_GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${DF_GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: ${DF_GOOGLE_REDIRECT_URI}
-      GITHUB_CLIENT_ID: ${DF_GITHUB_CLIENT_ID}
-      GITHUB_CLIENT_SECRET: ${DF_GITHUB_CLIENT_SECRET}
-      GITHUB_REDIRECT_URI: ${DF_GITHUB_REDIRECT_URI}
-    volumes:
-      - backend-test-data:/app/data
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health/ready').status==200 else 1)\""]
-      interval: 5s
-      timeout: 5s
-      retries: 30
+    restart: "no"
 
   scheduler:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: scheduler
-      args:
-        INSTALL_DEV: "true"
-    image: polars-analysis-scheduler:test
-    depends_on:
-      postgres:
-        condition: service_healthy
-      api:
-        condition: service_started
-    environment: &scheduler-env
-      ENV_FILE: ""
-      APP_NAME: ${DF_APP_NAME}
-      APP_VERSION: ${DF_APP_VERSION}
-      DEBUG: ${DF_DEBUG}
+    environment:
       PROD_MODE_ENABLED: "false"
-      DATA_DIR: ${DF_DATA_DIR}
-      DATABASE_URL: ${DF_DATABASE_URL}
-      DISTRIBUTED_RUNTIME_ENABLED: "true"
-      DEFAULT_NAMESPACE: ${DF_DEFAULT_NAMESPACE}
       WORKERS: "1"
       SCHEDULER_CHECK_INTERVAL: "1"
-      SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
-      LOG_LEVEL: ${DF_LOG_LEVEL}
-    volumes:
-      - backend-test-data:/app/data
+    restart: "no"
 
   worker:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: worker
-      args:
-        INSTALL_DEV: "true"
-    image: polars-analysis-worker:test
-    depends_on:
-      postgres:
-        condition: service_healthy
-      api:
-        condition: service_started
-    environment: &worker-env
-      ENV_FILE: ""
-      APP_NAME: ${DF_APP_NAME}
-      APP_VERSION: ${DF_APP_VERSION}
-      DEBUG: ${DF_DEBUG}
+    environment:
       PROD_MODE_ENABLED: "false"
-      DATA_DIR: ${DF_DATA_DIR}
-      DATABASE_URL: ${DF_DATABASE_URL}
-      DISTRIBUTED_RUNTIME_ENABLED: "true"
-      DEFAULT_NAMESPACE: ${DF_DEFAULT_NAMESPACE}
       WORKERS: "1"
       BUILD_WORKER_MIN_PROCESSES: "1"
       BUILD_WORKER_MAX_PROCESSES: "4"
       BUILD_WORKER_IDLE_EXIT_SECONDS: "5"
-      SETTINGS_ENCRYPTION_KEY: ${DF_SETTINGS_ENCRYPTION_KEY}
-      LOG_LEVEL: ${DF_LOG_LEVEL}
-    volumes:
-      - backend-test-data:/app/data
+    restart: "no"
 
   runtime-test:
-    image: polars-analysis-api:test
+    image: ${DF_API_IMAGE}
     working_dir: /app
     depends_on:
       api:
@@ -163,10 +73,11 @@ services:
       RUNTIME_TEST_BASE_URL: ${DF_RUNTIME_TEST_BASE_URL}
       RUNTIME_TEST_DB_URL: ${DF_RUNTIME_TEST_DB_URL}
     volumes:
-      - backend-test-data:/app/data
+      - data:/app/data
     command: ["just", "-f", "/app/Justfile", "docker-runtime-test-raw"]
     healthcheck:
       disable: true
+    restart: "no"
 
   frontend-test:
     build:
@@ -174,8 +85,11 @@ services:
       dockerfile: docker/Dockerfile
       target: frontend-test
     image: polars-analysis-frontend-test:test
+    working_dir: /app
     environment:
       CI: "true"
+    command: ["just", "-f", "/app/Justfile", "docker-frontend-test-raw"]
+    restart: "no"
 
   frontend-e2e:
     build:
@@ -207,6 +121,7 @@ services:
       timeout: 10s
       start_period: 20s
       retries: 30
+    restart: "no"
 
   e2e-test:
     build:
@@ -230,10 +145,5 @@ services:
       PLAYWRIGHT_FRONTEND_ORIGIN: ${DF_E2E_FRONTEND_ORIGIN}
       PLAYWRIGHT_COOKIE_DOMAIN: frontend-e2e
       PLAYWRIGHT_DISABLE_WEB_SERVER: "true"
-    command: ["npx", "playwright", "test"]
-
-volumes:
-  backend-test-data:
-    driver: local
-  pg-data:
-    driver: local
+    command: ["just", "-f", "/app/Justfile", "docker-e2e-test-raw"]
+    restart: "no"

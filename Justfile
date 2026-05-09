@@ -42,7 +42,10 @@ dev:
 docker-dev:
     #!/usr/bin/env bash
     set -euo pipefail
-    export DOCKER_CONFIG="${PWD}/.docker"
+    export DF_DOCKER_STATE_DIR="${PWD}/.runtime/docker"
+    mkdir -p "${DF_DOCKER_STATE_DIR}"
+    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
+    export HOME="${DF_DOCKER_STATE_DIR}"
     docker buildx build --load -f docker/Dockerfile --target api -t polars-analysis-api:latest .
     docker buildx build --load -f docker/Dockerfile --target scheduler -t polars-analysis-scheduler:latest .
     docker buildx build --load -f docker/Dockerfile --target worker -t polars-analysis-worker:latest .
@@ -51,13 +54,19 @@ docker-dev:
 docker-dev-down:
     #!/usr/bin/env bash
     set -euo pipefail
-    export DOCKER_CONFIG="${PWD}/.docker"
+    export DF_DOCKER_STATE_DIR="${PWD}/.runtime/docker"
+    mkdir -p "${DF_DOCKER_STATE_DIR}"
+    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
+    export HOME="${DF_DOCKER_STATE_DIR}"
     docker compose --env-file docker/env/dev.env -p dataforge-dev -f docker/docker-compose.yml -f docker/docker-compose.dev.yml down -v --remove-orphans
 
 docker-dev-logs:
     #!/usr/bin/env bash
     set -euo pipefail
-    export DOCKER_CONFIG="${PWD}/.docker"
+    export DF_DOCKER_STATE_DIR="${PWD}/.runtime/docker"
+    mkdir -p "${DF_DOCKER_STATE_DIR}"
+    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
+    export HOME="${DF_DOCKER_STATE_DIR}"
     docker compose --env-file docker/env/dev.env -p dataforge-dev -f docker/docker-compose.yml -f docker/docker-compose.dev.yml logs -f
 
 worker:
@@ -81,7 +90,12 @@ format:
 check:
     cd packages/shared && uv run ruff format --check . ../backend ../scheduler ../worker-manager && uv run ruff check . ../backend ../scheduler ../worker-manager && uv run python -m mypy . && uv run python -m mypy ../backend && uv run python -m mypy ../scheduler && uv run python -m mypy ../worker-manager
     cd packages/shared && uv run python ../../scripts/generate_ts_build_stream_types.py --check
+    cd packages/shared && uv run python ../../scripts/generate_ts_step_types.py --check
     cd packages/shared && uv run python ../../scripts/check_package_boundaries.py
+    cd packages/shared && uv run python ../../scripts/check_env_contracts.py
+    cd packages/shared && uv run python ../../scripts/check_dependency_hygiene.py
+    cd packages/shared && uv run python ../../scripts/check_code_hygiene.py
+    cd packages/shared && uv run python ../../scripts/check_test_layout.py
     cd packages/frontend && bun run panda:codegen && bun run check && bun run lint
 
 
@@ -93,6 +107,9 @@ test-e2e-raw shard='':
     #!/usr/bin/env bash
     set -euo pipefail
     set -a; source packages/shared/e2e.env; set +a
+    export DF_DOCKER_STATE_DIR="${PWD}/packages/frontend/tests/.artifacts/docker"
+    mkdir -p "${DF_DOCKER_STATE_DIR}"
+    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
     PLAYWRIGHT_CMD=(npx playwright test --config=playwright.config.ts)
     if [ -n "{{shard}}" ]; then
         PLAYWRIGHT_CMD+=(--shard "{{shard}}")
@@ -242,7 +259,10 @@ test:
 docker-build tag='latest' install_dev='false':
     #!/usr/bin/env bash
     set -euo pipefail
-    export DOCKER_CONFIG="${PWD}/.docker"
+    export DF_DOCKER_STATE_DIR="${PWD}/.runtime/docker"
+    mkdir -p "${DF_DOCKER_STATE_DIR}"
+    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
+    export HOME="${DF_DOCKER_STATE_DIR}"
     docker buildx build --load --build-arg INSTALL_DEV={{install_dev}} --target api -f docker/Dockerfile -t polars-analysis-api:{{tag}} .
     docker buildx build --load --build-arg INSTALL_DEV={{install_dev}} --target scheduler -f docker/Dockerfile -t polars-analysis-scheduler:{{tag}} .
     docker buildx build --load --build-arg INSTALL_DEV={{install_dev}} --target worker -f docker/Dockerfile -t polars-analysis-worker:{{tag}} .
@@ -251,7 +271,10 @@ docker-build tag='latest' install_dev='false':
 docker-build-test-runners:
     #!/usr/bin/env bash
     set -euo pipefail
-    export DOCKER_CONFIG="${PWD}/.docker"
+    export DF_DOCKER_STATE_DIR="${PWD}/packages/frontend/tests/.artifacts/docker"
+    mkdir -p "${DF_DOCKER_STATE_DIR}"
+    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
+    export HOME="${DF_DOCKER_STATE_DIR}"
     docker buildx build --load --target frontend-test -f docker/Dockerfile -t polars-analysis-frontend-test:test .
     docker buildx build --load --target frontend-e2e -f docker/Dockerfile -t polars-analysis-frontend-e2e:test .
     docker buildx build --load --target e2e-test -f docker/Dockerfile -t polars-analysis-e2e-test:test .
@@ -260,7 +283,10 @@ docker-build-test-runners:
 docker-test: docker-build-test-runners
     #!/usr/bin/env bash
     set -euo pipefail
-    export DOCKER_CONFIG="${PWD}/.docker"
+    export DF_DOCKER_STATE_DIR="${PWD}/packages/frontend/tests/.artifacts/docker"
+    mkdir -p "${DF_DOCKER_STATE_DIR}"
+    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
+    export HOME="${DF_DOCKER_STATE_DIR}"
     just docker-build test true
     COMPOSE=(docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.yml -f docker/docker-compose.test.yml)
     cleanup() {
@@ -284,24 +310,24 @@ docker-test: docker-build-test-runners
 test-raw: test-backend-raw test-frontend-raw
 
 test-backend-raw:
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q tests
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests --ignore=../backend/tests/integration
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests/integration
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../worker-manager/tests --ignore=../worker-manager/tests/integration
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../scheduler/tests
+    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/shared/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=tests/.artifacts/pytest-cache tests
+    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/backend/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../backend/tests/.artifacts/pytest-cache ../backend/tests --ignore=../backend/tests/integration
+    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/backend/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../backend/tests/.artifacts/pytest-cache ../backend/tests/integration
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../worker-manager/tests/.artifacts/pytest-cache ../worker-manager/tests --ignore=../worker-manager/tests/integration
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../scheduler/tests/.artifacts/pytest-cache ../scheduler/tests
 
 test-frontend-raw:
     cd packages/frontend && bun run test:unit
 
 docker-backend-test-raw:
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q tests
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests --ignore=../backend/tests/integration
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests/integration -k 'not docker_bootstrap and not postgres_runtime_integration'
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../worker-manager/tests --ignore=../worker-manager/tests/integration
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../scheduler/tests
+    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/shared/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=tests/.artifacts/pytest-cache tests
+    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/backend/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../backend/tests/.artifacts/pytest-cache ../backend/tests --ignore=../backend/tests/integration
+    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/backend/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../backend/tests/.artifacts/pytest-cache ../backend/tests/integration -k 'not docker_bootstrap and not postgres_runtime_integration'
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../worker-manager/tests/.artifacts/pytest-cache ../worker-manager/tests --ignore=../worker-manager/tests/integration
+    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../scheduler/tests/.artifacts/pytest-cache ../scheduler/tests
 
 docker-runtime-test-raw:
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q ../backend/tests/integration/test_docker_bootstrap.py
+    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/backend/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../backend/tests/.artifacts/pytest-cache ../backend/tests/integration/test_docker_bootstrap.py
 
 docker-frontend-test-raw:
     cd packages/frontend && bun run svelte-kit sync && bun run panda:codegen && bun run test:unit

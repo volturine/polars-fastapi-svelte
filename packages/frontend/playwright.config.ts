@@ -17,7 +17,7 @@ function shardSuffixFromArgs(): string {
 const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${port}`;
 const ciArgs = process.env.CI ? ['--disable-dev-shm-usage', '--disable-gpu'] : [];
-const artifactsRoot = path.resolve(process.cwd(), '..', '..');
+const artifactsRoot = path.resolve(process.cwd(), 'tests', '.artifacts');
 const shardSuffix = shardSuffixFromArgs();
 
 export default defineConfig({
@@ -27,11 +27,14 @@ export default defineConfig({
 	fullyParallel: false,
 	workers: DEFAULT_E2E_WORKERS,
 	retries: 1,
-	outputDir: path.join(artifactsRoot, `test-results${shardSuffix}`),
+	outputDir: path.join(artifactsRoot, 'playwright', `test-results${shardSuffix}`),
 	reporter: [
 		[
 			'html',
-			{ open: 'never', outputFolder: path.join(artifactsRoot, `playwright-report${shardSuffix}`) }
+			{
+				open: 'never',
+				outputFolder: path.join(artifactsRoot, 'playwright', `playwright-report${shardSuffix}`)
+			}
 		],
 		['line']
 	],

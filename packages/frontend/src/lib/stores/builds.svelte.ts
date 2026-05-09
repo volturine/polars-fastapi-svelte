@@ -4,7 +4,7 @@ import type { ActiveBuildSummary } from '$lib/types/build-stream';
 export type BuildsStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 export class BuildsStore {
-	builds = $state<ActiveBuildSummary[]>([]);
+	builds = $state.raw<ActiveBuildSummary[]>([]);
 	total = $state(0);
 	status = $state<BuildsStatus>('disconnected');
 	error = $state<string | null>(null);

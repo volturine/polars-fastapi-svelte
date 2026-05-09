@@ -103,13 +103,6 @@
 		return standardMemoryOptions;
 	});
 
-	// Subscription: $derived can't sync draft name.
-	$effect(() => {
-		if (!isEditing) {
-			draftName = tabName ?? datasourceLabel ?? datasource?.name ?? '';
-		}
-	});
-
 	const isIceberg = $derived(datasource?.source_type === 'iceberg');
 	const datasourceQuery = createQuery(() => ({
 		queryKey: ['datasource', datasource?.id ?? null, datasource?.config?.branch ?? ''],
@@ -196,7 +189,6 @@
 
 	function cancelEdit() {
 		isEditing = false;
-		draftName = tabName ?? datasourceLabel ?? datasource?.name ?? '';
 	}
 
 	function commitEdit() {

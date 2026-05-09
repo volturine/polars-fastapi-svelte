@@ -62,8 +62,6 @@
 		ariaDescribedby
 	}: Props = $props();
 
-	let panelRef = $state<HTMLElement | null>(null);
-
 	function handleClose() {
 		onClose?.();
 	}
@@ -79,20 +77,13 @@
 		handleClose();
 	}
 
-	// DOM: $derived can't lock body scroll or trap focus.
-	$effect(() => {
-		if (!open) return;
+	function modalPanel(node: HTMLElement): () => void {
 		document.body.style.overflow = 'hidden';
-
-		const panel = panelRef;
-		if (panel) {
-			panel.focus();
-		}
-
+		node.focus();
 		return () => {
 			document.body.style.overflow = '';
 		};
-	});
+	}
 </script>
 
 {#if open}
@@ -103,7 +94,6 @@
 		use:overlayStack.action={overlayConfig}
 	>
 		<div
-			bind:this={panelRef}
 			class={panelClass}
 			{role}
 			aria-modal={ariaModal}
@@ -111,6 +101,7 @@
 			aria-describedby={ariaDescribedby}
 			tabindex="-1"
 			onmousedown={(event) => event.stopPropagation()}
+			{@attach modalPanel}
 			use:panelAction={panelActionValue}
 		>
 			{@render content()}

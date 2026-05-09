@@ -45,6 +45,8 @@ from core.namespace import get_namespace, namespace_paths
 
 logger = logging.getLogger(__name__)
 
+MAX_DOWNLOAD_BYTES: Final = 10 * 1024 * 1024
+
 BuildEmitter = Callable[[compute_schemas.BuildEvent], Awaitable[None]]
 
 
@@ -52,6 +54,15 @@ def _secure_temp_path(suffix: str) -> str:
     fd, path = tempfile.mkstemp(suffix=suffix)
     os.close(fd)
     return path
+
+
+def _ensure_download_size(path: str) -> int:
+    size = os.path.getsize(path)
+    if size > MAX_DOWNLOAD_BYTES:
+        limit_mb = MAX_DOWNLOAD_BYTES // (1024 * 1024)
+        actual_mb = size / (1024 * 1024)
+        raise ValueError(f'Download is {actual_mb:.1f} MB; maximum supported download size is {limit_mb} MB')
+    return size
 
 
 class _UnsetType:
@@ -2357,6 +2368,7 @@ def download_step(
         write_started = time.perf_counter()
         export_fmt.write_df(df, tmp_output)
         write_duration_ms = (time.perf_counter() - write_started) * 1000
+        _ensure_download_size(tmp_output)
 
         with open(tmp_output, 'rb') as f:
             file_bytes = f.read()

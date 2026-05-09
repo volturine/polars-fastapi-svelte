@@ -189,7 +189,7 @@
 	});
 
 	let creating = $state(false);
-	let createDatasources = $state<DataSource[]>([]);
+	let createDatasources = $state.raw<DataSource[]>([]);
 	let search = $state('');
 	let name = $state('');
 	let checkType = $state<CheckType>('row_count');

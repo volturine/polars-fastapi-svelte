@@ -17,7 +17,7 @@ import { switchNamespace } from './namespace.js';
 const apiOrigin =
 	process.env.PLAYWRIGHT_API_ORIGIN || `http://localhost:${process.env.PORT || '8000'}`;
 export const API_BASE = `${apiOrigin}/api/v1`;
-export const AUTH_DIR = path.resolve('tests/.auth');
+export const AUTH_DIR = path.resolve('tests/.artifacts/auth');
 export const META_FILE = path.join(AUTH_DIR, 'meta.json');
 export const E2E_RUN_STAMP =
 	process.env.E2E_RUN_STAMP || `${Date.now().toString(36)}-${process.pid}`;

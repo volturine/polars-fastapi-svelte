@@ -17,8 +17,8 @@ just dev             # start API, worker, scheduler, and frontend
 
 ## Package Managers
 
-- **Frontend**: `bun` — use `bun add` to install packages, never edit `package.json` directly
-- **Backend**: `uv` — use `uv add` to install packages, never edit `pyproject.toml` directly
+- **svelte**: `bun` — use `bun add` to install packages, never edit `package.json` directly
+- **python**: `uv` — use `uv add` to install packages, never edit `pyproject.toml` directly
 
 ## Definition of Done
 
@@ -40,56 +40,23 @@ just dev             # start API, worker, scheduler, and frontend
 5. **Reviewer** — Ask for review and address feedback
 6. **Finish** — Clean up, ensure tests pass
 
-**Do not ask for confirmation on implementation details.** Make decisions, implement, verify. Stop and ask only on genuine ambiguity about requirements or conflicts with these rules.
+## Principles
+
+1. Don't assume. Don't hide confusion. Surface tradeoffs.
+2. Minimum code that solves the problem. Nothing speculative.
+3. Touch only what you must. Clean up only your own mess.
+4. Define success criteria. Loop until verified.
 
 ## Non-Negotiables
 
-- **No workarounds.** Fix root causes or stop and ask
-- **No hidden compromises.** State conflicts and propose alternatives
+- **No workarounds.** Fix root causes instead of patching symptoms
+- **No hidden compromises.** Dont hide or ignore tradeoffs
 - **No silent behavior changes.** All changes explicit and intentional
 - **Redesign over hotfix.** If existing code is wrong, redesign properly
 - **Fix warnings, not just errors.** Treat warnings as bugs
 - **Autonomous completion.** Continue until every requirement is implemented, tested, and verified
 - **No legacy support.** New features/redesigns must not preserve legacy paths or backward compatibility
-- **No polling.** Do not add polling/interval refresh logic.
-- **No fallback logic.** Do not add permissive fallback/defaulting behavior unless the user explicitly asks for it.
-- **Build start is HTTP-only.** Never redesign build start around websockets.
-- **Monitoring history is explicit.** Monitoring engine-run rows are history data and should only gain new rows on explicit refresh.
-- **Live build websockets are scoped.** Websocket use for builds is limited to engine status in the left panel and live build preview/detail views, including the expanded Monitoring row for a running build.
-
-## Frontend Development
-
-### Svelte / SvelteKit
-
-- All Svelte components must have `lang="ts"` on the `<script>` tag
-- Use Svelte 5 runes throughout — runes mode is enforced compiler-wide
-- Prefer `$derived` over `$effect` for computed state
-- `$effect` is only for side effects (DOM access, subscriptions, timers, network) — not for deriving state
-- If `$effect` is used, include a one-line comment explaining why `$derived` is insufficient
-
-### TypeScript
-
-- Avoid `as any` — infer types from function signatures instead
-- Avoid `as SomeType` casts unless absolutely necessary; prefer type guards
-- Use `satisfies` for object literals that should conform to a type
-- Prioritize type inference — let TypeScript figure it out from context
-
-### Styling
-
-- **Panda CSS** for all styling — custom inline styles only when Panda cannot express it
-- Never use `transition-all` — use specific properties (see Transitions below)
-- Use semantic color tokens from the design system, never raw hex/rgb values
-- In Svelte files, do not hide styling behind helpers or intermediate style constants. Avoid `const foo = css(...)`, `const fooStyle = { ... }`, `css(fooStyle, ...)`, or wrapper functions that return `css(...)`; prefer direct `class={css({...})}` at the use site.
-
-### Transitions
-
-**Never use `transition-all`.** Always use specific properties:
-
-- `transition-colors` for hover effects
-- `transition-opacity` for fades
-- `transition-[color,background-color,border-color,opacity]` for combined
-- Add `transform` to the list only when transform changes
-
+- **No fallback logic.** Do not add permissive fallback/defaulting behavior unless explicitly asked for.
 
 ## Code Style
 

@@ -33,6 +33,7 @@
 	import { normalizeConfig } from '$lib/utils/step-config-defaults';
 	import type { NotificationConfigData, AIConfigData } from '$lib/types/operation-config';
 	import { buildAnalysisPipelinePayload } from '$lib/utils/analysis-pipeline';
+	import { cloneJson } from '$lib/utils/json';
 	import { applySteps } from '$lib/utils/pipeline';
 	import { hashPipeline } from '$lib/utils/hash';
 	import FilterConfig from '$lib/components/operations/FilterConfig.svelte';
@@ -162,7 +163,7 @@
 		config: Record<string, unknown> | null | undefined
 	): Record<string, unknown> {
 		const payload = config ?? {};
-		return JSON.parse(JSON.stringify(payload)) as Record<string, unknown>;
+		return cloneJson(payload);
 	}
 
 	// Subscription: $derived can't sync draft config.

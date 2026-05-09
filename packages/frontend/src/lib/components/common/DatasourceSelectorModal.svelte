@@ -35,7 +35,6 @@
 
 	let searchQuery = $state('');
 	const debouncedSearch = new Debounced(() => searchQuery, 200);
-	let searchInput = $state<HTMLInputElement>();
 	let activeOverride = $state<'datasource' | 'analysis' | null>(null);
 	const activeSource = $derived(activeOverride ?? (allowAnalysis ? sourceType : 'datasource'));
 
@@ -71,12 +70,9 @@
 		handleClose();
 	}
 
-	// DOM: $derived can't focus the search input.
-	$effect(() => {
-		if (show && searchInput) {
-			searchInput.focus();
-		}
-	});
+	function focusSearch(node: HTMLInputElement): void {
+		node.focus();
+	}
 </script>
 
 <BaseModal
@@ -206,7 +202,7 @@
 				_focus: { borderColor: 'border.accent' }
 			})}
 			type="text"
-			bind:this={searchInput}
+			{@attach focusSearch}
 			id="dsm-search"
 			aria-label="Search datasources"
 			bind:value={searchQuery}

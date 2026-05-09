@@ -76,7 +76,7 @@ export default defineConfig({
 		strictPort: true,
 		allowedHosts: true,
 		watch: {
-			ignored: ['**/tests/playwright-report/**', '**/tests/test-results/**']
+			ignored: ['**/tests/.artifacts/**']
 		},
 		fs: {
 			allow: ['styled-system']

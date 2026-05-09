@@ -9,7 +9,7 @@ export { expect } from '@playwright/test';
 const port = parseInt(process.env.FRONTEND_PORT || '3000', 10);
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${port}`;
 const authRequired = process.env.AUTH_REQUIRED !== 'false';
-const authDir = path.resolve('tests/.auth');
+const authDir = path.resolve('tests/.artifacts/auth');
 
 interface WorkerAuth {
 	authFile: string;

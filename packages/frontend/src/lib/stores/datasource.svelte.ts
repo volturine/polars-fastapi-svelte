@@ -8,7 +8,7 @@ import {
 import { SvelteMap } from 'svelte/reactivity';
 
 export class DatasourceStore {
-	datasources = $state<DataSource[]>([]);
+	datasources = $state.raw<DataSource[]>([]);
 	schemas = $state(new SvelteMap<string, SchemaInfo>());
 	loading = $state(false);
 	loaded = $state(false);

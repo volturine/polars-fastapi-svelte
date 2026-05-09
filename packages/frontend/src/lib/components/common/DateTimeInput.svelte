@@ -222,16 +222,6 @@
 			closePopover();
 		}
 	});
-
-	// $derived can't handle conditional write-back to mutable state
-	$effect(() => {
-		if (open) return;
-		if (time) {
-			const [h, m] = time.split(':');
-			hour = h;
-			minute = m;
-		}
-	});
 </script>
 
 <div bind:this={containerRef} class={css({ position: 'relative' })}>

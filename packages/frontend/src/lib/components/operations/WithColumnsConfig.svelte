@@ -124,12 +124,21 @@
 		return `def udf(${params}):\n    return ${first}\n`;
 	}
 
-	// Subscription: $derived can't sync editor code with args.
-	$effect(() => {
-		if (exprType !== 'udf') return;
+	function syncGeneratedCode(type = exprType, args = exprArgs): void {
+		if (type !== 'udf') return;
 		if (codeEdited) return;
-		exprCode = buildUdfCode(exprArgs);
-	});
+		exprCode = buildUdfCode(args);
+	}
+
+	function setExprArgs(args: string[]): void {
+		exprArgs = args;
+		syncGeneratedCode(exprType, args);
+	}
+
+	function setExprType(event: Event): void {
+		exprType = (event.currentTarget as HTMLSelectElement).value as 'column' | 'literal' | 'udf';
+		syncGeneratedCode();
+	}
 
 	function openEditor() {
 		showEditor = true;
@@ -230,7 +239,7 @@
 
 	<div class={css({ display: 'flex', flexDirection: 'column', gap: '3', marginBottom: '5' })}>
 		<label class={label()} for="wc-expr-type">Type</label>
-		<select id="wc-expr-type" class={input()} bind:value={exprType}>
+		<select id="wc-expr-type" class={input()} value={exprType} onchange={setExprType}>
 			<option value="column">From column</option>
 			<option value="literal">Literal value</option>
 			<option value="udf">Python UDF</option>
@@ -294,7 +303,7 @@
 					<MultiSelectColumnDropdown
 						{schema}
 						value={exprArgs}
-						onChange={(val) => (exprArgs = val)}
+						onChange={setExprArgs}
 						placeholder="Select input columns..."
 					/>
 				{:else}
@@ -302,7 +311,7 @@
 					<MultiSelectColumnDropdown
 						{schema}
 						value={exprArgs}
-						onChange={(val) => (exprArgs = val)}
+						onChange={setExprArgs}
 						placeholder="Select input columns..."
 					/>
 

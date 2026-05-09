@@ -36,7 +36,7 @@ class BatchColumnDescriptionUpdate(BaseModel):
 class SnapshotCompareRequest(BaseModel):
     snapshot_a: str
     snapshot_b: str
-    row_limit: int = 100
+    row_limit: int = Field(default=100, ge=1, le=1000)
 
 
 class SnapshotPreview(BaseModel):

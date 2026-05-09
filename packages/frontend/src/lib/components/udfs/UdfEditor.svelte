@@ -22,7 +22,7 @@
 	let name = $state('');
 	let description = $state('');
 	let tags = $state('');
-	let inputs = $state<UdfInput[]>([]);
+	let inputs = $state.raw<UdfInput[]>([]);
 	let outputDtype = $state('');
 	let code = $state('def udf(value):\n    return value\n');
 	let error = $state('');

@@ -62,20 +62,10 @@
 	const Icon = $derived(info?.icon ?? Funnel);
 	const isReorder = $derived(drag.isReorder);
 
-	// Local reactive state for pointer position (drag store uses non-reactive getters)
-	let pointerX = $state<number | null>(null);
-	let pointerY = $state<number | null>(null);
-
-	// Sync with drag store - needed because pointerX/Y are non-reactive getters
-	// DOM: $derived can't sync pointer coordinates from store getters.
-	$effect(() => {
-		pointerX = drag.pointerX;
-		pointerY = drag.pointerY;
-	});
-
-	// Position is simply the tracked pointer coordinates
 	const position = $derived(
-		active && pointerX !== null && pointerY !== null ? { x: pointerX, y: pointerY } : null
+		active && drag.pointerX !== null && drag.pointerY !== null
+			? { x: drag.pointerX, y: drag.pointerY }
+			: null
 	);
 </script>
 

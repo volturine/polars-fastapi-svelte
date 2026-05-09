@@ -21,7 +21,7 @@
 	let root = $state('');
 	let loading = $state(false);
 	let error = $state<string | null>(null);
-	let entries = $state<FileListItem[]>([]);
+	let entries = $state.raw<FileListItem[]>([]);
 
 	const canUp = $derived(Boolean(root) && path.replace(/\/+$/, '') !== root.replace(/\/+$/, ''));
 

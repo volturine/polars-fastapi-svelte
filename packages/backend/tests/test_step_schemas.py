@@ -101,3 +101,16 @@ def test_validate_step_rejects_removed_counts_steps() -> None:
         validate_step('value_counts', {'column': 'x'})
     with pytest.raises(ValueError, match='Unknown step type'):
         validate_step('null_count', {})
+
+
+def test_validate_step_rejects_unknown_config_fields() -> None:
+    with pytest.raises(ValueError, match='Extra inputs are not permitted'):
+        validate_step('filter', {'conditions': [], 'logic': 'AND', 'typo': True})
+
+
+def test_validate_step_rejects_unknown_nested_config_fields() -> None:
+    with pytest.raises(ValueError, match='Extra inputs are not permitted'):
+        validate_step(
+            'with_columns',
+            {'expressions': [{'name': 'x', 'type': 'literal', 'value': 1, 'surprise': True}]},
+        )

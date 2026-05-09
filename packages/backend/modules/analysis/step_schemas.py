@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TypeAlias, cast
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from contracts.step_config_enums import (
     DurationUnit,
@@ -20,7 +20,7 @@ from modules.analysis.step_types import (
     iter_step_types,
 )
 
-__all__ = ['get_config_model', 'get_step_catalog', 'validate_step']
+__all__ = ['get_config_model', 'get_step_catalog', 'normalize_step_config', 'validate_step']
 
 
 class StepCategory(StrEnum):
@@ -140,7 +140,7 @@ StepCatalogItem: TypeAlias = dict[str, str | dict[str, object]]
 
 
 class SelectConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     columns: list[str] = Field(default_factory=list, description='Columns to keep')
     cast_map: dict[str, CastMapType] = Field(
@@ -150,13 +150,20 @@ class SelectConfig(BaseModel):
 
 
 class DropConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     columns: list[str] = Field(default_factory=list, description='Columns to remove')
 
 
 class FilterConditionSchema(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
+
+    @model_validator(mode='before')
+    @classmethod
+    def strip_ui_metadata(cls, data: object) -> object:
+        if not isinstance(data, dict) or 'dtype' not in data:
+            return data
+        return {key: value for key, value in data.items() if key != 'dtype'}
 
     column: str = Field(description='Column to filter on')
     operator: str = Field(description='Comparison operator')
@@ -166,7 +173,7 @@ class FilterConditionSchema(BaseModel):
 
 
 class FilterConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     conditions: list[FilterConditionSchema] = Field(
         default_factory=list,
@@ -174,9 +181,20 @@ class FilterConfig(BaseModel):
     )
     logic: FilterLogic = FilterLogic.AND
 
+    @model_validator(mode='before')
+    @classmethod
+    def normalize_legacy_single_condition(cls, data: object) -> object:
+        if not isinstance(data, dict) or 'conditions' in data:
+            return data
+        condition_keys = {'column', 'operator', 'value', 'value_type', 'compare_column'}
+        if 'column' not in data:
+            return data
+        condition = {key: data[key] for key in condition_keys if key in data}
+        return {'conditions': [condition], 'logic': data.get('logic', FilterLogic.AND)}
+
 
 class AggregationSchema(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     column: str = Field(description='Column to aggregate')
     function: str = Field(description='Aggregation function')
@@ -184,7 +202,7 @@ class AggregationSchema(BaseModel):
 
 
 class GroupByConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     group_by: list[str] = Field(
         default_factory=list,
@@ -195,9 +213,23 @@ class GroupByConfig(BaseModel):
         description='Aggregation expressions',
     )
 
+    @model_validator(mode='before')
+    @classmethod
+    def normalize_legacy_single_aggregation(cls, data: object) -> object:
+        if not isinstance(data, dict) or 'group_by' in data or 'aggregations' in data:
+            return data
+        column = data.get('column')
+        operation = data.get('operation')
+        if not isinstance(column, str) or not isinstance(operation, str):
+            return data
+        return {
+            'group_by': [],
+            'aggregations': [{'column': column, 'function': operation, 'alias': f'{operation}_{column}'}],
+        }
+
 
 class SortConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     columns: list[str] = Field(default_factory=list, description='Columns to sort by')
     descending: list[bool] | bool = Field(
@@ -207,7 +239,7 @@ class SortConfig(BaseModel):
 
 
 class RenameConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     column_mapping: dict[str, str] = Field(
         default_factory=dict,
@@ -216,14 +248,14 @@ class RenameConfig(BaseModel):
 
 
 class ExpressionConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     expression: str = Field('', description='Polars expression string')
     column_name: str = Field('', description='Output column name')
 
 
 class WithColumnsExprSchema(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     name: str = Field(description='Output column name')
     type: WithColumnsExprType = WithColumnsExprType.LITERAL
@@ -235,7 +267,7 @@ class WithColumnsExprSchema(BaseModel):
 
 
 class WithColumnsConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     expressions: list[WithColumnsExprSchema] = Field(
         default_factory=list,
@@ -244,20 +276,20 @@ class WithColumnsConfig(BaseModel):
 
 
 class LimitConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     n: int = Field(100, description='Maximum number of rows')
 
 
 class SampleConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     fraction: float = Field(0.5, description='Fraction of rows to sample (0–1)')
     seed: int | None = None
 
 
 class TopKConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     column: str = Field('', description='Column to rank by')
     k: int = Field(10, description='Number of top rows')
@@ -265,14 +297,14 @@ class TopKConfig(BaseModel):
 
 
 class DeduplicateConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     subset: list[str] | None = Field(None, description='Columns to check for duplicates')
     keep: str = Field('first', description='Which duplicate to keep: first, last, none')
 
 
 class FillNullConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     strategy: str = Field(
         'literal',
@@ -284,7 +316,7 @@ class FillNullConfig(BaseModel):
 
 
 class UnpivotConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     id_vars: list[str] = Field(default_factory=list, description='Identifier columns to keep')
     value_vars: list[str] = Field(
@@ -294,9 +326,25 @@ class UnpivotConfig(BaseModel):
     variable_name: str = 'variable'
     value_name: str = 'value'
 
+    @model_validator(mode='before')
+    @classmethod
+    def normalize_polars_names(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+        if 'id_vars' in data or 'value_vars' in data:
+            return data
+        if 'index' not in data and 'on' not in data:
+            return data
+        return {
+            'id_vars': data.get('index', []),
+            'value_vars': data.get('on', []),
+            'variable_name': data.get('variable_name', 'variable'),
+            'value_name': data.get('value_name', 'value'),
+        }
+
 
 class ExplodeConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     columns: list[str] = Field(
         default_factory=list,
@@ -305,7 +353,7 @@ class ExplodeConfig(BaseModel):
 
 
 class PivotConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     index: list[str] = Field(default_factory=list, description='Row identifier columns')
     columns: str = Field('', description='Column to pivot on')
@@ -317,14 +365,14 @@ class PivotConfig(BaseModel):
 
 
 class UnionByNameConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     sources: list[str] = Field(default_factory=list, description='Tab IDs to union')
     allow_missing: bool = True
 
 
 class JoinColumnSchema(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     id: str = Field(description='Unique join column pair ID')
     left_column: str = Field(description='Column from left table')
@@ -332,7 +380,7 @@ class JoinColumnSchema(BaseModel):
 
 
 class JoinConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     how: JoinHow = JoinHow.INNER
     right_source: str = Field('', description='Tab ID to join with')
@@ -346,15 +394,32 @@ class JoinConfig(BaseModel):
     )
     suffix: str = '_right'
 
+    @model_validator(mode='before')
+    @classmethod
+    def normalize_legacy_join(cls, data: object) -> object:
+        if not isinstance(data, dict) or 'right_source' in data or 'join_columns' in data:
+            return data
+        right = data.get('right')
+        on = data.get('on')
+        if not isinstance(right, str) or not isinstance(on, str):
+            return data
+        return {
+            'how': data.get('how', JoinHow.INNER),
+            'right_source': right,
+            'join_columns': [{'id': 'join-1', 'left_column': on, 'right_column': on}],
+            'right_columns': data.get('right_columns', []),
+            'suffix': data.get('suffix', '_right'),
+        }
+
 
 class ViewConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     row_limit: int | None = Field(100, alias='rowLimit', description='Max rows to preview')
 
 
 class ExportConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     format: str = Field('csv', description='Output format: csv, parquet, json')
     filename: str = 'export'
@@ -362,14 +427,14 @@ class ExportConfig(BaseModel):
 
 
 class DownloadConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     format: str = Field('csv', description='Output format: csv, parquet, json')
     filename: str = 'download'
 
 
 class OverlaySchema(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     chart_type: OverlayChartType = OverlayChartType.LINE
     y_column: str = ''
@@ -378,7 +443,7 @@ class OverlaySchema(BaseModel):
 
 
 class ReferenceLineSchema(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     axis: ReferenceAxis = ReferenceAxis.Y
     value: float | None = None
@@ -387,7 +452,7 @@ class ReferenceLineSchema(BaseModel):
 
 
 class ChartConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     chart_type: ChartType = Field(ChartType.BAR, description='Visualization type')
     x_column: str = Field('', description='X-axis column')
@@ -425,7 +490,7 @@ class ChartConfig(BaseModel):
 
 
 class NotificationConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     method: NotificationMethod = NotificationMethod.EMAIL
     recipient: str = ''
@@ -444,7 +509,7 @@ class NotificationConfig(BaseModel):
 
 
 class AIConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     provider: AIProvider = AIProvider.OLLAMA
     model: str = 'llama2'
@@ -466,11 +531,11 @@ class AIConfig(BaseModel):
 
 
 class DatasourceConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
 
 class TimeSeriesConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     column: str = Field('', description='Date/time column to operate on')
     operation_type: TimeseriesOperationType = Field(description='Temporal operation type')
@@ -483,7 +548,7 @@ class TimeSeriesConfig(BaseModel):
 
 
 class StringTransformConfig(BaseModel):
-    model_config = ConfigDict(extra='allow')
+    model_config = ConfigDict(extra='forbid')
 
     column: str = Field('', description='String column to transform')
     method: StringTransformMethod = Field(description='String method to apply')
@@ -734,9 +799,14 @@ def get_config_model(step_type: str) -> type[BaseModel] | None:
     return cast(type[BaseModel], entry['config'])
 
 
-def validate_step(step_type: str, config: dict) -> None:
-    """Validate a step type and its config. Raises ValueError on failure."""
+def normalize_step_config(step_type: str, config: dict) -> dict[str, object]:
+    """Validate and return the canonical config for a step type."""
     if not is_step_type(step_type):
         raise ValueError(f"Unknown step type '{step_type}'")
     model = cast(type[BaseModel], STEP_CATALOG[step_type]['config'])
-    model.model_validate(config)
+    return model.model_validate(config).model_dump(mode='json', by_alias=True)
+
+
+def validate_step(step_type: str, config: dict) -> None:
+    """Validate a step type and its config. Raises ValueError on failure."""
+    normalize_step_config(step_type, config)

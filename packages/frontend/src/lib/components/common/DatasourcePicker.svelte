@@ -72,7 +72,7 @@
 		return datasources.filter((ds) => set.has(ds.id));
 	});
 
-	let analyses = $state<AnalysisGalleryItem[]>([]);
+	let analyses = $state.raw<AnalysisGalleryItem[]>([]);
 	let analysesLoaded = $state(false);
 
 	// Network: $derived can't fetch analyses.

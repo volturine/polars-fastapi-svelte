@@ -42,8 +42,8 @@
 	let query = $state('');
 
 	// Upload state
-	let selectedFiles = $state<File[]>([]);
-	let bulkResults = $state<BulkUploadResult[]>([]);
+	let selectedFiles = $state.raw<File[]>([]);
+	let bulkResults = $state.raw<BulkUploadResult[]>([]);
 	let showBulkResults = $state(false);
 	const allowedFileTypes = new SvelteSet(['csv', 'xlsx']);
 	let batchType = $state<'csv' | 'excel' | null>(null);

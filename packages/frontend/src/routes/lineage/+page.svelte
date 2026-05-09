@@ -59,23 +59,16 @@
 		return branches;
 	});
 
-	// Subscription: $derived can't sync branch selection.
-	$effect(() => {
-		if (!selectedDatasourceId) {
-			selectedBranch = '';
-			return;
-		}
-		if (!selectedBranch && branchOptions.length > 0) {
-			selectedBranch = branchOptions[0] ?? '';
-		}
-	});
+	const effectiveBranch = $derived(
+		selectedDatasourceId ? selectedBranch || (branchOptions[0] ?? '') : ''
+	);
 
 	const query = createQuery(() => ({
-		queryKey: ['lineage', selectedDatasourceId, selectedBranch, lineageMode, internals],
+		queryKey: ['lineage', selectedDatasourceId, effectiveBranch, lineageMode, internals],
 		queryFn: async () => {
 			const result = await getLineage({
 				target: selectedDatasourceId || null,
-				branch: selectedBranch || null,
+				branch: effectiveBranch || null,
 				mode: lineageMode,
 				internals
 			});
@@ -227,7 +220,7 @@
 					})}
 					id="lineage-branch"
 					aria-label="Branch"
-					value={selectedBranch}
+					value={effectiveBranch}
 					onchange={handleBranchChange}
 					disabled={!selectedDatasourceId}
 				>

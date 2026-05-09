@@ -7,7 +7,7 @@ const RECONNECT_DELAY_MS = 1_000;
 export type EnginesConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 export class EnginesStore {
-	engines = $state<EngineStatusResponse[]>([]);
+	engines = $state.raw<EngineStatusResponse[]>([]);
 	loading = $state(false);
 	error = $state<string | null>(null);
 	status = $state<EnginesConnectionStatus>('disconnected');

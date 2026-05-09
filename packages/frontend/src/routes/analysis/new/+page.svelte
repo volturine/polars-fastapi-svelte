@@ -52,7 +52,7 @@
 	let error = $state('');
 	let creating = $state(false);
 
-	let selectedDatasourceIds = $state<string[]>([]);
+	let selectedDatasourceIds = $state.raw<string[]>([]);
 	let datasourceConfigs = $state<Record<string, AnalysisTabDatasourceConfig>>({});
 	let draggedDatasourceId = $state<string | null>(null);
 
@@ -68,7 +68,7 @@
 	let cloneSourceName = $state('');
 
 	let importFileName = $state('');
-	let importedPipeline = $state<Record<string, unknown> | null>(null);
+	let importedPipeline = $state.raw<Record<string, unknown> | null>(null);
 	let importError = $state('');
 	let datasourceRemap = $state<Record<string, string>>({});
 
@@ -360,6 +360,13 @@
 		return errors;
 	}
 
+	function setMode(nextMode: CreationMode): void {
+		if (mode === nextMode) return;
+		mode = nextMode;
+		resetDesignState(nextMode);
+		step = 1;
+	}
+
 	function resetDesignState(nextMode: CreationMode): void {
 		if (nextMode !== 'template') selectedTemplateId = 'blank';
 		if (nextMode !== 'ai') {
@@ -420,6 +427,20 @@
 
 	function prevStep(): void {
 		step = Math.max(step - 1, 1);
+	}
+
+	function ensureDatasourceConfig(id: string): void {
+		if (datasourceConfigs[id]) return;
+		const datasource = datasources.find((item) => item.id === id);
+		if (!datasource) return;
+		datasourceConfigs = { ...datasourceConfigs, [id]: defaultDatasourceConfig(datasource) };
+	}
+
+	function removeDatasourceConfig(id: string): void {
+		if (!datasourceConfigs[id]) return;
+		const next = { ...datasourceConfigs };
+		delete next[id];
+		datasourceConfigs = next;
 	}
 
 	function reorderDatasource(targetId: string): void {
@@ -589,33 +610,6 @@
 		tab.output.build_mode = value;
 	}
 
-	// Subscription: datasource config defaults must be created and pruned as selection changes.
-	$effect(() => {
-		const next = { ...datasourceConfigs };
-		let changed = false;
-		for (const datasource of selectedDatasources) {
-			if (!next[datasource.id]) {
-				next[datasource.id] = defaultDatasourceConfig(datasource);
-				changed = true;
-			}
-		}
-		for (const key of Object.keys(next)) {
-			if (!selectedDatasourceIds.includes(key)) {
-				delete next[key];
-				changed = true;
-			}
-		}
-		if (changed) {
-			datasourceConfigs = next;
-		}
-	});
-
-	// Subscription: mode changes need to reset incompatible design state and restart the flow.
-	$effect(() => {
-		resetDesignState(mode);
-		step = 1;
-	});
-
 	// Subscription: template-driven tabs must stay aligned with datasource selection and config edits.
 	$effect(() => {
 		if (mode !== 'template') return;
@@ -758,9 +752,7 @@
 									borderColor: mode === option.id ? 'border.accent' : 'border.primary',
 									cursor: 'pointer'
 								})}
-								onclick={() => {
-									mode = option.id as CreationMode;
-								}}
+								onclick={() => setMode(option.id as CreationMode)}
 							>
 								<div class={css({ fontWeight: 'semibold', marginBottom: '1' })}>{option.title}</div>
 								<div class={css({ fontSize: 'sm', color: 'fg.tertiary' })}>{option.body}</div>
@@ -820,6 +812,8 @@
 							bind:selected={selectedDatasourceIds}
 							mode="multi"
 							label="Available datasources"
+							onSelect={(id) => ensureDatasourceConfig(id)}
+							onDeselect={(id) => removeDatasourceConfig(id)}
 						/>
 						<div class={css({ marginTop: '4', display: 'grid', gap: '3' })}>
 							{#each selectedDatasources as datasource (datasource.id)}

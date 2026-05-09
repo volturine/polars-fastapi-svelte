@@ -109,20 +109,15 @@
 
 	const configKey = $derived(JSON.stringify(datasourceConfig));
 	const pipelineKey = $derived(JSON.stringify(analysisPipeline));
+	const resetKey = $derived(`${datasourceId}:${configKey}:${pipelineKey}`);
 
 	// Subscription: $derived can't reset pagination/state.
 	$effect(() => {
 		if (!datasourceId) return;
-		void configKey;
+		void resetKey;
 		page = 1;
 		statsOpen = false;
 		statsColumn = null;
-	});
-
-	// Subscription: $derived can't reset pagination on pipeline changes.
-	$effect(() => {
-		if (!pipelineKey) return;
-		page = 1;
 	});
 
 	const query = createQuery(() => ({

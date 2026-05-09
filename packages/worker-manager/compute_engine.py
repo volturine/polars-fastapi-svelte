@@ -873,10 +873,7 @@ class PolarsComputeEngine:
         chart_type = get_chart_type_for_step(last_type)
         if chart_type:
             chart_config = {**chart_config, 'chart_type': chart_type}
-        try:
-            chart_params = convert_config_to_params('chart', chart_config)
-        except ValueError:
-            chart_params = chart_config
+        chart_params = convert_config_to_params('chart', chart_config)
         chart_model = ChartParams.model_validate(chart_params)
         preview_lf = compute_chart_data(lf, chart_params)
         metadata = {

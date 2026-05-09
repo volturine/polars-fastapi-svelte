@@ -16,8 +16,8 @@
 	let { open = $bindable(), anchor = null }: Props = $props();
 
 	const shuttingDown = new SvelteSet<string>();
-	let lastAnchor = $state<HTMLElement | null>(null);
 	let popupRef = $state<HTMLElement | null>(null);
+	const activeAnchor = $derived(open ? anchor : null);
 
 	function statusColor(status: EngineStatus): string {
 		if (status === 'healthy') return 'fg.success';
@@ -46,18 +46,9 @@
 		onEscape: handleClose,
 		onOutsideClick: (target: Node) => {
 			if (popupRef?.contains(target)) return;
-			if (lastAnchor?.contains(target)) return;
+			if (activeAnchor?.contains(target)) return;
 			handleClose();
 		}
-	});
-
-	// DOM: $derived can't keep the latest anchor node for outside-click checks.
-	$effect(() => {
-		if (!open) return;
-		lastAnchor = anchor;
-		return () => {
-			lastAnchor = null;
-		};
 	});
 </script>
 

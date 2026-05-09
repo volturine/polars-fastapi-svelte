@@ -4,6 +4,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter, field_validator
 
+from contracts.analysis.step_types import is_step_type
+
 
 class EngineStatus(StrEnum):
     HEALTHY = 'healthy'
@@ -83,6 +85,39 @@ class AnalysisPipelineTab(BaseModel):
     output: dict
     steps: list[dict]
 
+    @field_validator('steps')
+    @classmethod
+    def validate_steps(cls, value: list[dict]) -> list[dict]:
+        if not isinstance(value, list):
+            raise ValueError('Analysis pipeline tab steps must be a list')
+        allowed_keys = {'id', 'type', 'config', 'depends_on', 'is_applied'}
+        for index, step in enumerate(value):
+            if not isinstance(step, dict):
+                raise ValueError(f'Analysis pipeline step {index} must be a dict')
+            unknown_keys = sorted(set(step) - allowed_keys)
+            if unknown_keys:
+                raise ValueError(f'Analysis pipeline step {index} has unknown field(s): {", ".join(unknown_keys)}')
+            step_id = step.get('id')
+            if not isinstance(step_id, str) or not step_id.strip():
+                raise ValueError(f'Analysis pipeline step {index} id is required')
+            step_type = step.get('type')
+            if not isinstance(step_type, str) or not step_type.strip():
+                raise ValueError(f'Analysis pipeline step {index} type is required')
+            if not is_step_type(step_type):
+                raise ValueError(f"Analysis pipeline step {index} has unknown type '{step_type}'")
+            config = step.get('config')
+            if config is not None and not isinstance(config, dict):
+                raise ValueError(f'Analysis pipeline step {index} config must be a dict')
+            depends_on = step.get('depends_on')
+            if depends_on is not None and not (
+                isinstance(depends_on, list) and all(isinstance(dep, str) and dep.strip() for dep in depends_on)
+            ):
+                raise ValueError(f'Analysis pipeline step {index} depends_on must be a list of step ids')
+            is_applied = step.get('is_applied')
+            if is_applied is not None and not isinstance(is_applied, bool):
+                raise ValueError(f'Analysis pipeline step {index} is_applied must be a boolean')
+        return value
+
     @field_validator('output')
     @classmethod
     def validate_output(cls, value: dict) -> dict:
@@ -158,8 +193,8 @@ class StepPreviewRequest(BaseModel):
     target_step_id: str
     analysis_pipeline: AnalysisPipelinePayload
     tab_id: str | None = None
-    row_limit: int = 1000
-    page: int = 1
+    row_limit: int = Field(default=1000, ge=1, le=5000)
+    page: int = Field(default=1, ge=1)
     resource_config: EngineResourceConfig | None = None
 
 

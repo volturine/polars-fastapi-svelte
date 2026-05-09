@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { css, tabButton } from '$lib/styles/panda';
 	import AccountTab from './AccountTab.svelte';
 	import NotificationsTab from './NotificationsTab.svelte';
@@ -49,13 +50,11 @@
 		target?.focus();
 	}
 
-	// Track which tabs have been activated for lazy loading
-	let activated = $state(new Set<TabKey>(['account']));
+	const activated = new SvelteSet<TabKey>(['account']);
 
+	// Subscription: activated tabs must be retained after the hash changes for lazy tab mounting.
 	$effect(() => {
-		if (!activated.has(activeTab)) {
-			activated = new Set([...activated, activeTab]);
-		}
+		activated.add(activeTab);
 	});
 </script>
 

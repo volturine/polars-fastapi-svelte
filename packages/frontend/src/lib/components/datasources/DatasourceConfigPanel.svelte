@@ -130,7 +130,7 @@
 
 	let name = $state('');
 	let description = $state('');
-	let columns = $state<ColumnSchema[]>([]);
+	let columns = $state.raw<ColumnSchema[]>([]);
 	let hasChanges = $state(false);
 	let configDirty = $state(false);
 	let isRefreshing = $state(false);

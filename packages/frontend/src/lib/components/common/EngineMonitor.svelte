@@ -55,15 +55,22 @@
 	});
 
 	let trigger = $state<HTMLButtonElement>();
-	let pos = $state({ top: 0, right: 0 });
 
-	// DOM measurement for fixed-position popup — $derived cannot access DOM
-	$effect(() => {
-		if (expanded && trigger) {
+	function positionPopup(node: HTMLElement): () => void {
+		function update(): void {
+			if (!trigger) return;
 			const rect = trigger.getBoundingClientRect();
-			pos = { top: rect.bottom, right: window.innerWidth - rect.right };
+			node.style.top = `${rect.bottom}px`;
+			node.style.right = `${window.innerWidth - rect.right}px`;
 		}
-	});
+		update();
+		window.addEventListener('resize', update);
+		window.addEventListener('scroll', update, true);
+		return () => {
+			window.removeEventListener('resize', update);
+			window.removeEventListener('scroll', update, true);
+		};
+	}
 </script>
 
 <div bind:this={dropdownRef}>
@@ -112,14 +119,13 @@
 			bind:this={popupRef}
 			class={css({
 				position: 'fixed',
-				right: `${pos.right}px`,
-				top: `${pos.top}px`,
 				zIndex: 'engine',
 				width: 'listLg',
 				overflow: 'hidden',
 				borderWidth: '1',
 				backgroundColor: 'bg.primary'
 			})}
+			{@attach positionPopup}
 			use:overlayStack.action={overlayConfig}
 		>
 			<div

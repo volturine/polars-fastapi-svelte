@@ -21,7 +21,6 @@
 	const debouncedSearch = new Debounced(() => searchQuery, 200);
 	let popoverRect = $state({ left: 0, top: 0, width: 320 });
 	let lastAnchor = $state<HTMLElement | null>(null);
-	let searchInput = $state<HTMLInputElement>();
 
 	const namespacesQuery = createQuery(() => ({
 		queryKey: ['namespaces'],
@@ -127,12 +126,9 @@
 		};
 	});
 
-	// DOM: $derived can't focus the search input.
-	$effect(() => {
-		if (open && searchInput) {
-			searchInput.focus();
-		}
-	});
+	function focusInput(node: HTMLInputElement): void {
+		node.focus();
+	}
 </script>
 
 {#if open}
@@ -177,7 +173,7 @@
 					_focus: { borderColor: 'border.accent' }
 				})}
 				type="text"
-				bind:this={searchInput}
+				{@attach focusInput}
 				bind:value={searchQuery}
 				placeholder="Search namespaces..."
 				aria-label="Search namespaces"

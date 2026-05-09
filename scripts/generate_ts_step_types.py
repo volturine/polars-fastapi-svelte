@@ -6,6 +6,8 @@ Run from the backend directory:
 
 from __future__ import annotations
 
+import argparse
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -184,12 +186,12 @@ def _schema_to_ts_declaration(name: str, schema: dict[str, Any], defs: dict[str,
 
     if not properties:
         # Empty model - allow arbitrary extra keys (matches extra='allow')
-        lines.append('  [key: string]: unknown;')
+        lines.append('\t[key: string]: unknown;')
     else:
         for field_name, field_schema in properties.items():
             ts_type = _json_schema_type_to_ts(field_schema, defs, required_fields, field_name)
             optional = '' if field_name in required_fields else '?'
-            lines.append(f'  {field_name}{optional}: {ts_type};')
+            lines.append(f'\t{field_name}{optional}: {ts_type};')
 
     lines.append('}')
     return '\n'.join(lines)
@@ -212,6 +214,18 @@ def _collect_refs(schema: dict[str, Any]) -> list[str]:
     if isinstance(additional, dict):
         refs.extend(_collect_refs(additional))
     return refs
+
+
+def _format_typescript(content: str) -> str:
+    result = subprocess.run(
+        ['bun', 'x', 'prettier', '--stdin-filepath', str(OUTPUT_PATH)],
+        cwd=ROOT / 'packages' / 'frontend',
+        input=content,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return result.stdout
 
 
 def generate() -> str:
@@ -247,11 +261,22 @@ def generate() -> str:
         body.append(_schema_to_ts_declaration(ts_name, schema, all_defs))
         body.append('')
 
-    return '\n'.join(header + body)
+    return _format_typescript('\n'.join(header + body))
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--check', action='store_true', help='Fail if the generated file is stale')
+    args = parser.parse_args()
+
     content = generate()
+    if args.check:
+        current = OUTPUT_PATH.read_text(encoding='utf-8') if OUTPUT_PATH.exists() else ''
+        if current != content:
+            raise SystemExit(f'{OUTPUT_PATH} is out of date; run just generate-step-types')
+        print(f'{OUTPUT_PATH} is up to date')
+        return
+
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(content, encoding='utf-8')
     print(f'Generated {OUTPUT_PATH}')

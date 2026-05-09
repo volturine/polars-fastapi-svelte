@@ -27,6 +27,7 @@ from core.exceptions import (
     AnalysisValidationError,
     DataSourceNotFoundError,
 )
+from modules.analysis.pipeline_compiler import compile_step
 from modules.analysis.schemas import (
     AnalysisCreateSchema,
     AnalysisGalleryItemSchema,
@@ -38,7 +39,6 @@ from modules.analysis.schemas import (
     ImportAnalysisSchema,
     TabSchema,
 )
-from modules.analysis.step_schemas import validate_step
 from modules.analysis.templates import AnalysisTemplate, get_template, list_templates
 from modules.analysis_versions import service as version_service
 
@@ -434,7 +434,14 @@ def _validate_analysis_payload(
     for tab in tabs_payload:
         step_ids: set[str] = set()
         for step in tab.steps:
-            validate_step(step.type, step.config)
+            compiled = compile_step(
+                step_id=step.id,
+                step_type=step.type,
+                config=step.config,
+                depends_on=step.depends_on,
+                is_applied=step.is_applied,
+            )
+            step.config = compiled.config
             if step.id:
                 step_ids.add(step.id)
             for dep_id in step.depends_on:

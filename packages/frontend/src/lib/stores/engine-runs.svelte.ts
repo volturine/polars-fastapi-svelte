@@ -3,7 +3,7 @@ import { listEngineRuns, type EngineRun, type ListEngineRunsParams } from '$lib/
 export type EngineRunsStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 export class EngineRunsStore {
-	runs = $state<EngineRun[]>([]);
+	runs = $state.raw<EngineRun[]>([]);
 	status = $state<EngineRunsStatus>('disconnected');
 	error = $state<string | null>(null);
 

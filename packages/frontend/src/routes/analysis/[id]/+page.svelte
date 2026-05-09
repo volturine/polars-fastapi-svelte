@@ -43,6 +43,7 @@
 	import { uuid } from '$lib/utils/uuid';
 	import { applySteps } from '$lib/utils/pipeline';
 	import { createAsyncGate } from '$lib/utils/async-gate';
+	import { cloneJson } from '$lib/utils/json';
 	import type { EngineResourceConfig, EngineDefaults } from '$lib/types/compute';
 	import type { DropTarget } from '$lib/stores/drag.svelte';
 	import StepLibrary from '$lib/components/pipeline/StepLibrary.svelte';
@@ -717,7 +718,7 @@
 		const step: PipelineStep = {
 			id: uuid(),
 			type: payload.type,
-			config: JSON.parse(JSON.stringify(payload.config)),
+			config: cloneJson(payload.config),
 			depends_on: [],
 			is_applied: payload.is_applied
 		};

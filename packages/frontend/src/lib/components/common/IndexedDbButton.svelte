@@ -7,7 +7,7 @@
 	import type { OverlayConfig } from '$lib/stores/overlay.svelte';
 
 	let open = $state(false);
-	let entries = $state<Array<{ key: string; value: unknown }>>([]);
+	let entries = $state.raw<Array<{ key: string; value: unknown }>>([]);
 	let loading = $state(false);
 	let dropdownRef = $state<HTMLElement>();
 	let popupRef = $state<HTMLElement>();

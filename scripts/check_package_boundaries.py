@@ -27,6 +27,7 @@ ROOT_TEST_RESIDUE = [
     ROOT / 'pytest_fixtures.py',
     ROOT / 'postgres_harness.py',
 ]
+ROOT_TEST_ARTIFACT_PREFIXES = ('test-results', 'playwright-report')
 
 FORBIDDEN_OWNER_DUPLICATES = [
     Path('packages/backend/modules/analysis/models.py'),
@@ -122,6 +123,11 @@ def main() -> int:
     for path in ROOT_TEST_RESIDUE:
         if path.exists():
             errors.append(f'root test/support residue is not allowed: {path.relative_to(ROOT)}')
+
+    for child in ROOT.iterdir():
+        if not child.name.startswith(ROOT_TEST_ARTIFACT_PREFIXES):
+            continue
+        errors.append(f'root test artifact is not allowed: {child.relative_to(ROOT)}')
 
     for rel_path in FORBIDDEN_OWNER_DUPLICATES:
         path = ROOT / rel_path

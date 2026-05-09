@@ -38,7 +38,7 @@
 	const defaultCron = '0 * * * *';
 
 	let creating = $state(false);
-	let createDatasources = $state<DataSource[]>([]);
+	let createDatasources = $state.raw<DataSource[]>([]);
 	let triggerType = $state<'cron' | 'depends' | 'event'>('cron');
 	let newCron = $state(defaultCron);
 	let newDatasourceId = $state('');

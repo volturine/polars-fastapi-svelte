@@ -89,18 +89,16 @@
 		return () => window.clearTimeout(timer);
 	});
 
-	// DOM: IntersectionObserver to track output node visibility for scroll button
-	$effect(() => {
-		if (!outputEl) return;
+	function observeOutput(node: HTMLElement): () => void {
 		const observer = new IntersectionObserver(
 			(entries) => {
 				outputVisible = entries[0]?.isIntersecting ?? true;
 			},
 			{ threshold: 0.1 }
 		);
-		observer.observe(outputEl);
+		observer.observe(node);
 		return () => observer.disconnect();
-	});
+	}
 
 	function scrollToOutput() {
 		outputEl?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -744,6 +742,7 @@
 			<div
 				bind:this={outputEl}
 				class={css({ width: '100%', display: 'flex', justifyContent: 'center' })}
+				{@attach observeOutput}
 			>
 				<OutputNode {buildStore} {analysisId} {datasourceId} {activeTab} {readOnly} />
 			</div>

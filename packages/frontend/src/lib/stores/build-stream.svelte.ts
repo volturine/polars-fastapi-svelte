@@ -44,13 +44,13 @@ export class BuildStreamStore {
 	currentStepIndex = $state<number | null>(null);
 	totalSteps = $state(0);
 	totalTabs = $state(0);
-	steps = $state<StepInfo[]>([]);
-	logs = $state<BuildLogEntry[]>([]);
-	queryPlans = $state<QueryPlan[]>([]);
+	steps = $state.raw<StepInfo[]>([]);
+	logs = $state.raw<BuildLogEntry[]>([]);
+	queryPlans = $state.raw<QueryPlan[]>([]);
 	latestResources = $state<BuildResourceSnapshot | null>(null);
-	resourceHistory = $state<BuildResourceSnapshot[]>([]);
+	resourceHistory = $state.raw<BuildResourceSnapshot[]>([]);
 	resourceConfig = $state<BuildResourceConfigSummary | null>(null);
-	results = $state<BuildTabResult[]>([]);
+	results = $state.raw<BuildTabResult[]>([]);
 	error = $state<string | null>(null);
 	duration = $state<number | null>(null);
 

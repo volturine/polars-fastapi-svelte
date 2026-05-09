@@ -910,7 +910,7 @@ class TestAddStep:
         assert response.status_code == 200
         result = response.json()
         assert result['type'] == 'select'
-        assert result['config'] == {'columns': ['name', 'age']}
+        assert result['config'] == {'columns': ['name', 'age'], 'cast_map': {}}
         assert 'id' in result
         assert result['depends_on'] == []
 
@@ -1006,8 +1006,9 @@ class TestUpdateStep:
 
         assert response.status_code == 200
         result = response.json()
-        assert result['config']['column'] == 'name'
-        assert result['config']['value'] == 'Alice'
+        assert result['config']['conditions'] == [
+            {'column': 'name', 'operator': '=', 'value': 'Alice', 'value_type': 'string', 'compare_column': None}
+        ]
 
     def test_update_step_type(self, client, sample_analysis: Analysis):
         tab_id = sample_analysis.pipeline_definition['tabs'][0]['id']

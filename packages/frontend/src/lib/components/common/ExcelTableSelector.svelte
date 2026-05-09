@@ -37,10 +37,10 @@
 		onConfigChange
 	}: Props = $props();
 
-	let sheetNames = $state<string[]>([]);
-	let tableMap = $state<Record<string, string[]>>({});
-	let namedRanges = $state<string[]>([]);
-	let previewGrid = $state<Array<Array<string | null>>>([]);
+	let sheetNames = $state.raw<string[]>([]);
+	let tableMap = $state.raw<Record<string, string[]>>({});
+	let namedRanges = $state.raw<string[]>([]);
+	let previewGrid = $state.raw<Array<Array<string | null>>>([]);
 	let selectedSheet = $state('');
 	let selectedTable = $state('');
 	let selectedRange = $state('');

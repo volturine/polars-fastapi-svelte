@@ -115,7 +115,6 @@
 	let menuRef = $state<HTMLElement>();
 	let menuContainerRef = $state<HTMLElement>();
 	let triggerRef = $state<HTMLButtonElement | HTMLInputElement>();
-	let searchInputRef = $state<HTMLInputElement>();
 
 	const debouncedSearch = $derived(new Debounced(() => searchValue, searchDelay));
 
@@ -170,9 +169,10 @@
 		if (disabled) return;
 		menuOpen = true;
 		onOpen?.(triggerRef);
-		if (triggerType === 'button') {
-			setTimeout(() => searchInputRef?.focus(), 0);
-		}
+	}
+
+	function focusInput(node: HTMLInputElement): void {
+		node.focus();
 	}
 
 	function closeMenu() {
@@ -359,7 +359,7 @@
 			{#if triggerType === 'button'}
 				<div class={css({ paddingX: '2', paddingY: '0' })}>
 					<input
-						bind:this={searchInputRef}
+						{@attach focusInput}
 						id="{uid}-menu-search"
 						aria-label="Search"
 						bind:value={searchValue}

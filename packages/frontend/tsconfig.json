@@ -13,5 +13,5 @@
 		"strict": true,
 		"moduleResolution": "bundler"
 	},
-	"exclude": ["node_modules/**", "tests/playwright-report/**", "tests/test-results/**"]
+	"exclude": ["node_modules/**", "tests/.artifacts/**"]
 }

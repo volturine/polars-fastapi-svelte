@@ -4,6 +4,7 @@ import pytest
 from step_converter import (
     BackendStep,
     FrontendStep,
+    convert_config_to_params,
     convert_filter_config,
     convert_groupby_config,
     convert_rename_config,
@@ -92,6 +93,11 @@ def test_convert_filter_config_keeps_valid_conditions_when_placeholders_present(
     }
 
 
+def test_convert_config_to_params_rejects_unregistered_operations() -> None:
+    with pytest.raises(ValueError, match="Unknown operation 'typo'"):
+        convert_config_to_params('typo', {})
+
+
 def test_convert_step_format_returns_frozen_backend_step_dataclass() -> None:
     step = convert_step_format(
         {
@@ -116,3 +122,23 @@ def test_convert_step_format_returns_frozen_backend_step_dataclass() -> None:
 def test_frontend_step_from_mapping_rejects_missing_type() -> None:
     with pytest.raises(ValueError, match='Step must have a type field'):
         FrontendStep.from_mapping({'id': 'step-1'})
+
+
+def test_frontend_step_from_mapping_rejects_unknown_step_type() -> None:
+    with pytest.raises(ValueError, match="Unknown step type 'typo'"):
+        FrontendStep.from_mapping({'id': 'step-1', 'type': 'typo', 'config': {}})
+
+
+def test_frontend_step_from_mapping_rejects_unknown_fields() -> None:
+    with pytest.raises(ValueError, match='unknown field'):
+        FrontendStep.from_mapping({'id': 'step-1', 'type': 'filter', 'config': {}, 'surprise': True})
+
+
+def test_frontend_step_from_mapping_rejects_invalid_config_shape() -> None:
+    with pytest.raises(ValueError, match='Step config must be an object'):
+        FrontendStep.from_mapping({'id': 'step-1', 'type': 'filter', 'config': []})
+
+
+def test_frontend_step_from_mapping_rejects_invalid_depends_on_shape() -> None:
+    with pytest.raises(ValueError, match='depends_on must be a list'):
+        FrontendStep.from_mapping({'id': 'step-1', 'type': 'filter', 'config': {}, 'depends_on': [None]})

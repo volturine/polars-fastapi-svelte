@@ -10,7 +10,8 @@ from sqlmodel import Session
 from contracts.compute import schemas as compute_schemas
 from core.database import get_db
 from modules.analysis import schemas, service
-from modules.analysis.step_schemas import get_config_model, get_step_catalog
+from modules.analysis.pipeline_compiler import compile_step
+from modules.analysis.step_schemas import get_step_catalog
 from modules.analysis.step_types import is_step_type
 from modules.auth.dependencies import get_optional_user
 from modules.auth.models import User
@@ -343,15 +344,19 @@ async def add_step(
     against the step type's schema. Returns the created step with its generated ID.
     Steps are appended to the end by default; use 'position' to insert at a specific index.
     """
-    model = get_config_model(data.type)
-    if model:
-        model.model_validate(data.config)
+    compiled = compile_step(
+        step_id='new-step',
+        step_type=data.type,
+        config=data.config,
+        depends_on=data.depends_on,
+        is_applied=None,
+    )
     return service.add_step(
         session,
         parse_analysis_id(analysis_id),
         tab_id,
         data.type,
-        data.config,
+        compiled.config,
         data.position,
         data.depends_on,
     )
@@ -373,28 +378,41 @@ async def update_step(
     If changing type, also provide the new config matching the new type's schema.
     """
     analysis_id_value = parse_analysis_id(analysis_id)
+    normalized_config = data.config
     if data.type and data.config:
-        model = get_config_model(data.type)
-        if model:
-            model.model_validate(data.config)
+        normalized_config = compile_step(
+            step_id=step_id,
+            step_type=data.type,
+            config=data.config,
+            depends_on=[],
+            is_applied=None,
+        ).config
     elif data.type and not data.config:
         existing = service.get_step(session, analysis_id_value, tab_id, step_id)
-        model = get_config_model(data.type)
-        if model:
-            model.model_validate(existing.config)
+        compile_step(
+            step_id=step_id,
+            step_type=data.type,
+            config=existing.config,
+            depends_on=[],
+            is_applied=None,
+        )
     elif data.config and not data.type:
         existing = service.get_step(session, analysis_id_value, tab_id, step_id)
         existing_type = existing.type
         if existing_type:
-            model = get_config_model(existing_type)
-            if model:
-                model.model_validate(data.config)
+            normalized_config = compile_step(
+                step_id=step_id,
+                step_type=existing_type,
+                config=data.config,
+                depends_on=[],
+                is_applied=None,
+            ).config
     return service.update_step(
         session,
         analysis_id_value,
         tab_id,
         step_id,
-        data.config,
+        normalized_config,
         data.type,
     )
 

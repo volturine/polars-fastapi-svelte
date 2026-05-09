@@ -21,9 +21,7 @@ import logging
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
-from compute_operations.filter import normalize_filter_conditions
-
-from contracts.analysis.step_types import ChartType, chart_type_for_step, get_step_type_label, normalize_step_type
+from contracts.analysis.step_types import ChartType, chart_type_for_step, get_step_type_label, is_step_type, normalize_step_type
 
 logger = logging.getLogger(__name__)
 
@@ -38,21 +36,44 @@ class FrontendStep:
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, object]) -> 'FrontendStep':
+        allowed_keys = {'id', 'type', 'config', 'depends_on', 'is_applied'}
+        unknown_keys = sorted(set(payload) - allowed_keys)
+        if unknown_keys:
+            raise ValueError(f'Step has unknown field(s): {", ".join(unknown_keys)}')
+
         step_type = payload.get('type')
-        if not isinstance(step_type, str) or not step_type:
+        if not isinstance(step_type, str) or not step_type.strip():
             raise ValueError('Step must have a type field')
+        if not is_step_type(step_type):
+            raise ValueError(f"Unknown step type '{step_type}'")
 
         step_id = payload.get('id')
-        raw_config = payload.get('config')
-        raw_deps = payload.get('depends_on')
-        raw_applied = payload.get('is_applied')
+        if not isinstance(step_id, str) or not step_id.strip():
+            raise ValueError('Step must have an id field')
 
-        config = raw_config if isinstance(raw_config, dict) else {}
-        depends_on = tuple(dep for dep in raw_deps if isinstance(dep, str)) if isinstance(raw_deps, list) else ()
+        raw_config = payload.get('config')
+        if raw_config is None:
+            config: dict[str, object] = {}
+        elif isinstance(raw_config, dict):
+            config = raw_config
+        else:
+            raise ValueError('Step config must be an object')
+
+        raw_deps = payload.get('depends_on')
+        if raw_deps is None:
+            depends_on: tuple[str, ...] = ()
+        elif isinstance(raw_deps, list) and all(isinstance(dep, str) and dep.strip() for dep in raw_deps):
+            depends_on = tuple(raw_deps)
+        else:
+            raise ValueError('Step depends_on must be a list of step ids')
+
+        raw_applied = payload.get('is_applied')
+        if raw_applied is not None and not isinstance(raw_applied, bool):
+            raise ValueError('Step is_applied must be a boolean')
         is_applied = raw_applied if isinstance(raw_applied, bool) else None
 
         return cls(
-            id=str(step_id) if step_id is not None else 'Unknown Step',
+            id=step_id,
             type=step_type,
             config=config,
             depends_on=depends_on,
@@ -105,6 +126,8 @@ def convert_filter_config(config: dict) -> dict:
     Supports multiple conditions with AND/OR logic.
     Supports typed values (string, number, date, datetime, column) and NULL checks.
     """
+    from compute_operations.filter import normalize_filter_conditions
+
     return {
         'conditions': normalize_filter_conditions(config.get('conditions')),
         'logic': config.get('logic', 'AND'),
@@ -364,7 +387,23 @@ def convert_notification_config(config: dict) -> dict:
     }
 
 
+def _identity_config(config: dict) -> dict:
+    return config
+
+
 _CONVERTERS: dict[str, Callable[[dict], dict]] = {
+    'datasource': _identity_config,
+    'select': _identity_config,
+    'drop': _identity_config,
+    'unpivot': _identity_config,
+    'explode': _identity_config,
+    'sample': _identity_config,
+    'limit': _identity_config,
+    'topk': _identity_config,
+    'view': _identity_config,
+    'download': _identity_config,
+    'expression': _identity_config,
+    'with_columns': _identity_config,
     'filter': convert_filter_config,
     'groupby': convert_groupby_config,
     'sort': convert_sort_config,
@@ -384,8 +423,15 @@ _CONVERTERS: dict[str, Callable[[dict], dict]] = {
 
 
 def convert_config_to_params(operation: str, config: dict) -> dict:
-    """Convert operation-specific config to params."""
-    converter = _CONVERTERS.get(operation, lambda c: c)
+    """Convert operation-specific config to executable params.
+
+    Every executable operation must be registered explicitly. Falling through with
+    raw config would make UI mistakes look valid until runtime, which breaks the
+    pipeline builder's code-like fidelity contract.
+    """
+    converter = _CONVERTERS.get(operation)
+    if converter is None:
+        raise ValueError(f"Unknown operation '{operation}'")
     try:
         return converter(config)
     except Exception as e:

@@ -5,7 +5,7 @@
 	import { updateProfile, changePassword, unlinkProvider, getMe } from '$lib/api/auth';
 	import { GitBranch } from 'lucide-svelte';
 
-	const editable = $derived(configStore.authRequired);
+	const authRequired = $derived(configStore.authRequired);
 
 	let name = $state(authStore.user?.display_name ?? '');
 	let saving = $state(false);
@@ -178,24 +178,28 @@
 					placeholder="Your name"
 					bind:value={name}
 					required
-					disabled={!editable}
 				/>
 			</div>
 
-			{#if editable}
-				<div class={css({ display: 'flex', justifyContent: 'flex-end' })}>
-					<button type="submit" class={button({ variant: 'primary' })} disabled={saving}>
-						{#if saving}
-							<div class={spinner({ size: 'sm' })}></div>
-						{/if}
-						Save
-					</button>
-				</div>
-			{/if}
+			<div class={css({ display: 'flex', justifyContent: 'flex-end' })}>
+				<button type="submit" class={button({ variant: 'primary' })} disabled={saving}>
+					{#if saving}
+						<div class={spinner({ size: 'sm' })}></div>
+					{/if}
+					Save
+				</button>
+			</div>
 		</form>
 	</div>
 
-	{#if editable}
+	{#if !authRequired}
+		<div class={alert('success')}>
+			Authentication is disabled. Password and connected-account settings are unavailable in this
+			mode.
+		</div>
+	{/if}
+
+	{#if authRequired}
 		<div class={card}>
 			<h2 class={heading}>Password</h2>
 

@@ -21,7 +21,6 @@
 		Bug,
 		Play
 	} from 'lucide-svelte';
-	import { onClickOutside } from 'runed';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import ColumnTypeBadge from '$lib/components/common/ColumnTypeBadge.svelte';
 	import { css, cx, menuItem, divider, muted, input } from '$lib/styles/panda';
@@ -363,14 +362,19 @@
 		onPreview();
 	}
 
-	onClickOutside(
-		() => columnMenuRef,
-		() => {
-			if (activeColumn) {
-				activeColumn = null;
-			}
-		}
-	);
+	// DOM: $derived can't manage event listeners.
+	$effect(() => {
+		if (!activeColumn) return;
+		const handler = (event: MouseEvent) => {
+			const target = event.target as Element | null;
+			if (!target) return;
+			if (columnMenuRef?.contains(target)) return;
+			if (target.closest('[data-column-menu-trigger="true"]')) return;
+			activeColumn = null;
+		};
+		window.addEventListener('mousedown', handler, true);
+		return () => window.removeEventListener('mousedown', handler, true);
+	});
 
 	function getTemporalType(dtype: string | undefined): 'date' | 'datetime' | null {
 		if (!dtype) return null;
@@ -793,7 +797,8 @@
 													_hover: { color: 'fg.primary' }
 												})}
 												onclick={() => toggleColumnMenu(header.id)}
-												aria-label="Column options"
+												aria-label={`Column options for ${header.id}`}
+												data-column-menu-trigger="true"
 											>
 												<Settings2 size={12} />
 											</button>

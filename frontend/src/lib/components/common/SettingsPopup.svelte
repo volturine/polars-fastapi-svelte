@@ -300,6 +300,7 @@
 		overflowY: 'auto',
 		borderWidth: '1',
 		backgroundColor: 'bg.primary',
+		boxShadow: 'drag',
 		outline: 'none'
 	})}
 	ariaLabelledby="settings-title"

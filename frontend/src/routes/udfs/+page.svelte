@@ -232,15 +232,10 @@
 						<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
 							<div class={cx(row, css({ gap: '3' }))}>
 								<h3 class={css({ margin: '0', fontSize: 'md' })}>{udf.name}</h3>
-								<div class={cx(row, css({ flexWrap: 'wrap', gap: '1' }))}>
+								<div class={cx(row, css({ flexWrap: 'wrap', gap: '1', alignItems: 'center' }))}>
 									{#if udf.signature?.inputs?.length}
 										{#each udf.signature.inputs as input, i (i)}
 											<ColumnTypeBadge columnType={input.dtype} size="xs" showIcon={false} />
-											{#if i < udf.signature.inputs.length - 1}
-												<span class={css({ marginX: '0.5', fontSize: 'xs', color: 'fg.muted' })}
-													>,</span
-												>
-											{/if}
 										{/each}
 									{:else}
 										<span
@@ -253,6 +248,17 @@
 										>
 											No inputs
 										</span>
+									{/if}
+									{#if udf.signature?.output_dtype}
+										<span
+											class={css({ marginX: '1', fontSize: 'xs', color: 'fg.muted' })}
+											aria-hidden="true">→</span
+										>
+										<ColumnTypeBadge
+											columnType={udf.signature.output_dtype}
+											size="xs"
+											showIcon={false}
+										/>
 									{/if}
 								</div>
 							</div>
@@ -318,6 +324,7 @@
 		width: 'min(720px, 92vw)',
 		backgroundColor: 'bg.primary',
 		borderWidth: '1',
+		boxShadow: 'drag',
 		display: 'flex',
 		flexDirection: 'column',
 		_focus: { outline: 'none' }

@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { X, Power, Loader2 } from 'lucide-svelte';
+	import { createQuery } from '@tanstack/svelte-query';
 	import { enginesStore } from '$lib/stores/engines.svelte';
+	import { listAnalyses } from '$lib/api/analysis';
 	import type { EngineStatus } from '$lib/types/compute';
 	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
 	import { css, cx, row } from '$lib/styles/panda';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	interface Props {
 		open: boolean;
@@ -14,7 +17,29 @@
 
 	let shuttingDown = $state<Set<string>>(new Set());
 	let popoverRect = $state({ left: 0, bottom: 0, width: 320 });
-	let lastAnchor = $state<HTMLElement | null>(null);
+
+	const analysesQuery = createQuery(() => ({
+		queryKey: ['analyses-lookup'],
+		queryFn: async () => {
+			const result = await listAnalyses();
+			if (result.isErr()) return [];
+			return result.value;
+		},
+		staleTime: 60_000,
+		enabled: open
+	}));
+
+	const analysisNames = $derived.by(() => {
+		const map = new SvelteMap<string, string>();
+		for (const a of analysesQuery.data ?? []) {
+			map.set(a.id, a.name);
+		}
+		return map;
+	});
+
+	function displayLabel(analysisId: string): string {
+		return analysisNames.get(analysisId) ?? `${analysisId.slice(0, 8)}…`;
+	}
 
 	function statusColor(status: EngineStatus): string {
 		if (status === 'healthy') return 'fg.success';
@@ -52,45 +77,19 @@
 	}
 
 	function updatePopoverPosition() {
-		const node = lastAnchor;
-		if (!node) return;
-		const rect = node.getBoundingClientRect();
-		const width = 320;
+		if (!anchor) return;
+		const rect = anchor.getBoundingClientRect();
 		popoverRect = {
 			left: rect.right + 6,
 			bottom: window.innerHeight - rect.bottom,
-			width
-		};
-	}
-
-	function applyPopoverPosition(
-		node: HTMLElement | undefined,
-		rect: { left: number; bottom: number; width: number }
-	) {
-		if (!node) return;
-		node.style.left = `${rect.left}px`;
-		node.style.bottom = `${rect.bottom}px`;
-		node.style.width = `${rect.width}px`;
-	}
-
-	function portal(node: HTMLElement, rect: { left: number; bottom: number; width: number }) {
-		document.body.appendChild(node);
-		applyPopoverPosition(node, rect);
-		return {
-			update(next: { left: number; bottom: number; width: number }) {
-				applyPopoverPosition(node, next);
-			},
-			destroy() {
-				node.remove();
-			}
+			width: 320
 		};
 	}
 
 	// DOM: $derived can't track anchor position.
 	$effect(() => {
 		if (!open) return;
-		lastAnchor = anchor;
-		if (!lastAnchor) return;
+		if (!anchor) return;
 		updatePopoverPosition();
 		const handleResize = () => updatePopoverPosition();
 		window.addEventListener('resize', handleResize);
@@ -137,11 +136,13 @@
 			maxHeight: '60vh',
 			overflowY: 'auto'
 		})}
+		style:left="{popoverRect.left}px"
+		style:bottom="{popoverRect.bottom}px"
+		style:width="{popoverRect.width}px"
 		role="dialog"
 		aria-modal="false"
 		aria-labelledby="engines-title"
 		tabindex="-1"
-		use:portal={popoverRect}
 		onclick={(e) => e.stopPropagation()}
 		onkeydown={(e) => e.stopPropagation()}
 	>
@@ -235,7 +236,7 @@
 								})}
 								title={engine.analysis_id}
 							>
-								{engine.analysis_id}
+								{displayLabel(engine.analysis_id)}
 							</span>
 							<span class={css({ color: 'fg.tertiary', flexShrink: '0' })}>
 								{statusLabel(engine.status)}

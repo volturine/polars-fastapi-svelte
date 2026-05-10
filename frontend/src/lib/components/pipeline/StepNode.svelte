@@ -432,28 +432,38 @@
 		</div>
 
 		<div class={css({ paddingX: '4', paddingY: '3' })}>
-			<div
+			<button
 				class={cx(
 					'step-summary',
 					css({
+						display: 'block',
+						width: '100%',
+						textAlign: 'left',
 						paddingX: '3',
 						paddingY: '2',
 						fontSize: 'xs2',
-						backgroundColor: 'bg.secondary',
+						backgroundColor: 'transparent',
 						color: 'fg.tertiary',
 						lineHeight: 'relaxed',
+						borderWidth: '1',
+						borderStyle: 'solid',
+						borderColor: 'border.primary',
+						cursor: readOnly ? 'default' : 'pointer',
+						_hover: readOnly ? {} : { borderColor: 'border.accent', color: 'fg.primary' },
 						...(!isApplied
 							? {
-									backgroundColor: 'bg.secondary',
-									color: 'fg.muted',
-									border: '1px dashed'
+									color: 'fg.muted'
 								}
 							: {})
 					})
 				)}
+				onclick={() => !readOnly && onEdit(step.id)}
+				type="button"
+				title={readOnly ? undefined : 'Edit step'}
+				disabled={readOnly}
 			>
 				{summary}
-			</div>
+			</button>
 		</div>
 
 		<div
@@ -482,7 +492,6 @@
 						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
 						...(!isApplied
 							? {
-									borderStyle: 'dashed',
 									color: 'fg.muted',
 									_hover: {
 										backgroundColor: 'bg.tertiary',

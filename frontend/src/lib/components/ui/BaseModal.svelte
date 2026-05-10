@@ -44,13 +44,16 @@
 			display: 'flex',
 			alignItems: 'center',
 			justifyContent: 'center',
-			padding: '4'
+			padding: '4',
+			backgroundColor: 'bg.overlay',
+			backdropFilter: 'blur(4px)'
 		}),
 		panelClass = css({
 			width: '100%',
 			maxHeight: '90vh',
 			overflowY: 'auto',
-			borderWidth: '1'
+			borderWidth: '1',
+			boxShadow: 'drag'
 		}),
 		panelAction = noopAction,
 		panelActionValue,

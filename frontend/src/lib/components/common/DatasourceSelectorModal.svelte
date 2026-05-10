@@ -93,6 +93,7 @@
 			flexDirection: 'column',
 			borderWidth: '1',
 			backgroundColor: 'bg.primary',
+			boxShadow: 'drag',
 			outline: 'none'
 		})
 	)}

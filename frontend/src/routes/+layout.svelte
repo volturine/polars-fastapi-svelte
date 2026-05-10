@@ -192,31 +192,59 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<link rel="preconnect" href="https://fonts.googleapis.com" />
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-	<link
-		href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-		rel="stylesheet"
-	/>
 	<title>Data Analysis Platform</title>
 </svelte:head>
 
 <QueryClientProvider client={queryClient}>
 	{#if !ready && !onAuthPage}
-		<div
-			class={css({
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'center',
-				height: '100vh',
-				backgroundColor: 'bg.secondary'
-			})}
-		>
-			<div class={spinner()}></div>
+		<div class={css({ display: 'flex', height: '100vh' })} aria-busy="true" aria-live="polite">
+			<aside
+				class={css({
+					display: 'flex',
+					flexDirection: 'column',
+					height: '100vh',
+					width: 'sidebarExpanded',
+					backgroundColor: 'bg.panel',
+					borderRightWidth: '1',
+					flexShrink: 0
+				})}
+				aria-hidden="true"
+			>
+				<div class={css({ height: '12', borderBottomWidth: '1' })}></div>
+				<div class={css({ flex: '1' })}></div>
+			</aside>
+			<main
+				class={css({
+					flex: '1',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					backgroundColor: 'bg.secondary'
+				})}
+			>
+				<div class={spinner()} aria-label="Loading"></div>
+			</main>
 		</div>
 	{:else if onAuthPage && configStore.authRequired}
 		{@render children()}
 	{:else}
+		<a
+			href="#main-content"
+			class={css({
+				position: 'absolute',
+				left: '2',
+				top: '2',
+				zIndex: 'overlay',
+				paddingX: '3',
+				paddingY: '2',
+				backgroundColor: 'bg.primary',
+				color: 'fg.primary',
+				borderWidth: '1',
+				fontSize: 'sm',
+				transform: 'translateY(-200%)',
+				_focus: { transform: 'translateY(0)' }
+			})}>Skip to main content</a
+		>
 		<div class={css({ display: 'flex', height: '100vh' })}>
 			<div
 				class={css({ position: 'relative', flexShrink: 0 })}
@@ -274,6 +302,7 @@
 			</div>
 
 			<main
+				id="main-content"
 				class={css({
 					minHeight: '0',
 					minWidth: '0',

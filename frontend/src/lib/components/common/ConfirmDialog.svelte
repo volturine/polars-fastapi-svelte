@@ -48,6 +48,7 @@
 		maxWidth: 'panel',
 		overflow: 'hidden',
 		borderWidth: '1',
+		boxShadow: 'drag',
 		_focus: { outline: 'none' },
 		smDown: { maxWidth: 'full' },
 		backgroundColor: 'bg.primary'

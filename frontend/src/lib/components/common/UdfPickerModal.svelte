@@ -35,7 +35,8 @@
 		maxHeight: 'screenTall',
 		overflowY: 'auto',
 		borderWidth: '1',
-		backgroundColor: 'bg.primary'
+		backgroundColor: 'bg.primary',
+		boxShadow: 'drag'
 	})}
 	ariaLabelledby="udf-modal-title"
 	{content}

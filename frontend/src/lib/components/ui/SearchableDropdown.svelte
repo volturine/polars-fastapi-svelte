@@ -1,3 +1,23 @@
+<script lang="ts" module>
+	import { SvelteMap } from 'svelte/reactivity';
+	const openDropdowns = new SvelteMap<symbol, () => void>();
+
+	function registerOpenDropdown(id: symbol, close: () => void) {
+		openDropdowns.set(id, close);
+	}
+
+	function unregisterOpenDropdown(id: symbol) {
+		openDropdowns.delete(id);
+	}
+
+	function closeOtherDropdowns(except: symbol) {
+		for (const [id, close] of openDropdowns) {
+			if (id === except) continue;
+			close();
+		}
+	}
+</script>
+
 <script lang="ts">
 	import { Debounced } from 'runed';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -111,6 +131,7 @@
 
 	const resolvedMenuAction = $derived(menuAction ?? noopAction);
 
+	const instanceId = Symbol('searchable-dropdown');
 	let menuOpen = $state(false);
 	let menuRef = $state<HTMLElement>();
 	let menuContainerRef = $state<HTMLElement>();
@@ -168,7 +189,13 @@
 
 	function openMenu() {
 		if (disabled) return;
+		closeOtherDropdowns(instanceId);
 		menuOpen = true;
+		registerOpenDropdown(instanceId, () => {
+			menuOpen = false;
+			searchValue = '';
+			onClose?.();
+		});
 		onOpen?.(triggerRef);
 		if (triggerType === 'button') {
 			setTimeout(() => searchInputRef?.focus(), 0);
@@ -178,8 +205,13 @@
 	function closeMenu() {
 		menuOpen = false;
 		searchValue = '';
+		unregisterOpenDropdown(instanceId);
 		onClose?.();
 	}
+
+	$effect(() => {
+		return () => unregisterOpenDropdown(instanceId);
+	});
 
 	function isSelected(id: string) {
 		return selectedSet.has(id);
@@ -248,18 +280,36 @@
 	bind:this={menuRef}
 >
 	{#if triggerType === 'input'}
-		<input
-			type="text"
-			class={inputClass}
-			id="{uid}-trigger"
-			aria-label="Search"
-			bind:value={searchValue}
-			{placeholder}
-			onfocus={openMenu}
-			aria-haspopup="listbox"
-			use:setTriggerRef={undefined}
-			{disabled}
-		/>
+		<div class={css({ position: 'relative', display: 'flex' })}>
+			<input
+				type="text"
+				class={cx(inputClass, css({ flex: '1', paddingRight: '8' }))}
+				id="{uid}-trigger"
+				aria-label="Search"
+				bind:value={searchValue}
+				{placeholder}
+				onfocus={openMenu}
+				aria-haspopup="listbox"
+				use:setTriggerRef={undefined}
+				{disabled}
+			/>
+			<ChevronDown
+				size={14}
+				class={cx(
+					muted,
+					css({
+						position: 'absolute',
+						right: '3',
+						top: '50%',
+						transform: 'translateY(-50%)',
+						pointerEvents: 'none',
+						transitionProperty: 'transform',
+						transitionDuration: '160ms'
+					}),
+					menuOpen && css({ transform: 'translateY(-50%) rotate(180deg)' })
+				)}
+			/>
+		</div>
 	{:else if renderTrigger}
 		{@render renderTrigger(triggerPayload)}
 	{:else}

@@ -6,7 +6,7 @@
 	"scripts": {
 		"predev": "svelte-kit sync && panda codegen && panda cssgen",
 		"dev": "vite dev",
-		"build": "svelte-kit sync && panda cssgen && vite build",
+		"build": "svelte-kit sync && panda codegen && panda cssgen && vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync && panda codegen && panda cssgen || echo ''",
 		"panda:codegen": "svelte-kit sync && panda codegen",

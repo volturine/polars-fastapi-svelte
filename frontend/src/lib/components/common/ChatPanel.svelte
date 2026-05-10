@@ -580,7 +580,7 @@
 
 	const inputPlaceholder = $derived(
 		!chatStore.configured
-			? 'Loading\u2026'
+			? 'Configure an AI provider to start chatting\u2026'
 			: chatStore.mode === 'plan'
 				? 'Describe what you want to analyze\u2026'
 				: 'Tell me what to do\u2026'

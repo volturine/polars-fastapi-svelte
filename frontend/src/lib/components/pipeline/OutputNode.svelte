@@ -19,7 +19,10 @@
 	import ScheduleManager from '$lib/components/common/ScheduleManager.svelte';
 	import HealthChecksManager from '$lib/components/common/HealthChecksManager.svelte';
 	import BranchPicker from '$lib/components/common/BranchPicker.svelte';
-	import { css, cx, chip, input, label, row, rowBetween, muted } from '$lib/styles/panda';
+	import BaseModal from '$lib/components/ui/BaseModal.svelte';
+	import PanelHeader from '$lib/components/ui/PanelHeader.svelte';
+	import PanelFooter from '$lib/components/ui/PanelFooter.svelte';
+	import { css, cx, chip, input, label, row, rowBetween, muted, button } from '$lib/styles/panda';
 	import {
 		Bell,
 		CalendarClock,
@@ -32,10 +35,14 @@
 		Database,
 		Pencil,
 		Check,
-		X
+		X,
+		CheckCircle2,
+		XCircle
 	} from 'lucide-svelte';
 	import { listHealthChecks, listHealthCheckResults } from '$lib/api/healthcheck';
 	import { listSchedules } from '$lib/api/schedule';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { SvelteMap } from 'svelte/reactivity';
 
 	interface Props {
@@ -61,6 +68,8 @@
 	let modeMenuOpen = $state(false);
 	let modeMenuRef = $state<HTMLElement>();
 	let modeTriggerRef = $state<HTMLButtonElement>();
+	let lastBuildResult = $state<BuildResponse | null>(null);
+	let buildPopupOpen = $state(false);
 
 	const outputConfig = $derived.by(() => {
 		const tab = activeTab;
@@ -391,6 +400,8 @@
 				queryClient.invalidateQueries({ queryKey: ['datasources'] });
 				void datasourceStore.loadDatasources();
 				building = false;
+				lastBuildResult = res;
+				buildPopupOpen = true;
 			},
 			(err: { message: string }) => {
 				error = err.message;
@@ -398,6 +409,25 @@
 			}
 		);
 	}
+
+	function viewBuildHistory() {
+		buildPopupOpen = false;
+		if (!analysisId) return;
+		void goto(resolve(`/monitoring?tab=builds&analysis_id=${analysisId}` as '/'));
+	}
+
+	const buildSummary = $derived.by(() => {
+		const res = lastBuildResult;
+		if (!res) return { total: 0, succeeded: 0, failed: 0, allSucceeded: true };
+		const total = res.results.length;
+		const failed = res.results.filter((r) => r.status === 'failed').length;
+		return {
+			total,
+			succeeded: total - failed,
+			failed,
+			allSucceeded: failed === 0
+		};
+	});
 
 	// DOM: $derived can't close menu on outside click.
 	$effect(() => {
@@ -1312,3 +1342,134 @@
 		{/if}
 	</div>
 </div>
+
+<BaseModal
+	open={buildPopupOpen}
+	onClose={() => (buildPopupOpen = false)}
+	closeOnEscape={true}
+	closeOnBackdrop={true}
+	panelClass={css({
+		width: '100%',
+		maxWidth: 'modalSm',
+		maxHeight: '90vh',
+		overflowY: 'auto',
+		borderWidth: '1',
+		backgroundColor: 'bg.primary',
+		boxShadow: 'drag',
+		outline: 'none'
+	})}
+	ariaLabelledby="build-result-title"
+	{content}
+/>
+
+{#snippet content()}
+	<PanelHeader>
+		{#snippet title()}
+			<h2
+				id="build-result-title"
+				class={css({
+					margin: '0',
+					fontSize: 'sm',
+					fontWeight: 'semibold',
+					display: 'flex',
+					alignItems: 'center',
+					gap: '2'
+				})}
+			>
+				{#if buildSummary.allSucceeded}
+					<CheckCircle2 size={14} class={css({ color: 'fg.success' })} />
+					Build complete
+				{:else}
+					<XCircle size={14} class={css({ color: 'fg.error' })} />
+					Build finished with errors
+				{/if}
+			</h2>
+		{/snippet}
+		{#snippet actions()}
+			<button
+				class={css({
+					display: 'flex',
+					cursor: 'pointer',
+					alignItems: 'center',
+					justifyContent: 'center',
+					border: 'none',
+					backgroundColor: 'transparent',
+					padding: '1',
+					color: 'fg.muted',
+					_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+				})}
+				onclick={() => (buildPopupOpen = false)}
+				aria-label="Close build summary"
+				type="button"
+			>
+				<X size={14} />
+			</button>
+		{/snippet}
+	</PanelHeader>
+
+	<div class={css({ padding: '4', display: 'flex', flexDirection: 'column', gap: '3' })}>
+		<div class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>
+			{buildSummary.succeeded} of {buildSummary.total} tab{buildSummary.total === 1 ? '' : 's'} built
+			successfully{buildSummary.failed > 0 ? `, ${buildSummary.failed} failed` : ''}.
+		</div>
+		{#if lastBuildResult}
+			<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+				{#each lastBuildResult.results as r (r.tab_id)}
+					<div
+						class={css({
+							display: 'flex',
+							alignItems: 'flex-start',
+							gap: '2',
+							borderWidth: '1',
+							padding: '2',
+							fontSize: 'xs',
+							backgroundColor: r.status === 'failed' ? 'bg.error' : 'bg.secondary',
+							borderColor: r.status === 'failed' ? 'border.error' : 'border.primary'
+						})}
+					>
+						{#if r.status === 'failed'}
+							<XCircle
+								size={12}
+								class={css({ flexShrink: '0', color: 'fg.error', marginTop: '0.5' })}
+							/>
+						{:else}
+							<CheckCircle2
+								size={12}
+								class={css({ flexShrink: '0', color: 'fg.success', marginTop: '0.5' })}
+							/>
+						{/if}
+						<div class={css({ flex: '1', minWidth: '0' })}>
+							<div class={css({ fontWeight: 'medium' })}>{r.tab_name}</div>
+							<div class={css({ color: 'fg.muted', fontSize: '2xs' })}>
+								{r.status}
+							</div>
+							{#if r.error}
+								<div class={css({ marginTop: '1', color: 'fg.error', wordBreak: 'break-word' })}>
+									{r.error}
+								</div>
+							{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
+	</div>
+
+	<PanelFooter>
+		<button
+			class={cx(button({ variant: 'secondary' }))}
+			onclick={() => (buildPopupOpen = false)}
+			type="button"
+		>
+			Close
+		</button>
+		<button
+			class={cx(button({ variant: 'primary' }))}
+			onclick={viewBuildHistory}
+			type="button"
+			data-testid="build-popup-view-history"
+		>
+			View build history →
+		</button>
+	</PanelFooter>
+{/snippet}

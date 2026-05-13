@@ -32,6 +32,8 @@ EXTRA_RUNTIME_KEYS = {
     'E2E_TIMEOUT_GRACE_SECONDS',
     'E2E_HEARTBEAT_SECONDS',
     'E2E_LOG_DIR',
+    'DB_USERNAME',
+    'DB_PASSWORD',
 }
 
 ENV_KEY_RE = re.compile(r'^[A-Z][A-Z0-9_]*$')

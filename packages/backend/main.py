@@ -152,11 +152,11 @@ async def api_worker_heartbeat_loop(stop_event: asyncio.Event, worker_id: str, *
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    await init_db()
     configure_logging()
     logger.info('Starting application...')
     api_worker_id = f'api:{os.getpid()}'
     app.state.api_worker_id = api_worker_id
-    await init_db()
     from backend_core.public_schema import ensure_backend_public_tables
     from modules.auth.service import ensure_default_user
 

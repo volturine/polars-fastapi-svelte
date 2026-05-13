@@ -89,7 +89,7 @@ async def test_scheduler_main_starts_runtime_listener(monkeypatch) -> None:
 
     names = [name for name, _ in calls]
 
-    assert names[0:4] == ['configure_logging', 'init_db', 'install_stop_handlers', 'start_api_server']
+    assert names[0:4] == ['init_db', 'configure_logging', 'install_stop_handlers', 'start_api_server']
     assert 'serve_api_notifications' in names
     assert 'scheduler_loop' in names
     assert 'stop_api_server' in names
@@ -134,8 +134,8 @@ async def test_scheduler_main_invokes_runtime_listener_start(monkeypatch) -> Non
     await runtime_scheduler.main()
 
     assert calls == [
-        'configure_logging',
         'init_db',
+        'configure_logging',
         'install_stop_handlers',
         'start_api_server',
         'scheduler_loop',

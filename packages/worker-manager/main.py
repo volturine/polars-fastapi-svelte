@@ -117,9 +117,9 @@ async def run_build_worker_process(
     idle_exit_seconds: float | None = None,
     max_jobs: int | None = None,
 ) -> None:
+    await init_db()
     configure_logging()
     logger.info('Starting build worker process...')
-    await init_db()
     local_stop = stop_event or asyncio.Event()
     worker_id = build_worker_id()
     manager = ProcessManager(
@@ -213,9 +213,9 @@ def _next_idle_child_pid(children: dict[int, ManagedWorkerProcess]) -> int | Non
 
 
 async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) -> None:
+    await init_db()
     configure_logging()
     logger.info('Starting build worker manager process...')
-    await init_db()
     local_stop = stop_event or asyncio.Event()
     ipc_server = await runtime_ipc.start_api_server(listener='job')
     ipc_task = None

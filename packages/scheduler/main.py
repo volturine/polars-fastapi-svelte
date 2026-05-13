@@ -185,9 +185,9 @@ def install_stop_handlers(stop_event: asyncio.Event) -> None:
 
 
 async def main() -> None:
+    await init_db()
     configure_logging()
     logger.info('Starting scheduler process...')
-    await init_db()
     stop_event = asyncio.Event()
     install_stop_handlers(stop_event)
     ipc_server = await runtime_ipc.start_api_server()

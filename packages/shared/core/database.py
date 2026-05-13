@@ -269,6 +269,9 @@ def _seed_shared_state() -> None:
 
 
 def _run_postgres_init_locked(func) -> None:
+    from core.migrations import ensure_database_exists
+
+    ensure_database_exists(settings.database_url)
     engine = get_settings_engine()
     with engine.connect() as connection:
         connection.execute(text('SELECT pg_advisory_lock(:key)'), {'key': _POSTGRES_INIT_LOCK_KEY})

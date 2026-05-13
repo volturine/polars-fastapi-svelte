@@ -19,10 +19,6 @@ DOCKER_ENV_TO_COMPOSE: dict[Path, tuple[Path, ...]] = {
         ROOT / 'docker/docker-compose.dev.yml',
     ),
     ROOT / 'docker/env/prod.env': (ROOT / 'docker/docker-compose.yml',),
-    ROOT / 'docker/env/test.env': (
-        ROOT / 'docker/docker-compose.yml',
-        ROOT / 'docker/docker-compose.test.yml',
-    ),
 }
 
 EXTRA_RUNTIME_KEYS = {

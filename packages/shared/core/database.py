@@ -300,14 +300,15 @@ def _init_namespace_db(namespace: str) -> None:
         if key in _initialized_namespaces:
             return
     _init_namespace_db_unlocked(namespace)
-    _mark_namespace_initialized(namespace)
 
 
 def _init_namespace_db_unlocked(namespace: str) -> None:
     with _initialized_namespaces_lock:
-        if _namespace_init_key(namespace) in _initialized_namespaces:
+        key = _namespace_init_key(namespace)
+        if key in _initialized_namespaces:
             return
         _run_postgres_init_locked(lambda: _init_postgres_namespace(namespace))
+        _initialized_namespaces.add(key)
 
 
 def _bootstrap_postgres() -> None:

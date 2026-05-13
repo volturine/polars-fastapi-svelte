@@ -19,25 +19,10 @@ CORE_ROOT = REPO_ROOT / 'packages' / 'shared'
 BACKEND_ROOT = REPO_ROOT / 'packages' / 'backend'
 SCHEDULER_ROOT = REPO_ROOT / 'packages' / 'scheduler'
 WORKER_ROOT = REPO_ROOT / 'packages' / 'worker-manager'
-DEFAULT_DOCKER_STATE_DIR = CORE_ROOT / 'tests' / '.artifacts' / 'docker'
-
-
-def _resolve_docker_state_dir() -> Path:
-    configured = os.environ.get('DF_DOCKER_STATE_DIR')
-    if configured is None or configured.strip() == '':
-        docker_state_dir = DEFAULT_DOCKER_STATE_DIR
-    else:
-        configured_path = Path(configured).expanduser()
-        docker_state_dir = configured_path if configured_path.is_absolute() else (REPO_ROOT / configured_path)
-    docker_state_dir.mkdir(parents=True, exist_ok=True)
-    return docker_state_dir
 
 
 def docker_env(extra: dict[str, str] | None = None) -> dict[str, str]:
     env = os.environ.copy()
-    docker_state_dir = _resolve_docker_state_dir()
-    env['DOCKER_CONFIG'] = str(docker_state_dir)
-    env['HOME'] = str(docker_state_dir)
     env['PYTHONPATH'] = f'{BACKEND_ROOT}{os.pathsep}{SCHEDULER_ROOT}{os.pathsep}{WORKER_ROOT}{os.pathsep}{CORE_ROOT}'
     if extra is not None:
         env.update(extra)

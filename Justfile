@@ -1,94 +1,70 @@
-# Justfile for Svelte-FastAPI Template
+# Data Forge task runner
 
-# Default goal
 default: dev
 
-# Install all dependencies
+pytest := 'uv run python -m pytest -c pyproject.toml -q'
+python := 'uv run python'
+
 install:
-    @echo "Installing backend dependencies..."
-    cd packages/backend && uv sync
-    @echo "Installing shared dependencies..."
     cd packages/shared && uv sync
-    @echo "Installing scheduler dependencies..."
+    cd packages/backend && uv sync
     cd packages/scheduler && uv sync
-    @echo "Installing worker-manager dependencies..."
     cd packages/worker-manager && uv sync
-    @echo "Installing frontend dependencies..."
     cd packages/frontend && bun install
 
-# Update dependencies to latest available versions
-update-deps:
-    @echo "Updating backend dependencies to latest..."
-    cd packages/backend && uv lock --upgrade && uv sync
-    @echo "Updating shared dependencies to latest..."
-    cd packages/shared && uv lock --upgrade && uv sync
-    @echo "Updating scheduler dependencies to latest..."
-    cd packages/scheduler && uv lock --upgrade && uv sync
-    @echo "Updating worker-manager dependencies to latest..."
-    cd packages/worker-manager && uv lock --upgrade && uv sync
-    @echo "Updating frontend dependencies to latest..."
-    cd packages/frontend && bun update --latest
-
-# Run development frontend plus supervised backend runtime
 dev:
     #!/usr/bin/env bash
+    set -euo pipefail
     set -a; source packages/shared/dev.env; set +a
     (cd packages/backend && uv run --env-file ../shared/dev.env main.py) & \
     (cd packages/scheduler && uv run --env-file ../shared/dev.env main.py) & \
     (cd packages/worker-manager && uv run --env-file ../shared/dev.env main.py) & \
     (cd packages/frontend && bun run dev) & wait
 
-# Run full development stack entirely in Docker
-docker-dev:
+dev-clean:
     #!/usr/bin/env bash
     set -euo pipefail
-    export DF_DOCKER_STATE_DIR="${PWD}/.runtime/docker"
-    mkdir -p "${DF_DOCKER_STATE_DIR}"
-    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
-    export HOME="${DF_DOCKER_STATE_DIR}"
-    docker buildx build --load -f docker/Dockerfile --target api -t polars-analysis-api:latest .
-    docker buildx build --load -f docker/Dockerfile --target scheduler -t polars-analysis-scheduler:latest .
-    docker buildx build --load -f docker/Dockerfile --target worker -t polars-analysis-worker:latest .
-    docker compose --env-file docker/env/dev.env -p dataforge-dev -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up
+    set -a; source packages/shared/dev.env; set +a
+    cd packages/shared
+    uv run python - <<'PY'
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.exc import OperationalError
+    from core.config import settings
 
-docker-dev-down:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export DF_DOCKER_STATE_DIR="${PWD}/.runtime/docker"
-    mkdir -p "${DF_DOCKER_STATE_DIR}"
-    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
-    export HOME="${DF_DOCKER_STATE_DIR}"
-    docker compose --env-file docker/env/dev.env -p dataforge-dev -f docker/docker-compose.yml -f docker/docker-compose.dev.yml down -v --remove-orphans
+    engine = create_engine(settings.database_url, isolation_level='AUTOCOMMIT')
+    try:
+        with engine.connect() as connection:
+            schemas = list(connection.execute(text("""
+                SELECT nspname
+                FROM pg_namespace
+                WHERE nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+                  AND nspname NOT LIKE 'pg_%'
+            """)).scalars())
+            for schema in schemas:
+                connection.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
+            connection.execute(text('CREATE SCHEMA public'))
+    except OperationalError as exc:
+        if 'does not exist' not in str(exc).lower():
+            raise
+        print('Development database does not exist; skipping database schema reset.')
+    finally:
+        engine.dispose()
+    PY
+    cd ../..
+    rm -rf .runtime/data packages/shared/data packages/shared/packages packages/backend/data packages/scheduler/data packages/worker-manager/data
+    echo "✓ Local dev database and runtime data reset. Run 'just dev' to recreate everything."
 
-docker-dev-logs:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export DF_DOCKER_STATE_DIR="${PWD}/.runtime/docker"
-    mkdir -p "${DF_DOCKER_STATE_DIR}"
-    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
-    export HOME="${DF_DOCKER_STATE_DIR}"
-    docker compose --env-file docker/env/dev.env -p dataforge-dev -f docker/docker-compose.yml -f docker/docker-compose.dev.yml logs -f
-
-worker:
-	#!/usr/bin/env bash
-	set -a; source packages/shared/dev.env; set +a
-	cd packages/worker-manager && uv run --env-file ../shared/dev.env main.py
-
-scheduler:
-	#!/usr/bin/env bash
-	set -a; source packages/shared/dev.env; set +a
-	cd packages/scheduler && uv run --env-file ../shared/dev.env main.py
-
-# Format code
 format:
-    @echo "Formatting backend..."
     cd packages/shared && uv run ruff format . ../backend ../scheduler ../worker-manager
-    @echo "Formatting frontend..."
     cd packages/frontend && bun run format
 
-# Run all linters and type checks
 check:
-    cd packages/shared && uv run ruff format --check . ../backend ../scheduler ../worker-manager && uv run ruff check . ../backend ../scheduler ../worker-manager && uv run python -m mypy . && uv run python -m mypy ../backend && uv run python -m mypy ../scheduler && uv run python -m mypy ../worker-manager
+    cd packages/shared && uv run ruff format --check . ../backend ../scheduler ../worker-manager
+    cd packages/shared && uv run ruff check . ../backend ../scheduler ../worker-manager
+    cd packages/shared && uv run python -m mypy .
+    cd packages/shared && uv run python -m mypy ../backend
+    cd packages/shared && uv run python -m mypy ../scheduler
+    cd packages/shared && uv run python -m mypy ../worker-manager
     cd packages/shared && uv run python ../../scripts/generate_ts_build_stream_types.py --check
     cd packages/shared && uv run python ../../scripts/generate_ts_step_types.py --check
     cd packages/shared && uv run python ../../scripts/check_package_boundaries.py
@@ -98,288 +74,43 @@ check:
     cd packages/shared && uv run python ../../scripts/check_test_layout.py
     cd packages/frontend && bun run panda:codegen && bun run check && bun run lint
 
-
-# Run pure user-driven e2e tests with backend + frontend lifecycle managed by Just
-test-e2e shard='':
-    cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-test-e2e --cwd . -- just test-e2e-raw {{shard}}
-
-test-e2e-raw shard='':
-    #!/usr/bin/env bash
-    set -euo pipefail
-    set -a; source packages/shared/e2e.env; set +a
-    export DF_DOCKER_STATE_DIR="${PWD}/packages/frontend/tests/.artifacts/docker"
-    mkdir -p "${DF_DOCKER_STATE_DIR}"
-    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
-    PLAYWRIGHT_CMD=(npx playwright test --config=playwright.config.ts)
-    if [ -n "{{shard}}" ]; then
-        PLAYWRIGHT_CMD+=(--shard "{{shard}}")
-    fi
-    unset VIRTUAL_ENV
-    export UV_PYTHON="${E2E_PYTHON_VERSION}"
-    DATA_DIR="${DATA_DIR}-run-$$"
-    export DATA_DIR
-    LOG_DIR="${E2E_LOG_DIR:-}"
-    PG_CONTAINER="dataforge-e2e-pg-$$"
-    PG_PORT=""
-    kill_tree() {
-        local pid="$1"
-        if [ -z "$pid" ] || ! kill -0 "$pid" >/dev/null 2>&1; then
-            return
-        fi
-        local child
-        while read -r child; do
-            kill_tree "$child"
-        done < <(pgrep -P "$pid" || true)
-        kill "$pid" >/dev/null 2>&1 || true
-    }
-    kill_tree_force() {
-        local pid="$1"
-        if [ -z "$pid" ] || ! kill -0 "$pid" >/dev/null 2>&1; then
-            return
-        fi
-        local child
-        while read -r child; do
-            kill_tree_force "$child"
-        done < <(pgrep -P "$pid" || true)
-        kill -9 "$pid" >/dev/null 2>&1 || true
-    }
-    cleanup() {
-        status=$?
-        for pid in ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
-            kill_tree "$pid"
-        done
-        local deadline=$((SECONDS + 10))
-        while [ "$SECONDS" -lt "$deadline" ]; do
-            local any_alive=0
-            for pid in ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
-                if [ -n "$pid" ] && kill -0 "$pid" >/dev/null 2>&1; then
-                    any_alive=1
-                    break
-                fi
-            done
-            if [ "$any_alive" -eq 0 ]; then
-                break
-            fi
-            sleep 0.5
-        done
-        for pid in ${FRONTEND_PID:-} ${SCHEDULER_PID:-} ${WORKER_PID:-} ${BACKEND_PID:-}; do
-            kill_tree_force "$pid"
-        done
-        docker rm -f "${PG_CONTAINER}" >/dev/null 2>&1 || true
-        lsof -ti "tcp:${PORT}" | xargs -r kill >/dev/null 2>&1 || true
-        lsof -ti "tcp:${FRONTEND_PORT}" | xargs -r kill >/dev/null 2>&1 || true
-        exit "$status"
-    }
-    trap cleanup EXIT
-    lsof -ti "tcp:${PORT}" | xargs -r kill >/dev/null 2>&1 || true
-    lsof -ti "tcp:${FRONTEND_PORT}" | xargs -r kill >/dev/null 2>&1 || true
-    if [ -n "$LOG_DIR" ]; then
-        mkdir -p "$LOG_DIR"
-    fi
-    echo "Starting e2e Postgres"
-    docker rm -f "${PG_CONTAINER}" >/dev/null 2>&1 || true
-    docker run -d --rm \
-        --name "${PG_CONTAINER}" \
-        -e POSTGRES_DB=dataforge \
-        -e POSTGRES_USER=dataforge \
-        -e POSTGRES_PASSWORD=dataforge \
-        -p 127.0.0.1::5432 \
-        postgres:18-alpine -c max_connections=300 >/dev/null
-    PG_PORT="$(docker port "${PG_CONTAINER}" 5432/tcp | awk -F: '{print $NF}')"
-    if [ -z "$PG_PORT" ]; then
-        echo "Failed to resolve e2e Postgres host port" >&2
-        exit 1
-    fi
-    export DATABASE_URL="postgresql+psycopg://dataforge:dataforge@127.0.0.1:${PG_PORT}/dataforge"
-    deadline=$((SECONDS + 90))
-    until docker exec "${PG_CONTAINER}" pg_isready -U dataforge -d dataforge >/dev/null 2>&1; do
-        if [ "$SECONDS" -ge "$deadline" ]; then
-            echo "Timed out waiting for e2e Postgres" >&2
-            exit 1
-        fi
-        sleep 1
-    done
-    echo "Starting e2e services"
-    if [ -n "$LOG_DIR" ]; then
-        (cd packages/backend && exec uv run --no-env-file main.py) >"$LOG_DIR/backend.log" 2>&1 & BACKEND_PID=$!
-        (cd packages/worker-manager && exec uv run --no-env-file main.py) >"$LOG_DIR/worker.log" 2>&1 & WORKER_PID=$!
-        (cd packages/scheduler && exec uv run --no-env-file main.py) >"$LOG_DIR/scheduler.log" 2>&1 & SCHEDULER_PID=$!
-        (cd packages/frontend && bun run predev && exec node ./node_modules/vite/bin/vite.js dev) >"$LOG_DIR/frontend.log" 2>&1 & FRONTEND_PID=$!
-    fi
-    if [ -z "$LOG_DIR" ]; then
-        (cd packages/backend && exec uv run --no-env-file main.py) & BACKEND_PID=$!
-        (cd packages/worker-manager && exec uv run --no-env-file main.py) & WORKER_PID=$!
-        (cd packages/scheduler && exec uv run --no-env-file main.py) & SCHEDULER_PID=$!
-        (cd packages/frontend && bun run predev && exec node ./node_modules/vite/bin/vite.js dev) & FRONTEND_PID=$!
-    fi
-    wait_for_url() {
-        local url="$1"
-        local label="$2"
-        local deadline=$((SECONDS + 90))
-        until curl -fsS "$url" >/dev/null; do
-            if [ "$SECONDS" -ge "$deadline" ]; then
-                echo "Timed out waiting for ${label} at ${url}" >&2
-                exit 1
-            fi
-            sleep 1
-        done
-    }
-    echo "Waiting for backend readiness"
-    wait_for_url "http://127.0.0.1:${PORT}/health/ready" "backend readiness"
-    echo "Backend is ready"
-    echo "Waiting for frontend readiness"
-    wait_for_url "http://127.0.0.1:${FRONTEND_PORT}" "frontend"
-    echo "Frontend is ready"
-    echo "Starting Playwright e2e tests"
-    if [ -n "{{shard}}" ]; then
-        echo "Using Playwright default workers=4 shard={{shard}}"
-    else
-        echo "Using Playwright default workers=4"
-    fi
-    set +e
-    (
-        cd packages/frontend && \
-        PLAYWRIGHT_DISABLE_WEB_SERVER=true \
-        exec python3 ../../scripts/run_with_timeout.py \
-            --timeout-seconds "${E2E_TIMEOUT_SECONDS:-0}" \
-            --grace-seconds "${E2E_TIMEOUT_GRACE_SECONDS:-30}" \
-            --heartbeat-seconds "${E2E_HEARTBEAT_SECONDS:-0}" \
-            -- "${PLAYWRIGHT_CMD[@]}"
-    )
-    status=$?
-    set -e
-    exit "$status"
-
-# Run backend tests
-test:
-    cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-test --cwd . -- just test-raw
-
-# Build local app images. Production deploy pulls whatever docker/env/prod.env names;
-# this recipe is only for local image evaluation or self-hosted builds.
-docker-build tag='latest' install_dev='false':
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export DF_DOCKER_STATE_DIR="${PWD}/.runtime/docker"
-    mkdir -p "${DF_DOCKER_STATE_DIR}"
-    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
-    export HOME="${DF_DOCKER_STATE_DIR}"
-    docker buildx build --load --build-arg INSTALL_DEV={{install_dev}} --target api -f docker/Dockerfile -t polars-analysis-api:{{tag}} .
-    docker buildx build --load --build-arg INSTALL_DEV={{install_dev}} --target scheduler -f docker/Dockerfile -t polars-analysis-scheduler:{{tag}} .
-    docker buildx build --load --build-arg INSTALL_DEV={{install_dev}} --target worker -f docker/Dockerfile -t polars-analysis-worker:{{tag}} .
-
-# Build local test runner images. App/runtime images come from docker-build.
-docker-build-test-runners:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export DF_DOCKER_STATE_DIR="${PWD}/packages/frontend/tests/.artifacts/docker"
-    mkdir -p "${DF_DOCKER_STATE_DIR}"
-    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
-    export HOME="${DF_DOCKER_STATE_DIR}"
-    docker buildx build --load --target frontend-test -f docker/Dockerfile -t polars-analysis-frontend-test:test .
-    docker buildx build --load --target frontend-e2e -f docker/Dockerfile -t polars-analysis-frontend-e2e:test .
-    docker buildx build --load --target e2e-test -f docker/Dockerfile -t polars-analysis-e2e-test:test .
-
-# Run the full app verification stack: production compose plus test override.
-docker-test: docker-build-test-runners
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export DF_DOCKER_STATE_DIR="${PWD}/packages/frontend/tests/.artifacts/docker"
-    mkdir -p "${DF_DOCKER_STATE_DIR}"
-    export DOCKER_CONFIG="${DF_DOCKER_STATE_DIR}"
-    export HOME="${DF_DOCKER_STATE_DIR}"
-    just docker-build test true
-    COMPOSE=(docker compose --env-file docker/env/test.env -p dataforge-test -f docker/docker-compose.yml -f docker/docker-compose.test.yml)
-    cleanup() {
-        status=$?
-        if [ "$status" -ne 0 ]; then
-            "${COMPOSE[@]}" ps -a || true
-            "${COMPOSE[@]}" logs api scheduler worker || true
-        fi
-        "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
-        exit "$status"
-    }
-    trap cleanup EXIT
-    "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
-    "${COMPOSE[@]}" run --rm frontend-test
-    "${COMPOSE[@]}" run --rm backend-test
-    "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
-    "${COMPOSE[@]}" up -d postgres api scheduler worker frontend-e2e
-    "${COMPOSE[@]}" run --rm runtime-test
-    "${COMPOSE[@]}" run --rm e2e-test
-
-test-raw: test-backend-raw test-frontend-raw
-
-test-backend-raw:
-    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/shared/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=tests/.artifacts/pytest-cache tests
-    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/backend/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../backend/tests/.artifacts/pytest-cache ../backend/tests --ignore=../backend/tests/integration
-    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/backend/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../backend/tests/.artifacts/pytest-cache ../backend/tests/integration
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../worker-manager/tests/.artifacts/pytest-cache ../worker-manager/tests --ignore=../worker-manager/tests/integration
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../scheduler/tests/.artifacts/pytest-cache ../scheduler/tests
-
-test-frontend-raw:
-    cd packages/frontend && bun run test:unit
-
-docker-backend-test-raw:
-    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/shared/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=tests/.artifacts/pytest-cache tests
-    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/backend/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../backend/tests/.artifacts/pytest-cache ../backend/tests --ignore=../backend/tests/integration
-    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/backend/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../backend/tests/.artifacts/pytest-cache ../backend/tests/integration -k 'not docker_bootstrap and not postgres_runtime_integration'
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../worker-manager/tests/.artifacts/pytest-cache ../worker-manager/tests --ignore=../worker-manager/tests/integration
-    cd packages/shared && uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../scheduler/tests/.artifacts/pytest-cache ../scheduler/tests
-
-docker-runtime-test-raw:
-    cd packages/shared && DF_DOCKER_STATE_DIR="${PWD}/packages/backend/tests/.artifacts/docker" uv run python -m pytest -c pyproject.toml --tb=short -q -o cache_dir=../backend/tests/.artifacts/pytest-cache ../backend/tests/integration/test_docker_bootstrap.py
-
-docker-frontend-test-raw:
-    cd packages/frontend && bun run svelte-kit sync && bun run panda:codegen && bun run test:unit
-
-docker-e2e-test-raw:
-    cd packages/frontend && npx playwright test --workers=2 --fail-on-flaky-tests
-
-# Generate TypeScript types from Pydantic step schemas
-generate-step-types:
-    cd packages/shared && uv run python ../../scripts/generate_ts_step_types.py
-
-# Generate TypeScript types from build runtime schemas
-generate-build-stream-types:
-    cd packages/shared && uv run python ../../scripts/generate_ts_build_stream_types.py
-
-# Full static verification gate -- format + static checks only
 verify:
     cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-verify --cwd . -- just verify-raw
 
 verify-raw: format check
 
-# Build for production (single-port: FastAPI serves the built frontend)
-# Setup: edit packages/shared/prod.env.
-prod:
+test:
+    cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-test --cwd . -- just test-raw
+
+test-raw: test-backend-raw test-frontend-raw
+
+test-backend-raw:
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "Building frontend..."
-    (cd packages/frontend && bun run build)
-    set -a; source packages/shared/prod.env; set +a
-    echo "Starting production runtime..."
-    (cd packages/backend && uv run --env-file ../shared/prod.env main.py) & \
-    (cd packages/scheduler && uv run --env-file ../shared/prod.env main.py) & \
-    (cd packages/worker-manager && uv run --env-file ../shared/prod.env main.py) & wait
+    cd packages/shared
+    {{pytest}} tests
+    {{pytest}} ../backend/tests --ignore=../backend/tests/integration
+    {{pytest}} ../backend/tests/integration
+    {{pytest}} ../worker-manager/tests --ignore=../worker-manager/tests/integration
+    {{pytest}} ../scheduler/tests
 
-# Deploy the production stack named by docker/env/prod.env.
-docker-prod:
-    docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml up -d
+test-frontend-raw:
+    cd packages/frontend && bun run test:unit
 
-# Build local images, then deploy them with production compose.
-docker-prod-local: docker-build
-    DF_API_IMAGE=polars-analysis-api:latest DF_SCHEDULER_IMAGE=polars-analysis-scheduler:latest DF_WORKER_IMAGE=polars-analysis-worker:latest docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml up -d
+test-e2e shard='':
+    cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-test-e2e --cwd . -- scripts/test_e2e.sh {{shard}}
 
-docker-prod-down:
-    docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml down -v --remove-orphans
+generate-step-types:
+    cd packages/shared && uv run python ../../scripts/generate_ts_step_types.py
 
-docker-prod-logs:
-    docker compose --env-file docker/env/prod.env -p dataforge-prod -f docker/docker-compose.yml logs -f
+generate-build-stream-types:
+    cd packages/shared && uv run python ../../scripts/generate_ts_build_stream_types.py
 
-release version *args:
-	#!/usr/bin/env bash
-	bash scripts/release.sh {{version}} {{args}}
+docker-dev:
+    docker compose --env-file docker/env/dev.env -p dataforge-dev -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up --build
 
-release-dry-run version:
-	#!/usr/bin/env bash
-	bash scripts/release.sh {{version}} --dry-run
+docker-dev-down:
+    docker compose --env-file docker/env/dev.env -p dataforge-dev -f docker/docker-compose.yml -f docker/docker-compose.dev.yml down -v --remove-orphans
+
+docker-dev-logs:
+    docker compose --env-file docker/env/dev.env -p dataforge-dev -f docker/docker-compose.yml -f docker/docker-compose.dev.yml logs -f

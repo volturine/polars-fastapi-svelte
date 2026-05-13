@@ -1,69 +1,12 @@
 # Multi-stage Dockerfile for Data-Forge Analysis Platform
 # Builds fixed-role release images from one codebase.
 
-ARG JUST_VERSION=1.43.1
-
-FROM oven/bun:1.2.22 AS bun-with-just
-ARG JUST_VERSION
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates && \
-    arch="$(dpkg --print-architecture)" && \
-    case "$arch" in \
-        amd64) just_arch="x86_64-unknown-linux-musl" ;; \
-        arm64) just_arch="aarch64-unknown-linux-musl" ;; \
-        *) echo "unsupported architecture: $arch" >&2; exit 1 ;; \
-    esac && \
-    curl -fsSL "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-${just_arch}.tar.gz" \
-        | tar -xz -C /usr/local/bin just && \
-    apt-get purge -y --auto-remove curl && \
-    rm -rf /var/lib/apt/lists/*
-
-FROM mcr.microsoft.com/playwright:v1.59.1-noble AS playwright-with-just
-ARG JUST_VERSION
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates && \
-    arch="$(dpkg --print-architecture)" && \
-    case "$arch" in \
-        amd64) just_arch="x86_64-unknown-linux-musl" ;; \
-        arm64) just_arch="aarch64-unknown-linux-musl" ;; \
-        *) echo "unsupported architecture: $arch" >&2; exit 1 ;; \
-    esac && \
-    curl -fsSL "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-${just_arch}.tar.gz" \
-        | tar -xz -C /usr/local/bin just && \
-    apt-get purge -y --auto-remove curl && \
-    rm -rf /var/lib/apt/lists/*
-
 FROM oven/bun:1.2.22 AS frontend-builder
 WORKDIR /app/packages/frontend
 COPY packages/frontend/package.json packages/frontend/bun.lock* ./
 RUN bun install --frozen-lockfile
 COPY packages/frontend/ ./
 RUN bun run panda:codegen && bun run build
-
-FROM bun-with-just AS frontend-test
-WORKDIR /app/packages/frontend
-COPY packages/frontend/package.json packages/frontend/bun.lock* ./
-RUN bun install --frozen-lockfile
-COPY packages/frontend/ ./
-COPY Justfile /app/Justfile
-ENV CI=true
-CMD ["just", "-f", "/app/Justfile", "docker-frontend-test-raw"]
-
-FROM mcr.microsoft.com/playwright:v1.59.1-noble AS frontend-e2e
-WORKDIR /app/packages/frontend
-COPY packages/frontend/package.json packages/frontend/bun.lock* ./
-RUN npm install -g bun && bun install --frozen-lockfile
-COPY packages/frontend/ ./
-RUN bun run panda:codegen && bun run build
-CMD ["sh", "-lc", "bun run preview -- --host 0.0.0.0 --port ${FRONTEND_PORT:-3000}"]
-
-FROM playwright-with-just AS e2e-test
-WORKDIR /app/packages/frontend
-COPY packages/frontend/package.json packages/frontend/bun.lock* ./
-RUN npm install -g bun && bun install --frozen-lockfile
-COPY packages/frontend/ ./
-COPY Justfile /app/Justfile
-CMD ["just", "-f", "/app/Justfile", "docker-e2e-test-raw"]
 
 FROM python:3.13.7-slim AS backend-base
 WORKDIR /app/packages/shared
@@ -73,8 +16,6 @@ ARG VCS_REF=unknown
 ARG BUILD_DATE=unknown
 ARG APP_VERSION=unknown
 ARG INSTALL_DEV=false
-ARG JUST_VERSION
-
 LABEL org.opencontainers.image.title="Data-Forge"
 LABEL org.opencontainers.image.description="Postgres-backed Data-Forge runtime image"
 LABEL org.opencontainers.image.version="${APP_VERSION}"
@@ -83,19 +24,7 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}"
 LABEL org.opencontainers.image.source="https://github.com/volturine/data-forge"
 LABEL org.opencontainers.image.licenses="MIT"
 
-RUN pip install --no-cache-dir "uv==${UV_VERSION}" && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates && \
-    arch="$(dpkg --print-architecture)" && \
-    case "$arch" in \
-        amd64) just_arch="x86_64-unknown-linux-musl" ;; \
-        arm64) just_arch="aarch64-unknown-linux-musl" ;; \
-        *) echo "unsupported architecture: $arch" >&2; exit 1 ;; \
-    esac && \
-    curl -fsSL "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-${just_arch}.tar.gz" \
-        | tar -xz -C /usr/local/bin just && \
-    apt-get purge -y --auto-remove curl && \
-    rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir "uv==${UV_VERSION}"
 
 RUN addgroup --gid 1000 appgroup && adduser --uid 1000 --gid 1000 --disabled-password --gecos "" appuser
 

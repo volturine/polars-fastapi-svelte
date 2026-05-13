@@ -20,10 +20,13 @@ __all__ = ['revision', 'down_revision', 'branch_labels', 'depends_on', 'upgrade'
 
 
 def _scope() -> str:
-    config = op.get_context().config
+    migration_context = op.get_context()
+    config = migration_context.config
     if config is None:
         return 'public'
-    return str(config.attributes.get('runtime_scope', 'public'))
+    return str(
+        migration_context.opts.get('tag') or config.get_main_option('runtime_scope') or config.attributes.get('runtime_scope', 'public')
+    )
 
 
 def upgrade() -> None:
@@ -51,6 +54,14 @@ def upgrade() -> None:
         sa.Column('env_bootstrap_complete', sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column('public_idb_debug', sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.PrimaryKeyConstraint('id'),
+    )
+    op.execute('INSERT INTO app_settings (id) VALUES (1)')
+    op.create_table(
+        'runtime_namespaces',
+        sa.Column('name', sa.String(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), nullable=False),
+        sa.PrimaryKeyConstraint('name'),
     )
     op.create_table(
         'runtime_workers',
@@ -105,4 +116,5 @@ def downgrade() -> None:
     op.drop_index('ix_runtime_workers_last_heartbeat_at', table_name='runtime_workers')
     op.drop_index('ix_runtime_workers_kind', table_name='runtime_workers')
     op.drop_table('runtime_workers')
+    op.drop_table('runtime_namespaces')
     op.drop_table('app_settings')

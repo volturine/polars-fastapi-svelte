@@ -6,11 +6,14 @@ from sqlalchemy import create_engine, pool, text
 from sqlmodel import SQLModel
 
 from core.config import settings
+from core.migrations import ensure_database_exists
 
 _MODEL_MODULES = (
     'contracts.analysis.models',
     'contracts.datasource.models',
     'contracts.healthcheck_models',
+    'contracts.compute_requests.models',
+    'contracts.namespaces.models',
     'contracts.settings_models',
     'contracts.telegram_models',
     'contracts.udf_models',
@@ -36,6 +39,7 @@ if config.config_file_name is not None:
 _SHARED_TABLES = {
     'app_settings',
     'engine_instances',
+    'runtime_namespaces',
     'runtime_workers',
 }
 _TENANT_TABLES = {
@@ -45,6 +49,7 @@ _TENANT_TABLES = {
     'build_events',
     'build_jobs',
     'build_runs',
+    'compute_requests',
     'datasources',
     'datasource_column_metadata',
     'engine_runs',
@@ -59,11 +64,11 @@ _TENANT_TABLES = {
 
 
 def _runtime_scope() -> str:
-    return str(config.attributes.get('runtime_scope', 'public'))
+    return context.get_tag_argument() or config.get_main_option('runtime_scope') or str(config.attributes.get('runtime_scope', 'public'))
 
 
 def _target_schema() -> str:
-    return str(config.attributes.get('target_schema', 'public'))
+    return config.get_main_option('target_schema') or str(config.attributes.get('target_schema', 'public'))
 
 
 def _table_names() -> set[str]:
@@ -106,12 +111,14 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section, {})
     configuration['sqlalchemy.url'] = settings.database_url
+    ensure_database_exists(settings.database_url)
     connectable = create_engine(configuration['sqlalchemy.url'], poolclass=pool.NullPool)
 
     with connectable.connect() as connection:
         schema = _target_schema()
         connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
         connection.execute(text(f'SET search_path TO "{schema}", public'))
+        connection.commit()
         context.configure(
             connection=connection,
             target_metadata=_target_metadata(),

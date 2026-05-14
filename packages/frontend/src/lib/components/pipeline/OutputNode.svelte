@@ -704,6 +704,8 @@
 									alignItems: 'center',
 									justifyContent: 'center',
 									borderWidth: '1',
+									borderColor: 'border.primary',
+									backgroundColor: 'bg.primary',
 									color: 'fg.muted',
 									padding: '0',
 									lineHeight: '1',
@@ -991,13 +993,16 @@
 					justifyContent: 'center',
 					gap: '2',
 					borderWidth: '1',
+					borderColor: 'border.primary',
+					backgroundColor: 'bg.secondary',
 					paddingY: '2',
 					paddingX: '3',
 					fontSize: 'xs',
 					fontWeight: 'medium',
-					color: 'fg.secondary',
+					color: 'fg.muted',
 					_hover: {
 						backgroundColor: 'bg.tertiary',
+						color: 'fg.primary',
 						'& svg': { opacity: '1' }
 					},
 					_disabled: { cursor: 'not-allowed', opacity: '0.5' }

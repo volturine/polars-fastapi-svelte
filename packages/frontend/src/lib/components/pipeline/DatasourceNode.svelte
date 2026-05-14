@@ -323,6 +323,9 @@
 					justifyContent: 'center',
 					gap: '1',
 					borderWidth: '1',
+					borderColor: 'border.primary',
+					backgroundColor: 'bg.primary',
+					color: 'fg.muted',
 					paddingX: '1.5',
 					paddingY: '0',
 					minHeight: 'iconMd',
@@ -476,6 +479,9 @@
 								alignItems: 'center',
 								justifyContent: 'center',
 								borderWidth: '1',
+								borderColor: 'border.primary',
+								backgroundColor: 'bg.primary',
+								color: 'fg.muted',
 								padding: '0',
 								lineHeight: '1',
 								_hover: {
@@ -819,6 +825,9 @@
 						justifyContent: 'center',
 						gap: '2',
 						borderWidth: '1',
+						borderColor: 'border.primary',
+						backgroundColor: 'bg.secondary',
+						color: 'fg.muted',
 						paddingY: '2',
 						paddingX: '3',
 						fontSize: 'xs2',
@@ -826,7 +835,7 @@
 						_hover: {
 							backgroundColor: 'bg.tertiary',
 							color: 'fg.primary',
-							borderColor: 'border.accent',
+							borderColor: 'border.primary',
 							'& svg': { opacity: '1' }
 						}
 					})

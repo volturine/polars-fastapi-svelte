@@ -462,11 +462,13 @@
 						paddingY: '2',
 						fontSize: 'xs2',
 						lineHeight: 'relaxed',
+						borderWidth: '1',
+						borderColor: 'border.primary',
+						backgroundColor: 'bg.primary',
 						...(!isApplied
 							? {
 									backgroundColor: 'bg.secondary',
-									color: 'fg.muted',
-									border: '1px dashed'
+									color: 'fg.muted'
 								}
 							: {})
 					})
@@ -484,14 +486,16 @@
 						flex: '1',
 						cursor: 'pointer',
 						border: 'none',
+						backgroundColor: 'transparent',
 						paddingY: '2.5',
 						fontWeight: 'medium',
 						textTransform: 'uppercase',
 						letterSpacing: 'widest',
 						fontSize: '3xs',
+						color: 'fg.muted',
+						_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' },
 						...(!isApplied
 							? {
-									borderStyle: 'dashed',
 									_hover: {
 										backgroundColor: 'bg.tertiary',
 										color: 'fg.secondary'

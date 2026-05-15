@@ -5,13 +5,13 @@ from typing import Any
 import polars as pl
 
 _TYPE_CASTERS: dict[str, tuple[type[Any] | None, pl.DataType]] = {
-    'Int64': (int, pl.Int64()),
-    'Float64': (float, pl.Float64()),
-    'Boolean': (bool, pl.Boolean()),
-    'String': (str, pl.Utf8()),
-    'Utf8': (str, pl.Utf8()),
-    'Date': (None, pl.Date()),
-    'Datetime': (None, pl.Datetime()),
+    "Int64": (int, pl.Int64()),
+    "Float64": (float, pl.Float64()),
+    "Boolean": (bool, pl.Boolean()),
+    "String": (str, pl.Utf8()),
+    "Utf8": (str, pl.Utf8()),
+    "Date": (None, pl.Date()),
+    "Datetime": (None, pl.Datetime()),
 }
 
 
@@ -36,5 +36,5 @@ def require_polars_type(type_name: str) -> pl.DataType:
     dtype = get_polars_type(type_name)
     if dtype is not None:
         return dtype
-    supported = ', '.join(sorted(_TYPE_CASTERS.keys()))
-    raise ValueError(f'Unsupported cast type: {type_name}. Supported types: {supported}')
+    supported = ", ".join(sorted(_TYPE_CASTERS.keys()))
+    raise ValueError(f"Unsupported cast type: {type_name}. Supported types: {supported}")

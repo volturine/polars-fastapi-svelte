@@ -1,7 +1,6 @@
 """Unpivot (melt) operation."""
 
 import polars as pl
-
 from contracts.compute.base import OperationHandler, OperationParams
 
 
@@ -10,8 +9,8 @@ class UnpivotParams(OperationParams):
     id_vars: list[str] | None = None  # Alias for index
     on: list[str] | None = None
     value_vars: list[str] | None = None  # Alias for on
-    variable_name: str = 'variable'
-    value_name: str = 'value'
+    variable_name: str = "variable"
+    value_name: str = "value"
 
 
 class UnpivotHandler(OperationHandler):

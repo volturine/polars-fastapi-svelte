@@ -13,30 +13,46 @@ import time
 import uuid
 from multiprocessing.synchronize import Event as ProcessEvent
 
-from compute_manager import ProcessManager
-from compute_request_runtime import compute_request_loop
-from engine_notifications import create_snapshot_notifier
-from runtime_notifications import handle_runtime_payload
-from worker_runtime import build_worker_loop, runtime_namespaces, worker_id as build_worker_id
-
 from contracts.build_jobs.live import hub as build_job_hub
 from contracts.runtime import ipc as runtime_ipc
 from contracts.runtime_workers.models import RuntimeWorkerKind
-from core import build_jobs_service as build_job_service, runtime_workers_service as runtime_worker_service
+from core import (
+    build_jobs_service as build_job_service,
+)
+from core import (
+    runtime_workers_service as runtime_worker_service,
+)
 from core.config import settings
 from core.database import init_db, run_db, run_settings_db
 from core.logging import configure_logging
 from core.namespace import reset_namespace, set_namespace_context
 
+from compute_manager import ProcessManager
+from compute_request_runtime import compute_request_loop
+from engine_notifications import create_snapshot_notifier
+from runtime_notifications import handle_runtime_payload
+from worker_runtime import (
+    build_worker_loop,
+    runtime_namespaces,
+)
+from worker_runtime import (
+    worker_id as build_worker_id,
+)
+
 logger = logging.getLogger(__name__)
-_SPAWN = multiprocessing.get_context('spawn')
+_SPAWN = multiprocessing.get_context("spawn")
 _CHILD_COOPERATIVE_STOP_SECONDS = 5.0
 _CHILD_TERMINATE_SECONDS = 2.0
 _CHILD_KILL_SECONDS = 1.0
 
 
 class ManagedWorkerProcess:
-    def __init__(self, process: multiprocessing.process.BaseProcess, stop_signal: ProcessEvent, stopped_signal: ProcessEvent) -> None:
+    def __init__(
+        self,
+        process: multiprocessing.process.BaseProcess,
+        stop_signal: ProcessEvent,
+        stopped_signal: ProcessEvent,
+    ) -> None:
         self.process = process
         self.stop_signal = stop_signal
         self.stopped_signal = stopped_signal
@@ -71,7 +87,7 @@ def _stop_manager(worker_id: str) -> None:
 
 
 def manager_id() -> str:
-    return f'build-manager:{uuid.uuid4()}'
+    return f"build-manager:{uuid.uuid4()}"
 
 
 def queued_job_count() -> int:
@@ -119,7 +135,7 @@ async def run_build_worker_process(
 ) -> None:
     await init_db()
     configure_logging()
-    logger.info('Starting build worker process...')
+    logger.info("Starting build worker process...")
     local_stop = stop_event or asyncio.Event()
     worker_id = build_worker_id()
     manager = ProcessManager(
@@ -150,7 +166,7 @@ async def run_build_worker_process(
         if not task.done():
             await asyncio.gather(task)
         manager.shutdown_all()
-        logger.info('Build worker process shutdown complete')
+        logger.info("Build worker process shutdown complete")
 
 
 def _spawn_worker_process() -> ManagedWorkerProcess:
@@ -174,7 +190,10 @@ def _wait_for_child_stop(child: ManagedWorkerProcess, *, timeout_seconds: float,
         return False
     child.process.join()
     if require_ack and not acknowledged:
-        logger.error('Build worker process %s exited without sending a stop acknowledgement', child.process.pid)
+        logger.error(
+            "Build worker process %s exited without sending a stop acknowledgement",
+            child.process.pid,
+        )
     return True
 
 
@@ -182,15 +201,18 @@ def _stop_worker_process(child: ManagedWorkerProcess) -> None:
     child.stop_signal.set()
     if _wait_for_child_stop(child, timeout_seconds=_CHILD_COOPERATIVE_STOP_SECONDS, require_ack=True):
         return
-    logger.error('Build worker process %s did not stop cooperatively; escalating shutdown', child.process.pid)
+    logger.error(
+        "Build worker process %s did not stop cooperatively; escalating shutdown",
+        child.process.pid,
+    )
     child.process.terminate()
     if _wait_for_child_stop(child, timeout_seconds=_CHILD_TERMINATE_SECONDS, require_ack=False):
         return
-    logger.error('Build worker process %s ignored terminate(); killing', child.process.pid)
+    logger.error("Build worker process %s ignored terminate(); killing", child.process.pid)
     child.process.kill()
     if _wait_for_child_stop(child, timeout_seconds=_CHILD_KILL_SECONDS, require_ack=False):
         return
-    raise RuntimeError(f'Build worker process {child.process.pid} could not be stopped')
+    raise RuntimeError(f"Build worker process {child.process.pid} could not be stopped")
 
 
 def _reap_dead_children(children: dict[int, ManagedWorkerProcess]) -> None:
@@ -215,9 +237,9 @@ def _next_idle_child_pid(children: dict[int, ManagedWorkerProcess]) -> int | Non
 async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) -> None:
     await init_db()
     configure_logging()
-    logger.info('Starting build worker manager process...')
+    logger.info("Starting build worker manager process...")
     local_stop = stop_event or asyncio.Event()
-    ipc_server = await runtime_ipc.start_api_server(listener='job')
+    ipc_server = await runtime_ipc.start_api_server(listener="job")
     ipc_task = None
     if ipc_server is not None:
         ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, local_stop, handle_runtime_payload))
@@ -233,8 +255,8 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
     heartbeat_thread = threading.Thread(
         target=_manager_heartbeat_loop,
         kwargs={
-            'stop_signal': heartbeat_stop,
-            'worker_id': worker_id,
+            "stop_signal": heartbeat_stop,
+            "worker_id": worker_id,
         },
         daemon=True,
     )
@@ -247,7 +269,10 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
             _reap_dead_children(children)
 
             queued = await asyncio.to_thread(queued_job_count)
-            desired = min(settings.build_worker_max_processes, max(settings.build_worker_min_processes, queued))
+            desired = min(
+                settings.build_worker_max_processes,
+                max(settings.build_worker_min_processes, queued),
+            )
             while len(children) < desired:
                 child = _spawn_worker_process()
                 children[child.process.pid or id(child.process)] = child
@@ -281,13 +306,13 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
         heartbeat_thread.join()
         if ipc_task is not None:
             await asyncio.gather(ipc_task)
-        await runtime_ipc.stop_api_server(ipc_server, listener='job')
+        await runtime_ipc.stop_api_server(ipc_server, listener="job")
         for child in children.values():
             _stop_worker_process(child)
         manager.shutdown_all()
         await asyncio.gather(request_task)
         _stop_manager(worker_id)
-        logger.info('Build worker manager shutdown complete')
+        logger.info("Build worker manager shutdown complete")
 
 
 def install_stop_handlers(stop_event: asyncio.Event) -> None:
@@ -308,5 +333,5 @@ async def main() -> None:
     await run_build_manager_process(stop_event=stop_event)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

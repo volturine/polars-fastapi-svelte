@@ -1,3 +1,5 @@
+from contracts.compute.base import OperationHandler, OperationParams
+
 from compute_operations.ai import AIHandler
 from compute_operations.datasource import DatasourceHandler
 from compute_operations.deduplicate import DeduplicateHandler
@@ -25,40 +27,39 @@ from compute_operations.union import UnionByNameHandler
 from compute_operations.unpivot import UnpivotHandler
 from compute_operations.view import ViewHandler
 from compute_operations.with_columns import WithColumnsHandler
-from contracts.compute.base import OperationHandler, OperationParams
 
 __all__ = [
-    'HANDLERS',
-    'OperationHandler',
-    'OperationParams',
+    "HANDLERS",
+    "OperationHandler",
+    "OperationParams",
 ]
 
 HANDLERS: dict[str, OperationHandler] = {
-    'datasource': DatasourceHandler(),
-    'ai': AIHandler(),
-    'deduplicate': DeduplicateHandler(),
-    'download': DownloadHandler(),
-    'drop': DropHandler(),
-    'explode': ExplodeHandler(),
-    'export': ExportHandler(),
-    'fill_null': FillNullHandler(),
-    'filter': FilterHandler(),
-    'groupby': GroupByHandler(),
-    'join': JoinHandler(),
-    'limit': LimitHandler(),
-    'notification': NotificationHandler(),
-    'pivot': PivotHandler(),
-    'rename': RenameHandler(),
-    'sample': SampleHandler(),
-    'select': SelectHandler(),
-    'sort': SortHandler(),
-    'string_transform': StringTransformHandler(),
-    'timeseries': TimeseriesHandler(),
-    'topk': TopKHandler(),
-    'union_by_name': UnionByNameHandler(),
-    'unpivot': UnpivotHandler(),
-    'view': ViewHandler(),
-    'with_columns': WithColumnsHandler(),
-    'expression': ExpressionHandler(),
-    'chart': ChartHandler(),
+    "datasource": DatasourceHandler(),
+    "ai": AIHandler(),
+    "deduplicate": DeduplicateHandler(),
+    "download": DownloadHandler(),
+    "drop": DropHandler(),
+    "explode": ExplodeHandler(),
+    "export": ExportHandler(),
+    "fill_null": FillNullHandler(),
+    "filter": FilterHandler(),
+    "groupby": GroupByHandler(),
+    "join": JoinHandler(),
+    "limit": LimitHandler(),
+    "notification": NotificationHandler(),
+    "pivot": PivotHandler(),
+    "rename": RenameHandler(),
+    "sample": SampleHandler(),
+    "select": SelectHandler(),
+    "sort": SortHandler(),
+    "string_transform": StringTransformHandler(),
+    "timeseries": TimeseriesHandler(),
+    "topk": TopKHandler(),
+    "union_by_name": UnionByNameHandler(),
+    "unpivot": UnpivotHandler(),
+    "view": ViewHandler(),
+    "with_columns": WithColumnsHandler(),
+    "expression": ExpressionHandler(),
+    "chart": ChartHandler(),
 }

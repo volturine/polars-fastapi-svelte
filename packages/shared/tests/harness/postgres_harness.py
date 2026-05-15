@@ -32,13 +32,7 @@ def docker_env(extra: dict[str, str] | None = None) -> dict[str, str]:
 def docker_available() -> bool:
     try:
         result = subprocess.run(
-            ['docker', 'info'],
-            cwd=REPO_ROOT,
-            env=docker_env(),
-            text=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
+            ['docker', 'info'], cwd=REPO_ROOT, env=docker_env(), text=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False
         )
     except FileNotFoundError:
         return False
@@ -54,23 +48,10 @@ def require_docker() -> None:
 
 
 def run_command(
-    command: list[str],
-    *,
-    cwd: Path = REPO_ROOT,
-    env: dict[str, str] | None = None,
-    timeout: float = 120,
-    check: bool = True,
+    command: list[str], *, cwd: Path = REPO_ROOT, env: dict[str, str] | None = None, timeout: float = 120, check: bool = True
 ) -> subprocess.CompletedProcess[str]:
     merged_env = env if env is not None else os.environ.copy()
-    return subprocess.run(
-        command,
-        cwd=cwd,
-        env=merged_env,
-        text=True,
-        capture_output=True,
-        timeout=timeout,
-        check=check,
-    )
+    return subprocess.run(command, cwd=cwd, env=merged_env, text=True, capture_output=True, timeout=timeout, check=check)
 
 
 def free_port() -> int:
@@ -95,13 +76,7 @@ def wait_for_http_ready(url: str, *, timeout: float = 90) -> None:
     raise AssertionError(f'Timed out waiting for {url}: {last_error}')
 
 
-def wait_for_condition(
-    predicate,
-    *,
-    timeout: float = 60,
-    interval: float = 0.5,
-    description: str,
-):
+def wait_for_condition(predicate, *, timeout: float = 60, interval: float = 0.5, description: str):
     deadline = time.time() + timeout
     while time.time() < deadline:
         value = predicate()
@@ -131,13 +106,7 @@ class ManagedProcess:
 
     def start(self) -> None:
         self.proc = subprocess.Popen(
-            self.command,
-            cwd=self.cwd,
-            env=self.env,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            start_new_session=True,
+            self.command, cwd=self.cwd, env=self.env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True
         )
         for stream, chunks in ((self.proc.stdout, self.stdout_chunks), (self.proc.stderr, self.stderr_chunks)):
             thread = threading.Thread(target=_drain_stream, args=(stream, chunks), daemon=True)
@@ -221,11 +190,7 @@ class PostgresContainer:
         deadline = time.time() + timeout
         last_error = ''
         while time.time() < deadline:
-            result = run_command(
-                ['docker', 'port', self.name, '5432/tcp'],
-                env=docker_env(),
-                check=False,
-            )
+            result = run_command(['docker', 'port', self.name, '5432/tcp'], env=docker_env(), check=False)
             output = result.stdout.strip()
             if result.returncode == 0 and output:
                 return int(output.rsplit(':', 1)[-1])

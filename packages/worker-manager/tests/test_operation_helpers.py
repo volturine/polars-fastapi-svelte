@@ -1,113 +1,126 @@
 import polars as pl
 import pytest
+from contracts.step_config_enums import TimeComponent
+from core.config import settings
+from core.export_formats import get_export_format
+from core.iceberg_metadata import (
+    resolve_iceberg_branch_metadata_path,
+    resolve_iceberg_metadata_path,
+)
+from core.namespace import namespace_paths
+
 from compute_operations.fill_null import cast_value, get_fill_strategy, get_polars_type
 from compute_operations.filter import get_operator
 from compute_operations.groupby import get_aggregation
-from compute_operations.timeseries import get_duration, get_extractor
-
-from core.config import settings
-from core.export_formats import get_export_format
-from core.iceberg_metadata import resolve_iceberg_branch_metadata_path, resolve_iceberg_metadata_path
-from core.namespace import namespace_paths
+from compute_operations.timeseries import TimeseriesParams
 
 
 def test_get_operator():
-    op = get_operator('==')
-    expr = op(pl.col('a'), 1)
+    op = get_operator("==")
+    expr = op(pl.col("a"), 1)
     assert isinstance(expr, pl.Expr)
 
 
 def test_get_operator_invalid():
-    with pytest.raises(ValueError, match='Unsupported filter operator'):
-        get_operator('nope')
+    with pytest.raises(ValueError, match="Unsupported filter operator"):
+        get_operator("nope")
 
 
 def test_get_aggregation():
-    agg = get_aggregation('sum')
-    expr = agg('value')
+    agg = get_aggregation("sum")
+    expr = agg("value")
     assert isinstance(expr, pl.Expr)
 
 
 def test_get_aggregation_invalid():
-    with pytest.raises(ValueError, match='Unsupported aggregation'):
-        get_aggregation('nope')
+    with pytest.raises(ValueError, match="Unsupported aggregation"):
+        get_aggregation("nope")
 
 
 def test_timeseries_extractor_and_duration():
-    assert get_extractor('year') == 'year'
-    duration = get_duration('days', 2)
-    assert isinstance(duration, pl.Expr)
+    extract = TimeseriesParams.model_validate(
+        {
+            "column": "ts",
+            "operation_type": "extract",
+            "new_column": "year",
+            "component": "year",
+        }
+    )
+    duration = TimeseriesParams.model_validate({"column": "ts", "operation_type": "add", "new_column": "next", "unit": "days"})
+    assert extract.extractor_name() == "year"
+    assert isinstance(duration.duration_expr(2), pl.Expr)
 
 
 def test_timeseries_extractor_invalid():
-    with pytest.raises(ValueError, match='Unsupported time component'):
-        get_extractor('nope')
+    with pytest.raises(ValueError):
+        TimeComponent.require("nope")
 
 
 def test_timeseries_duration_invalid():
-    with pytest.raises(ValueError, match='Unsupported duration unit'):
-        get_duration('nope', 1)
+    params = TimeseriesParams.model_validate({"column": "ts", "operation_type": "add", "new_column": "bad", "unit": "nope"})
+    with pytest.raises(ValueError, match="Unsupported duration unit"):
+        params.duration_expr(1)
 
 
 def test_fill_strategy():
-    strategy = get_fill_strategy('forward')
+    strategy = get_fill_strategy("forward")
     assert strategy is not None
 
 
 def test_export_format():
-    fmt = get_export_format('csv')
-    assert fmt.extension == '.csv'
-    assert fmt.content_type == 'text/csv'
+    fmt = get_export_format("csv")
+    assert fmt.extension == ".csv"
+    assert fmt.content_type == "text/csv"
 
 
 def test_export_format_invalid():
-    with pytest.raises(ValueError, match='Unsupported export format'):
-        get_export_format('nope')
+    with pytest.raises(ValueError, match="Unsupported export format"):
+        get_export_format("nope")
 
 
 def test_type_casting():
-    assert cast_value('1', 'Int64') == 1
-    assert get_polars_type('Float64') == pl.Float64()
+    assert cast_value("1", "Int64") == 1
+    assert get_polars_type("Float64") == pl.Float64()
 
 
 def test_resolve_iceberg_metadata_path_allows_symlinked_data_root(tmp_path, monkeypatch):
-    real_dir = tmp_path / 'real'
+    real_dir = tmp_path / "real"
     real_dir.mkdir()
-    link_dir = tmp_path / 'link'
+    link_dir = tmp_path / "link"
     link_dir.symlink_to(real_dir, target_is_directory=True)
-    monkeypatch.setattr(settings, 'data_dir', link_dir, raising=False)
+    monkeypatch.setattr(settings, "data_dir", link_dir, raising=False)
 
-    metadata_file = link_dir / 'namespaces' / settings.default_namespace / 'exports' / 'table' / 'metadata' / 'v1.metadata.json'
+    metadata_file = link_dir / "namespaces" / settings.default_namespace / "exports" / "table" / "metadata" / "v1.metadata.json"
     metadata_file.parent.mkdir(parents=True, exist_ok=True)
-    metadata_file.write_text('{}', encoding='utf-8')
+    metadata_file.write_text("{}", encoding="utf-8")
 
     assert resolve_iceberg_metadata_path(str(metadata_file)) == str(metadata_file)
 
 
 def test_resolve_iceberg_metadata_path_accepts_explicit_namespace(tmp_path, monkeypatch):
-    monkeypatch.setattr(settings, 'data_dir', tmp_path / 'data', raising=False)
-    metadata_file = namespace_paths('alpha').exports_dir / 'table' / 'metadata' / 'v1.metadata.json'
+    monkeypatch.setattr(settings, "data_dir", tmp_path / "data", raising=False)
+    metadata_file = namespace_paths("alpha").exports_dir / "table" / "metadata" / "v1.metadata.json"
     metadata_file.parent.mkdir(parents=True, exist_ok=True)
-    metadata_file.write_text('{}', encoding='utf-8')
+    metadata_file.write_text("{}", encoding="utf-8")
 
-    assert resolve_iceberg_metadata_path(str(metadata_file), namespace_name='alpha') == str(metadata_file)
+    assert resolve_iceberg_metadata_path(str(metadata_file), namespace_name="alpha") == str(metadata_file)
 
 
 def test_resolve_iceberg_metadata_path_rejects_wrong_namespace_root(tmp_path, monkeypatch):
-    monkeypatch.setattr(settings, 'data_dir', tmp_path / 'data', raising=False)
-    metadata_file = namespace_paths('alpha').exports_dir / 'table' / 'metadata' / 'v1.metadata.json'
+    monkeypatch.setattr(settings, "data_dir", tmp_path / "data", raising=False)
+    metadata_file = namespace_paths("alpha").exports_dir / "table" / "metadata" / "v1.metadata.json"
     metadata_file.parent.mkdir(parents=True, exist_ok=True)
-    metadata_file.write_text('{}', encoding='utf-8')
+    metadata_file.write_text("{}", encoding="utf-8")
 
-    with pytest.raises(ValueError, match='Iceberg metadata_path must be inside data directory'):
-        resolve_iceberg_metadata_path(str(metadata_file), namespace_name='beta')
+    with pytest.raises(ValueError, match="Iceberg metadata_path must be inside data directory"):
+        resolve_iceberg_metadata_path(str(metadata_file), namespace_name="beta")
 
 
 def test_resolve_iceberg_branch_metadata_path_accepts_explicit_data_root(tmp_path):
-    data_root = tmp_path / 'custom-root'
-    metadata_dir = data_root / 'table' / 'metadata'
+    data_root = tmp_path / "custom-root"
+    metadata_dir = data_root / "table" / "metadata"
     metadata_dir.mkdir(parents=True, exist_ok=True)
-    metadata_file = metadata_dir / 'v1.metadata.json'
-    metadata_file.write_text('{}', encoding='utf-8')
+    metadata_file = metadata_dir / "v1.metadata.json"
+    metadata_file.write_text("{}", encoding="utf-8")
 
     assert resolve_iceberg_branch_metadata_path(str(metadata_dir.parent), None, data_root=data_root) == str(metadata_file)

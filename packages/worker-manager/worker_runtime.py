@@ -15,7 +15,11 @@ from contracts.runtime_workers.models import RuntimeWorkerKind
 from contracts.scheduler.models import Schedule
 from core import (
     build_jobs_service as build_job_service,
+)
+from core import (
     build_runs_service as build_run_service,
+)
+from core import (
     runtime_workers_service as runtime_worker_service,
 )
 from core.database import run_db, run_settings_db
@@ -70,20 +74,20 @@ async def build_worker_loop(
     heartbeat_thread = threading.Thread(
         target=_heartbeat_loop_sync,
         kwargs={
-            'stop_signal': heartbeat_stop,
-            'worker_id': worker_id,
-            'heartbeat_seconds': heartbeat_seconds,
+            "stop_signal": heartbeat_stop,
+            "worker_id": worker_id,
+            "heartbeat_seconds": heartbeat_seconds,
         },
         daemon=True,
     )
     heartbeat_thread.start()
-    ipc_server = await runtime_ipc.start_api_server(listener='job')
+    ipc_server = await runtime_ipc.start_api_server(listener="job")
     if ipc_server is None:
-        raise RuntimeError('Build worker requires runtime IPC listener')
+        raise RuntimeError("Build worker requires runtime IPC listener")
     wake_event = asyncio.Event()
 
     async def handle_runtime_payload(payload: dict[str, object]) -> None:
-        if payload.get('kind') == 'job':
+        if payload.get("kind") == "job":
             wake_event.set()
 
     ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, stop_event, handle_runtime_payload))
@@ -103,12 +107,12 @@ async def build_worker_loop(
                     return
                 await _wait_for_build_job_signal(stop_event, wake_event)
             except Exception as exc:
-                logger.error('Build worker loop error: %s', exc, exc_info=True)
+                logger.error("Build worker loop error: %s", exc, exc_info=True)
                 await asyncio.sleep(0.1)
     finally:
         stop_event.set()
         await asyncio.gather(ipc_task, return_exceptions=True)
-        await runtime_ipc.stop_api_server(ipc_server, listener='job')
+        await runtime_ipc.stop_api_server(ipc_server, listener="job")
         heartbeat_stop.set()
         heartbeat_thread.join()
         _release_worker_jobs(worker_id)
@@ -129,7 +133,7 @@ async def _run_once(
     try:
         await run_job(job.build_id)
     except Exception as exc:
-        logger.error('Build job %s failed: %s', job.build_id, exc, exc_info=True)
+        logger.error("Build job %s failed: %s", job.build_id, exc, exc_info=True)
         error = str(exc)
 
         def _mark_failed(session):
@@ -144,7 +148,7 @@ async def _run_once(
     def _finalize(session):
         run = build_run_service.get_build_run(session, job.build_id)
         if run is None:
-            return build_job_service.mark_job_failed(session, job.id, error='Build run missing')
+            return build_job_service.mark_job_failed(session, job.id, error="Build run missing")
         if run.status == BuildRunStatus.CANCELLED:
             result = build_job_service.mark_job_cancelled(session, job.id)
         elif run.status == BuildRunStatus.COMPLETED:
@@ -152,7 +156,7 @@ async def _run_once(
         elif run.status in {BuildRunStatus.FAILED, BuildRunStatus.ORPHANED}:
             result = build_job_service.mark_job_failed(session, job.id, error=run.error_message)
         else:
-            result = build_job_service.mark_job_failed(session, job.id, error=f'Unexpected build status: {run.status.value}')
+            result = build_job_service.mark_job_failed(session, job.id, error=f"Unexpected build status: {run.status.value}")
         _reconcile_schedule_run(session, build_id=job.build_id)
         return result
 
@@ -265,4 +269,4 @@ def _heartbeat_loop_sync(*, stop_signal: threading.Event, worker_id: str, heartb
 
 
 def worker_id() -> str:
-    return f'local-worker:{uuid.uuid4()}'
+    return f"local-worker:{uuid.uuid4()}"

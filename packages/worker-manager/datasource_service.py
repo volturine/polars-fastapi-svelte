@@ -8,30 +8,34 @@ from typing import Any, cast
 
 import polars as pl
 import psycopg
+from contracts.datasource.models import DataSource, DataSourceColumnMetadata
+from contracts.datasource.source_types import DataSourceType
+from core.config import settings
+from core.exceptions import (
+    DataSourceConnectionError,
+    DataSourceNotFoundError,
+    DataSourceValidationError,
+)
+from core.iceberg_metadata import sync_iceberg_schema
+from core.namespace import get_namespace, namespace_paths
+from pyiceberg.catalog import load_catalog
+from pyiceberg.table import Table
+from sqlmodel import Session, select
+
 from compute_operations.datasource import load_datasource
 from datasource_schemas import (
     ColumnSchema,
     ColumnStats,
     ColumnStatsResponse,
     CSVOptions,
+    DataSourceDescriptionModel,
     DataSourceResponse,
     SchemaDiff,
     SchemaDiffStatus,
     SchemaInfo,
     SnapshotCompareResponse,
     SnapshotPreview,
-    normalize_datasource_description,
 )
-from pyiceberg.catalog import load_catalog
-from pyiceberg.table import Table
-from sqlmodel import Session, select
-
-from contracts.datasource.models import DataSource, DataSourceColumnMetadata
-from contracts.datasource.source_types import FILE_BASED_CATEGORIES, SOURCE_TYPE_CATEGORY, DataSourceType
-from core.config import settings
-from core.exceptions import DataSourceConnectionError, DataSourceNotFoundError, DataSourceValidationError
-from core.iceberg_metadata import sync_iceberg_schema
-from core.namespace import get_namespace, namespace_paths
 
 logger = logging.getLogger(__name__)
 
@@ -44,20 +48,20 @@ def _prepare_clean_target(clean_dir: Path, datasource_id: str, branch: str) -> P
 
 def _write_iceberg_table(lazy: pl.LazyFrame, table_path: Path, build_mode: str) -> Table:
     catalog = load_catalog(
-        'local',
-        type='sql',
+        "local",
+        type="sql",
         uri=settings.database_url,
-        warehouse=f'file://{table_path.parent}',
+        warehouse=f"file://{table_path.parent}",
     )
-    namespace = 'clean'
+    namespace = "clean"
     catalog.create_namespace_if_not_exists(namespace)
-    identifier = f'{namespace}.{table_path.parent.name}'
+    identifier = f"{namespace}.{table_path.parent.name}"
     arrow_table = lazy.collect().to_arrow()
-    if build_mode == 'recreate' and catalog.table_exists(identifier):
+    if build_mode == "recreate" and catalog.table_exists(identifier):
         catalog.drop_table(identifier)
     if catalog.table_exists(identifier):
         table = catalog.load_table(identifier)
-        if build_mode == 'incremental':
+        if build_mode == "incremental":
             table.append(arrow_table)
         else:
             _sync_iceberg_schema(table, arrow_table.schema)
@@ -68,18 +72,23 @@ def _write_iceberg_table(lazy: pl.LazyFrame, table_path: Path, build_mode: str) 
     return table
 
 
-def _build_iceberg_config(paths, target_path: Path, branch: str, source_config: Mapping[str, object] | None = None) -> dict[str, object]:
+def _build_iceberg_config(
+    paths,
+    target_path: Path,
+    branch: str,
+    source_config: Mapping[str, object] | None = None,
+) -> dict[str, object]:
     return {
-        'catalog_type': 'sql',
-        'catalog_uri': settings.database_url,
-        'warehouse': f'file://{paths.clean_dir}',
-        'namespace': 'clean',
-        'table': target_path.parent.name,
-        'metadata_path': str(target_path.parent),
-        'branch': branch,
-        'source': dict(source_config) if source_config is not None else None,
-        'namespace_name': get_namespace(),
-        'refresh': None,
+        "catalog_type": "sql",
+        "catalog_uri": settings.database_url,
+        "warehouse": f"file://{paths.clean_dir}",
+        "namespace": "clean",
+        "table": target_path.parent.name,
+        "metadata_path": str(target_path.parent),
+        "branch": branch,
+        "source": dict(source_config) if source_config is not None else None,
+        "namespace_name": get_namespace(),
+        "refresh": None,
     }
 
 
@@ -90,15 +99,15 @@ def _sync_iceberg_schema(table: Table, new_schema: Any) -> None:
 def _set_snapshot_metadata(config: dict[str, object], snapshot: Any | None) -> None:
     if snapshot is None:
         return
-    config['current_snapshot_id'] = str(snapshot.snapshot_id)
-    config['current_snapshot_timestamp_ms'] = int(snapshot.timestamp_ms)
-    config['snapshot_id'] = str(snapshot.snapshot_id)
-    config['snapshot_timestamp_ms'] = int(snapshot.timestamp_ms)
+    config["current_snapshot_id"] = str(snapshot.snapshot_id)
+    config["current_snapshot_timestamp_ms"] = int(snapshot.timestamp_ms)
+    config["snapshot_id"] = str(snapshot.snapshot_id)
+    config["snapshot_timestamp_ms"] = int(snapshot.timestamp_ms)
 
 
 def _schema_cache_payload(schema_info: SchemaInfo) -> dict[str, Any]:
-    columns = [column.model_dump(exclude={'description'}) for column in schema_info.columns]
-    return schema_info.model_dump(exclude={'columns'}) | {'columns': columns}
+    columns = [column.model_dump(exclude={"description"}) for column in schema_info.columns]
+    return schema_info.model_dump(exclude={"columns"}) | {"columns": columns}
 
 
 def _get_first_non_null_samples(lazy: pl.LazyFrame, max_rows: int = 1000) -> dict[str, str | None]:
@@ -113,49 +122,64 @@ def _get_first_non_null_samples(lazy: pl.LazyFrame, max_rows: int = 1000) -> dic
 def _schema_from_analysis(datasource: DataSource, sheet_name: str | None) -> SchemaInfo:
     del sheet_name
     raise DataSourceValidationError(
-        'Schema extraction not supported for analysis datasources',
-        details={'datasource_id': datasource.id},
+        "Schema extraction not supported for analysis datasources",
+        details={"datasource_id": datasource.id},
     )
 
 
 def _schema_from_database(datasource: DataSource, sheet_name: str | None) -> SchemaInfo:
     del sheet_name
-    connection_string = datasource.config['connection_string']
-    query = datasource.config['query']
-    if not connection_string.lower().startswith('postgresql://'):
-        raise DataSourceConnectionError('Database datasource connection string must be PostgreSQL')
+    connection_string = datasource.config["connection_string"]
+    query = datasource.config["query"]
+    if not connection_string.lower().startswith("postgresql://"):
+        raise DataSourceConnectionError("Database datasource connection string must be PostgreSQL")
     try:
         with psycopg.connect(connection_string, autocommit=True) as connection:
             frame = pl.read_database(query, connection)
     except Exception as exc:
         raise DataSourceConnectionError(
-            'Failed to query database datasource',
-            details={'datasource_id': datasource.id, 'source_type': datasource.source_type},
+            "Failed to query database datasource",
+            details={
+                "datasource_id": datasource.id,
+                "source_type": datasource.source_type,
+            },
         ) from exc
     sample_values = _get_first_non_null_samples(frame.lazy())
     columns = [
-        ColumnSchema(name=name, dtype=str(dtype), nullable=True, sample_value=sample_values.get(name))
+        ColumnSchema(
+            name=name,
+            dtype=str(dtype),
+            nullable=True,
+            sample_value=sample_values.get(name),
+        )
         for name, dtype in frame.schema.items()
     ]
     return SchemaInfo(columns=columns, row_count=frame.height)
 
 
 def _schema_from_file(datasource: DataSource, sheet_name: str | None) -> SchemaInfo:
-    config = {'source_type': datasource.source_type, **datasource.config}
+    config = {"source_type": datasource.source_type, **datasource.config}
     if sheet_name:
-        config = {**config, 'sheet_name': sheet_name}
+        config = {**config, "sheet_name": sheet_name}
     try:
         lazy = load_datasource(config)
     except Exception as exc:
-        category = SOURCE_TYPE_CATEGORY.get(DataSourceType(datasource.source_type))
-        label = category.value if category else 'datasource'
+        label = DataSourceType.require(datasource.source_type).category.value
         raise DataSourceConnectionError(
-            f'Failed to load {label} datasource',
-            details={'datasource_id': datasource.id, 'source_type': datasource.source_type},
+            f"Failed to load {label} datasource",
+            details={
+                "datasource_id": datasource.id,
+                "source_type": datasource.source_type,
+            },
         ) from exc
     sample_values = _get_first_non_null_samples(lazy)
     columns = [
-        ColumnSchema(name=name, dtype=str(dtype), nullable=True, sample_value=sample_values.get(name))
+        ColumnSchema(
+            name=name,
+            dtype=str(dtype),
+            nullable=True,
+            sample_value=sample_values.get(name),
+        )
         for name, dtype in lazy.collect_schema().items()
     ]
     return SchemaInfo(columns=columns, row_count=lazy.select(pl.len()).collect().item())
@@ -166,9 +190,8 @@ _SCHEMA_HANDLERS: dict[DataSourceType, Callable[[DataSource, str | None], Schema
     DataSourceType.DATABASE: _schema_from_database,
     **{
         source_type: _schema_from_file
-        for source_type in SOURCE_TYPE_CATEGORY
-        if SOURCE_TYPE_CATEGORY[source_type] in FILE_BASED_CATEGORIES
-        and source_type not in {DataSourceType.ANALYSIS, DataSourceType.DATABASE}
+        for source_type in DataSourceType
+        if source_type.is_file_based and source_type not in {DataSourceType.ANALYSIS, DataSourceType.DATABASE}
     },
 }
 
@@ -178,14 +201,20 @@ def _extract_schema(datasource: DataSource, sheet_name: str | None = None) -> Sc
         source_type = DataSourceType(datasource.source_type)
     except ValueError as exc:
         raise DataSourceConnectionError(
-            'Unsupported datasource type for schema extraction',
-            details={'datasource_id': datasource.id, 'source_type': datasource.source_type},
+            "Unsupported datasource type for schema extraction",
+            details={
+                "datasource_id": datasource.id,
+                "source_type": datasource.source_type,
+            },
         ) from exc
     handler = _SCHEMA_HANDLERS.get(source_type)
     if handler is None:
         raise DataSourceConnectionError(
-            'Unsupported datasource type for schema extraction',
-            details={'datasource_id': datasource.id, 'source_type': datasource.source_type},
+            "Unsupported datasource type for schema extraction",
+            details={
+                "datasource_id": datasource.id,
+                "source_type": datasource.source_type,
+            },
         )
     return handler(datasource, sheet_name)
 
@@ -196,21 +225,26 @@ def _build_datasource_result_json(
     source_type: DataSourceType,
     config: Mapping[str, object],
 ) -> dict[str, str]:
-    result = {'datasource_id': datasource_id, 'datasource_name': name}
+    result = {"datasource_id": datasource_id, "datasource_name": name}
     if source_type != DataSourceType.ICEBERG:
         return result
-    source = config.get('source')
+    source = config.get("source")
     if not isinstance(source, dict):
         return result
-    source_type_value = source.get('source_type')
-    if source_type_value not in {DataSourceType.FILE, DataSourceType.FILE.value, DataSourceType.DATABASE, DataSourceType.DATABASE.value}:
+    source_type_value = source.get("source_type")
+    if source_type_value not in {
+        DataSourceType.FILE,
+        DataSourceType.FILE.value,
+        DataSourceType.DATABASE,
+        DataSourceType.DATABASE.value,
+    }:
         return result
-    snapshot_id = config.get('current_snapshot_id')
+    snapshot_id = config.get("current_snapshot_id")
     if snapshot_id is None:
-        snapshot_id = config.get('snapshot_id')
+        snapshot_id = config.get("snapshot_id")
     if snapshot_id is None:
         return result
-    result['snapshot_id'] = str(snapshot_id)
+    result["snapshot_id"] = str(snapshot_id)
     return result
 
 
@@ -270,43 +304,43 @@ def create_file_datasource(
     within_data_root = data_root in resolved_path.parents or data_root == resolved_path
     within_upload_root = upload_root in resolved_path.parents or upload_root == resolved_path
     if not (within_data_root or within_upload_root):
-        raise ValueError(f'Path must be inside data directory: {data_root}')
-    if file_type in {'csv', 'json', 'ndjson', 'excel'} and not resolved_path.is_file():
-        raise ValueError(f'Path must be a file for type: {file_type}')
-    if file_type == 'parquet' and not (resolved_path.is_file() or resolved_path.is_dir()):
-        raise ValueError('Parquet path must be a file or directory')
+        raise ValueError(f"Path must be inside data directory: {data_root}")
+    if file_type in {"csv", "json", "ndjson", "excel"} and not resolved_path.is_file():
+        raise ValueError(f"Path must be a file for type: {file_type}")
+    if file_type == "parquet" and not (resolved_path.is_file() or resolved_path.is_dir()):
+        raise ValueError("Parquet path must be a file or directory")
 
     source_config = {
-        'source_type': DataSourceType.FILE,
-        'file_path': str(resolved_path),
-        'file_type': file_type,
-        'options': options or {},
-        'csv_options': csv_options.model_dump() if csv_options else None,
-        'sheet_name': sheet_name,
-        'start_row': start_row,
-        'start_col': start_col,
-        'end_col': end_col,
-        'end_row': end_row,
-        'has_header': has_header,
-        'table_name': table_name,
-        'named_range': named_range,
-        'cell_range': cell_range,
+        "source_type": DataSourceType.FILE,
+        "file_path": str(resolved_path),
+        "file_type": file_type,
+        "options": options or {},
+        "csv_options": csv_options.model_dump() if csv_options else None,
+        "sheet_name": sheet_name,
+        "start_row": start_row,
+        "start_col": start_col,
+        "end_col": end_col,
+        "end_row": end_row,
+        "has_header": has_header,
+        "table_name": table_name,
+        "named_range": named_range,
+        "cell_range": cell_range,
     }
     try:
         lazy = load_datasource(source_config)
     except Exception as exc:
         raise DataSourceValidationError(
-            f'Failed to load file datasource for ingestion: {exc}',
-            details={'file_path': str(resolved_path), 'file_type': file_type},
+            f"Failed to load file datasource for ingestion: {exc}",
+            details={"file_path": str(resolved_path), "file_type": file_type},
         ) from exc
-    target_path = _prepare_clean_target(paths.clean_dir, datasource_id, 'master')
-    snapshot = _write_iceberg_table(lazy, target_path, build_mode='recreate')
-    config = _build_iceberg_config(paths, target_path, branch='master', source_config=source_config)
+    target_path = _prepare_clean_target(paths.clean_dir, datasource_id, "master")
+    snapshot = _write_iceberg_table(lazy, target_path, build_mode="recreate")
+    config = _build_iceberg_config(paths, target_path, branch="master", source_config=source_config)
     _set_snapshot_metadata(config, snapshot.current_snapshot() if snapshot else None)
     datasource = DataSource(
         id=datasource_id,
         name=name,
-        description=normalize_datasource_description(description),
+        description=DataSourceDescriptionModel.normalize_description(description),
         source_type=DataSourceType.ICEBERG,
         config=config,
         owner_id=owner_id,
@@ -315,14 +349,14 @@ def create_file_datasource(
     session.add(datasource)
     session.commit()
     session.refresh(datasource)
-    _log_build_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch='master')
+    _log_build_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch="master")
     try:
         _persist_schema_cache(session, datasource)
     except Exception as exc:
         session.rollback()
         raise DataSourceValidationError(
-            f'Failed to extract schema for datasource {datasource_id}: {exc}',
-            details={'datasource_id': datasource_id},
+            f"Failed to extract schema for datasource {datasource_id}: {exc}",
+            details={"datasource_id": datasource_id},
         ) from exc
     return DataSourceResponse.model_validate(datasource)
 
@@ -333,21 +367,29 @@ def create_database_datasource(
     description: str | None,
     connection_string: str,
     query: str,
-    branch: str = 'master',
+    branch: str = "master",
     owner_id: str | None = None,
 ) -> DataSourceResponse:
     datasource_id = str(uuid.uuid4())
-    source_config = {'connection_string': connection_string, 'query': query, 'branch': branch}
+    source_config = {
+        "connection_string": connection_string,
+        "query": query,
+        "branch": branch,
+    }
     try:
         lazy = load_datasource(
-            {'source_type': DataSourceType.DATABASE, 'connection_string': connection_string, 'query': query},
+            {
+                "source_type": DataSourceType.DATABASE,
+                "connection_string": connection_string,
+                "query": query,
+            },
         )
     except Exception as exc:
-        if connection_string.startswith('postgresql://'):
+        if connection_string.startswith("postgresql://"):
             datasource = DataSource(
                 id=datasource_id,
                 name=name,
-                description=normalize_datasource_description(description),
+                description=DataSourceDescriptionModel.normalize_description(description),
                 source_type=DataSourceType.DATABASE,
                 config=source_config,
                 owner_id=owner_id,
@@ -356,21 +398,28 @@ def create_database_datasource(
             session.add(datasource)
             session.commit()
             session.refresh(datasource)
-            _log_build_create(session, datasource_id, name, DataSourceType.DATABASE, source_config, branch=branch)
+            _log_build_create(
+                session,
+                datasource_id,
+                name,
+                DataSourceType.DATABASE,
+                source_config,
+                branch=branch,
+            )
             return DataSourceResponse.model_validate(datasource)
         raise DataSourceConnectionError(
-            'Failed to query database datasource',
-            details={'connection_string': connection_string},
+            "Failed to query database datasource",
+            details={"connection_string": connection_string},
         ) from exc
     paths = namespace_paths()
     target_path = _prepare_clean_target(paths.clean_dir, datasource_id, branch)
-    snapshot = _write_iceberg_table(lazy, target_path, build_mode='recreate')
+    snapshot = _write_iceberg_table(lazy, target_path, build_mode="recreate")
     config = _build_iceberg_config(paths, target_path, branch=branch, source_config=source_config)
     _set_snapshot_metadata(config, snapshot.current_snapshot() if snapshot else None)
     datasource = DataSource(
         id=datasource_id,
         name=name,
-        description=normalize_datasource_description(description),
+        description=DataSourceDescriptionModel.normalize_description(description),
         source_type=DataSourceType.ICEBERG,
         config=config,
         owner_id=owner_id,
@@ -385,8 +434,8 @@ def create_database_datasource(
     except Exception as exc:
         session.rollback()
         raise DataSourceValidationError(
-            f'Failed to extract schema for datasource {datasource_id}: {exc}',
-            details={'datasource_id': datasource_id},
+            f"Failed to extract schema for datasource {datasource_id}: {exc}",
+            details={"datasource_id": datasource_id},
         ) from exc
     return DataSourceResponse.model_validate(datasource)
 
@@ -396,47 +445,51 @@ def create_iceberg_datasource(
     name: str,
     description: str | None,
     source: dict,
-    branch: str = 'master',
+    branch: str = "master",
     owner_id: str | None = None,
 ) -> DataSourceResponse:
-    source_type = source.get('source_type') if isinstance(source, dict) else None
+    source_type = source.get("source_type") if isinstance(source, dict) else None
     if source_type not in {DataSourceType.FILE, DataSourceType.DATABASE}:
         raise DataSourceValidationError(
-            'Iceberg datasource source_type is not supported for ingestion',
-            details={'source_type': source_type},
+            "Iceberg datasource source_type is not supported for ingestion",
+            details={"source_type": source_type},
         )
     if not isinstance(branch, str) or not branch.strip():
-        raise DataSourceValidationError('Branch is required', details={'source_type': source_type})
+        raise DataSourceValidationError("Branch is required", details={"source_type": source_type})
     branch_name = branch.strip()
     try:
         if source_type == DataSourceType.DATABASE:
-            connection_string = source.get('connection_string')
-            query = source.get('query')
+            connection_string = source.get("connection_string")
+            query = source.get("query")
             if not connection_string or not query:
                 raise DataSourceValidationError(
-                    'Datasource source is missing connection details',
-                    details={'source_type': source_type},
+                    "Datasource source is missing connection details",
+                    details={"source_type": source_type},
                 )
             lazy = load_datasource(
-                {'source_type': DataSourceType.DATABASE, 'connection_string': connection_string, 'query': query},
+                {
+                    "source_type": DataSourceType.DATABASE,
+                    "connection_string": connection_string,
+                    "query": query,
+                },
             )
         else:
             lazy = load_datasource(source)
     except DataSourceValidationError:
         raise
     except Exception as exc:
-        message = 'Failed to query database datasource' if source_type == DataSourceType.DATABASE else 'Failed to read file datasource'
-        raise DataSourceConnectionError(message, details={'source_type': source_type}) from exc
+        message = "Failed to query database datasource" if source_type == DataSourceType.DATABASE else "Failed to read file datasource"
+        raise DataSourceConnectionError(message, details={"source_type": source_type}) from exc
     datasource_id = str(uuid.uuid4())
     paths = namespace_paths()
     target_path = _prepare_clean_target(paths.clean_dir, datasource_id, branch_name)
-    snapshot = _write_iceberg_table(lazy, target_path, build_mode='recreate')
+    snapshot = _write_iceberg_table(lazy, target_path, build_mode="recreate")
     config = _build_iceberg_config(paths, target_path, branch=branch_name, source_config=source)
     _set_snapshot_metadata(config, snapshot.current_snapshot() if snapshot else None)
     datasource = DataSource(
         id=datasource_id,
         name=name,
-        description=normalize_datasource_description(description),
+        description=DataSourceDescriptionModel.normalize_description(description),
         source_type=DataSourceType.ICEBERG,
         config=config,
         owner_id=owner_id,
@@ -451,8 +504,8 @@ def create_iceberg_datasource(
     except Exception as exc:
         session.rollback()
         raise DataSourceValidationError(
-            f'Failed to extract schema for datasource {datasource_id}: {exc}',
-            details={'datasource_id': datasource_id},
+            f"Failed to extract schema for datasource {datasource_id}: {exc}",
+            details={"datasource_id": datasource_id},
         ) from exc
     return DataSourceResponse.model_validate(datasource)
 
@@ -463,63 +516,67 @@ def refresh_external_datasource(session: Session, datasource_id: str) -> DataSou
         raise DataSourceNotFoundError(datasource_id)
     if datasource.source_type != DataSourceType.ICEBERG:
         raise DataSourceValidationError(
-            'Refresh is only available for Iceberg datasources',
-            details={'datasource_id': datasource_id},
+            "Refresh is only available for Iceberg datasources",
+            details={"datasource_id": datasource_id},
         )
-    source = datasource.config.get('source') if isinstance(datasource.config, dict) else None
+    source = datasource.config.get("source") if isinstance(datasource.config, dict) else None
     if not isinstance(source, dict):
         raise DataSourceValidationError(
-            'Datasource has no external source configuration',
-            details={'datasource_id': datasource_id},
+            "Datasource has no external source configuration",
+            details={"datasource_id": datasource_id},
         )
-    source_type = source.get('source_type')
+    source_type = source.get("source_type")
     if source_type not in {DataSourceType.DATABASE, DataSourceType.FILE}:
         raise DataSourceValidationError(
-            'Datasource source is not refreshable',
-            details={'datasource_id': datasource_id, 'source_type': source_type},
+            "Datasource source is not refreshable",
+            details={"datasource_id": datasource_id, "source_type": source_type},
         )
-    branch_raw = datasource.config.get('branch', source.get('branch'))
+    branch_raw = datasource.config.get("branch", source.get("branch"))
     if not isinstance(branch_raw, str) or not branch_raw.strip():
         raise DataSourceValidationError(
-            'Datasource branch is required',
-            details={'datasource_id': datasource_id},
+            "Datasource branch is required",
+            details={"datasource_id": datasource_id},
         )
     try:
         if source_type == DataSourceType.DATABASE:
-            connection_string = source.get('connection_string')
-            query = source.get('query')
+            connection_string = source.get("connection_string")
+            query = source.get("query")
             if not connection_string or not query:
                 raise DataSourceValidationError(
-                    'Datasource source is missing connection details',
-                    details={'datasource_id': datasource_id},
+                    "Datasource source is missing connection details",
+                    details={"datasource_id": datasource_id},
                 )
             lazy = load_datasource(
-                {'source_type': DataSourceType.DATABASE, 'connection_string': connection_string, 'query': query},
+                {
+                    "source_type": DataSourceType.DATABASE,
+                    "connection_string": connection_string,
+                    "query": query,
+                },
             )
         else:
             lazy = load_datasource(source)
     except DataSourceValidationError:
         raise
     except Exception as exc:
-        message = 'Failed to query database datasource' if source_type == DataSourceType.DATABASE else 'Failed to read file datasource'
-        raise DataSourceConnectionError(message, details={'datasource_id': datasource_id}) from exc
-    metadata_path = datasource.config.get('metadata_path')
+        message = "Failed to query database datasource" if source_type == DataSourceType.DATABASE else "Failed to read file datasource"
+        raise DataSourceConnectionError(message, details={"datasource_id": datasource_id}) from exc
+    metadata_path = datasource.config.get("metadata_path")
     if not isinstance(metadata_path, str) or not metadata_path:
         raise DataSourceValidationError(
-            'Datasource missing metadata_path',
-            details={'datasource_id': datasource_id},
+            "Datasource missing metadata_path",
+            details={"datasource_id": datasource_id},
         )
     branch = branch_raw.strip()
     target_path = Path(metadata_path)
     if target_path.name != branch:
         target_path = _prepare_clean_target(namespace_paths().clean_dir, datasource_id, branch)
-    snapshot = _write_iceberg_table(lazy, target_path, build_mode='full')
+    snapshot = _write_iceberg_table(lazy, target_path, build_mode="full")
     next_config = dict(datasource.config)
     _set_snapshot_metadata(next_config, snapshot.current_snapshot() if snapshot else None)
-    next_config['branch'] = branch
-    next_config['metadata_path'] = str(target_path)
-    next_config['source'] = source
-    next_config['refresh'] = {'refreshed_at': datetime.now(UTC).replace(tzinfo=None).isoformat()}
+    next_config["branch"] = branch
+    next_config["metadata_path"] = str(target_path)
+    next_config["source"] = source
+    next_config["refresh"] = {"refreshed_at": datetime.now(UTC).replace(tzinfo=None).isoformat()}
     datasource.config = next_config
     datasource.schema_cache = None
     session.add(datasource)
@@ -532,14 +589,14 @@ def refresh_external_datasource(session: Session, datasource_id: str) -> DataSou
 def is_reingestable_raw_datasource(datasource: DataSource) -> bool:
     if datasource.source_type != DataSourceType.ICEBERG:
         return False
-    if datasource.created_by == 'analysis':
+    if datasource.created_by == "analysis":
         return False
     if not isinstance(datasource.config, dict):
         return False
-    source = datasource.config.get('source')
+    source = datasource.config.get("source")
     if not isinstance(source, dict):
         return False
-    source_type = source.get('source_type')
+    source_type = source.get("source_type")
     return source_type in {DataSourceType.FILE, DataSourceType.DATABASE}
 
 
@@ -551,9 +608,9 @@ def refresh_datasource_for_schedule(session: Session, datasource_id: str) -> Dat
         return refresh_external_datasource(session, datasource_id)
     schema = _extract_schema(datasource)
     next_config = dict(datasource.config) if isinstance(datasource.config, dict) else {}
-    next_config['refresh'] = {
-        'refreshed_at': datetime.now(UTC).replace(tzinfo=None).isoformat(),
-        'mode': 'schedule_schema_refresh',
+    next_config["refresh"] = {
+        "refreshed_at": datetime.now(UTC).replace(tzinfo=None).isoformat(),
+        "mode": "schedule_schema_refresh",
     }
     datasource.config = next_config
     datasource.schema_cache = _schema_cache_payload(schema)
@@ -572,8 +629,8 @@ def _get_column_metadata_map(session: Session, datasource_id: str) -> dict[str, 
 
 def _attach_column_descriptions(session: Session, datasource_id: str, schema_info: SchemaInfo) -> SchemaInfo:
     descriptions = _get_column_metadata_map(session, datasource_id)
-    columns = [column.model_copy(update={'description': descriptions.get(column.name)}) for column in schema_info.columns]
-    return schema_info.model_copy(update={'columns': columns})
+    columns = [column.model_copy(update={"description": descriptions.get(column.name)}) for column in schema_info.columns]
+    return schema_info.model_copy(update={"columns": columns})
 
 
 def get_datasource_schema(
@@ -661,20 +718,20 @@ def _supports_unique(dtype: pl.DataType) -> bool:
 def _build_snapshot_stats(lazy: pl.LazyFrame, schema: pl.Schema) -> list[ColumnStats]:
     exprs: list[pl.Expr] = []
     for name, dtype in schema.items():
-        exprs.append(pl.col(name).null_count().alias(f'{name}__null_count'))
+        exprs.append(pl.col(name).null_count().alias(f"{name}__null_count"))
         if _supports_unique(dtype):
-            exprs.append(pl.col(name).drop_nulls().n_unique().alias(f'{name}__unique_count'))
+            exprs.append(pl.col(name).drop_nulls().n_unique().alias(f"{name}__unique_count"))
         if _supports_min_max(dtype):
-            exprs.append(pl.col(name).min().alias(f'{name}__min'))
-            exprs.append(pl.col(name).max().alias(f'{name}__max'))
+            exprs.append(pl.col(name).min().alias(f"{name}__min"))
+            exprs.append(pl.col(name).max().alias(f"{name}__max"))
 
     stats_frame = lazy.select(exprs).collect()
     results: list[ColumnStats] = []
     for name, dtype in schema.items():
-        null_count = int(stats_frame[f'{name}__null_count'][0])
-        unique_count = int(stats_frame[f'{name}__unique_count'][0]) if f'{name}__unique_count' in stats_frame.columns else None
-        min_val = stats_frame[f'{name}__min'][0] if f'{name}__min' in stats_frame.columns else None
-        max_val = stats_frame[f'{name}__max'][0] if f'{name}__max' in stats_frame.columns else None
+        null_count = int(stats_frame[f"{name}__null_count"][0])
+        unique_count = int(stats_frame[f"{name}__unique_count"][0]) if f"{name}__unique_count" in stats_frame.columns else None
+        min_val = stats_frame[f"{name}__min"][0] if f"{name}__min" in stats_frame.columns else None
+        max_val = stats_frame[f"{name}__max"][0] if f"{name}__max" in stats_frame.columns else None
         results.append(
             ColumnStats(
                 column=name,
@@ -693,14 +750,35 @@ def _build_schema_diff(schema_a: pl.Schema, schema_b: pl.Schema) -> list[SchemaD
     cols_a = set(schema_a.keys())
     cols_b = set(schema_b.keys())
     for name in sorted(cols_a - cols_b):
-        diffs.append(SchemaDiff(column=name, status=SchemaDiffStatus.REMOVED, type_a=str(schema_a[name]), type_b=None))
+        diffs.append(
+            SchemaDiff(
+                column=name,
+                status=SchemaDiffStatus.REMOVED,
+                type_a=str(schema_a[name]),
+                type_b=None,
+            )
+        )
     for name in sorted(cols_b - cols_a):
-        diffs.append(SchemaDiff(column=name, status=SchemaDiffStatus.ADDED, type_a=None, type_b=str(schema_b[name])))
+        diffs.append(
+            SchemaDiff(
+                column=name,
+                status=SchemaDiffStatus.ADDED,
+                type_a=None,
+                type_b=str(schema_b[name]),
+            )
+        )
     for name in sorted(cols_a & cols_b):
         dtype_a = str(schema_a[name])
         dtype_b = str(schema_b[name])
         if dtype_a != dtype_b:
-            diffs.append(SchemaDiff(column=name, status=SchemaDiffStatus.TYPE_CHANGED, type_a=dtype_a, type_b=dtype_b))
+            diffs.append(
+                SchemaDiff(
+                    column=name,
+                    status=SchemaDiffStatus.TYPE_CHANGED,
+                    type_a=dtype_a,
+                    type_b=dtype_b,
+                )
+            )
     return diffs
 
 
@@ -716,12 +794,12 @@ def compare_iceberg_snapshots(
         raise DataSourceNotFoundError(datasource_id)
     if datasource.source_type != DataSourceType.ICEBERG:
         raise DataSourceValidationError(
-            'Snapshot comparison is only available for Iceberg datasources',
-            details={'datasource_id': datasource_id},
+            "Snapshot comparison is only available for Iceberg datasources",
+            details={"datasource_id": datasource_id},
         )
-    config_base = {'source_type': datasource.source_type, **datasource.config}
-    config_a = {**config_base, 'snapshot_id': snapshot_a}
-    config_b = {**config_base, 'snapshot_id': snapshot_b}
+    config_base = {"source_type": datasource.source_type, **datasource.config}
+    config_a = {**config_base, "snapshot_id": snapshot_a}
+    config_b = {**config_base, "snapshot_id": snapshot_b}
     lf_a = load_datasource(config_a)
     lf_b = load_datasource(config_b)
     schema_a = lf_a.collect_schema()
@@ -757,7 +835,7 @@ def _compute_histogram(series: pl.Series, bins: int = 20) -> list[dict[str, obje
     min_val = float(cast(Any, min_raw))
     max_val = float(cast(Any, max_raw))
     if min_val == max_val:
-        return [{'start': min_val, 'end': max_val, 'count': stats.len()}]
+        return [{"start": min_val, "end": max_val, "count": stats.len()}]
     width = (max_val - min_val) / bins
     result: list[dict[str, object]] = []
     for index in range(bins):
@@ -767,7 +845,7 @@ def _compute_histogram(series: pl.Series, bins: int = 20) -> list[dict[str, obje
             count = series.filter((series >= start) & (series <= end)).len()
         else:
             count = series.filter((series >= start) & (series < end)).len()
-        result.append({'start': round(start, 4), 'end': round(end, 4), 'count': count})
+        result.append({"start": round(start, 4), "end": round(end, 4), "count": count})
     return result
 
 
@@ -782,13 +860,13 @@ def get_column_stats(
     datasource = session.get(DataSource, datasource_id)
     if datasource is None:
         raise DataSourceNotFoundError(datasource_id)
-    config = {'source_type': datasource.source_type, **datasource.config}
+    config = {"source_type": datasource.source_type, **datasource.config}
     if datasource_config:
         config = {**config, **datasource_config}
     lazy = load_datasource(config)
     schema = lazy.collect_schema()
     if column_name not in schema:
-        raise ValueError(f'Column not found: {column_name}')
+        raise ValueError(f"Column not found: {column_name}")
     if use_sample:
         lazy = lazy.head(sample_size)  # type: ignore[attr-defined]
     frame = lazy.select([pl.col(column_name)]).collect()
@@ -797,24 +875,38 @@ def get_column_stats(
     count = series.len()
     null_count = series.null_count()
     stats: dict[str, object] = {
-        'column': column_name,
-        'dtype': str(dtype),
-        'count': count,
-        'null_count': null_count,
-        'null_percentage': (null_count / count * 100.0) if count > 0 else 0.0,
+        "column": column_name,
+        "dtype": str(dtype),
+        "count": count,
+        "null_count": null_count,
+        "null_percentage": (null_count / count * 100.0) if count > 0 else 0.0,
     }
-    if isinstance(dtype, (pl.Int8, pl.Int16, pl.Int32, pl.Int64, pl.UInt8, pl.UInt16, pl.UInt32, pl.UInt64, pl.Float32, pl.Float64)):
+    if isinstance(
+        dtype,
+        (
+            pl.Int8,
+            pl.Int16,
+            pl.Int32,
+            pl.Int64,
+            pl.UInt8,
+            pl.UInt16,
+            pl.UInt32,
+            pl.UInt64,
+            pl.Float32,
+            pl.Float64,
+        ),
+    ):
         non_null = series.drop_nulls()
         stats.update(
             {
-                'mean': series.mean(),
-                'std': series.std(),
-                'min': series.min(),
-                'max': series.max(),
-                'median': series.median(),
-                'q25': series.quantile(0.25),
-                'q75': series.quantile(0.75),
-                'histogram': _compute_histogram(non_null),
+                "mean": series.mean(),
+                "std": series.std(),
+                "min": series.min(),
+                "max": series.max(),
+                "median": series.median(),
+                "q25": series.quantile(0.25),
+                "q75": series.quantile(0.75),
+                "histogram": _compute_histogram(non_null),
             }
         )
         return ColumnStatsResponse.model_validate(stats)
@@ -822,17 +914,17 @@ def get_column_stats(
         length_series = series.str.len_chars()  # type: ignore[attr-defined]
         stats.update(
             {
-                'unique': series.n_unique(),
-                'min_length': length_series.min(),
-                'max_length': length_series.max(),
-                'avg_length': length_series.mean(),
-                'top_values': series.value_counts().sort('count', descending=True).head(5).to_dicts(),
+                "unique": series.n_unique(),
+                "min_length": length_series.min(),
+                "max_length": length_series.max(),
+                "avg_length": length_series.mean(),
+                "top_values": series.value_counts().sort("count", descending=True).head(5).to_dicts(),
             }
         )
         return ColumnStatsResponse.model_validate(stats)
     if isinstance(dtype, pl.Boolean):
-        value_counts = series.value_counts().sort('count', descending=True).to_dicts()
-        stats.update({'unique': series.n_unique(), 'top_values': value_counts})
+        value_counts = series.value_counts().sort("count", descending=True).to_dicts()
+        stats.update({"unique": series.n_unique(), "top_values": value_counts})
         return ColumnStatsResponse.model_validate(stats)
-    stats.update({'unique': series.n_unique()})
+    stats.update({"unique": series.n_unique()})
     return ColumnStatsResponse.model_validate(stats)

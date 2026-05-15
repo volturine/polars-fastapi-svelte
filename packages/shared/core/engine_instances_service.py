@@ -12,21 +12,13 @@ def _utcnow() -> datetime:
     return datetime.now(UTC)
 
 
-def _coerce_status(value: str, current_job_id: str | None) -> EngineInstanceStatus:
-    if value == 'healthy' and current_job_id:
-        return EngineInstanceStatus.RUNNING
-    if value == 'healthy':
-        return EngineInstanceStatus.IDLE
-    return EngineInstanceStatus.STOPPED
-
-
 def _copy_json(value: dict[str, object] | None) -> dict[str, object] | None:
     return dict(value) if isinstance(value, dict) else None
 
 
 def _apply_engine_status(row: EngineInstance, *, status: EngineStatusInfo, stamp: datetime) -> None:
     row.process_id = status.process_id
-    row.status = _coerce_status(status.status, status.current_job_id)
+    row.status = EngineInstanceStatus.from_engine_status(status.status, status.current_job_id)
     row.current_job_id = status.current_job_id
     row.resource_config_json = _copy_json(status.resource_config)
     row.effective_resources_json = _copy_json(status.effective_resources)
@@ -35,14 +27,7 @@ def _apply_engine_status(row: EngineInstance, *, status: EngineStatusInfo, stamp
     row.updated_at = stamp
 
 
-def upsert_engine_status(
-    session: Session,
-    *,
-    worker_id: str,
-    namespace: str,
-    status: EngineStatusInfo,
-    now: datetime | None = None,
-) -> EngineInstance:
+def upsert_engine_status(session: Session, *, worker_id: str, namespace: str, status: EngineStatusInfo, now: datetime | None = None) -> EngineInstance:
     stamp = now or _utcnow()
     instance_id = f'{worker_id}:{namespace}:{status.analysis_id}'
     row = session.get(EngineInstance, instance_id)
@@ -53,7 +38,7 @@ def upsert_engine_status(
             namespace=namespace,
             analysis_id=status.analysis_id,
             process_id=status.process_id,
-            status=_coerce_status(status.status, status.current_job_id),
+            status=EngineInstanceStatus.from_engine_status(status.status, status.current_job_id),
             current_job_id=status.current_job_id,
             current_build_id=None,
             current_engine_run_id=None,
@@ -80,34 +65,14 @@ def upsert_engine_status(
     return row
 
 
-def persist_engine_snapshot(
-    session: Session,
-    *,
-    worker_id: str,
-    namespace: str,
-    statuses: list[EngineStatusInfo],
-    now: datetime | None = None,
-) -> None:
+def persist_engine_snapshot(session: Session, *, worker_id: str, namespace: str, statuses: list[EngineStatusInfo], now: datetime | None = None) -> None:
     active = {status.analysis_id for status in statuses}
     for status in statuses:
         upsert_engine_status(session, worker_id=worker_id, namespace=namespace, status=status, now=now)
-    _ = mark_namespace_engines_stopped(
-        session,
-        worker_id=worker_id,
-        namespace=namespace,
-        active_analysis_ids=active,
-        now=now,
-    )
+    _ = mark_namespace_engines_stopped(session, worker_id=worker_id, namespace=namespace, active_analysis_ids=active, now=now)
 
 
-def mark_namespace_engines_stopped(
-    session: Session,
-    *,
-    worker_id: str,
-    namespace: str,
-    active_analysis_ids: set[str],
-    now: datetime | None = None,
-) -> int:
+def mark_namespace_engines_stopped(session: Session, *, worker_id: str, namespace: str, active_analysis_ids: set[str], now: datetime | None = None) -> int:
     stamp = now or _utcnow()
     stmt = select(EngineInstance).where(EngineInstance.worker_id == worker_id).where(EngineInstance.namespace == namespace)  # type: ignore[arg-type]
     rows = list(session.execute(stmt).scalars().all())
@@ -131,12 +96,7 @@ def mark_namespace_engines_stopped(
 
 
 def list_engine_instances(session: Session, *, namespace: str) -> list[EngineInstance]:
-    active = [
-        EngineInstanceStatus.IDLE,
-        EngineInstanceStatus.RUNNING,
-        EngineInstanceStatus.STARTING,
-        EngineInstanceStatus.STOPPING,
-    ]
+    active = [EngineInstanceStatus.IDLE, EngineInstanceStatus.RUNNING, EngineInstanceStatus.STARTING, EngineInstanceStatus.STOPPING]
     stmt = (
         select(EngineInstance)
         .where(EngineInstance.namespace == namespace)  # type: ignore[arg-type]
@@ -182,9 +142,7 @@ def latest_namespace_update(session: Session, *, namespace: str) -> datetime | N
 def serialize_engine_instance(row: EngineInstance, *, defaults: dict[str, object]) -> dict[str, object]:
     return {
         'analysis_id': row.analysis_id,
-        'status': 'healthy'
-        if row.status in {EngineInstanceStatus.IDLE, EngineInstanceStatus.RUNNING, EngineInstanceStatus.STARTING}
-        else 'terminated',
+        'status': 'healthy' if row.status in {EngineInstanceStatus.IDLE, EngineInstanceStatus.RUNNING, EngineInstanceStatus.STARTING} else 'terminated',
         'process_id': row.process_id,
         'last_activity': row.last_activity_at.isoformat() if row.last_activity_at is not None else None,
         'current_job_id': row.current_job_id,

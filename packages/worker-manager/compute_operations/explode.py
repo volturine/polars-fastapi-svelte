@@ -1,7 +1,6 @@
 """Explode list columns operation."""
 
 import polars as pl
-
 from contracts.compute.base import OperationHandler, OperationParams
 
 
@@ -19,5 +18,5 @@ class ExplodeHandler(OperationHandler):
         validated = ExplodeParams.model_validate(params)
         columns = [validated.columns] if isinstance(validated.columns, str) else validated.columns
         if not columns:
-            raise ValueError('Explode requires at least one column')
+            raise ValueError("Explode requires at least one column")
         return lf.explode(columns)

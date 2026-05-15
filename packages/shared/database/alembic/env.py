@@ -36,12 +36,7 @@ config.set_main_option('sqlalchemy.url', settings.database_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-_SHARED_TABLES = {
-    'app_settings',
-    'engine_instances',
-    'runtime_namespaces',
-    'runtime_workers',
-}
+_SHARED_TABLES = {'app_settings', 'engine_instances', 'runtime_namespaces', 'runtime_workers'}
 _TENANT_TABLES = {
     'analyses',
     'analysis_datasources',
@@ -120,11 +115,7 @@ def run_migrations_online() -> None:
         connection.execute(text(f'SET search_path TO "{schema}", public'))
         connection.commit()
         context.configure(
-            connection=connection,
-            target_metadata=_target_metadata(),
-            include_object=_include_object,
-            version_table_schema=schema,
-            include_schemas=True,
+            connection=connection, target_metadata=_target_metadata(), include_object=_include_object, version_table_schema=schema, include_schemas=True
         )
 
         with context.begin_transaction():

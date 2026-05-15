@@ -1,7 +1,7 @@
+from core.database import get_settings_engine
+
 from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
 from modules.chat.models import ChatSession
-
-from core.database import get_settings_engine
 
 
 def ensure_backend_public_tables() -> None:

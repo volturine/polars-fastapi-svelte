@@ -24,9 +24,7 @@ def _scope() -> str:
     config = migration_context.config
     if config is None:
         return 'public'
-    return str(
-        migration_context.opts.get('tag') or config.get_main_option('runtime_scope') or config.attributes.get('runtime_scope', 'public')
-    )
+    return str(migration_context.opts.get('tag') or config.get_main_option('runtime_scope') or config.attributes.get('runtime_scope', 'public'))
 
 
 def upgrade() -> None:

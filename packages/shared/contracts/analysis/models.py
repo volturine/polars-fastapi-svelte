@@ -1,5 +1,4 @@
 from datetime import datetime
-from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, String
@@ -7,9 +6,10 @@ from sqlalchemy.ext.mutable import MutableDict
 from sqlmodel import Field, SQLModel
 
 from contracts.analysis.pipeline_types import PipelineDefinition, parse_pipeline
+from contracts.enums import DataForgeStrEnum
 
 
-class AnalysisStatus(StrEnum):
+class AnalysisStatus(DataForgeStrEnum):
     DRAFT = 'draft'
     RUNNING = 'running'
     COMPLETED = 'completed'

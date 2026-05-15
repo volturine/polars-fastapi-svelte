@@ -1,14 +1,14 @@
-from datetime import datetime
-from enum import StrEnum
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter, field_validator
 
 from contracts.analysis.step_types import is_step_type
 from contracts.engine_runs.schemas import EngineRunKind
+from contracts.enums import DataForgeStrEnum
 
 
-class EngineStatus(StrEnum):
+class EngineStatus(DataForgeStrEnum):
     HEALTHY = 'healthy'
     TERMINATED = 'terminated'
 
@@ -110,9 +110,7 @@ class AnalysisPipelineTab(BaseModel):
             if config is not None and not isinstance(config, dict):
                 raise ValueError(f'Analysis pipeline step {index} config must be a dict')
             depends_on = step.get('depends_on')
-            if depends_on is not None and not (
-                isinstance(depends_on, list) and all(isinstance(dep, str) and dep.strip() for dep in depends_on)
-            ):
+            if depends_on is not None and not (isinstance(depends_on, list) and all(isinstance(dep, str) and dep.strip() for dep in depends_on)):
                 raise ValueError(f'Analysis pipeline step {index} depends_on must be a list of step ids')
             is_applied = step.get('is_applied')
             if is_applied is not None and not isinstance(is_applied, bool):
@@ -215,7 +213,7 @@ class StepPreviewResponse(BaseModel):
 StepPreviewRequest.model_rebuild()
 
 
-class ExportFormat(StrEnum):
+class ExportFormat(DataForgeStrEnum):
     CSV = 'csv'
     PARQUET = 'parquet'
     JSON = 'json'
@@ -224,7 +222,7 @@ class ExportFormat(StrEnum):
     EXCEL = 'excel'
 
 
-class ExportDestination(StrEnum):
+class ExportDestination(DataForgeStrEnum):
     DOWNLOAD = 'download'
     DATASOURCE = 'datasource'
 
@@ -344,17 +342,21 @@ class StepRowCountResponse(BaseModel):
     row_count: int
 
 
-class BuildStatus(StrEnum):
+class BuildStatus(DataForgeStrEnum):
     SUCCESS = 'success'
     WARNING = 'warning'
 
+    @classmethod
+    def coerce(cls, value: object) -> 'BuildStatus':
+        return cls.read(value, default=cls.SUCCESS) or cls.SUCCESS
 
-class BuildTabStatus(StrEnum):
+
+class BuildTabStatus(DataForgeStrEnum):
     SUCCESS = 'success'
     FAILED = 'failed'
 
 
-class ComputeRunStatus(StrEnum):
+class ComputeRunStatus(DataForgeStrEnum):
     SUCCESS = 'success'
     FAILED = 'failed'
 
@@ -376,16 +378,26 @@ class BuildRequest(BaseModel):
     analysis_pipeline: AnalysisPipelinePayload
     tab_id: str | None = None
 
+    def pipeline_payload(self) -> dict[str, object]:
+        pipeline = self.analysis_pipeline.model_dump(mode='json')
+        if not isinstance(pipeline, dict):
+            raise ValueError('analysis_pipeline is required')
+        return {**pipeline, 'tab_id': self.tab_id}
 
-class ActiveBuildStatus(StrEnum):
+
+class ActiveBuildStatus(DataForgeStrEnum):
     QUEUED = 'queued'
     RUNNING = 'running'
     COMPLETED = 'completed'
     FAILED = 'failed'
     CANCELLED = 'cancelled'
 
+    @classmethod
+    def coerce(cls, value: object) -> 'ActiveBuildStatus':
+        return cls.read(value, default=cls.QUEUED) or cls.QUEUED
 
-class BuildStepState(StrEnum):
+
+class BuildStepState(DataForgeStrEnum):
     PENDING = 'pending'
     RUNNING = 'running'
     COMPLETED = 'completed'
@@ -393,10 +405,14 @@ class BuildStepState(StrEnum):
     SKIPPED = 'skipped'
 
 
-class BuildLogLevel(StrEnum):
+class BuildLogLevel(DataForgeStrEnum):
     INFO = 'info'
     WARNING = 'warning'
     ERROR = 'error'
+
+    @classmethod
+    def coerce(cls, value: object) -> 'BuildLogLevel':
+        return cls.read(value, default=cls.INFO) or cls.INFO
 
 
 class BuildStarter(BaseModel):
@@ -406,6 +422,16 @@ class BuildStarter(BaseModel):
     display_name: str | None = None
     email: str | None = None
     triggered_by: str | None = None
+
+    @classmethod
+    def for_user(cls, user: object | None) -> 'BuildStarter':
+        if user is None:
+            return cls(triggered_by='user')
+        return cls(user_id=getattr(user, 'id', None), display_name=getattr(user, 'display_name', None), email=getattr(user, 'email', None), triggered_by='user')
+
+    @classmethod
+    def for_schedule(cls, schedule_id: str) -> 'BuildStarter':
+        return cls(triggered_by=f'schedule:{schedule_id}')
 
 
 class BuildResourceConfigSummary(BaseModel):
@@ -505,6 +531,33 @@ class ActiveBuildDetail(ActiveBuildSummary):
     error: str | None = None
     request_json: dict[str, object] | None = None
 
+    def cancel_duration_ms(self, *, cancelled_at: datetime) -> int:
+        started_at = self.started_at if self.started_at.tzinfo is not None else self.started_at.replace(tzinfo=UTC)
+        elapsed_from_start = max(int((cancelled_at - started_at).total_seconds() * 1000), 0)
+        return max(self.elapsed_ms, elapsed_from_start)
+
+    def cancelled_event(self, *, cancelled_at: datetime, cancelled_by: str | None, duration_ms: int, emitted_at: datetime) -> 'BuildCancelledEvent':
+        return BuildCancelledEvent(
+            build_id=self.build_id,
+            analysis_id=self.analysis_id,
+            emitted_at=emitted_at,
+            current_kind=self.current_kind,
+            current_datasource_id=self.current_datasource_id,
+            tab_id=self.current_tab_id,
+            tab_name=self.current_tab_name,
+            current_output_id=self.current_output_id,
+            current_output_name=self.current_output_name,
+            engine_run_id=self.current_engine_run_id,
+            progress=self.progress,
+            elapsed_ms=duration_ms,
+            total_steps=self.total_steps,
+            tabs_built=len(self.results),
+            results=self.results,
+            duration_ms=duration_ms,
+            cancelled_at=cancelled_at,
+            cancelled_by=cancelled_by,
+        )
+
 
 class ActiveBuildListResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -513,7 +566,7 @@ class ActiveBuildListResponse(BaseModel):
     total: int
 
 
-class BuildEventType(StrEnum):
+class BuildEventType(DataForgeStrEnum):
     PLAN = 'plan'
     STEP_START = 'step_start'
     STEP_COMPLETE = 'step_complete'
@@ -524,6 +577,20 @@ class BuildEventType(StrEnum):
     COMPLETE = 'complete'
     FAILED = 'failed'
     CANCELLED = 'cancelled'
+
+    @property
+    def is_terminal(self) -> bool:
+        return self in {BuildEventType.COMPLETE, BuildEventType.FAILED, BuildEventType.CANCELLED}
+
+    @property
+    def throttle_seconds(self) -> float | None:
+        if self == BuildEventType.PROGRESS:
+            return 0.1
+        if self == BuildEventType.RESOURCES:
+            return 0.5
+        if self == BuildEventType.LOG:
+            return 0.05
+        return None
 
 
 class BuildStreamEvent(BaseModel):

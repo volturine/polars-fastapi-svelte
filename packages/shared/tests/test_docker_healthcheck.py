@@ -15,13 +15,7 @@ def test_worker_healthy_accepts_recent_scheduler_heartbeat(monkeypatch) -> None:
 
     run_settings_db(
         lambda session: runtime_worker_service.register_worker(
-            session,
-            worker_id='scheduler-1',
-            kind=RuntimeWorkerKind.SCHEDULER,
-            hostname=host,
-            pid=1,
-            capacity=1,
-            now=now,
+            session, worker_id='scheduler-1', kind=RuntimeWorkerKind.SCHEDULER, hostname=host, pid=1, capacity=1, now=now
         )
     )
 
@@ -36,13 +30,7 @@ def test_worker_healthy_rejects_stale_manager_heartbeat(monkeypatch) -> None:
 
     run_settings_db(
         lambda session: runtime_worker_service.register_worker(
-            session,
-            worker_id='manager-1',
-            kind=RuntimeWorkerKind.BUILD_MANAGER,
-            hostname=host,
-            pid=1,
-            capacity=1,
-            now=stale,
+            session, worker_id='manager-1', kind=RuntimeWorkerKind.BUILD_MANAGER, hostname=host, pid=1, capacity=1, now=stale
         )
     )
 
@@ -56,13 +44,7 @@ def test_worker_healthy_rejects_stopped_worker(monkeypatch) -> None:
 
     run_settings_db(
         lambda session: runtime_worker_service.register_worker(
-            session,
-            worker_id='scheduler-2',
-            kind=RuntimeWorkerKind.SCHEDULER,
-            hostname=host,
-            pid=2,
-            capacity=1,
-            now=now,
+            session, worker_id='scheduler-2', kind=RuntimeWorkerKind.SCHEDULER, hostname=host, pid=2, capacity=1, now=now
         )
     )
     run_settings_db(lambda session: runtime_worker_service.mark_worker_stopped(session, worker_id='scheduler-2', now=now))

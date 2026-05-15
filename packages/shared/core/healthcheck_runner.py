@@ -219,13 +219,7 @@ _EVALUATORS: dict[str, HealthcheckEvaluator] = {
 }
 
 
-def run_healthchecks(
-    session: Session,
-    checks: list[HealthCheck],
-    lf: pl.LazyFrame,
-    *,
-    critical_only: bool = False,
-) -> list[HealthCheckResult]:
+def run_healthchecks(session: Session, checks: list[HealthCheck], lf: pl.LazyFrame, *, critical_only: bool = False) -> list[HealthCheckResult]:
     """Run all health checks in a single LazyFrame evaluation."""
     selected = checks
     if critical_only:
@@ -264,14 +258,7 @@ def run_healthchecks(
         else:
             passed, message, details = evaluator(check, collected)
 
-        result = HealthCheckResult(
-            id=str(uuid.uuid4()),
-            healthcheck_id=check.id,
-            passed=passed,
-            message=message,
-            details=details,
-            checked_at=now,
-        )
+        result = HealthCheckResult(id=str(uuid.uuid4()), healthcheck_id=check.id, passed=passed, message=message, details=details, checked_at=now)
         session.add(result)
         results.append(result)
 

@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from fastapi import Depends, HTTPException, Request
-from modules.auth.dependencies import _resolve_session_token
-from modules.auth.service import ensure_default_user, validate_session
-from sqlmodel import Session
-
-from backend_core.auth_config import settings as auth_settings
 from contracts.runtime_workers.models import RuntimeWorkerKind
 from core import runtime_workers_service
 from core.database import get_settings_db
+from fastapi import Depends, HTTPException, Request
+from sqlmodel import Session
+
+from backend_core.auth_config import settings as auth_settings
+from modules.auth.dependencies import _resolve_session_token
+from modules.auth.service import ensure_default_user, validate_session
 
 
 class RuntimeAvailabilityProbe(Protocol):
@@ -57,13 +57,15 @@ def get_runtime_availability_probe(
     request: Request,
     session: Session = Depends(get_settings_db),
 ) -> RuntimeAvailabilityProbe:
-    probe = getattr(request.app.state, 'runtime_availability_probe', None)
+    probe = getattr(request.app.state, "runtime_availability_probe", None)
     if probe is not None:
         return probe
     return PersistedRuntimeAvailabilityProbe(session)
 
 
-def get_lock_owner_id(owner_id: str | None = Depends(get_optional_lock_owner_id)) -> str:
+def get_lock_owner_id(
+    owner_id: str | None = Depends(get_optional_lock_owner_id),
+) -> str:
     if owner_id is not None:
         return owner_id
-    raise HTTPException(status_code=401, detail='Lock owner identity is required')
+    raise HTTPException(status_code=401, detail="Lock owner identity is required")

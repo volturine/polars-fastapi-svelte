@@ -32,9 +32,7 @@ def main() -> int:
                 continue
             name = path.name
             if name in LEGACY_TEST_DIR_NAMES or name.startswith(LEGACY_TEST_DIR_PREFIXES):
-                errors.append(
-                    f'{path.relative_to(ROOT)} is a legacy test artifact location; use {test_dir.relative_to(ROOT)}/.artifacts/'
-                )
+                errors.append(f'{path.relative_to(ROOT)} is a legacy test artifact location; use {test_dir.relative_to(ROOT)}/.artifacts/')
 
     for package_dir in sorted(PACKAGES_DIR.iterdir()):
         if not package_dir.is_dir():

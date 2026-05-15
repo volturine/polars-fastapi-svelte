@@ -58,17 +58,14 @@ def main() -> int:
     overlap = sorted(set(dep_names) & set(dev_dep_names))
     if overlap:
         errors.append(
-            'packages/frontend/package.json has dependency overlap between dependencies and devDependencies: '
-            + ', '.join(overlap)
+            'packages/frontend/package.json has dependency overlap between dependencies and devDependencies: ' + ', '.join(overlap)
         )
 
     for script_name, script_value in scripts.items():
         if script_name == 'test:e2e:report':
             continue
         if any(token in script_value for token in LEGACY_TEST_ARTIFACT_PATH_TOKENS):
-            errors.append(
-                f'packages/frontend/package.json script "{script_name}" uses legacy artifact path: {script_value}'
-            )
+            errors.append(f'packages/frontend/package.json script "{script_name}" uses legacy artifact path: {script_value}')
 
     for package_name, pyproject_path in PYPROJECT_FILES.items():
         data = tomllib.loads(pyproject_path.read_text())
@@ -80,9 +77,7 @@ def main() -> int:
             errors.append(f'{pyproject_path.relative_to(ROOT)} has duplicated dependencies: {", ".join(duplicates)}')
 
         if package_name in {'backend', 'worker-manager', 'scheduler'} and normalized != ['dataforge-shared']:
-            errors.append(
-                f'{pyproject_path.relative_to(ROOT)} must depend only on dataforge-shared; got: {dependencies}'
-            )
+            errors.append(f'{pyproject_path.relative_to(ROOT)} must depend only on dataforge-shared; got: {dependencies}')
 
     if errors:
         print('Dependency hygiene violations:')

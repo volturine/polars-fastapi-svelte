@@ -75,13 +75,7 @@ def _day_from_ts(ts: datetime | None) -> date:
 
 
 class DatabaseLogWriter:
-    def __init__(
-        self,
-        database_url: str,
-        *,
-        flush_interval: float = _DEFAULT_FLUSH_INTERVAL,
-        overflow_policy: str = 'block',
-    ):
+    def __init__(self, database_url: str, *, flush_interval: float = _DEFAULT_FLUSH_INTERVAL, overflow_policy: str = 'block'):
         self._lock = threading.Lock()
         self._queue: queue.Queue[tuple[str, list[dict[str, Any]]]] = queue.Queue(maxsize=settings.log_queue_max_size)
         self._stop_event = threading.Event()
@@ -421,13 +415,7 @@ class DatabaseLogHandler(logging.Handler):
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    def __init__(
-        self,
-        app,
-        writer: RequestLogWriter | None = None,
-        get_time: Callable[[], float] | None = None,
-        max_body_size: int = 0,
-    ):
+    def __init__(self, app, writer: RequestLogWriter | None = None, get_time: Callable[[], float] | None = None, max_body_size: int = 0):
         super().__init__(app)
         self.writer = writer
         self.get_time = get_time or time.perf_counter
@@ -462,14 +450,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         response.headers['X-Request-Id'] = request_id
         return response
 
-    async def _capture_response(
-        self,
-        request: Request,
-        response: Response,
-        duration_ms: float,
-        request_id: str,
-        request_body: bytes | None,
-    ) -> Response:
+    async def _capture_response(self, request: Request, response: Response, duration_ms: float, request_id: str, request_body: bytes | None) -> Response:
         stream = response.body_iterator if isinstance(response, StreamingResponse) else getattr(response, 'body_iterator', None)
         if stream is not None:
 
@@ -485,23 +466,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                         yield chunk
                 finally:
                     if not logged:
-                        self._log_request(
-                            request,
-                            response,
-                            duration_ms,
-                            request_id,
-                            request_body,
-                            first_chunk,
-                            chunk_index=0,
-                        )
+                        self._log_request(request, response, duration_ms, request_id, request_body, first_chunk, chunk_index=0)
                         logged = True
 
-            streamed = StreamingResponse(
-                stream_wrapper(),
-                status_code=response.status_code,
-                media_type=response.media_type,
-                background=response.background,
-            )
+            streamed = StreamingResponse(stream_wrapper(), status_code=response.status_code, media_type=response.media_type, background=response.background)
             streamed.raw_headers = [item for item in response.raw_headers if item[0].lower() != b'content-length']
             return streamed
         response_data = getattr(response, 'body', None)
@@ -556,10 +524,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             'referer': request.headers.get('referer'),
             'error': error,
             'request_json': redact_logged_body(request.url.path, self._coerce_body(request.headers.get('content-type'), request_body)),
-            'response_json': redact_logged_body(
-                request.url.path,
-                self._coerce_body(response.headers.get('content-type') if response else None, response_body),
-            ),
+            'response_json': redact_logged_body(request.url.path, self._coerce_body(response.headers.get('content-type') if response else None, response_body)),
             'chunk_index': chunk_index,
         }
         if not self.writer:
@@ -602,16 +567,11 @@ def configure_logging() -> DatabaseLogWriter:
         return _writer
 
     level = getattr(logging, settings.log_level.upper(), logging.INFO)
-    logging.basicConfig(
-        level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    )
+    logging.basicConfig(level=level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.getLogger('httpx').setLevel(logging.WARNING)
 
     _writer = DatabaseLogWriter(
-        database_url=settings.database_url,
-        flush_interval=float(settings.log_flush_interval_seconds),
-        overflow_policy=settings.log_queue_overflow,
+        database_url=settings.database_url, flush_interval=float(settings.log_flush_interval_seconds), overflow_policy=settings.log_queue_overflow
     )
     queue_handler = logging.handlers.QueueHandler(queue.Queue())
     _listener = logging.handlers.QueueListener(queue_handler.queue, DatabaseLogHandler(_writer))

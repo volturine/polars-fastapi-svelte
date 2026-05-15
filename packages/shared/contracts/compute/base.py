@@ -13,12 +13,7 @@ class OperationParams(BaseModel):
 
 class OperationHandler(Protocol):
     def __call__(
-        self,
-        lf: pl.LazyFrame,
-        params: dict[str, object],
-        *,
-        right_lf: pl.LazyFrame | None = None,
-        right_sources: dict[str, pl.LazyFrame] | None = None,
+        self, lf: pl.LazyFrame, params: dict[str, object], *, right_lf: pl.LazyFrame | None = None, right_sources: dict[str, pl.LazyFrame] | None = None
     ) -> pl.LazyFrame:
         raise NotImplementedError
 
@@ -171,18 +166,12 @@ class ComputeEngine(Protocol):
         raise NotImplementedError
 
     def get_schema(
-        self,
-        datasource_config: dict[str, Any],
-        steps: list[dict[str, Any]],
-        additional_datasources: dict[str, dict[str, Any]] | None = None,
+        self, datasource_config: dict[str, Any], steps: list[dict[str, Any]], additional_datasources: dict[str, dict[str, Any]] | None = None
     ) -> str:
         raise NotImplementedError
 
     def get_row_count(
-        self,
-        datasource_config: dict[str, Any],
-        steps: list[dict[str, Any]],
-        additional_datasources: dict[str, dict[str, Any]] | None = None,
+        self, datasource_config: dict[str, Any], steps: list[dict[str, Any]], additional_datasources: dict[str, dict[str, Any]] | None = None
     ) -> str:
         raise NotImplementedError
 

@@ -56,14 +56,7 @@ def test_build_event_union_validates_terminal_events() -> None:
     results = [BuildTabResult(tab_id='tab-1', tab_name='Tab 1', status=BuildTabStatus.SUCCESS)]
 
     complete = BuildCompleteEvent(
-        build_id='build-1',
-        analysis_id='analysis-1',
-        emitted_at=now,
-        elapsed_ms=100,
-        total_steps=2,
-        tabs_built=1,
-        results=results,
-        duration_ms=100,
+        build_id='build-1', analysis_id='analysis-1', emitted_at=now, elapsed_ms=100, total_steps=2, tabs_built=1, results=results, duration_ms=100
     )
     failed = BuildFailedEvent(
         build_id='build-1',
@@ -111,10 +104,7 @@ def _pipeline_payload() -> dict:
 
 
 def test_step_preview_request_bounds_pagination() -> None:
-    payload = {
-        'target_step_id': 'source',
-        'analysis_pipeline': _pipeline_payload(),
-    }
+    payload = {'target_step_id': 'source', 'analysis_pipeline': _pipeline_payload()}
 
     request = StepPreviewRequest.model_validate(payload)
 
@@ -122,46 +112,25 @@ def test_step_preview_request_bounds_pagination() -> None:
     assert request.page == 1
 
 
-@pytest.mark.parametrize(
-    ('field', 'value'),
-    [
-        ('row_limit', 0),
-        ('row_limit', 5001),
-        ('page', 0),
-    ],
-)
+@pytest.mark.parametrize(('field', 'value'), [('row_limit', 0), ('row_limit', 5001), ('page', 0)])
 def test_step_preview_request_rejects_unbounded_pagination(field: str, value: int) -> None:
-    payload = {
-        'target_step_id': 'source',
-        'analysis_pipeline': _pipeline_payload(),
-        field: value,
-    }
+    payload = {'target_step_id': 'source', 'analysis_pipeline': _pipeline_payload(), field: value}
 
     with pytest.raises(ValidationError):
         StepPreviewRequest.model_validate(payload)
 
 
 def test_analysis_pipeline_payload_rejects_unknown_step_type() -> None:
-    payload: dict[str, Any] = {
-        'target_step_id': 'source',
-        'analysis_pipeline': _pipeline_payload(),
-    }
-    payload['analysis_pipeline']['tabs'][0]['steps'] = [
-        {'id': 'step-1', 'type': 'typo', 'config': {}, 'depends_on': []},
-    ]
+    payload: dict[str, Any] = {'target_step_id': 'source', 'analysis_pipeline': _pipeline_payload()}
+    payload['analysis_pipeline']['tabs'][0]['steps'] = [{'id': 'step-1', 'type': 'typo', 'config': {}, 'depends_on': []}]
 
     with pytest.raises(ValidationError, match='unknown type'):
         StepPreviewRequest.model_validate(payload)
 
 
 def test_analysis_pipeline_payload_rejects_unknown_step_fields() -> None:
-    payload: dict[str, Any] = {
-        'target_step_id': 'source',
-        'analysis_pipeline': _pipeline_payload(),
-    }
-    payload['analysis_pipeline']['tabs'][0]['steps'] = [
-        {'id': 'step-1', 'type': 'filter', 'config': {}, 'depends_on': [], 'surprise': True},
-    ]
+    payload: dict[str, Any] = {'target_step_id': 'source', 'analysis_pipeline': _pipeline_payload()}
+    payload['analysis_pipeline']['tabs'][0]['steps'] = [{'id': 'step-1', 'type': 'filter', 'config': {}, 'depends_on': [], 'surprise': True}]
 
     with pytest.raises(ValidationError, match='unknown field'):
         StepPreviewRequest.model_validate(payload)

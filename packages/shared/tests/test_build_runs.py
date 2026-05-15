@@ -10,12 +10,7 @@ from core import build_runs_service as build_run_service
 
 
 def _starter() -> dict[str, object]:
-    return {
-        'user_id': 'user-1',
-        'display_name': 'Test User',
-        'email': 'test@example.com',
-        'triggered_by': 'user',
-    }
+    return {'user_id': 'user-1', 'display_name': 'Test User', 'email': 'test@example.com', 'triggered_by': 'user'}
 
 
 def _create_run(test_db_session):
@@ -213,11 +208,7 @@ def test_fold_build_detail_reconstructs_snapshot(test_db_session) -> None:
             tabs_built=1,
             results=[
                 compute_schemas.BuildTabResult(
-                    tab_id='tab-1',
-                    tab_name='Tab 1',
-                    status=compute_schemas.BuildTabStatus.SUCCESS,
-                    output_id='out-1',
-                    output_name='Output 1',
+                    tab_id='tab-1', tab_name='Tab 1', status=compute_schemas.BuildTabStatus.SUCCESS, output_id='out-1', output_name='Output 1'
                 )
             ],
             duration_ms=1500,

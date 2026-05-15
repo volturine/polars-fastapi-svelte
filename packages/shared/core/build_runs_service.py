@@ -9,14 +9,7 @@ from contracts.build_runs.models import BuildEvent, BuildRun, BuildRunStatus
 from contracts.compute import schemas as compute_schemas
 from contracts.engine_runs.schemas import EngineRunKind
 
-_TERMINAL_STATUSES = frozenset(
-    {
-        BuildRunStatus.COMPLETED,
-        BuildRunStatus.FAILED,
-        BuildRunStatus.CANCELLED,
-        BuildRunStatus.ORPHANED,
-    }
-)
+_TERMINAL_STATUSES = frozenset(status for status in BuildRunStatus if status.is_terminal)
 
 
 def _utcnow() -> datetime:
@@ -25,24 +18,6 @@ def _utcnow() -> datetime:
 
 def _copy_json_dict(value: dict[str, Any] | None) -> dict[str, object]:
     return dict(value) if isinstance(value, dict) else {}
-
-
-def _coerce_status(status: BuildRunStatus | str) -> BuildRunStatus:
-    return status if isinstance(status, BuildRunStatus) else BuildRunStatus(status)
-
-
-def _coerce_api_status(status: BuildRunStatus) -> tuple[compute_schemas.ActiveBuildStatus, str | None]:
-    if status == BuildRunStatus.QUEUED:
-        return compute_schemas.ActiveBuildStatus.QUEUED, None
-    if status == BuildRunStatus.RUNNING:
-        return compute_schemas.ActiveBuildStatus.RUNNING, None
-    if status == BuildRunStatus.COMPLETED:
-        return compute_schemas.ActiveBuildStatus.COMPLETED, None
-    if status == BuildRunStatus.CANCELLED:
-        return compute_schemas.ActiveBuildStatus.CANCELLED, None
-    if status == BuildRunStatus.FAILED:
-        return compute_schemas.ActiveBuildStatus.FAILED, None
-    return compute_schemas.ActiveBuildStatus.FAILED, 'Build orphaned during startup recovery'
 
 
 def create_build_run(
@@ -77,7 +52,7 @@ def create_build_run(
         schedule_id=schedule_id,
         analysis_id=analysis_id,
         analysis_name=analysis_name,
-        status=_coerce_status(status),
+        status=BuildRunStatus.require(status),
         request_json=_copy_json_dict(request_json),
         starter_json=_copy_json_dict(starter_json),
         resource_config_json=_copy_json_dict(resource_config_json) if isinstance(resource_config_json, dict) else None,
@@ -138,7 +113,7 @@ def list_build_runs(
     if kind is not None:
         stmt = stmt.where(BuildRun.current_kind == kind)  # type: ignore[arg-type]
     if status is not None:
-        stmt = stmt.where(BuildRun.status == _coerce_status(status))  # type: ignore[arg-type]
+        stmt = stmt.where(BuildRun.status == BuildRunStatus.require(status))  # type: ignore[arg-type]
     if current_engine_run_id is not None:
         stmt = stmt.where(BuildRun.current_engine_run_id == current_engine_run_id)  # type: ignore[arg-type]
     stmt = stmt.order_by(desc(BuildRun.created_at)).limit(limit).offset(offset)  # type: ignore[arg-type]
@@ -276,13 +251,7 @@ def _terminal_update_values(event: compute_schemas.BuildEvent) -> dict[str, obje
     return None
 
 
-def _cas_update_build_run(
-    session: Session,
-    *,
-    run: BuildRun,
-    values: dict[str, object],
-    expected_status: BuildRunStatus,
-) -> BuildRun | None:
+def _cas_update_build_run(session: Session, *, run: BuildRun, values: dict[str, object], expected_status: BuildRunStatus) -> BuildRun | None:
     result = session.execute(
         update(BuildRun)
         .where(BuildRun.id == run.id)  # type: ignore[arg-type]
@@ -335,22 +304,11 @@ def mark_build_running(session: Session, build_id: str, *, now: datetime | None 
         return run
     marker = now or _utcnow()
     return _cas_update_build_run(
-        session,
-        run=run,
-        expected_status=BuildRunStatus.QUEUED,
-        values={
-            'status': BuildRunStatus.RUNNING,
-            'updated_at': marker,
-            'version': run.version + 1,
-        },
+        session, run=run, expected_status=BuildRunStatus.QUEUED, values={'status': BuildRunStatus.RUNNING, 'updated_at': marker, 'version': run.version + 1}
     )
 
 
-def update_build_result_json(
-    session: Session,
-    build_id: str,
-    result_json: dict[str, Any] | None,
-) -> BuildRun:
+def update_build_result_json(session: Session, build_id: str, result_json: dict[str, Any] | None) -> BuildRun:
     run = session.get(BuildRun, build_id)
     if run is None:
         raise ValueError(f'Build run {build_id} not found')
@@ -364,11 +322,7 @@ def update_build_result_json(
 
 
 def append_build_event(
-    session: Session,
-    *,
-    build_id: str,
-    event: compute_schemas.BuildEvent,
-    resource_config_json: dict[str, Any] | None = None,
+    session: Session, *, build_id: str, event: compute_schemas.BuildEvent, resource_config_json: dict[str, Any] | None = None
 ) -> BuildEvent | None:
     run = session.get(BuildRun, build_id)
     if run is None:
@@ -490,10 +444,7 @@ def fold_build_detail(session: Session, build_run: BuildRun) -> compute_schemas.
         event = compute_schemas.BuildEventAdapter.validate_python(row.payload_json)
         if isinstance(event, compute_schemas.BuildPlanEvent):
             plans[(event.tab_id, event.tab_name)] = compute_schemas.BuildQueryPlanSnapshot(
-                tab_id=event.tab_id,
-                tab_name=event.tab_name,
-                optimized_plan=event.optimized_plan,
-                unoptimized_plan=event.unoptimized_plan,
+                tab_id=event.tab_id, tab_name=event.tab_name, optimized_plan=event.optimized_plan, unoptimized_plan=event.unoptimized_plan
             )
             continue
         if isinstance(event, compute_schemas.BuildStepStartEvent):
@@ -560,18 +511,13 @@ def fold_build_detail(session: Session, build_run: BuildRun) -> compute_schemas.
                 )
             )
             continue
-        if isinstance(
-            event,
-            compute_schemas.BuildCompleteEvent | compute_schemas.BuildFailedEvent | compute_schemas.BuildCancelledEvent,
-        ):
+        if isinstance(event, compute_schemas.BuildCompleteEvent | compute_schemas.BuildFailedEvent | compute_schemas.BuildCancelledEvent):
             results = list(event.results)
 
-    status, orphan_error = _coerce_api_status(build_run.status)
+    status, orphan_error = build_run.status.to_active_build_status()
     error = build_run.error_message or orphan_error
     resource_config = (
-        compute_schemas.BuildResourceConfigSummary.model_validate(build_run.resource_config_json)
-        if isinstance(build_run.resource_config_json, dict)
-        else None
+        compute_schemas.BuildResourceConfigSummary.model_validate(build_run.resource_config_json) if isinstance(build_run.resource_config_json, dict) else None
     )
     starter = compute_schemas.BuildStarter.model_validate(build_run.starter_json)
     result_json = _copy_json_dict(build_run.result_json) if isinstance(build_run.result_json, dict) else None
@@ -614,11 +560,9 @@ def fold_build_detail(session: Session, build_run: BuildRun) -> compute_schemas.
 
 
 def build_summary(build_run: BuildRun) -> compute_schemas.ActiveBuildSummary:
-    status, _orphan_error = _coerce_api_status(build_run.status)
+    status, _orphan_error = build_run.status.to_active_build_status()
     resource_config = (
-        compute_schemas.BuildResourceConfigSummary.model_validate(build_run.resource_config_json)
-        if isinstance(build_run.resource_config_json, dict)
-        else None
+        compute_schemas.BuildResourceConfigSummary.model_validate(build_run.resource_config_json) if isinstance(build_run.resource_config_json, dict) else None
     )
     starter = compute_schemas.BuildStarter.model_validate(build_run.starter_json)
     return compute_schemas.ActiveBuildSummary(

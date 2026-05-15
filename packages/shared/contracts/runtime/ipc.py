@@ -31,11 +31,7 @@ async def start_api_server(listener: ListenerKind = 'api') -> psycopg.Connection
     return connection
 
 
-async def serve_api_notifications(
-    server: psycopg.Connection,
-    stop_event,
-    handler: Callable[[dict[str, object]], Awaitable[None]],
-) -> None:
+async def serve_api_notifications(server: psycopg.Connection, stop_event, handler: Callable[[dict[str, object]], Awaitable[None]]) -> None:
     await _serve_postgres_notifications(server, stop_event, handler)
 
 
@@ -74,11 +70,7 @@ async def _wait_for_postgres_socket(connection: psycopg.Connection, stop_event) 
         loop.remove_reader(socket_fd)
 
 
-async def _serve_postgres_notifications(
-    connection: psycopg.Connection,
-    stop_event,
-    handler: Callable[[dict[str, object]], Awaitable[None]],
-) -> None:
+async def _serve_postgres_notifications(connection: psycopg.Connection, stop_event, handler: Callable[[dict[str, object]], Awaitable[None]]) -> None:
     while not stop_event.is_set():
         try:
             if not await _wait_for_postgres_socket(connection, stop_event):
@@ -110,25 +102,11 @@ async def stop_api_server(server: psycopg.Connection | None, *, listener: Listen
 
 
 def notify_api_build(namespace: str, build_id: str, latest_sequence: int) -> None:
-    _send_api_message(
-        {
-            'kind': 'build',
-            'namespace': namespace,
-            'build_id': build_id,
-            'latest_sequence': latest_sequence,
-        },
-        listener='api',
-    )
+    _send_api_message({'kind': 'build', 'namespace': namespace, 'build_id': build_id, 'latest_sequence': latest_sequence}, listener='api')
 
 
 def notify_api_engine(namespace: str) -> None:
-    _send_api_message(
-        {
-            'kind': 'engine',
-            'namespace': namespace,
-        },
-        listener='api',
-    )
+    _send_api_message({'kind': 'engine', 'namespace': namespace}, listener='api')
 
 
 def notify_build_job() -> None:

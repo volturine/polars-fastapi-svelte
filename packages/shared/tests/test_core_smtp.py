@@ -15,10 +15,7 @@ def _message() -> EmailMessage:
 
 def test_send_smtp_message_uses_implicit_ssl_for_port_465() -> None:
     msg = _message()
-    with (
-        patch('core.smtp.smtplib.SMTP') as mock_smtp,
-        patch('core.smtp.smtplib.SMTP_SSL') as mock_smtp_ssl,
-    ):
+    with patch('core.smtp.smtplib.SMTP') as mock_smtp, patch('core.smtp.smtplib.SMTP_SSL') as mock_smtp_ssl:
         server = MagicMock()
         mock_smtp_ssl.return_value.__enter__.return_value = server
         send_smtp_message('smtp.example.com', 465, 'user@example.com', 'secret', msg)

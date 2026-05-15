@@ -21,11 +21,7 @@ class DataSourceNotFoundError(DataSourceError):
     """Raised when a datasource is not found."""
 
     def __init__(self, datasource_id: str):
-        super().__init__(
-            message=f'DataSource {datasource_id} not found',
-            error_code='DATASOURCE_NOT_FOUND',
-            details={'datasource_id': datasource_id},
-        )
+        super().__init__(message=f'DataSource {datasource_id} not found', error_code='DATASOURCE_NOT_FOUND', details={'datasource_id': datasource_id})
 
 
 class DataSourceValidationError(DataSourceError):
@@ -78,11 +74,7 @@ class StepNotFoundError(PipelineError):
     """Raised when a pipeline step is not found."""
 
     def __init__(self, step_id: str):
-        super().__init__(
-            message=f'Step with id {step_id} not found in pipeline',
-            error_code='STEP_NOT_FOUND',
-            details={'step_id': step_id},
-        )
+        super().__init__(message=f'Step with id {step_id} not found in pipeline', error_code='STEP_NOT_FOUND', details={'step_id': step_id})
 
 
 # Compute/Engine Exceptions
@@ -94,11 +86,7 @@ class EngineNotFoundError(ComputeError):
     """Raised when an engine is not found."""
 
     def __init__(self, analysis_id: str):
-        super().__init__(
-            message=f'Engine for analysis {analysis_id} not found',
-            error_code='ENGINE_NOT_FOUND',
-            details={'analysis_id': analysis_id},
-        )
+        super().__init__(message=f'Engine for analysis {analysis_id} not found', error_code='ENGINE_NOT_FOUND', details={'analysis_id': analysis_id})
 
 
 class EngineStartError(ComputeError):
@@ -146,22 +134,14 @@ class JobNotFoundError(JobError):
     """Raised when a job is not found."""
 
     def __init__(self, job_id: str):
-        super().__init__(
-            message=f'Job {job_id} not found',
-            error_code='JOB_NOT_FOUND',
-            details={'job_id': job_id},
-        )
+        super().__init__(message=f'Job {job_id} not found', error_code='JOB_NOT_FOUND', details={'job_id': job_id})
 
 
 class JobCancelledError(JobError):
     """Raised when a job is cancelled."""
 
     def __init__(self, job_id: str):
-        super().__init__(
-            message=f'Job {job_id} was cancelled',
-            error_code='JOB_CANCELLED',
-            details={'job_id': job_id},
-        )
+        super().__init__(message=f'Job {job_id} was cancelled', error_code='JOB_CANCELLED', details={'job_id': job_id})
 
 
 # Analysis Exceptions
@@ -173,11 +153,7 @@ class AnalysisNotFoundError(AnalysisError):
     """Raised when an analysis is not found."""
 
     def __init__(self, analysis_id: str):
-        super().__init__(
-            message=f'Analysis {analysis_id} not found',
-            error_code='ANALYSIS_NOT_FOUND',
-            details={'analysis_id': analysis_id},
-        )
+        super().__init__(message=f'Analysis {analysis_id} not found', error_code='ANALYSIS_NOT_FOUND', details={'analysis_id': analysis_id})
 
 
 class AnalysisValidationError(AnalysisError):
@@ -214,11 +190,7 @@ class DataFileNotFoundError(FileError):
     """Raised when a file is not found."""
 
     def __init__(self, file_path: str):
-        super().__init__(
-            message=f'File not found: {file_path}',
-            error_code='FILE_NOT_FOUND',
-            details={'file_path': file_path},
-        )
+        super().__init__(message=f'File not found: {file_path}', error_code='FILE_NOT_FOUND', details={'file_path': file_path})
 
 
 class FileValidationError(FileError):
@@ -248,11 +220,7 @@ class UnsupportedExportFormatError(ExportError):
     """Raised when an unsupported export format is requested."""
 
     def __init__(self, format: str):
-        super().__init__(
-            message=f'Unsupported export format: {format}',
-            error_code='UNSUPPORTED_EXPORT_FORMAT',
-            details={'format': format},
-        )
+        super().__init__(message=f'Unsupported export format: {format}', error_code='UNSUPPORTED_EXPORT_FORMAT', details={'format': format})
 
 
 # Schedule Exceptions
@@ -271,11 +239,7 @@ class ScheduleNotFoundError(ScheduleError):
     """Raised when a schedule is not found."""
 
     def __init__(self, schedule_id: str):
-        super().__init__(
-            message=f'Schedule {schedule_id} not found',
-            error_code='SCHEDULE_NOT_FOUND',
-            details={'schedule_id': schedule_id},
-        )
+        super().__init__(message=f'Schedule {schedule_id} not found', error_code='SCHEDULE_NOT_FOUND', details={'schedule_id': schedule_id})
 
 
 # UDF Exceptions
@@ -287,11 +251,7 @@ class UdfNotFoundError(UdfError):
     """Raised when a UDF is not found."""
 
     def __init__(self, udf_id: str):
-        super().__init__(
-            message=f'UDF {udf_id} not found',
-            error_code='UDF_NOT_FOUND',
-            details={'udf_id': udf_id},
-        )
+        super().__init__(message=f'UDF {udf_id} not found', error_code='UDF_NOT_FOUND', details={'udf_id': udf_id})
 
 
 class UdfValidationError(UdfError):
@@ -310,11 +270,7 @@ class HealthcheckNotFoundError(HealthcheckError):
     """Raised when a healthcheck is not found."""
 
     def __init__(self, healthcheck_id: str):
-        super().__init__(
-            message=f'Healthcheck {healthcheck_id} not found',
-            error_code='HEALTHCHECK_NOT_FOUND',
-            details={'healthcheck_id': healthcheck_id},
-        )
+        super().__init__(message=f'Healthcheck {healthcheck_id} not found', error_code='HEALTHCHECK_NOT_FOUND', details={'healthcheck_id': healthcheck_id})
 
 
 class HealthcheckValidationError(HealthcheckError):

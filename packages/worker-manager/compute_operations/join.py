@@ -1,27 +1,25 @@
-from enum import StrEnum
-
 import polars as pl
-from pydantic import BaseModel, ConfigDict
-
 from contracts.compute.base import OperationHandler, OperationParams
+from contracts.enums import DataForgeStrEnum
+from pydantic import BaseModel, ConfigDict
 
 
 class JoinColumn(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     id: str | None = None
     left_column: str
     right_column: str
 
 
-class JoinHow(StrEnum):
-    INNER = 'inner'
-    LEFT = 'left'
-    RIGHT = 'right'
-    FULL = 'full'
-    SEMI = 'semi'
-    ANTI = 'anti'
-    CROSS = 'cross'
+class JoinHow(DataForgeStrEnum):
+    INNER = "inner"
+    LEFT = "left"
+    RIGHT = "right"
+    FULL = "full"
+    SEMI = "semi"
+    ANTI = "anti"
+    CROSS = "cross"
 
 
 class JoinParams(OperationParams):
@@ -29,7 +27,7 @@ class JoinParams(OperationParams):
     join_columns: list[JoinColumn] | None = None
     right_columns: list[str] | None = None
     how: JoinHow = JoinHow.INNER
-    suffix: str = '_right'
+    suffix: str = "_right"
     left_on: list[str] | None = None
     right_on: list[str] | None = None
 
@@ -46,18 +44,18 @@ class JoinHandler(OperationHandler):
         suffix: str,
     ) -> pl.LazyFrame:
         if how == JoinHow.INNER:
-            return lf.join(right_lf, left_on=left_on, right_on=right_on, how='inner', suffix=suffix)
+            return lf.join(right_lf, left_on=left_on, right_on=right_on, how="inner", suffix=suffix)
         if how == JoinHow.LEFT:
-            return lf.join(right_lf, left_on=left_on, right_on=right_on, how='left', suffix=suffix)
+            return lf.join(right_lf, left_on=left_on, right_on=right_on, how="left", suffix=suffix)
         if how == JoinHow.RIGHT:
-            return lf.join(right_lf, left_on=left_on, right_on=right_on, how='right', suffix=suffix)
+            return lf.join(right_lf, left_on=left_on, right_on=right_on, how="right", suffix=suffix)
         if how == JoinHow.FULL:
-            return lf.join(right_lf, left_on=left_on, right_on=right_on, how='full', suffix=suffix)
+            return lf.join(right_lf, left_on=left_on, right_on=right_on, how="full", suffix=suffix)
         if how == JoinHow.SEMI:
-            return lf.join(right_lf, left_on=left_on, right_on=right_on, how='semi', suffix=suffix)
+            return lf.join(right_lf, left_on=left_on, right_on=right_on, how="semi", suffix=suffix)
         if how == JoinHow.ANTI:
-            return lf.join(right_lf, left_on=left_on, right_on=right_on, how='anti', suffix=suffix)
-        raise ValueError(f'Unsupported join type: {how}')
+            return lf.join(right_lf, left_on=left_on, right_on=right_on, how="anti", suffix=suffix)
+        raise ValueError(f"Unsupported join type: {how}")
 
     def __call__(
         self,
@@ -71,10 +69,10 @@ class JoinHandler(OperationHandler):
         right_columns = validated.right_columns or []
 
         if right_lf is None:
-            raise ValueError('Join requires a right datasource')
+            raise ValueError("Join requires a right datasource")
 
         if validated.how == JoinHow.CROSS:
-            return lf.join(right_lf, how='cross')
+            return lf.join(right_lf, how="cross")
 
         join_columns = validated.join_columns or []
         left_on = validated.left_on or []
@@ -84,7 +82,7 @@ class JoinHandler(OperationHandler):
             right_on = [col.right_column for col in join_columns if col.right_column]
 
         if not left_on or not right_on:
-            raise ValueError('Join requires at least one join column pair')
+            raise ValueError("Join requires at least one join column pair")
 
         joined = self._join_with_how(
             lf,
@@ -100,8 +98,7 @@ class JoinHandler(OperationHandler):
             final_columns = [
                 col
                 for col in all_columns
-                if not col.endswith(validated.suffix)
-                or (len(col) > len(validated.suffix) and col[: -len(validated.suffix)] in right_columns)
+                if not col.endswith(validated.suffix) or (len(col) > len(validated.suffix) and col[: -len(validated.suffix)] in right_columns)
             ]
             if final_columns != all_columns:
                 return joined.select(final_columns)

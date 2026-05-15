@@ -20,11 +20,7 @@ def test_migrate_runtime_runs_public_then_each_tenant(monkeypatch) -> None:
     calls: list[tuple[str, str]] = []
 
     def fake_current_revision(schema: str) -> str | None:
-        revisions = {
-            'public': None,
-            'alpha': None,
-            'beta': _TENANT_REVISION,
-        }
+        revisions = {'public': None, 'alpha': None, 'beta': _TENANT_REVISION}
         return revisions[schema]
 
     monkeypatch.setattr('core.migrations._current_revision', fake_current_revision)
@@ -35,11 +31,7 @@ def test_migrate_runtime_runs_public_then_each_tenant(monkeypatch) -> None:
 
     migrate_runtime(['alpha', 'beta'])
 
-    assert calls == [
-        ('ensure_database', 'db'),
-        ('public', f'public:{_PUBLIC_REVISION}'),
-        ('tenant', f'alpha:{_TENANT_REVISION}'),
-    ]
+    assert calls == [('ensure_database', 'db'), ('public', f'public:{_PUBLIC_REVISION}'), ('tenant', f'alpha:{_TENANT_REVISION}')]
 
 
 def test_ensure_database_exists_creates_missing_database(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, fields
-from enum import StrEnum
 from typing import Final
 
+from contracts.enums import DataForgeStrEnum
 
-class ChartType(StrEnum):
+
+class ChartType(DataForgeStrEnum):
     BAR = 'bar'
     HORIZONTAL_BAR = 'horizontal_bar'
     AREA = 'area'
@@ -62,60 +63,15 @@ class StepTypes:
     deduplicate: StepType = StepType(value='deduplicate', label='Deduplicate')
     string_transform: StepType = StepType(value='string_transform', label='String Transform')
     timeseries: StepType = StepType(value='timeseries', label='Time Series')
-    plot_bar: StepType = StepType(
-        value='plot_bar',
-        label='Bar Chart',
-        normalized='chart',
-        chart_type=ChartType.BAR,
-    )
-    plot_horizontal_bar: StepType = StepType(
-        value='plot_horizontal_bar',
-        label='Horizontal Bar Chart',
-        normalized='chart',
-        chart_type=ChartType.HORIZONTAL_BAR,
-    )
-    plot_area: StepType = StepType(
-        value='plot_area',
-        label='Area Chart',
-        normalized='chart',
-        chart_type=ChartType.AREA,
-    )
-    plot_heatgrid: StepType = StepType(
-        value='plot_heatgrid',
-        label='Heatgrid',
-        normalized='chart',
-        chart_type=ChartType.HEATGRID,
-    )
-    plot_histogram: StepType = StepType(
-        value='plot_histogram',
-        label='Histogram',
-        normalized='chart',
-        chart_type=ChartType.HISTOGRAM,
-    )
-    plot_scatter: StepType = StepType(
-        value='plot_scatter',
-        label='Scatter Plot',
-        normalized='chart',
-        chart_type=ChartType.SCATTER,
-    )
-    plot_line: StepType = StepType(
-        value='plot_line',
-        label='Line Chart',
-        normalized='chart',
-        chart_type=ChartType.LINE,
-    )
-    plot_pie: StepType = StepType(
-        value='plot_pie',
-        label='Pie Chart',
-        normalized='chart',
-        chart_type=ChartType.PIE,
-    )
-    plot_boxplot: StepType = StepType(
-        value='plot_boxplot',
-        label='Box Plot',
-        normalized='chart',
-        chart_type=ChartType.BOXPLOT,
-    )
+    plot_bar: StepType = StepType(value='plot_bar', label='Bar Chart', normalized='chart', chart_type=ChartType.BAR)
+    plot_horizontal_bar: StepType = StepType(value='plot_horizontal_bar', label='Horizontal Bar Chart', normalized='chart', chart_type=ChartType.HORIZONTAL_BAR)
+    plot_area: StepType = StepType(value='plot_area', label='Area Chart', normalized='chart', chart_type=ChartType.AREA)
+    plot_heatgrid: StepType = StepType(value='plot_heatgrid', label='Heatgrid', normalized='chart', chart_type=ChartType.HEATGRID)
+    plot_histogram: StepType = StepType(value='plot_histogram', label='Histogram', normalized='chart', chart_type=ChartType.HISTOGRAM)
+    plot_scatter: StepType = StepType(value='plot_scatter', label='Scatter Plot', normalized='chart', chart_type=ChartType.SCATTER)
+    plot_line: StepType = StepType(value='plot_line', label='Line Chart', normalized='chart', chart_type=ChartType.LINE)
+    plot_pie: StepType = StepType(value='plot_pie', label='Pie Chart', normalized='chart', chart_type=ChartType.PIE)
+    plot_boxplot: StepType = StepType(value='plot_boxplot', label='Box Plot', normalized='chart', chart_type=ChartType.BOXPLOT)
 
     def _definition_for(self, step_type: str) -> StepType | None:
         for step_field in fields(self):

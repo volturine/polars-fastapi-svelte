@@ -1,15 +1,12 @@
 import datetime as dt
-from enum import StrEnum
 
 from sqlalchemy import JSON, Column, DateTime, Enum as SAEnum, String
 from sqlmodel import Field, SQLModel
 
-
-def _enum_values(enum_cls: type[StrEnum]) -> list[str]:
-    return [item.value for item in enum_cls]
+from contracts.enums import DataForgeStrEnum
 
 
-class ComputeRequestKind(StrEnum):
+class ComputeRequestKind(DataForgeStrEnum):
     PREVIEW = 'preview'
     SCHEMA = 'schema'
     ROW_COUNT = 'row_count'
@@ -27,7 +24,7 @@ class ComputeRequestKind(StrEnum):
     SHUTDOWN_ENGINE = 'shutdown_engine'
 
 
-class ComputeRequestStatus(StrEnum):
+class ComputeRequestStatus(DataForgeStrEnum):
     QUEUED = 'queued'
     RUNNING = 'running'
     COMPLETED = 'completed'
@@ -40,18 +37,10 @@ class ComputeRequest(SQLModel, table=True):  # type: ignore[call-arg, assignment
     id: str = Field(sa_column=Column(String, primary_key=True))
     namespace: str = Field(sa_column=Column(String, nullable=False, index=True))
     kind: ComputeRequestKind = Field(
-        sa_column=Column(
-            SAEnum(ComputeRequestKind, native_enum=False, values_callable=_enum_values),
-            nullable=False,
-            index=True,
-        )
+        sa_column=Column(SAEnum(ComputeRequestKind, native_enum=False, values_callable=lambda enum_cls: enum_cls.values()), nullable=False, index=True)
     )
     status: ComputeRequestStatus = Field(
-        sa_column=Column(
-            SAEnum(ComputeRequestStatus, native_enum=False, values_callable=_enum_values),
-            nullable=False,
-            index=True,
-        )
+        sa_column=Column(SAEnum(ComputeRequestStatus, native_enum=False, values_callable=lambda enum_cls: enum_cls.values()), nullable=False, index=True)
     )
     request_json: dict[str, object] = Field(sa_column=Column(JSON, nullable=False))
     response_json: dict[str, object] | None = Field(default=None, sa_column=Column(JSON, nullable=True))

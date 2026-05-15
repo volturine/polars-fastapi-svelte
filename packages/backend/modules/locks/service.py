@@ -1,11 +1,11 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
+from contracts.locks.models import ResourceLock
+from core.config import settings
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
-from contracts.locks.models import ResourceLock
-from core.config import settings
 from modules.locks.schemas import LockStatusResponse
 
 
@@ -87,7 +87,7 @@ def acquire_lock(
             lock = get_lock(session, resource_type, resource_id)
             now = _utcnow()
             if lock is None:
-                raise ValueError(f'{resource_type} {resource_id} lock could not be acquired') from None
+                raise ValueError(f"{resource_type} {resource_id} lock could not be acquired") from None
         else:
             session.refresh(lock)
             return _status(lock, now)
@@ -101,7 +101,7 @@ def acquire_lock(
         session.commit()
         session.refresh(lock)
         return _status(lock, now)
-    raise ValueError(f'{resource_type} {resource_id} is locked by another owner')
+    raise ValueError(f"{resource_type} {resource_id} is locked by another owner")
 
 
 def heartbeat_lock(
@@ -115,9 +115,9 @@ def heartbeat_lock(
     now = _utcnow()
     lock = get_lock(session, resource_type, resource_id)
     if lock is None or _as_utc(lock.expires_at) <= now:
-        raise ValueError(f'{resource_type} {resource_id} lock is not active')
+        raise ValueError(f"{resource_type} {resource_id} lock is not active")
     if lock.owner_id != owner_id or lock.lock_token != lock_token:
-        raise ValueError(f'{resource_type} {resource_id} lock is owned by another owner')
+        raise ValueError(f"{resource_type} {resource_id} lock is owned by another owner")
     lock.last_heartbeat = now
     lock.expires_at = _expires_at(now, ttl_seconds)
     session.add(lock)
@@ -163,4 +163,4 @@ def ensure_mutation_lock(session: Session, resource_type: str, resource_id: str,
         session.commit()
         return
     if owner_id != lock.owner_id:
-        raise ValueError(f'{resource_type} {resource_id} is locked by another owner')
+        raise ValueError(f"{resource_type} {resource_id} is locked by another owner")

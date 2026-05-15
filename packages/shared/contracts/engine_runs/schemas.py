@@ -1,35 +1,26 @@
 import datetime as dt
-from enum import StrEnum
-from typing import Any, Self
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from contracts.enums import DataForgeStrEnum
 
-class EngineRunKind(StrEnum):
+
+class EngineRunKind(DataForgeStrEnum):
     BUILD = 'build'
     PREVIEW = 'preview'
     ROW_COUNT = 'row_count'
     DOWNLOAD = 'download'
 
-    @classmethod
-    def parse(cls, value: Self | str | None) -> Self | None:
-        if value is None:
-            return None
-        return cls(value)
 
-    @classmethod
-    def require(cls, value: Self | str) -> Self:
-        return cls(value)
-
-
-class EngineRunStatus(StrEnum):
+class EngineRunStatus(DataForgeStrEnum):
     RUNNING = 'running'
     SUCCESS = 'success'
     FAILED = 'failed'
     CANCELLED = 'cancelled'
 
 
-class EngineRunExecutionCategory(StrEnum):
+class EngineRunExecutionCategory(DataForgeStrEnum):
     READ = 'read'
     STEP = 'step'
     PLAN = 'plan'
@@ -37,7 +28,7 @@ class EngineRunExecutionCategory(StrEnum):
     WRITE = 'write'
 
 
-class SchemaDiffStatus(StrEnum):
+class SchemaDiffStatus(DataForgeStrEnum):
     ADDED = 'added'
     REMOVED = 'removed'
     TYPE_CHANGED = 'type_changed'

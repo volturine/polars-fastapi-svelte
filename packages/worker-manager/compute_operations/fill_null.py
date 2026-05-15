@@ -1,9 +1,9 @@
 from collections.abc import Callable
 
 import polars as pl
+from contracts.compute.base import OperationHandler, OperationParams
 
 from compute_operations.type_casting import cast_value, get_polars_type
-from contracts.compute.base import OperationHandler, OperationParams
 
 
 class FillNullParams(OperationParams):
@@ -14,11 +14,11 @@ class FillNullParams(OperationParams):
 
 
 _FILL_STRATEGIES: dict[str, Callable[[pl.Expr], pl.Expr]] = {
-    'forward': lambda col: col.forward_fill(),
-    'backward': lambda col: col.backward_fill(),
-    'mean': lambda col: col.fill_null(col.mean()),
-    'median': lambda col: col.fill_null(col.median()),
-    'zero': lambda col: col.fill_null(0),
+    "forward": lambda col: col.forward_fill(),
+    "backward": lambda col: col.backward_fill(),
+    "mean": lambda col: col.fill_null(col.mean()),
+    "median": lambda col: col.fill_null(col.median()),
+    "zero": lambda col: col.fill_null(0),
 }
 
 
@@ -36,7 +36,7 @@ class FillNullHandler(OperationHandler):
         validated = FillNullParams.model_validate(params)
         columns = validated.columns
 
-        if validated.strategy == 'literal':
+        if validated.strategy == "literal":
             value = cast_value(validated.value, validated.value_type)
             dtype = get_polars_type(validated.value_type)
 
@@ -55,9 +55,9 @@ class FillNullHandler(OperationHandler):
                 return lf.with_columns([strategy(pl.col(col)) for col in columns])
             return lf.with_columns([strategy(pl.col(col)) for col in lf.collect_schema().names()])
 
-        if validated.strategy == 'drop_rows':
+        if validated.strategy == "drop_rows":
             if columns:
                 return lf.drop_nulls(subset=columns)
             return lf.drop_nulls()
 
-        raise ValueError(f'Unsupported fill_null strategy: {validated.strategy}')
+        raise ValueError(f"Unsupported fill_null strategy: {validated.strategy}")

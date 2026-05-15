@@ -62,30 +62,14 @@ def _resolve_file_parent(value: Path | str) -> Path:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=None,
-        env_file_encoding='utf8',
-        extra='ignore',
-    )
+    model_config = SettingsConfigDict(env_file=None, env_file_encoding='utf8', extra='ignore')
 
     @classmethod
-    def settings_customise_sources(
-        cls,
-        settings_cls,
-        init_settings,
-        env_settings,
-        dotenv_settings,
-        file_secret_settings,
-    ):
+    def settings_customise_sources(cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings):
         env_file = _get_env_file()
         if env_file is None:
             return (init_settings, env_settings, file_secret_settings)
-        return (
-            init_settings,
-            env_settings,
-            DotEnvSettingsSource(settings_cls, env_file=env_file, env_file_encoding='utf8'),
-            file_secret_settings,
-        )
+        return (init_settings, env_settings, DotEnvSettingsSource(settings_cls, env_file=env_file, env_file_encoding='utf8'), file_secret_settings)
 
     app_name: str = 'Data-Forge Analysis Platform'
     app_version: str = '1.0.0'
@@ -193,10 +177,7 @@ class Settings(BaseSettings):
     openai_organization_id: str = Field(default='', alias='OPENAI_ORGANIZATION_ID')
     huggingface_api_token: str = Field(default='', alias='HUGGINGFACE_API_TOKEN')
     huggingface_default_model: str = Field(default='google/flan-t5-base', alias='HUGGINGFACE_DEFAULT_MODEL')
-    huggingface_api_base_url: str = Field(
-        default='https://api-inference.huggingface.co',
-        alias='HUGGINGFACE_API_BASE_URL',
-    )
+    huggingface_api_base_url: str = Field(default='https://api-inference.huggingface.co', alias='HUGGINGFACE_API_BASE_URL')
 
     # DB-persisted settings — seeded into app_settings on first run if the DB field is empty.
     # Users may later override these via the UI; ENV values are never re-applied after that.

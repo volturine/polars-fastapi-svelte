@@ -2,9 +2,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import cast
 
-from sqlalchemy import delete, desc, func, insert, select
-from sqlmodel import Session, col
-
 from contracts.analysis.models import Analysis, AnalysisDataSource
 from contracts.analysis_versions.models import AnalysisVersion
 from contracts.datasource.models import DataSource
@@ -15,6 +12,9 @@ from core.exceptions import (
     AnalysisVersionNotFoundError,
     DataSourceNotFoundError,
 )
+from sqlalchemy import delete, desc, func, insert, select
+from sqlmodel import Session, col
+
 from modules.analysis import service as analysis_service
 
 
@@ -42,7 +42,7 @@ def create_version(session: Session, analysis: Analysis, *, commit: bool = True)
         session.flush()
     version = session.get(AnalysisVersion, version_id)
     if not version:
-        raise AnalysisValidationError('Failed to create analysis version')
+        raise AnalysisValidationError("Failed to create analysis version")
     return version
 
 
@@ -98,7 +98,7 @@ def restore_version(session: Session, analysis_id: str, version: int) -> Analysi
 
     pipeline_definition = analysis.pipeline_definition
     analysis_service.validate_stored_pipeline_definition(session, pipeline_definition, analysis_id)
-    tabs = pipeline_definition.get('tabs', [])
+    tabs = pipeline_definition.get("tabs", [])
 
     stmt = delete(AnalysisDataSource).where(col(AnalysisDataSource.analysis_id) == analysis_id)  # type: ignore[arg-type]
     session.execute(stmt)
@@ -106,19 +106,19 @@ def restore_version(session: Session, analysis_id: str, version: int) -> Analysi
     for tab in tabs:
         if not isinstance(tab, dict):
             continue
-        datasource = tab.get('datasource')
+        datasource = tab.get("datasource")
         if not isinstance(datasource, dict):
             continue
-        if datasource.get('analysis_tab_id') is not None:
+        if datasource.get("analysis_tab_id") is not None:
             continue
-        datasource_id = datasource.get('id')
+        datasource_id = datasource.get("id")
         if datasource_id:
             datasource_ids.append(str(datasource_id))
     for datasource_id in set(datasource_ids):
         ds: DataSource | None = session.get(DataSource, datasource_id)
         if not ds:
             raise DataSourceNotFoundError(datasource_id)
-        if ds.source_type == 'analysis':
+        if ds.source_type == "analysis":
             source_id = _get_analysis_source_id(ds)
             _ensure_no_cycle(session, analysis_id, source_id)
         session.add(
@@ -138,15 +138,15 @@ def restore_version(session: Session, analysis_id: str, version: int) -> Analysi
 def _get_analysis_source_id(datasource: DataSource) -> str:
     analysis_id = datasource.created_by_analysis_id
     if not analysis_id:
-        raise ValueError(f'Analysis datasource {datasource.id} missing created_by_analysis_id')
+        raise ValueError(f"Analysis datasource {datasource.id} missing created_by_analysis_id")
     return str(analysis_id)
 
 
 def _ensure_no_cycle(session: Session, analysis_id: str, source_analysis_id: str) -> None:
     if analysis_id == source_analysis_id:
-        raise AnalysisCycleError('Analysis cannot use itself as a datasource')
+        raise AnalysisCycleError("Analysis cannot use itself as a datasource")
     if _detect_cycle(session, analysis_id, source_analysis_id):
-        raise AnalysisCycleError('Analysis datasource introduces a cycle')
+        raise AnalysisCycleError("Analysis datasource introduces a cycle")
 
 
 def _detect_cycle(session: Session, analysis_id: str, source_analysis_id: str) -> bool:
@@ -164,7 +164,7 @@ def _detect_cycle(session: Session, analysis_id: str, source_analysis_id: str) -
         for datasource in datasources:
             if not datasource:
                 continue
-            if datasource.source_type != 'analysis':
+            if datasource.source_type != "analysis":
                 continue
             next_id = datasource.created_by_analysis_id
             if not next_id:

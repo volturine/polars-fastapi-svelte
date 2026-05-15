@@ -36,14 +36,7 @@ COMPUTE_REQUEST_KIND = sa.Enum(
     native_enum=False,
 )
 
-COMPUTE_REQUEST_STATUS = sa.Enum(
-    'queued',
-    'running',
-    'completed',
-    'failed',
-    name='computerequeststatus',
-    native_enum=False,
-)
+COMPUTE_REQUEST_STATUS = sa.Enum('queued', 'running', 'completed', 'failed', name='computerequeststatus', native_enum=False)
 
 
 def _scope() -> str:
@@ -51,9 +44,7 @@ def _scope() -> str:
     config = migration_context.config
     if config is None:
         return 'public'
-    return str(
-        migration_context.opts.get('tag') or config.get_main_option('runtime_scope') or config.attributes.get('runtime_scope', 'public')
-    )
+    return str(migration_context.opts.get('tag') or config.get_main_option('runtime_scope') or config.attributes.get('runtime_scope', 'public'))
 
 
 def upgrade() -> None:

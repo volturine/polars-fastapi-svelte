@@ -9,15 +9,15 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.routing import APIRoute
 
-MCP_ROUTE_META = '__mcp_route_meta__'
-MCP_ENDPOINT_META = '__mcp_endpoint_meta__'
+MCP_ROUTE_META = "__mcp_route_meta__"
+MCP_ENDPOINT_META = "__mcp_endpoint_meta__"
 
 
 def _response_model_name(route: APIRoute) -> str | None:
-    model = getattr(route, 'response_model', None)
+    model = getattr(route, "response_model", None)
     if model is None:
         return None
-    return getattr(model, '__name__', str(model))
+    return getattr(model, "__name__", str(model))
 
 
 def build_inputs(fn: Callable[..., Any]) -> list[dict[str, Any]]:
@@ -31,11 +31,11 @@ def build_inputs(fn: Callable[..., Any]) -> list[dict[str, Any]]:
         has_default = p.default is not inspect.Parameter.empty
         items.append(
             {
-                'name': p.name,
-                'kind': p.kind.name.lower(),
-                'required': not has_default,
-                'default': None if not has_default else p.default,
-                'annotation': ann_name,
+                "name": p.name,
+                "kind": p.kind.name.lower(),
+                "required": not has_default,
+                "default": None if not has_default else p.default,
+                "annotation": ann_name,
             },
         )
     return items
@@ -54,14 +54,14 @@ def set_mcp_endpoint_meta(
         setattr(root, MCP_ENDPOINT_META, None)
         return
 
-    doc = inspect.getdoc(root) or ''
+    doc = inspect.getdoc(root) or ""
     meta: dict[str, Any] = {
-        'name': mcp_tool_id or getattr(root, '__name__', getattr(endpoint, '__name__', 'tool')),
-        'docstring': doc,
-        'inputs': build_inputs(root),
+        "name": mcp_tool_id or getattr(root, "__name__", getattr(endpoint, "__name__", "tool")),
+        "docstring": doc,
+        "inputs": build_inputs(root),
     }
     if mcp_confirm_required is not None:
-        meta['confirm_required'] = mcp_confirm_required
+        meta["confirm_required"] = mcp_confirm_required
 
     setattr(root, MCP_ENDPOINT_META, dict(meta))
     setattr(endpoint, MCP_ENDPOINT_META, dict(meta))
@@ -84,11 +84,11 @@ def build_mcp_route_meta(route: APIRoute) -> dict[str, Any] | None:
     if not isinstance(onboard, dict):
         return None
     meta = dict(onboard)
-    if 'name' not in meta:
-        meta['name'] = getattr(route.endpoint, '__name__', route.name)
+    if "name" not in meta:
+        meta["name"] = getattr(route.endpoint, "__name__", route.name)
     response_model = _response_model_name(route)
     if response_model is not None:
-        meta['response_model'] = response_model
+        meta["response_model"] = response_model
     return meta
 
 
@@ -113,13 +113,13 @@ class MCPRouter(APIRouter):
     """APIRouter that captures MCP onboarding metadata during route registration."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        kwargs.setdefault('route_class', MCPRoute)
+        kwargs.setdefault("route_class", MCPRoute)
         super().__init__(*args, **kwargs)
 
     def add_api_route(self, path: str, endpoint: Callable[..., Any], **kwargs: Any) -> None:
-        mcp = bool(kwargs.pop('mcp', False))
-        mcp_confirm_required = kwargs.pop('mcp_confirm_required', None)
-        mcp_tool_id = kwargs.pop('mcp_tool_id', None)
+        mcp = bool(kwargs.pop("mcp", False))
+        mcp_confirm_required = kwargs.pop("mcp_confirm_required", None)
+        mcp_tool_id = kwargs.pop("mcp_tool_id", None)
         set_mcp_endpoint_meta(
             endpoint,
             mcp=mcp,
@@ -144,10 +144,10 @@ class MCPRouter(APIRouter):
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         def decorate(endpoint: Callable[..., Any]) -> Callable[..., Any]:
             route_kwargs = dict(kwargs)
-            route_kwargs['methods'] = methods
-            route_kwargs['mcp'] = mcp
-            route_kwargs['mcp_confirm_required'] = mcp_confirm_required
-            route_kwargs['mcp_tool_id'] = mcp_tool_id
+            route_kwargs["methods"] = methods
+            route_kwargs["mcp"] = mcp
+            route_kwargs["mcp_confirm_required"] = mcp_confirm_required
+            route_kwargs["mcp_tool_id"] = mcp_tool_id
             self.add_api_route(
                 path,
                 endpoint,
@@ -166,7 +166,7 @@ class MCPRouter(APIRouter):
         mcp_tool_id: str | None = None,
         **kwargs: Any,
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-        methods = kwargs.pop('methods', ['GET'])
+        methods = kwargs.pop("methods", ["GET"])
         method_list = [m.upper() for m in methods]
         return self._route_decorator(
             path,
@@ -188,7 +188,7 @@ class MCPRouter(APIRouter):
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         return self._route_decorator(
             path,
-            methods=['GET'],
+            methods=["GET"],
             mcp=mcp,
             mcp_confirm_required=mcp_confirm_required,
             mcp_tool_id=mcp_tool_id,
@@ -206,7 +206,7 @@ class MCPRouter(APIRouter):
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         return self._route_decorator(
             path,
-            methods=['POST'],
+            methods=["POST"],
             mcp=mcp,
             mcp_confirm_required=mcp_confirm_required,
             mcp_tool_id=mcp_tool_id,
@@ -224,7 +224,7 @@ class MCPRouter(APIRouter):
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         return self._route_decorator(
             path,
-            methods=['PUT'],
+            methods=["PUT"],
             mcp=mcp,
             mcp_confirm_required=mcp_confirm_required,
             mcp_tool_id=mcp_tool_id,
@@ -242,7 +242,7 @@ class MCPRouter(APIRouter):
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         return self._route_decorator(
             path,
-            methods=['PATCH'],
+            methods=["PATCH"],
             mcp=mcp,
             mcp_confirm_required=mcp_confirm_required,
             mcp_tool_id=mcp_tool_id,
@@ -260,7 +260,7 @@ class MCPRouter(APIRouter):
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         return self._route_decorator(
             path,
-            methods=['DELETE'],
+            methods=["DELETE"],
             mcp=mcp,
             mcp_confirm_required=mcp_confirm_required,
             mcp_tool_id=mcp_tool_id,
@@ -272,8 +272,8 @@ class MCPRoute(APIRoute):
     """APIRoute variant that carries MCP onboarding metadata."""
 
     def __init__(self, path: str, endpoint: Callable[..., Any], **kwargs: Any) -> None:
-        kwargs.pop('mcp', None)
-        kwargs.pop('mcp_confirm_required', None)
-        kwargs.pop('mcp_tool_id', None)
+        kwargs.pop("mcp", None)
+        kwargs.pop("mcp_confirm_required", None)
+        kwargs.pop("mcp_tool_id", None)
         super().__init__(path, endpoint, **kwargs)
         attach_mcp_route_meta(self)

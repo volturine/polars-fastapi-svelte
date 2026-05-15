@@ -7,22 +7,22 @@ from typing import Any
 
 import polars as pl
 import pytest
-from modules.datasource.source_types import DataSourceType
+from contracts.datasource.models import DataSource
 from sqlmodel import Session
 
-from contracts.datasource.models import DataSource
+from modules.datasource.source_types import DataSourceType
 
 
 class FauxDatasourceRuntime:
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from modules.datasource import routes
 
-        monkeypatch.setattr(routes, 'create_remote_file_datasource', self.create_file_datasource)
-        monkeypatch.setattr(routes, 'create_remote_database_datasource', self.create_database_datasource)
-        monkeypatch.setattr(routes, 'create_remote_iceberg_datasource', self.create_iceberg_datasource)
-        monkeypatch.setattr(routes, 'get_remote_datasource_schema', self.get_datasource_schema)
-        monkeypatch.setattr(routes, 'refresh_remote_datasource', self.refresh_datasource)
-        monkeypatch.setattr(routes, 'get_remote_column_stats', self.get_column_stats)
+        monkeypatch.setattr(routes, "create_remote_file_datasource", self.create_file_datasource)
+        monkeypatch.setattr(routes, "create_remote_database_datasource", self.create_database_datasource)
+        monkeypatch.setattr(routes, "create_remote_iceberg_datasource", self.create_iceberg_datasource)
+        monkeypatch.setattr(routes, "get_remote_datasource_schema", self.get_datasource_schema)
+        monkeypatch.setattr(routes, "refresh_remote_datasource", self.refresh_datasource)
+        monkeypatch.setattr(routes, "get_remote_column_stats", self.get_column_stats)
 
     async def create_file_datasource(
         self,
@@ -43,22 +43,22 @@ class FauxDatasourceRuntime:
             description=description,
             source_type=DataSourceType.ICEBERG,
             config={
-                'metadata_path': str(self._clean_dir() / uuid.uuid4().hex / 'master'),
-                'branch': 'master',
-                'source': {
-                    'source_type': 'file',
-                    'file_path': file_path,
-                    'file_type': file_type,
-                    'options': options or csv_options or {},
-                    **{key: value for key, value in kwargs.items() if value is not None and key not in {'runtime_probe', 'branch'}},
+                "metadata_path": str(self._clean_dir() / uuid.uuid4().hex / "master"),
+                "branch": "master",
+                "source": {
+                    "source_type": "file",
+                    "file_path": file_path,
+                    "file_type": file_type,
+                    "options": options or csv_options or {},
+                    **{key: value for key, value in kwargs.items() if value is not None and key not in {"runtime_probe", "branch"}},
                 },
             },
             owner_id=owner_id,
-            created_by='import',
+            created_by="import",
             created_at=datetime.now(UTC),
         )
         datasource.schema_cache = self._schema_for(datasource).model_dump(exclude_none=True)
-        Path(datasource.config['metadata_path']).mkdir(parents=True, exist_ok=True)
+        Path(datasource.config["metadata_path"]).mkdir(parents=True, exist_ok=True)
         session.add(datasource)
         session.commit()
         session.refresh(datasource)
@@ -82,9 +82,13 @@ class FauxDatasourceRuntime:
             name=name,
             description=description,
             source_type=DataSourceType.DATABASE,
-            config={'connection_string': connection_string, 'query': query, 'branch': branch},
+            config={
+                "connection_string": connection_string,
+                "query": query,
+                "branch": branch,
+            },
             owner_id=owner_id,
-            created_by='import',
+            created_by="import",
             created_at=datetime.now(UTC),
         )
         session.add(datasource)
@@ -107,8 +111,8 @@ class FauxDatasourceRuntime:
             session,
             name=name,
             description=description,
-            file_path=str(source.get('file_path')),
-            file_type=str(source.get('file_type', 'csv')),
+            file_path=str(source.get("file_path")),
+            file_type=str(source.get("file_type", "csv")),
             options=self._source_options(source),
             owner_id=owner_id,
             branch=branch,
@@ -153,7 +157,7 @@ class FauxDatasourceRuntime:
         )
 
     def _source_options(self, source: dict[str, object]) -> dict[str, Any]:
-        options = source.get('options')
+        options = source.get("options")
         return options if isinstance(options, dict) else {}
 
     def _stat_value(self, value: object) -> float | str | None:
@@ -192,25 +196,25 @@ class FauxDatasourceRuntime:
         from modules.datasource import schemas
 
         response = schemas.DataSourceResponse.model_validate(datasource)
-        response.output_of_tab_id = datasource.config.get('analysis_tab_id') if isinstance(datasource.config, dict) else None
+        response.output_of_tab_id = datasource.config.get("analysis_tab_id") if isinstance(datasource.config, dict) else None
         return response
 
     def _read_dataframe(self, datasource: DataSource) -> pl.DataFrame:
         config = datasource.config if isinstance(datasource.config, dict) else {}
-        source = config.get('source') if datasource.source_type == DataSourceType.ICEBERG else config
+        source = config.get("source") if datasource.source_type == DataSourceType.ICEBERG else config
         if not isinstance(source, dict):
             source = config
-        file_path = source.get('file_path')
-        file_type = source.get('file_type')
+        file_path = source.get("file_path")
+        file_type = source.get("file_type")
         if not isinstance(file_path, str):
             return pl.DataFrame()
-        if file_type == 'parquet':
+        if file_type == "parquet":
             return pl.read_parquet(file_path)
-        if file_type == 'json':
+        if file_type == "json":
             return pl.read_json(file_path)
-        if file_type == 'ndjson':
+        if file_type == "ndjson":
             return pl.read_ndjson(file_path)
-        if file_type == 'excel':
+        if file_type == "excel":
             return pl.read_excel(file_path)
         return pl.read_csv(file_path)
 

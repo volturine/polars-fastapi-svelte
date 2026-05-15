@@ -1,7 +1,7 @@
-from enum import StrEnum
+from contracts.enums import DataForgeStrEnum
 
 
-class StringTransformMethod(StrEnum):
+class StringTransformMethod(DataForgeStrEnum):
     UPPERCASE = 'uppercase'
     LOWERCASE = 'lowercase'
     TITLE = 'title'
@@ -16,7 +16,7 @@ class StringTransformMethod(StrEnum):
     SPLIT_TAKE = 'split_take'
 
 
-class TimeseriesOperationType(StrEnum):
+class TimeseriesOperationType(DataForgeStrEnum):
     EXTRACT = 'extract'
     TIMESTAMP = 'timestamp'
     ADD = 'add'
@@ -27,7 +27,7 @@ class TimeseriesOperationType(StrEnum):
     ROUND = 'round'
 
 
-class TimeComponent(StrEnum):
+class TimeComponent(DataForgeStrEnum):
     YEAR = 'year'
     MONTH = 'month'
     DAY = 'day'
@@ -38,8 +38,14 @@ class TimeComponent(StrEnum):
     WEEK = 'week'
     DAYOFWEEK = 'dayofweek'
 
+    @property
+    def extractor_name(self) -> str:
+        if self == TimeComponent.DAYOFWEEK:
+            return 'weekday'
+        return self.value
 
-class DurationUnit(StrEnum):
+
+class DurationUnit(DataForgeStrEnum):
     SECONDS = 'seconds'
     MINUTES = 'minutes'
     HOURS = 'hours'
@@ -47,13 +53,27 @@ class DurationUnit(StrEnum):
     WEEKS = 'weeks'
     MONTHS = 'months'
 
+    @property
+    def every_token(self) -> str:
+        if self == DurationUnit.SECONDS:
+            return '1s'
+        if self == DurationUnit.MINUTES:
+            return '1m'
+        if self == DurationUnit.HOURS:
+            return '1h'
+        if self == DurationUnit.DAYS:
+            return '1d'
+        if self == DurationUnit.WEEKS:
+            return '1w'
+        return '1mo'
 
-class TimeDirection(StrEnum):
+
+class TimeDirection(DataForgeStrEnum):
     ADD = 'add'
     SUBTRACT = 'subtract'
 
 
-class WithColumnsExprType(StrEnum):
+class WithColumnsExprType(DataForgeStrEnum):
     LITERAL = 'literal'
     COLUMN = 'column'
     UDF = 'udf'

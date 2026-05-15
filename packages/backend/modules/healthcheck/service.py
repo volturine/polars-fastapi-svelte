@@ -1,13 +1,18 @@
 import uuid
 from datetime import UTC, datetime
 
-from backend_core.healthcheck_schemas import HealthCheckCreate, HealthCheckResponse, HealthCheckResultResponse, HealthCheckUpdate
-from sqlalchemy import select
-from sqlmodel import Session
-
 from contracts.datasource.models import DataSource
 from contracts.healthcheck_models import HealthCheck, HealthCheckResult
 from core.exceptions import HealthcheckNotFoundError, HealthcheckValidationError
+from sqlalchemy import select
+from sqlmodel import Session
+
+from backend_core.healthcheck_schemas import (
+    HealthCheckCreate,
+    HealthCheckResponse,
+    HealthCheckResultResponse,
+    HealthCheckUpdate,
+)
 
 
 def list_healthchecks(session: Session, datasource_id: str) -> list[HealthCheckResponse]:
@@ -52,7 +57,7 @@ def update_healthcheck(
     if not check:
         raise HealthcheckNotFoundError(healthcheck_id)
     check_type = payload.check_type or check.check_type
-    if check_type == 'row_count':
+    if check_type == "row_count":
         _ensure_unique_row_count(session, check.datasource_id, check_type, exclude_id=healthcheck_id)
     for key, value in payload.model_dump(exclude_none=True).items():
         setattr(check, key, value)
@@ -112,14 +117,14 @@ def _ensure_unique_row_count(
     check_type: str,
     exclude_id: str | None = None,
 ) -> None:
-    if check_type != 'row_count':
+    if check_type != "row_count":
         return
     query = select(HealthCheck).where(
         HealthCheck.datasource_id == datasource_id,  # type: ignore[arg-type]
-        HealthCheck.check_type == 'row_count',  # type: ignore[arg-type]
+        HealthCheck.check_type == "row_count",  # type: ignore[arg-type]
     )
     if exclude_id:
         query = query.where(HealthCheck.id != exclude_id)  # type: ignore[arg-type]
     existing = session.execute(query).scalars().first()
     if existing:
-        raise HealthcheckValidationError('Only one row_count healthcheck is allowed per datasource')
+        raise HealthcheckValidationError("Only one row_count healthcheck is allowed per datasource")

@@ -1,15 +1,15 @@
-from backend_core.error_handlers import handle_errors
+from core.ai_clients import get_ai_client
 from pydantic import BaseModel
 
-from core.ai_clients import get_ai_client
+from backend_core.error_handlers import handle_errors
 from modules.mcp.router import MCPRouter
 
-router = MCPRouter(prefix='/ai', tags=['ai'])
+router = MCPRouter(prefix="/ai", tags=["ai"])
 
 
 class AIModelResponse(BaseModel):
     name: str
-    detail: str = ''
+    detail: str = ""
 
 
 class AIConnectionResponse(BaseModel):
@@ -18,7 +18,7 @@ class AIConnectionResponse(BaseModel):
 
 
 class AIProviderRequest(BaseModel):
-    provider: str = 'ollama'
+    provider: str = "ollama"
     endpoint_url: str | None = None
     api_key: str | None = None
     organization_id: str | None = None
@@ -31,8 +31,8 @@ class AIProviderStatus(BaseModel):
     default_model: str
 
 
-@router.post('/providers', response_model=list[AIProviderStatus], mcp=True)
-@handle_errors(operation='list ai providers')
+@router.post("/providers", response_model=list[AIProviderStatus], mcp=True)
+@handle_errors(operation="list ai providers")
 def list_providers() -> list[AIProviderStatus]:
     from backend_core.settings_store import (
         get_resolved_huggingface_settings,
@@ -48,34 +48,34 @@ def list_providers() -> list[AIProviderStatus]:
 
     return [
         AIProviderStatus(
-            provider='openrouter',
+            provider="openrouter",
             configured=bool(openrouter_key),
-            endpoint_url='https://openrouter.ai/api/v1',
-            default_model='',
+            endpoint_url="https://openrouter.ai/api/v1",
+            default_model="",
         ),
         AIProviderStatus(
-            provider='openai',
-            configured=bool(openai['endpoint_url']),
-            endpoint_url=openai['endpoint_url'],
-            default_model=openai['default_model'],
+            provider="openai",
+            configured=bool(openai["endpoint_url"]),
+            endpoint_url=openai["endpoint_url"],
+            default_model=openai["default_model"],
         ),
         AIProviderStatus(
-            provider='ollama',
-            configured=bool(ollama['endpoint_url']),
-            endpoint_url=ollama['endpoint_url'],
-            default_model=ollama['default_model'],
+            provider="ollama",
+            configured=bool(ollama["endpoint_url"]),
+            endpoint_url=ollama["endpoint_url"],
+            default_model=ollama["default_model"],
         ),
         AIProviderStatus(
-            provider='huggingface',
-            configured=bool(huggingface['api_token']),
-            endpoint_url='https://api-inference.huggingface.co',
-            default_model=huggingface['default_model'],
+            provider="huggingface",
+            configured=bool(huggingface["api_token"]),
+            endpoint_url="https://api-inference.huggingface.co",
+            default_model=huggingface["default_model"],
         ),
     ]
 
 
-@router.post('/models', response_model=list[AIModelResponse], mcp=True)
-@handle_errors(operation='list ai models', value_error_status=400)
+@router.post("/models", response_model=list[AIModelResponse], mcp=True)
+@handle_errors(operation="list ai models", value_error_status=400)
 def list_models(body: AIProviderRequest) -> list[AIModelResponse]:
     """List available AI models from the configured provider.
 
@@ -89,11 +89,17 @@ def list_models(body: AIProviderRequest) -> list[AIModelResponse]:
         organization_id=body.organization_id,
     )
     raw = client.list_models()
-    return [AIModelResponse(name=m.get('name', ''), detail=str({k: v for k, v in m.items() if k != 'name'})) for m in raw]
+    return [
+        AIModelResponse(
+            name=m.get("name", ""),
+            detail=str({k: v for k, v in m.items() if k != "name"}),
+        )
+        for m in raw
+    ]
 
 
-@router.post('/test', response_model=AIConnectionResponse, mcp=True)
-@handle_errors(operation='test ai connection', value_error_status=400)
+@router.post("/test", response_model=AIConnectionResponse, mcp=True)
+@handle_errors(operation="test ai connection", value_error_status=400)
 def test_connection(body: AIProviderRequest) -> AIConnectionResponse:
     """Test connectivity to an AI provider.
 

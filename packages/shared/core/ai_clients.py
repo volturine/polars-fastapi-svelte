@@ -32,14 +32,7 @@ class AIClient:
         raise NotImplementedError
 
 
-def _retry_request(
-    method: str,
-    url: str,
-    *,
-    headers: dict | None = None,
-    payload: dict | None = None,
-    retries: int = _MAX_RETRIES,
-) -> httpx.Response:
+def _retry_request(method: str, url: str, *, headers: dict | None = None, payload: dict | None = None, retries: int = _MAX_RETRIES) -> httpx.Response:
     """Make an HTTP request with retry logic."""
     last_error: Exception | None = None
     for attempt in range(retries + 1):
@@ -53,13 +46,7 @@ def _retry_request(
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code >= 500:
                 last_error = exc
-                logger.warning(
-                    'AI server error %d (attempt %d/%d): %s',
-                    exc.response.status_code,
-                    attempt + 1,
-                    retries + 1,
-                    url,
-                )
+                logger.warning('AI server error %d (attempt %d/%d): %s', exc.response.status_code, attempt + 1, retries + 1, url)
             else:
                 raise AIError(f'AI API returned {exc.response.status_code}: {exc.response.text[:500]}') from exc
         except httpx.ConnectError as exc:
@@ -112,18 +99,10 @@ class OpenAIClient(AIClient):
         return headers
 
     def generate(self, prompt: str, *, model: str, options: dict | None = None) -> str:
-        payload: dict[str, object] = {
-            'model': model,
-            'messages': [{'role': 'user', 'content': prompt}],
-        }
+        payload: dict[str, object] = {'model': model, 'messages': [{'role': 'user', 'content': prompt}]}
         if options:
             payload.update(options)
-        response = _retry_request(
-            'POST',
-            f'{self.base_url}/v1/chat/completions',
-            headers=self._headers(),
-            payload=payload,
-        )
+        response = _retry_request('POST', f'{self.base_url}/v1/chat/completions', headers=self._headers(), payload=payload)
         data = response.json()
         choices = data.get('choices', [])
         if not choices:
@@ -145,11 +124,7 @@ class OpenAIClient(AIClient):
 
     def test_connection(self) -> dict:
         try:
-            response = http_client.get(
-                f'{self.base_url}/v1/models',
-                headers=self._headers(),
-                timeout=_TIMEOUT,
-            )
+            response = http_client.get(f'{self.base_url}/v1/models', headers=self._headers(), timeout=_TIMEOUT)
             response.raise_for_status()
             models = response.json().get('data', [])
             return {'ok': True, 'detail': f'{len(models)} model(s) available'}
@@ -163,24 +138,13 @@ class OpenRouterClient(AIClient):
         self.base_url = base_url.rstrip('/')
 
     def _headers(self) -> dict[str, str]:
-        return {
-            'Authorization': f'Bearer {self.api_key}',
-            'Content-Type': 'application/json',
-        }
+        return {'Authorization': f'Bearer {self.api_key}', 'Content-Type': 'application/json'}
 
     def generate(self, prompt: str, *, model: str, options: dict | None = None) -> str:
-        payload: dict[str, object] = {
-            'model': model,
-            'messages': [{'role': 'user', 'content': prompt}],
-        }
+        payload: dict[str, object] = {'model': model, 'messages': [{'role': 'user', 'content': prompt}]}
         if options:
             payload.update(options)
-        response = _retry_request(
-            'POST',
-            f'{self.base_url}/chat/completions',
-            headers=self._headers(),
-            payload=payload,
-        )
+        response = _retry_request('POST', f'{self.base_url}/chat/completions', headers=self._headers(), payload=payload)
         data = response.json()
         choices = data.get('choices', [])
         if not choices:
@@ -193,14 +157,7 @@ class OpenRouterClient(AIClient):
             response = _retry_request('GET', f'{self.base_url}/models', headers=self._headers(), retries=0)
             data = response.json()
             models = data.get('data', [])
-            return [
-                {
-                    'name': m.get('id', ''),
-                    'label': m.get('name', ''),
-                    'context_length': m.get('context_length', 0),
-                }
-                for m in models
-            ]
+            return [{'name': m.get('id', ''), 'label': m.get('name', ''), 'context_length': m.get('context_length', 0)} for m in models]
         except AIError:
             return []
 
@@ -215,11 +172,7 @@ class OpenRouterClient(AIClient):
 
 
 class HuggingFaceClient(AIClient):
-    def __init__(
-        self,
-        api_token: str = '',
-        base_url: str = 'https://api-inference.huggingface.co',
-    ) -> None:
+    def __init__(self, api_token: str = '', base_url: str = 'https://api-inference.huggingface.co') -> None:
         self.api_token = api_token
         self.base_url = base_url.rstrip('/')
 
@@ -255,12 +208,7 @@ class HuggingFaceClient(AIClient):
         payload: dict[str, object] = {'inputs': prompt}
         if options:
             payload['parameters'] = options
-        response = _retry_request(
-            'POST',
-            f'{self.base_url}/models/{model}',
-            headers=self._headers(),
-            payload=payload,
-        )
+        response = _retry_request('POST', f'{self.base_url}/models/{model}', headers=self._headers(), payload=payload)
         return self._extract_generated_text(response.json())
 
     def list_models(self) -> list[dict]:
@@ -270,14 +218,7 @@ class HuggingFaceClient(AIClient):
             models = response.json()
             if not isinstance(models, list):
                 return []
-            return [
-                {
-                    'name': m.get('id', ''),
-                    'pipeline_tag': m.get('pipeline_tag', ''),
-                    'downloads': m.get('downloads', 0),
-                }
-                for m in models
-            ]
+            return [{'name': m.get('id', ''), 'pipeline_tag': m.get('pipeline_tag', ''), 'downloads': m.get('downloads', 0)} for m in models]
         except AIError:
             return []
 
@@ -285,11 +226,7 @@ class HuggingFaceClient(AIClient):
         if not self.api_token:
             return {'ok': False, 'detail': 'Hugging Face API token is required'}
         try:
-            response = http_client.get(
-                'https://huggingface.co/api/whoami-v2',
-                headers=self._headers(),
-                timeout=_TIMEOUT,
-            )
+            response = http_client.get('https://huggingface.co/api/whoami-v2', headers=self._headers(), timeout=_TIMEOUT)
             response.raise_for_status()
             data = response.json()
             name = data.get('name') or data.get('fullname') or 'authenticated'
@@ -298,13 +235,7 @@ class HuggingFaceClient(AIClient):
             return {'ok': False, 'detail': str(exc)}
 
 
-def get_ai_client(
-    provider: str,
-    *,
-    endpoint_url: str | None = None,
-    api_key: str | None = None,
-    organization_id: str | None = None,
-) -> AIClient:
+def get_ai_client(provider: str, *, endpoint_url: str | None = None, api_key: str | None = None, organization_id: str | None = None) -> AIClient:
     normalized = provider.strip().lower()
 
     if normalized == 'ollama':

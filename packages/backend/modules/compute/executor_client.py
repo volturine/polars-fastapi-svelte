@@ -3,10 +3,6 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from backend_core.dependencies import RuntimeAvailabilityProbe
-from fastapi import HTTPException
-from sqlmodel import Session
-
 from contracts.compute import schemas as compute_schemas
 from contracts.compute_requests.live import response_hub
 from contracts.compute_requests.models import ComputeRequestKind, ComputeRequestStatus
@@ -15,13 +11,17 @@ from contracts.runtime_workers.models import RuntimeWorkerKind
 from core import compute_requests_service
 from core.exceptions import PipelineExecutionError
 from core.namespace import get_namespace
+from fastapi import HTTPException
+from sqlmodel import Session
+
+from backend_core.dependencies import RuntimeAvailabilityProbe
 from modules.datasource import schemas as datasource_schemas
 
 
 def _ensure_runtime_available(runtime_probe: RuntimeAvailabilityProbe) -> None:
     if runtime_probe.available(kind=RuntimeWorkerKind.BUILD_MANAGER):
         return
-    raise HTTPException(status_code=503, detail='Compute runtime unavailable')
+    raise HTTPException(status_code=503, detail="Compute runtime unavailable")
 
 
 async def _submit_and_wait(
@@ -44,12 +44,12 @@ async def _submit_and_wait(
     session.expire_all()
     completed = compute_requests_service.get_request(session, request.id)
     if completed is None:
-        raise PipelineExecutionError(f'Compute request {request.id} disappeared')
+        raise PipelineExecutionError(f"Compute request {request.id} disappeared")
     if completed.status == ComputeRequestStatus.COMPLETED:
         return completed
     payload = completed.response_json or {}
-    message = str(payload.get('error') or completed.error_message or 'Compute request failed')
-    status_code = payload.get('status_code')
+    message = str(payload.get("error") or completed.error_message or "Compute request failed")
+    status_code = payload.get("status_code")
     if isinstance(status_code, int):
         raise HTTPException(status_code=status_code, detail=message)
     raise PipelineExecutionError(message)
@@ -64,7 +64,7 @@ async def preview_step(
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.PREVIEW,
-        request_json=request.model_dump(mode='json'),
+        request_json=request.model_dump(mode="json"),
         runtime_probe=runtime_probe,
     )
     return compute_schemas.StepPreviewResponse.model_validate(completed.response_json)
@@ -79,7 +79,7 @@ async def get_step_schema(
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.SCHEMA,
-        request_json=request.model_dump(mode='json'),
+        request_json=request.model_dump(mode="json"),
         runtime_probe=runtime_probe,
     )
     return compute_schemas.StepSchemaResponse.model_validate(completed.response_json)
@@ -94,7 +94,7 @@ async def get_step_row_count(
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.ROW_COUNT,
-        request_json=request.model_dump(mode='json'),
+        request_json=request.model_dump(mode="json"),
         runtime_probe=runtime_probe,
     )
     return compute_schemas.StepRowCountResponse.model_validate(completed.response_json)
@@ -109,11 +109,11 @@ async def download_step(
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.DOWNLOAD,
-        request_json=request.model_dump(mode='json'),
+        request_json=request.model_dump(mode="json"),
         runtime_probe=runtime_probe,
     )
     if not completed.artifact_path or not completed.artifact_name or not completed.artifact_content_type:
-        raise PipelineExecutionError('Download artifact missing from compute response')
+        raise PipelineExecutionError("Download artifact missing from compute response")
     path = Path(completed.artifact_path)
     data = path.read_bytes()
     path.unlink(missing_ok=True)
@@ -129,7 +129,7 @@ async def export_data(
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.EXPORT,
-        request_json=request.model_dump(mode='json'),
+        request_json=request.model_dump(mode="json"),
         runtime_probe=runtime_probe,
     )
     return compute_schemas.ExportResponse.model_validate(completed.response_json)
@@ -161,22 +161,22 @@ async def create_file_datasource(
         kind=ComputeRequestKind.CREATE_FILE_DATASOURCE,
         runtime_probe=runtime_probe,
         request_json={
-            'name': name,
-            'description': description,
-            'file_path': file_path,
-            'file_type': file_type,
-            'options': options or {},
-            'csv_options': csv_options,
-            'sheet_name': sheet_name,
-            'start_row': start_row,
-            'start_col': start_col,
-            'end_col': end_col,
-            'end_row': end_row,
-            'has_header': has_header,
-            'table_name': table_name,
-            'named_range': named_range,
-            'cell_range': cell_range,
-            'owner_id': owner_id,
+            "name": name,
+            "description": description,
+            "file_path": file_path,
+            "file_type": file_type,
+            "options": options or {},
+            "csv_options": csv_options,
+            "sheet_name": sheet_name,
+            "start_row": start_row,
+            "start_col": start_col,
+            "end_col": end_col,
+            "end_row": end_row,
+            "has_header": has_header,
+            "table_name": table_name,
+            "named_range": named_range,
+            "cell_range": cell_range,
+            "owner_id": owner_id,
         },
     )
     return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
@@ -198,12 +198,12 @@ async def create_database_datasource(
         kind=ComputeRequestKind.CREATE_DATABASE_DATASOURCE,
         runtime_probe=runtime_probe,
         request_json={
-            'name': name,
-            'description': description,
-            'connection_string': connection_string,
-            'query': query,
-            'branch': branch,
-            'owner_id': owner_id,
+            "name": name,
+            "description": description,
+            "connection_string": connection_string,
+            "query": query,
+            "branch": branch,
+            "owner_id": owner_id,
         },
     )
     return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
@@ -224,11 +224,11 @@ async def create_iceberg_datasource(
         kind=ComputeRequestKind.CREATE_ICEBERG_DATASOURCE,
         runtime_probe=runtime_probe,
         request_json={
-            'name': name,
-            'description': description,
-            'source': source,
-            'branch': branch,
-            'owner_id': owner_id,
+            "name": name,
+            "description": description,
+            "source": source,
+            "branch": branch,
+            "owner_id": owner_id,
         },
     )
     return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
@@ -243,7 +243,7 @@ async def refresh_datasource(
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.REFRESH_DATASOURCE,
-        request_json={'datasource_id': datasource_id},
+        request_json={"datasource_id": datasource_id},
         runtime_probe=runtime_probe,
     )
     return datasource_schemas.DataSourceResponse.model_validate(completed.response_json)
@@ -261,9 +261,9 @@ async def get_datasource_schema(
         session,
         kind=ComputeRequestKind.DATASOURCE_SCHEMA,
         request_json={
-            'datasource_id': datasource_id,
-            'sheet_name': sheet_name,
-            'refresh': refresh,
+            "datasource_id": datasource_id,
+            "sheet_name": sheet_name,
+            "refresh": refresh,
         },
         runtime_probe=runtime_probe,
     )
@@ -284,11 +284,11 @@ async def get_column_stats(
         session,
         kind=ComputeRequestKind.DATASOURCE_COLUMN_STATS,
         request_json={
-            'datasource_id': datasource_id,
-            'column_name': column_name,
-            'use_sample': use_sample,
-            'sample_size': sample_size,
-            'datasource_config': datasource_config or {},
+            "datasource_id": datasource_id,
+            "column_name": column_name,
+            "use_sample": use_sample,
+            "sample_size": sample_size,
+            "datasource_config": datasource_config or {},
         },
         runtime_probe=runtime_probe,
     )
@@ -308,10 +308,10 @@ async def compare_iceberg_snapshots(
         session,
         kind=ComputeRequestKind.COMPARE_ICEBERG_SNAPSHOTS,
         request_json={
-            'datasource_id': datasource_id,
-            'snapshot_a': snapshot_a,
-            'snapshot_b': snapshot_b,
-            'row_limit': row_limit,
+            "datasource_id": datasource_id,
+            "snapshot_a": snapshot_a,
+            "snapshot_b": snapshot_b,
+            "row_limit": row_limit,
         },
         runtime_probe=runtime_probe,
     )
@@ -328,7 +328,10 @@ async def spawn_engine(
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.SPAWN_ENGINE,
-        request_json={'analysis_id': analysis_id, 'resource_config': resource_config or {}},
+        request_json={
+            "analysis_id": analysis_id,
+            "resource_config": resource_config or {},
+        },
         runtime_probe=runtime_probe,
     )
     return compute_schemas.EngineStatusSchema.model_validate(completed.response_json)
@@ -344,7 +347,7 @@ async def configure_engine(
     completed = await _submit_and_wait(
         session,
         kind=ComputeRequestKind.CONFIGURE_ENGINE,
-        request_json={'analysis_id': analysis_id, 'resource_config': resource_config},
+        request_json={"analysis_id": analysis_id, "resource_config": resource_config},
         runtime_probe=runtime_probe,
     )
     return compute_schemas.EngineStatusSchema.model_validate(completed.response_json)
@@ -359,6 +362,6 @@ async def shutdown_engine(
     await _submit_and_wait(
         session,
         kind=ComputeRequestKind.SHUTDOWN_ENGINE,
-        request_json={'analysis_id': analysis_id},
+        request_json={"analysis_id": analysis_id},
         runtime_probe=runtime_probe,
     )

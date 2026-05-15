@@ -47,22 +47,14 @@ def get_job_by_build_id(session: Session, build_id: str) -> BuildJob | None:
     return session.execute(stmt).scalars().first()
 
 
-def claim_next_job(
-    session: Session,
-    *,
-    worker_id: str,
-    reclaimable_owner_ids: set[str] | None = None,
-) -> BuildJob | None:
+def claim_next_job(session: Session, *, worker_id: str, reclaimable_owner_ids: set[str] | None = None) -> BuildJob | None:
     now = _utcnow()
     table = BuildJob.metadata.tables[BuildJob.__tablename__]
     reclaimable = set(reclaimable_owner_ids or ())
     queued_clause = table.c.status == BuildJobStatus.QUEUED
     reclaimable_clause = and_(
         table.c.status.in_([BuildJobStatus.LEASED, BuildJobStatus.RUNNING]),
-        or_(
-            table.c.lease_owner.is_(None),
-            table.c.lease_owner.in_(reclaimable),
-        ),
+        or_(table.c.lease_owner.is_(None), table.c.lease_owner.in_(reclaimable)),
         table.c.attempts < table.c.max_attempts,
     )
     base = (
@@ -92,13 +84,7 @@ def claim_next_job(
     result = cast(
         CursorResult[Any],
         session.execute(
-            claim.values(
-                status=BuildJobStatus.RUNNING,
-                lease_owner=worker_id,
-                lease_expires_at=None,
-                attempts=current_attempts + 1,
-                updated_at=now,
-            )
+            claim.values(status=BuildJobStatus.RUNNING, lease_owner=worker_id, lease_expires_at=None, attempts=current_attempts + 1, updated_at=now)
         ),
     )
     if result.rowcount != 1:

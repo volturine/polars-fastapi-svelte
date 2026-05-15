@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+from contracts.telegram_models import TelegramListener, TelegramSubscriber
 from sqlalchemy import select
 from sqlmodel import Session
-
-from contracts.telegram_models import TelegramListener, TelegramSubscriber
 
 
 def list_active_subscriber_targets(session: Session) -> list[tuple[str, str]]:

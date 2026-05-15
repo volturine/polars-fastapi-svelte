@@ -1,22 +1,21 @@
 """Select columns operation."""
 
-from enum import StrEnum
-
 import polars as pl
+from contracts.compute.base import OperationHandler, OperationParams
+from contracts.enums import DataForgeStrEnum
 from pydantic import Field
 
 from compute_operations.type_casting import require_polars_type
-from contracts.compute.base import OperationHandler, OperationParams
 
 
-class PolarsCastType(StrEnum):
-    INT64 = 'Int64'
-    FLOAT64 = 'Float64'
-    BOOLEAN = 'Boolean'
-    STRING = 'String'
-    UTF8 = 'Utf8'
-    DATE = 'Date'
-    DATETIME = 'Datetime'
+class PolarsCastType(DataForgeStrEnum):
+    INT64 = "Int64"
+    FLOAT64 = "Float64"
+    BOOLEAN = "Boolean"
+    STRING = "String"
+    UTF8 = "Utf8"
+    DATE = "Date"
+    DATETIME = "Datetime"
 
 
 class SelectParams(OperationParams):
@@ -34,8 +33,8 @@ class SelectHandler(OperationHandler):
         validated = SelectParams.model_validate(params)
         missing = sorted(set(validated.cast_map) - set(validated.columns))
         if missing:
-            cols = ', '.join(missing)
-            raise ValueError(f'cast_map keys must reference selected columns. Unknown keys: {cols}')
+            cols = ", ".join(missing)
+            raise ValueError(f"cast_map keys must reference selected columns. Unknown keys: {cols}")
         selected = lf.select(validated.columns)
         if not validated.cast_map:
             return selected

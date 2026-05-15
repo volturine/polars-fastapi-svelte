@@ -7,59 +7,59 @@ from functools import partial
 from typing import Any, cast
 
 import polars as pl
+from contracts.compute.base import OperationHandler, OperationParams
+from contracts.step_config_enums import WithColumnsExprType
 from pydantic import BaseModel, ConfigDict, Field
 
 from compute_operations._validation import validate_no_reflection_escape
-from contracts.compute.base import OperationHandler, OperationParams
-from contracts.step_config_enums import WithColumnsExprType
 
 # Builtins allowed inside UDF code.
 # Keep this as a narrow allowlist so aliased introspection helpers cannot escape the sandbox.
 _ALLOWED_BUILTINS = frozenset(
     {
-        'abs',
-        'all',
-        'any',
-        'ArithmeticError',
-        'bool',
-        'complex',
-        'dict',
-        'divmod',
-        'enumerate',
-        'Exception',
-        'filter',
-        'float',
-        'frozenset',
-        'hash',
-        'int',
-        'isinstance',
-        'issubclass',
-        'len',
-        'list',
-        'map',
-        'max',
-        'min',
-        'pow',
-        'range',
-        'repr',
-        'reversed',
-        'round',
-        'set',
-        'slice',
-        'sorted',
-        'str',
-        'sum',
-        'tuple',
-        'TypeError',
-        'ValueError',
-        'zip',
+        "abs",
+        "all",
+        "any",
+        "ArithmeticError",
+        "bool",
+        "complex",
+        "dict",
+        "divmod",
+        "enumerate",
+        "Exception",
+        "filter",
+        "float",
+        "frozenset",
+        "hash",
+        "int",
+        "isinstance",
+        "issubclass",
+        "len",
+        "list",
+        "map",
+        "max",
+        "min",
+        "pow",
+        "range",
+        "repr",
+        "reversed",
+        "round",
+        "set",
+        "slice",
+        "sorted",
+        "str",
+        "sum",
+        "tuple",
+        "TypeError",
+        "ValueError",
+        "zip",
     },
 )
 _SAFE_BUILTINS: dict[str, Any] = {name: getattr(builtins, name) for name in _ALLOWED_BUILTINS}
 
 
 class WithColumnsExpr(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     name: str
     type: WithColumnsExprType
@@ -91,13 +91,17 @@ class WithColumnsHandler(OperationHandler):
             elif expr.type == WithColumnsExprType.COLUMN and expr.column:
                 exprs.append(pl.col(expr.column).alias(expr.name))
             elif expr.type == WithColumnsExprType.UDF and expr.code:
-                validate_no_reflection_escape(expr.code, label='UDF code')
-                scope: dict[str, Any] = {'pl': pl, 'sleep': time.sleep, '__builtins__': _SAFE_BUILTINS}
+                validate_no_reflection_escape(expr.code, label="UDF code")
+                scope: dict[str, Any] = {
+                    "pl": pl,
+                    "sleep": time.sleep,
+                    "__builtins__": _SAFE_BUILTINS,
+                }
                 local_scope: dict[str, Any] = {}
                 exec(expr.code, scope, local_scope)
-                udf = local_scope.get('udf') or scope.get('udf')
+                udf = local_scope.get("udf") or scope.get("udf")
                 if not callable(udf):
-                    raise ValueError('UDF must define a callable named udf')
+                    raise ValueError("UDF must define a callable named udf")
                 fn = cast(Callable[..., Any], udf)
                 args = expr.args or []
 

@@ -54,13 +54,7 @@ def namespace_paths(namespace: str | None = None) -> NamespacePaths:
     for path in (base_dir, upload_dir, clean_dir, exports_dir):
         path.mkdir(parents=True, exist_ok=True)
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    return NamespacePaths(
-        base_dir=base_dir,
-        upload_dir=upload_dir,
-        clean_dir=clean_dir,
-        exports_dir=exports_dir,
-        db_path=db_path,
-    )
+    return NamespacePaths(base_dir=base_dir, upload_dir=upload_dir, clean_dir=clean_dir, exports_dir=exports_dir, db_path=db_path)
 
 
 def list_namespaces() -> list[str]:

@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-RuntimeMode = Literal['single_process', 'durable_single_node', 'distributed']
+RuntimeMode = Literal["single_process", "durable_single_node", "distributed"]
 
 
 class ApiProcessSummary(BaseModel):

@@ -3,8 +3,6 @@ from __future__ import annotations
 import socket
 from datetime import UTC, datetime
 
-from sqlmodel import Session, select
-
 from contracts.build_jobs.models import BuildJob, BuildJobStatus
 from contracts.engine_instances.models import EngineInstance
 from contracts.runtime_workers.models import RuntimeWorker, RuntimeWorkerKind
@@ -12,6 +10,7 @@ from core import runtime_workers_service
 from core.config import settings
 from core.database import run_db, run_settings_db, supports_distributed_runtime
 from core.namespace import list_namespaces, reset_namespace, set_namespace_context
+from sqlmodel import Session, select
 
 from . import schemas
 
@@ -33,16 +32,16 @@ def _age_seconds(value: datetime, *, now: datetime | None = None) -> float:
 
 def runtime_mode() -> schemas.RuntimeMode:
     if supports_distributed_runtime():
-        return 'distributed'
+        return "distributed"
     if settings.embedded_build_worker_enabled:
-        return 'single_process'
-    return 'durable_single_node'
+        return "single_process"
+    return "durable_single_node"
 
 
 def api_process(worker_id: str | None) -> schemas.ApiProcessSummary:
     return schemas.ApiProcessSummary(
         worker_id=worker_id,
-        pid=0 if worker_id is None else int(worker_id.split(':')[-1]),
+        pid=0 if worker_id is None else int(worker_id.split(":")[-1]),
         hostname=socket.gethostname(),
         version=settings.app_version,
     )
@@ -91,7 +90,10 @@ def list_engine_summaries(session: Session) -> list[schemas.EngineInstanceSummar
 
 
 def queue_summary() -> schemas.QueueSummary:
-    names = [settings.default_namespace, *[name for name in list_namespaces() if name != settings.default_namespace]]
+    names = [
+        settings.default_namespace,
+        *[name for name in list_namespaces() if name != settings.default_namespace],
+    ]
     seen: set[str] = set()
     items: list[schemas.QueueNamespaceSummary] = []
     for namespace in names:
@@ -143,8 +145,13 @@ def _read_queue_namespace_summary(
     )
 
 
-def _queue_totals(items: list[schemas.QueueNamespaceSummary]) -> schemas.QueueTotalsSummary:
-    oldest = min((item.oldest_queued_at for item in items if item.oldest_queued_at is not None), default=None)
+def _queue_totals(
+    items: list[schemas.QueueNamespaceSummary],
+) -> schemas.QueueTotalsSummary:
+    oldest = min(
+        (item.oldest_queued_at for item in items if item.oldest_queued_at is not None),
+        default=None,
+    )
     now = _utcnow()
     age = None if oldest is None else _age_seconds(oldest, now=now)
     return schemas.QueueTotalsSummary(

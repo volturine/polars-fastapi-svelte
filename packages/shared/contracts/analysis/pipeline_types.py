@@ -27,13 +27,7 @@ class PipelineStep:
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            'id': self.id,
-            'type': self.type,
-            'config': self.config,
-            'depends_on': self.depends_on,
-            'is_applied': self.is_applied,
-        }
+        return {'id': self.id, 'type': self.type, 'config': self.config, 'depends_on': self.depends_on, 'is_applied': self.is_applied}
 
 
 @dataclass(slots=True)
@@ -47,11 +41,7 @@ class TabDatasource:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> TabDatasource:
         raw_config = data.get('config')
-        return cls(
-            id=str(data.get('id', '')),
-            config=raw_config if isinstance(raw_config, dict) else {},
-            analysis_tab_id=data.get('analysis_tab_id'),
-        )
+        return cls(id=str(data.get('id', '')), config=raw_config if isinstance(raw_config, dict) else {}, analysis_tab_id=data.get('analysis_tab_id'))
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -75,20 +65,10 @@ class TabOutput:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> TabOutput:
         extra = {k: v for k, v in data.items() if k not in {'result_id', 'format', 'filename'}}
-        return cls(
-            result_id=str(data.get('result_id', '')),
-            format=str(data.get('format', '')),
-            filename=str(data.get('filename', '')),
-            extra=extra,
-        )
+        return cls(result_id=str(data.get('result_id', '')), format=str(data.get('format', '')), filename=str(data.get('filename', '')), extra=extra)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            'result_id': self.result_id,
-            'format': self.format,
-            'filename': self.filename,
-            **self.extra,
-        }
+        return {'result_id': self.result_id, 'format': self.format, 'filename': self.filename, **self.extra}
 
 
 @dataclass(slots=True)
@@ -138,14 +118,10 @@ class PipelineDefinition:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> PipelineDefinition:
         raw_tabs = data.get('tabs', [])
-        return cls(
-            tabs=[PipelineTab.from_dict(t) for t in raw_tabs if isinstance(t, dict)],
-        )
+        return cls(tabs=[PipelineTab.from_dict(t) for t in raw_tabs if isinstance(t, dict)])
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            'tabs': [t.to_dict() for t in self.tabs],
-        }
+        return {'tabs': [t.to_dict() for t in self.tabs]}
 
     def find_tab(self, tab_id: str) -> PipelineTab:
         """Find a tab by ID or raise ValueError."""

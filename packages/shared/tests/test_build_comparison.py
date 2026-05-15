@@ -7,12 +7,7 @@ import pytest
 from sqlmodel import Session
 
 from contracts.engine_runs.models import EngineRun
-from core.engine_runs_service import (
-    _compute_schema_diff,
-    _compute_timing_diff,
-    _safe_int,
-    compare_engine_runs,
-)
+from core.engine_runs_service import _compute_schema_diff, _compute_timing_diff, _safe_int, compare_engine_runs
 from core.exceptions import EngineRunComparisonError, EngineRunNotFoundError
 
 
@@ -151,20 +146,14 @@ class TestCompareEngineRuns:
         run_a = _create_run(
             test_db_session,
             datasource_id=datasource_id,
-            result_json={
-                'schema': {'col_a': 'Int64', 'col_b': 'Utf8'},
-                'row_count': 100,
-            },
+            result_json={'schema': {'col_a': 'Int64', 'col_b': 'Utf8'}, 'row_count': 100},
             step_timings={'filter': 50, 'select': 30},
             duration_ms=80,
         )
         run_b = _create_run(
             test_db_session,
             datasource_id=datasource_id,
-            result_json={
-                'schema': {'col_a': 'Int64', 'col_c': 'Float64'},
-                'row_count': 150,
-            },
+            result_json={'schema': {'col_a': 'Int64', 'col_c': 'Float64'}, 'row_count': 150},
             step_timings={'filter': 40, 'select': 35, 'sort': 10},
             duration_ms=85,
         )

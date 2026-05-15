@@ -1,21 +1,28 @@
 import datetime as dt
-from enum import StrEnum
 
 from sqlalchemy import BIGINT, JSON, Column, DateTime, Enum as SAEnum, String
 from sqlmodel import Field, SQLModel
 
+from contracts.compute.schemas import EngineStatus
+from contracts.enums import DataForgeStrEnum
 
-def _enum_values(enum_cls: type[StrEnum]) -> list[str]:
-    return [item.value for item in enum_cls]
 
-
-class EngineInstanceStatus(StrEnum):
+class EngineInstanceStatus(DataForgeStrEnum):
     STARTING = 'starting'
     IDLE = 'idle'
     RUNNING = 'running'
     STOPPING = 'stopping'
     STOPPED = 'stopped'
     FAILED = 'failed'
+
+    @classmethod
+    def from_engine_status(cls, value: str, current_job_id: str | None) -> 'EngineInstanceStatus':
+        engine_status = EngineStatus.require(value)
+        if engine_status == EngineStatus.HEALTHY and current_job_id:
+            return cls.RUNNING
+        if engine_status == EngineStatus.HEALTHY:
+            return cls.IDLE
+        return cls.STOPPED
 
 
 class EngineInstance(SQLModel, table=True):  # type: ignore[call-arg, assignment]
@@ -27,11 +34,7 @@ class EngineInstance(SQLModel, table=True):  # type: ignore[call-arg, assignment
     analysis_id: str = Field(sa_column=Column(String, nullable=False, index=True))
     process_id: int | None = Field(default=None, sa_column=Column(BIGINT, nullable=True))
     status: EngineInstanceStatus = Field(
-        sa_column=Column(
-            SAEnum(EngineInstanceStatus, native_enum=False, values_callable=_enum_values),
-            nullable=False,
-            index=True,
-        ),
+        sa_column=Column(SAEnum(EngineInstanceStatus, native_enum=False, values_callable=lambda enum_cls: enum_cls.values()), nullable=False, index=True)
     )
     current_job_id: str | None = Field(default=None, sa_column=Column(String, nullable=True))
     current_build_id: str | None = Field(default=None, sa_column=Column(String, nullable=True))

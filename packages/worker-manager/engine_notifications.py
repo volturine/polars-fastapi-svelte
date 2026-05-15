@@ -42,7 +42,7 @@ def create_snapshot_notifier(
             persist(namespace, list(statuses))
             return
         if worker_id is None:
-            raise ValueError('worker_id is required when persist callback is not provided')
+            raise ValueError("worker_id is required when persist callback is not provided")
         persist_engine_snapshot(worker_id=worker_id, namespace=namespace, statuses=list(statuses))
 
     return notify

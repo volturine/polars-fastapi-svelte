@@ -6,10 +6,6 @@ from datetime import UTC, datetime
 from typing import Any, cast
 
 import croniter  # type: ignore[import-untyped]
-from sqlalchemy import or_, select, update
-from sqlalchemy.engine import CursorResult
-from sqlmodel import Session, col
-
 from contracts.analysis.models import Analysis
 from contracts.build_jobs.live import hub as build_job_hub
 from contracts.build_runs.models import BuildRunStatus
@@ -19,20 +15,25 @@ from contracts.engine_runs.models import EngineRun
 from contracts.runtime import ipc as runtime_ipc
 from contracts.scheduler.models import Schedule
 from contracts.scheduler.schemas import ScheduleCreate, ScheduleResponse, ScheduleUpdate
-from core import build_jobs_service as build_job_service, build_runs_service as build_run_service
-from core.exceptions import DataSourceNotFoundError, ScheduleNotFoundError, ScheduleValidationError
+from core import (
+    build_jobs_service as build_job_service,
+)
+from core import (
+    build_runs_service as build_run_service,
+)
+from core.exceptions import (
+    DataSourceNotFoundError,
+    ScheduleNotFoundError,
+    ScheduleValidationError,
+)
 from core.namespace import get_namespace
+from sqlalchemy import or_, select, update
+from sqlalchemy.engine import CursorResult
+from sqlmodel import Session, col
 
 logger = logging.getLogger(__name__)
 
-_SCHEDULE_TERMINAL_STATUSES = frozenset(
-    {
-        BuildRunStatus.COMPLETED,
-        BuildRunStatus.FAILED,
-        BuildRunStatus.CANCELLED,
-        BuildRunStatus.ORPHANED,
-    }
-)
+_SCHEDULE_TERMINAL_STATUSES = frozenset(status for status in BuildRunStatus if status.is_terminal)
 
 
 def _utcnow() -> datetime:
@@ -41,10 +42,6 @@ def _utcnow() -> datetime:
 
 def _naive_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=None) if value.tzinfo is not None else value
-
-
-def _schedule_starter(schedule_id: str) -> compute_schemas.BuildStarter:
-    return compute_schemas.BuildStarter(triggered_by=f'schedule:{schedule_id}')
 
 
 def _mark_schedule_failure(
@@ -73,42 +70,42 @@ def mark_schedule_enqueue_failed(session: Session, schedule_id: str, *, error: s
 
 def build_analysis_pipeline_payload(session: Session, analysis: Analysis, datasource_id: str | None = None) -> dict[str, Any]:
     pipeline = analysis.pipeline_definition
-    tabs = pipeline.get('tabs', []) if isinstance(pipeline, dict) else []
+    tabs = pipeline.get("tabs", []) if isinstance(pipeline, dict) else []
     if not isinstance(tabs, list) or not tabs:
-        return {'analysis_id': str(analysis.id), 'tabs': []}
+        return {"analysis_id": str(analysis.id), "tabs": []}
 
     output_map: dict[str, str] = {}
     for tab in tabs:
         if not isinstance(tab, dict):
             continue
-        tab_id = tab.get('id')
-        output = tab.get('output')
+        tab_id = tab.get("id")
+        output = tab.get("output")
         if not isinstance(output, dict):
-            raise ValueError('Analysis pipeline tab missing output configuration')
-        output_id = output.get('result_id')
+            raise ValueError("Analysis pipeline tab missing output configuration")
+        output_id = output.get("result_id")
         if not output_id:
-            raise ValueError('Analysis pipeline tab missing output.result_id')
+            raise ValueError("Analysis pipeline tab missing output.result_id")
         if tab_id:
             output_map[str(tab_id)] = str(output_id)
 
     output_to_tab = {output_id: tab_id for tab_id, output_id in output_map.items()}
 
     def enrich_step(step: dict[str, object]) -> dict[str, Any]:
-        config = step.get('config')
+        config = step.get("config")
         if not isinstance(config, dict):
             return step
         next_config = dict(config)
-        right_source = next_config.get('right_source') or next_config.get('rightDataSource')
+        right_source = next_config.get("right_source") or next_config.get("rightDataSource")
         if isinstance(right_source, str) and right_source and right_source not in output_to_tab:
             datasource_model = session.get(DataSource, right_source)
             if datasource_model is not None:
-                next_config['right_source_datasource'] = {
-                    'id': right_source,
-                    'analysis_tab_id': None,
-                    'source_type': datasource_model.source_type,
-                    'config': dict(datasource_model.config),
+                next_config["right_source_datasource"] = {
+                    "id": right_source,
+                    "analysis_tab_id": None,
+                    "source_type": datasource_model.source_type,
+                    "config": dict(datasource_model.config),
                 }
-        raw_sources = next_config.get('sources')
+        raw_sources = next_config.get("sources")
         source_ids = [raw_sources] if isinstance(raw_sources, str) else raw_sources if isinstance(raw_sources, list) else []
         refs: list[dict[str, Any]] = []
         for source in source_ids:
@@ -119,84 +116,82 @@ def build_analysis_pipeline_payload(session: Session, analysis: Analysis, dataso
                 continue
             refs.append(
                 {
-                    'id': source,
-                    'analysis_tab_id': None,
-                    'source_type': datasource_model.source_type,
-                    'config': dict(datasource_model.config),
+                    "id": source,
+                    "analysis_tab_id": None,
+                    "source_type": datasource_model.source_type,
+                    "config": dict(datasource_model.config),
                 }
             )
         if refs:
-            next_config['source_datasources'] = refs
-        return {**step, 'config': next_config}
+            next_config["source_datasources"] = refs
+        return {**step, "config": next_config}
 
     next_tabs: list[dict[str, Any]] = []
     for tab in tabs:
         if not isinstance(tab, dict):
             continue
-        datasource = tab.get('datasource')
+        datasource = tab.get("datasource")
         if not isinstance(datasource, dict):
-            raise ValueError('Analysis pipeline tab datasource must be a dict')
-        output = tab.get('output')
+            raise ValueError("Analysis pipeline tab datasource must be a dict")
+        output = tab.get("output")
         if not isinstance(output, dict):
-            raise ValueError('Analysis pipeline tab missing output configuration')
-        output_id = output.get('result_id')
+            raise ValueError("Analysis pipeline tab missing output configuration")
+        output_id = output.get("result_id")
         if not output_id:
-            raise ValueError('Analysis pipeline tab missing output.result_id')
-        config = datasource.get('config')
+            raise ValueError("Analysis pipeline tab missing output.result_id")
+        config = datasource.get("config")
         if not isinstance(config, dict):
-            raise ValueError('Analysis pipeline tab datasource.config must be a dict')
-        branch = config.get('branch')
+            raise ValueError("Analysis pipeline tab datasource.config must be a dict")
+        branch = config.get("branch")
         if not isinstance(branch, str) or not branch.strip():
-            raise ValueError('Analysis pipeline tab datasource.config.branch is required')
-        tab_datasource_id = datasource.get('id')
+            raise ValueError("Analysis pipeline tab datasource.config.branch is required")
+        tab_datasource_id = datasource.get("id")
         if not tab_datasource_id:
-            raise ValueError('Analysis pipeline tab missing datasource.id')
-        analysis_tab_id = datasource.get('analysis_tab_id') if isinstance(datasource.get('analysis_tab_id'), str) else None
-        source_type = 'analysis' if analysis_tab_id or str(tab_datasource_id) in output_to_tab else None
+            raise ValueError("Analysis pipeline tab missing datasource.id")
+        analysis_tab_id = datasource.get("analysis_tab_id") if isinstance(datasource.get("analysis_tab_id"), str) else None
+        source_type = "analysis" if analysis_tab_id or str(tab_datasource_id) in output_to_tab else None
         merged_config = dict(config)
         if source_type is None:
             datasource_model = session.get(DataSource, str(tab_datasource_id))
             if datasource_model is not None:
                 source_type = datasource_model.source_type
-                merged_config = {'branch': branch, **datasource_model.config, **config}
+                merged_config = {"branch": branch, **datasource_model.config, **config}
         if datasource_id and str(datasource_id) != str(output_id) and str(datasource_id) != str(tab_datasource_id):
             next_tabs.append(
                 {
                     **tab,
-                    'datasource': {
+                    "datasource": {
                         **datasource,
-                        'id': tab_datasource_id,
-                        'analysis_tab_id': analysis_tab_id,
-                        'source_type': source_type,
-                        'config': merged_config,
+                        "id": tab_datasource_id,
+                        "analysis_tab_id": analysis_tab_id,
+                        "source_type": source_type,
+                        "config": merged_config,
                     },
-                    'steps': [enrich_step(step) for step in tab.get('steps', []) if isinstance(step, dict)],
+                    "steps": [enrich_step(step) for step in tab.get("steps", []) if isinstance(step, dict)],
                 }
             )
             continue
         next_tabs.append(
             {
                 **tab,
-                'datasource': {
+                "datasource": {
                     **datasource,
-                    'id': tab_datasource_id,
-                    'analysis_tab_id': analysis_tab_id,
-                    'source_type': source_type,
-                    'config': merged_config,
+                    "id": tab_datasource_id,
+                    "analysis_tab_id": analysis_tab_id,
+                    "source_type": source_type,
+                    "config": merged_config,
                 },
-                'steps': [enrich_step(step) for step in tab.get('steps', []) if isinstance(step, dict)],
+                "steps": [enrich_step(step) for step in tab.get("steps", []) if isinstance(step, dict)],
             }
         )
 
-    return {'analysis_id': str(analysis.id), 'tabs': next_tabs}
+    return {"analysis_id": str(analysis.id), "tabs": next_tabs}
 
 
-def _build_analysis_request(
-    session: Session, schedule: Schedule, analysis_id: str
-) -> tuple[compute_schemas.BuildRequest, str, str, str | None, str | None]:
+def _build_analysis_request(session: Session, schedule: Schedule, analysis_id: str) -> tuple[compute_schemas.BuildRequest, str, str, str | None, str | None]:
     analysis = session.get(Analysis, analysis_id)
     if not analysis:
-        raise ValueError(f'Analysis {analysis_id} not found for datasource {schedule.datasource_id}')
+        raise ValueError(f"Analysis {analysis_id} not found for datasource {schedule.datasource_id}")
 
     pipeline = analysis.pipeline
     target_tab = next(
@@ -204,13 +199,13 @@ def _build_analysis_request(
         None,
     )
     if target_tab is None:
-        raise ValueError(f'No tab found in analysis {analysis_id} that produces datasource {schedule.datasource_id}')
+        raise ValueError(f"No tab found in analysis {analysis_id} that produces datasource {schedule.datasource_id}")
 
     pipeline_payload = build_analysis_pipeline_payload(session, analysis, datasource_id=schedule.datasource_id)
     request = compute_schemas.BuildRequest.model_validate(
         {
-            'analysis_pipeline': pipeline_payload,
-            'tab_id': target_tab.id,
+            "analysis_pipeline": pipeline_payload,
+            "tab_id": target_tab.id,
         }
     )
     return request, str(analysis.id), analysis.name, target_tab.id, target_tab.name
@@ -218,28 +213,28 @@ def _build_analysis_request(
 
 def _build_refresh_request(schedule: Schedule) -> compute_schemas.BuildRequest:
     pipeline = {
-        'analysis_id': schedule.id,
-        'tabs': [
+        "analysis_id": schedule.id,
+        "tabs": [
             {
-                'id': schedule.id,
-                'name': 'Scheduled refresh',
-                'datasource': {
-                    'id': schedule.datasource_id,
-                    'analysis_tab_id': None,
-                    'source_type': 'schedule',
-                    'config': {'branch': 'master'},
+                "id": schedule.id,
+                "name": "Scheduled refresh",
+                "datasource": {
+                    "id": schedule.datasource_id,
+                    "analysis_tab_id": None,
+                    "source_type": "schedule",
+                    "config": {"branch": "master"},
                 },
-                'output': {
-                    'result_id': schedule.datasource_id,
-                    'datasource_type': 'iceberg',
-                    'format': 'parquet',
-                    'filename': f'schedule_{schedule.id}',
+                "output": {
+                    "result_id": schedule.datasource_id,
+                    "datasource_type": "iceberg",
+                    "format": "parquet",
+                    "filename": f"schedule_{schedule.id}",
                 },
-                'steps': [],
+                "steps": [],
             }
         ],
     }
-    return compute_schemas.BuildRequest.model_validate({'analysis_pipeline': pipeline, 'tab_id': schedule.id})
+    return compute_schemas.BuildRequest.model_validate({"analysis_pipeline": pipeline, "tab_id": schedule.id})
 
 
 def _enqueue_schedule_refresh_build(
@@ -251,7 +246,7 @@ def _enqueue_schedule_refresh_build(
     now: datetime,
 ) -> build_run_service.BuildRun:
     build_id = str(uuid.uuid4())
-    analysis_name = f'Schedule refresh {schedule.datasource_id}'
+    analysis_name = f"Schedule refresh {schedule.datasource_id}"
     run = build_run_service.create_build_run(
         session,
         build_id=build_id,
@@ -259,13 +254,13 @@ def _enqueue_schedule_refresh_build(
         schedule_id=schedule.id,
         analysis_id=schedule.id,
         analysis_name=analysis_name,
-        request_json=_build_refresh_request(schedule).model_dump(mode='json'),
-        starter_json=_schedule_starter(schedule.id).model_dump(mode='json'),
+        request_json=_build_refresh_request(schedule).model_dump(mode="json"),
+        starter_json=compute_schemas.BuildStarter.for_schedule(schedule.id).model_dump(mode="json"),
         status=BuildRunStatus.QUEUED,
         current_kind=target_kind,
         current_datasource_id=schedule.datasource_id,
         current_tab_id=schedule.id,
-        current_tab_name='Scheduled refresh',
+        current_tab_name="Scheduled refresh",
         current_output_id=schedule.datasource_id,
         current_output_name=analysis_name,
         total_tabs=1,
@@ -296,10 +291,10 @@ def _enqueue_schedule_analysis_build(
         schedule_id=schedule.id,
         analysis_id=analysis_id,
         analysis_name=analysis_name,
-        request_json=request.model_dump(mode='json'),
-        starter_json=_schedule_starter(schedule.id).model_dump(mode='json'),
+        request_json=request.model_dump(mode="json"),
+        starter_json=compute_schemas.BuildStarter.for_schedule(schedule.id).model_dump(mode="json"),
         status=BuildRunStatus.QUEUED,
-        current_kind='datasource_update',
+        current_kind="datasource_update",
         current_datasource_id=schedule.datasource_id,
         current_tab_id=tab_id,
         current_tab_name=tab_name,
@@ -329,14 +324,14 @@ def _resolve_schedule_target(session: Session, datasource_id: str) -> tuple[str,
         raise DataSourceNotFoundError(datasource_id)
 
     analysis_id = datasource.created_by_analysis_id
-    if datasource.created_by == 'analysis' and analysis_id:
-        tab_id = datasource.config.get('analysis_tab_id') if isinstance(datasource.config, dict) else None
-        return 'analysis', analysis_id, tab_id
+    if datasource.created_by == "analysis" and analysis_id:
+        tab_id = datasource.config.get("analysis_tab_id") if isinstance(datasource.config, dict) else None
+        return "analysis", analysis_id, tab_id
 
     if _is_reingestable_raw_datasource(datasource):
-        return 'raw', None, None
+        return "raw", None, None
 
-    return 'datasource', None, None
+    return "datasource", None, None
 
 
 def _build_schedule_response(
@@ -346,46 +341,46 @@ def _build_schedule_response(
 ) -> ScheduleResponse:
     """Build a schedule response from preloaded related models."""
     data = {
-        'id': schedule.id,
-        'datasource_id': schedule.datasource_id,
-        'cron_expression': schedule.cron_expression,
-        'enabled': schedule.enabled,
-        'depends_on': schedule.depends_on,
-        'trigger_on_datasource_id': schedule.trigger_on_datasource_id,
-        'last_run': schedule.last_run,
-        'next_run': schedule.next_run,
-        'created_at': schedule.created_at,
+        "id": schedule.id,
+        "datasource_id": schedule.datasource_id,
+        "cron_expression": schedule.cron_expression,
+        "enabled": schedule.enabled,
+        "depends_on": schedule.depends_on,
+        "trigger_on_datasource_id": schedule.trigger_on_datasource_id,
+        "last_run": schedule.last_run,
+        "next_run": schedule.next_run,
+        "created_at": schedule.created_at,
     }
 
     if datasource:
-        data['analysis_id'] = datasource.created_by_analysis_id
+        data["analysis_id"] = datasource.created_by_analysis_id
 
-        tab_id = datasource.config.get('analysis_tab_id') if isinstance(datasource.config, dict) else None
-        data['tab_id'] = tab_id
+        tab_id = datasource.config.get("analysis_tab_id") if isinstance(datasource.config, dict) else None
+        data["tab_id"] = tab_id
 
         if analysis:
-            data['analysis_name'] = analysis.name
+            data["analysis_name"] = analysis.name
 
             if tab_id:
                 for ptab in analysis.pipeline.tabs:
                     if ptab.id == tab_id:
-                        data['tab_name'] = ptab.name or 'unnamed'
+                        data["tab_name"] = ptab.name or "unnamed"
                         break
 
     return ScheduleResponse.model_validate(data)
 
 
 def _is_reingestable_raw_datasource(datasource: DataSource) -> bool:
-    if datasource.source_type != 'iceberg':
+    if datasource.source_type != "iceberg":
         return False
-    if datasource.created_by == 'analysis':
+    if datasource.created_by == "analysis":
         return False
     if not isinstance(datasource.config, dict):
         return False
-    source = datasource.config.get('source')
+    source = datasource.config.get("source")
     if not isinstance(source, dict):
         return False
-    return source.get('source_type') in {'file', 'database'}
+    return source.get("source_type") in {"file", "database"}
 
 
 def _enrich_schedule_response(session: Session, schedule: Schedule) -> ScheduleResponse:
@@ -449,14 +444,20 @@ def create_schedule(session: Session, payload: ScheduleCreate) -> ScheduleRespon
     datasource = session.get(DataSource, payload.datasource_id)
     if not datasource:
         raise DataSourceNotFoundError(payload.datasource_id)
-    if datasource.created_by == 'analysis' and not datasource.created_by_analysis_id:
-        raise ScheduleValidationError('Datasource has no analysis provenance', details={'datasource_id': payload.datasource_id})
+    if datasource.created_by == "analysis" and not datasource.created_by_analysis_id:
+        raise ScheduleValidationError(
+            "Datasource has no analysis provenance",
+            details={"datasource_id": payload.datasource_id},
+        )
 
     # Validate dependency if provided
     if payload.depends_on:
         dep_schedule = session.get(Schedule, payload.depends_on)
         if not dep_schedule:
-            raise ScheduleValidationError('Dependency schedule not found', details={'depends_on': payload.depends_on})
+            raise ScheduleValidationError(
+                "Dependency schedule not found",
+                details={"depends_on": payload.depends_on},
+            )
 
     # Validate trigger datasource if provided
     if payload.trigger_on_datasource_id:
@@ -497,7 +498,10 @@ def update_schedule(session: Session, schedule_id: str, payload: ScheduleUpdate)
     if payload.depends_on:
         dep_schedule = session.get(Schedule, payload.depends_on)
         if not dep_schedule:
-            raise ScheduleValidationError('Dependency schedule not found', details={'depends_on': payload.depends_on})
+            raise ScheduleValidationError(
+                "Dependency schedule not found",
+                details={"depends_on": payload.depends_on},
+            )
 
     # Validate trigger datasource if provided
     if payload.trigger_on_datasource_id:
@@ -602,8 +606,8 @@ def _is_triggered_by_datasource(
     result = session.execute(
         select(EngineRun)
         .where(EngineRun.datasource_id == datasource_id)  # type: ignore[arg-type]
-        .where(EngineRun.status == 'success')  # type: ignore[arg-type]
-        .where(EngineRun.kind.in_(['datasource_update', 'datasource_create']))  # type: ignore[arg-type, attr-defined]
+        .where(EngineRun.status == "success")  # type: ignore[arg-type]
+        .where(EngineRun.kind.in_(["datasource_update", "datasource_create"]))  # type: ignore[arg-type, attr-defined]
         .order_by(EngineRun.created_at.desc())  # type: ignore[arg-type, attr-defined]
         .limit(1),
     )
@@ -693,7 +697,7 @@ def claim_due_schedules(
         )
     )
     dialect = session.get_bind().dialect.name
-    stmt = base.with_for_update(skip_locked=True) if dialect == 'postgresql' else base
+    stmt = base.with_for_update(skip_locked=True) if dialect == "postgresql" else base
     schedules = list(session.execute(stmt).scalars().all())
     due_ids = {schedule.id for schedule in get_due_schedules(session)}
     due = [schedule for schedule in schedules if schedule.id in due_ids]
@@ -703,9 +707,7 @@ def claim_due_schedules(
             continue
         claim = update(Schedule).where(Schedule.id == schedule.id)
         claim = (
-            claim.where(table.c.lease_owner.is_(None))
-            if schedule.lease_owner is None
-            else claim.where(Schedule.lease_owner == schedule.lease_owner)  # type: ignore[arg-type]
+            claim.where(table.c.lease_owner.is_(None)) if schedule.lease_owner is None else claim.where(Schedule.lease_owner == schedule.lease_owner)  # type: ignore[arg-type]
         )
         result = cast(
             CursorResult[Any],
@@ -747,25 +749,25 @@ def mark_schedule_run(session: Session, schedule_id: str) -> None:
 def enqueue_schedule_run(session: Session, schedule_id: str, *, worker_id: str) -> str:
     schedule = session.get(Schedule, schedule_id)
     if not schedule:
-        raise ValueError(f'Schedule {schedule_id} not found')
+        raise ValueError(f"Schedule {schedule_id} not found")
     if build_run_service.has_inflight_build_for_schedule(session, schedule_id):
-        raise ValueError(f'Schedule {schedule_id} already has an in-flight build')
+        raise ValueError(f"Schedule {schedule_id} already has an in-flight build")
 
     stamp = _utcnow()
     naive_stamp = _naive_utc(stamp)
     if schedule.lease_owner != worker_id:
-        raise ValueError(f'Schedule {schedule_id} is not owned by {worker_id}')
+        raise ValueError(f"Schedule {schedule_id} is not owned by {worker_id}")
 
     target_kind, analysis_id, _ = _resolve_schedule_target(session, schedule.datasource_id)
     namespace = get_namespace()
     schedule.last_triggered_at = naive_stamp
     schedule.last_failure_at = None
 
-    if target_kind == 'raw':
+    if target_kind == "raw":
         run = _enqueue_schedule_refresh_build(
             session,
             schedule=schedule,
-            target_kind='raw',
+            target_kind="raw",
             namespace=namespace,
             now=stamp,
         )
@@ -773,11 +775,11 @@ def enqueue_schedule_run(session: Session, schedule_id: str, *, worker_id: str) 
         runtime_ipc.notify_build_job()
         return run.id
 
-    if target_kind == 'datasource':
+    if target_kind == "datasource":
         run = _enqueue_schedule_refresh_build(
             session,
             schedule=schedule,
-            target_kind='datasource_update',
+            target_kind="datasource_update",
             namespace=namespace,
             now=stamp,
         )
@@ -786,7 +788,7 @@ def enqueue_schedule_run(session: Session, schedule_id: str, *, worker_id: str) 
         return run.id
 
     if analysis_id is None:
-        raise ValueError(f'Analysis provenance missing for schedule {schedule_id}')
+        raise ValueError(f"Analysis provenance missing for schedule {schedule_id}")
     request, resolved_analysis_id, analysis_name, tab_id, tab_name = _build_analysis_request(session, schedule, analysis_id)
     run = _enqueue_schedule_analysis_build(
         session,

@@ -8,12 +8,7 @@ from core import compute_requests_service
 
 
 def test_mark_request_failed_recovers_from_pending_rollback(test_db_session) -> None:
-    request = compute_requests_service.create_request(
-        test_db_session,
-        namespace='default',
-        kind=ComputeRequestKind.PREVIEW,
-        request_json={'example': True},
-    )
+    request = compute_requests_service.create_request(test_db_session, namespace='default', kind=ComputeRequestKind.PREVIEW, request_json={'example': True})
     request_id = request.id
 
     duplicate = (
@@ -34,10 +29,7 @@ def test_mark_request_failed_recovers_from_pending_rollback(test_db_session) -> 
         test_db_session.commit()
 
     failed = compute_requests_service.mark_request_failed(
-        test_db_session,
-        request_id,
-        error_message='boom',
-        response_json={'error': 'boom', 'status_code': 500},
+        test_db_session, request_id, error_message='boom', response_json={'error': 'boom', 'status_code': 500}
     )
 
     assert failed.status == ComputeRequestStatus.FAILED

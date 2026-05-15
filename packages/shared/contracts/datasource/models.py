@@ -25,9 +25,7 @@ class DataSourceColumnMetadata(SQLModel, table=True):  # type: ignore[call-arg]
     __table_args__ = (UniqueConstraint('datasource_id', 'column_name', name='uq_datasource_column_metadata_name'),)
 
     id: str = Field(sa_column=Column(String, primary_key=True))
-    datasource_id: str = Field(
-        sa_column=Column(String, ForeignKey('datasources.id', ondelete='CASCADE'), nullable=False, index=True),
-    )
+    datasource_id: str = Field(sa_column=Column(String, ForeignKey('datasources.id', ondelete='CASCADE'), nullable=False, index=True))
     column_name: str = Field(sa_column=Column(String, nullable=False))
     description: str | None = Field(default=None, sa_column=Column(String(2000), nullable=True))
     created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))

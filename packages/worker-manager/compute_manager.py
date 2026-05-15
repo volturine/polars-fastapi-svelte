@@ -3,15 +3,15 @@ import threading
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from compute_engine import PolarsComputeEngine
-
 from contracts.compute.base import ComputeEngine, EngineStatusInfo
 from contracts.compute.schemas import EngineStatus
 from core.namespace import get_namespace
 
+from compute_engine import PolarsComputeEngine
+
 logger = logging.getLogger(__name__)
 
-_RESOURCE_KEYS = frozenset({'max_threads', 'max_memory_mb', 'streaming_chunk_size'})
+_RESOURCE_KEYS = frozenset({"max_threads", "max_memory_mb", "streaming_chunk_size"})
 
 EngineFactory = Callable[[str, dict | None], ComputeEngine]
 EngineSnapshotListener = Callable[[list[EngineStatusInfo]], None]
@@ -44,13 +44,13 @@ class ProcessManager:
         self._engine_events: dict[str, threading.Event] = {}
         self._engine_factory = engine_factory
         self._on_snapshot = on_snapshot
-        self._snapshot_persist = getattr(on_snapshot, '_persist', None)
+        self._snapshot_persist = getattr(on_snapshot, "_persist", None)
 
     def _key(self, analysis_id: str, namespace: str | None = None) -> str:
-        return f'{namespace or get_namespace()}:{analysis_id}'
+        return f"{namespace or get_namespace()}:{analysis_id}"
 
     def _split_key(self, key: str) -> tuple[str, str]:
-        namespace, _, analysis_id = key.partition(':')
+        namespace, _, analysis_id = key.partition(":")
         return namespace, analysis_id
 
     def spawn_engine(self, analysis_id: str, resource_config: dict | None = None) -> EngineInfo:
@@ -85,15 +85,18 @@ class ProcessManager:
                     wait_event = in_progress_event
                 else:
                     info = self._engines.get(key)
-                    if info and not self._configs_differ(self._normalize_config(info.engine.resource_config), normalized_config):
+                    if info and not self._configs_differ(
+                        self._normalize_config(info.engine.resource_config),
+                        normalized_config,
+                    ):
                         info.touch()
-                        logger.debug(f'Reusing existing engine for analysis {analysis_id}')
+                        logger.debug(f"Reusing existing engine for analysis {analysis_id}")
                         reused_info = info
                         break
 
                     self._engine_events[key] = threading.Event()
                     if info:
-                        logger.info(f'Resource config changed for analysis {analysis_id}, restarting engine')
+                        logger.info(f"Resource config changed for analysis {analysis_id}, restarting engine")
                         shutdown_target = info.engine
                         del self._engines[key]
                     break
@@ -125,34 +128,33 @@ class ProcessManager:
                     if idle_key and idle_info:
                         idle_namespace, idle_analysis_id = self._split_key(idle_key)
                         logger.info(
-                            f'Max concurrent engines limit reached ({settings.max_concurrent_engines}), '
-                            f'evicting idle engine {idle_analysis_id} in namespace {idle_namespace} to spawn {analysis_id}',
+                            f"Max concurrent engines limit reached ({settings.max_concurrent_engines}), "
+                            f"evicting idle engine {idle_analysis_id} in namespace {idle_namespace} to spawn {analysis_id}",
                         )
                         evict_engine = idle_info.engine
                         del self._engines[idle_key]
                     else:
                         logger.warning(
-                            f'Max concurrent engines limit reached ({settings.max_concurrent_engines}), '
-                            f'cannot spawn engine for {analysis_id}',
+                            f"Max concurrent engines limit reached ({settings.max_concurrent_engines}), cannot spawn engine for {analysis_id}",
                         )
                         raise RuntimeError(
-                            f'Maximum concurrent engines limit ({settings.max_concurrent_engines}) reached. '
-                            f'Please wait for existing analyses to complete or increase MAX_CONCURRENT_ENGINES.',
+                            f"Maximum concurrent engines limit ({settings.max_concurrent_engines}) reached. "
+                            f"Please wait for existing analyses to complete or increase MAX_CONCURRENT_ENGINES.",
                         )
 
             if evict_engine is not None:
                 evict_engine.shutdown()
 
             with self._engines_lock:
-                logger.info(f'Spawning new engine for analysis {analysis_id} ({len(self._engines) + 1}/{settings.max_concurrent_engines})')
+                logger.info(f"Spawning new engine for analysis {analysis_id} ({len(self._engines) + 1}/{settings.max_concurrent_engines})")
                 engine = self._engine_factory(analysis_id, normalized_config)
                 engine.start()
                 if not engine.is_process_alive():
                     engine.shutdown()
-                    raise RuntimeError(f'Failed to start engine for analysis {analysis_id}')
+                    raise RuntimeError(f"Failed to start engine for analysis {analysis_id}")
                 info = EngineInfo(engine)
                 self._engines[key] = info
-                logger.info(f'Engine spawned successfully for analysis {analysis_id}')
+                logger.info(f"Engine spawned successfully for analysis {analysis_id}")
                 spawned_info = info
         finally:
             with self._engines_lock:
@@ -160,7 +162,7 @@ class ProcessManager:
                 if in_progress_event is not None:
                     in_progress_event.set()
         if spawned_info is None:
-            raise RuntimeError(f'Failed to start engine for analysis {analysis_id}')
+            raise RuntimeError(f"Failed to start engine for analysis {analysis_id}")
         self._emit_snapshot()
         return spawned_info
 
@@ -191,7 +193,7 @@ class ProcessManager:
         Returns:
             EngineInfo containing the new engine
         """
-        logger.info(f'Restarting engine for analysis {analysis_id} with new config: {resource_config}')
+        logger.info(f"Restarting engine for analysis {analysis_id} with new config: {resource_config}")
         self.shutdown_engine(analysis_id, emit_snapshot=False)
         return self.spawn_engine(analysis_id, resource_config=resource_config)
 
@@ -213,9 +215,9 @@ class ProcessManager:
         from core.config import settings
 
         return {
-            'max_threads': settings.polars_max_threads,
-            'max_memory_mb': settings.polars_max_memory_mb,
-            'streaming_chunk_size': settings.polars_streaming_chunk_size,
+            "max_threads": settings.polars_max_threads,
+            "max_memory_mb": settings.polars_max_memory_mb,
+            "streaming_chunk_size": settings.polars_streaming_chunk_size,
         }
 
     def get_engine_status(self, analysis_id: str, *, defaults: dict | None = None) -> EngineStatusInfo:
@@ -262,14 +264,14 @@ class ProcessManager:
         key = self._key(analysis_id)
         with self._engines_lock:
             if key in self._engines:
-                logger.info(f'Shutting down engine for analysis {analysis_id}')
+                logger.info(f"Shutting down engine for analysis {analysis_id}")
                 info = self._engines[key]
                 info.engine.shutdown()
                 del self._engines[key]
                 removed = True
-                logger.info(f'Engine shutdown complete for analysis {analysis_id}')
+                logger.info(f"Engine shutdown complete for analysis {analysis_id}")
             else:
-                logger.debug(f'No engine found to shutdown for analysis {analysis_id}')
+                logger.debug(f"No engine found to shutdown for analysis {analysis_id}")
         if removed and emit_snapshot:
             self._emit_snapshot()
 
@@ -281,7 +283,7 @@ class ProcessManager:
 
         for key, engine in shutdown_targets:
             _namespace, analysis_id = self._split_key(key)
-            logger.info(f'Shutting down engine for analysis {analysis_id}')
+            logger.info(f"Shutting down engine for analysis {analysis_id}")
             engine.shutdown()
         if shutdown_targets:
             self._emit_snapshot()
@@ -289,17 +291,13 @@ class ProcessManager:
     def list_engines(self) -> list[str]:
         """List all active engine analysis_ids."""
         with self._engines_lock:
-            return [
-                analysis_id for key in self._engines for namespace, analysis_id in [self._split_key(key)] if namespace == get_namespace()
-            ]
+            return [analysis_id for key in self._engines for namespace, analysis_id in [self._split_key(key)] if namespace == get_namespace()]
 
     def list_all_engine_statuses(self) -> list[EngineStatusInfo]:
         """Get status info for all engines."""
         defaults = self._get_defaults()
         with self._engines_lock:
-            analysis_ids = [
-                analysis_id for key in self._engines for namespace, analysis_id in [self._split_key(key)] if namespace == get_namespace()
-            ]
+            analysis_ids = [analysis_id for key in self._engines for namespace, analysis_id in [self._split_key(key)] if namespace == get_namespace()]
         return [self.get_engine_status(aid, defaults=defaults) for aid in analysis_ids]
 
     def _emit_snapshot(self) -> None:

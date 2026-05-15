@@ -73,9 +73,7 @@ def _check_python_sources(errors: list[str]) -> None:
             content = path.read_text()
             for line_number, line in enumerate(content.splitlines(), start=1):
                 if TODO_PATTERN.search(line):
-                    errors.append(
-                        f'{path.relative_to(ROOT)}:{line_number}: TODO/FIXME/HACK marker is not allowed in source files'
-                    )
+                    errors.append(f'{path.relative_to(ROOT)}:{line_number}: TODO/FIXME/HACK marker is not allowed in source files')
 
             tree = ast.parse(content, filename=str(path))
             visitor = _PrintCallVisitor()

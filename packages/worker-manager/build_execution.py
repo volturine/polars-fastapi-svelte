@@ -3,15 +3,16 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from contracts.compute import schemas
+from contracts.engine_runs.schemas import EngineRunKind
+from core import build_event_service
+from core import build_runs_service as build_run_service
+from core.database import get_db
+from core.namespace import reset_namespace, set_namespace_context
+
 import compute_service as service
 from build_live import ActiveBuild
 from compute_manager import ProcessManager
-
-from contracts.compute import schemas
-from contracts.engine_runs.schemas import EngineRunKind
-from core import build_event_service, build_runs_service as build_run_service
-from core.database import get_db
-from core.namespace import reset_namespace, set_namespace_context
 
 logger = logging.getLogger(__name__)
 
@@ -40,19 +41,6 @@ async def _emit_active_build_event(
         reset_namespace(token)
 
 
-def _resource_config_json(build: ActiveBuild) -> dict[str, object] | None:
-    if build.resource_config is None:
-        return None
-    return build.resource_config.model_dump(mode='json')
-
-
-def _build_pipeline_payload(request: schemas.BuildRequest) -> dict:
-    pipeline = request.analysis_pipeline.model_dump(mode='json') if request.analysis_pipeline else None
-    if not isinstance(pipeline, dict):
-        raise ValueError('analysis_pipeline is required')
-    return {**pipeline, 'tab_id': request.tab_id}
-
-
 async def _run_active_build_task(
     *,
     manager: ProcessManager,
@@ -75,12 +63,12 @@ async def _run_active_build_task(
                 build.namespace,
                 build.build_id,
                 payload,
-                resource_config_json=_resource_config_json(build),
+                resource_config_json=build.resource_config_json,
             ),
             triggered_by=triggered_by,
         )
     except Exception as exc:
-        logger.error('Active build task error: %s', exc, exc_info=True)
+        logger.error("Active build task error: %s", exc, exc_info=True)
         if build.status == schemas.ActiveBuildStatus.RUNNING:
             await _emit_active_build_event(
                 build.namespace,
@@ -102,9 +90,9 @@ async def _run_active_build_task(
                     tabs_built=len(build.results),
                     results=build.results,
                     duration_ms=build.elapsed_ms,
-                    error='Build failed due to an internal error',
+                    error="Build failed due to an internal error",
                 ),
-                resource_config_json=_resource_config_json(build),
+                resource_config_json=build.resource_config_json,
             )
     finally:
         if session is not None:
@@ -129,7 +117,7 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
         if marked is None or marked.status != build_run_service.BuildRunStatus.RUNNING:
             return
         request_payload = schemas.BuildRequest.model_validate(run.request_json)
-        pipeline = _build_pipeline_payload(request_payload)
+        pipeline = request_payload.pipeline_payload()
         starter = schemas.BuildStarter.model_validate(run.starter_json)
         build = ActiveBuild(
             build_id=run.id,
@@ -153,21 +141,25 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
     if build is None or pipeline is None or starter is None or request_payload is None:
         return
     await build_event_service.publish_build_notification(build.namespace, build_id, latest_sequence=0)
-    current_kind = build.current_kind or ''
+    current_kind = build.current_kind or ""
     engine_run_kind = EngineRunKind.parse(build.current_kind)
-    is_schedule_build = engine_run_kind == EngineRunKind.BUILD and starter.triggered_by == 'schedule'
-    if current_kind == 'raw' or is_schedule_build:
+    is_schedule_build = engine_run_kind == EngineRunKind.BUILD and starter.triggered_by == "schedule"
+    if current_kind == "raw" or is_schedule_build:
         datasource_id = build.current_datasource_id
         if datasource_id is None:
-            raise ValueError(f'Queued schedule build {build.build_id} missing datasource id')
+            raise ValueError(f"Queued schedule build {build.build_id} missing datasource id")
         session_gen = get_db()
         session = next(session_gen)
         try:
             try:
                 import datasource_service
 
-                if current_kind == 'raw':
-                    refreshed = await asyncio.to_thread(datasource_service.refresh_external_datasource, session, datasource_id)
+                if current_kind == "raw":
+                    refreshed = await asyncio.to_thread(
+                        datasource_service.refresh_external_datasource,
+                        session,
+                        datasource_id,
+                    )
                 else:
                     refreshed = await asyncio.to_thread(
                         datasource_service.refresh_datasource_for_schedule,
@@ -202,7 +194,7 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
                         ],
                         duration_ms=build.elapsed_ms,
                     ),
-                    resource_config_json=_resource_config_json(build),
+                    resource_config_json=build.resource_config_json,
                 )
                 return
             except Exception as exc:
@@ -228,7 +220,7 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
                         duration_ms=build.elapsed_ms,
                         error=str(exc),
                     ),
-                    resource_config_json=_resource_config_json(build),
+                    resource_config_json=build.resource_config_json,
                 )
                 return
         finally:
@@ -242,4 +234,4 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
     )
 
 
-__all__ = ['_run_queued_build_job']
+__all__ = ["_run_queued_build_job"]

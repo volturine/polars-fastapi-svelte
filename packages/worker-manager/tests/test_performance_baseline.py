@@ -14,23 +14,23 @@ def _measure(func, *args, **kwargs):
 
 
 def test_performance_baseline(test_db_session, sample_datasource, sample_analysis):
-    analysis_id = f'perf-{uuid.uuid4()}'
+    analysis_id = f"perf-{uuid.uuid4()}"
     pipeline = {
-        'analysis_id': analysis_id,
-        'tabs': [
+        "analysis_id": analysis_id,
+        "tabs": [
             {
-                'id': 'tab1',
-                'datasource': {
-                    'id': sample_datasource.id,
-                    'analysis_tab_id': None,
-                    'config': {'branch': 'master'},
+                "id": "tab1",
+                "datasource": {
+                    "id": sample_datasource.id,
+                    "analysis_tab_id": None,
+                    "config": {"branch": "master"},
                 },
-                'output': {
-                    'result_id': 'out-1',
-                    'format': 'parquet',
-                    'filename': 'perf_out',
+                "output": {
+                    "result_id": "out-1",
+                    "format": "parquet",
+                    "filename": "perf_out",
                 },
-                'steps': [],
+                "steps": [],
             },
         ],
     }
@@ -41,19 +41,23 @@ def test_performance_baseline(test_db_session, sample_datasource, sample_analysi
             compute_service.preview_step,
             session=test_db_session,
             manager=manager,
-            target_step_id='source',
+            target_step_id="source",
             analysis_pipeline=pipeline,
             row_limit=100,
             page=1,
             analysis_id=analysis_id,
-            request_json={'analysis_id': analysis_id, 'analysis_pipeline': pipeline, 'target_step_id': 'source'},
+            request_json={
+                "analysis_id": analysis_id,
+                "analysis_pipeline": pipeline,
+                "target_step_id": "source",
+            },
         )
 
         schema_result, schema_ms = _measure(
             compute_service.get_step_schema,
             session=test_db_session,
             manager=manager,
-            target_step_id='source',
+            target_step_id="source",
             analysis_id=analysis_id,
             analysis_pipeline=pipeline,
         )
@@ -62,9 +66,9 @@ def test_performance_baseline(test_db_session, sample_datasource, sample_analysi
             compute_service.download_step,
             session=test_db_session,
             manager=manager,
-            target_step_id='source',
+            target_step_id="source",
             analysis_pipeline=pipeline,
-            export_format='csv',
+            export_format="csv",
             analysis_id=analysis_id,
         )
     finally:
@@ -80,10 +84,10 @@ def test_performance_baseline(test_db_session, sample_datasource, sample_analysi
     print(
         json.dumps(
             {
-                'preview_duration_ms': preview_ms,
-                'schema_duration_ms': schema_ms,
-                'export_duration_ms': export_ms,
-                'preview_rows': preview_result.total_rows,
+                "preview_duration_ms": preview_ms,
+                "schema_duration_ms": schema_ms,
+                "export_duration_ms": export_ms,
+                "preview_rows": preview_result.total_rows,
             },
         ),
     )

@@ -27,7 +27,7 @@ async def create_preflight(file_path: Path, *, delete_file: bool = True) -> tupl
     sheets = workbook.sheetnames
     tables: dict[str, list[str]] = {}
     for sheet in workbook.worksheets:
-        if not hasattr(sheet, 'tables') or not sheet.tables:
+        if not hasattr(sheet, "tables") or not sheet.tables:
             continue
         tables[sheet.title] = list(sheet.tables.keys())
 

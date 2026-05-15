@@ -126,12 +126,7 @@ def get_resolved_openrouter_key() -> str:
 def get_resolved_openai_settings() -> dict[str, str]:
     resolved = _get_resolved_snapshot()
     if not bool(resolved['exists']):
-        return {
-            'api_key': '',
-            'endpoint_url': 'https://api.openai.com',
-            'default_model': 'gpt-4o-mini',
-            'organization_id': '',
-        }
+        return {'api_key': '', 'endpoint_url': 'https://api.openai.com', 'default_model': 'gpt-4o-mini', 'organization_id': ''}
     return {
         'api_key': str(resolved['openai_api_key']),
         'endpoint_url': str(resolved['openai_endpoint_url']),
@@ -144,20 +139,14 @@ def get_resolved_ollama_settings() -> dict[str, str]:
     resolved = _get_resolved_snapshot()
     if not bool(resolved['exists']):
         return {'endpoint_url': 'http://localhost:11434', 'default_model': 'llama3.2'}
-    return {
-        'endpoint_url': str(resolved['ollama_endpoint_url']),
-        'default_model': str(resolved['ollama_default_model']),
-    }
+    return {'endpoint_url': str(resolved['ollama_endpoint_url']), 'default_model': str(resolved['ollama_default_model'])}
 
 
 def get_resolved_huggingface_settings() -> dict[str, str]:
     resolved = _get_resolved_snapshot()
     if not bool(resolved['exists']):
         return {'api_token': '', 'default_model': 'google/flan-t5-base'}
-    return {
-        'api_token': str(resolved['huggingface_api_token']),
-        'default_model': str(resolved['huggingface_default_model']),
-    }
+    return {'api_token': str(resolved['huggingface_api_token']), 'default_model': str(resolved['huggingface_default_model'])}
 
 
 def get_resolved_default_model() -> str:

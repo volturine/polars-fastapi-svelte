@@ -101,10 +101,7 @@ def _apply_postgres_search_path(connection: Connection, namespace: str) -> None:
 
 
 def _create_public_engine() -> Engine:
-    engine = _create_engine(
-        settings.database_url,
-        connect_args={'options': f'-c search_path={_PUBLIC_SCHEMA}'},
-    )
+    engine = _create_engine(settings.database_url, connect_args={'options': f'-c search_path={_PUBLIC_SCHEMA}'})
 
     @event.listens_for(engine, 'checkout')
     def _set_public_search_path(dbapi_connection, _connection_record, _connection_proxy) -> None:
@@ -190,12 +187,7 @@ def _shared_tables():
     from contracts.runtime_workers.models import RuntimeWorker
     from contracts.settings_models import AppSettings
 
-    table_names = {
-        AppSettings.__tablename__,
-        EngineInstance.__tablename__,
-        RuntimeNamespace.__tablename__,
-        RuntimeWorker.__tablename__,
-    }
+    table_names = {AppSettings.__tablename__, EngineInstance.__tablename__, RuntimeNamespace.__tablename__, RuntimeWorker.__tablename__}
     return [table for table in AppSettings.metadata.sorted_tables if table.name in table_names]
 
 

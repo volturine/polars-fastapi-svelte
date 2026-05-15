@@ -55,7 +55,14 @@ dev-clean:
     echo "✓ Local dev database and runtime data reset. Run 'just dev' to recreate everything."
 
 format:
-    cd packages/shared && uv run ruff format . ../backend ../scheduler ../worker-manager
+    cd packages/shared && uv run ruff check --select I --fix .
+    cd packages/backend && uv run --project ../shared ruff check --select I --fix .
+    cd packages/scheduler && uv run --project ../shared ruff check --select I --fix .
+    cd packages/worker-manager && uv run --project ../shared ruff check --select I --fix .
+    cd packages/shared && uv run ruff format .
+    cd packages/backend && uv run --project ../shared ruff format .
+    cd packages/scheduler && uv run --project ../shared ruff format .
+    cd packages/worker-manager && uv run --project ../shared ruff format .
     cd packages/frontend && bun run format
 
 check:

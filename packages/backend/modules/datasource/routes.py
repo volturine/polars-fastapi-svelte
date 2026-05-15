@@ -6,62 +6,88 @@ import uuid
 from pathlib import Path
 from shutil import copy2
 
-from backend_core.dependencies import RuntimeAvailabilityProbe, get_runtime_availability_probe
-from backend_core.error_handlers import handle_errors
-from backend_core.validation import DataSourceId, PreflightId, parse_datasource_id, parse_preflight_id
-from fastapi import Depends, Form, HTTPException, UploadFile
-from sqlmodel import Session
-
 from core.config import settings
 from core.database import get_db
 from core.exceptions import AppError
 from core.namespace import namespace_paths
+from fastapi import Depends, Form, HTTPException, UploadFile
+from sqlmodel import Session
+
+from backend_core.dependencies import (
+    RuntimeAvailabilityProbe,
+    get_runtime_availability_probe,
+)
+from backend_core.error_handlers import handle_errors
+from backend_core.validation import (
+    DataSourceId,
+    PreflightId,
+    parse_datasource_id,
+    parse_preflight_id,
+)
 from modules.auth.dependencies import get_optional_user
 from modules.auth.models import User
 from modules.compute.executor_client import (
     compare_iceberg_snapshots as compare_remote_iceberg_snapshots,
+)
+from modules.compute.executor_client import (
     create_database_datasource as create_remote_database_datasource,
+)
+from modules.compute.executor_client import (
     create_file_datasource as create_remote_file_datasource,
+)
+from modules.compute.executor_client import (
     create_iceberg_datasource as create_remote_iceberg_datasource,
+)
+from modules.compute.executor_client import (
     get_column_stats as get_remote_column_stats,
+)
+from modules.compute.executor_client import (
     get_datasource_schema as get_remote_datasource_schema,
+)
+from modules.compute.executor_client import (
     refresh_datasource as refresh_remote_datasource,
+)
+from modules.compute.executor_client import (
     shutdown_engine as shutdown_remote_engine,
 )
 from modules.datasource import schemas, service
-from modules.datasource.preflight import clear_preflight, create_preflight, get_preflight
+from modules.datasource.preflight import (
+    clear_preflight,
+    create_preflight,
+    get_preflight,
+)
 from modules.datasource.source_types import DataSourceType
 from modules.mcp.router import MCPRouter
 
 logger = logging.getLogger(__name__)
 
-router = MCPRouter(prefix='/datasource', tags=['datasource'])
+router = MCPRouter(prefix="/datasource", tags=["datasource"])
 
 _FILE_TYPE_MAPPING: dict[str, str] = {
-    '.csv': 'csv',
-    '.parquet': 'parquet',
-    '.json': 'json',
-    '.ndjson': 'ndjson',
-    '.jsonl': 'ndjson',
-    '.xlsx': 'excel',
+    ".csv": "csv",
+    ".parquet": "parquet",
+    ".json": "json",
+    ".ndjson": "ndjson",
+    ".jsonl": "ndjson",
+    ".xlsx": "excel",
 }
 
 
 def _write_chunk(path: Path, chunk: bytes) -> None:
-    with open(path, 'ab') as handle:
+    with open(path, "ab") as handle:
         handle.write(chunk)
 
 
 async def _save_upload_file(file: UploadFile, file_path: Path, max_bytes: int) -> None:
     total = 0
-    await asyncio.to_thread(file_path.write_bytes, b'')
+    await asyncio.to_thread(file_path.write_bytes, b"")
     while True:
         chunk = await file.read(settings.upload_chunk_size)
         if not chunk:
             return
         total += len(chunk)
         if max_bytes and total > max_bytes:
-            raise HTTPException(status_code=413, detail='Uploaded file exceeds size limit')
+            raise HTTPException(status_code=413, detail="Uploaded file exceeds size limit")
         await asyncio.to_thread(_write_chunk, file_path, chunk)
 
 
@@ -70,64 +96,64 @@ def _list_export_branches(metadata_path: str) -> list[str]:
     path = Path(normalized)
     if not path.is_dir():
         return []
-    metadata_dir = path / 'metadata'
+    metadata_dir = path / "metadata"
     if metadata_dir.is_dir():
         return []
     entries = []
     for entry in path.iterdir():
         if not entry.is_dir():
             continue
-        if (entry / 'metadata').is_dir():
+        if (entry / "metadata").is_dir():
             entries.append(entry.name)
             continue
-        if list(entry.glob('*.metadata.json')):
+        if list(entry.glob("*.metadata.json")):
             entries.append(entry.name)
             continue
     branches = sorted(entries)
-    if 'master' not in branches:
-        branches.insert(0, 'master')
+    if "master" not in branches:
+        branches.insert(0, "master")
     return branches
 
 
 def _matches_magic_number(file_extension: str, upload: UploadFile) -> bool:
     header = upload.file.read(8)
     upload.file.seek(0)
-    if file_extension == '.parquet':
-        return header.startswith(b'PAR1')
-    if file_extension == '.xlsx':
-        return header.startswith(b'PK')
-    return file_extension in {'.csv', '.json', '.ndjson', '.jsonl'}
+    if file_extension == ".parquet":
+        return header.startswith(b"PAR1")
+    if file_extension == ".xlsx":
+        return header.startswith(b"PK")
+    return file_extension in {".csv", ".json", ".ndjson", ".jsonl"}
 
 
-@router.post('/upload', response_model=schemas.DataSourceResponse)
-@handle_errors(operation='upload datasource', value_error_status=400)
+@router.post("/upload", response_model=schemas.DataSourceResponse)
+@handle_errors(operation="upload datasource", value_error_status=400)
 async def upload_file(
     file: UploadFile,
     name: str = Form(...),
     description: str | None = Form(None, max_length=4000),
-    delimiter: str = Form(','),
+    delimiter: str = Form(","),
     quote_char: str = Form('"'),
     has_header: bool = Form(True),
     skip_rows: int = Form(0),
-    encoding: str = Form('utf8'),
+    encoding: str = Form("utf8"),
     user: User | None = Depends(get_optional_user),
     session: Session = Depends(get_db),
     runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     if not file.filename:
-        raise HTTPException(status_code=400, detail='No filename provided')
+        raise HTTPException(status_code=400, detail="No filename provided")
 
     file_extension = Path(file.filename).suffix.lower()
     if file_extension not in _FILE_TYPE_MAPPING:
         raise HTTPException(
             status_code=400,
-            detail=f'Unsupported file type: {file_extension}. Supported types: {", ".join(_FILE_TYPE_MAPPING.keys())}',
+            detail=f"Unsupported file type: {file_extension}. Supported types: {', '.join(_FILE_TYPE_MAPPING.keys())}",
         )
 
     if not _matches_magic_number(file_extension, file):
-        raise HTTPException(status_code=400, detail='File content does not match extension')
+        raise HTTPException(status_code=400, detail="File content does not match extension")
     file_type = _FILE_TYPE_MAPPING[file_extension]
-    unique_filename = f'{uuid.uuid4()}{file_extension}'
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
     file_path = namespace_paths().upload_dir / unique_filename
 
     try:
@@ -137,13 +163,13 @@ async def upload_file(
             file_path.unlink()
         raise
     except Exception as e:
-        logger.error('Failed to save file: %s', type(e).__name__, exc_info=True)
+        logger.error("Failed to save file: %s", type(e).__name__, exc_info=True)
         if file_path.exists():
             file_path.unlink()
-        raise HTTPException(status_code=500, detail='Failed to save file') from e
+        raise HTTPException(status_code=500, detail="Failed to save file") from e
 
     csv_options = None
-    if file_type == 'csv':
+    if file_type == "csv":
         csv_options = schemas.CSVOptions(
             delimiter=delimiter,
             quote_char=quote_char,
@@ -169,27 +195,27 @@ async def upload_file(
             file_path.unlink()
         raise
     except Exception as e:
-        logger.error('Failed to create datasource: %s', type(e).__name__, exc_info=True)
+        logger.error("Failed to create datasource: %s", type(e).__name__, exc_info=True)
         if file_path.exists():
             file_path.unlink()
-        raise HTTPException(status_code=500, detail='Failed to create datasource') from e
+        raise HTTPException(status_code=500, detail="Failed to create datasource") from e
 
 
-@router.post('/upload/bulk', response_model=schemas.BulkUploadResponse)
-@handle_errors(operation='bulk upload datasources', value_error_status=400)
+@router.post("/upload/bulk", response_model=schemas.BulkUploadResponse)
+@handle_errors(operation="bulk upload datasources", value_error_status=400)
 async def upload_bulk(
     files: list[UploadFile],
-    delimiter: str = Form(','),
+    delimiter: str = Form(","),
     quote_char: str = Form('"'),
     has_header: bool = Form(True),
     skip_rows: int = Form(0),
-    encoding: str = Form('utf8'),
+    encoding: str = Form("utf8"),
     user: User | None = Depends(get_optional_user),
     session: Session = Depends(get_db),
     runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
     if not files:
-        raise HTTPException(status_code=400, detail='No files provided')
+        raise HTTPException(status_code=400, detail="No files provided")
 
     csv_options = schemas.CSVOptions(
         delimiter=delimiter,
@@ -203,19 +229,28 @@ async def upload_bulk(
     if selected_extensions:
         unique_extensions = set(selected_extensions)
         if len(unique_extensions) > 1:
-            raise HTTPException(status_code=400, detail='Bulk upload must use a single file type per batch')
+            raise HTTPException(
+                status_code=400,
+                detail="Bulk upload must use a single file type per batch",
+            )
 
     results: list[schemas.BulkUploadResult] = []
 
     for file in files:
         if not file.filename:
-            results.append(schemas.BulkUploadResult(name='unknown', success=False, error='No filename provided'))
+            results.append(schemas.BulkUploadResult(name="unknown", success=False, error="No filename provided"))
             continue
 
         file_extension = Path(file.filename).suffix.lower()
 
         if file_extension not in _FILE_TYPE_MAPPING:
-            results.append(schemas.BulkUploadResult(name=file.filename, success=False, error=f'Unsupported file type: {file_extension}'))
+            results.append(
+                schemas.BulkUploadResult(
+                    name=file.filename,
+                    success=False,
+                    error=f"Unsupported file type: {file_extension}",
+                )
+            )
             continue
 
         if not _matches_magic_number(file_extension, file):
@@ -223,12 +258,12 @@ async def upload_bulk(
                 schemas.BulkUploadResult(
                     name=file.filename,
                     success=False,
-                    error='File content does not match extension',
+                    error="File content does not match extension",
                 ),
             )
             continue
         file_type = _FILE_TYPE_MAPPING[file_extension]
-        unique_filename = f'{uuid.uuid4()}{file_extension}'
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
         file_path = namespace_paths().upload_dir / unique_filename
         name = Path(file.filename).stem
 
@@ -242,10 +277,16 @@ async def upload_bulk(
         except Exception as e:
             if file_path.exists():
                 file_path.unlink()
-            results.append(schemas.BulkUploadResult(name=file.filename, success=False, error=f'Failed to save file: {e!s}'))
+            results.append(
+                schemas.BulkUploadResult(
+                    name=file.filename,
+                    success=False,
+                    error=f"Failed to save file: {e!s}",
+                )
+            )
             continue
 
-        file_csv_options = csv_options if file_type == 'csv' else None
+        file_csv_options = csv_options if file_type == "csv" else None
         try:
             owner_id = user.id if user else None
             datasource = await create_remote_file_datasource(
@@ -274,7 +315,13 @@ async def upload_bulk(
         except Exception as e:
             if file_path.exists():
                 file_path.unlink()
-            results.append(schemas.BulkUploadResult(name=file.filename, success=False, error=f'Failed to create datasource: {e!s}'))
+            results.append(
+                schemas.BulkUploadResult(
+                    name=file.filename,
+                    success=False,
+                    error=f"Failed to create datasource: {e!s}",
+                )
+            )
 
     successful = sum(1 for r in results if r.success)
     failed = len(results) - successful
@@ -282,8 +329,8 @@ async def upload_bulk(
     return schemas.BulkUploadResponse(results=results, total=len(results), successful=successful, failed=failed)
 
 
-@router.post('/preflight', response_model=schemas.ExcelPreflightResponse)
-@handle_errors(operation='preflight excel', value_error_status=400)
+@router.post("/preflight", response_model=schemas.ExcelPreflightResponse)
+@handle_errors(operation="preflight excel", value_error_status=400)
 async def preflight_excel(
     file: UploadFile,
     sheet_name: str | None = Form(None),
@@ -297,14 +344,14 @@ async def preflight_excel(
     cell_range: str | None = Form(None),
 ):
     if not file.filename:
-        raise HTTPException(status_code=400, detail='No filename provided')
+        raise HTTPException(status_code=400, detail="No filename provided")
     file_extension = Path(file.filename).suffix.lower()
-    if file_extension != '.xlsx':
-        raise HTTPException(status_code=400, detail='Only .xlsx files are supported for preflight')
+    if file_extension != ".xlsx":
+        raise HTTPException(status_code=400, detail="Only .xlsx files are supported for preflight")
     if not _matches_magic_number(file_extension, file):
-        raise HTTPException(status_code=400, detail='File content does not match extension')
+        raise HTTPException(status_code=400, detail="File content does not match extension")
 
-    unique_filename = f'{uuid.uuid4()}{file_extension}'
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
     file_path = namespace_paths().upload_dir / unique_filename
     try:
         await _save_upload_file(file, file_path, settings.upload_max_file_size_bytes)
@@ -313,16 +360,16 @@ async def preflight_excel(
             file_path.unlink()
         raise
     except Exception as e:
-        logger.error('Failed to save file: %s', type(e).__name__, exc_info=True)
+        logger.error("Failed to save file: %s", type(e).__name__, exc_info=True)
         if file_path.exists():
             file_path.unlink()
-        raise HTTPException(status_code=500, detail='Failed to save file') from e
+        raise HTTPException(status_code=500, detail="Failed to save file") from e
 
     preflight_id, preflight = await create_preflight(file_path, delete_file=False)
     target_sheet = sheet_name or (preflight.sheets[0] if preflight.sheets else None)
     if not target_sheet:
         await clear_preflight(preflight_id, delete_file=False)
-        raise HTTPException(status_code=400, detail='No sheets found in file')
+        raise HTTPException(status_code=400, detail="No sheets found in file")
 
     preview_result = await asyncio.to_thread(
         service.build_excel_preview,
@@ -352,25 +399,25 @@ async def preflight_excel(
     )
 
 
-@router.post('/preflight-path', response_model=schemas.ExcelPreflightResponse)
-@handle_errors(operation='preflight excel path', value_error_status=400)
+@router.post("/preflight-path", response_model=schemas.ExcelPreflightResponse)
+@handle_errors(operation="preflight excel path", value_error_status=400)
 async def preflight_excel_path(payload: schemas.ExcelPreflightPathRequest):
     file_path = Path(payload.file_path)
     paths = namespace_paths()
     resolved = Path(os.path.realpath(file_path))
     real_base = Path(os.path.realpath(paths.base_dir))
     if real_base not in resolved.parents and real_base != resolved:
-        raise HTTPException(status_code=400, detail='Excel file must be inside the data directory')
+        raise HTTPException(status_code=400, detail="Excel file must be inside the data directory")
     if not resolved.exists() or not resolved.is_file():
-        raise HTTPException(status_code=400, detail='Excel file not found')
-    if resolved.suffix.lower() != '.xlsx':
-        raise HTTPException(status_code=400, detail='Only .xlsx files are supported for preflight')
+        raise HTTPException(status_code=400, detail="Excel file not found")
+    if resolved.suffix.lower() != ".xlsx":
+        raise HTTPException(status_code=400, detail="Only .xlsx files are supported for preflight")
 
     preflight_id, preflight = await create_preflight(file_path)
     target_sheet = payload.sheet_name or (preflight.sheets[0] if preflight.sheets else None)
     if not target_sheet:
         await clear_preflight(preflight_id)
-        raise HTTPException(status_code=400, detail='No sheets found in file')
+        raise HTTPException(status_code=400, detail="No sheets found in file")
 
     preview_result = await asyncio.to_thread(
         service.build_excel_preview,
@@ -400,8 +447,11 @@ async def preflight_excel_path(payload: schemas.ExcelPreflightPathRequest):
     )
 
 
-@router.get('/preflight/{preflight_id}/preview', response_model=schemas.ExcelPreflightPreviewResponse)
-@handle_errors(operation='preflight preview', value_error_status=400)
+@router.get(
+    "/preflight/{preflight_id}/preview",
+    response_model=schemas.ExcelPreflightPreviewResponse,
+)
+@handle_errors(operation="preflight preview", value_error_status=400)
 async def preflight_preview(
     preflight_id: PreflightId,
     sheet_name: str,
@@ -416,7 +466,7 @@ async def preflight_preview(
 ):
     preflight = await get_preflight(parse_preflight_id(preflight_id))
     if not preflight:
-        raise HTTPException(status_code=404, detail='Preflight not found')
+        raise HTTPException(status_code=404, detail="Preflight not found")
 
     preview_result = await asyncio.to_thread(
         service.build_excel_preview,
@@ -441,8 +491,8 @@ async def preflight_preview(
     )
 
 
-@router.post('/confirm', response_model=schemas.DataSourceResponse)
-@handle_errors(operation='confirm excel', value_error_status=400)
+@router.post("/confirm", response_model=schemas.DataSourceResponse)
+@handle_errors(operation="confirm excel", value_error_status=400)
 async def confirm_excel(
     preflight_id: str = Form(...),
     name: str = Form(...),
@@ -462,20 +512,26 @@ async def confirm_excel(
 ):
     preflight = await get_preflight(parse_preflight_id(preflight_id))
     if not preflight:
-        raise HTTPException(status_code=404, detail='Preflight not found')
+        raise HTTPException(status_code=404, detail="Preflight not found")
 
     target_sheet = sheet_name or (preflight.sheets[0] if preflight.sheets else None)
     if not target_sheet:
         await clear_preflight(parse_preflight_id(preflight_id))
-        raise HTTPException(status_code=400, detail='No sheet selected')
+        raise HTTPException(status_code=400, detail="No sheet selected")
 
     file_extension = preflight.temp_path.suffix.lower()
-    target_filename = f'{uuid.uuid4()}{file_extension}'
+    target_filename = f"{uuid.uuid4()}{file_extension}"
     target_path = namespace_paths().upload_dir / target_filename
 
     try:
         await asyncio.to_thread(copy2, preflight.temp_path, target_path)
-        resolved_sheet, resolved_start_row, resolved_start_col, resolved_end_col, resolved_end_row = await asyncio.to_thread(
+        (
+            resolved_sheet,
+            resolved_start_row,
+            resolved_start_col,
+            resolved_end_col,
+            resolved_end_row,
+        ) = await asyncio.to_thread(
             service.resolve_excel_selection,
             preflight.temp_path,
             target_sheet,
@@ -502,7 +558,7 @@ async def confirm_excel(
             name=name,
             description=description,
             file_path=str(target_path),
-            file_type='excel',
+            file_type="excel",
             sheet_name=resolved_sheet,
             start_row=resolved_start_row,
             start_col=resolved_start_col,
@@ -520,18 +576,18 @@ async def confirm_excel(
         await clear_preflight(parse_preflight_id(preflight_id))
         raise
     except Exception as e:
-        logger.error('Failed to create datasource: %s', type(e).__name__, exc_info=True)
+        logger.error("Failed to create datasource: %s", type(e).__name__, exc_info=True)
         if target_path.exists():
             target_path.unlink()
         await clear_preflight(parse_preflight_id(preflight_id))
-        raise HTTPException(status_code=500, detail='Failed to create datasource') from e
+        raise HTTPException(status_code=500, detail="Failed to create datasource") from e
 
     await clear_preflight(parse_preflight_id(preflight_id))
     return datasource
 
 
-@router.post('/connect', response_model=schemas.DataSourceResponse, mcp=True)
-@handle_errors(operation='connect datasource', value_error_status=400)
+@router.post("/connect", response_model=schemas.DataSourceResponse, mcp=True)
+@handle_errors(operation="connect datasource", value_error_status=400)
 async def connect_datasource(
     datasource: schemas.DataSourceCreate,
     session: Session = Depends(get_db),
@@ -548,15 +604,15 @@ async def connect_datasource(
     if datasource.source_type == DataSourceType.FILE:
         raise HTTPException(
             status_code=400,
-            detail='File datasource creation must use upload',
+            detail="File datasource creation must use upload",
         )
-    if datasource.source_type == 'duckdb':
+    if datasource.source_type == "duckdb":
         raise HTTPException(
             status_code=400,
-            detail='DuckDB datasource creation is no longer supported',
+            detail="DuckDB datasource creation is no longer supported",
         )
-    if datasource.source_type == 'api':
-        raise HTTPException(status_code=400, detail='API datasources are not supported')
+    if datasource.source_type == "api":
+        raise HTTPException(status_code=400, detail="API datasources are not supported")
     owner_id = user.id if user else None
     if datasource.source_type == DataSourceType.DATABASE:
         db_config = schemas.DatabaseDataSourceConfig.model_validate(datasource.config)
@@ -584,7 +640,7 @@ async def connect_datasource(
     if datasource.source_type == DataSourceType.ANALYSIS:
         raise HTTPException(
             status_code=400,
-            detail='Direct creation of analysis datasources is no longer supported. Use analysis tabs with analysis_tab_id.',
+            detail="Direct creation of analysis datasources is no longer supported. Use analysis tabs with analysis_tab_id.",
         )
     raise HTTPException(
         status_code=400,
@@ -592,8 +648,8 @@ async def connect_datasource(
     )
 
 
-@router.get('', response_model=list[schemas.DataSourceListItem], mcp=True)
-@handle_errors(operation='list datasources')
+@router.get("", response_model=list[schemas.DataSourceListItem], mcp=True)
+@handle_errors(operation="list datasources")
 def list_datasources(include_hidden: bool = False, session: Session = Depends(get_db)):
     """List all datasources with their type, config, and metadata.
 
@@ -603,13 +659,13 @@ def list_datasources(include_hidden: bool = False, session: Session = Depends(ge
     return service.list_datasources(session, include_hidden=include_hidden)
 
 
-@router.get('/lineage', mcp=True)
-@handle_errors(operation='get lineage')
+@router.get("/lineage", mcp=True)
+@handle_errors(operation="get lineage")
 def get_lineage(
     target_datasource_id: DataSourceId | None = None,
     branch: str | None = None,
     include_internals: bool = False,
-    mode: str = 'full',
+    mode: str = "full",
     session: Session = Depends(get_db),
 ):
     """Get the dependency lineage graph for datasources.
@@ -638,8 +694,8 @@ def get_lineage(
     )
 
 
-@router.get('/{datasource_id}', response_model=schemas.DataSourceResponse, mcp=True)
-@handle_errors(operation='get datasource')
+@router.get("/{datasource_id}", response_model=schemas.DataSourceResponse, mcp=True)
+@handle_errors(operation="get datasource")
 def get_datasource(
     datasource_id: DataSourceId,
     session: Session = Depends(get_db),
@@ -647,14 +703,14 @@ def get_datasource(
     """Get a single datasource by ID with full config and metadata. Use GET /datasource to find IDs."""
     response = service.get_datasource(session, parse_datasource_id(datasource_id))
     if response.source_type == DataSourceType.ICEBERG:
-        metadata_path = response.config.get('metadata_path')
+        metadata_path = response.config.get("metadata_path")
         if isinstance(metadata_path, str):
-            response.config['branches'] = _list_export_branches(metadata_path)
+            response.config["branches"] = _list_export_branches(metadata_path)
     return response
 
 
-@router.get('/{datasource_id}/schema', response_model=schemas.SchemaInfo, mcp=True)
-@handle_errors(operation='get datasource schema')
+@router.get("/{datasource_id}/schema", response_model=schemas.SchemaInfo, mcp=True)
+@handle_errors(operation="get datasource schema")
 async def get_datasource_schema(
     datasource_id: DataSourceId,
     sheet_name: str | None = None,
@@ -670,9 +726,9 @@ async def get_datasource_schema(
     datasource_id_value = parse_datasource_id(datasource_id)
     if refresh:
         datasource = service.get_datasource(session, datasource_id_value)
-        source = datasource.config.get('source') if isinstance(datasource.config, dict) else None
+        source = datasource.config.get("source") if isinstance(datasource.config, dict) else None
         if datasource.source_type == DataSourceType.ICEBERG and isinstance(source, dict):
-            source_type = source.get('source_type')
+            source_type = source.get("source_type")
             if source_type in {DataSourceType.DATABASE, DataSourceType.FILE}:
                 await refresh_remote_datasource(
                     session,
@@ -689,8 +745,8 @@ async def get_datasource_schema(
     return service.attach_column_descriptions(session, datasource_id_value, schema)
 
 
-@router.patch('/{datasource_id}/column-metadata', response_model=schemas.SchemaInfo, mcp=True)
-@handle_errors(operation='update datasource column metadata', value_error_status=400)
+@router.patch("/{datasource_id}/column-metadata", response_model=schemas.SchemaInfo, mcp=True)
+@handle_errors(operation="update datasource column metadata", value_error_status=400)
 async def update_datasource_column_metadata(
     datasource_id: DataSourceId,
     payload: schemas.BatchColumnDescriptionUpdate,
@@ -709,8 +765,12 @@ async def update_datasource_column_metadata(
     return service.update_column_descriptions(session, datasource_id_value, payload, schema)
 
 
-@router.post('/{datasource_id}/compare-snapshots', response_model=schemas.SnapshotCompareResponse, mcp=True)
-@handle_errors(operation='compare datasource snapshots')
+@router.post(
+    "/{datasource_id}/compare-snapshots",
+    response_model=schemas.SnapshotCompareResponse,
+    mcp=True,
+)
+@handle_errors(operation="compare datasource snapshots")
 async def compare_snapshots(
     datasource_id: DataSourceId,
     payload: schemas.SnapshotCompareRequest,
@@ -743,7 +803,7 @@ async def _handle_column_stats(
     datasource = payload.datasource if payload else None
     config = None
     if isinstance(datasource, dict):
-        config = datasource.get('config')
+        config = datasource.get("config")
     return await get_remote_column_stats(
         session,
         datasource_id=parse_datasource_id(datasource_id),
@@ -755,8 +815,12 @@ async def _handle_column_stats(
     )
 
 
-@router.get('/{datasource_id}/column/{column_name}/stats', response_model=schemas.ColumnStatsResponse, mcp=True)
-@handle_errors(operation='get column stats')
+@router.get(
+    "/{datasource_id}/column/{column_name}/stats",
+    response_model=schemas.ColumnStatsResponse,
+    mcp=True,
+)
+@handle_errors(operation="get column stats")
 async def get_column_stats(
     datasource_id: DataSourceId,
     column_name: str,
@@ -771,8 +835,12 @@ async def get_column_stats(
     return await _handle_column_stats(datasource_id, column_name, sample, None, session, runtime_probe)
 
 
-@router.post('/{datasource_id}/column/{column_name}/stats', response_model=schemas.ColumnStatsResponse, mcp=True)
-@handle_errors(operation='get column stats')
+@router.post(
+    "/{datasource_id}/column/{column_name}/stats",
+    response_model=schemas.ColumnStatsResponse,
+    mcp=True,
+)
+@handle_errors(operation="get column stats")
 async def get_column_stats_with_config(
     datasource_id: DataSourceId,
     column_name: str,
@@ -785,15 +853,15 @@ async def get_column_stats_with_config(
     return await _handle_column_stats(datasource_id, column_name, sample, payload, session, runtime_probe)
 
 
-@router.get('/file/list', response_model=schemas.FileListResponse, mcp=True)
-@handle_errors(operation='list data files', value_error_status=400)
+@router.get("/file/list", response_model=schemas.FileListResponse, mcp=True)
+@handle_errors(operation="list data files", value_error_status=400)
 async def list_files(path: str | None = None):
     """List data files in the upload/data directory. Optionally pass path to list a subdirectory."""
     return service.list_data_files(path)
 
 
-@router.put('/{datasource_id}', response_model=schemas.DataSourceResponse, mcp=True)
-@handle_errors(operation='update datasource')
+@router.put("/{datasource_id}", response_model=schemas.DataSourceResponse, mcp=True)
+@handle_errors(operation="update datasource")
 def update_datasource(
     datasource_id: DataSourceId,
     update: schemas.DataSourceUpdate,
@@ -803,8 +871,8 @@ def update_datasource(
     return service.update_datasource(session, parse_datasource_id(datasource_id), update)
 
 
-@router.post('/{datasource_id}/refresh', response_model=schemas.DataSourceResponse, mcp=True)
-@handle_errors(operation='refresh datasource')
+@router.post("/{datasource_id}/refresh", response_model=schemas.DataSourceResponse, mcp=True)
+@handle_errors(operation="refresh datasource")
 async def refresh_datasource(
     datasource_id: DataSourceId,
     session: Session = Depends(get_db),
@@ -818,8 +886,8 @@ async def refresh_datasource(
     )
 
 
-@router.delete('/{datasource_id}', status_code=204, mcp=True)
-@handle_errors(operation='delete datasource')
+@router.delete("/{datasource_id}", status_code=204, mcp=True)
+@handle_errors(operation="delete datasource")
 async def delete_datasource(
     datasource_id: DataSourceId,
     session: Session = Depends(get_db),
@@ -828,6 +896,6 @@ async def delete_datasource(
     """Delete a datasource and its associated files. Use GET /datasource to find IDs."""
     datasource_id_value = parse_datasource_id(datasource_id)
     service.delete_datasource(session, datasource_id_value)
-    preview_key = f'__preview__{datasource_id_value}'
+    preview_key = f"__preview__{datasource_id_value}"
     with contextlib.suppress(HTTPException):
         await shutdown_remote_engine(session, analysis_id=preview_key, runtime_probe=runtime_probe)

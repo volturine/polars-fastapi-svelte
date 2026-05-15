@@ -50,11 +50,7 @@ def _write_duckdb(df: pl.DataFrame, path: str) -> None:
 
 EXPORT_FORMATS: dict[str, ExportFormat] = {
     'csv': SinkFormat(
-        extension='.csv',
-        content_type='text/csv',
-        sink=lambda lf, path: lf.sink_csv(path),
-        scanner=pl.scan_csv,
-        df_writer=lambda df, path: df.write_csv(path),
+        extension='.csv', content_type='text/csv', sink=lambda lf, path: lf.sink_csv(path), scanner=pl.scan_csv, df_writer=lambda df, path: df.write_csv(path)
     ),
     'parquet': SinkFormat(
         extension='.parquet',
@@ -63,26 +59,12 @@ EXPORT_FORMATS: dict[str, ExportFormat] = {
         scanner=pl.scan_parquet,
         df_writer=lambda df, path: df.write_parquet(path),
     ),
-    'json': CollectFormat(
-        extension='.json',
-        content_type='application/json',
-        df_writer=lambda df, path: df.write_json(path),
-    ),
-    'ndjson': CollectFormat(
-        extension='.ndjson',
-        content_type='application/x-ndjson',
-        df_writer=lambda df, path: df.write_ndjson(path),
-    ),
+    'json': CollectFormat(extension='.json', content_type='application/json', df_writer=lambda df, path: df.write_json(path)),
+    'ndjson': CollectFormat(extension='.ndjson', content_type='application/x-ndjson', df_writer=lambda df, path: df.write_ndjson(path)),
     'excel': CollectFormat(
-        extension='.xlsx',
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        df_writer=lambda df, path: df.write_excel(path),
+        extension='.xlsx', content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', df_writer=lambda df, path: df.write_excel(path)
     ),
-    'duckdb': CollectFormat(
-        extension='.duckdb',
-        content_type='application/octet-stream',
-        df_writer=_write_duckdb,
-    ),
+    'duckdb': CollectFormat(extension='.duckdb', content_type='application/octet-stream', df_writer=_write_duckdb),
 }
 
 

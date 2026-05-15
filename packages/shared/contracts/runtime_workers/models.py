@@ -1,15 +1,12 @@
 import datetime as dt
-from enum import StrEnum
 
 from sqlalchemy import Column, DateTime, Enum as SAEnum, Integer, String
 from sqlmodel import Field, SQLModel
 
-
-def _enum_values(enum_cls: type[StrEnum]) -> list[str]:
-    return [item.value for item in enum_cls]
+from contracts.enums import DataForgeStrEnum
 
 
-class RuntimeWorkerKind(StrEnum):
+class RuntimeWorkerKind(DataForgeStrEnum):
     API = 'api'
     BUILD_MANAGER = 'build_manager'
     BUILD_WORKER = 'build_worker'
@@ -21,11 +18,7 @@ class RuntimeWorker(SQLModel, table=True):  # type: ignore[call-arg, assignment]
 
     id: str = Field(sa_column=Column(String, primary_key=True))
     kind: RuntimeWorkerKind = Field(
-        sa_column=Column(
-            SAEnum(RuntimeWorkerKind, native_enum=False, values_callable=_enum_values),
-            nullable=False,
-            index=True,
-        ),
+        sa_column=Column(SAEnum(RuntimeWorkerKind, native_enum=False, values_callable=lambda enum_cls: enum_cls.values()), nullable=False, index=True)
     )
     hostname: str = Field(sa_column=Column(String, nullable=False))
     pid: int = Field(sa_column=Column(Integer, nullable=False))

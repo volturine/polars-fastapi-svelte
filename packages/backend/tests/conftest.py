@@ -29,31 +29,31 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 __all__ = [
-    'cleanup_namespace_engines',
-    'client',
-    'clear_active_build_registry',
-    'clear_build_job_hub',
-    'clear_build_notification_hub',
-    'clear_compute_request_hubs',
-    'clear_engine_registry',
-    'clear_lock_watchers',
-    'isolate_data_dir',
-    'isolate_settings_engine',
-    'mock_file_upload',
-    'postgres_container',
-    'pytest_sessionstart',
-    'sample_analyses',
-    'sample_analysis',
-    'sample_csv_file',
-    'sample_datasource',
-    'sample_datasources',
-    'sample_json_file',
-    'sample_ndjson_file',
-    'sample_parquet_file',
-    'temp_upload_dir',
-    'test_db_session',
-    'test_engine',
-    'test_user',
+    "cleanup_namespace_engines",
+    "client",
+    "clear_active_build_registry",
+    "clear_build_job_hub",
+    "clear_build_notification_hub",
+    "clear_compute_request_hubs",
+    "clear_engine_registry",
+    "clear_lock_watchers",
+    "isolate_data_dir",
+    "isolate_settings_engine",
+    "mock_file_upload",
+    "postgres_container",
+    "pytest_sessionstart",
+    "sample_analyses",
+    "sample_analysis",
+    "sample_csv_file",
+    "sample_datasource",
+    "sample_datasources",
+    "sample_json_file",
+    "sample_ndjson_file",
+    "sample_parquet_file",
+    "temp_upload_dir",
+    "test_db_session",
+    "test_engine",
+    "test_user",
 ]
 
 if TYPE_CHECKING:
@@ -61,9 +61,6 @@ if TYPE_CHECKING:
 
 
 def _register_backend_sqlmodel_metadata() -> None:
-    from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
-    from modules.chat.models import ChatSession
-
     from contracts.analysis.models import Analysis, AnalysisDataSource
     from contracts.analysis_versions.models import AnalysisVersion
     from contracts.build_jobs.models import BuildJob
@@ -79,6 +76,9 @@ def _register_backend_sqlmodel_metadata() -> None:
     from contracts.settings_models import AppSettings
     from contracts.telegram_models import TelegramListener, TelegramSubscriber
     from contracts.udf_models import Udf
+
+    from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
+    from modules.chat.models import ChatSession
 
     del Analysis
     del AnalysisDataSource
@@ -108,13 +108,13 @@ def _register_backend_sqlmodel_metadata() -> None:
 
 
 def _backend_settings_tables() -> list[Any]:
-    from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
-    from modules.chat.models import ChatSession
-
     from contracts.engine_instances.models import EngineInstance
     from contracts.namespaces.models import RuntimeNamespace
     from contracts.runtime_workers.models import RuntimeWorker
     from contracts.settings_models import AppSettings
+
+    from modules.auth.models import AuthProvider, User, UserSession, VerificationToken
+    from modules.chat.models import ChatSession
 
     table_names = {
         AppSettings.__tablename__,
@@ -157,14 +157,14 @@ class _BackendTestManager:
         return None
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def test_engine(postgres_container):
     from contracts.locks.models import ResourceLock
     from contracts.udf_models import Udf
 
     del ResourceLock
     del Udf
-    schema = f'test_{uuid.uuid4().hex}'
+    schema = f"test_{uuid.uuid4().hex}"
     engine = base_fixtures._schema_engine(postgres_container.url, schema)
     _register_backend_sqlmodel_metadata()
     from core import database
@@ -178,20 +178,23 @@ def test_engine(postgres_container):
     try:
         yield engine
     finally:
-        with postgres_container.connect() as pg_connection, pg_connection.cursor() as cursor:
+        with (
+            postgres_container.connect() as pg_connection,
+            pg_connection.cursor() as cursor,
+        ):
             cursor.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
         engine.dispose()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def test_user() -> User:
     from modules.auth.models import User, UserStatus
 
     now = datetime.now(UTC)
     return User(
         id=uuid.uuid4().hex,
-        email='test@example.com',
-        display_name='Test User',
+        email="test@example.com",
+        display_name="Test User",
         status=UserStatus.ACTIVE,
         email_verified=True,
         has_password=True,
@@ -201,17 +204,17 @@ def test_user() -> User:
     )
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def client(test_db_session, test_user):
+    from core.database import get_db
+
     from main import app
     from modules.auth.dependencies import get_current_user
-
-    from core.database import get_db
 
     def override_get_db():
         yield test_db_session
 
-    if hasattr(app.state, 'mcp_registry'):
+    if hasattr(app.state, "mcp_registry"):
         del app.state.mcp_registry
 
     app.state.manager = _BackendTestManager()
@@ -222,15 +225,15 @@ def client(test_db_session, test_user):
         try:
             yield ac
         finally:
-            if hasattr(app.state, 'runtime_availability_probe'):
+            if hasattr(app.state, "runtime_availability_probe"):
                 del app.state.runtime_availability_probe
-            if hasattr(app.state, 'compute_override_executor'):
+            if hasattr(app.state, "compute_override_executor"):
                 del app.state.compute_override_executor
             app.state.manager.shutdown_all()
     app.dependency_overrides.clear()
 
 
-@pytest.fixture(autouse=True, scope='function')
+@pytest.fixture(autouse=True, scope="function")
 def clear_lock_watchers():
     from modules.locks.watchers import registry
 
@@ -239,7 +242,7 @@ def clear_lock_watchers():
     asyncio.run(registry.clear())
 
 
-@pytest.fixture(autouse=True, scope='function')
+@pytest.fixture(autouse=True, scope="function")
 def clear_active_build_registry():
     from build_live import registry
 
@@ -248,7 +251,7 @@ def clear_active_build_registry():
     asyncio.run(registry.clear())
 
 
-@pytest.fixture(autouse=True, scope='function')
+@pytest.fixture(autouse=True, scope="function")
 def clear_build_notification_hub():
     from contracts.build_runs.live import hub
 
@@ -257,7 +260,7 @@ def clear_build_notification_hub():
     asyncio.run(hub.clear())
 
 
-@pytest.fixture(autouse=True, scope='function')
+@pytest.fixture(autouse=True, scope="function")
 def clear_build_job_hub():
     from contracts.build_jobs.live import hub
 
@@ -266,7 +269,7 @@ def clear_build_job_hub():
     asyncio.run(hub.clear())
 
 
-@pytest.fixture(autouse=True, scope='function')
+@pytest.fixture(autouse=True, scope="function")
 def clear_compute_request_hubs():
     from contracts.compute_requests.live import request_hub, response_hub
 
@@ -277,7 +280,7 @@ def clear_compute_request_hubs():
     asyncio.run(response_hub.clear())
 
 
-@pytest.fixture(autouse=True, scope='function')
+@pytest.fixture(autouse=True, scope="function")
 def clear_engine_registry():
     from backend_core.engine_live import registry
 
@@ -286,12 +289,12 @@ def clear_engine_registry():
     asyncio.run(registry.clear())
 
 
-@pytest.fixture(autouse=True, scope='function')
+@pytest.fixture(autouse=True, scope="function")
 def isolate_settings_engine(tmp_path, isolate_data_dir, postgres_container):
     from contracts.settings_models import AppSettings
     from core import database
 
-    schema = f'settings_{uuid.uuid4().hex}'
+    schema = f"settings_{uuid.uuid4().hex}"
     engine = base_fixtures._schema_engine(postgres_container.url, schema)
     AppSettings.metadata.create_all(engine, tables=_backend_settings_tables())
     original = database.settings_engine
@@ -303,6 +306,9 @@ def isolate_settings_engine(tmp_path, isolate_data_dir, postgres_container):
         database.clear_settings_engine_override()
         _reset_backend_settings_state(engine)
         database.settings_engine = original
-        with postgres_container.connect() as pg_connection, pg_connection.cursor() as cursor:
+        with (
+            postgres_container.connect() as pg_connection,
+            pg_connection.cursor() as cursor,
+        ):
             cursor.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
         engine.dispose()

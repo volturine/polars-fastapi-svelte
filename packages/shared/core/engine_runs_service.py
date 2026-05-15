@@ -121,19 +121,10 @@ def build_execution_entries(
         )
 
     if isinstance(read_duration_ms, (int, float)):
-        append_entry(
-            key='initial_read',
-            label='Initial Read',
-            category=EngineRunExecutionCategory.READ,
-            duration_ms=float(read_duration_ms),
-        )
+        append_entry(key='initial_read', label='Initial Read', category=EngineRunExecutionCategory.READ, duration_ms=float(read_duration_ms))
 
-    optimized_plan = (
-        query_plans.get('optimized') if isinstance(query_plans, dict) and isinstance(query_plans.get('optimized'), str) else None
-    )
-    unoptimized_plan = (
-        query_plans.get('unoptimized') if isinstance(query_plans, dict) and isinstance(query_plans.get('unoptimized'), str) else None
-    )
+    optimized_plan = query_plans.get('optimized') if isinstance(query_plans, dict) and isinstance(query_plans.get('optimized'), str) else None
+    unoptimized_plan = query_plans.get('unoptimized') if isinstance(query_plans, dict) and isinstance(query_plans.get('unoptimized'), str) else None
     if optimized_plan or unoptimized_plan or query_plan:
         append_entry(
             key='query_plan',
@@ -146,29 +137,13 @@ def build_execution_entries(
 
     for timing_key, duration_ms in normalized_timings.items():
         base_key, label = _step_label_for_timing_key(timing_key)
-        append_entry(
-            key=timing_key,
-            label=label,
-            category=EngineRunExecutionCategory.STEP,
-            duration_ms=duration_ms,
-            metadata={'step_type': base_key},
-        )
+        append_entry(key=timing_key, label=label, category=EngineRunExecutionCategory.STEP, duration_ms=duration_ms, metadata={'step_type': base_key})
 
     if isinstance(collect_duration_ms, (int, float)):
-        append_entry(
-            key='compute',
-            label='Compute',
-            category=EngineRunExecutionCategory.COMPUTE,
-            duration_ms=float(collect_duration_ms),
-        )
+        append_entry(key='compute', label='Compute', category=EngineRunExecutionCategory.COMPUTE, duration_ms=float(collect_duration_ms))
 
     if isinstance(write_duration_ms, (int, float)):
-        append_entry(
-            key='write_output',
-            label='Write Output',
-            category=EngineRunExecutionCategory.WRITE,
-            duration_ms=float(write_duration_ms),
-        )
+        append_entry(key='write_output', label='Write Output', category=EngineRunExecutionCategory.WRITE, duration_ms=float(write_duration_ms))
 
     return entries
 
@@ -200,7 +175,7 @@ def cancel_engine_run(session: Session, run_id: str, *, cancelled_by: str | None
     if run is None:
         raise ValueError('Engine run not found')
     session.refresh(run)
-    if _coerce_status(run.status) != EngineRunStatus.RUNNING:
+    if EngineRunStatus.require(run.status) != EngineRunStatus.RUNNING:
         raise ValueError('Only running builds can be cancelled')
 
     now = datetime.now(UTC)
@@ -216,17 +191,7 @@ def cancel_engine_run(session: Session, run_id: str, *, cancelled_by: str | None
         existing['last_completed_step'] = last_completed_step
     existing_logs = existing.get('logs')
     logs = [entry for entry in existing_logs if isinstance(entry, dict)] if isinstance(existing_logs, list) else []
-    logs.append(
-        {
-            'timestamp': now.isoformat(),
-            'level': 'warning',
-            'message': reason,
-            'step_name': None,
-            'step_id': None,
-            'tab_id': None,
-            'tab_name': None,
-        }
-    )
+    logs.append({'timestamp': now.isoformat(), 'level': 'warning', 'message': reason, 'step_name': None, 'step_id': None, 'tab_id': None, 'tab_name': None})
     existing['logs'] = logs
 
     created_at = run.created_at if run.created_at.tzinfo is not None else run.created_at.replace(tzinfo=UTC)
@@ -245,13 +210,7 @@ def cancel_engine_run(session: Session, run_id: str, *, cancelled_by: str | None
     )
 
     return compute_schemas.CancelBuildResponse(
-        id=run_id,
-        build_id=None,
-        engine_run_id=run_id,
-        status='cancelled',
-        duration_ms=duration_ms,
-        cancelled_at=now,
-        cancelled_by=cancelled_by,
+        id=run_id, build_id=None, engine_run_id=run_id, status='cancelled', duration_ms=duration_ms, cancelled_at=now, cancelled_by=cancelled_by
     )
 
 
@@ -264,11 +223,7 @@ def _serialize_run(run: EngineRun) -> EngineRunResponseSchema:
         else []
     )
     return EngineRunResponseSchema.model_validate(
-        {
-            **run.model_dump(),
-            'step_timings': normalize_step_timings(run.step_timings),
-            'execution_entries': execution_entries,
-        }
+        {**run.model_dump(), 'step_timings': normalize_step_timings(run.step_timings), 'execution_entries': execution_entries}
     )
 
 
@@ -279,20 +234,11 @@ def get_engine_run(session: Session, run_id: str) -> EngineRunResponseSchema | N
     return _serialize_run(run)
 
 
-def _coerce_status(status: EngineRunStatus | str) -> EngineRunStatus:
-    return status if isinstance(status, EngineRunStatus) else EngineRunStatus(status)
-
-
-def create_engine_run(
-    session: Session,
-    payload: EngineRunPayload,
-) -> EngineRunResponseSchema:
+def create_engine_run(session: Session, payload: EngineRunPayload) -> EngineRunResponseSchema:
     result_json = payload.result_json.copy() if isinstance(payload.result_json, dict) else None
     if payload.execution_entries:
         result_json = result_json or {}
-        result_json['execution_entries'] = [
-            EngineRunExecutionEntry.model_validate(entry).model_dump(mode='json') for entry in payload.execution_entries
-        ]
+        result_json['execution_entries'] = [EngineRunExecutionEntry.model_validate(entry).model_dump(mode='json') for entry in payload.execution_entries]
 
     run = EngineRun(
         id=payload.id,
@@ -351,8 +297,8 @@ def update_engine_run(
     if not isinstance(kind, _UnsetType):
         run.kind = EngineRunKind.require(kind).value if isinstance(kind, (EngineRunKind, str)) else run.kind
     if not isinstance(status, _UnsetType):
-        new_status = _coerce_status(status) if isinstance(status, (EngineRunStatus, str)) else None
-        current_status = _coerce_status(run.status)
+        new_status = EngineRunStatus.require(status) if isinstance(status, (EngineRunStatus, str)) else None
+        current_status = EngineRunStatus.require(run.status)
         if new_status is not None and current_status in _TERMINAL_STATUSES and new_status != current_status:
             logger.warning(f'Ignoring status transition from {current_status} to {new_status} for run {run_id}')
         elif new_status is not None:
@@ -387,9 +333,7 @@ def update_engine_run(
         if execution_entries is None:
             next_result_json.pop('execution_entries', None)
         elif isinstance(execution_entries, list):
-            next_result_json['execution_entries'] = [
-                EngineRunExecutionEntry.model_validate(entry).model_dump(mode='json') for entry in execution_entries
-            ]
+            next_result_json['execution_entries'] = [EngineRunExecutionEntry.model_validate(entry).model_dump(mode='json') for entry in execution_entries]
         run.result_json = next_result_json
 
     session.add(run)
@@ -420,7 +364,7 @@ def create_engine_run_payload(
         analysis_id=analysis_id,
         datasource_id=datasource_id,
         kind=EngineRunKind.require(kind),
-        status=_coerce_status(status),
+        status=EngineRunStatus.require(status),
         request_json=request_json,
         result_json=result_json,
         error_message=error_message,
@@ -459,19 +403,14 @@ def list_engine_runs(
     else:
         stmt = stmt.where(EngineRun.kind != EngineRunKind.BUILD.value)  # type: ignore[arg-type]
     if status is not None:
-        stmt = stmt.where(EngineRun.status == _coerce_status(status).value)  # type: ignore[arg-type]
+        stmt = stmt.where(EngineRun.status == EngineRunStatus.require(status).value)  # type: ignore[arg-type]
 
     stmt = stmt.order_by(desc(EngineRun.created_at)).limit(limit).offset(offset)  # type: ignore[arg-type]
     runs = session.execute(stmt).scalars().all()
     return [_serialize_run(run) for run in runs]
 
 
-def compare_engine_runs(
-    session: Session,
-    run_a_id: str,
-    run_b_id: str,
-    datasource_id: str | None = None,
-) -> BuildComparisonResponse:
+def compare_engine_runs(session: Session, run_a_id: str, run_b_id: str, datasource_id: str | None = None) -> BuildComparisonResponse:
     """Compare two engine runs side-by-side: schema diff, row count delta, timing delta."""
     run_a = session.get(EngineRun, run_a_id)
     run_b = session.get(EngineRun, run_b_id)
@@ -479,18 +418,9 @@ def compare_engine_runs(
         missing = run_a_id if not run_a else run_b_id
         raise EngineRunNotFoundError(missing)
     if run_a.datasource_id != run_b.datasource_id:
-        raise EngineRunComparisonError(
-            'Engine runs must belong to the same datasource',
-            run_a_id=run_a_id,
-            run_b_id=run_b_id,
-        )
+        raise EngineRunComparisonError('Engine runs must belong to the same datasource', run_a_id=run_a_id, run_b_id=run_b_id)
     if datasource_id and (run_a.datasource_id != datasource_id or run_b.datasource_id != datasource_id):
-        raise EngineRunComparisonError(
-            'Engine runs do not match datasource',
-            run_a_id=run_a_id,
-            run_b_id=run_b_id,
-            datasource_id=datasource_id,
-        )
+        raise EngineRunComparisonError('Engine runs do not match datasource', run_a_id=run_a_id, run_b_id=run_b_id, datasource_id=datasource_id)
 
     result_a = _load_result_summary(run_a.result_json)
     result_b = _load_result_summary(run_b.result_json)
@@ -550,20 +480,10 @@ def _load_result_summary(result_json: dict[str, Any] | None) -> EngineRunResultS
     metadata = payload.get('metadata')
     if not isinstance(metadata, dict):
         metadata = None
-    return EngineRunResultSummary.model_validate(
-        {
-            'row_count': payload.get('row_count'),
-            'schema': schema,
-            'data': data,
-            'metadata': metadata,
-        },
-    )
+    return EngineRunResultSummary.model_validate({'row_count': payload.get('row_count'), 'schema': schema, 'data': data, 'metadata': metadata})
 
 
-def _compute_schema_diff(
-    schema_a: dict[str, str],
-    schema_b: dict[str, str],
-) -> list[ColumnDiff]:
+def _compute_schema_diff(schema_a: dict[str, str], schema_b: dict[str, str]) -> list[ColumnDiff]:
     diffs: list[ColumnDiff] = []
     all_cols = sorted(set(schema_a) | set(schema_b))
     for col in all_cols:
@@ -574,21 +494,11 @@ def _compute_schema_diff(
         elif not in_a and in_b:
             diffs.append(ColumnDiff(column=col, status=SchemaDiffStatus.ADDED, type_b=schema_b[col]))
         elif schema_a[col] != schema_b[col]:
-            diffs.append(
-                ColumnDiff(
-                    column=col,
-                    status=SchemaDiffStatus.TYPE_CHANGED,
-                    type_a=schema_a[col],
-                    type_b=schema_b[col],
-                ),
-            )
+            diffs.append(ColumnDiff(column=col, status=SchemaDiffStatus.TYPE_CHANGED, type_a=schema_a[col], type_b=schema_b[col]))
     return diffs
 
 
-def _compute_timing_diff(
-    timings_a: dict[str, float],
-    timings_b: dict[str, float],
-) -> list[TimingDiff]:
+def _compute_timing_diff(timings_a: dict[str, float], timings_b: dict[str, float]) -> list[TimingDiff]:
     diffs: list[TimingDiff] = []
     all_steps = sorted(set(timings_a) | set(timings_b))
     for step in all_steps:

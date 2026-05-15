@@ -1,15 +1,12 @@
 import datetime as dt
-from enum import StrEnum
 
 from sqlalchemy import Column, DateTime, Enum as SAEnum, Integer, String
 from sqlmodel import Field, SQLModel
 
-
-def _enum_values(enum_cls: type[StrEnum]) -> list[str]:
-    return [item.value for item in enum_cls]
+from contracts.enums import DataForgeStrEnum
 
 
-class BuildJobStatus(StrEnum):
+class BuildJobStatus(DataForgeStrEnum):
     QUEUED = 'queued'
     LEASED = 'leased'
     RUNNING = 'running'
@@ -25,11 +22,7 @@ class BuildJob(SQLModel, table=True):  # type: ignore[call-arg, assignment]
     build_id: str = Field(sa_column=Column(String, nullable=False, index=True, unique=True))
     namespace: str = Field(sa_column=Column(String, nullable=False, index=True))
     status: BuildJobStatus = Field(
-        sa_column=Column(
-            SAEnum(BuildJobStatus, native_enum=False, values_callable=_enum_values),
-            nullable=False,
-            index=True,
-        ),
+        sa_column=Column(SAEnum(BuildJobStatus, native_enum=False, values_callable=lambda enum_cls: enum_cls.values()), nullable=False, index=True)
     )
     priority: int = Field(default=0, sa_column=Column(Integer, nullable=False))
     lease_owner: str | None = Field(default=None, sa_column=Column(String, nullable=True, index=True))

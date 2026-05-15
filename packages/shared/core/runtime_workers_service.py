@@ -10,15 +10,7 @@ def _utcnow() -> datetime:
 
 
 def register_worker(
-    session: Session,
-    *,
-    worker_id: str,
-    kind: RuntimeWorkerKind,
-    hostname: str,
-    pid: int,
-    capacity: int,
-    active_jobs: int = 0,
-    now: datetime | None = None,
+    session: Session, *, worker_id: str, kind: RuntimeWorkerKind, hostname: str, pid: int, capacity: int, active_jobs: int = 0, now: datetime | None = None
 ) -> RuntimeWorker:
     stamp = now or _utcnow()
     worker = session.get(RuntimeWorker, worker_id)
@@ -49,13 +41,7 @@ def register_worker(
     return worker
 
 
-def heartbeat_worker(
-    session: Session,
-    *,
-    worker_id: str,
-    active_jobs: int | None = None,
-    now: datetime | None = None,
-) -> RuntimeWorker:
+def heartbeat_worker(session: Session, *, worker_id: str, active_jobs: int | None = None, now: datetime | None = None) -> RuntimeWorker:
     worker = session.get(RuntimeWorker, worker_id)
     if worker is None:
         raise ValueError(f'Runtime worker {worker_id} not found')
@@ -104,12 +90,7 @@ def _worker_reclaimable(worker: RuntimeWorker, *, now: datetime, heartbeat_secon
     return now - heartbeat > timedelta(seconds=heartbeat_seconds)
 
 
-def worker_available(
-    session: Session,
-    *,
-    kind: RuntimeWorkerKind,
-    heartbeat_seconds: float = 15.0,
-) -> bool:
+def worker_available(session: Session, *, kind: RuntimeWorkerKind, heartbeat_seconds: float = 15.0) -> bool:
     now = _utcnow()
     for worker in reversed(list_workers(session, kind=kind)):
         if _worker_reclaimable(worker, now=now, heartbeat_seconds=heartbeat_seconds):
@@ -118,15 +99,6 @@ def worker_available(
     return False
 
 
-def reclaimable_worker_ids(
-    session: Session,
-    *,
-    kind: RuntimeWorkerKind,
-    heartbeat_seconds: float = 15.0,
-) -> set[str]:
+def reclaimable_worker_ids(session: Session, *, kind: RuntimeWorkerKind, heartbeat_seconds: float = 15.0) -> set[str]:
     now = _utcnow()
-    return {
-        worker.id
-        for worker in list_workers(session, kind=kind)
-        if _worker_reclaimable(worker, now=now, heartbeat_seconds=heartbeat_seconds)
-    }
+    return {worker.id for worker in list_workers(session, kind=kind) if _worker_reclaimable(worker, now=now, heartbeat_seconds=heartbeat_seconds)}

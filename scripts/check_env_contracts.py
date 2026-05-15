@@ -156,9 +156,7 @@ def main() -> int:
             if not item.key.startswith('DF_'):
                 errors.append(f'{env_path.relative_to(ROOT)}:{item.line}: docker env key must start with DF_: {item.key}')
             if item.key not in referenced:
-                errors.append(
-                    f'{env_path.relative_to(ROOT)}:{item.line}: docker env key is not referenced by compose files: {item.key}'
-                )
+                errors.append(f'{env_path.relative_to(ROOT)}:{item.line}: docker env key is not referenced by compose files: {item.key}')
 
         missing = sorted(required - keys)
         for key in missing:

@@ -82,7 +82,5 @@ registry = EngineRegistry()
 
 def load_engine_snapshot(session, *, namespace: str, defaults: dict[str, object]) -> schemas.EngineListSnapshotMessage:
     rows = engine_instance_service.list_engine_projection(session, namespace=namespace)
-    statuses = [
-        schemas.EngineStatusSchema.model_validate(engine_instance_service.serialize_engine_instance(row, defaults=defaults)) for row in rows
-    ]
+    statuses = [schemas.EngineStatusSchema.model_validate(engine_instance_service.serialize_engine_instance(row, defaults=defaults)) for row in rows]
     return schemas.EngineListSnapshotMessage(engines=statuses, total=len(statuses))

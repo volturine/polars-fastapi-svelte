@@ -1,10 +1,10 @@
 from collections.abc import Callable
 
 import polars as pl
-
-from compute_operations._validation import validate_regex_pattern
 from contracts.compute.base import OperationHandler, OperationParams
 from contracts.step_config_enums import StringTransformMethod
+
+from compute_operations._validation import validate_regex_pattern
 
 
 class StringTransformParams(OperationParams):
@@ -31,7 +31,9 @@ _STRING_METHODS: dict[StringTransformMethod, Callable[[pl.Expr], pl.Expr]] = {
 }
 
 
-def get_string_method(name: StringTransformMethod) -> Callable[[pl.Expr], pl.Expr] | None:
+def get_string_method(
+    name: StringTransformMethod,
+) -> Callable[[pl.Expr], pl.Expr] | None:
     return _STRING_METHODS.get(name)
 
 
@@ -45,7 +47,7 @@ class StringTransformHandler(OperationHandler):
         validated = StringTransformParams.model_validate(params)
         target = validated.new_column or validated.column
         if not target:
-            raise ValueError('string_transform requires new_column parameter')
+            raise ValueError("string_transform requires new_column parameter")
 
         base = pl.col(validated.column)
         method = get_string_method(validated.method)
@@ -57,20 +59,20 @@ class StringTransformHandler(OperationHandler):
 
         if validated.method == StringTransformMethod.REPLACE:
             if not validated.pattern:
-                raise ValueError('string_transform replace requires pattern parameter')
+                raise ValueError("string_transform replace requires pattern parameter")
             validate_regex_pattern(validated.pattern)
-            return lf.with_columns(base.str.replace_all(validated.pattern, validated.replacement or '').alias(target))
+            return lf.with_columns(base.str.replace_all(validated.pattern, validated.replacement or "").alias(target))
 
         if validated.method == StringTransformMethod.EXTRACT:
             if not validated.pattern:
-                raise ValueError('string_transform extract requires pattern parameter')
+                raise ValueError("string_transform extract requires pattern parameter")
             validate_regex_pattern(validated.pattern)
             return lf.with_columns(base.str.extract(validated.pattern, validated.group_index or 0).alias(target))
 
         if validated.method == StringTransformMethod.SPLIT:
-            return lf.with_columns(base.str.split(validated.delimiter or ' ').alias(target))
+            return lf.with_columns(base.str.split(validated.delimiter or " ").alias(target))
 
         if validated.method == StringTransformMethod.SPLIT_TAKE:
-            return lf.with_columns(base.str.split(validated.delimiter or ' ').list.get(validated.index or 0).alias(target))
+            return lf.with_columns(base.str.split(validated.delimiter or " ").list.get(validated.index or 0).alias(target))
 
-        raise ValueError(f'Unsupported string method: {validated.method}')
+        raise ValueError(f"Unsupported string method: {validated.method}")

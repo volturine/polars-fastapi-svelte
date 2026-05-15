@@ -1,14 +1,13 @@
 """Export passthrough operation."""
 
 import polars as pl
-
 from contracts.compute.base import OperationHandler, OperationParams
 
 
 class ExportParams(OperationParams):
-    format: str = 'csv'
-    filename: str = 'export'
-    destination: str = 'download'
+    format: str = "csv"
+    filename: str = "export"
+    destination: str = "download"
     iceberg_options: dict | None = None
 
 

@@ -1,23 +1,36 @@
 import datetime as dt
-from enum import StrEnum
 
 from sqlalchemy import JSON, Column, DateTime, Enum as SAEnum, Float, Integer, String, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
-from contracts.compute.schemas import BuildEventType
+from contracts.compute import schemas as compute_schemas
+from contracts.enums import DataForgeStrEnum
 
 
-def _enum_values(enum_cls: type[StrEnum]) -> list[str]:
-    return [item.value for item in enum_cls]
-
-
-class BuildRunStatus(StrEnum):
+class BuildRunStatus(DataForgeStrEnum):
     QUEUED = 'queued'
     RUNNING = 'running'
     COMPLETED = 'completed'
     FAILED = 'failed'
     CANCELLED = 'cancelled'
     ORPHANED = 'orphaned'
+
+    @property
+    def is_terminal(self) -> bool:
+        return self in {BuildRunStatus.COMPLETED, BuildRunStatus.FAILED, BuildRunStatus.CANCELLED, BuildRunStatus.ORPHANED}
+
+    def to_active_build_status(self) -> tuple[compute_schemas.ActiveBuildStatus, str | None]:
+        if self == BuildRunStatus.QUEUED:
+            return compute_schemas.ActiveBuildStatus.QUEUED, None
+        if self == BuildRunStatus.RUNNING:
+            return compute_schemas.ActiveBuildStatus.RUNNING, None
+        if self == BuildRunStatus.COMPLETED:
+            return compute_schemas.ActiveBuildStatus.COMPLETED, None
+        if self == BuildRunStatus.CANCELLED:
+            return compute_schemas.ActiveBuildStatus.CANCELLED, None
+        if self == BuildRunStatus.FAILED:
+            return compute_schemas.ActiveBuildStatus.FAILED, None
+        return compute_schemas.ActiveBuildStatus.FAILED, 'Build orphaned during startup recovery'
 
 
 class BuildRun(SQLModel, table=True):  # type: ignore[call-arg, assignment]
@@ -29,11 +42,7 @@ class BuildRun(SQLModel, table=True):  # type: ignore[call-arg, assignment]
     analysis_id: str = Field(sa_column=Column(String, nullable=False, index=True))
     analysis_name: str = Field(sa_column=Column(String, nullable=False))
     status: BuildRunStatus = Field(
-        sa_column=Column(
-            SAEnum(BuildRunStatus, native_enum=False, values_callable=_enum_values),
-            nullable=False,
-            index=True,
-        ),
+        sa_column=Column(SAEnum(BuildRunStatus, native_enum=False, values_callable=lambda enum_cls: enum_cls.values()), nullable=False, index=True)
     )
     request_json: dict[str, object] = Field(sa_column=Column(JSON, nullable=False))
     starter_json: dict[str, object] = Field(sa_column=Column(JSON, nullable=False))
@@ -72,11 +81,8 @@ class BuildEvent(SQLModel, table=True):  # type: ignore[call-arg, assignment]
     build_id: str = Field(sa_column=Column(String, nullable=False, index=True))
     namespace: str = Field(sa_column=Column(String, nullable=False, index=True))
     sequence: int = Field(sa_column=Column(Integer, nullable=False))
-    type: BuildEventType = Field(
-        sa_column=Column(
-            SAEnum(BuildEventType, native_enum=False, values_callable=_enum_values),
-            nullable=False,
-        ),
+    type: compute_schemas.BuildEventType = Field(
+        sa_column=Column(SAEnum(compute_schemas.BuildEventType, native_enum=False, values_callable=lambda enum_cls: enum_cls.values()), nullable=False)
     )
     payload_json: dict[str, object] = Field(sa_column=Column(JSON, nullable=False))
     engine_run_id: str | None = Field(default=None, sa_column=Column(String, nullable=True, index=True))

@@ -8,9 +8,6 @@ import socket
 import threading
 import uuid
 
-import scheduler_service
-from sqlmodel import Session
-
 from contracts.build_jobs.live import hub as build_job_hub
 from contracts.runtime import ipc as runtime_ipc
 from contracts.runtime_workers.models import RuntimeWorkerKind
@@ -20,6 +17,9 @@ from core.database import init_db, run_db, run_settings_db
 from core.logging import configure_logging
 from core.namespace import reset_namespace, set_namespace_context
 from core.namespaces_service import list_runtime_namespaces
+from sqlmodel import Session
+
+import scheduler_service
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +35,9 @@ async def scheduler_loop(
     heartbeat_thread = threading.Thread(
         target=_heartbeat_loop_sync,
         kwargs={
-            'stop_signal': heartbeat_stop,
-            'worker_id': worker_id,
-            'heartbeat_seconds': heartbeat_seconds,
+            "stop_signal": heartbeat_stop,
+            "worker_id": worker_id,
+            "heartbeat_seconds": heartbeat_seconds,
         },
         daemon=True,
     )
@@ -92,13 +92,18 @@ async def _run_once(*, worker_id: str) -> bool:
                         ),
                     )
                     logger.info(
-                        'Scheduler: enqueued schedule %s as build %s (datasource=%s)',
+                        "Scheduler: enqueued schedule %s as build %s (datasource=%s)",
                         sched_id,
                         run_id,
                         datasource_id,
                     )
                 except Exception as exc:
-                    logger.error('Scheduler: enqueue failed for schedule %s: %s', sched_id, exc, exc_info=True)
+                    logger.error(
+                        "Scheduler: enqueue failed for schedule %s: %s",
+                        sched_id,
+                        exc,
+                        exc_info=True,
+                    )
                     await asyncio.to_thread(
                         run_db,
                         lambda session, target_id=sched_id, error=str(exc): scheduler_service.mark_schedule_enqueue_failed(
@@ -163,11 +168,11 @@ def _heartbeat_loop_sync(*, stop_signal: threading.Event, worker_id: str, heartb
 
 
 def scheduler_id() -> str:
-    return f'scheduler:{uuid.uuid4()}'
+    return f"scheduler:{uuid.uuid4()}"
 
 
 async def handle_runtime_payload(payload: dict[str, object]) -> None:
-    if payload.get('kind') == 'job':
+    if payload.get("kind") == "job":
         build_job_hub.publish()
 
 
@@ -187,7 +192,7 @@ def install_stop_handlers(stop_event: asyncio.Event) -> None:
 async def main() -> None:
     await init_db()
     configure_logging()
-    logger.info('Starting scheduler process...')
+    logger.info("Starting scheduler process...")
     stop_event = asyncio.Event()
     install_stop_handlers(stop_event)
     ipc_server = await runtime_ipc.start_api_server()
@@ -203,5 +208,5 @@ async def main() -> None:
             await asyncio.gather(ipc_task, return_exceptions=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

@@ -1,20 +1,20 @@
 """Backend-owned healthcheck API schemas."""
 
 import datetime as dt
-from enum import StrEnum
 from typing import Any
 
+from contracts.enums import DataForgeStrEnum
 from pydantic import BaseModel, ConfigDict
 
 
-class CheckType(StrEnum):
-    ROW_COUNT = 'row_count'
-    COLUMN_NULL = 'column_null'
-    COLUMN_UNIQUE = 'column_unique'
-    COLUMN_RANGE = 'column_range'
-    COLUMN_COUNT = 'column_count'
-    NULL_PERCENTAGE = 'null_percentage'
-    DUPLICATE_PERCENTAGE = 'duplicate_percentage'
+class CheckType(DataForgeStrEnum):
+    ROW_COUNT = "row_count"
+    COLUMN_NULL = "column_null"
+    COLUMN_UNIQUE = "column_unique"
+    COLUMN_RANGE = "column_range"
+    COLUMN_COUNT = "column_count"
+    NULL_PERCENTAGE = "null_percentage"
+    DUPLICATE_PERCENTAGE = "duplicate_percentage"
 
 
 class HealthCheckCreate(BaseModel):

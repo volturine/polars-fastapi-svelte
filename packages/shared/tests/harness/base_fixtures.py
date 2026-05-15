@@ -78,12 +78,7 @@ def _settings_tables() -> list[Any]:
     from contracts.runtime_workers.models import RuntimeWorker
     from contracts.settings_models import AppSettings
 
-    table_names = {
-        AppSettings.__tablename__,
-        EngineInstance.__tablename__,
-        RuntimeWorker.__tablename__,
-        RuntimeNamespace.__tablename__,
-    }
+    table_names = {AppSettings.__tablename__, EngineInstance.__tablename__, RuntimeWorker.__tablename__, RuntimeNamespace.__tablename__}
     return [table for table in AppSettings.metadata.sorted_tables if table.name in table_names]
 
 
@@ -112,12 +107,7 @@ def postgres_container() -> Generator[ExternalPostgres | PostgresContainer, None
 
 
 def _schema_engine(database_url: str, schema: str) -> Engine:
-    engine = create_engine(
-        database_url,
-        echo=False,
-        pool_pre_ping=True,
-        connect_args={'options': f'-c search_path={schema},public'},
-    )
+    engine = create_engine(database_url, echo=False, pool_pre_ping=True, connect_args={'options': f'-c search_path={schema},public'})
     with engine.begin() as connection:
         connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
     return engine
@@ -175,10 +165,7 @@ def isolate_data_dir(tmp_path: Path, monkeypatch, postgres_container: PostgresCo
 
 @pytest.fixture(autouse=True, scope='function')
 def isolate_settings_engine(
-    request: pytest.FixtureRequest,
-    tmp_path: Path,
-    isolate_data_dir,
-    postgres_container: PostgresContainer,
+    request: pytest.FixtureRequest, tmp_path: Path, isolate_data_dir, postgres_container: PostgresContainer
 ) -> Generator[Engine | None, None, None]:
     if '/backend/tests/' in request.node.path.as_posix():
         yield None
@@ -226,7 +213,7 @@ def sample_csv_file(temp_upload_dir: Path) -> Path:
             'name': ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
             'age': [25, 30, 35, 40, 45],
             'city': ['NYC', 'LA', 'Chicago', 'Houston', 'Phoenix'],
-        },
+        }
     )
     df.write_csv(csv_path)
     return csv_path
@@ -238,12 +225,7 @@ def sample_parquet_file(temp_upload_dir: Path) -> Path:
 
     parquet_path = temp_upload_dir / 'sample.parquet'
     df = pl.DataFrame(
-        {
-            'product_id': [101, 102, 103],
-            'product_name': ['Widget A', 'Widget B', 'Widget C'],
-            'price': [10.99, 20.99, 30.99],
-            'stock': [100, 50, 75],
-        },
+        {'product_id': [101, 102, 103], 'product_name': ['Widget A', 'Widget B', 'Widget C'], 'price': [10.99, 20.99, 30.99], 'stock': [100, 50, 75]}
     )
     df.write_parquet(parquet_path)
     return parquet_path
@@ -254,13 +236,7 @@ def sample_ndjson_file(temp_upload_dir: Path) -> Path:
     import polars as pl
 
     ndjson_path = temp_upload_dir / 'sample.ndjson'
-    df = pl.DataFrame(
-        {
-            'user_id': [1, 2, 3],
-            'username': ['user1', 'user2', 'user3'],
-            'email': ['user1@test.com', 'user2@test.com', 'user3@test.com'],
-        },
-    )
+    df = pl.DataFrame({'user_id': [1, 2, 3], 'username': ['user1', 'user2', 'user3'], 'email': ['user1@test.com', 'user2@test.com', 'user3@test.com']})
     df.write_ndjson(ndjson_path)
     return ndjson_path
 
@@ -270,13 +246,7 @@ def sample_json_file(temp_upload_dir: Path) -> Path:
     import polars as pl
 
     json_path = temp_upload_dir / 'sample.json'
-    df = pl.DataFrame(
-        {
-            'user_id': [1, 2, 3],
-            'username': ['user1', 'user2', 'user3'],
-            'email': ['user1@test.com', 'user2@test.com', 'user3@test.com'],
-        },
-    )
+    df = pl.DataFrame({'user_id': [1, 2, 3], 'username': ['user1', 'user2', 'user3'], 'email': ['user1@test.com', 'user2@test.com', 'user3@test.com']})
     df.write_json(json_path)
     return json_path
 
@@ -286,19 +256,10 @@ def sample_datasource(test_db_session: Session, sample_csv_file: Path) -> DataSo
     from contracts.datasource.models import DataSource
 
     datasource_id = str(uuid.uuid4())
-    config = {
-        'file_path': str(sample_csv_file),
-        'file_type': 'csv',
-        'options': {},
-    }
+    config = {'file_path': str(sample_csv_file), 'file_type': 'csv', 'options': {}}
 
     datasource = DataSource(
-        id=datasource_id,
-        name='Test DataSource',
-        description='Fixture datasource description',
-        source_type='file',
-        config=config,
-        created_at=datetime.now(UTC),
+        id=datasource_id, name='Test DataSource', description='Fixture datasource description', source_type='file', config=config, created_at=datetime.now(UTC)
     )
 
     test_db_session.add(datasource)
@@ -314,25 +275,11 @@ def sample_datasources(test_db_session: Session, sample_csv_file: Path, sample_p
 
     datasources = []
 
-    for file_path, file_type, name in [
-        (sample_csv_file, 'csv', 'CSV DataSource'),
-        (sample_parquet_file, 'parquet', 'Parquet DataSource'),
-    ]:
+    for file_path, file_type, name in [(sample_csv_file, 'csv', 'CSV DataSource'), (sample_parquet_file, 'parquet', 'Parquet DataSource')]:
         datasource_id = str(uuid.uuid4())
-        config = {
-            'file_path': str(file_path),
-            'file_type': file_type,
-            'options': {},
-        }
+        config = {'file_path': str(file_path), 'file_type': file_type, 'options': {}}
 
-        datasource = DataSource(
-            id=datasource_id,
-            name=name,
-            description=f'{name} description',
-            source_type='file',
-            config=config,
-            created_at=datetime.now(UTC),
-        )
+        datasource = DataSource(id=datasource_id, name=name, description=f'{name} description', source_type='file', config=config, created_at=datetime.now(UTC))
 
         test_db_session.add(datasource)
         datasources.append(datasource)
@@ -358,27 +305,11 @@ def sample_analysis(test_db_session: Session, sample_datasource: DataSource) -> 
                 'id': 'tab1',
                 'name': 'Source',
                 'parent_id': None,
-                'datasource': {
-                    'id': sample_datasource.id,
-                    'analysis_tab_id': None,
-                    'config': {'branch': 'master'},
-                },
-                'output': {
-                    'result_id': tab1_result_id,
-                    'datasource_type': 'iceberg',
-                    'format': 'parquet',
-                    'filename': 'fixture_output',
-                },
-                'steps': [
-                    {
-                        'id': 'step1',
-                        'type': 'filter',
-                        'config': {'column': 'age', 'operator': '>', 'value': 30},
-                        'depends_on': [],
-                    },
-                ],
-            },
-        ],
+                'datasource': {'id': sample_datasource.id, 'analysis_tab_id': None, 'config': {'branch': 'master'}},
+                'output': {'result_id': tab1_result_id, 'datasource_type': 'iceberg', 'format': 'parquet', 'filename': 'fixture_output'},
+                'steps': [{'id': 'step1', 'type': 'filter', 'config': {'column': 'age', 'operator': '>', 'value': 30}, 'depends_on': []}],
+            }
+        ]
     }
 
     now = datetime.now(UTC)
@@ -414,27 +345,11 @@ def sample_analyses(test_db_session: Session, sample_datasources: list[DataSourc
                     'id': f'tab-{idx}',
                     'name': 'Source',
                     'parent_id': None,
-                    'datasource': {
-                        'id': sample_datasources[0].id,
-                        'analysis_tab_id': None,
-                        'config': {'branch': 'master'},
-                    },
-                    'output': {
-                        'result_id': str(uuid.uuid4()),
-                        'datasource_type': 'iceberg',
-                        'format': 'parquet',
-                        'filename': 'fixture_output',
-                    },
-                    'steps': [
-                        {
-                            'id': f'step{idx}',
-                            'type': 'filter',
-                            'config': {'column': 'id', 'operator': '>', 'value': idx},
-                            'depends_on': [],
-                        },
-                    ],
-                },
-            ],
+                    'datasource': {'id': sample_datasources[0].id, 'analysis_tab_id': None, 'config': {'branch': 'master'}},
+                    'output': {'result_id': str(uuid.uuid4()), 'datasource_type': 'iceberg', 'format': 'parquet', 'filename': 'fixture_output'},
+                    'steps': [{'id': f'step{idx}', 'type': 'filter', 'config': {'column': 'id', 'operator': '>', 'value': idx}, 'depends_on': []}],
+                }
+            ]
         }
 
         now = datetime.now(UTC)
@@ -449,12 +364,7 @@ def sample_analyses(test_db_session: Session, sample_datasources: list[DataSourc
         )
 
         test_db_session.add(analysis)
-        test_db_session.add(
-            AnalysisDataSource(
-                analysis_id=analysis_id,
-                datasource_id=sample_datasources[0].id,
-            )
-        )
+        test_db_session.add(AnalysisDataSource(analysis_id=analysis_id, datasource_id=sample_datasources[0].id))
         analyses.append(analysis)
 
     test_db_session.commit()
@@ -468,8 +378,4 @@ def sample_analyses(test_db_session: Session, sample_datasources: list[DataSourc
 @pytest.fixture(scope='function')
 def mock_file_upload() -> dict[str, str | bytes]:
     content = b'id,name,age\n1,Alice,25\n2,Bob,30\n'
-    return {
-        'filename': 'test.csv',
-        'content': content,
-        'content_type': 'text/csv',
-    }
+    return {'filename': 'test.csv', 'content': content, 'content_type': 'text/csv'}

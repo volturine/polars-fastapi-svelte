@@ -1,9 +1,8 @@
 from datetime import datetime
-from enum import StrEnum
-
-from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from contracts.datasource.source_types import DataSourceType
+from contracts.enums import DataForgeStrEnum
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ColumnSchema(BaseModel):
@@ -27,6 +26,17 @@ class SchemaInfo(BaseModel):
 class ColumnDescriptionPatch(BaseModel):
     column_name: str
     description: str | None = None
+
+    @classmethod
+    def normalize_description(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        if len(cleaned) > 2000:
+            raise ValueError("Column descriptions must be 2,000 characters or fewer")
+        return cleaned
 
 
 class BatchColumnDescriptionUpdate(BaseModel):
@@ -55,10 +65,10 @@ class ColumnStats(BaseModel):
     max: object | None = None
 
 
-class SchemaDiffStatus(StrEnum):
-    ADDED = 'added'
-    REMOVED = 'removed'
-    TYPE_CHANGED = 'type_changed'
+class SchemaDiffStatus(DataForgeStrEnum):
+    ADDED = "added"
+    REMOVED = "removed"
+    TYPE_CHANGED = "type_changed"
 
 
 class SchemaDiff(BaseModel):
@@ -159,11 +169,11 @@ class ExcelPreflightPreviewResponse(BaseModel):
 
 
 class CSVOptions(BaseModel):
-    delimiter: str = ','
+    delimiter: str = ","
     quote_char: str = '"'
     has_header: bool = True
     skip_rows: int = 0
-    encoding: str = 'utf8'
+    encoding: str = "utf8"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -187,35 +197,37 @@ class FileDataSourceConfig(BaseModel):
 class DatabaseDataSourceConfig(BaseModel):
     connection_string: str
     query: str
-    branch: str = 'master'
+    branch: str = "master"
 
 
 class IcebergDataSourceConfig(BaseModel):
-    branch: str = 'master'
+    branch: str = "master"
     source: dict
     refresh: dict | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
-def normalize_datasource_description(value: str | None) -> str | None:
-    if value is None:
-        return None
-    if value.strip() == '':
-        return None
-    return value
+class DataSourceDescriptionModel(BaseModel):
+    @classmethod
+    def normalize_description(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if value.strip() == "":
+            return None
+        return value
 
 
-class DataSourceCreate(BaseModel):
+class DataSourceCreate(DataSourceDescriptionModel):
     name: str
     description: str | None = Field(default=None, max_length=4000)
     source_type: DataSourceType
     config: dict
 
-    @field_validator('description')
+    @field_validator("description")
     @classmethod
     def _normalize_description(cls, value: str | None) -> str | None:
-        return normalize_datasource_description(value)
+        return cls.normalize_description(value)
 
 
 class DataSourceResponse(BaseModel):
@@ -228,7 +240,7 @@ class DataSourceResponse(BaseModel):
     config: dict
     schema_cache: dict | None
     created_by_analysis_id: str | None = None
-    created_by: str = 'import'
+    created_by: str = "import"
     is_hidden: bool = False
     created_at: datetime
     output_of_tab_id: str | None = None
@@ -245,13 +257,13 @@ class DataSourceListItem(BaseModel):
     source_type: DataSourceType
     config: dict
     created_by_analysis_id: str | None = None
-    created_by: str = 'import'
+    created_by: str = "import"
     is_hidden: bool = False
     created_at: datetime
     output_of_tab_id: str | None = None
 
 
-class DataSourceUpdate(BaseModel):
+class DataSourceUpdate(DataSourceDescriptionModel):
     model_config = ConfigDict(from_attributes=True)
 
     name: str | None = None
@@ -259,10 +271,10 @@ class DataSourceUpdate(BaseModel):
     config: dict | None = None
     is_hidden: bool | None = None
 
-    @field_validator('description')
+    @field_validator("description")
     @classmethod
     def _normalize_description(cls, value: str | None) -> str | None:
-        return normalize_datasource_description(value)
+        return cls.normalize_description(value)
 
 
 class FileListItem(BaseModel):

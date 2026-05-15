@@ -1,7 +1,6 @@
 """Sort rows operation."""
 
 import polars as pl
-
 from contracts.compute.base import OperationHandler, OperationParams
 
 

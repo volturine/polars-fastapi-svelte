@@ -89,10 +89,7 @@ class BuildNotificationHub:
                 loop.call_soon_threadsafe(future.cancel)
 
     async def _discard_waiter(
-        self,
-        waiters: dict[str, list[tuple[asyncio.AbstractEventLoop, asyncio.Future[BuildNotification]]]],
-        key: str,
-        future: asyncio.Future[BuildNotification],
+        self, waiters: dict[str, list[tuple[asyncio.AbstractEventLoop, asyncio.Future[BuildNotification]]]], key: str, future: asyncio.Future[BuildNotification]
     ) -> None:
         with self._lock:
             current = waiters.get(key)

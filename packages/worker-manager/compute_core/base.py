@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class OperationParams(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
 
 class OperationHandler(Protocol):
@@ -30,7 +30,7 @@ class OperationHandler(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class ShutdownCommand:
-    type: Literal['shutdown'] = 'shutdown'
+    type: Literal["shutdown"] = "shutdown"
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,7 +41,7 @@ class PreviewCommand:
     row_limit: int = 1000
     offset: int = 0
     additional_datasources: dict[str, dict[str, Any]] = field(default_factory=dict)
-    type: Literal['preview'] = 'preview'
+    type: Literal["preview"] = "preview"
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,9 +50,9 @@ class ExportCommand:
     datasource_config: dict[str, Any]
     steps: list[dict[str, Any]]
     output_path: str
-    export_format: str = 'csv'
+    export_format: str = "csv"
     additional_datasources: dict[str, dict[str, Any]] = field(default_factory=dict)
-    type: Literal['export'] = 'export'
+    type: Literal["export"] = "export"
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,7 +61,7 @@ class SchemaCommand:
     datasource_config: dict[str, Any]
     steps: list[dict[str, Any]]
     additional_datasources: dict[str, dict[str, Any]] = field(default_factory=dict)
-    type: Literal['schema'] = 'schema'
+    type: Literal["schema"] = "schema"
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,7 +70,7 @@ class RowCountCommand:
     datasource_config: dict[str, Any]
     steps: list[dict[str, Any]]
     additional_datasources: dict[str, dict[str, Any]] = field(default_factory=dict)
-    type: Literal['row_count'] = 'row_count'
+    type: Literal["row_count"] = "row_count"
 
 
 EngineCommand = ShutdownCommand | PreviewCommand | ExportCommand | SchemaCommand | RowCountCommand
@@ -160,7 +160,7 @@ class ComputeEngine(Protocol):
         datasource_config: dict[str, Any],
         steps: list[dict[str, Any]],
         output_path: str,
-        export_format: str = 'csv',
+        export_format: str = "csv",
         additional_datasources: dict[str, dict[str, Any]] | None = None,
     ) -> str:
         raise NotImplementedError

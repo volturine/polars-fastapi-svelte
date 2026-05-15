@@ -70,12 +70,7 @@ def ensure_database_exists(database_url: str | None = None) -> None:
         cursor.execute('SELECT 1 FROM pg_database WHERE datname = %s', (database,))
         if cursor.fetchone() is not None:
             return
-        cursor.execute(
-            sql.SQL('CREATE DATABASE {} OWNER {}').format(
-                sql.Identifier(database),
-                sql.Identifier(owner),
-            )
-        )
+        cursor.execute(sql.SQL('CREATE DATABASE {} OWNER {}').format(sql.Identifier(database), sql.Identifier(owner)))
 
 
 def _has_version_table(schema: str) -> bool:
@@ -140,9 +135,7 @@ def migrate_runtime(namespaces: list[str]) -> None:
     for namespace in namespaces:
         revision = _current_revision(namespace)
         if revision is not None and revision != _TENANT_REVISION:
-            raise RuntimeError(
-                f'Unsupported existing tenant schema revision for namespace {namespace}: {revision}. Expected {_TENANT_REVISION}.'
-            )
+            raise RuntimeError(f'Unsupported existing tenant schema revision for namespace {namespace}: {revision}. Expected {_TENANT_REVISION}.')
         if revision == _TENANT_REVISION:
             continue
         if revision is None and _schema_has_table(schema=namespace, table_name='datasources'):

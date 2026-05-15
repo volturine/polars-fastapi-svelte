@@ -1,13 +1,12 @@
 """Download operation - downloads the LazyFrame at any point in the pipeline."""
 
 import polars as pl
-
 from contracts.compute.base import OperationHandler, OperationParams
 
 
 class DownloadParams(OperationParams):
-    format: str = 'csv'
-    filename: str = 'download'
+    format: str = "csv"
+    filename: str = "download"
 
 
 class DownloadHandler(OperationHandler):

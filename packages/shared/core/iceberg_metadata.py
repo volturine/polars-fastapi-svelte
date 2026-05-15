@@ -34,12 +34,7 @@ def sync_iceberg_schema(table: IcebergTable, new_schema: pa.Schema) -> bool:
     return True
 
 
-def resolve_iceberg_metadata_path(
-    metadata_path: str,
-    *,
-    namespace_name: str | None = None,
-    data_root: str | Path | None = None,
-) -> str:
+def resolve_iceberg_metadata_path(metadata_path: str, *, namespace_name: str | None = None, data_root: str | Path | None = None) -> str:
     normalized = _strip_file_scheme(metadata_path)
     path = Path(normalized)
     resolved = path.resolve()
@@ -65,11 +60,7 @@ def resolve_iceberg_metadata_path(
 
 
 def resolve_iceberg_branch_metadata_path(
-    metadata_path: str,
-    branch: str | None,
-    *,
-    namespace_name: str | None = None,
-    data_root: str | Path | None = None,
+    metadata_path: str, branch: str | None, *, namespace_name: str | None = None, data_root: str | Path | None = None
 ) -> str:
     normalized = _strip_file_scheme(metadata_path)
     path = Path(normalized)

@@ -1,44 +1,44 @@
 import logging
 import re
-from enum import StrEnum
 
 import polars as pl
-from notification_delivery import notification_service
-from pydantic import ConfigDict, Field, model_validator
-from runtime_settings import get_resolved_telegram_settings
-
 from contracts.compute.base import OperationHandler, OperationParams
+from contracts.enums import DataForgeStrEnum
+from pydantic import ConfigDict, Field, model_validator
+
+from notification_delivery import notification_service
+from runtime_settings import get_resolved_telegram_settings
 
 logger = logging.getLogger(__name__)
 
-_PLACEHOLDER_RE = re.compile(r'\{\{(\w+)\}\}')
+_PLACEHOLDER_RE = re.compile(r"\{\{(\w+)\}\}")
 
 
-class NotificationMethod(StrEnum):
-    EMAIL = 'email'
-    TELEGRAM = 'telegram'
+class NotificationMethod(DataForgeStrEnum):
+    EMAIL = "email"
+    TELEGRAM = "telegram"
 
 
 class NotificationParams(OperationParams):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     method: NotificationMethod = NotificationMethod.EMAIL
-    recipient: str = ''
+    recipient: str = ""
     subscriber_ids: list[str] = Field(default_factory=list)
-    bot_token: str = ''
-    recipient_column: str = ''
+    bot_token: str = ""
+    recipient_column: str = ""
     input_columns: list[str] = Field(default_factory=list)
-    output_column: str = 'notification_status'
-    message_template: str = '{{message}}'
-    subject_template: str = 'Notification'
+    output_column: str = "notification_status"
+    message_template: str = "{{message}}"
+    subject_template: str = "Notification"
     batch_size: int = 10
 
-    @model_validator(mode='after')
-    def _validate(self) -> 'NotificationParams':
+    @model_validator(mode="after")
+    def _validate(self) -> "NotificationParams":
         if not self.recipient and not self.subscriber_ids and not self.recipient_column:
-            raise ValueError('recipient is required')
+            raise ValueError("recipient is required")
         if not self.input_columns:
-            raise ValueError('At least one input column is required (input_columns)')
+            raise ValueError("At least one input column is required (input_columns)")
         return self
 
 
@@ -72,7 +72,7 @@ class NotificationHandler(OperationHandler):
         telegram_enabled = True
         if validated.method == NotificationMethod.TELEGRAM:
             resolved = get_resolved_telegram_settings()
-            telegram_enabled = bool(resolved.get('enabled'))
+            telegram_enabled = bool(resolved.get("enabled"))
         schema = lf.collect_schema()
 
         required_columns = list(validated.input_columns)
@@ -80,7 +80,7 @@ class NotificationHandler(OperationHandler):
             required_columns.append(validated.recipient_column)
         missing = [c for c in required_columns if c not in schema]
         if missing:
-            raise ValueError(f'Input column(s) not found: {", ".join(missing)}')
+            raise ValueError(f"Input column(s) not found: {', '.join(missing)}")
 
         select_cols = list(dict.fromkeys(required_columns))
         output_schema = dict(schema)
@@ -91,7 +91,7 @@ class NotificationHandler(OperationHandler):
                 return []
             if isinstance(value, list):
                 return [str(item).strip() for item in value if str(item).strip()]
-            return [item.strip() for item in str(value).split(',') if item.strip()]
+            return [item.strip() for item in str(value).split(",") if item.strip()]
 
         def apply_batch(df: pl.DataFrame) -> pl.DataFrame:
             if df.is_empty():
@@ -102,7 +102,7 @@ class NotificationHandler(OperationHandler):
                 return df.with_columns(
                     pl.Series(
                         name=validated.output_column,
-                        values=['[error: telegram disabled]' for _ in range(df.height)],
+                        values=["[error: telegram disabled]" for _ in range(df.height)],
                         dtype=pl.Utf8,
                     ),
                 )
@@ -121,11 +121,11 @@ class NotificationHandler(OperationHandler):
                         if not recipients:
                             recipients = parse_recipients(validated.recipient)
                         if not recipients:
-                            raise ValueError('recipient is required')
+                            raise ValueError("recipient is required")
                         if validated.method == NotificationMethod.EMAIL:
                             subject = _build_message(validated.subject_template, row)
                             notification_service.send_email(
-                                to=','.join(recipients),
+                                to=",".join(recipients),
                                 subject=subject,
                                 body=message,
                             )
@@ -136,13 +136,18 @@ class NotificationHandler(OperationHandler):
                                     message=message,
                                     bot_token=validated.bot_token or None,
                                 )
-                        results.append('sent')
+                        results.append("sent")
                     except Exception as exc:
-                        logger.warning('Notification failed at row %d: %s', offset, exc, exc_info=True)
-                        results.append(f'[error: {exc}]')
+                        logger.warning(
+                            "Notification failed at row %d: %s",
+                            offset,
+                            exc,
+                            exc_info=True,
+                        )
+                        results.append(f"[error: {exc}]")
 
             if len(results) != row_count:
-                raise ValueError(f'Notification output length mismatch: got {len(results)}, expected {row_count}')
+                raise ValueError(f"Notification output length mismatch: got {len(results)}, expected {row_count}")
 
             return df.with_columns(
                 pl.Series(name=validated.output_column, values=results, dtype=pl.Utf8),

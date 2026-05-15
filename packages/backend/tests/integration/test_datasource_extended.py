@@ -693,7 +693,7 @@ class TestIsHidden:
 
 
 class TestDatasourceUpdateRunLogging:
-    def test_update_raw_iceberg_logs_snapshot_id(self, client, test_db_session, sample_csv_file: Path):
+    def test_update_raw_iceberg_does_not_create_build_engine_run(self, client, test_db_session, sample_csv_file: Path):
         ds = DataSource(
             id=str(uuid.uuid4()),
             name='Raw Iceberg',
@@ -718,10 +718,7 @@ class TestDatasourceUpdateRunLogging:
             .scalars()
             .all()
         )
-        latest = sorted(runs, key=lambda row: row.created_at)[-1]
-        assert latest.kind == 'datasource_update'
-        assert latest.result_json is not None
-        assert latest.result_json['snapshot_id'] == '500'
+        assert runs == []
 
     def test_update_rejects_system_snapshot_fields(self, client, test_db_session, sample_csv_file: Path):
         ds = DataSource(

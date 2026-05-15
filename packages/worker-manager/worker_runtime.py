@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
 import os
 import socket
@@ -10,8 +9,8 @@ import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
-from contracts.build_jobs.live import hub as build_job_hub
 from contracts.build_runs.models import BuildRunStatus
+from contracts.runtime import ipc as runtime_ipc
 from contracts.runtime_workers.models import RuntimeWorkerKind
 from contracts.scheduler.models import Schedule
 from core import (
@@ -44,6 +43,18 @@ async def _wait_until_stopped(stop_event: asyncio.Event, delay_seconds: float) -
     return stop_task in done
 
 
+async def _wait_for_build_job_signal(stop_event: asyncio.Event, wake_event: asyncio.Event) -> None:
+    stop_task = asyncio.create_task(stop_event.wait())
+    wake_task = asyncio.create_task(wake_event.wait())
+    done, pending = await asyncio.wait({stop_task, wake_task}, return_when=asyncio.FIRST_COMPLETED)
+    for task in pending:
+        task.cancel()
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+    if wake_task in done:
+        wake_event.clear()
+
+
 async def build_worker_loop(
     stop_event: asyncio.Event,
     worker_id: str,
@@ -66,7 +77,16 @@ async def build_worker_loop(
         daemon=True,
     )
     heartbeat_thread.start()
-    last_seen = build_job_hub.version()
+    ipc_server = await runtime_ipc.start_api_server(listener='job')
+    if ipc_server is None:
+        raise RuntimeError('Build worker requires runtime IPC listener')
+    wake_event = asyncio.Event()
+
+    async def handle_runtime_payload(payload: dict[str, object]) -> None:
+        if payload.get('kind') == 'job':
+            wake_event.set()
+
+    ipc_task = asyncio.create_task(runtime_ipc.serve_api_notifications(ipc_server, stop_event, handle_runtime_payload))
     handled_jobs = 0
     try:
         while not stop_event.is_set():
@@ -74,7 +94,6 @@ async def build_worker_loop(
                 handled = await _run_once(worker_id=worker_id, run_job=run_job)
                 if handled:
                     handled_jobs += 1
-                    last_seen = build_job_hub.version()
                     if max_jobs is not None and handled_jobs >= max_jobs:
                         return
                     continue
@@ -82,26 +101,14 @@ async def build_worker_loop(
                     if await _wait_until_stopped(stop_event, idle_exit_seconds):
                         continue
                     return
-                wait_task = asyncio.create_task(build_job_hub.wait(last_seen))
-                stop_task = asyncio.create_task(stop_event.wait())
-                done, pending = await asyncio.wait(
-                    {wait_task, stop_task},
-                    return_when=asyncio.FIRST_COMPLETED,
-                )
-                for task in pending:
-                    task.cancel()
-                if pending:
-                    await asyncio.gather(*pending, return_exceptions=True)
-                if stop_task in done:
-                    continue
-                with contextlib.suppress(asyncio.CancelledError):
-                    value = await wait_task
-                    if isinstance(value, int):
-                        last_seen = value
+                await _wait_for_build_job_signal(stop_event, wake_event)
             except Exception as exc:
                 logger.error('Build worker loop error: %s', exc, exc_info=True)
                 await asyncio.sleep(0.1)
     finally:
+        stop_event.set()
+        await asyncio.gather(ipc_task, return_exceptions=True)
+        await runtime_ipc.stop_api_server(ipc_server, listener='job')
         heartbeat_stop.set()
         heartbeat_thread.join()
         _release_worker_jobs(worker_id)

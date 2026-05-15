@@ -5,6 +5,7 @@ export type {
 	BuildsSnapshot,
 	BuildEvent,
 	BuildLogLevel,
+	EngineRunKind,
 	BuildQueryPlanSnapshot,
 	BuildStepSnapshot,
 	BuildTabStatus,
@@ -25,7 +26,8 @@ import type {
 	BuildResourceConfigSummary,
 	BuildResourceSnapshot,
 	BuildStepState,
-	BuildTabResult
+	BuildTabResult,
+	EngineRunKind
 } from './build-stream.generated';
 
 export type StepInfo = {
@@ -56,3 +58,11 @@ export type {
 	BuildStepState,
 	BuildTabResult
 };
+
+const ENGINE_RUN_KINDS = new Set<EngineRunKind>(['build', 'preview', 'row_count', 'download']);
+
+export function readEngineRunKind(value: unknown): EngineRunKind | null {
+	return typeof value === 'string' && ENGINE_RUN_KINDS.has(value as EngineRunKind)
+		? (value as EngineRunKind)
+		: null;
+}

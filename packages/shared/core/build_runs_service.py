@@ -7,7 +7,7 @@ from sqlmodel import Session
 
 from contracts.build_runs.models import BuildEvent, BuildRun, BuildRunStatus
 from contracts.compute import schemas as compute_schemas
-from contracts.engine_runs.models import EngineRun
+from contracts.engine_runs.schemas import EngineRunKind
 
 _TERMINAL_STATUSES = frozenset(
     {
@@ -56,6 +56,7 @@ def create_build_run(
     request_json: dict[str, Any],
     starter_json: dict[str, Any],
     resource_config_json: dict[str, Any] | None = None,
+    result_json: dict[str, Any] | None = None,
     status: BuildRunStatus | str = BuildRunStatus.RUNNING,
     current_engine_run_id: str | None = None,
     current_kind: str | None = None,
@@ -80,6 +81,7 @@ def create_build_run(
         request_json=_copy_json_dict(request_json),
         starter_json=_copy_json_dict(starter_json),
         resource_config_json=_copy_json_dict(resource_config_json) if isinstance(resource_config_json, dict) else None,
+        result_json=_copy_json_dict(result_json) if isinstance(result_json, dict) else None,
         current_engine_run_id=current_engine_run_id,
         current_kind=current_kind,
         current_datasource_id=current_datasource_id,
@@ -171,8 +173,7 @@ def _next_sequence(session: Session, build_id: str) -> int:
 
 
 def _apply_context(run: BuildRun, event: compute_schemas.BuildEvent) -> None:
-    if event.current_kind is not None:
-        run.current_kind = event.current_kind
+    # Build-run kind is fixed at creation time; event streams must not mutate it.
     if event.current_datasource_id is not None:
         run.current_datasource_id = event.current_datasource_id
     if event.tab_id is not None:
@@ -343,6 +344,23 @@ def mark_build_running(session: Session, build_id: str, *, now: datetime | None 
             'version': run.version + 1,
         },
     )
+
+
+def update_build_result_json(
+    session: Session,
+    build_id: str,
+    result_json: dict[str, Any] | None,
+) -> BuildRun:
+    run = session.get(BuildRun, build_id)
+    if run is None:
+        raise ValueError(f'Build run {build_id} not found')
+    run.result_json = _copy_json_dict(result_json) if isinstance(result_json, dict) else None
+    run.updated_at = _utcnow()
+    run.version += 1
+    session.add(run)
+    session.commit()
+    session.refresh(run)
+    return run
 
 
 def append_build_event(
@@ -556,8 +574,7 @@ def fold_build_detail(session: Session, build_run: BuildRun) -> compute_schemas.
         else None
     )
     starter = compute_schemas.BuildStarter.model_validate(build_run.starter_json)
-    engine_run = session.get(EngineRun, build_run.current_engine_run_id) if build_run.current_engine_run_id is not None else None
-    result_json = dict(engine_run.result_json) if engine_run is not None and isinstance(engine_run.result_json, dict) else None
+    result_json = _copy_json_dict(build_run.result_json) if isinstance(build_run.result_json, dict) else None
     return compute_schemas.ActiveBuildDetail(
         build_id=build_run.id,
         analysis_id=build_run.analysis_id,
@@ -573,7 +590,7 @@ def fold_build_detail(session: Session, build_run: BuildRun) -> compute_schemas.
         current_step=build_run.current_step,
         current_step_index=build_run.current_step_index,
         total_steps=build_run.total_steps,
-        current_kind=build_run.current_kind,
+        current_kind=EngineRunKind.parse(build_run.current_kind),
         current_datasource_id=build_run.current_datasource_id,
         current_tab_id=build_run.current_tab_id,
         current_tab_name=build_run.current_tab_name,
@@ -583,6 +600,7 @@ def fold_build_detail(session: Session, build_run: BuildRun) -> compute_schemas.
         total_tabs=build_run.total_tabs,
         cancelled_at=build_run.cancelled_at,
         cancelled_by=build_run.cancelled_by,
+        result_json=result_json,
         steps=sorted(steps.values(), key=lambda item: item.build_step_index),
         query_plans=list(plans.values()),
         latest_resources=resources[-1] if resources else None,
@@ -592,7 +610,6 @@ def fold_build_detail(session: Session, build_run: BuildRun) -> compute_schemas.
         duration_ms=build_run.duration_ms,
         error=error,
         request_json=dict(build_run.request_json),
-        result_json=result_json,
     )
 
 
@@ -619,7 +636,7 @@ def build_summary(build_run: BuildRun) -> compute_schemas.ActiveBuildSummary:
         current_step=build_run.current_step,
         current_step_index=build_run.current_step_index,
         total_steps=build_run.total_steps,
-        current_kind=build_run.current_kind,
+        current_kind=EngineRunKind.parse(build_run.current_kind),
         current_datasource_id=build_run.current_datasource_id,
         current_tab_id=build_run.current_tab_id,
         current_tab_name=build_run.current_tab_name,
@@ -629,6 +646,7 @@ def build_summary(build_run: BuildRun) -> compute_schemas.ActiveBuildSummary:
         total_tabs=build_run.total_tabs,
         cancelled_at=build_run.cancelled_at,
         cancelled_by=build_run.cancelled_by,
+        result_json=_copy_json_dict(build_run.result_json) if isinstance(build_run.result_json, dict) else None,
     )
 
 

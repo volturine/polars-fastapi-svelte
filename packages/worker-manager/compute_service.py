@@ -35,7 +35,7 @@ from contracts.engine_runs.models import EngineRun
 from contracts.engine_runs.schemas import EngineRunKind, EngineRunStatus
 from contracts.healthcheck_models import HealthCheck, HealthCheckResult
 from contracts.udf_models import Udf
-from core import engine_runs_service as engine_run_service
+from core import build_runs_service as build_run_service, engine_runs_service as engine_run_service
 from core.config import settings
 from core.database import get_db
 from core.exceptions import DataSourceNotFoundError, DataSourceSnapshotError, PipelineExecutionError, PipelineValidationError
@@ -284,10 +284,6 @@ async def _emit_progress(
     )
 
 
-def _result_kind(existing_output_ds: DataSource | None) -> EngineRunKind:
-    return EngineRunKind.DATASOURCE_UPDATE if existing_output_ds else EngineRunKind.DATASOURCE_CREATE
-
-
 @dataclass(frozen=True)
 class HealthCheckDetail:
     name: str
@@ -305,7 +301,7 @@ class ExportDatasourceResult:
     datasource_name: str
     result_meta: dict
     source_datasource_id: str
-    engine_run_id: str
+    engine_run_id: str | None = None
     source_datasource_name: str | None = None
     read_duration_ms: float | None = None
     write_duration_ms: float | None = None
@@ -901,7 +897,7 @@ def _read_cancel_metadata(run: EngineRun) -> tuple[str | None, str | None]:
 def _raise_if_engine_run_cancelled(session: Session, run_id: str) -> None:
     session.expire_all()
     latest = session.get(EngineRun, run_id)
-    if latest is None or latest.status != EngineRunStatus.CANCELLED:
+    if latest is None or latest.status != EngineRunStatus.CANCELLED.value:
         return
     cancelled_at, cancelled_by = _read_cancel_metadata(latest)
     raise BuildCancelledError(run_id, cancelled_at=cancelled_at, cancelled_by=cancelled_by)
@@ -926,6 +922,21 @@ def _parse_cancelled_at(value: str | None) -> datetime | None:
     if value is None:
         return None
     return datetime.fromisoformat(value)
+
+
+def _read_build_cancel_metadata(run) -> tuple[str | None, str | None]:
+    cancelled_at = run.cancelled_at.isoformat() if isinstance(run.cancelled_at, datetime) else None
+    cancelled_by = run.cancelled_by if isinstance(run.cancelled_by, str) else None
+    return cancelled_at, cancelled_by
+
+
+def _raise_if_build_cancelled(session: Session, build_id: str) -> None:
+    session.expire_all()
+    latest = build_run_service.get_build_run(session, build_id)
+    if latest is None or latest.status != build_run_service.BuildRunStatus.CANCELLED:
+        return
+    cancelled_at, cancelled_by = _read_build_cancel_metadata(latest)
+    raise BuildCancelledError(build_id, cancelled_at=cancelled_at, cancelled_by=cancelled_by)
 
 
 def _finalize_failed_engine_run(
@@ -1814,6 +1825,8 @@ def export_data(
     build_stage_event: Callable[[dict[str, object]], None] | None = None,
     resources: list[dict[str, object]] | None = None,
     resources_fn: Callable[[], list[dict[str, object]]] | None = None,
+    engine_key: str | None = None,
+    build_id: str | None = None,
 ) -> ExportDatasourceResult:
     if result_id is None:
         raise ValueError('Output exports require result_id')
@@ -1840,7 +1853,7 @@ def export_data(
 
     branch = _resolve_branch_value(datasource_config)
     existing_output_ds = session.get(DataSource, result_id)
-    run_kind = _result_kind(existing_output_ds)
+    run_kind = EngineRunKind.BUILD
 
     if request_json is None:
         raise ValueError('Export requires request_json')
@@ -1856,8 +1869,10 @@ def export_data(
     export_steps = _hydrate_udfs(session, export_steps)
 
     temp_engine = False
-    temp_engine_id = f'{datasource_id}_export'
-    if analysis_id_value:
+    temp_engine_id = engine_key or f'{datasource_id}_export'
+    if engine_key is not None:
+        engine = manager.get_or_create_engine(engine_key)
+    elif analysis_id_value:
         engine = manager.get_engine(analysis_id_value) or manager.get_or_create_engine(analysis_id_value)
     else:
         engine = manager.get_or_create_engine(temp_engine_id)
@@ -1872,29 +1887,7 @@ def export_data(
     result_data: dict | None = None
     initial_output_name = iceberg_options.get('table_name', filename) if isinstance(iceberg_options, dict) else filename
     tab_name = _tab_name_from_pipeline(analysis_pipeline, tab_id)
-    run_response = engine_run_service.create_engine_run(
-        session,
-        engine_run_service.create_engine_run_payload(
-            analysis_id=analysis_id_value,
-            datasource_id=result_id,
-            kind=run_kind,
-            status='running',
-            request_json=request_payload,
-            result_json=_initial_live_run_result(
-                current_output_id=result_id,
-                current_output_name=initial_output_name if isinstance(initial_output_name, str) else filename,
-                current_tab_id=tab_id,
-                current_tab_name=tab_name,
-                total_steps=len(export_steps) + 2,
-                total_tabs=1,
-                resource_config=_resource_summary(engine),
-            ),
-            created_at=started_at,
-            progress=0.0,
-            triggered_by=triggered_by,
-        ),
-    )
-    session.info['active_build_engine_run_id'] = run_response.id
+    run_response = None
 
     try:
         job_id = engine.export(
@@ -1905,15 +1898,15 @@ def export_data(
             additional_datasources=additional_datasources,
         )
         if job_started is not None:
-            job_started(
-                {
-                    'job_id': job_id,
-                    'engine': engine,
-                    'engine_run_id': run_response.id,
-                    'steps': export_steps,
-                    'tab_id': tab_id,
-                }
-            )
+            job_payload: dict[str, object] = {
+                'job_id': job_id,
+                'engine': engine,
+                'steps': export_steps,
+                'tab_id': tab_id,
+            }
+            if run_response is not None:
+                job_payload['engine_run_id'] = run_response.id
+            job_started(job_payload)
 
         result_data = await_engine_result(engine, job_id=job_id)
         step_timings = result_data.get('step_timings', {}) if isinstance(result_data, dict) else {}
@@ -1924,7 +1917,10 @@ def export_data(
             datasource_id=datasource_id,
             failure_prefix='Export',
         )
-        _raise_if_engine_run_cancelled(session, run_response.id)
+        if run_response is not None:
+            _raise_if_engine_run_cancelled(session, run_response.id)
+        if build_id is not None:
+            _raise_if_build_cancelled(session, build_id)
 
         data = result_data.get('data', {})
         row_count = data.get('row_count', 0)
@@ -2095,77 +2091,86 @@ def export_data(
             result_meta['snapshot_id'] = snapshot_id
         if snapshot_timestamp_ms is not None:
             result_meta['snapshot_timestamp_ms'] = snapshot_timestamp_ms
-        execution_entries = _build_engine_run_execution_entries(
-            result_data,
-            duration_ms=duration_ms,
-            write_duration_ms=write_duration_ms,
-        )
-        payload = engine_run_service.create_engine_run_payload(
-            analysis_id=analysis_id_value,
-            datasource_id=ds_id,
-            kind=run_kind,
-            status=ComputeRunStatus.SUCCESS,
-            request_json=request_payload,
-            result_json=result_meta,
-            created_at=started_at,
-            completed_at=completed_at,
-            duration_ms=duration_ms,
-            step_timings=step_timings,
-            query_plan=query_plan,
-            execution_entries=execution_entries,
-            progress=1.0,
-            triggered_by=triggered_by,
-        )
-        result_json = _build_canonical_engine_run_result(
-            existing_result=_load_engine_run_result_json(session, run_response.id),
-            summary_meta={
-                **(payload.result_json if isinstance(payload.result_json, dict) else {}),
-                'source_datasource_id': datasource_id,
-                'source_datasource_name': source_datasource_name,
-            },
-            execution_entries=payload.execution_entries,
-            current_output_id=ds_id,
-            current_output_name=datasource_name,
-            current_tab_id=tab_id,
-            current_tab_name=tab_name,
-            total_steps=len(export_steps) + 2,
-            total_tabs=1,
-            resource_config=_resource_summary(engine),
-            resources=resources_fn() if resources_fn is not None else resources,
-            results=[
-                _result_entry(
-                    tab_id=tab_id,
-                    tab_name=tab_name,
-                    status=BuildTabStatus.SUCCESS,
-                    output_id=ds_id,
-                    output_name=datasource_name,
-                )
-            ],
-            append_logs=[
-                _log_entry(
-                    message=f'Built output {datasource_name}',
-                    tab_id=tab_id,
-                    tab_name=tab_name,
-                )
-            ],
-        )
-        _raise_if_engine_run_cancelled(session, run_response.id)
-        engine_run_service.update_engine_run(
-            session,
-            run_response.id,
-            datasource_id=ds_id,
-            status=payload.status,
-            result_json=result_json,
-            merge_result_json=False,
-            error_message=payload.error_message,
-            completed_at=payload.completed_at,
-            duration_ms=payload.duration_ms,
-            step_timings=payload.step_timings,
-            query_plan=payload.query_plan,
-            execution_entries=payload.execution_entries,
-            progress=payload.progress,
-            current_step=payload.current_step,
-        )
+        build_result_summary = {
+            **result_meta,
+            'source_datasource_id': datasource_id,
+            'source_datasource_name': source_datasource_name,
+            'current_output_id': ds_id,
+            'current_output_name': datasource_name,
+            'current_tab_id': tab_id,
+            'current_tab_name': tab_name,
+            'branch': branch_name,
+        }
+        if build_id is not None:
+            build_run_service.update_build_result_json(session, build_id, build_result_summary)
+        elif run_response is not None:
+            execution_entries = _build_engine_run_execution_entries(
+                result_data,
+                duration_ms=duration_ms,
+                write_duration_ms=write_duration_ms,
+            )
+            payload = engine_run_service.create_engine_run_payload(
+                analysis_id=analysis_id_value,
+                datasource_id=ds_id,
+                kind=run_kind,
+                status=ComputeRunStatus.SUCCESS,
+                request_json=request_payload,
+                result_json=result_meta,
+                created_at=started_at,
+                completed_at=completed_at,
+                duration_ms=duration_ms,
+                step_timings=step_timings,
+                query_plan=query_plan,
+                execution_entries=execution_entries,
+                progress=1.0,
+                triggered_by=triggered_by,
+            )
+            result_json = _build_canonical_engine_run_result(
+                existing_result=_load_engine_run_result_json(session, run_response.id),
+                summary_meta=build_result_summary,
+                execution_entries=payload.execution_entries,
+                current_output_id=ds_id,
+                current_output_name=datasource_name,
+                current_tab_id=tab_id,
+                current_tab_name=tab_name,
+                total_steps=len(export_steps) + 2,
+                total_tabs=1,
+                resource_config=_resource_summary(engine),
+                resources=resources_fn() if resources_fn is not None else resources,
+                results=[
+                    _result_entry(
+                        tab_id=tab_id,
+                        tab_name=tab_name,
+                        status=BuildTabStatus.SUCCESS,
+                        output_id=ds_id,
+                        output_name=datasource_name,
+                    )
+                ],
+                append_logs=[
+                    _log_entry(
+                        message=f'Built output {datasource_name}',
+                        tab_id=tab_id,
+                        tab_name=tab_name,
+                    )
+                ],
+            )
+            _raise_if_engine_run_cancelled(session, run_response.id)
+            engine_run_service.update_engine_run(
+                session,
+                run_response.id,
+                datasource_id=ds_id,
+                status=payload.status,
+                result_json=result_json,
+                merge_result_json=False,
+                error_message=payload.error_message,
+                completed_at=payload.completed_at,
+                duration_ms=payload.duration_ms,
+                step_timings=payload.step_timings,
+                query_plan=payload.query_plan,
+                execution_entries=payload.execution_entries,
+                progress=payload.progress,
+                current_step=payload.current_step,
+            )
 
         read_duration_ms = result_data.get('read_duration_ms') if isinstance(result_data, dict) else None
         return ExportDatasourceResult(
@@ -2173,7 +2178,7 @@ def export_data(
             datasource_name=datasource_name,
             result_meta=result_meta,
             source_datasource_id=datasource_id,
-            engine_run_id=run_response.id,
+            engine_run_id=run_response.id if run_response is not None else None,
             source_datasource_name=source_datasource_name,
             read_duration_ms=float(read_duration_ms) if isinstance(read_duration_ms, (int, float)) else None,
             write_duration_ms=write_duration_ms,
@@ -2182,49 +2187,67 @@ def export_data(
         raise
     except Exception as exc:
         try:
-            _raise_if_engine_run_cancelled(session, run_response.id)
+            if run_response is not None:
+                _raise_if_engine_run_cancelled(session, run_response.id)
+            if build_id is not None:
+                _raise_if_build_cancelled(session, build_id)
         except BuildCancelledError as cancel_exc:
             raise cancel_exc from exc
         completed_at = datetime.now(UTC)
         duration_ms = int((time.perf_counter() - started_perf) * 1000)
-        execution_entries = _build_engine_run_execution_entries(result_data, duration_ms=duration_ms)
-        _finalize_failed_engine_run(
-            session,
-            run_id=run_response.id,
-            existing_result=_load_engine_run_result_json(session, run_response.id),
-            execution_entries=execution_entries,
-            error=exc,
-            completed_at=completed_at,
-            duration_ms=duration_ms,
-            step_timings=step_timings,
-            query_plan=query_plan,
-            summary_meta={
-                'source_datasource_id': datasource_id,
-                'source_datasource_name': source_datasource_name,
-            },
-            current_output_id=result_id,
-            current_output_name=initial_output_name if isinstance(initial_output_name, str) else filename,
-            current_tab_id=tab_id,
-            current_tab_name=tab_name,
-            total_steps=len(export_steps) + 2,
-            total_tabs=1,
-            resource_config=_resource_summary(engine),
-            resources=resources_fn() if resources_fn is not None else resources,
-            result_entry=_result_entry(
-                tab_id=tab_id,
-                tab_name=tab_name,
-                status=BuildTabStatus.FAILED,
-                output_id=result_id,
-                output_name=initial_output_name if isinstance(initial_output_name, str) else filename,
-                error=str(exc),
-            ),
-            log_entry=_log_entry(
-                message=str(exc),
-                level='error',
-                tab_id=tab_id,
-                tab_name=tab_name,
-            ),
-        )
+        if build_id is not None:
+            build_run_service.update_build_result_json(
+                session,
+                build_id,
+                {
+                    'source_datasource_id': datasource_id,
+                    'source_datasource_name': source_datasource_name,
+                    'current_output_id': result_id,
+                    'current_output_name': initial_output_name if isinstance(initial_output_name, str) else filename,
+                    'current_tab_id': tab_id,
+                    'current_tab_name': tab_name,
+                    'branch': iceberg_options.get('branch') if isinstance(iceberg_options, dict) else None,
+                },
+            )
+        elif run_response is not None:
+            execution_entries = _build_engine_run_execution_entries(result_data, duration_ms=duration_ms)
+            _finalize_failed_engine_run(
+                session,
+                run_id=run_response.id,
+                existing_result=_load_engine_run_result_json(session, run_response.id),
+                execution_entries=execution_entries,
+                error=exc,
+                completed_at=completed_at,
+                duration_ms=duration_ms,
+                step_timings=step_timings,
+                query_plan=query_plan,
+                summary_meta={
+                    'source_datasource_id': datasource_id,
+                    'source_datasource_name': source_datasource_name,
+                },
+                current_output_id=result_id,
+                current_output_name=initial_output_name if isinstance(initial_output_name, str) else filename,
+                current_tab_id=tab_id,
+                current_tab_name=tab_name,
+                total_steps=len(export_steps) + 2,
+                total_tabs=1,
+                resource_config=_resource_summary(engine),
+                resources=resources_fn() if resources_fn is not None else resources,
+                result_entry=_result_entry(
+                    tab_id=tab_id,
+                    tab_name=tab_name,
+                    status=BuildTabStatus.FAILED,
+                    output_id=result_id,
+                    output_name=initial_output_name if isinstance(initial_output_name, str) else filename,
+                    error=str(exc),
+                ),
+                log_entry=_log_entry(
+                    message=str(exc),
+                    level='error',
+                    tab_id=tab_id,
+                    tab_name=tab_name,
+                ),
+            )
         raise
     finally:
         if temp_engine:
@@ -2573,6 +2596,9 @@ async def _stream_engine_events(
 
         payload = dict(event.event)
         emitted_type = str(payload.get('type') or '')
+        # Build stream events must stay in build context even if engine-internal events
+        # include preview-oriented metadata.
+        payload['current_kind'] = build.current_kind
         if emitted_type in {'step_start', 'step_complete', 'step_failed'} and read_stage is not None and not read_stage.completed:
             read_duration_ms = int((time.perf_counter() - read_stage.started_at) * 1000)
             read_stage.completed = True
@@ -2890,6 +2916,7 @@ async def run_analysis_build_stream(
         engine_run_id=build.current_engine_run_id,
     )
 
+    build_engine_id = f'{analysis_id_value}:build:{build.build_id}'
     results: list[dict] = []
     tabs_built = 0
     build_step_base = 0
@@ -2915,7 +2942,7 @@ async def run_analysis_build_stream(
 
         target_step_id = steps[-1].get('id', 'source') if steps else 'source'
         execution_step_count = len(steps) + 2
-        build.current_kind = EngineRunKind.PREVIEW.value
+        build.current_kind = EngineRunKind.BUILD.value
         build.current_datasource_id = str(tab_datasource_id)
         build.current_tab_id = tab_id
         build.current_tab_name = tab_name
@@ -3282,6 +3309,8 @@ async def run_analysis_build_stream(
                         job_started=handle_job_started,
                         build_stage_event=handle_stage_event,
                         resources_fn=lambda: [item.model_dump(mode='json') for item in build.resources],
+                        engine_key=build_engine_id,
+                        build_id=build.build_id,
                     )
                     build.current_engine_run_id = result.engine_run_id
                     return result
@@ -3431,7 +3460,7 @@ async def run_analysis_build_stream(
                 build_id=base.build_id,
                 analysis_id=base.analysis_id,
                 emitted_at=base.emitted_at,
-                current_kind=base.current_kind,
+                current_kind=EngineRunKind.parse(base.current_kind),
                 current_datasource_id=base.current_datasource_id,
                 tab_id=base.tab_id,
                 tab_name=base.tab_name,
@@ -3455,7 +3484,7 @@ async def run_analysis_build_stream(
                 build_id=base.build_id,
                 analysis_id=base.analysis_id,
                 emitted_at=base.emitted_at,
-                current_kind=base.current_kind,
+                current_kind=EngineRunKind.parse(base.current_kind),
                 current_datasource_id=base.current_datasource_id,
                 tab_id=base.tab_id,
                 tab_name=base.tab_name,
@@ -3472,15 +3501,14 @@ async def run_analysis_build_stream(
             ),
         )
     else:
-        if analysis_id_value:
-            manager.shutdown_engine(analysis_id_value)
+        manager.shutdown_engine(build_engine_id)
         await _emit_build_event(
             emitter,
             event=compute_schemas.BuildCompleteEvent(
                 build_id=base.build_id,
                 analysis_id=base.analysis_id,
                 emitted_at=base.emitted_at,
-                current_kind=base.current_kind,
+                current_kind=EngineRunKind.parse(base.current_kind),
                 current_datasource_id=base.current_datasource_id,
                 tab_id=base.tab_id,
                 tab_name=base.tab_name,

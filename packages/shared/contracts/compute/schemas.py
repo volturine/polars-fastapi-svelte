@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter, field_validator
 
 from contracts.analysis.step_types import is_step_type
+from contracts.engine_runs.schemas import EngineRunKind
 
 
 class EngineStatus(StrEnum):
@@ -480,7 +481,7 @@ class ActiveBuildSummary(BaseModel):
     current_step: str | None = None
     current_step_index: int | None = None
     total_steps: int = 0
-    current_kind: str | None = None
+    current_kind: EngineRunKind | None = None
     current_datasource_id: str | None = None
     current_tab_id: str | None = None
     current_tab_name: str | None = None
@@ -490,6 +491,7 @@ class ActiveBuildSummary(BaseModel):
     total_tabs: int = 0
     cancelled_at: datetime | None = None
     cancelled_by: str | None = None
+    result_json: dict[str, object] | None = None
 
 
 class ActiveBuildDetail(ActiveBuildSummary):
@@ -502,7 +504,6 @@ class ActiveBuildDetail(ActiveBuildSummary):
     duration_ms: int | None = None
     error: str | None = None
     request_json: dict[str, object] | None = None
-    result_json: dict[str, object] | None = None
 
 
 class ActiveBuildListResponse(BaseModel):
@@ -533,7 +534,7 @@ class BuildStreamEvent(BaseModel):
     analysis_id: str
     emitted_at: datetime
     sequence: int | None = None
-    current_kind: str | None = None
+    current_kind: EngineRunKind | None = None
     current_datasource_id: str | None = None
     tab_id: str | None = None
     tab_name: str | None = None

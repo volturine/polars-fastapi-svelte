@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { apiRequest } from '$lib/api/client';
-	import type { EngineRun } from '$lib/api/engine-runs';
-	import { EngineRunsStore } from '$lib/stores/engine-runs.svelte';
+	import { BuildsStore } from '$lib/stores/builds.svelte';
+	import type { ActiveBuildSummary } from '$lib/types/build-stream';
 	import { buildSnapshotMap } from '$lib/utils/build-snapshot-map';
 	import { Trash2, ChevronDown, Clock } from 'lucide-svelte';
 	import { SvelteMap } from 'svelte/reactivity';
@@ -56,7 +56,7 @@
 	let deleteConfirmId = $state<string | null>(null);
 	let deleteLoading = $state(false);
 	let deleteError = $state<string | null>(null);
-	const buildRunsStore = new EngineRunsStore();
+	const buildRunsStore = new BuildsStore();
 	let lastDatasourceId = $state<string | null>(null);
 	// Subscription: $derived can't reset snapshot state on datasource switch.
 	$effect(() => {
@@ -84,14 +84,12 @@
 	});
 	const buildRuns = $derived.by(() => {
 		const branchValue = branch ?? (datasourceConfig.branch as string | null | undefined) ?? null;
-		return buildRunsStore.runs.filter((run: EngineRun) => {
-			if (!(run.kind === 'datasource_update' || run.kind === 'datasource_create')) return false;
-			if (run.status !== 'success') return false;
+		return buildRunsStore.builds.filter((run: ActiveBuildSummary) => {
+			if (run.current_kind !== 'build') return false;
+			if (run.status !== 'completed') return false;
 			if (!branchValue) return true;
-			const payload = run.request_json as Record<string, unknown>;
-			const opts = payload.iceberg_options as Record<string, unknown> | undefined;
-			const runBranch = opts?.branch as string | undefined;
-			return runBranch === branchValue;
+			const runBranch = run.result_json?.branch;
+			return typeof runBranch === 'string' && runBranch === branchValue;
 		});
 	});
 	const runSnapshotMap = $derived(buildSnapshotMap(buildRuns, toSnapshotRefs(snapshotList)));

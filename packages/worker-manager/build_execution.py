@@ -8,6 +8,7 @@ from build_live import ActiveBuild
 from compute_manager import ProcessManager
 
 from contracts.compute import schemas
+from contracts.engine_runs.schemas import EngineRunKind
 from core import build_event_service, build_runs_service as build_run_service
 from core.database import get_db
 from core.namespace import reset_namespace, set_namespace_context
@@ -88,7 +89,7 @@ async def _run_active_build_task(
                     build_id=build.build_id,
                     analysis_id=build.analysis_id,
                     emitted_at=service._utcnow(),
-                    current_kind=build.current_kind,
+                    current_kind=EngineRunKind.parse(build.current_kind),
                     current_datasource_id=build.current_datasource_id,
                     tab_id=build.current_tab_id,
                     tab_name=build.current_tab_name,
@@ -153,7 +154,9 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
         return
     await build_event_service.publish_build_notification(build.namespace, build_id, latest_sequence=0)
     current_kind = build.current_kind or ''
-    if current_kind in {'raw', 'datasource_update'}:
+    engine_run_kind = EngineRunKind.parse(build.current_kind)
+    is_schedule_build = engine_run_kind == EngineRunKind.BUILD and starter.triggered_by == 'schedule'
+    if current_kind == 'raw' or is_schedule_build:
         datasource_id = build.current_datasource_id
         if datasource_id is None:
             raise ValueError(f'Queued schedule build {build.build_id} missing datasource id')
@@ -178,7 +181,7 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
                         build_id=build.build_id,
                         analysis_id=build.analysis_id,
                         emitted_at=service._utcnow(),
-                        current_kind=build.current_kind,
+                        current_kind=EngineRunKind.parse(build.current_kind),
                         current_datasource_id=build.current_datasource_id,
                         tab_id=build.current_tab_id,
                         tab_name=build.current_tab_name,
@@ -210,7 +213,7 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
                         build_id=build.build_id,
                         analysis_id=build.analysis_id,
                         emitted_at=service._utcnow(),
-                        current_kind=build.current_kind,
+                        current_kind=EngineRunKind.parse(build.current_kind),
                         current_datasource_id=build.current_datasource_id,
                         tab_id=build.current_tab_id,
                         tab_name=build.current_tab_name,

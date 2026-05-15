@@ -106,15 +106,32 @@ def test_list_engine_runs_pagination(test_db_session):
     assert len(second) == 1
 
 
+def test_list_engine_runs_excludes_build_kind(test_db_session):
+    engine_run_service.create_engine_run(
+        test_db_session,
+        _create_payload(EngineRunKind.BUILD, EngineRunStatus.SUCCESS, analysis_id='analysis-build', datasource_id='ds-build'),
+    )
+    engine_run_service.create_engine_run(
+        test_db_session,
+        _create_payload(EngineRunKind.PREVIEW, EngineRunStatus.SUCCESS, analysis_id='analysis-preview', datasource_id='ds-preview'),
+    )
+
+    rows = engine_run_service.list_engine_runs(test_db_session)
+
+    assert len(rows) == 1
+    assert rows[0].kind == EngineRunKind.PREVIEW
+    assert engine_run_service.list_engine_runs(test_db_session, kind=EngineRunKind.BUILD) == []
+
+
 def test_update_engine_run_reuses_existing_row(test_db_session):
     created = engine_run_service.create_engine_run(
         test_db_session,
         engine_run_service.create_engine_run_payload(
             analysis_id='analysis-1',
             datasource_id='ds-1',
-            kind=EngineRunKind.DATASOURCE_UPDATE,
+            kind=EngineRunKind.PREVIEW,
             status=EngineRunStatus.RUNNING,
-            request_json={'kind': 'datasource_update'},
+            request_json={'kind': 'preview'},
             result_json={'current_output_name': 'output_salary_predictions'},
             created_at=datetime.now(UTC),
         ),
@@ -144,9 +161,9 @@ def test_update_engine_run_replaces_result_json_when_merge_disabled(test_db_sess
         engine_run_service.create_engine_run_payload(
             analysis_id='analysis-live-merge',
             datasource_id='output-ds-1',
-            kind=EngineRunKind.DATASOURCE_UPDATE,
+            kind=EngineRunKind.PREVIEW,
             status=EngineRunStatus.RUNNING,
-            request_json={'kind': 'datasource_update'},
+            request_json={'kind': 'preview'},
             result_json={'current_output_name': 'stale-output', 'logs': [{'message': 'old'}]},
             created_at=datetime.now(UTC),
         ),

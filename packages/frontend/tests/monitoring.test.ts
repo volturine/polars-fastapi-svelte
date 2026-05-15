@@ -81,7 +81,8 @@ async function waitForSelectOption(
 
 async function startBuildFromAnalysisPage(
 	page: import('@playwright/test').Page,
-	analysisId: string
+	analysisId: string,
+	previousBuildId?: string | null
 ): Promise<string> {
 	await gotoAnalysisEditor(page, analysisId);
 	const buildBtn = page.locator('[data-testid="output-build-button"]');
@@ -90,7 +91,16 @@ async function startBuildFromAnalysisPage(
 	await expect(page.locator('[data-testid="output-build-preview-trigger"]')).toBeVisible({
 		timeout: 30_000
 	});
-	return previewBuildId(page);
+	await expect
+		.poll(
+			async () => {
+				const buildId = await previewBuildId(page);
+				return buildId && buildId !== previousBuildId ? buildId : null;
+			},
+			{ timeout: 30_000 }
+		)
+		.toBeTruthy();
+	return (await previewBuildId(page)).trim();
 }
 
 async function openBuildPreview(page: import('@playwright/test').Page) {
@@ -547,6 +557,28 @@ test.describe('Monitoring – Builds tab', () => {
 		await expect(panel).toBeVisible({ timeout: 5_000 });
 	});
 
+	test('datasource preview runs appear as Preview rows', async ({ page, request }) => {
+		test.setTimeout(120_000);
+		const ds = `e2e-preview-${uid()}`;
+		const dsId = await createDatasource(request, ds);
+		try {
+			await page.goto(`/datasources?id=${dsId}`);
+			await expect(page.locator('[data-preview-ready="true"]')).toBeVisible({ timeout: 60_000 });
+
+			await page.goto('/monitoring?tab=builds');
+			const panel = page.locator('#panel-builds');
+			await expect(panel).toBeVisible({ timeout: 10_000 });
+			await page.getByLabel(/Search builds, schedules, or health checks/i).fill(ds);
+			const previewRow = panel
+				.locator(`[data-build-kind="preview"][data-build-datasource-id="${dsId}"]`)
+				.first();
+			await expect(previewRow).toBeVisible({ timeout: 30_000 });
+			await expect(previewRow).toContainText('Preview');
+		} finally {
+			await deleteDatasourceViaUI(page, ds);
+		}
+	});
+
 	test('Builds search filters by text', async ({ page, request }) => {
 		test.setTimeout(180_000);
 		const ds = `e2e-filter-${uid()}`;
@@ -571,7 +603,10 @@ test.describe('Monitoring – Builds tab', () => {
 		}
 	});
 
-	test('clicking a build row expands to show detail panel', async ({ page, request }) => {
+	test('clicking a build row expands to show detail panel without request loop', async ({
+		page,
+		request
+	}) => {
 		test.setTimeout(180_000);
 		const ds = `e2e-expand-${uid()}`;
 		const analysisName = `E2E Builds Expand ${uid()}`;
@@ -581,12 +616,15 @@ test.describe('Monitoring – Builds tab', () => {
 			const buildId = await startBuildFromAnalysisPage(page, analysisId);
 			await page.goto(`/monitoring?tab=builds&analysis_id=${analysisId}`);
 			const panel = page.locator('#panel-builds');
-			const buildRow = await waitForBuildRowById(page, panel, buildId, [
-				'queued',
-				'running',
-				'completed',
-				'failed'
-			]);
+			const buildRow = await waitForBuildRowById(page, panel, buildId, ['completed', 'failed']);
+			await expect(buildRow).toHaveAttribute('data-build-kind', 'build');
+			await expect(buildRow).toContainText('Build');
+			await expect(buildRow).not.toContainText('Preview');
+
+			let detailRequests = 0;
+			page.on('request', (req) => {
+				if (req.url().includes(`/api/v1/compute/builds/${buildId}`)) detailRequests += 1;
+			});
 
 			await buildRow.click();
 			const buildRowId = await buildRow.getAttribute('data-build-row');
@@ -599,7 +637,11 @@ test.describe('Monitoring – Builds tab', () => {
 			});
 			await expect(detailRow.getByRole('tab', { name: 'Steps' })).toBeVisible();
 			await expect(detailRow.getByRole('tab', { name: 'Logs' })).toBeVisible();
+			await detailRow.getByRole('tab', { name: 'Logs' }).click();
+			await expect(detailRow.locator('[data-testid="build-logs-panel"]')).toBeVisible();
 			await expect(detailRow.getByRole('tab', { name: 'Payload' })).toBeVisible();
+			await page.waitForTimeout(2_000);
+			expect(detailRequests).toBeLessThanOrEqual(2);
 			await screenshot(page, 'monitoring', 'build-row-expanded');
 		} finally {
 			await deleteAnalysisViaUI(page, analysisName);
@@ -639,6 +681,83 @@ test.describe('Monitoring – Builds tab', () => {
 			await expect(payloadPanel.locator('[data-testid="build-payload-request"]')).toBeVisible({
 				timeout: 5_000
 			});
+		} finally {
+			await deleteAnalysisViaUI(page, analysisName);
+			await deleteDatasourceViaUI(page, ds);
+		}
+	});
+
+	test('single build appears once in Monitoring history', async ({ page, request }) => {
+		test.setTimeout(180_000);
+		const ds = `e2e-build-once-${uid()}`;
+		const analysisName = `E2E Single Build Row ${uid()}`;
+		const dsId = await createDatasource(request, ds);
+		const analysisId = await createMultiStepAnalysis(request, analysisName, dsId);
+		try {
+			const buildId = await startBuildFromAnalysisPage(page, analysisId);
+			await page.goto(`/monitoring?tab=builds&analysis_id=${analysisId}`);
+			const panel = page.locator('#panel-builds');
+			const buildRow = await waitForBuildRowById(page, panel, buildId, [
+				'queued',
+				'running',
+				'completed',
+				'failed'
+			]);
+			await expect(buildRow).toHaveAttribute('data-build-kind', 'build');
+			await expect(
+				panel.locator(`[data-build-kind="build"][data-build-analysis-id="${analysisId}"]`)
+			).toHaveCount(1);
+		} finally {
+			await deleteAnalysisViaUI(page, analysisName);
+			await deleteDatasourceViaUI(page, ds);
+		}
+	});
+
+	test('four consecutive builds complete successfully as Build rows while preview rows remain Preview-kind', async ({
+		page,
+		request
+	}) => {
+		test.setTimeout(360_000);
+		const ds = `e2e-build-vs-preview-${uid()}`;
+		const analysisName = `E2E Build Determinism ${uid()}`;
+		const dsId = await createDatasource(request, ds);
+		const analysisId = await createMultiStepAnalysis(request, analysisName, dsId);
+		try {
+			const monitorPage = await page.context().newPage();
+			await monitorPage.goto(`/monitoring?tab=builds&analysis_id=${analysisId}`);
+			const panel = monitorPage.locator('#panel-builds');
+			await expect(panel).toBeVisible({ timeout: 10_000 });
+
+			let previousBuildId: string | null = null;
+			for (let i = 0; i < 4; i += 1) {
+				const buildId = await startBuildFromAnalysisPage(page, analysisId, previousBuildId);
+				previousBuildId = buildId;
+				const row = await waitForBuildRowById(monitorPage, panel, buildId, ['completed'], 180_000);
+				await expect(row).toHaveAttribute('data-build-kind', 'build');
+				await expect(row).toHaveAttribute('data-build-status', 'completed');
+				await expect(row).toContainText('Build');
+				await expect(row).not.toContainText('Preview');
+				await row.click();
+				const rowId = await row.getAttribute('data-build-row');
+				if (!rowId) throw new Error('Expected build row id');
+				const detailRow = panel.locator(`[data-build-detail="${rowId}"]`);
+				await expect(detailRow.locator('[data-testid="build-preview"]')).toBeVisible({
+					timeout: 8_000
+				});
+			}
+
+			await page.goto('/datasources');
+			await page.locator(`[data-ds-row="${ds}"]`).click();
+			await expect(page.locator('[data-preview-ready="true"]')).toBeVisible({ timeout: 60_000 });
+
+			await monitorPage.goto('/monitoring?tab=builds');
+			await monitorPage.getByLabel(/Search builds, schedules, or health checks/i).fill(ds);
+			const previewRow = panel
+				.locator(`[data-build-kind="preview"][data-build-datasource-id="${dsId}"]`)
+				.first();
+			await expect(previewRow).toBeVisible({ timeout: 30_000 });
+			await expect(previewRow).toContainText('Preview');
+			await monitorPage.close();
 		} finally {
 			await deleteAnalysisViaUI(page, analysisName);
 			await deleteDatasourceViaUI(page, ds);

@@ -200,7 +200,7 @@ def cancel_engine_run(session: Session, run_id: str, *, cancelled_by: str | None
     if run is None:
         raise ValueError('Engine run not found')
     session.refresh(run)
-    if run.status != EngineRunStatus.RUNNING:
+    if _coerce_status(run.status) != EngineRunStatus.RUNNING:
         raise ValueError('Only running builds can be cancelled')
 
     now = datetime.now(UTC)
@@ -279,10 +279,6 @@ def get_engine_run(session: Session, run_id: str) -> EngineRunResponseSchema | N
     return _serialize_run(run)
 
 
-def _coerce_kind(kind: EngineRunKind | str) -> EngineRunKind:
-    return kind if isinstance(kind, EngineRunKind) else EngineRunKind(kind)
-
-
 def _coerce_status(status: EngineRunStatus | str) -> EngineRunStatus:
     return status if isinstance(status, EngineRunStatus) else EngineRunStatus(status)
 
@@ -302,8 +298,8 @@ def create_engine_run(
         id=payload.id,
         analysis_id=payload.analysis_id,
         datasource_id=payload.datasource_id,
-        kind=payload.kind,
-        status=payload.status,
+        kind=payload.kind.value,
+        status=payload.status.value,
         request_json=payload.request_json,
         result_json=result_json,
         error_message=payload.error_message,
@@ -353,13 +349,14 @@ def update_engine_run(
     if not isinstance(datasource_id, _UnsetType) and isinstance(datasource_id, str):
         run.datasource_id = datasource_id
     if not isinstance(kind, _UnsetType):
-        run.kind = _coerce_kind(kind) if isinstance(kind, (EngineRunKind, str)) else run.kind
+        run.kind = EngineRunKind.require(kind).value if isinstance(kind, (EngineRunKind, str)) else run.kind
     if not isinstance(status, _UnsetType):
         new_status = _coerce_status(status) if isinstance(status, (EngineRunStatus, str)) else None
-        if new_status is not None and run.status in _TERMINAL_STATUSES and new_status != run.status:
-            logger.warning(f'Ignoring status transition from {run.status} to {new_status} for run {run_id}')
+        current_status = _coerce_status(run.status)
+        if new_status is not None and current_status in _TERMINAL_STATUSES and new_status != current_status:
+            logger.warning(f'Ignoring status transition from {current_status} to {new_status} for run {run_id}')
         elif new_status is not None:
-            run.status = new_status
+            run.status = new_status.value
     if not isinstance(request_json, _UnsetType) and isinstance(request_json, dict):
         run.request_json = request_json
     if not isinstance(result_json, _UnsetType):
@@ -422,7 +419,7 @@ def create_engine_run_payload(
     return EngineRunPayload(
         analysis_id=analysis_id,
         datasource_id=datasource_id,
-        kind=_coerce_kind(kind),
+        kind=EngineRunKind.require(kind),
         status=_coerce_status(status),
         request_json=request_json,
         result_json=result_json,
@@ -455,9 +452,14 @@ def list_engine_runs(
     if datasource_id is not None:
         stmt = stmt.where(EngineRun.datasource_id == datasource_id)  # type: ignore[arg-type]
     if kind is not None:
-        stmt = stmt.where(EngineRun.kind == _coerce_kind(kind))  # type: ignore[arg-type]
+        coerced_kind = EngineRunKind.require(kind)
+        if coerced_kind == EngineRunKind.BUILD:
+            return []
+        stmt = stmt.where(EngineRun.kind == coerced_kind.value)  # type: ignore[arg-type]
+    else:
+        stmt = stmt.where(EngineRun.kind != EngineRunKind.BUILD.value)  # type: ignore[arg-type]
     if status is not None:
-        stmt = stmt.where(EngineRun.status == _coerce_status(status))  # type: ignore[arg-type]
+        stmt = stmt.where(EngineRun.status == _coerce_status(status).value)  # type: ignore[arg-type]
 
     stmt = stmt.order_by(desc(EngineRun.created_at)).limit(limit).offset(offset)  # type: ignore[arg-type]
     runs = session.execute(stmt).scalars().all()

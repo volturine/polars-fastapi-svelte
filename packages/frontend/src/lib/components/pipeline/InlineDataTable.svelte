@@ -108,7 +108,7 @@
 		gcTime: Infinity,
 		refetchOnMount: false,
 		retry: false,
-		enabled: hasRun && isActiveStep && !!analysisPipeline
+		enabled: hasRun && isActiveStep && !!analysisPipeline && !analysisStore.previewPaused
 	}));
 
 	const data = $derived(isActiveStep && hasRun ? query.data : null);
@@ -129,7 +129,7 @@
 
 	// Network: $derived can't persist preview run state.
 	$effect(() => {
-		if (!isActiveStep || hasRun || !analysisPipeline) return;
+		if (!isActiveStep || hasRun || !analysisPipeline || analysisStore.previewPaused) return;
 		analysisStore.setPreviewRun(runKey, true);
 	});
 
@@ -141,7 +141,7 @@
 	});
 
 	function runPreview() {
-		if (!isActiveStep) return;
+		if (!isActiveStep || analysisStore.previewPaused) return;
 		if (!hasRun) analysisStore.setPreviewRun(runKey, true);
 		query.refetch();
 	}

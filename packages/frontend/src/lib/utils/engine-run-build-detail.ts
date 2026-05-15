@@ -9,6 +9,7 @@ import type {
 	BuildStepSnapshot,
 	BuildTabResult
 } from '$lib/types/build-stream';
+import { readEngineRunKind } from '$lib/types/build-stream';
 
 function readArray<T>(value: unknown): T[] {
 	return Array.isArray(value) ? (value as T[]) : [];
@@ -238,7 +239,7 @@ export function engineRunBuildDetail(run: EngineRun): ActiveBuildDetail {
 		current_step: run.current_step,
 		current_step_index: engineRunCurrentStepIndex(run),
 		total_steps: engineRunTotalSteps(run),
-		current_kind: run.kind,
+		current_kind: readEngineRunKind(run.kind),
 		current_datasource_id: engineRunDatasourceId(run),
 		current_tab_id: readString(result?.current_tab_id),
 		current_tab_name: readString(result?.current_tab_name),

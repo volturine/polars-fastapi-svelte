@@ -180,21 +180,18 @@ def _start_build(client, analysis: dict[str, object]) -> str:
     return str(response.json()['build_id'])
 
 
-def _wait_for_running_engine_run(client, build_id: str, *, timeout: float = 180) -> dict[str, object]:
+def _wait_for_running_build(client, build_id: str, *, timeout: float = 180) -> dict[str, object]:
     deadline = time.time() + timeout
     while time.time() < deadline:
         response = client.get(f'/api/v1/compute/builds/active/{build_id}')
         if response.status_code == 200:
             detail = dict(response.json())
-            engine_run_id = detail.get('current_engine_run_id')
-            if detail.get('status') == 'running' and isinstance(engine_run_id, str) and engine_run_id:
-                run_response = client.get(f'/api/v1/engine-runs/{engine_run_id}')
-                if run_response.status_code == 200 and run_response.json().get('status') == 'running':
-                    return detail
+            if detail.get('status') == 'running':
+                return detail
             if detail.get('status') in {'completed', 'failed', 'cancelled'}:
                 raise AssertionError(f'Build {build_id} reached terminal state before cancellation: {detail}')
         time.sleep(0.5)
-    raise AssertionError(f'Timed out waiting for build {build_id} to expose a running engine run')
+    raise AssertionError(f'Timed out waiting for build {build_id} to start running')
 
 
 def _slow_steps() -> list[dict[str, object]]:
@@ -632,10 +629,7 @@ def test_postgres_runtime_supports_cross_api_cancellation(tmp_path: Path) -> Non
                 datasource_id = _upload_datasource(client_one, 'cross-api-cancel', content=big_csv)
                 analysis = _create_analysis(client_one, 'Cross API Cancel', datasource_id, steps=_slow_steps())
                 build_id = _start_build(client_one, analysis)
-                running = _wait_for_running_engine_run(client_one, build_id, timeout=180)
-
-            engine_run_id = running.get('current_engine_run_id')
-            assert isinstance(engine_run_id, str) and engine_run_id
+                _wait_for_running_build(client_one, build_id, timeout=180)
 
             with httpx.Client(base_url=f'http://127.0.0.1:{api_two_port}', timeout=30) as client_two:
                 cancelled = client_two.post(f'/api/v1/compute/builds/active/{build_id}/cancel')
@@ -643,7 +637,7 @@ def test_postgres_runtime_supports_cross_api_cancellation(tmp_path: Path) -> Non
                 assert cancelled.status_code == 200, cancelled.text
                 payload = dict(cancelled.json())
                 assert payload['build_id'] == build_id
-                assert payload['engine_run_id'] == engine_run_id
+                assert payload['engine_run_id'] is None
                 assert payload['status'] == 'cancelled'
 
                 detail = wait_for_condition(
@@ -659,16 +653,14 @@ def test_postgres_runtime_supports_cross_api_cancellation(tmp_path: Path) -> Non
                 )
 
                 assert detail['build_id'] == build_id
-                assert detail['current_engine_run_id'] == engine_run_id
+                assert detail['current_engine_run_id'] is None
                 assert detail['status'] == 'cancelled'
                 assert detail['cancelled_by']
 
             with container.connect() as connection:
                 build_status = _query_value(connection, 'SELECT status FROM "default".build_runs WHERE id = %s', (build_id,))
-                engine_status = _query_value(connection, 'SELECT status FROM "default".engine_runs WHERE id = %s', (engine_run_id,))
 
             assert build_status == 'cancelled'
-            assert engine_status == 'cancelled'
         finally:
             worker.stop()
             api_two.stop()

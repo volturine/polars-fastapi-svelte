@@ -13,8 +13,10 @@ from datetime import UTC, datetime
 from fastapi import WebSocket
 
 from contracts.compute import schemas
+from contracts.engine_runs.schemas import EngineRunKind
 
 logger = logging.getLogger(__name__)
+
 
 _MAX_LOGS = 200
 _MAX_RESOURCES = 60
@@ -267,7 +269,7 @@ class ActiveBuild:
             current_step=self.current_step,
             current_step_index=self.current_step_index,
             total_steps=self.total_steps,
-            current_kind=self.current_kind,
+            current_kind=EngineRunKind.parse(self.current_kind),
             current_datasource_id=self.current_datasource_id,
             current_tab_id=self.current_tab_id,
             current_tab_name=self.current_tab_name,
@@ -523,7 +525,7 @@ class ActiveBuildRegistry:
                 return None
             normalized = _normalize_payload(payload)
             event_type = _safe_str(normalized.get('type'))
-            build.current_kind = _safe_str(normalized.get('current_kind')) or build.current_kind
+            # Build kind is immutable for build runs in live state.
             build.current_datasource_id = _safe_str(normalized.get('current_datasource_id')) or build.current_datasource_id
             build.current_tab_id = _safe_str(normalized.get('tab_id')) or build.current_tab_id
             build.current_tab_name = _safe_str(normalized.get('tab_name')) or build.current_tab_name

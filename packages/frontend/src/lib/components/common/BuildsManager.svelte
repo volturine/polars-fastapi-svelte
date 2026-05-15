@@ -1,10 +1,14 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { cancelBuild, type CancelBuildResponse } from '$lib/api/compute';
 	import { getBuild } from '$lib/api/builds';
 	import { getDatasource, listDatasources } from '$lib/api/datasource';
 	import { listAnalyses } from '$lib/api/analysis';
+	import { listEngineRuns, type EngineRun, type ListEngineRunsParams } from '$lib/api/engine-runs';
 	import type { ActiveBuildDetail, ActiveBuildSummary } from '$lib/types/build-stream';
+	import { readEngineRunKind } from '$lib/types/build-stream';
+	import { engineRunBuildDetail } from '$lib/utils/engine-run-build-detail';
 	import { BuildsStore } from '$lib/stores/builds.svelte';
 	import { page as pageState } from '$app/state';
 	import {
@@ -65,6 +69,7 @@
 	let expandedPayload = $state<BuildPayloadData | null>(null);
 	let sortColumn = $state<string>('created_at');
 	let sortDir = $state<'asc' | 'desc'>('desc');
+	let syncingExpandedId: string | null = null;
 	const detailStores = new SvelteMap<string, BuildStreamStore>();
 	const detailSnapshots = new SvelteMap<string, ActiveBuildDetail>();
 	const detailPayloads = new SvelteMap<string, BuildPayloadData>();
@@ -127,7 +132,38 @@
 		return map;
 	});
 
-	const runs = $derived(buildsStore.builds);
+	const engineRunParams = $derived<ListEngineRunsParams>({
+		analysis_id: queryParams.analysis_id,
+		datasource_id: queryParams.datasource_id,
+		kind: kindFilter && kindFilter !== 'build' ? kindFilter : undefined,
+		status: engineRunStatusFilter(statusFilter),
+		limit,
+		offset: (page - 1) * limit
+	});
+
+	const engineRunsQuery = createQuery(() => ({
+		queryKey: ['monitoring-engine-runs', ns.value, engineRunParams],
+		queryFn: async () => {
+			const result = await listEngineRuns(engineRunParams);
+			if (result.isErr()) throw new Error(result.error.message);
+			return result.value;
+		},
+		staleTime: 10_000,
+		enabled: !ns.switching && kindFilter !== 'build'
+	}));
+
+	const monitoringEngineRuns = $derived(
+		(engineRunsQuery.data ?? []).filter((run) => run.kind !== 'build')
+	);
+
+	const engineRunMap = $derived.by(() => {
+		const map = new SvelteMap<string, EngineRun>();
+		for (const run of monitoringEngineRuns) map.set(run.id, run);
+		return map;
+	});
+
+	const engineRunSummaries = $derived(monitoringEngineRuns.map(engineRunSummary));
+	const runs = $derived([...buildsStore.builds, ...engineRunSummaries]);
 
 	const datasourceId = $derived(
 		(pageState.url.searchParams.get('datasource_id') ?? undefined) || undefined
@@ -206,7 +242,7 @@
 				return dir * (summaryDurationMs(a) - summaryDurationMs(b));
 			}
 			if (sortColumn === 'kind') {
-				return dir * (a.current_kind ?? '').localeCompare(b.current_kind ?? '');
+				return dir * effectiveKind(a).localeCompare(effectiveKind(b));
 			}
 			if (sortColumn === 'status') {
 				return dir * currentStatus(a).localeCompare(currentStatus(b));
@@ -230,6 +266,50 @@
 			}
 			return 0;
 		});
+	}
+
+	function engineRunStatus(run: EngineRun): ActiveBuildSummary['status'] {
+		if (run.status === 'success') return 'completed';
+		return run.status;
+	}
+
+	function engineRunSummary(run: EngineRun): ActiveBuildSummary {
+		const kind = readEngineRunKind(run.kind);
+		return {
+			build_id: run.id,
+			analysis_id: run.analysis_id ?? run.id,
+			analysis_name: run.analysis_id ?? run.id,
+			namespace: '',
+			status: engineRunStatus(run),
+			started_at: run.created_at,
+			starter: { user_id: null, display_name: null, email: null, triggered_by: run.triggered_by },
+			resource_config: null,
+			progress: run.progress,
+			elapsed_ms: run.duration_ms ?? 0,
+			estimated_remaining_ms: null,
+			current_step: run.current_step,
+			current_step_index: null,
+			total_steps: 0,
+			current_kind: kind,
+			current_datasource_id: run.datasource_id,
+			current_tab_id: null,
+			current_tab_name: null,
+			current_output_id: null,
+			current_output_name: null,
+			current_engine_run_id: run.id,
+			total_tabs: 0,
+			cancelled_at: null,
+			cancelled_by: null,
+			result_json: null
+		};
+	}
+
+	function engineRunStatusFilter(
+		status: 'all' | 'running' | 'completed' | 'failed' | 'cancelled'
+	): ListEngineRunsParams['status'] {
+		if (status === 'all') return undefined;
+		if (status === 'completed') return 'success';
+		return status;
 	}
 
 	function toggleSort(col: string) {
@@ -268,11 +348,14 @@
 		return map.get(id) ?? `${id.slice(0, 8)}...`;
 	}
 
+	function effectiveKind(run: ActiveBuildSummary): string {
+		return run.current_kind ?? '';
+	}
+
 	function getKindLabel(kind: string): string {
+		if (kind === 'build') return 'Build';
 		if (kind === 'preview') return 'Preview';
 		if (kind === 'download') return 'Download';
-		if (kind === 'datasource_create') return 'Output Create';
-		if (kind === 'datasource_update') return 'Output Update';
 		if (kind === 'row_count') return 'Row Count';
 		return kind;
 	}
@@ -426,6 +509,22 @@
 		return store;
 	}
 
+	function summaryDetail(run: ActiveBuildSummary): ActiveBuildDetail {
+		return {
+			...run,
+			steps: [],
+			query_plans: [],
+			latest_resources: null,
+			resources: [],
+			logs: [],
+			results: [],
+			duration_ms: run.elapsed_ms,
+			error: null,
+			request_json: null,
+			result_json: null
+		};
+	}
+
 	function replaceRun(next: ActiveBuildSummary): void {
 		buildsStore.replaceBuild(next);
 	}
@@ -443,12 +542,46 @@
 
 	async function syncExpandedRun(buildId: string): Promise<void> {
 		const run = runs.find((item) => item.build_id === buildId);
-		if (!run) return;
+		if (!run || syncingExpandedId === buildId) return;
+		const engineRun = engineRunMap.get(buildId);
+		if (engineRun) {
+			const store = detailStore(buildId);
+			store.close();
+			store.applySnapshot(summaryDetail(run));
+			expandedStore = store;
+			expandedPayload = null;
+			expandedLiveId = null;
+			await tick();
+			if (expandedId !== buildId) return;
+			const engineRunDetail = engineRunBuildDetail(engineRun);
+			store.applySnapshot(engineRunDetail);
+			detailSnapshots.set(buildId, engineRunDetail);
+			detailPayloads.set(buildId, {
+				requestJson: engineRunDetail.request_json,
+				resultJson: engineRunDetail.result_json
+			});
+			expandedPayload = detailPayloads.get(buildId) ?? null;
+			return;
+		}
+		const cached = detailSnapshots.get(buildId);
+		if (cached && run.status !== 'queued' && run.status !== 'running') {
+			expandedStore = detailStore(buildId);
+			expandedPayload = detailPayloads.get(buildId) ?? null;
+			return;
+		}
 		const store = detailStore(buildId);
+		if (!cached) {
+			store.close();
+			store.applySnapshot(summaryDetail(run));
+			expandedStore = store;
+			expandedPayload = null;
+		}
+		syncingExpandedId = buildId;
 		const detail = await getBuild(buildId).match(
 			(response: ActiveBuildDetail) => response,
 			() => null
 		);
+		if (syncingExpandedId === buildId) syncingExpandedId = null;
 		if (expandedId !== buildId || !detail) return;
 		replaceRun(detail);
 		setDetailPayload(detail);
@@ -646,9 +779,8 @@
 			>
 				<option value="">All types</option>
 				<option value="download">Download</option>
+				<option value="build">Build</option>
 				<option value="preview">Preview</option>
-				<option value="datasource_create">Output Create</option>
-				<option value="datasource_update">Output Update</option>
 				<option value="row_count">Row Count</option>
 			</select>
 			<select
@@ -869,7 +1001,7 @@
 							data-build-row={run.build_id}
 							data-build-source="history"
 							data-build-status={currentStatus(run)}
-							data-build-kind={run.current_kind ?? ''}
+							data-build-kind={effectiveKind(run)}
 							data-build-datasource-id={buildDatasourceId(run)}
 							data-build-datasource-name={buildDatasourceName(run) ??
 								resolveName(buildDatasourceId(run), dsNames)}
@@ -921,21 +1053,18 @@
 										})
 									]}
 								>
-									{#if run.current_kind === 'datasource_create'}
+									{#if effectiveKind(run) === 'build'}
 										<Database size={14} class={css({ color: 'accent.primary' })} />
-										<span>{getKindLabel(run.current_kind ?? '')}</span>
-									{:else if run.current_kind === 'datasource_update'}
-										<RefreshCw size={14} class={css({ color: 'fg.warning' })} />
-										<span>{getKindLabel(run.current_kind ?? '')}</span>
-									{:else if run.current_kind === 'download'}
+										<span>{getKindLabel(effectiveKind(run))}</span>
+									{:else if effectiveKind(run) === 'download'}
 										<Download size={14} class={css({ color: 'fg.success' })} />
-										<span>{getKindLabel(run.current_kind ?? '')}</span>
-									{:else if run.current_kind === 'row_count'}
+										<span>{getKindLabel(effectiveKind(run))}</span>
+									{:else if effectiveKind(run) === 'row_count'}
 										<Hash size={14} class={css({ color: 'fg.muted' })} />
-										<span>{getKindLabel(run.current_kind ?? '')}</span>
+										<span>{getKindLabel(effectiveKind(run))}</span>
 									{:else}
 										<Database size={14} class={css({ color: 'fg.muted' })} />
-										<span>{getKindLabel(run.current_kind ?? '')}</span>
+										<span>{getKindLabel(effectiveKind(run))}</span>
 									{/if}
 									{#if run.starter.triggered_by === 'schedule'}
 										<span

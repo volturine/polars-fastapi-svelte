@@ -1,16 +1,25 @@
 import datetime as dt
 from enum import StrEnum
-from typing import Any
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class EngineRunKind(StrEnum):
+    BUILD = 'build'
     PREVIEW = 'preview'
     ROW_COUNT = 'row_count'
     DOWNLOAD = 'download'
-    DATASOURCE_CREATE = 'datasource_create'
-    DATASOURCE_UPDATE = 'datasource_update'
+
+    @classmethod
+    def parse(cls, value: Self | str | None) -> Self | None:
+        if value is None:
+            return None
+        return cls(value)
+
+    @classmethod
+    def require(cls, value: Self | str) -> Self:
+        return cls(value)
 
 
 class EngineRunStatus(StrEnum):

@@ -38,6 +38,7 @@ class BuildRun(SQLModel, table=True):  # type: ignore[call-arg, assignment]
     request_json: dict[str, object] = Field(sa_column=Column(JSON, nullable=False))
     starter_json: dict[str, object] = Field(sa_column=Column(JSON, nullable=False))
     resource_config_json: dict[str, object] | None = Field(default=None, sa_column=Column(JSON, nullable=True))
+    result_json: dict[str, object] | None = Field(default=None, sa_column=Column(JSON, nullable=True))
     current_engine_run_id: str | None = Field(default=None, sa_column=Column(String, nullable=True, index=True))
     current_kind: str | None = Field(default=None, sa_column=Column(String, nullable=True))
     current_datasource_id: str | None = Field(default=None, sa_column=Column(String, nullable=True))

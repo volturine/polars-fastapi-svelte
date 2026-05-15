@@ -394,7 +394,7 @@ test.describe('Datasources – column stats panel', () => {
 test.describe('Datasources – config tab interactions', () => {
 	test.setTimeout(45_000);
 
-	test('Runs tab shows datasource_create run for fresh datasource', async ({ page, request }) => {
+	test('Runs tab shows empty state for fresh datasource', async ({ page, request }) => {
 		const ds = `e2e-runs-tab-${uid()}`;
 		await createDatasource(request, ds);
 		try {
@@ -405,10 +405,11 @@ test.describe('Datasources – config tab interactions', () => {
 			await expect(config).toBeVisible({ timeout: 8_000 });
 
 			await config.getByRole('tab', { name: 'Runs' }).click();
-			// Creating a datasource via API upload triggers a datasource_create engine run
-			await expect(config.getByText('Create', { exact: true })).toBeVisible({ timeout: 15_000 });
+			await expect(config.getByText('No runs associated with this datasource.')).toBeVisible({
+				timeout: 15_000
+			});
 
-			await screenshot(page, 'datasources', 'runs-tab-with-create-run');
+			await screenshot(page, 'datasources', 'runs-tab-empty-state');
 		} finally {
 			await deleteDatasourceViaUI(page, ds);
 		}

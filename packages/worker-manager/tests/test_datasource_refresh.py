@@ -13,7 +13,7 @@ from contracts.engine_runs.models import EngineRun
 class TestDatasourceRefresh:
     @patch('datasource_service.load_datasource')
     @patch('datasource_service._write_iceberg_table')
-    def test_refresh_external_datasource_updates_snapshot_fields(
+    def test_refresh_external_builds_snapshot_fields(
         self,
         mock_write,
         mock_load,
@@ -61,7 +61,4 @@ class TestDatasourceRefresh:
             .scalars()
             .all()
         )
-        latest = sorted(runs, key=lambda row: row.created_at)[-1]
-        assert latest.kind == 'datasource_update'
-        assert latest.result_json is not None
-        assert latest.result_json['snapshot_id'] == '222'
+        assert runs == []

@@ -2,16 +2,16 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import BuildComparisonPanel from './BuildComparisonPanel.svelte';
 import type { DataSource } from '$lib/types/datasource';
-import type { EngineRun } from '$lib/api/engine-runs';
+import type { ActiveBuildSummary } from '$lib/types/build-stream';
 import type { SnapshotCompareResponse } from '$lib/api/datasource';
 
-let mockStoreRuns: EngineRun[] = [];
+let mockStoreRuns: ActiveBuildSummary[] = [];
 let mockStoreStatus: string = 'disconnected';
 let mockStoreError: string | null = null;
 
-vi.mock('$lib/stores/engine-runs.svelte', () => ({
-	EngineRunsStore: class {
-		get runs() {
+vi.mock('$lib/stores/builds.svelte', () => ({
+	BuildsStore: class {
+		get builds() {
 			return mockStoreRuns;
 		}
 		get status() {
@@ -78,25 +78,33 @@ function makeDatasource(overrides: Partial<DataSource> = {}): DataSource {
 	} as DataSource;
 }
 
-function makeRun(overrides: Partial<EngineRun> = {}): EngineRun {
+function makeRun(overrides: Partial<ActiveBuildSummary> = {}): ActiveBuildSummary {
 	return {
-		id: 'run-1',
-		analysis_id: null,
-		datasource_id: 'ds-1',
-		kind: 'datasource_update',
-		status: 'success',
-		request_json: {},
-		result_json: null,
-		error_message: null,
-		created_at: '2024-06-15T12:00:00Z',
-		completed_at: '2024-06-15T12:01:00Z',
-		duration_ms: 60000,
-		step_timings: {},
-		query_plan: null,
-		progress: 100,
+		build_id: 'run-1',
+		analysis_id: 'analysis-1',
+		analysis_name: 'Analysis 1',
+		namespace: 'default',
+		status: 'completed',
+		started_at: '2024-06-15T12:00:00Z',
+		starter: { user_id: null, display_name: null, email: null, triggered_by: null },
+		resource_config: null,
+		progress: 1,
+		elapsed_ms: 60000,
+		estimated_remaining_ms: null,
 		current_step: null,
-		triggered_by: null,
-		execution_entries: [],
+		current_step_index: null,
+		total_steps: 0,
+		current_kind: 'build',
+		current_datasource_id: 'ds-1',
+		current_tab_id: null,
+		current_tab_name: null,
+		current_output_id: 'ds-1',
+		current_output_name: 'Output',
+		current_engine_run_id: null,
+		total_tabs: 1,
+		cancelled_at: null,
+		cancelled_by: null,
+		result_json: null,
 		...overrides
 	};
 }
@@ -168,8 +176,8 @@ describe('BuildComparisonPanel', () => {
 	describe('run selection', () => {
 		test('renders run list when data available', () => {
 			const runs = [
-				makeRun({ id: 'run-aaa-1111' }),
-				makeRun({ id: 'run-bbb-2222', created_at: '2024-06-16T12:00:00Z' })
+				makeRun({ build_id: 'run-aaa-1111' }),
+				makeRun({ build_id: 'run-bbb-2222', started_at: '2024-06-16T12:00:00Z' })
 			];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
@@ -205,8 +213,8 @@ describe('BuildComparisonPanel', () => {
 
 		test('clicking a run button changes counter to 1/2', async () => {
 			const runs = [
-				makeRun({ id: 'run-aaa-1111' }),
-				makeRun({ id: 'run-bbb-2222', created_at: '2024-06-16T12:00:00Z' })
+				makeRun({ build_id: 'run-aaa-1111' }),
+				makeRun({ build_id: 'run-bbb-2222', started_at: '2024-06-16T12:00:00Z' })
 			];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
@@ -221,8 +229,8 @@ describe('BuildComparisonPanel', () => {
 
 		test('clicking two run buttons changes counter to 2/2', async () => {
 			const runs = [
-				makeRun({ id: 'run-aaa-1111' }),
-				makeRun({ id: 'run-bbb-2222', created_at: '2024-06-16T12:00:00Z' })
+				makeRun({ build_id: 'run-aaa-1111' }),
+				makeRun({ build_id: 'run-bbb-2222', started_at: '2024-06-16T12:00:00Z' })
 			];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
@@ -236,9 +244,9 @@ describe('BuildComparisonPanel', () => {
 
 		test('third selection is ignored when already at 2', async () => {
 			const runs = [
-				makeRun({ id: 'run-aaa-1111' }),
-				makeRun({ id: 'run-bbb-2222', created_at: '2024-06-16T12:00:00Z' }),
-				makeRun({ id: 'run-ccc-3333', created_at: '2024-06-17T12:00:00Z' })
+				makeRun({ build_id: 'run-aaa-1111' }),
+				makeRun({ build_id: 'run-bbb-2222', started_at: '2024-06-16T12:00:00Z' }),
+				makeRun({ build_id: 'run-ccc-3333', started_at: '2024-06-17T12:00:00Z' })
 			];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
@@ -255,8 +263,8 @@ describe('BuildComparisonPanel', () => {
 
 		test('deselecting a run removes it from selection', async () => {
 			const runs = [
-				makeRun({ id: 'run-aaa-1111' }),
-				makeRun({ id: 'run-bbb-2222', created_at: '2024-06-16T12:00:00Z' })
+				makeRun({ build_id: 'run-aaa-1111' }),
+				makeRun({ build_id: 'run-bbb-2222', started_at: '2024-06-16T12:00:00Z' })
 			];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
@@ -277,8 +285,8 @@ describe('BuildComparisonPanel', () => {
 
 		test('remove button in selected builds section deselects run', async () => {
 			const runs = [
-				makeRun({ id: 'run-aaa-1111' }),
-				makeRun({ id: 'run-bbb-2222', created_at: '2024-06-16T12:00:00Z' })
+				makeRun({ build_id: 'run-aaa-1111' }),
+				makeRun({ build_id: 'run-bbb-2222', started_at: '2024-06-16T12:00:00Z' })
 			];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
@@ -297,8 +305,8 @@ describe('BuildComparisonPanel', () => {
 	describe('search filtering', () => {
 		test('search input filters visible runs', async () => {
 			const runs = [
-				makeRun({ id: 'run-aaa-1111' }),
-				makeRun({ id: 'run-bbb-2222', created_at: '2024-06-16T12:00:00Z' })
+				makeRun({ build_id: 'run-aaa-1111' }),
+				makeRun({ build_id: 'run-bbb-2222', started_at: '2024-06-16T12:00:00Z' })
 			];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
@@ -316,7 +324,7 @@ describe('BuildComparisonPanel', () => {
 		});
 
 		test('search shows "No builds match" when nothing matches', async () => {
-			const runs = [makeRun({ id: 'run-aaa-1111' })];
+			const runs = [makeRun({ build_id: 'run-aaa-1111' })];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
 			snapshotsQueryState = makeQueryResult({ data: [] });
@@ -331,7 +339,7 @@ describe('BuildComparisonPanel', () => {
 
 	describe('compare button', () => {
 		test('shows selected builds section when runs available', () => {
-			const runs = [makeRun({ id: 'run-aaa-1111' }), makeRun({ id: 'run-bbb-2222' })];
+			const runs = [makeRun({ build_id: 'run-aaa-1111' }), makeRun({ build_id: 'run-bbb-2222' })];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
 			snapshotsQueryState = makeQueryResult({ data: [] });
@@ -340,7 +348,7 @@ describe('BuildComparisonPanel', () => {
 		});
 
 		test('shows prompt to select two builds when none selected', () => {
-			const runs = [makeRun({ id: 'run-aaa-1111' }), makeRun({ id: 'run-bbb-2222' })];
+			const runs = [makeRun({ build_id: 'run-aaa-1111' }), makeRun({ build_id: 'run-bbb-2222' })];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
 			snapshotsQueryState = makeQueryResult({ data: [] });
@@ -350,8 +358,8 @@ describe('BuildComparisonPanel', () => {
 
 		test('compare button appears after selecting one run', async () => {
 			const runs = [
-				makeRun({ id: 'run-aaa-1111' }),
-				makeRun({ id: 'run-bbb-2222', created_at: '2024-06-16T12:00:00Z' })
+				makeRun({ build_id: 'run-aaa-1111' }),
+				makeRun({ build_id: 'run-bbb-2222', started_at: '2024-06-16T12:00:00Z' })
 			];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
@@ -364,8 +372,8 @@ describe('BuildComparisonPanel', () => {
 
 		test('compare button is disabled with only one selection', async () => {
 			const runs = [
-				makeRun({ id: 'run-aaa-1111' }),
-				makeRun({ id: 'run-bbb-2222', created_at: '2024-06-16T12:00:00Z' })
+				makeRun({ build_id: 'run-aaa-1111' }),
+				makeRun({ build_id: 'run-bbb-2222', started_at: '2024-06-16T12:00:00Z' })
 			];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
@@ -379,8 +387,8 @@ describe('BuildComparisonPanel', () => {
 
 		test('compare button disabled when two selected but snapshot mapping missing', async () => {
 			const runs = [
-				makeRun({ id: 'run-aaa-1111' }),
-				makeRun({ id: 'run-bbb-2222', created_at: '2024-06-16T12:00:00Z' })
+				makeRun({ build_id: 'run-aaa-1111' }),
+				makeRun({ build_id: 'run-bbb-2222', started_at: '2024-06-16T12:00:00Z' })
 			];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
@@ -399,8 +407,8 @@ describe('BuildComparisonPanel', () => {
 
 		test('shows "Select one more build" when only 1 selected', async () => {
 			const runs = [
-				makeRun({ id: 'run-aaa-1111' }),
-				makeRun({ id: 'run-bbb-2222', created_at: '2024-06-16T12:00:00Z' })
+				makeRun({ build_id: 'run-aaa-1111' }),
+				makeRun({ build_id: 'run-bbb-2222', started_at: '2024-06-16T12:00:00Z' })
 			];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
@@ -413,8 +421,8 @@ describe('BuildComparisonPanel', () => {
 
 		test('shows info message when some runs selected but no comparison yet', async () => {
 			const runs = [
-				makeRun({ id: 'run-aaa-1111' }),
-				makeRun({ id: 'run-bbb-2222', created_at: '2024-06-16T12:00:00Z' })
+				makeRun({ build_id: 'run-aaa-1111' }),
+				makeRun({ build_id: 'run-bbb-2222', started_at: '2024-06-16T12:00:00Z' })
 			];
 			mockStoreStatus = 'connected';
 			mockStoreRuns = runs;
@@ -432,12 +440,12 @@ describe('BuildComparisonPanel', () => {
 		function setupWithMappedSnapshots(): SnapshotCompareResponse {
 			const runs = [
 				makeRun({
-					id: 'run-aaa-1111',
+					build_id: 'run-aaa-1111',
 					result_json: { snapshot_id: 'snap-100' }
 				}),
 				makeRun({
-					id: 'run-bbb-2222',
-					created_at: '2024-06-16T12:00:00Z',
+					build_id: 'run-bbb-2222',
+					started_at: '2024-06-16T12:00:00Z',
 					result_json: { snapshot_id: 'snap-200' }
 				})
 			];

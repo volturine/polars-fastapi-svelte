@@ -17,7 +17,6 @@ from sqlalchemy.orm import defer
 from sqlmodel import Session, col
 
 from contracts.datasource.models import DataSource, DataSourceColumnMetadata
-from core import engine_runs_service as engine_run_service
 from core.config import settings
 from core.exceptions import DataSourceNotFoundError, DataSourceValidationError, FileError
 from core.iceberg_metadata import sync_iceberg_schema
@@ -183,7 +182,7 @@ def create_analysis_datasource(
     session.commit()
     session.refresh(datasource)
 
-    _log_datasource_create(session, datasource_id, name, source_type, config, branch='master')
+    _log_build_create(session, datasource_id, name, source_type, config, branch='master')
     return DataSourceResponse.model_validate(datasource)
 
 
@@ -458,33 +457,17 @@ def _collect_preview_rows(
     return rows
 
 
-def _log_datasource_update(
+def _log_build_update(
     session: Session,
     datasource_id: str,
     name: str,
     config: dict,
     branch: str | None,
 ) -> None:
-    request_json: dict[str, object] = {
-        'name': name,
-        'source_type': DataSourceType.ICEBERG.value,
-        'config': config,
-    }
-    if branch is not None:
-        request_json['iceberg_options'] = {'branch': branch}
-
-    payload = engine_run_service.create_engine_run_payload(
-        analysis_id=None,
-        datasource_id=datasource_id,
-        kind='datasource_update',
-        status='success',
-        request_json=request_json,
-        result_json=_build_datasource_result_json(datasource_id, name, DataSourceType.ICEBERG, config),
-    )
-    engine_run_service.create_engine_run(session, payload)
+    del session, datasource_id, name, config, branch
 
 
-def _log_datasource_create(
+def _log_build_create(
     session: Session,
     datasource_id: str,
     name: str,
@@ -492,20 +475,7 @@ def _log_datasource_create(
     config: dict,
     branch: str,
 ) -> None:
-    payload = engine_run_service.create_engine_run_payload(
-        analysis_id=None,
-        datasource_id=datasource_id,
-        kind='datasource_create',
-        status='success',
-        request_json={
-            'name': name,
-            'source_type': source_type.value,
-            'config': config,
-            'iceberg_options': {'branch': branch},
-        },
-        result_json=_build_datasource_result_json(datasource_id, name, source_type, config),
-    )
-    engine_run_service.create_engine_run(session, payload)
+    del session, datasource_id, name, source_type, config, branch
 
 
 def _build_datasource_result_json(
@@ -806,25 +776,6 @@ def update_datasource(
 
     session.commit()
     session.refresh(datasource)
-
-    # Only log engine run for non-metadata updates (is_hidden toggle is metadata-only)
-    has_config_or_name_update = update.name is not None or update.config is not None
-    if has_config_or_name_update:
-        update_request = update.model_dump(exclude_none=True)
-        branch = datasource.config.get('branch') if isinstance(datasource.config, dict) else None
-        if isinstance(branch, str):
-            update_request['iceberg_options'] = {'branch': branch}
-        source_type = DataSourceType(datasource.source_type)
-        result_json = _build_datasource_result_json(datasource_id, datasource.name, source_type, datasource.config)
-        run_payload = engine_run_service.create_engine_run_payload(
-            analysis_id=None,
-            datasource_id=datasource_id,
-            kind='datasource_update',
-            status='success',
-            request_json=update_request,
-            result_json=result_json,
-        )
-        engine_run_service.create_engine_run(session, run_payload)
 
     logger.info(f'Updated datasource {datasource_id}')
     response = DataSourceResponse.model_validate(datasource)

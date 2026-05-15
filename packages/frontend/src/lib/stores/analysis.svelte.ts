@@ -67,6 +67,7 @@ export class AnalysisStore {
 	loadId = $state(0);
 	lastSaved = $state<{ name: string; description: string | null } | null>(null);
 	previewRuns = $state(new SvelteMap<string, boolean>());
+	previewPaused = $state(false);
 
 	constructor() {
 		void loadPreviewRuns(this.previewRuns);
@@ -75,6 +76,10 @@ export class AnalysisStore {
 	setPreviewRun(key: string, value: boolean): void {
 		this.previewRuns.set(key, value);
 		savePreviewRuns(this.previewRuns);
+	}
+
+	setPreviewPaused(value: boolean): void {
+		this.previewPaused = value;
 	}
 
 	activeTab: AnalysisTab | null = $derived(

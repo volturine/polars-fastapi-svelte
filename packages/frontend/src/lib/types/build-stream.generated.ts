@@ -1,13 +1,15 @@
 // This file is auto-generated. Do not edit manually. Run 'just generate-build-stream-types' to regenerate.
 // Generated from backend/modules/compute/schemas.py
 
+export type EngineRunKind = 'build' | 'preview' | 'row_count' | 'download';
+
 export interface BuildPlanEvent {
 	type: 'plan';
 	build_id: string;
 	analysis_id: string;
 	emitted_at: string;
 	sequence: number | null;
-	current_kind: string | null;
+	current_kind: EngineRunKind | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
 	tab_name: string | null;
@@ -24,7 +26,7 @@ export interface BuildStepStartEvent {
 	analysis_id: string;
 	emitted_at: string;
 	sequence: number | null;
-	current_kind: string | null;
+	current_kind: EngineRunKind | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
 	tab_name: string | null;
@@ -45,7 +47,7 @@ export interface BuildStepCompleteEvent {
 	analysis_id: string;
 	emitted_at: string;
 	sequence: number | null;
-	current_kind: string | null;
+	current_kind: EngineRunKind | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
 	tab_name: string | null;
@@ -68,7 +70,7 @@ export interface BuildStepFailedEvent {
 	analysis_id: string;
 	emitted_at: string;
 	sequence: number | null;
-	current_kind: string | null;
+	current_kind: EngineRunKind | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
 	tab_name: string | null;
@@ -90,7 +92,7 @@ export interface BuildProgressEvent {
 	analysis_id: string;
 	emitted_at: string;
 	sequence: number | null;
-	current_kind: string | null;
+	current_kind: EngineRunKind | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
 	tab_name: string | null;
@@ -111,7 +113,7 @@ export interface BuildResourceEvent {
 	analysis_id: string;
 	emitted_at: string;
 	sequence: number | null;
-	current_kind: string | null;
+	current_kind: EngineRunKind | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
 	tab_name: string | null;
@@ -133,7 +135,7 @@ export interface BuildLogEvent {
 	analysis_id: string;
 	emitted_at: string;
 	sequence: number | null;
-	current_kind: string | null;
+	current_kind: EngineRunKind | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
 	tab_name: string | null;
@@ -163,7 +165,7 @@ export interface BuildCompleteEvent {
 	analysis_id: string;
 	emitted_at: string;
 	sequence: number | null;
-	current_kind: string | null;
+	current_kind: EngineRunKind | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
 	tab_name: string | null;
@@ -184,7 +186,7 @@ export interface BuildFailedEvent {
 	analysis_id: string;
 	emitted_at: string;
 	sequence: number | null;
-	current_kind: string | null;
+	current_kind: EngineRunKind | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
 	tab_name: string | null;
@@ -206,7 +208,7 @@ export interface BuildCancelledEvent {
 	analysis_id: string;
 	emitted_at: string;
 	sequence: number | null;
-	current_kind: string | null;
+	current_kind: EngineRunKind | null;
 	current_datasource_id: string | null;
 	tab_id: string | null;
 	tab_name: string | null;
@@ -265,7 +267,7 @@ export interface ActiveBuildSummary {
 	current_step: string | null;
 	current_step_index: number | null;
 	total_steps: number;
-	current_kind: string | null;
+	current_kind: EngineRunKind | null;
 	current_datasource_id: string | null;
 	current_tab_id: string | null;
 	current_tab_name: string | null;
@@ -275,6 +277,7 @@ export interface ActiveBuildSummary {
 	total_tabs: number;
 	cancelled_at: string | null;
 	cancelled_by: string | null;
+	result_json: Record<string, unknown> | null;
 }
 
 export type BuildStepState = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
@@ -334,7 +337,7 @@ export interface ActiveBuildDetail {
 	current_step: string | null;
 	current_step_index: number | null;
 	total_steps: number;
-	current_kind: string | null;
+	current_kind: EngineRunKind | null;
 	current_datasource_id: string | null;
 	current_tab_id: string | null;
 	current_tab_name: string | null;
@@ -344,6 +347,7 @@ export interface ActiveBuildDetail {
 	total_tabs: number;
 	cancelled_at: string | null;
 	cancelled_by: string | null;
+	result_json: Record<string, unknown> | null;
 	steps: BuildStepSnapshot[];
 	query_plans: BuildQueryPlanSnapshot[];
 	latest_resources: BuildResourceSnapshot | null;
@@ -353,7 +357,6 @@ export interface ActiveBuildDetail {
 	duration_ms: number | null;
 	error: string | null;
 	request_json: Record<string, unknown> | null;
-	result_json: Record<string, unknown> | null;
 }
 
 export interface BuildDetailSnapshot {

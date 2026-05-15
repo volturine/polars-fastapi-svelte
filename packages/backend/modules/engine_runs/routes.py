@@ -46,8 +46,8 @@ async def list_runs(
 ):
     """List engine runs with optional filters.
 
-    Filters: analysis_id, datasource_id, kind (preview/row_count/download/datasource_create/datasource_update),
-    status (success/failed). Supports pagination via limit/offset.
+    Filters: analysis_id, datasource_id, kind (preview/row_count/download),
+    status (success/failed/cancelled/running). Supports pagination via limit/offset.
     """
     return service.list_engine_runs(
         session=session,

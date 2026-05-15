@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
-	import type { EngineRun } from '$lib/api/engine-runs';
 	import { compareDatasourceSnapshots, listIcebergSnapshots } from '$lib/api/datasource';
 	import type { SnapshotCompareResponse } from '$lib/api/datasource';
 	import type { DataSource } from '$lib/types/datasource';
+	import type { ActiveBuildSummary } from '$lib/types/build-stream';
 	import DataTable from '$lib/components/common/DataTable.svelte';
 	import { GitCompareArrows, RefreshCw, X, Plus, Minus, Search } from 'lucide-svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { buildSnapshotMap } from '$lib/utils/build-snapshot-map';
-	import { EngineRunsStore } from '$lib/stores/engine-runs.svelte';
+	import { BuildsStore } from '$lib/stores/builds.svelte';
 	import { css, button } from '$lib/styles/panda';
 
 	interface Props {
@@ -24,7 +24,7 @@
 	let runSearch = $state('');
 	let rowLimit = $state(100);
 
-	const engineRunsStore = new EngineRunsStore();
+	const engineRunsStore = new BuildsStore();
 	// Network: fetch datasource build history when the datasource changes.
 	$effect(() => {
 		engineRunsStore.load({ datasource_id: datasource.id, limit: 50 });
@@ -42,10 +42,8 @@
 	}));
 
 	const runs = $derived(
-		engineRunsStore.runs.filter(
-			(run) =>
-				(run.kind === 'datasource_update' || run.kind === 'datasource_create') &&
-				run.status === 'success'
+		engineRunsStore.builds.filter(
+			(run) => run.current_kind === 'build' && run.status === 'completed'
 		)
 	);
 
@@ -53,18 +51,18 @@
 		const q = runSearch.trim().toLowerCase();
 		if (!q) return runs;
 		return runs.filter((run) => {
-			const created = formatDate(run.created_at).toLowerCase();
+			const created = formatDate(run.started_at).toLowerCase();
 			return (
-				run.id.toLowerCase().includes(q) ||
-				run.kind.toLowerCase().includes(q) ||
+				run.build_id.toLowerCase().includes(q) ||
+				(run.current_kind ?? '').toLowerCase().includes(q) ||
 				created.includes(q)
 			);
 		});
 	});
 
 	const selectedRuns = $derived.by(() => {
-		const list = Array.from(selected).map((id) => runs.find((run) => run.id === id) ?? null);
-		return list.filter((run): run is EngineRun => run !== null);
+		const list = Array.from(selected).map((id) => runs.find((run) => run.build_id === id) ?? null);
+		return list.filter((run): run is ActiveBuildSummary => run !== null);
 	});
 
 	const runA = $derived(selectedRuns[0] ?? null);
@@ -74,8 +72,8 @@
 	const snapshots = $derived(snapshotsQuery.data ?? []);
 
 	const runSnapshotMap = $derived(buildSnapshotMap(runs, snapshots));
-	const snapshotA = $derived(runA ? (runSnapshotMap.get(runA.id) ?? null) : null);
-	const snapshotB = $derived(runB ? (runSnapshotMap.get(runB.id) ?? null) : null);
+	const snapshotA = $derived(runA ? (runSnapshotMap.get(runA.build_id) ?? null) : null);
+	const snapshotB = $derived(runB ? (runSnapshotMap.get(runB.build_id) ?? null) : null);
 
 	function toggleSelect(id: string) {
 		if (selected.has(id)) {
@@ -350,7 +348,7 @@
 										'datasource-comparison-scroll'
 									]}
 								>
-									{#each visibleRuns as run (run.id)}
+									{#each visibleRuns as run (run.build_id)}
 										<button
 											class={css(
 												{
@@ -366,28 +364,28 @@
 													fontSize: 'sm',
 													_hover: { backgroundColor: 'bg.hover' }
 												},
-												selected.has(run.id) && {
+												selected.has(run.build_id) && {
 													backgroundColor: 'bg.accent',
 													color: 'accent.primary'
 												}
 											)}
-											onclick={() => toggleSelect(run.id)}
+											onclick={() => toggleSelect(run.build_id)}
 										>
 											<div class={css({ minWidth: '0' })}>
 												<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
 													<span class={css({ fontFamily: 'mono', fontSize: 'xs' })}
-														>{run.id.slice(0, 8)}...</span
+														>{run.build_id.slice(0, 8)}...</span
 													>
 													<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}
-														>{run.kind}</span
+														>{run.current_kind ?? ''}</span
 													>
 												</div>
 												<div class={css({ fontSize: 'xs', color: 'fg.muted' })}>
-													{formatDate(run.created_at)}
+													{formatDate(run.started_at)}
 												</div>
 											</div>
 											<div class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>
-												{runSnapshotMap.get(run.id) ? 'snapshot mapped' : 'missing snapshot'}
+												{runSnapshotMap.get(run.build_id) ? 'snapshot mapped' : 'missing snapshot'}
 											</div>
 										</button>
 									{/each}
@@ -430,7 +428,7 @@
 							</p>
 						{:else}
 							<div class={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-								{#each selectedRuns as run (run.id)}
+								{#each selectedRuns as run (run.build_id)}
 									<div
 										class={css({
 											display: 'flex',
@@ -444,8 +442,8 @@
 										})}
 									>
 										<div class={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
-											<span class={css({ fontFamily: 'mono' })}>{run.id.slice(0, 8)}...</span>
-											<span class={css({ color: 'fg.tertiary' })}>{run.kind}</span>
+											<span class={css({ fontFamily: 'mono' })}>{run.build_id.slice(0, 8)}...</span>
+											<span class={css({ color: 'fg.tertiary' })}>{run.current_kind ?? ''}</span>
 										</div>
 										<button
 											class={css({
@@ -454,7 +452,7 @@
 												color: 'fg.tertiary',
 												_hover: { color: 'fg.primary' }
 											})}
-											onclick={() => toggleSelect(run.id)}
+											onclick={() => toggleSelect(run.build_id)}
 											title="Remove selection"
 										>
 											<X size={12} />

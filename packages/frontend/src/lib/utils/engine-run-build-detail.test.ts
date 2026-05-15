@@ -14,7 +14,7 @@ function makeRun(overrides: Partial<EngineRun> = {}): EngineRun {
 		id: 'run-1',
 		analysis_id: 'analysis-1',
 		datasource_id: 'output-ds-1',
-		kind: 'datasource_update',
+		kind: 'build',
 		status: 'running',
 		request_json: {},
 		result_json: {

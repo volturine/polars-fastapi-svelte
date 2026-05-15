@@ -22,6 +22,7 @@ from contracts.build_runs.live import BuildNotification, hub as build_hub
 from contracts.compute import schemas
 from contracts.engine_runs.schemas import EngineRunKind, EngineRunStatus
 from contracts.runtime import ipc as runtime_ipc
+from contracts.runtime_workers.models import RuntimeWorkerKind
 from core import (
     build_event_service,
     build_jobs_service as build_job_service,
@@ -541,7 +542,11 @@ async def start_active_build(
     request: schemas.BuildRequest,
     session: Session = Depends(get_db),
     user: User = Depends(get_current_user),
+    runtime_probe: RuntimeAvailabilityProbe = Depends(get_runtime_availability_probe),
 ):
+    if not runtime_probe.available(kind=RuntimeWorkerKind.BUILD_MANAGER):
+        raise HTTPException(status_code=503, detail='Compute runtime unavailable')
+
     pipeline = _build_pipeline_payload(request)
     analysis_id = str(pipeline.get('analysis_id') or '')
     analysis_name = await run_in_threadpool(_build_analysis_name, pipeline)
@@ -555,7 +560,7 @@ async def start_active_build(
         None,
     )
     active_tab = selected_tab if isinstance(selected_tab, dict) else next((tab for tab in tabs if isinstance(tab, dict)), None)
-    current_kind = EngineRunKind.PREVIEW.value
+    current_kind = EngineRunKind.BUILD.value
     current_datasource_id: str | None = None
     current_tab_id: str | None = None
     current_tab_name: str | None = None

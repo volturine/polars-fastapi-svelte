@@ -9,7 +9,9 @@
 		updateDatasourceColumnDescriptions
 	} from '$lib/api/datasource';
 	import { type EngineRun } from '$lib/api/engine-runs';
+	import { BuildsStore } from '$lib/stores/builds.svelte';
 	import { EngineRunsStore } from '$lib/stores/engine-runs.svelte';
+	import type { ActiveBuildSummary } from '$lib/types/build-stream';
 	import { listHealthChecks, listHealthCheckResults } from '$lib/api/healthcheck';
 	import {
 		Save,
@@ -75,8 +77,15 @@
 		staleTime: Infinity
 	}));
 
+	const buildRunsStore = new BuildsStore();
 	const engineRunsStore = new EngineRunsStore();
-	// Network: fetch datasource runs when the datasource changes.
+	// Network: fetch datasource build history when the datasource changes.
+	$effect(() => {
+		if (!datasource.id) return;
+		buildRunsStore.load({ datasource_id: datasource.id, limit: 50 });
+		return () => buildRunsStore.close();
+	});
+	// Network: fetch non-build engine runs when the datasource changes.
 	$effect(() => {
 		if (!datasource.id) return;
 		engineRunsStore.load({ datasource_id: datasource.id, limit: 50 });
@@ -87,6 +96,7 @@
 	// to pick up runs that may have been persisted just after the datasource was selected.
 	$effect(() => {
 		if (activeTab !== 'runs' || !datasource.id) return;
+		buildRunsStore.refresh();
 		engineRunsStore.refresh();
 	});
 
@@ -576,13 +586,42 @@
 		}
 		return 'passing';
 	});
+	type DatasourceRunRow = {
+		id: string;
+		kind: string;
+		status: string;
+		durationMs: number | null;
+		createdAt: string;
+		builtTag: boolean;
+	};
+
 	const ds = $derived(datasourceQuery.data ?? datasource);
 	const csv = $derived(isCsv(ds));
 	const excel = $derived(isExcel(ds));
-	const runs = $derived(engineRunsStore.runs);
-	const filteredRuns = $derived.by(() => {
-		if (showPreviews) return runs;
-		return runs.filter((run: EngineRun) => run.kind !== 'preview');
+	const filteredRuns = $derived.by((): DatasourceRunRow[] => {
+		const buildRows = buildRunsStore.builds.map((run: ActiveBuildSummary) => ({
+			id: run.build_id,
+			kind: run.current_kind ?? 'build',
+			status: run.status,
+			durationMs: run.elapsed_ms,
+			createdAt: run.started_at,
+			builtTag:
+				run.current_output_id === datasource.id || run.result_json?.datasource_id === datasource.id
+		}));
+		const engineRows = engineRunsStore.runs
+			.filter((run: EngineRun) => run.kind !== 'build')
+			.map((run: EngineRun) => ({
+				id: run.id,
+				kind: run.kind,
+				status: run.status,
+				durationMs: run.duration_ms,
+				createdAt: run.created_at,
+				builtTag: false
+			}));
+		const rows = [...buildRows, ...engineRows].filter(
+			(run) => showPreviews || run.kind !== 'preview'
+		);
+		return rows.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
 	});
 	const isOutputDatasource = $derived(ds.created_by === 'analysis');
 	const scheduleAnalysisId = $derived(
@@ -607,14 +646,18 @@
 		return `${(ms / 1000).toFixed(2)}s`;
 	}
 
-	function getDatasourceTag(run: EngineRun): 'created' | 'updated' | null {
-		const result = run.result_json;
-		if (!result || typeof result !== 'object') return null;
-		if (result.datasource_id !== datasource.id) return null;
-		const kind = run.kind as string;
-		if (kind === 'export' || kind === 'datasource_create') return 'created';
-		if (kind === 'datasource_update') return 'updated';
-		return null;
+	function runStatusLabel(status: string): string {
+		if (status === 'completed' || status === 'success') return 'Success';
+		if (status === 'running') return 'Running';
+		if (status === 'queued') return 'Queued';
+		if (status === 'cancelled') return 'Cancelled';
+		return 'Failed';
+	}
+
+	function runStatusTone(status: string): 'success' | 'active' | 'error' {
+		if (status === 'completed' || status === 'success') return 'success';
+		if (status === 'running' || status === 'queued') return 'active';
+		return 'error';
 	}
 </script>
 
@@ -1639,7 +1682,7 @@
 						Show previews
 					{/if}
 				</button>
-				{#if engineRunsStore.status === 'connecting'}
+				{#if buildRunsStore.status === 'connecting' || engineRunsStore.status === 'connecting'}
 					<div
 						class={css({
 							display: 'flex',
@@ -1654,21 +1697,21 @@
 						<Loader size={24} class={css({ animation: 'spin 1s linear infinite' })} />
 						<p class={css({ fontSize: 'sm' })}>Loading runs...</p>
 					</div>
-				{:else if engineRunsStore.status === 'error'}
+				{:else if buildRunsStore.status === 'error' || engineRunsStore.status === 'error'}
 					<Callout tone="error">
 						<div class={css({ display: 'flex', alignItems: 'flex-start', gap: '3' })}>
 							<CircleAlert size={20} />
 							<div class={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
 								<p class={css({ margin: '0', fontWeight: 'semibold' })}>Failed to load runs</p>
 								<p class={css({ margin: '0', fontSize: 'sm', opacity: '0.8' })}>
-									{engineRunsStore.error ?? 'Unknown error'}
+									{buildRunsStore.error ?? engineRunsStore.error ?? 'Unknown error'}
 								</p>
 							</div>
 						</div>
 					</Callout>
 				{:else if filteredRuns.length === 0}
 					<div class={emptyText({ size: 'panel' })}>
-						<p class={css({ margin: '0' })}>No engine runs associated with this datasource.</p>
+						<p class={css({ margin: '0' })}>No runs associated with this datasource.</p>
 						<p class={css({ margin: '0', marginTop: '1', color: 'fg.tertiary' })}>
 							Runs will appear here when this datasource is used in analyses.
 						</p>
@@ -1702,7 +1745,6 @@
 							<span>Created</span>
 						</div>
 						{#each filteredRuns as run, index (run.id)}
-							{@const dsTag = getDatasourceTag(run)}
 							<div
 								class={css(
 									{
@@ -1719,44 +1761,45 @@
 								<div
 									class={css({ display: 'flex', alignItems: 'center', gap: '2', fontSize: 'xs' })}
 								>
-									{#if (run.kind as string) === 'preview'}
+									{#if run.kind === 'preview'}
 										<Eye size={14} class={css({ flexShrink: '0', color: 'accent.primary' })} />
 										<span>Preview</span>
-									{:else if (run.kind as string) === 'datasource_create'}
+									{:else if run.kind === 'build'}
 										<Save size={14} class={css({ flexShrink: '0', color: 'accent.primary' })} />
-										<span>Create</span>
-									{:else if (run.kind as string) === 'datasource_update'}
-										<RefreshCw size={14} class={css({ flexShrink: '0', color: 'fg.warning' })} />
-										<span>Update</span>
+										<span>Build</span>
+									{:else if run.kind === 'row_count'}
+										<RefreshCw size={14} class={css({ flexShrink: '0', color: 'fg.secondary' })} />
+										<span>Row Count</span>
 									{:else}
 										<Download size={14} class={css({ flexShrink: '0', color: 'fg.success' })} />
 										<span>Export</span>
 									{/if}
-									{#if dsTag === 'created'}
+									{#if run.builtTag}
 										<span
 											class={chip({ tone: 'accent' })}
-											title="This datasource was created from this export"
+											title="This datasource was produced by this run"
 										>
-											CREATED
-										</span>
-									{:else if dsTag === 'updated'}
-										<span
-											class={chip({ tone: 'warning' })}
-											title="This datasource was updated in this run"
-										>
-											UPDATED
+											BUILT
 										</span>
 									{/if}
 								</div>
 								<div
 									class={css({ display: 'flex', alignItems: 'center', gap: '1.5', fontSize: 'xs' })}
 								>
-									{#if run.status === 'success'}
+									{#if runStatusTone(run.status) === 'success'}
 										<CircleCheck size={14} class={css({ color: 'fg.success' })} />
-										<span class={css({ color: 'fg.success' })}>Success</span>
+										<span class={css({ color: 'fg.success' })}>{runStatusLabel(run.status)}</span>
+									{:else if runStatusTone(run.status) === 'active'}
+										<Loader
+											size={14}
+											class={css({ color: 'accent.primary', animation: 'spin 1s linear infinite' })}
+										/>
+										<span class={css({ color: 'accent.primary' })}
+											>{runStatusLabel(run.status)}</span
+										>
 									{:else}
 										<CircleX size={14} class={css({ color: 'fg.error' })} />
-										<span class={css({ color: 'fg.error' })}>Failed</span>
+										<span class={css({ color: 'fg.error' })}>{runStatusLabel(run.status)}</span>
 									{/if}
 								</div>
 								<span
@@ -1766,10 +1809,10 @@
 										color: 'fg.secondary'
 									})}
 								>
-									{formatDuration(run.duration_ms)}
+									{formatDuration(run.durationMs)}
 								</span>
 								<span class={css({ fontSize: 'xs', color: 'fg.tertiary' })}>
-									{formatDateDisplay(run.created_at)}
+									{formatDateDisplay(run.createdAt)}
 								</span>
 							</div>
 						{/each}

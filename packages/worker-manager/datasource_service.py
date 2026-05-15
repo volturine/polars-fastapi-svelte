@@ -28,7 +28,6 @@ from sqlmodel import Session, select
 
 from contracts.datasource.models import DataSource, DataSourceColumnMetadata
 from contracts.datasource.source_types import FILE_BASED_CATEGORIES, SOURCE_TYPE_CATEGORY, DataSourceType
-from core import engine_runs_service as engine_run_service
 from core.config import settings
 from core.exceptions import DataSourceConnectionError, DataSourceNotFoundError, DataSourceValidationError
 from core.iceberg_metadata import sync_iceberg_schema
@@ -215,7 +214,7 @@ def _build_datasource_result_json(
     return result
 
 
-def _log_datasource_create(
+def _log_build_create(
     session: Session,
     datasource_id: str,
     name: str,
@@ -223,41 +222,17 @@ def _log_datasource_create(
     config: Mapping[str, object],
     branch: str,
 ) -> None:
-    payload = engine_run_service.create_engine_run_payload(
-        analysis_id=None,
-        datasource_id=datasource_id,
-        kind='datasource_create',
-        status='success',
-        request_json={
-            'name': name,
-            'source_type': source_type.value,
-            'config': config,
-            'iceberg_options': {'branch': branch},
-        },
-        result_json=_build_datasource_result_json(datasource_id, name, source_type, config),
-    )
-    engine_run_service.create_engine_run(session, payload)
+    del session, datasource_id, name, source_type, config, branch
 
 
-def _log_datasource_update(
+def _log_build_update(
     session: Session,
     datasource_id: str,
     name: str,
     config: Mapping[str, object],
     branch: str | None,
 ) -> None:
-    request_json: dict[str, object] = {'name': name, 'source_type': DataSourceType.ICEBERG.value, 'config': dict(config)}
-    if branch is not None:
-        request_json['iceberg_options'] = {'branch': branch}
-    payload = engine_run_service.create_engine_run_payload(
-        analysis_id=None,
-        datasource_id=datasource_id,
-        kind='datasource_update',
-        status='success',
-        request_json=request_json,
-        result_json=_build_datasource_result_json(datasource_id, name, DataSourceType.ICEBERG, config),
-    )
-    engine_run_service.create_engine_run(session, payload)
+    del session, datasource_id, name, config, branch
 
 
 def _persist_schema_cache(session: Session, datasource: DataSource) -> None:
@@ -340,7 +315,7 @@ def create_file_datasource(
     session.add(datasource)
     session.commit()
     session.refresh(datasource)
-    _log_datasource_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch='master')
+    _log_build_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch='master')
     try:
         _persist_schema_cache(session, datasource)
     except Exception as exc:
@@ -381,7 +356,7 @@ def create_database_datasource(
             session.add(datasource)
             session.commit()
             session.refresh(datasource)
-            _log_datasource_create(session, datasource_id, name, DataSourceType.DATABASE, source_config, branch=branch)
+            _log_build_create(session, datasource_id, name, DataSourceType.DATABASE, source_config, branch=branch)
             return DataSourceResponse.model_validate(datasource)
         raise DataSourceConnectionError(
             'Failed to query database datasource',
@@ -404,7 +379,7 @@ def create_database_datasource(
     session.add(datasource)
     session.commit()
     session.refresh(datasource)
-    _log_datasource_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch=branch)
+    _log_build_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch=branch)
     try:
         _persist_schema_cache(session, datasource)
     except Exception as exc:
@@ -470,7 +445,7 @@ def create_iceberg_datasource(
     session.add(datasource)
     session.commit()
     session.refresh(datasource)
-    _log_datasource_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch=branch_name)
+    _log_build_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch=branch_name)
     try:
         _persist_schema_cache(session, datasource)
     except Exception as exc:
@@ -550,7 +525,7 @@ def refresh_external_datasource(session: Session, datasource_id: str) -> DataSou
     session.add(datasource)
     session.commit()
     session.refresh(datasource)
-    _log_datasource_update(session, datasource.id, datasource.name, next_config, branch=branch)
+    _log_build_update(session, datasource.id, datasource.name, next_config, branch=branch)
     return DataSourceResponse.model_validate(datasource)
 
 
@@ -585,26 +560,6 @@ def refresh_datasource_for_schedule(session: Session, datasource_id: str) -> Dat
     session.add(datasource)
     session.commit()
     session.refresh(datasource)
-    payload = engine_run_service.create_engine_run_payload(
-        analysis_id=None,
-        datasource_id=datasource.id,
-        kind='datasource_update',
-        status='success',
-        request_json={
-            'name': datasource.name,
-            'source_type': datasource.source_type,
-            'mode': 'schedule_schema_refresh',
-            'config': datasource.config,
-        },
-        result_json={
-            'datasource_id': datasource.id,
-            'datasource_name': datasource.name,
-            'schema_columns': len(schema.columns),
-            'row_count': schema.row_count,
-        },
-        triggered_by='schedule',
-    )
-    engine_run_service.create_engine_run(session, payload)
     return DataSourceResponse.model_validate(datasource)
 
 

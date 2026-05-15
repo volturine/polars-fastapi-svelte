@@ -152,6 +152,7 @@ def upgrade() -> None:
         sa.Column('request_json', sa.JSON(), nullable=False),
         sa.Column('starter_json', sa.JSON(), nullable=False),
         sa.Column('resource_config_json', sa.JSON(), nullable=True),
+        sa.Column('result_json', sa.JSON(), nullable=True),
         sa.Column('current_engine_run_id', sa.String(), nullable=True),
         sa.Column('current_kind', sa.String(), nullable=True),
         sa.Column('current_datasource_id', sa.String(), nullable=True),

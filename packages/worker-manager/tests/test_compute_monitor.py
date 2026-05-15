@@ -5,7 +5,7 @@ from typing import cast
 
 from contracts.compute.base import ComputeEngine
 
-from compute_monitor import monitor_engine_resources
+from runtime.compute_monitor import monitor_engine_resources
 
 
 class _StubProcess:
@@ -47,8 +47,8 @@ def test_monitor_engine_resources_normalizes_cpu_to_allocated_capacity(
     monkeypatch,
 ) -> None:
     process = _StubProcess(cpu_percent=200.0, memory_mb=256.0, threads=3)
-    monkeypatch.setattr("compute_monitor.psutil.Process", lambda pid: process)
-    monkeypatch.setattr("compute_monitor.psutil.cpu_count", lambda: 8)
+    monkeypatch.setattr("runtime.compute_monitor.psutil.Process", lambda pid: process)
+    monkeypatch.setattr("runtime.compute_monitor.psutil.cpu_count", lambda: 8)
 
     engine = _StubEngine()
 

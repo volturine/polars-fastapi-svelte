@@ -7,7 +7,7 @@ from contracts.compute.base import ComputeEngine, EngineStatusInfo
 from contracts.compute.schemas import EngineStatus
 from core.namespace import get_namespace
 
-from compute_engine import PolarsComputeEngine
+from runtime.compute_engine import PolarsComputeEngine
 
 logger = logging.getLogger(__name__)
 

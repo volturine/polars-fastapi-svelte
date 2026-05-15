@@ -254,8 +254,8 @@ class TestDataSourceConnect:
 
         assert response.status_code == 400
 
-    @patch("datasource_service.load_datasource")
-    @patch("datasource_service._write_iceberg_table")
+    @patch("datasources.datasource_service.load_datasource")
+    @patch("datasources.datasource_service._write_iceberg_table")
     def test_connect_iceberg_with_source_config_creates_iceberg(
         self,
         mock_write,

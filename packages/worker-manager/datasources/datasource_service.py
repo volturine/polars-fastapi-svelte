@@ -22,8 +22,7 @@ from pyiceberg.catalog import load_catalog
 from pyiceberg.table import Table
 from sqlmodel import Session, select
 
-from compute_operations.datasource import load_datasource
-from datasource_schemas import (
+from datasources.datasource_schemas import (
     ColumnSchema,
     ColumnStats,
     ColumnStatsResponse,
@@ -36,6 +35,7 @@ from datasource_schemas import (
     SnapshotCompareResponse,
     SnapshotPreview,
 )
+from operations.datasource import load_datasource
 
 logger = logging.getLogger(__name__)
 

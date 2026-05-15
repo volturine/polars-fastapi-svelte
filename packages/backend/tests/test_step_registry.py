@@ -30,13 +30,13 @@ def test_step_catalog_matches_public_step_types() -> None:
 
 
 def test_worker_converter_and_handler_registries_cover_catalog() -> None:
-    converter = _load_worker_module("step_converter_registry_test", WORKER_ROOT / "step_converter.py")
+    converter = _load_worker_module("step_converter_registry_test", WORKER_ROOT / "operations" / "step_converter.py")
     operations = {normalize_step_type(step_type) for step_type in STEP_CATALOG}
     assert set(converter._CONVERTERS) == operations
 
     compute_operations = _load_worker_module(
         "compute_operations_registry_test",
-        WORKER_ROOT / "compute_operations" / "__init__.py",
+        WORKER_ROOT / "operations" / "__init__.py",
     )
     assert set(compute_operations.HANDLERS) == operations
 

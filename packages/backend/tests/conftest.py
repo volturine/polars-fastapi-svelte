@@ -244,7 +244,7 @@ def clear_lock_watchers():
 
 @pytest.fixture(autouse=True, scope="function")
 def clear_active_build_registry():
-    from build_live import registry
+    from builds.build_live import registry
 
     asyncio.run(registry.clear())
     yield

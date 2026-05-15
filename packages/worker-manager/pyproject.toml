@@ -27,5 +27,5 @@
     ]
 
 [tool.hatch.build.targets.wheel]
-    packages = ["compute_core", "compute_operations"]
+    packages = ["builds", "datasources", "operations", "runtime"]
     include  = ["*.py"]

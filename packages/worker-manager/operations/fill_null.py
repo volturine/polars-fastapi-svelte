@@ -3,7 +3,7 @@ from collections.abc import Callable
 import polars as pl
 from contracts.compute.base import OperationHandler, OperationParams
 
-from compute_operations.type_casting import cast_value, get_polars_type
+from operations.type_casting import cast_value, get_polars_type
 
 
 class FillNullParams(OperationParams):

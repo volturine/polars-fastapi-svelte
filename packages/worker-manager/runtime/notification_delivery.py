@@ -7,7 +7,7 @@ from typing import Final
 from core import http as http_client
 from core.smtp import send_smtp_message
 
-from runtime_settings import (
+from runtime.runtime_settings import (
     get_resolved_smtp,
     get_resolved_telegram_settings,
     get_resolved_telegram_token,

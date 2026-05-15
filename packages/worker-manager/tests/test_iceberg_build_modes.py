@@ -9,7 +9,7 @@ from pyiceberg.schema import Schema as IcebergSchema
 from pyiceberg.types import NestedField, StringType
 from sqlmodel import Session
 
-from compute_service import _sync_iceberg_schema, export_data
+from runtime.compute_service import _sync_iceberg_schema, export_data
 
 
 class TestSyncIcebergSchema:
@@ -171,10 +171,10 @@ class TestBuildModeWiring:
         mock_catalog, mock_table, mock_arrow = self._setup_mocks(table_exists=True)
 
         with (
-            patch("compute_service.load_catalog", return_value=mock_catalog),
-            patch("compute_service.pl.read_parquet") as mock_read,
-            patch("compute_service._sync_iceberg_schema", return_value=False) as mock_sync,
-            patch("compute_service.os.path.getsize", return_value=100),
+            patch("runtime.compute_service.load_catalog", return_value=mock_catalog),
+            patch("runtime.compute_service.pl.read_parquet") as mock_read,
+            patch("runtime.compute_service._sync_iceberg_schema", return_value=False) as mock_sync,
+            patch("runtime.compute_service.os.path.getsize", return_value=100),
         ):
             mock_read.return_value.to_arrow.return_value = mock_arrow
             export_data(
@@ -206,10 +206,10 @@ class TestBuildModeWiring:
         mock_catalog, mock_table, mock_arrow = self._setup_mocks(table_exists=True)
 
         with (
-            patch("compute_service.load_catalog", return_value=mock_catalog),
-            patch("compute_service.pl.read_parquet") as mock_read,
-            patch("compute_service._sync_iceberg_schema") as mock_sync,
-            patch("compute_service.os.path.getsize", return_value=100),
+            patch("runtime.compute_service.load_catalog", return_value=mock_catalog),
+            patch("runtime.compute_service.pl.read_parquet") as mock_read,
+            patch("runtime.compute_service._sync_iceberg_schema") as mock_sync,
+            patch("runtime.compute_service.os.path.getsize", return_value=100),
         ):
             mock_read.return_value.to_arrow.return_value = mock_arrow
             export_data(
@@ -241,9 +241,9 @@ class TestBuildModeWiring:
         mock_catalog, mock_table, mock_arrow = self._setup_mocks(table_exists=False)
 
         with (
-            patch("compute_service.load_catalog", return_value=mock_catalog),
-            patch("compute_service.pl.read_parquet") as mock_read,
-            patch("compute_service.os.path.getsize", return_value=100),
+            patch("runtime.compute_service.load_catalog", return_value=mock_catalog),
+            patch("runtime.compute_service.pl.read_parquet") as mock_read,
+            patch("runtime.compute_service.os.path.getsize", return_value=100),
         ):
             mock_read.return_value.to_arrow.return_value = mock_arrow
             export_data(
@@ -275,9 +275,9 @@ class TestBuildModeWiring:
         mock_catalog.table_exists.side_effect = [True, False]
 
         with (
-            patch("compute_service.load_catalog", return_value=mock_catalog),
-            patch("compute_service.pl.read_parquet") as mock_read,
-            patch("compute_service.os.path.getsize", return_value=100),
+            patch("runtime.compute_service.load_catalog", return_value=mock_catalog),
+            patch("runtime.compute_service.pl.read_parquet") as mock_read,
+            patch("runtime.compute_service.os.path.getsize", return_value=100),
         ):
             mock_read.return_value.to_arrow.return_value = mock_arrow
             export_data(
@@ -310,9 +310,9 @@ class TestBuildModeWiring:
         mock_catalog, mock_table, mock_arrow = self._setup_mocks(table_exists=False)
 
         with (
-            patch("compute_service.load_catalog", return_value=mock_catalog),
-            patch("compute_service.pl.read_parquet") as mock_read,
-            patch("compute_service.os.path.getsize", return_value=100),
+            patch("runtime.compute_service.load_catalog", return_value=mock_catalog),
+            patch("runtime.compute_service.pl.read_parquet") as mock_read,
+            patch("runtime.compute_service.os.path.getsize", return_value=100),
         ):
             mock_read.return_value.to_arrow.return_value = mock_arrow
             export_data(
@@ -345,14 +345,14 @@ class TestBuildModeWiring:
         mock_catalog, mock_table, mock_arrow = self._setup_mocks(table_exists=True)
 
         with (
-            patch("compute_service.load_catalog", return_value=mock_catalog),
-            patch("compute_service.pl.read_parquet") as mock_read,
+            patch("runtime.compute_service.load_catalog", return_value=mock_catalog),
+            patch("runtime.compute_service.pl.read_parquet") as mock_read,
             patch(
-                "compute_service.resolve_iceberg_metadata_path",
+                "runtime.compute_service.resolve_iceberg_metadata_path",
                 return_value="/tmp/iceberg/warehouse/ns/tbl/metadata/v1.metadata.json",
             ),
-            patch("compute_service._sync_iceberg_schema", return_value=False) as mock_sync,
-            patch("compute_service.os.path.getsize", return_value=100),
+            patch("runtime.compute_service._sync_iceberg_schema", return_value=False) as mock_sync,
+            patch("runtime.compute_service.os.path.getsize", return_value=100),
         ):
             mock_read.return_value.to_arrow.return_value = mock_arrow
             export_data(

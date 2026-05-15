@@ -13,8 +13,8 @@ from core.ai_clients import (
 )
 from pydantic import ValidationError
 
-from compute_operations.ai import AIHandler, AIParams
-from step_converter import convert_ai_config
+from operations.ai import AIHandler, AIParams
+from operations.step_converter import convert_ai_config
 
 # ---------------------------------------------------------------------------
 # parse_request_options
@@ -387,7 +387,7 @@ class TestAIHandler:
             "classified: World",
         ]
 
-        with patch("compute_operations.ai.get_ai_client", return_value=mock_client):
+        with patch("operations.ai.get_ai_client", return_value=mock_client):
             result = handler(
                 df.lazy(),
                 {
@@ -413,7 +413,7 @@ class TestAIHandler:
         mock_client = MagicMock()
         mock_client.generate_batch.return_value = ["ok1", "ok2"]
 
-        with patch("compute_operations.ai.get_ai_client", return_value=mock_client):
+        with patch("operations.ai.get_ai_client", return_value=mock_client):
             result = handler(
                 df.lazy(),
                 {
@@ -487,8 +487,8 @@ class TestAIHandler:
         ]
 
         with (
-            patch("compute_operations.ai.get_ai_client", return_value=mock_client),
-            patch("compute_operations.ai.time.sleep"),
+            patch("operations.ai.get_ai_client", return_value=mock_client),
+            patch("operations.ai.time.sleep"),
         ):
             result = handler(
                 df.lazy(),
@@ -517,7 +517,7 @@ class TestAIHandler:
             ["r5"],
         ]
 
-        with patch("compute_operations.ai.get_ai_client", return_value=mock_client):
+        with patch("operations.ai.get_ai_client", return_value=mock_client):
             result = handler(
                 df.lazy(),
                 {
@@ -538,7 +538,7 @@ class TestAIHandler:
         mock_client = MagicMock()
         mock_client.generate_batch.return_value = ["result"]
 
-        with patch("compute_operations.ai.get_ai_client", return_value=mock_client):
+        with patch("operations.ai.get_ai_client", return_value=mock_client):
             result = handler(
                 df.lazy(),
                 {
@@ -559,7 +559,7 @@ class TestAIHandler:
         mock_client = MagicMock()
         mock_client.generate_batch.return_value = ["result"]
 
-        with patch("compute_operations.ai.get_ai_client", return_value=mock_client):
+        with patch("operations.ai.get_ai_client", return_value=mock_client):
             result = handler(
                 df.lazy(),
                 {
@@ -581,7 +581,7 @@ class TestAIHandler:
         mock_client = MagicMock()
         mock_client.generate_batch.return_value = ["result"]
 
-        with patch("compute_operations.ai.get_ai_client", return_value=mock_client):
+        with patch("operations.ai.get_ai_client", return_value=mock_client):
             result = handler(
                 df.lazy(),
                 {

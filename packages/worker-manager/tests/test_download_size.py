@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from compute_service import MAX_DOWNLOAD_BYTES, _ensure_download_size
+from runtime.compute_service import MAX_DOWNLOAD_BYTES, _ensure_download_size
 
 
 def test_ensure_download_size_accepts_file_at_limit(tmp_path: Path) -> None:

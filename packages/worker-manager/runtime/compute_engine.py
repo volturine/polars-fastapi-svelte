@@ -30,20 +30,20 @@ from core.exceptions import PipelineValidationError
 from core.export_formats import get_export_format
 from core.iceberg_metadata import IcebergMetadataPathNotFoundError
 
-from compute_operations import HANDLERS
-from compute_operations.datasource import load_datasource
-from compute_operations.plot import (
+from operations import HANDLERS
+from operations.datasource import load_datasource
+from operations.plot import (
     ChartParams,
     compute_chart_data,
     compute_overlay_datasets,
 )
-from compute_utils import apply_steps, normalize_timezones
-from step_converter import (
+from operations.step_converter import (
     BackendStep,
     convert_config_to_params,
     convert_step_format,
     get_chart_type_for_step,
 )
+from runtime.compute_utils import apply_steps, normalize_timezones
 
 logger = logging.getLogger(__name__)
 

@@ -27,15 +27,15 @@ from core.database import init_db, run_db, run_settings_db
 from core.logging import configure_logging
 from core.namespace import reset_namespace, set_namespace_context
 
-from compute_manager import ProcessManager
-from compute_request_runtime import compute_request_loop
-from engine_notifications import create_snapshot_notifier
-from runtime_notifications import handle_runtime_payload
-from worker_runtime import (
+from runtime.compute_manager import ProcessManager
+from runtime.compute_request_runtime import compute_request_loop
+from runtime.engine_notifications import create_snapshot_notifier
+from runtime.runtime_notifications import handle_runtime_payload
+from runtime.worker_runtime import (
     build_worker_loop,
     runtime_namespaces,
 )
-from worker_runtime import (
+from runtime.worker_runtime import (
     worker_id as build_worker_id,
 )
 
@@ -145,7 +145,7 @@ async def run_build_worker_process(
         )
     )
 
-    from build_execution import _run_queued_build_job
+    from builds.build_execution import _run_queued_build_job
 
     async def run_job(build_id: str) -> None:
         await _run_queued_build_job(manager=manager, build_id=build_id)

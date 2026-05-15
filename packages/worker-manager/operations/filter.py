@@ -9,7 +9,7 @@ from contracts.enums import DataForgeStrEnum
 from core.config import settings
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from compute_operations._validation import validate_regex_pattern
+from operations.validation import validate_regex_pattern
 
 
 class FilterValueType(DataForgeStrEnum):

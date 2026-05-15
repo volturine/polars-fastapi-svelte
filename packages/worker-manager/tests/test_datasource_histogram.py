@@ -1,6 +1,6 @@
 import polars as pl
 
-from datasource_service import _compute_histogram
+from datasources.datasource_service import _compute_histogram
 
 
 class TestDatasourceHistogram:

@@ -2,8 +2,8 @@ import json
 import time
 import uuid
 
-import compute_service
-from compute_manager import ProcessManager
+from runtime import compute_service
+from runtime.compute_manager import ProcessManager
 
 
 def _measure(func, *args, **kwargs):

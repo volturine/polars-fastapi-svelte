@@ -6,14 +6,14 @@ import pytest
 from core.exceptions import PipelineExecutionError
 from pydantic import ValidationError
 
-from compute_operations.notification import (
+from operations.notification import (
     NotificationHandler,
     NotificationParams,
     _build_message,
 )
-from compute_service import _send_pipeline_notifications
-from notification_delivery import NotificationService, render_template
-from step_converter import convert_notification_config
+from operations.step_converter import convert_notification_config
+from runtime.compute_service import _send_pipeline_notifications
+from runtime.notification_delivery import NotificationService, render_template
 
 
 @dataclass(frozen=True)
@@ -189,7 +189,7 @@ class TestNotificationHandler:
         handler = NotificationHandler()
         lf = pl.DataFrame({"body": ["hello", "world", "test"]}).lazy()
 
-        with patch("compute_operations.notification.notification_service") as mock_svc:
+        with patch("operations.notification.notification_service") as mock_svc:
             result = handler(
                 lf,
                 {
@@ -215,7 +215,7 @@ class TestNotificationHandler:
         handler = NotificationHandler()
         lf = pl.DataFrame({"body": ["hello"]}).lazy()
 
-        with patch("compute_operations.notification.notification_service") as mock_svc:
+        with patch("operations.notification.notification_service") as mock_svc:
             result = handler(
                 lf,
                 {
@@ -236,8 +236,8 @@ class TestNotificationHandler:
         lf = pl.DataFrame({"msg": ["hi"]}).lazy()
 
         with (
-            patch("compute_operations.notification.notification_service") as mock_svc,
-            patch("compute_operations.notification.get_resolved_telegram_settings") as mock_settings,
+            patch("operations.notification.notification_service") as mock_svc,
+            patch("operations.notification.get_resolved_telegram_settings") as mock_settings,
         ):
             mock_settings.return_value = {"enabled": True, "token": "tok"}
             result = handler(
@@ -262,7 +262,7 @@ class TestNotificationHandler:
             },
         ).lazy()
 
-        with patch("compute_operations.notification.notification_service") as mock_svc:
+        with patch("operations.notification.notification_service") as mock_svc:
             result = handler(
                 lf,
                 {
@@ -283,7 +283,7 @@ class TestNotificationHandler:
         handler = NotificationHandler()
         lf = pl.DataFrame({"col": ["ok", "bad", "ok2"]}).lazy()
 
-        with patch("compute_operations.notification.notification_service") as mock_svc:
+        with patch("operations.notification.notification_service") as mock_svc:
             mock_svc.send_email.side_effect = [None, RuntimeError("SMTP down"), None]
             result = handler(
                 lf,
@@ -305,7 +305,7 @@ class TestNotificationHandler:
         handler = NotificationHandler()
         lf = pl.DataFrame({"col": []}).cast({"col": pl.Utf8}).lazy()
 
-        with patch("compute_operations.notification.notification_service") as mock_svc:
+        with patch("operations.notification.notification_service") as mock_svc:
             result = handler(
                 lf,
                 {
@@ -340,7 +340,7 @@ class TestNotificationHandler:
         handler = NotificationHandler()
         lf = pl.DataFrame({"v": list(range(25))}).lazy()
 
-        with patch("compute_operations.notification.notification_service") as mock_svc:
+        with patch("operations.notification.notification_service") as mock_svc:
             result = handler(
                 lf,
                 {
@@ -360,7 +360,7 @@ class TestNotificationHandler:
         handler = NotificationHandler()
         lf = pl.DataFrame({"a": [1, 2], "b": ["x", "y"]}).lazy()
 
-        with patch("compute_operations.notification.notification_service"):
+        with patch("operations.notification.notification_service"):
             result = handler(
                 lf,
                 {
@@ -381,8 +381,8 @@ class TestNotificationHandler:
         lf = pl.DataFrame({"msg": ["hello"]}).lazy()
 
         with (
-            patch("compute_operations.notification.notification_service") as mock_svc,
-            patch("compute_operations.notification.get_resolved_telegram_settings") as mock_settings,
+            patch("operations.notification.notification_service") as mock_svc,
+            patch("operations.notification.get_resolved_telegram_settings") as mock_settings,
         ):
             mock_settings.return_value = {"enabled": True, "token": "tok"}
             result = handler(
@@ -405,8 +405,8 @@ class TestNotificationHandler:
         lf = pl.DataFrame({"msg": ["hi"], "chat_id": ["888"]}).lazy()
 
         with (
-            patch("compute_operations.notification.notification_service") as mock_svc,
-            patch("compute_operations.notification.get_resolved_telegram_settings") as mock_settings,
+            patch("operations.notification.notification_service") as mock_svc,
+            patch("operations.notification.get_resolved_telegram_settings") as mock_settings,
         ):
             mock_settings.return_value = {"enabled": True, "token": "tok"}
             result = handler(
@@ -429,8 +429,8 @@ class TestNotificationHandler:
         lf = pl.DataFrame({"msg": ["hi"], "chat_ids": [["111", "222"]]}).lazy()
 
         with (
-            patch("compute_operations.notification.notification_service") as mock_svc,
-            patch("compute_operations.notification.get_resolved_telegram_settings") as mock_settings,
+            patch("operations.notification.notification_service") as mock_svc,
+            patch("operations.notification.get_resolved_telegram_settings") as mock_settings,
         ):
             mock_settings.return_value = {"enabled": True, "token": "tok"}
             result = handler(
@@ -454,8 +454,8 @@ class TestNotificationHandler:
         lf = pl.DataFrame({"msg": ["hi"]}).lazy()
 
         with (
-            patch("compute_operations.notification.notification_service") as mock_svc,
-            patch("compute_operations.notification.get_resolved_telegram_settings") as mock_settings,
+            patch("operations.notification.notification_service") as mock_svc,
+            patch("operations.notification.get_resolved_telegram_settings") as mock_settings,
         ):
             mock_settings.return_value = {"enabled": True, "token": "tok"}
             result = handler(
@@ -481,8 +481,8 @@ class TestNotificationHandler:
         lf = pl.DataFrame({"msg": ["test"]}).lazy()
 
         with (
-            patch("compute_operations.notification.notification_service") as mock_svc,
-            patch("compute_operations.notification.get_resolved_telegram_settings") as mock_settings,
+            patch("operations.notification.notification_service") as mock_svc,
+            patch("operations.notification.get_resolved_telegram_settings") as mock_settings,
         ):
             mock_settings.return_value = {"enabled": True, "token": "tok"}
             result = handler(
@@ -572,7 +572,7 @@ class TestConvertNotificationConfig:
 
 class TestSendPipelineNotifications:
     def test_output_notification_email(self):
-        with patch("compute_service.notification_service") as mock_svc:
+        with patch("runtime.compute_service.notification_service") as mock_svc:
             _send_pipeline_notifications(
                 context={
                     "analysis_name": "Test",
@@ -594,7 +594,7 @@ class TestSendPipelineNotifications:
 
     def test_output_notification_telegram(self):
         with (
-            patch("compute_service.notification_service") as mock_svc,
+            patch("runtime.compute_service.notification_service") as mock_svc,
             patch("core.database.run_db") as mock_run_db,
         ):
             mock_run_db.side_effect = [[], [MockSubscriber("99999", "tok")]]
@@ -618,7 +618,7 @@ class TestSendPipelineNotifications:
         assert "success" in call_kwargs["message"]
 
     def test_output_notification_empty_recipient_skipped(self):
-        with patch("compute_service.notification_service") as mock_svc:
+        with patch("runtime.compute_service.notification_service") as mock_svc:
             _send_pipeline_notifications(
                 context={},
                 output_notification={
@@ -629,7 +629,7 @@ class TestSendPipelineNotifications:
         mock_svc.send_email.assert_not_called()
 
     def test_output_notification_none_skipped(self):
-        with patch("compute_service.notification_service") as mock_svc:
+        with patch("runtime.compute_service.notification_service") as mock_svc:
             _send_pipeline_notifications(
                 context={},
                 output_notification=None,
@@ -638,7 +638,7 @@ class TestSendPipelineNotifications:
         mock_svc.send_telegram.assert_not_called()
 
     def test_output_notification_excluded_recipients(self):
-        with patch("compute_service.notification_service") as mock_svc:
+        with patch("runtime.compute_service.notification_service") as mock_svc:
             _send_pipeline_notifications(
                 context={
                     "analysis_name": "Test",
@@ -660,7 +660,7 @@ class TestSendPipelineNotifications:
 
     def test_output_notification_telegram_uses_subscribers(self):
         with (
-            patch("compute_service.notification_service") as mock_svc,
+            patch("runtime.compute_service.notification_service") as mock_svc,
             patch("core.database.run_db") as mock_run_db,
         ):
             mock_run_db.side_effect = [[], [MockSubscriber("111", "token-a")]]
@@ -683,7 +683,7 @@ class TestSendPipelineNotifications:
 
     def test_output_notification_telegram_excludes_subscribers(self):
         with (
-            patch("compute_service.notification_service") as mock_svc,
+            patch("runtime.compute_service.notification_service") as mock_svc,
             patch("core.database.run_db") as mock_run_db,
         ):
             mock_run_db.side_effect = [[], [MockSubscriber("111", "token-a")]]
@@ -704,7 +704,7 @@ class TestSendPipelineNotifications:
         mock_svc.send_telegram.assert_not_called()
 
     def test_output_notification_error_raises(self):
-        with patch("compute_service.notification_service") as mock_svc:
+        with patch("runtime.compute_service.notification_service") as mock_svc:
             mock_svc.send_email.side_effect = RuntimeError("SMTP error")
             with pytest.raises(PipelineExecutionError):
                 _send_pipeline_notifications(
@@ -737,7 +737,7 @@ class TestNotificationService:
 
         with (
             patch(
-                "notification_delivery.get_resolved_smtp",
+                "runtime.notification_delivery.get_resolved_smtp",
                 return_value={
                     "host": "smtp.example.com",
                     "port": 587,

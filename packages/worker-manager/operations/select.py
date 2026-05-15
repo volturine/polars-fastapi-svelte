@@ -5,7 +5,7 @@ from contracts.compute.base import OperationHandler, OperationParams
 from contracts.enums import DataForgeStrEnum
 from pydantic import Field
 
-from compute_operations.type_casting import require_polars_type
+from operations.type_casting import require_polars_type
 
 
 class PolarsCastType(DataForgeStrEnum):

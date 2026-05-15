@@ -11,7 +11,7 @@ from contracts.compute.base import OperationHandler, OperationParams
 from contracts.step_config_enums import WithColumnsExprType
 from pydantic import BaseModel, ConfigDict, Field
 
-from compute_operations._validation import validate_no_reflection_escape
+from operations.validation import validate_no_reflection_escape
 
 # Builtins allowed inside UDF code.
 # Keep this as a narrow allowlist so aliased introspection helpers cannot escape the sandbox.

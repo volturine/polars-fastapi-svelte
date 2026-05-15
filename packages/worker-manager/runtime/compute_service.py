@@ -51,16 +51,16 @@ from pyiceberg.table import Table as IcebergTable
 from sqlalchemy import select
 from sqlmodel import Session, col
 
-from build_live import ActiveBuild
-from compute_manager import ProcessManager
-from compute_monitor import monitor_engine_resources
-from compute_utils import (
+from builds.build_live import ActiveBuild
+from runtime.compute_manager import ProcessManager
+from runtime.compute_monitor import monitor_engine_resources
+from runtime.compute_utils import (
     apply_steps,
     await_engine_result,
     find_step_index,
     resolve_applied_target,
 )
-from notification_delivery import notification_service, render_template
+from runtime.notification_delivery import notification_service, render_template
 
 logger = logging.getLogger(__name__)
 
@@ -522,7 +522,7 @@ def _send_pipeline_notifications(
         try:
             from core.database import run_db
 
-            from telegram_targets import (
+            from runtime.telegram_targets import (
                 get_notification_chat_targets,
                 list_active_subscriber_targets,
             )
@@ -2382,7 +2382,7 @@ def download_step(
         if not schema:
             raise ValueError("No data to download")
 
-        from compute_operations.fill_null import get_polars_type
+        from operations.fill_null import get_polars_type
 
         schema_types = {name: get_polars_type(dtype) or pl.Utf8() for name, dtype in schema.items()}
         df = pl.DataFrame(df_data, schema=schema_types)

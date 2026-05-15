@@ -9,10 +9,10 @@ from core.iceberg_metadata import (
 )
 from core.namespace import namespace_paths
 
-from compute_operations.fill_null import cast_value, get_fill_strategy, get_polars_type
-from compute_operations.filter import get_operator
-from compute_operations.groupby import get_aggregation
-from compute_operations.timeseries import TimeseriesParams
+from operations.fill_null import cast_value, get_fill_strategy, get_polars_type
+from operations.filter import get_operator
+from operations.groupby import get_aggregation
+from operations.timeseries import TimeseriesParams
 
 
 def test_get_operator():

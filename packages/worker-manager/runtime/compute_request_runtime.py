@@ -19,11 +19,11 @@ from core.exceptions import AppError, EngineBusyError, EngineNotFoundError
 from core.namespace import reset_namespace, set_namespace_context
 from sqlmodel import Session
 
-import compute_service as service
-import datasource_service
-from compute_manager import ProcessManager
-from datasource_schemas import CSVOptions
-from worker_runtime import runtime_namespaces
+from datasources import datasource_service
+from datasources.datasource_schemas import CSVOptions
+from runtime import compute_service as service
+from runtime.compute_manager import ProcessManager
+from runtime.worker_runtime import runtime_namespaces
 
 logger = logging.getLogger(__name__)
 

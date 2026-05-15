@@ -12,13 +12,13 @@ from contracts.enums import DataForgeStrEnum
 from core.iceberg_metadata import resolve_iceberg_branch_metadata_path
 from pydantic import ConfigDict
 
-from datasource_loading import (
+from datasources.datasource_loading import (
     _assert_select_only as shared_assert_select_only,
 )
-from datasource_loading import (
+from datasources.datasource_loading import (
     load_datasource_frame,
 )
-from step_converter import convert_step_format
+from operations.step_converter import convert_step_format
 
 
 class DatasourceSourceType(DataForgeStrEnum):
@@ -301,12 +301,12 @@ def _build_tab_pipeline(
     if not isinstance(steps, list):
         raise ValueError("Analysis tab steps must be a list")
 
-    from compute_utils import apply_steps
+    from runtime.compute_utils import apply_steps
 
     steps = apply_steps(steps)
     additional = _collect_analysis_sources(steps, pipeline, cache)
 
-    from compute_engine import PolarsComputeEngine
+    from runtime.compute_engine import PolarsComputeEngine
 
     for step in steps:
         step_id = step.get("id") or "step"

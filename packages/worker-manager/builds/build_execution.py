@@ -10,9 +10,9 @@ from core import build_runs_service as build_run_service
 from core.database import get_db
 from core.namespace import reset_namespace, set_namespace_context
 
-import compute_service as service
-from build_live import ActiveBuild
-from compute_manager import ProcessManager
+from builds.build_live import ActiveBuild
+from runtime import compute_service as service
+from runtime.compute_manager import ProcessManager
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +152,7 @@ async def _run_queued_build_job(*, manager: ProcessManager, build_id: str) -> No
         session = next(session_gen)
         try:
             try:
-                import datasource_service
+                from datasources import datasource_service
 
                 if current_kind == "raw":
                     refreshed = await asyncio.to_thread(

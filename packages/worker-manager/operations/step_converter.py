@@ -134,7 +134,7 @@ def convert_filter_config(config: dict) -> dict:
     Supports multiple conditions with AND/OR logic.
     Supports typed values (string, number, date, datetime, column) and NULL checks.
     """
-    from compute_operations.filter import FilterCondition
+    from operations.filter import FilterCondition
 
     return {
         "conditions": FilterCondition.normalize_many(config.get("conditions")),

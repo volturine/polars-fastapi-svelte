@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from step_converter import (
+from operations.step_converter import (
     BackendStep,
     FrontendStep,
     convert_config_to_params,

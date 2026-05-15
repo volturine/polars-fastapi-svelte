@@ -4,22 +4,22 @@ import polars as pl
 import pytest
 from pydantic import ValidationError
 
-from compute_operations.expression import parse_expression
-from compute_operations.fill_null import FillNullHandler
-from compute_operations.filter import FilterHandler
-from compute_operations.groupby import GroupByHandler
-from compute_operations.join import JoinHandler
-from compute_operations.pivot import PivotHandler
-from compute_operations.select import SelectHandler
-from compute_operations.sort import SortHandler
-from compute_operations.strings import StringTransformHandler, StringTransformMethod
-from compute_operations.timeseries import (
+from operations.expression import parse_expression
+from operations.fill_null import FillNullHandler
+from operations.filter import FilterHandler
+from operations.groupby import GroupByHandler
+from operations.join import JoinHandler
+from operations.pivot import PivotHandler
+from operations.select import SelectHandler
+from operations.sort import SortHandler
+from operations.strings import StringTransformHandler, StringTransformMethod
+from operations.timeseries import (
     TimeComponent,
     TimeseriesHandler,
     TimeseriesOperationType,
 )
-from compute_operations.union import UnionByNameHandler
-from compute_operations.with_columns import WithColumnsExprType, WithColumnsHandler
+from operations.union import UnionByNameHandler
+from operations.with_columns import WithColumnsExprType, WithColumnsHandler
 
 
 def _frame() -> pl.LazyFrame:
@@ -579,7 +579,7 @@ def test_with_columns_udf_can_use_sleep_helper(monkeypatch: pytest.MonkeyPatch) 
     calls: list[float] = []
 
     monkeypatch.setattr(
-        "compute_operations.with_columns.time.sleep",
+        "operations.with_columns.time.sleep",
         lambda seconds: calls.append(seconds),
     )
 
@@ -688,7 +688,7 @@ def test_pivot_handler_rejects_unbounded_auto_discovery(
     monkeypatch: pytest.MonkeyPatch,
 ):
     handler = PivotHandler()
-    monkeypatch.setattr("compute_operations.pivot._MAX_AUTO_PIVOT_VALUES", 2)
+    monkeypatch.setattr("operations.pivot._MAX_AUTO_PIVOT_VALUES", 2)
     with pytest.raises(ValueError, match="requires explicit on_columns"):
         handler(
             pl.DataFrame({"idx": ["a", "a", "a"], "col": ["x", "y", "z"], "val": [1, 2, 3]}).lazy(),

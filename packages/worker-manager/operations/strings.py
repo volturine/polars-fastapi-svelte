@@ -4,7 +4,7 @@ import polars as pl
 from contracts.compute.base import OperationHandler, OperationParams
 from contracts.step_config_enums import StringTransformMethod
 
-from compute_operations._validation import validate_regex_pattern
+from operations.validation import validate_regex_pattern
 
 
 class StringTransformParams(OperationParams):

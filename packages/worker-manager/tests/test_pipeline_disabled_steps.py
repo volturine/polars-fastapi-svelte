@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
-from compute_engine import PolarsComputeEngine
-from compute_utils import apply_steps, resolve_applied_target
+from runtime.compute_engine import PolarsComputeEngine
+from runtime.compute_utils import apply_steps, resolve_applied_target
 
 
 def test_apply_steps_skips_disabled_and_relinks():
@@ -49,8 +49,8 @@ def test_resolve_applied_target_returns_parent_when_disabled():
     assert target == "s1"
 
 
-@patch("compute_engine.load_datasource")
-@patch("compute_engine.PolarsComputeEngine._apply_step")
+@patch("runtime.compute_engine.load_datasource")
+@patch("runtime.compute_engine.PolarsComputeEngine._apply_step")
 def test_build_pipeline_skips_disabled_step(mock_apply_step: MagicMock, mock_load: MagicMock):
     fake_lf = MagicMock()
     mock_load.return_value = fake_lf

@@ -18,7 +18,7 @@ from core.database import run_db, run_settings_db
 from core.namespace import reset_namespace, set_namespace_context
 from core.namespaces_service import register_namespace
 
-from worker_runtime import build_worker_loop, next_job
+from runtime.worker_runtime import build_worker_loop, next_job
 
 
 def _load_runtime_process():

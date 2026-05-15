@@ -10,8 +10,8 @@ from sqlmodel import select
 
 
 class TestDatasourceRefresh:
-    @patch("datasource_service.load_datasource")
-    @patch("datasource_service._write_iceberg_table")
+    @patch("datasources.datasource_service.load_datasource")
+    @patch("datasources.datasource_service._write_iceberg_table")
     def test_refresh_external_builds_snapshot_fields(
         self,
         mock_write,
@@ -19,7 +19,7 @@ class TestDatasourceRefresh:
         test_db_session,
         sample_csv_file: Path,
     ):
-        from datasource_service import refresh_external_datasource
+        from datasources.datasource_service import refresh_external_datasource
 
         class _Snap:
             snapshot_id = 222

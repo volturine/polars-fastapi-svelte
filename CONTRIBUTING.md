@@ -28,7 +28,7 @@ Before you begin, ensure you have the following installed:
 You can run the prerequisites script for Ubuntu/Debian:
 
 ```bash
-./prerequisites.sh
+bash scripts/prerequisites.sh
 ```
 
 ### Quick Setup

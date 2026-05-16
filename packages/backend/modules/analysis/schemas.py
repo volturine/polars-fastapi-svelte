@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 from typing import Annotated, Any
 
+from contracts.analysis.step_types import is_step_type
 from contracts.enums import DataForgeStrEnum
 from pydantic import (
     BaseModel,
@@ -11,8 +12,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-
-from modules.analysis.step_types import is_step_type
 
 
 class PipelineStepSchema(BaseModel):

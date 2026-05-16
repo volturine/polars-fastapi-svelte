@@ -3,18 +3,8 @@
 import datetime as dt
 from typing import Any
 
-from contracts.enums import DataForgeStrEnum
+from contracts.healthcheck_models import HealthCheckType
 from pydantic import BaseModel, ConfigDict
-
-
-class CheckType(DataForgeStrEnum):
-    ROW_COUNT = "row_count"
-    COLUMN_NULL = "column_null"
-    COLUMN_UNIQUE = "column_unique"
-    COLUMN_RANGE = "column_range"
-    COLUMN_COUNT = "column_count"
-    NULL_PERCENTAGE = "null_percentage"
-    DUPLICATE_PERCENTAGE = "duplicate_percentage"
 
 
 class HealthCheckCreate(BaseModel):
@@ -22,7 +12,7 @@ class HealthCheckCreate(BaseModel):
 
     datasource_id: str
     name: str
-    check_type: CheckType
+    check_type: HealthCheckType
     config: dict[str, Any]
     enabled: bool = True
     critical: bool = False
@@ -32,7 +22,7 @@ class HealthCheckUpdate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     name: str | None = None
-    check_type: CheckType | None = None
+    check_type: HealthCheckType | None = None
     config: dict[str, Any] | None = None
     enabled: bool | None = None
     critical: bool | None = None
@@ -44,7 +34,7 @@ class HealthCheckResponse(BaseModel):
     id: str
     datasource_id: str
     name: str
-    check_type: CheckType
+    check_type: HealthCheckType
     config: dict[str, Any]
     enabled: bool
     critical: bool

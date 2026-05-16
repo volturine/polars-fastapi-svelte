@@ -11,6 +11,7 @@ import pytest
 from contracts.analysis.models import Analysis, AnalysisDataSource, AnalysisStatus
 from contracts.build_runs.models import BuildRunStatus
 from contracts.datasource.models import DataSource
+from contracts.engine_runs.schemas import EngineRunKind
 from contracts.scheduler.models import Schedule
 from contracts.scheduler.schemas import ScheduleCreate, ScheduleUpdate
 from core import (
@@ -960,7 +961,7 @@ class TestEnqueueScheduleRun:
 
         assert run is not None
         assert run.schedule_id == schedule.id
-        assert run.current_kind == "datasource_update"
+        assert run.current_kind == EngineRunKind.BUILD.value
         assert run.status == BuildRunStatus.QUEUED
 
 

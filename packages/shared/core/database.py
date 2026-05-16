@@ -156,7 +156,6 @@ def get_db():
     _init_namespace_db(namespace)
     engine_to_use = _get_tenant_engine()
     with Session(engine_to_use) as session:
-        session.connection()
         yield session
 
 
@@ -171,7 +170,6 @@ def run_db(func: Callable[Concatenate[Session, P], T], *args: P.args, **kwargs: 
     _init_namespace_db(namespace)
     engine_to_use = _get_tenant_engine()
     with Session(engine_to_use) as session:
-        session.connection()
         return func(session, *args, **kwargs)
 
 

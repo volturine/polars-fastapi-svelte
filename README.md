@@ -13,18 +13,34 @@ Data-Forge is a **local-first**, **no-code** data transformation tool. Build mul
 
 ## Table of Contents
 
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Quick Start](#quick-start)
-- [Configuration](#configuration)
-- [Development](#development)
-- [Project Structure](#project-structure)
-- [Architecture](#architecture)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [Security](#security)
-- [License](#license)
-- [Acknowledgements](#acknowledgements)
+- [Data-Forge Analysis Platform](#data-forge-analysis-platform)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Tech Stack](#tech-stack)
+  - [Quick Start](#quick-start)
+    - [Option 1: Docker (Recommended)](#option-1-docker-recommended)
+    - [Option 2: Local Development](#option-2-local-development)
+  - [Configuration](#configuration)
+    - [Production (Docker)](#production-docker)
+    - [Development (local runtime)](#development-local-runtime)
+    - [Key Variables](#key-variables)
+  - [Development](#development)
+    - [Prerequisites](#prerequisites)
+    - [Commands](#commands)
+    - [Running Tests](#running-tests)
+    - [Code Style](#code-style)
+  - [Project Structure](#project-structure)
+  - [Architecture](#architecture)
+    - [Compute Engine](#compute-engine)
+    - [Pipeline Execution](#pipeline-execution)
+    - [Scheduling](#scheduling)
+    - [Storage Layout](#storage-layout)
+  - [Roadmap](#roadmap)
+  - [Contributing](#contributing)
+  - [Security](#security)
+    - [Development](#development-1)
+  - [License](#license)
+  - [Acknowledgements](#acknowledgements)
 
 ---
 
@@ -121,11 +137,6 @@ just dev
 - API Docs: http://localhost:8000/docs
 - Background runtime: scheduler + dynamic build workers supervised by the local app runtime
 
-### Install Prerequisites (Ubuntu/Debian)
-
-```bash
-./prerequisites.sh
-```
 
 ---
 

@@ -6,7 +6,7 @@ from typing import TypeAlias
 import polars as pl
 from sqlmodel import Session
 
-from contracts.healthcheck_models import HealthCheck, HealthCheckResult
+from contracts.healthcheck_models import HealthCheck, HealthCheckResult, HealthCheckType
 
 HealthcheckDetails: TypeAlias = dict[str, object]
 HealthcheckEvaluator: TypeAlias = Callable[[HealthCheck, pl.DataFrame], tuple[bool, str, HealthcheckDetails]]
@@ -27,14 +27,14 @@ def _build_expressions(checks: list[HealthCheck], schema_names: set[str]) -> tup
 
     for check in checks:
         config = check.config
-        if check.check_type == 'row_count':
+        if check.check_type_kind() == HealthCheckType.ROW_COUNT:
             valid.append(check)
             if row_count_added:
                 continue
             exprs.append(pl.len().alias('row_count__count'))
             row_count_added = True
 
-        elif check.check_type == 'column_null':
+        elif check.check_type_kind() == HealthCheckType.COLUMN_NULL:
             col = str(config.get('column', ''))
             if col not in schema_names:
                 continue
@@ -43,7 +43,7 @@ def _build_expressions(checks: list[HealthCheck], schema_names: set[str]) -> tup
             exprs.append(pct.alias(f'{prefix}__null_pct'))
             valid.append(check)
 
-        elif check.check_type == 'column_unique':
+        elif check.check_type_kind() == HealthCheckType.COLUMN_UNIQUE:
             col = str(config.get('column', ''))
             if col not in schema_names:
                 continue
@@ -51,7 +51,7 @@ def _build_expressions(checks: list[HealthCheck], schema_names: set[str]) -> tup
             exprs.append(pl.col(col).n_unique().alias(f'{prefix}__unique'))
             valid.append(check)
 
-        elif check.check_type == 'column_range':
+        elif check.check_type_kind() == HealthCheckType.COLUMN_RANGE:
             col = str(config.get('column', ''))
             if col not in schema_names:
                 continue
@@ -60,10 +60,10 @@ def _build_expressions(checks: list[HealthCheck], schema_names: set[str]) -> tup
             exprs.append(pl.col(col).max().alias(f'{prefix}__max'))
             valid.append(check)
 
-        elif check.check_type == 'column_count':
+        elif check.check_type_kind() == HealthCheckType.COLUMN_COUNT:
             valid.append(check)
 
-        elif check.check_type == 'null_percentage':
+        elif check.check_type_kind() == HealthCheckType.NULL_PERCENTAGE:
             threshold = float(config.get('threshold', 0))
             if threshold < 0:
                 continue
@@ -77,7 +77,7 @@ def _build_expressions(checks: list[HealthCheck], schema_names: set[str]) -> tup
             exprs.append(pct.alias(f'{check.id}__null_pct'))
             valid.append(check)
 
-        elif check.check_type == 'duplicate_percentage':
+        elif check.check_type_kind() == HealthCheckType.DUPLICATE_PERCENTAGE:
             cols = config.get('columns')
             columns = [str(col) for col in cols] if isinstance(cols, list) else []
             if not columns:
@@ -209,13 +209,13 @@ def _evaluate_duplicate_percentage(check: HealthCheck, row: pl.DataFrame) -> tup
     return passed, message, details
 
 
-_EVALUATORS: dict[str, HealthcheckEvaluator] = {
-    'row_count': _evaluate_row_count,
-    'column_null': _evaluate_column_null,
-    'null_percentage': _evaluate_null_percentage,
-    'column_unique': _evaluate_column_unique,
-    'column_range': _evaluate_column_range,
-    'duplicate_percentage': _evaluate_duplicate_percentage,
+_EVALUATORS: dict[HealthCheckType, HealthcheckEvaluator] = {
+    HealthCheckType.ROW_COUNT: _evaluate_row_count,
+    HealthCheckType.COLUMN_NULL: _evaluate_column_null,
+    HealthCheckType.NULL_PERCENTAGE: _evaluate_null_percentage,
+    HealthCheckType.COLUMN_UNIQUE: _evaluate_column_unique,
+    HealthCheckType.COLUMN_RANGE: _evaluate_column_range,
+    HealthCheckType.DUPLICATE_PERCENTAGE: _evaluate_duplicate_percentage,
 }
 
 
@@ -250,8 +250,9 @@ def run_healthchecks(session: Session, checks: list[HealthCheck], lf: pl.LazyFra
 
     collected = lf.select(exprs).collect() if exprs else None
     for check in valid_checks:
-        evaluator = _EVALUATORS.get(check.check_type)
-        if check.check_type == 'column_count':
+        check_type = check.check_type_kind()
+        evaluator = _EVALUATORS.get(check_type)
+        if check_type == HealthCheckType.COLUMN_COUNT:
             passed, message, details = _evaluate_column_count(check, schema_names)
         elif collected is None or not evaluator:
             passed, message, details = False, f'Unknown check type: {check.check_type}', check.config

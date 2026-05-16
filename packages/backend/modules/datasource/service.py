@@ -7,20 +7,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import polars as pl
-from contracts.datasource.models import DataSource, DataSourceColumnMetadata
-from core.config import settings
+from contracts.datasource.models import DataSource, DataSourceColumnMetadata, DataSourceCreatedBy
+from contracts.datasource.source_types import DataSourceType
 from core.exceptions import (
     DataSourceNotFoundError,
     DataSourceValidationError,
     FileError,
 )
-from core.iceberg_metadata import sync_iceberg_schema
-from core.namespace import get_namespace, namespace_paths
+from core.namespace import namespace_paths
 from openpyxl import load_workbook
 from openpyxl.utils.cell import get_column_letter, range_boundaries
-from pyiceberg.catalog import load_catalog
-from pyiceberg.table import Table
 from sqlalchemy import select
 from sqlalchemy.orm import defer
 from sqlmodel import Session, col
@@ -36,7 +32,6 @@ from modules.datasource.schemas import (
     FileListResponse,
     SchemaInfo,
 )
-from modules.datasource.source_types import DataSourceType
 
 logger = logging.getLogger(__name__)
 
@@ -44,68 +39,6 @@ logger = logging.getLogger(__name__)
 def _open_excel_workbook(file_path: Path, *, table_name: str | None) -> Any:
     # Table metadata is unavailable in openpyxl read_only mode.
     return load_workbook(file_path, read_only=table_name is None, data_only=True)
-
-
-def _prepare_clean_target(clean_dir: Path, datasource_id: str, branch: str) -> Path:
-    target = clean_dir / datasource_id / branch
-    target.mkdir(parents=True, exist_ok=True)
-    return target
-
-
-def _write_iceberg_table(lazy: pl.LazyFrame, table_path: Path, build_mode: str) -> Table:
-    catalog_config = {
-        "type": "sql",
-        "uri": settings.database_url,
-        "warehouse": f"file://{table_path.parent}",
-    }
-    catalog = load_catalog("local", **catalog_config)
-    namespace = "clean"
-    catalog.create_namespace_if_not_exists(namespace)
-    identifier = f"{namespace}.{table_path.parent.name}"
-    arrow_table = lazy.collect().to_arrow()
-    if build_mode == "recreate" and catalog.table_exists(identifier):
-        catalog.drop_table(identifier)
-    if catalog.table_exists(identifier):
-        table = catalog.load_table(identifier)
-        if build_mode == "incremental":
-            table.append(arrow_table)
-        else:
-            _sync_iceberg_schema(table, arrow_table.schema)
-            table.overwrite(arrow_table)
-        return table
-    table = catalog.create_table(identifier, schema=arrow_table.schema, location=str(table_path))
-    table.append(arrow_table)
-    return table
-
-
-def _build_iceberg_config(paths, target_path: Path, branch: str, source_config: dict | None = None) -> dict:
-    return {
-        "catalog_type": "sql",
-        "catalog_uri": settings.database_url,
-        "warehouse": f"file://{paths.clean_dir}",
-        "namespace": "clean",
-        "table": target_path.parent.name,
-        "metadata_path": str(target_path.parent),
-        "branch": branch,
-        "source": source_config,
-        "namespace_name": get_namespace(),
-        "refresh": None,
-    }
-
-
-def _sync_iceberg_schema(table: Table, new_schema: Any) -> None:
-    sync_iceberg_schema(table, new_schema)
-
-
-def _set_snapshot_metadata(config: dict[str, Any], snapshot: Any | None) -> None:
-    if snapshot is None:
-        return
-    snapshot_id = str(snapshot.snapshot_id)
-    snapshot_timestamp_ms = int(snapshot.timestamp_ms)
-    config["current_snapshot_id"] = snapshot_id
-    config["current_snapshot_timestamp_ms"] = snapshot_timestamp_ms
-    config["snapshot_id"] = snapshot_id
-    config["snapshot_timestamp_ms"] = snapshot_timestamp_ms
 
 
 def create_placeholder_output_datasource(
@@ -125,7 +58,7 @@ def create_placeholder_output_datasource(
             raise ValueError(
                 f"Output result_id '{result_id}' is already owned by analysis '{existing_owner}', cannot reuse it in analysis '{analysis_id}'",
             )
-        if existing_owner is None and existing.created_by != "analysis":
+        if existing_owner is None and existing.created_by != DataSourceCreatedBy.ANALYSIS.value:
             raise ValueError(
                 f"Output result_id '{result_id}' conflicts with an existing datasource not managed by analysis outputs",
             )
@@ -133,7 +66,7 @@ def create_placeholder_output_datasource(
         next_config["analysis_tab_id"] = analysis_tab_id
         existing.config = next_config
         existing.created_by_analysis_id = analysis_id
-        existing.created_by = "analysis"
+        existing.created_by = DataSourceCreatedBy.ANALYSIS.value
         session.add(existing)
         session.flush()
         return
@@ -143,7 +76,7 @@ def create_placeholder_output_datasource(
         source_type=DataSourceType.ANALYSIS,
         config={"analysis_tab_id": analysis_tab_id},
         created_by_analysis_id=analysis_id,
-        created_by="analysis",
+        created_by=DataSourceCreatedBy.ANALYSIS.value,
         is_hidden=True,
         created_at=datetime.now(UTC).replace(tzinfo=None),
     )
@@ -177,7 +110,7 @@ def create_analysis_datasource(
         source_type=source_type,
         config=config,
         created_by_analysis_id=analysis_id,
-        created_by="analysis",
+        created_by=DataSourceCreatedBy.ANALYSIS.value,
         is_hidden=is_hidden,
         created_at=datetime.now(UTC).replace(tzinfo=None),
     )
@@ -186,7 +119,6 @@ def create_analysis_datasource(
     session.commit()
     session.refresh(datasource)
 
-    _log_build_create(session, datasource_id, name, source_type, config, branch="master")
     return DataSourceResponse.model_validate(datasource)
 
 
@@ -502,56 +434,6 @@ def _collect_preview_rows(
     return rows
 
 
-def _log_build_update(
-    session: Session,
-    datasource_id: str,
-    name: str,
-    config: dict,
-    branch: str | None,
-) -> None:
-    del session, datasource_id, name, config, branch
-
-
-def _log_build_create(
-    session: Session,
-    datasource_id: str,
-    name: str,
-    source_type: DataSourceType,
-    config: dict,
-    branch: str,
-) -> None:
-    del session, datasource_id, name, source_type, config, branch
-
-
-def _build_datasource_result_json(
-    datasource_id: str,
-    name: str,
-    source_type: DataSourceType,
-    config: dict,
-) -> dict[str, str]:
-    result = {"datasource_id": datasource_id, "datasource_name": name}
-    if source_type != DataSourceType.ICEBERG:
-        return result
-    source = config.get("source")
-    if not isinstance(source, dict):
-        return result
-    source_type_value = source.get("source_type")
-    if source_type_value not in {
-        DataSourceType.FILE,
-        DataSourceType.FILE.value,
-        DataSourceType.DATABASE,
-        DataSourceType.DATABASE.value,
-    }:
-        return result
-    snapshot_id = config.get("current_snapshot_id")
-    if snapshot_id is None:
-        snapshot_id = config.get("snapshot_id")
-    if snapshot_id is None:
-        return result
-    result["snapshot_id"] = str(snapshot_id)
-    return result
-
-
 def _get_column_metadata_map(session: Session, datasource_id: str) -> dict[str, str | None]:
     rows = session.execute(
         select(DataSourceColumnMetadata).where(DataSourceColumnMetadata.datasource_id == datasource_id),  # type: ignore[arg-type]
@@ -722,13 +604,13 @@ def update_datasource(
                 details={"datasource_id": datasource_id, "field": key},
             )
 
+        source_type = datasource.source_type_kind()
         immutable_keys = {
-            "file": ["file_path"],
-            "database": ["connection_string"],
-            "duckdb": ["db_path"],
-            "iceberg": ["metadata_path"],
+            DataSourceType.FILE: ["file_path"],
+            DataSourceType.DATABASE: ["connection_string"],
+            DataSourceType.ICEBERG: ["metadata_path"],
         }
-        for key in immutable_keys.get(datasource.source_type, []):
+        for key in immutable_keys.get(source_type, []):
             if key not in update.config:
                 continue
             if update.config.get(key) == datasource.config.get(key):
@@ -736,12 +618,6 @@ def update_datasource(
             raise DataSourceValidationError(
                 "Datasource location is immutable. Create a new datasource to change location.",
                 details={"datasource_id": datasource_id, "field": key},
-            )
-
-        if datasource.source_type == "duckdb" and "read_only" in update.config and update.config.get("read_only") != datasource.config.get("read_only", True):
-            raise DataSourceValidationError(
-                "Datasource mode is immutable. Create a new datasource to change read-only mode.",
-                details={"datasource_id": datasource_id, "field": "read_only"},
             )
 
         # Check if parsing options changed (requires schema re-extraction)
@@ -775,7 +651,7 @@ def update_datasource(
             ]
         )
         is_excel_file = next_config.get("file_type") == "excel"
-        if datasource.source_type == "file" and is_excel_file and has_excel_bounds:
+        if source_type == DataSourceType.FILE and is_excel_file and has_excel_bounds:
             file_path = next_config.get("file_path")
             if not file_path:
                 raise DataSourceValidationError(

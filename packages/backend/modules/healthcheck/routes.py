@@ -56,8 +56,8 @@ async def list_all_results(limit: int = 10, session: Session = Depends(get_db)):
 async def create_healthcheck(payload: schemas.HealthCheckCreate, session: Session = Depends(get_db)):
     """Create a healthcheck for a datasource.
 
-    Requires: datasource_id, name, check_type (one of: row_count, null_check, schema_check,
-    value_range, custom_query), and config (varies by check_type).
+    Requires: datasource_id, name, check_type (one of: row_count, column_null, column_unique,
+    column_range, column_count, null_percentage, duplicate_percentage), and config (varies by check_type).
     Use GET /datasource to find datasource IDs.
     """
     created = service.create_healthcheck(

@@ -95,7 +95,11 @@ async def compute_request_loop(
                 continue
             wait_task = asyncio.create_task(request_hub.wait(last_seen))
             stop_task = asyncio.create_task(stop_event.wait())
-            done, pending = await asyncio.wait({wait_task, stop_task}, return_when=asyncio.FIRST_COMPLETED)
+            done, pending = await asyncio.wait(
+                {wait_task, stop_task},
+                timeout=0.25,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
             for task in pending:
                 task.cancel()
             if pending:
@@ -103,9 +107,10 @@ async def compute_request_loop(
             if stop_task in done:
                 return
             with contextlib.suppress(asyncio.CancelledError):
-                value = await wait_task
-                if isinstance(value, int):
-                    last_seen = value
+                if wait_task in done:
+                    value = await wait_task
+                    if isinstance(value, int):
+                        last_seen = value
     finally:
         release_worker_requests(worker_id)
 

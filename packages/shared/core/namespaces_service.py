@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from contracts.namespaces.models import RuntimeNamespace
@@ -19,7 +20,18 @@ def register_namespace(session: Session, namespace: str | None) -> RuntimeNamesp
         return existing
     record = RuntimeNamespace(name=name, created_at=now, updated_at=now)
     session.add(record)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        existing = session.get(RuntimeNamespace, name)
+        if existing is None:
+            raise
+        existing.updated_at = now
+        session.add(existing)
+        session.commit()
+        session.refresh(existing)
+        return existing
     session.refresh(record)
     return record
 

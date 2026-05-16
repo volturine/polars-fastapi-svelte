@@ -5,10 +5,10 @@ from typing import Any
 from contracts.analysis.models import Analysis, AnalysisStatus
 from contracts.analysis_versions.models import AnalysisVersion
 from contracts.datasource.models import DataSource
+from contracts.datasource.source_types import DataSourceType
 from contracts.locks.models import ResourceLock
 
 from modules.analysis_versions.service import create_version, get_version
-from modules.datasource.source_types import DataSourceType
 
 
 def test_list_versions_returns_versions(test_db_session, client, sample_datasource: DataSource):

@@ -18,6 +18,7 @@ _NUMERIC_CONSTRAINTS: list[tuple[str, int | None, int | None]] = [
     ('polars_streaming_chunk_size', 0, None),
     ('max_concurrent_engines', 1, 100),
     ('workers', 0, 32),
+    ('compute_request_concurrency', 1, 100),
     ('build_worker_min_processes', 0, 100),
     ('build_worker_max_processes', 0, 100),
     ('build_worker_idle_exit_seconds', 1, None),
@@ -117,6 +118,7 @@ class Settings(BaseSettings):
     # Worker Configuration
     # Number of Gunicorn/Uvicorn workers (0 = auto: 2 * cores + 1)
     workers: int = Field(default=1, alias='WORKERS')
+    compute_request_concurrency: int = Field(default=4, alias='COMPUTE_REQUEST_CONCURRENCY')
     embedded_build_worker_enabled: bool = Field(default=False, alias='EMBEDDED_BUILD_WORKER_ENABLED')
 
     # Maximum connections per worker

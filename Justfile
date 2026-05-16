@@ -12,6 +12,19 @@ install:
     cd packages/worker-manager && uv sync
     cd packages/frontend && bun install
 
+# Update dependencies to latest available versions
+update-deps:
+    @echo "Updating backend dependencies to latest..."
+    cd packages/backend && uv lock --upgrade && uv sync
+    @echo "Updating frontend dependencies to latest..."
+    cd packages/frontend && bun update --latest
+    @echo "Updating scheduler dependencies to latest..."
+    cd packages/scheduler && uv lock --upgrade && uv sync
+    @echo "Updating shared dependencies to latest..."
+    cd packages/shared && uv lock --upgrade && uv sync
+    @echo "Updating worker-manager dependencies to latest..."
+    cd packages/worker-manager && uv lock --upgrade && uv sync
+
 dev:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -82,14 +95,13 @@ check:
     cd packages/frontend && bun run panda:codegen && bun run check && bun run lint
 
 verify:
-    cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-verify --cwd . -- just verify-raw
+    cd packages/shared && uv run python ../../scripts/scan_warnings.py -- just format
+    cd packages/shared && uv run python ../../scripts/scan_warnings.py -- just check
 
-verify-raw: format check
 
 test:
-    cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-test --cwd . -- just test-raw
-
-test-raw: test-backend-raw test-frontend-raw
+    cd packages/shared && uv run python ../../scripts/scan_warnings.py -- just test-backend-raw
+    cd packages/shared && uv run python ../../scripts/scan_warnings.py -- just test-frontend-raw
 
 test-backend-raw:
     #!/usr/bin/env bash
@@ -104,8 +116,8 @@ test-backend-raw:
 test-frontend-raw:
     cd packages/frontend && bun run test:unit
 
-test-e2e shard='':
-    cd packages/shared && uv run python ../../scripts/scan_warnings.py --scope just-test-e2e --cwd . -- scripts/test_e2e.sh {{shard}}
+test-e2e:
+    cd packages/shared && uv run python ../../scripts/scan_warnings.py --cwd . -- scripts/test_e2e.sh
 
 generate-step-types:
     cd packages/shared && uv run python ../../scripts/generate_ts_step_types.py

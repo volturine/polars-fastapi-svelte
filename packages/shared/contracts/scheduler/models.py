@@ -1,11 +1,19 @@
 import datetime as dt
 
+import croniter  # type: ignore[import-untyped]
 from sqlalchemy import Column, DateTime, String
 from sqlmodel import Field, SQLModel
 
 
 class Schedule(SQLModel, table=True):  # type: ignore[call-arg, assignment]
     __tablename__ = 'schedules'  # type: ignore[assignment]
+
+    @staticmethod
+    def compute_next_run(cron_expression: str, *, now: dt.datetime | None = None) -> dt.datetime | None:
+        if not cron_expression:
+            return None
+        base = now or dt.datetime.now(dt.UTC)
+        return croniter.croniter(cron_expression, base).get_next(dt.datetime)
 
     id: str = Field(sa_column=Column(String, primary_key=True))
     datasource_id: str = Field(sa_column=Column(String, nullable=False, index=True))

@@ -1,5 +1,6 @@
 import contextlib
 
+from contracts.analysis.step_types import is_step_type
 from contracts.compute import schemas as compute_schemas
 from core.database import get_db
 from fastapi import Depends, Header, HTTPException, Request, Response
@@ -16,7 +17,6 @@ from backend_core.validation import AnalysisId, parse_analysis_id
 from modules.analysis import schemas, service
 from modules.analysis.pipeline_compiler import compile_step
 from modules.analysis.step_schemas import get_step_catalog
-from modules.analysis.step_types import is_step_type
 from modules.auth.dependencies import get_current_user_id, get_optional_user
 from modules.auth.models import User
 from modules.compute import executor_client

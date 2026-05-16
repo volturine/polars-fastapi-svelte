@@ -1,7 +1,6 @@
 import uuid
 from datetime import UTC, datetime
 
-import croniter  # type: ignore[import-untyped]
 from contracts.analysis.models import Analysis
 from contracts.datasource.models import DataSource
 from contracts.runtime import ipc as runtime_ipc
@@ -27,11 +26,6 @@ from backend_core.validation import (
 from modules.mcp.router import MCPRouter
 
 router = MCPRouter(prefix="/schedules", tags=["schedules"])
-
-
-def _compute_next_run(cron_expr: str) -> datetime | None:
-    now = datetime.now(UTC)
-    return croniter.croniter(cron_expr, now).get_next(datetime)
 
 
 def _response(schedule: Schedule, datasource: DataSource | None, analysis: Analysis | None) -> schemas.ScheduleResponse:
@@ -109,7 +103,7 @@ def create_schedule(payload: schemas.ScheduleCreate, session: Session = Depends(
     datasource = session.get(DataSource, payload.datasource_id)
     if datasource is None:
         raise DataSourceNotFoundError(payload.datasource_id)
-    if datasource.created_by == "analysis" and not datasource.created_by_analysis_id:
+    if datasource.is_analysis_output and not datasource.created_by_analysis_id:
         raise ScheduleValidationError(
             "Datasource has no analysis provenance",
             details={"datasource_id": payload.datasource_id},
@@ -126,7 +120,7 @@ def create_schedule(payload: schemas.ScheduleCreate, session: Session = Depends(
         depends_on=payload.depends_on,
         trigger_on_datasource_id=payload.trigger_on_datasource_id,
         last_run=None,
-        next_run=_compute_next_run(payload.cron_expression),
+        next_run=Schedule.compute_next_run(payload.cron_expression),
         created_at=datetime.now(UTC),
     )
     session.add(schedule)
@@ -163,7 +157,7 @@ def update_schedule(
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(schedule, key, value)
     if payload.cron_expression:
-        schedule.next_run = _compute_next_run(payload.cron_expression)
+        schedule.next_run = Schedule.compute_next_run(payload.cron_expression)
     session.add(schedule)
     session.commit()
     session.refresh(schedule)

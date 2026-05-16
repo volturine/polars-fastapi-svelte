@@ -5,13 +5,12 @@ from email.message import EmailMessage
 from typing import Final
 
 from core import http as http_client
-from core.smtp import send_smtp_message
-
-from runtime.runtime_settings import (
+from core.settings_projection import (
     get_resolved_smtp,
     get_resolved_telegram_settings,
     get_resolved_telegram_token,
 )
+from core.smtp import send_smtp_message
 
 
 @dataclass(frozen=True)

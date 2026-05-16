@@ -15,8 +15,8 @@ from contracts.analysis.pipeline_types import (
 )
 from contracts.datasource.models import DataSource
 from core.ai_clients import AIError, get_ai_client
+from core.analysis_cycles import assert_no_analysis_cycle
 from core.exceptions import (
-    AnalysisCycleError,
     AnalysisNotFoundError,
     AnalysisValidationError,
     DataSourceNotFoundError,
@@ -450,9 +450,9 @@ def _validate_analysis_payload(
         datasource_row = session.get(DataSource, ds.id)
         if datasource_row:
             datasource_ids.append(ds.id)
-            if datasource_row.source_type == "analysis" and analysis_id:
-                source_id = _get_analysis_source_id(datasource_row)
-                _ensure_no_cycle(session, analysis_id, source_id)
+            if datasource_row.is_analysis_source and analysis_id:
+                source_id = datasource_row.analysis_source_id()
+                assert_no_analysis_cycle(session, analysis_id, source_id)
             continue
         raise DataSourceNotFoundError(ds.id)
 
@@ -988,52 +988,6 @@ def delete_analysis(
 
     session.delete(analysis)
     session.commit()
-
-
-def _get_analysis_source_id(datasource: DataSource) -> str:
-    analysis_id = datasource.created_by_analysis_id
-    if not analysis_id:
-        raise ValueError(f"Analysis datasource {datasource.id} missing created_by_analysis_id")
-    return str(analysis_id)
-
-
-def _ensure_no_cycle(session: Session, analysis_id: str, source_analysis_id: str) -> None:
-    if analysis_id == source_analysis_id:
-        raise AnalysisCycleError("Analysis cannot use itself as a datasource")
-    if _detect_cycle(session, analysis_id, source_analysis_id):
-        raise AnalysisCycleError("Analysis datasource introduces a cycle")
-
-
-def _detect_cycle(session: Session, analysis_id: str, source_analysis_id: str) -> bool:
-    visited: set[str] = set()
-
-    def visit(target_id: str) -> bool:
-        if target_id == analysis_id:
-            return True
-        if target_id in visited:
-            return False
-        visited.add(target_id)
-        links = (
-            session.execute(
-                select(AnalysisDataSource).where(col(AnalysisDataSource.analysis_id) == target_id),  # type: ignore[arg-type]
-            )
-            .scalars()
-            .all()
-        )
-        datasources = [session.get(DataSource, link.datasource_id) for link in links]
-        for datasource in datasources:
-            if not datasource:
-                continue
-            if datasource.source_type != "analysis":
-                continue
-            next_id = datasource.created_by_analysis_id
-            if not next_id:
-                continue
-            if visit(str(next_id)):
-                return True
-        return False
-
-    return visit(source_analysis_id)
 
 
 def add_step(

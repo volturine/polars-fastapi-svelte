@@ -1,5 +1,4 @@
 import logging
-import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -8,7 +7,7 @@ from typing import Any, Final
 from sqlalchemy import desc, select
 from sqlmodel import Session
 
-from contracts.analysis.step_types import get_step_type_label
+from contracts.analysis.step_types import get_step_timing_key
 from contracts.compute import schemas as compute_schemas
 from contracts.engine_runs.models import EngineRun
 from contracts.engine_runs.schemas import (
@@ -53,24 +52,11 @@ class EngineRunPayload:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
 
-_TIMING_SUFFIX_RE = re.compile(r'^(?P<base>.+?)_(?P<index>\d+)$')
-
-
 class _UnsetType:
     __slots__ = ()
 
 
 _UNSET: Final = _UnsetType()
-
-
-def _step_label_for_timing_key(key: str) -> tuple[str, str]:
-    match = _TIMING_SUFFIX_RE.match(key)
-    base_key = match.group('base') if match else key
-    suffix = int(match.group('index')) if match else None
-    label = get_step_type_label(base_key)
-    if suffix is not None:
-        label = f'{label} {suffix}'
-    return base_key, label
 
 
 def build_execution_entries(
@@ -136,7 +122,7 @@ def build_execution_entries(
         )
 
     for timing_key, duration_ms in normalized_timings.items():
-        base_key, label = _step_label_for_timing_key(timing_key)
+        base_key, label = get_step_timing_key(timing_key)
         append_entry(key=timing_key, label=label, category=EngineRunExecutionCategory.STEP, duration_ms=duration_ms, metadata={'step_type': base_key})
 
     if isinstance(collect_duration_ms, (int, float)):

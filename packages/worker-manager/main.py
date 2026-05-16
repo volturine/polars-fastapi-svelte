@@ -261,7 +261,9 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
         daemon=True,
     )
     heartbeat_thread.start()
-    request_task = asyncio.create_task(compute_request_loop(local_stop, worker_id=worker_id, manager=manager))
+    request_tasks = [
+        asyncio.create_task(compute_request_loop(local_stop, worker_id=worker_id, manager=manager)) for _ in range(settings.compute_request_concurrency)
+    ]
     children: dict[int, ManagedWorkerProcess] = {}
     last_seen = build_job_hub.version()
     try:
@@ -310,7 +312,7 @@ async def run_build_manager_process(*, stop_event: asyncio.Event | None = None) 
         for child in children.values():
             _stop_worker_process(child)
         manager.shutdown_all()
-        await asyncio.gather(request_task)
+        await asyncio.gather(*request_tasks)
         _stop_manager(worker_id)
         logger.info("Build worker manager shutdown complete")
 

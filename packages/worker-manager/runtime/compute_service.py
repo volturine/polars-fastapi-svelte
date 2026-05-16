@@ -19,7 +19,7 @@ import pyarrow as pa  # type: ignore[import-untyped]
 from contracts.analysis.models import Analysis
 from contracts.compute import schemas as compute_schemas
 from contracts.compute.schemas import BuildStatus, BuildTabStatus, ComputeRunStatus
-from contracts.datasource.models import DataSource
+from contracts.datasource.models import DataSource, DataSourceCreatedBy
 from contracts.datasource.source_types import DataSourceType
 from contracts.engine_runs.models import EngineRun
 from contracts.engine_runs.schemas import EngineRunKind, EngineRunStatus
@@ -601,7 +601,7 @@ def _upsert_output_datasource(
         if not keep_schema_cache:
             existing.schema_cache = schema_cache
         existing.created_by_analysis_id = analysis_id
-        existing.created_by = "analysis"
+        existing.created_by = DataSourceCreatedBy.ANALYSIS.value
         if is_hidden is not None:
             existing.is_hidden = is_hidden
         session.add(existing)
@@ -616,7 +616,7 @@ def _upsert_output_datasource(
         config=config,
         schema_cache=schema_cache,
         created_by_analysis_id=analysis_id,
-        created_by="analysis",
+        created_by=DataSourceCreatedBy.ANALYSIS.value,
         is_hidden=is_hidden if is_hidden is not None else True,
         created_at=datetime.now(UTC),
     )

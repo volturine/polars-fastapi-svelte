@@ -6,6 +6,7 @@ import uuid
 from pathlib import Path
 from shutil import copy2
 
+from contracts.datasource.source_types import DataSourceType
 from core.config import settings
 from core.database import get_db
 from core.exceptions import AppError
@@ -56,7 +57,6 @@ from modules.datasource.preflight import (
     create_preflight,
     get_preflight,
 )
-from modules.datasource.source_types import DataSourceType
 from modules.mcp.router import MCPRouter
 
 logger = logging.getLogger(__name__)
@@ -601,20 +601,14 @@ async def connect_datasource(
     File datasources must use the /upload endpoint instead.
     Use GET /datasource to verify creation.
     """
-    if datasource.source_type == DataSourceType.FILE:
+    source_type = datasource.source_type
+    if source_type == DataSourceType.FILE:
         raise HTTPException(
             status_code=400,
             detail="File datasource creation must use upload",
         )
-    if datasource.source_type == "duckdb":
-        raise HTTPException(
-            status_code=400,
-            detail="DuckDB datasource creation is no longer supported",
-        )
-    if datasource.source_type == "api":
-        raise HTTPException(status_code=400, detail="API datasources are not supported")
     owner_id = user.id if user else None
-    if datasource.source_type == DataSourceType.DATABASE:
+    if source_type == DataSourceType.DATABASE:
         db_config = schemas.DatabaseDataSourceConfig.model_validate(datasource.config)
         return await create_remote_database_datasource(
             session,
@@ -626,7 +620,7 @@ async def connect_datasource(
             branch=db_config.branch,
             owner_id=owner_id,
         )
-    if datasource.source_type == DataSourceType.ICEBERG:
+    if source_type == DataSourceType.ICEBERG:
         iceberg_config = schemas.IcebergDataSourceConfig.model_validate(datasource.config)
         return await create_remote_iceberg_datasource(
             session,
@@ -637,7 +631,7 @@ async def connect_datasource(
             branch=iceberg_config.branch,
             owner_id=owner_id,
         )
-    if datasource.source_type == DataSourceType.ANALYSIS:
+    if source_type == DataSourceType.ANALYSIS:
         raise HTTPException(
             status_code=400,
             detail="Direct creation of analysis datasources is no longer supported. Use analysis tabs with analysis_tab_id.",

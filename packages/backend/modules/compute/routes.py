@@ -33,7 +33,6 @@ from fastapi import Depends, HTTPException, Request, WebSocket, WebSocketDisconn
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from sqlmodel import Session
-from starlette.websockets import WebSocketState
 
 from backend_core.auth_config import settings as auth_settings
 from backend_core.dependencies import (
@@ -49,6 +48,13 @@ from backend_core.validation import (
     DataSourceId,
     parse_analysis_id,
     parse_datasource_id,
+)
+from backend_core.websocket import (
+    is_disconnect_runtime_error,
+    resolve_websocket_session_token,
+    safe_close_websocket,
+    safe_send_json,
+    websocket_disconnected,
 )
 from modules.auth.dependencies import get_current_user
 from modules.auth.models import User
@@ -66,52 +72,14 @@ logger = logging.getLogger(__name__)
 router = MCPRouter(prefix="/compute", tags=["compute"])
 
 
-def _websocket_disconnected(websocket: WebSocket) -> bool:
-    return websocket.client_state is WebSocketState.DISCONNECTED or websocket.application_state is WebSocketState.DISCONNECTED
-
-
-def _is_disconnect_runtime_error(exc: RuntimeError) -> bool:
-    message = str(exc)
-    return (
-        'Cannot call "receive" once a disconnect message has been received' in message
-        or 'Cannot call "send" once a close message has been sent' in message
-        or ("Unexpected ASGI message" in message and "websocket.close" in message)
-    )
-
-
-async def _safe_close_websocket(websocket: WebSocket) -> None:
-    if _websocket_disconnected(websocket):
-        return
-    try:
-        await websocket.close()
-    except RuntimeError as exc:
-        if _is_disconnect_runtime_error(exc):
-            return
-        raise
-
-
-async def _safe_send_json(websocket: WebSocket, payload: dict) -> bool:
-    if _websocket_disconnected(websocket):
-        return False
-    try:
-        await websocket.send_json(payload)
-    except RuntimeError as exc:
-        if _websocket_disconnected(websocket) or _is_disconnect_runtime_error(exc):
-            return False
-        raise
-    except WebSocketDisconnect:
-        return False
-    return True
-
-
 async def _wait_for_websocket_disconnect(websocket: WebSocket) -> None:
-    while not _websocket_disconnected(websocket):
+    while not websocket_disconnected(websocket):
         try:
             message = await websocket.receive()
         except WebSocketDisconnect:
             return
         except RuntimeError as exc:
-            if _websocket_disconnected(websocket) or _is_disconnect_runtime_error(exc):
+            if websocket_disconnected(websocket) or is_disconnect_runtime_error(exc):
                 return
             raise
         if message.get("type") == "websocket.disconnect":
@@ -132,16 +100,6 @@ def _override_compute_executor(container) -> Any | None:
     return getattr(container.app.state, "compute_override_executor", None)
 
 
-def _resolve_websocket_session_token(websocket: WebSocket) -> str | None:
-    cookie_token = websocket.cookies.get("session_token")
-    if cookie_token:
-        return cookie_token
-    header_token = websocket.headers.get("X-Session-Token")
-    if header_token:
-        return header_token
-    return None
-
-
 def _resolve_websocket_user(websocket: WebSocket) -> User | None:
     override = websocket.app.dependency_overrides.get(get_current_user)
     if override is not None:
@@ -151,7 +109,7 @@ def _resolve_websocket_user(websocket: WebSocket) -> User | None:
 
     from modules.auth.service import ensure_default_user, validate_session
 
-    token = _resolve_websocket_session_token(websocket)
+    token = resolve_websocket_session_token(websocket)
 
     def _lookup(session: Session) -> User | None:
         if token:
@@ -235,7 +193,7 @@ async def _replay_build_events(websocket: WebSocket, build_id: str, after_sequen
         session_gen.close()
     latest = after_sequence
     for row in rows:
-        if not await _safe_send_json(websocket, build_run_service.serialize_event_row(row)):
+        if not await safe_send_json(websocket, build_run_service.serialize_event_row(row)):
             return None
         latest = row.sequence
     return latest
@@ -328,7 +286,7 @@ async def _send_build_snapshot(websocket: WebSocket, build_id: str) -> None:
         session_gen.close()
     if message is None:
         raise HTTPException(status_code=404, detail="Active build not found")
-    await _safe_send_json(websocket, message.model_dump(mode="json"))
+    await safe_send_json(websocket, message.model_dump(mode="json"))
 
 
 async def _send_build_list_snapshot(websocket: WebSocket, namespace: str) -> None:
@@ -339,7 +297,7 @@ async def _send_build_list_snapshot(websocket: WebSocket, namespace: str) -> Non
     finally:
         session.close()
         session_gen.close()
-    await _safe_send_json(websocket, message.model_dump(mode="json"))
+    await safe_send_json(websocket, message.model_dump(mode="json"))
 
 
 def _get_latest_build_namespace_update(namespace: str) -> str | None:
@@ -362,7 +320,7 @@ async def _send_engine_snapshot(websocket: WebSocket) -> None:
     finally:
         session.close()
         session_gen.close()
-    await _safe_send_json(websocket, message.model_dump(mode="json"))
+    await safe_send_json(websocket, message.model_dump(mode="json"))
 
 
 async def _wait_for_engine_notification(websocket: WebSocket, namespace: str, last_seen: str | None) -> str | None:
@@ -826,28 +784,28 @@ async def engine_list_stream(websocket: WebSocket) -> None:
     except (asyncio.CancelledError, concurrent.futures.CancelledError):
         return
     except HTTPException as exc:
-        await _safe_send_json(
+        await safe_send_json(
             websocket,
             schemas.EngineWebsocketErrorMessage(error=str(exc.detail), status_code=exc.status_code).model_dump(mode="json"),
         )
     except RuntimeError as exc:
-        if _is_disconnect_runtime_error(exc):
+        if is_disconnect_runtime_error(exc):
             return
         logger.error("Engine websocket error: %s", exc, exc_info=True)
-        await _safe_send_json(
+        await safe_send_json(
             websocket,
             schemas.EngineWebsocketErrorMessage(error="An internal error occurred").model_dump(mode="json"),
         )
     except Exception as exc:
         logger.error("Engine websocket error: %s", exc, exc_info=True)
-        await _safe_send_json(
+        await safe_send_json(
             websocket,
             schemas.EngineWebsocketErrorMessage(error="An internal error occurred").model_dump(mode="json"),
         )
     finally:
         await engine_registry.remove_watcher(namespace, websocket)
         reset_namespace(token)
-        await _safe_close_websocket(websocket)
+        await safe_close_websocket(websocket)
 
 
 @router.websocket("/ws/builds")
@@ -870,7 +828,7 @@ async def build_list_stream(websocket: WebSocket) -> None:
             finally:
                 session.close()
                 session_gen.close()
-            sent = await _safe_send_json(websocket, payload)
+            sent = await safe_send_json(websocket, payload)
             if not sent:
                 return
             last_seen = updated
@@ -879,27 +837,27 @@ async def build_list_stream(websocket: WebSocket) -> None:
     except (asyncio.CancelledError, concurrent.futures.CancelledError):
         return
     except HTTPException as exc:
-        await _safe_send_json(
+        await safe_send_json(
             websocket,
             schemas.BuildWebsocketErrorMessage(error=str(exc.detail), status_code=exc.status_code).model_dump(mode="json"),
         )
     except RuntimeError as exc:
-        if _is_disconnect_runtime_error(exc):
+        if is_disconnect_runtime_error(exc):
             return
         logger.error("Build list websocket error: %s", exc, exc_info=True)
-        await _safe_send_json(
+        await safe_send_json(
             websocket,
             schemas.BuildWebsocketErrorMessage(error="An internal error occurred").model_dump(mode="json"),
         )
     except Exception as exc:
         logger.error("Build list websocket error: %s", exc, exc_info=True)
-        await _safe_send_json(
+        await safe_send_json(
             websocket,
             schemas.BuildWebsocketErrorMessage(error="An internal error occurred").model_dump(mode="json"),
         )
     finally:
         reset_namespace(token)
-        await _safe_close_websocket(websocket)
+        await safe_close_websocket(websocket)
 
 
 @router.websocket("/ws/builds/{build_id}")
@@ -929,7 +887,7 @@ async def active_build_stream(websocket: WebSocket, build_id: str) -> None:
                 last_sequence = replayed_sequence
                 continue
             break
-        sent = await _safe_send_json(websocket, message.model_dump(mode="json"))
+        sent = await safe_send_json(websocket, message.model_dump(mode="json"))
         if not sent:
             return
         last_sequence = max(last_sequence, message.last_sequence)
@@ -946,27 +904,27 @@ async def active_build_stream(websocket: WebSocket, build_id: str) -> None:
     except (asyncio.CancelledError, concurrent.futures.CancelledError):
         return
     except HTTPException as exc:
-        await _safe_send_json(
+        await safe_send_json(
             websocket,
             schemas.BuildWebsocketErrorMessage(error=str(exc.detail), status_code=exc.status_code).model_dump(mode="json"),
         )
     except RuntimeError as exc:
-        if _is_disconnect_runtime_error(exc):
+        if is_disconnect_runtime_error(exc):
             return
         logger.error("Active build websocket error: %s", exc, exc_info=True)
-        await _safe_send_json(
+        await safe_send_json(
             websocket,
             schemas.BuildWebsocketErrorMessage(error="An internal error occurred").model_dump(mode="json"),
         )
     except Exception as exc:
         logger.error("Active build websocket error: %s", exc, exc_info=True)
-        await _safe_send_json(
+        await safe_send_json(
             websocket,
             schemas.BuildWebsocketErrorMessage(error="An internal error occurred").model_dump(mode="json"),
         )
     finally:
         reset_namespace(token)
-        await _safe_close_websocket(websocket)
+        await safe_close_websocket(websocket)
 
 
 @router.get("/defaults", response_model=schemas.EngineDefaults, mcp=True)

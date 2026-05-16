@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, fields
 from typing import Final
 
@@ -32,6 +33,9 @@ class StepType:
     @property
     def is_plot_alias(self) -> bool:
         return self.chart_type is not None
+
+
+_TIMING_SUFFIX_RE = re.compile(r'^(?P<base>.+?)_(?P<index>\d+)$')
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,6 +116,15 @@ class StepTypes:
             return definition.label
         return ' '.join(part.capitalize() for part in step_type.split('_') if part) or 'Unnamed Step'
 
+    def timing_key(self, key: str) -> tuple[str, str]:
+        match = _TIMING_SUFFIX_RE.match(key)
+        base_key = match.group('base') if match else key
+        suffix = int(match.group('index')) if match else None
+        label = self.label(base_key)
+        if suffix is not None:
+            label = f'{label} {suffix}'
+        return base_key, label
+
 
 STEP_TYPES: Final[StepTypes] = StepTypes()
 
@@ -142,3 +155,7 @@ def chart_type_for_step(step_type: str) -> ChartType | None:
 
 def get_step_type_label(step_type: str) -> str:
     return STEP_TYPES.label(step_type)
+
+
+def get_step_timing_key(key: str) -> tuple[str, str]:
+    return STEP_TYPES.timing_key(key)

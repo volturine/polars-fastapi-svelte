@@ -173,5 +173,8 @@ export async function addStepAndOpenConfig(
 
 	const configPanel = page.locator(`[data-step-config="${stepType}"]`);
 	await expect(configPanel).toBeVisible({ timeout: 8_000 });
+	await expect(configPanel.getByText('Loading schema...')).toBeHidden({ timeout: 30_000 });
+	const configBody = configPanel.locator(':scope > *');
+	await expect.poll(async () => await configBody.count(), { timeout: 8_000 }).toBeGreaterThan(0);
 	return configPanel;
 }

@@ -1,3 +1,8 @@
-export default async function globalSetup(): Promise<void> {
-	// No-op: pure Playwright e2e auth/setup is created through visible UI flows in fixtures.
+import fs from 'node:fs';
+import type { FullConfig } from '@playwright/test';
+
+export default async function globalSetup(config: FullConfig): Promise<void> {
+	for (const project of config.projects) {
+		fs.mkdirSync(project.outputDir, { recursive: true });
+	}
 }

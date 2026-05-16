@@ -6,12 +6,9 @@ import pytest
 from core.exceptions import PipelineExecutionError
 from pydantic import ValidationError
 
-from operations.notification import (
-    NotificationHandler,
-    NotificationParams,
-    _build_message,
-)
+from operations.notification import NotificationHandler, NotificationParams
 from operations.step_converter import convert_notification_config
+from operations.template_placeholders import render_template_placeholders
 from runtime.compute_service import _send_pipeline_notifications
 from runtime.notification_delivery import NotificationService, render_template
 
@@ -162,24 +159,24 @@ class TestNotificationParams:
         assert params.bot_token == "123456:ABC-DEF"
 
 
-class TestBuildMessage:
+class TestRenderTemplatePlaceholders:
     def test_single_placeholder(self):
-        assert _build_message("Hello {{name}}!", {"name": "Alice"}) == "Hello Alice!"
+        assert render_template_placeholders("Hello {{name}}!", {"name": "Alice"}) == "Hello Alice!"
 
     def test_multiple_placeholders(self):
-        result = _build_message("{{title}}: {{body}}", {"title": "Alert", "body": "Fire"})
+        result = render_template_placeholders("{{title}}: {{body}}", {"title": "Alert", "body": "Fire"})
         assert result == "Alert: Fire"
 
     def test_missing_key_untouched(self):
-        result = _build_message("Hello {{name}}!", {})
+        result = render_template_placeholders("Hello {{name}}!", {})
         assert result == "Hello {{name}}!"
 
     def test_numeric_value(self):
-        result = _build_message("Count: {{n}}", {"n": 42})
+        result = render_template_placeholders("Count: {{n}}", {"n": 42})
         assert result == "Count: 42"
 
     def test_no_placeholders(self):
-        result = _build_message("Plain text", {"key": "val"})
+        result = render_template_placeholders("Plain text", {"key": "val"})
         assert result == "Plain text"
 
 

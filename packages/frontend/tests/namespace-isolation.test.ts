@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures.js';
-import { createDatasource, deleteDatasource } from './utils/api.js';
+import { uploadDatasourceViaUi } from './utils/user-flows.js';
+import { deleteDatasourceViaUI } from './utils/ui-cleanup.js';
 import { uid } from './utils/uid.js';
 import { screenshot } from './utils/visual.js';
 import { waitForAppShell, waitForDatasourceList } from './utils/readiness.js';
@@ -11,7 +12,7 @@ import { switchNamespace, expectNamespace } from './utils/namespace.js';
  * and reappear when switching back.
  */
 test.describe('Namespace – data isolation', () => {
-	test('datasource in namespace A is invisible from namespace B', async ({ page, request }) => {
+	test('datasource in namespace A is invisible from namespace B', async ({ page }) => {
 		test.setTimeout(90_000);
 
 		const id = uid();
@@ -19,13 +20,13 @@ test.describe('Namespace – data isolation', () => {
 		const nsB = `e2e-ns-b-${id}`;
 		const dsName = `e2e-iso-${id}`;
 
-		const dsId = await createDatasource(request, dsName, nsA);
-
 		try {
-			// 1. Navigate to datasources in nsA – datasource should be visible
-			await page.goto('/datasources');
+			await page.goto('/');
 			await waitForAppShell(page);
 			await switchNamespace(page, nsA);
+			await uploadDatasourceViaUi(page, dsName);
+
+			// 1. Datasource should be visible in nsA
 			await expect(page).toHaveURL(/datasources/, { timeout: 10_000 });
 			await waitForDatasourceList(page);
 			await expect(page.locator(`[data-ds-row="${dsName}"]`)).toBeVisible({ timeout: 10_000 });
@@ -52,7 +53,8 @@ test.describe('Namespace – data isolation', () => {
 			await expect(preview.getByText('Alice', { exact: true })).toBeVisible();
 			await screenshot(page, 'namespace', 'ds-preview-after-roundtrip');
 		} finally {
-			await deleteDatasource(request, dsId, nsA);
+			await switchNamespace(page, nsA);
+			await deleteDatasourceViaUI(page, dsName);
 		}
 	});
 
@@ -117,7 +119,7 @@ test.describe('Namespace – data isolation', () => {
 		await screenshot(page, 'namespace', 'route-preserved-udfs');
 	});
 
-	test('namespace switch clears stale datasource selection', async ({ page, request }) => {
+	test('namespace switch clears stale datasource selection', async ({ page }) => {
 		test.setTimeout(90_000);
 
 		const id = uid();
@@ -125,13 +127,14 @@ test.describe('Namespace – data isolation', () => {
 		const nsB = `e2e-stale-b-${id}`;
 		const dsName = `e2e-stale-ds-${id}`;
 
-		const dsId = await createDatasource(request, dsName, nsA);
-
 		try {
-			// 1. Select a datasource in nsA so the URL has ?id=
-			await page.goto('/datasources');
+			await page.goto('/');
 			await waitForAppShell(page);
 			await switchNamespace(page, nsA);
+			await uploadDatasourceViaUi(page, dsName);
+
+			// 1. Select a datasource in nsA so the URL has ?id=
+			await page.goto('/datasources');
 			await waitForDatasourceList(page);
 			await page.locator(`[data-ds-row="${dsName}"]`).click();
 			await expect(page).toHaveURL(/id=/, { timeout: 5_000 });
@@ -145,14 +148,12 @@ test.describe('Namespace – data isolation', () => {
 			await expect(page.getByText(/No datasource selected/i)).toBeVisible({ timeout: 5_000 });
 			await screenshot(page, 'namespace', 'stale-selection-cleared');
 		} finally {
-			await deleteDatasource(request, dsId, nsA);
+			await switchNamespace(page, nsA);
+			await deleteDatasourceViaUI(page, dsName);
 		}
 	});
 
-	test('namespace switch with open preview sends no stale compute requests', async ({
-		page,
-		request
-	}) => {
+	test('namespace switch with open preview sends no stale compute requests', async ({ page }) => {
 		test.setTimeout(90_000);
 
 		const id = uid();
@@ -160,12 +161,12 @@ test.describe('Namespace – data isolation', () => {
 		const nsB = `e2e-race-b-${id}`;
 		const dsName = `e2e-race-ds-${id}`;
 
-		const dsId = await createDatasource(request, dsName, nsA);
-
 		try {
-			await page.goto('/datasources');
+			await page.goto('/');
 			await waitForAppShell(page);
 			await switchNamespace(page, nsA);
+			await uploadDatasourceViaUi(page, dsName);
+			await page.goto('/datasources');
 			await waitForDatasourceList(page);
 			await page.locator(`[data-ds-row="${dsName}"]`).click();
 			await expect(page.locator('[data-preview-ready="true"]')).toBeVisible({ timeout: 30_000 });
@@ -183,16 +184,14 @@ test.describe('Namespace – data isolation', () => {
 			await expect(page).not.toHaveURL(/id=/, { timeout: 5_000 });
 			await waitForDatasourceList(page);
 
-			// Allow any in-flight requests to settle
-			await page.waitForTimeout(1_000);
-
 			// No preview requests should have been sent with the old namespace
 			const wrongNs = staleRequests.filter((ns) => ns === nsA);
 			expect(wrongNs).toHaveLength(0);
 
 			await screenshot(page, 'namespace', 'no-stale-preview-requests');
 		} finally {
-			await deleteDatasource(request, dsId, nsA);
+			await switchNamespace(page, nsA);
+			await deleteDatasourceViaUI(page, dsName);
 		}
 	});
 });

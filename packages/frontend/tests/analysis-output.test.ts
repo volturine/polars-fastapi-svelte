@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures.js';
 import { createDatasource, createAnalysis, shutdownEngine } from './utils/api.js';
 import { deleteAnalysisViaUI, deleteDatasourceViaUI } from './utils/ui-cleanup.js';
-import { gotoAnalysisEditor, waitForEditorReload } from './utils/analysis.js';
+import { addStepAndOpenConfig, gotoAnalysisEditor, waitForEditorReload } from './utils/analysis.js';
 import { uid } from './utils/uid.js';
 import { screenshot } from './utils/visual.js';
 // ── Output visibility toggle ────────────────────────────────────────────────
@@ -374,17 +374,8 @@ test.describe('Analyses – row count on non-view steps', () => {
 		const dsId = await createDatasource(request, dsName);
 		const aId = await createAnalysis(request, aName, dsId);
 		try {
-			await gotoAnalysisEditor(page, aId);
-
-			await page.locator('button[data-step="filter"]').click();
+			const configPanel = await addStepAndOpenConfig(page, aId, 'filter');
 			const filterNode = page.locator('[data-step-type="filter"]');
-			await expect(filterNode).toHaveCount(1, { timeout: 5_000 });
-			await expect(filterNode).toBeVisible({ timeout: 5_000 });
-
-			// Configure the filter with a valid condition before applying
-			await filterNode.locator('[data-action="edit"]').click();
-			const configPanel = page.locator('[data-step-config="filter"]');
-			await expect(configPanel).toBeVisible({ timeout: 8_000 });
 
 			// Select column 'id' in the first condition
 			const condColumnDropdown = configPanel.locator('button[aria-expanded]');

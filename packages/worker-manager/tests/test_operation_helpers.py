@@ -12,6 +12,7 @@ from core.namespace import namespace_paths
 from operations.fill_null import cast_value, get_fill_strategy, get_polars_type
 from operations.filter import get_operator
 from operations.groupby import get_aggregation
+from operations.template_placeholders import render_template_placeholders
 from operations.timeseries import TimeseriesParams
 
 
@@ -124,3 +125,12 @@ def test_resolve_iceberg_branch_metadata_path_accepts_explicit_data_root(tmp_pat
     metadata_file.write_text("{}", encoding="utf-8")
 
     assert resolve_iceberg_branch_metadata_path(str(metadata_dir.parent), None, data_root=data_root) == str(metadata_file)
+
+
+def test_render_template_placeholders_replaces_known_keys_and_leaves_unknown() -> None:
+    rendered = render_template_placeholders(
+        "Hello {{name}} from {{city}} / {{missing}}",
+        {"name": "Ada", "city": "London"},
+    )
+
+    assert rendered == "Hello Ada from London / {{missing}}"

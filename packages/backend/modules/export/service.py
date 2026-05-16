@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 from contracts.analysis.models import Analysis
@@ -13,6 +12,7 @@ from modules.export.generators import (
     generate_sql_code,
     select_tabs,
 )
+from modules.export.utils import build_export_filename
 
 
 @dataclass(frozen=True)
@@ -22,18 +22,6 @@ class CodeExportResult:
     filename: str
     tab_id: str | None
     format: str
-
-
-def _slug(value: str) -> str:
-    base = re.sub(r"[^a-z0-9]+", "_", value.strip().lower()).strip("_")
-    return base or "analysis"
-
-
-def _build_filename(analysis_name: str, tab_name: str | None, format_name: str) -> str:
-    extension = "py" if format_name == "polars" else "sql"
-    if tab_name:
-        return f"{_slug(analysis_name)}_{_slug(tab_name)}.{extension}"
-    return f"{_slug(analysis_name)}_pipeline.{extension}"
 
 
 def export_analysis_code(
@@ -59,7 +47,7 @@ def export_analysis_code(
     else:
         raise ValueError(f"Unsupported export format '{format_name}'")
 
-    filename = _build_filename(
+    filename = build_export_filename(
         analysis_name=analysis.name,
         tab_name=selection.target_tab.name if tab_id else None,
         format_name=format_name,

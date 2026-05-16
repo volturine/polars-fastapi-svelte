@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 
 from contracts.datasource.models import DataSource
-from contracts.healthcheck_models import HealthCheck, HealthCheckResult
+from contracts.healthcheck_models import HealthCheck, HealthCheckResult, HealthCheckType
 from core.exceptions import HealthcheckNotFoundError, HealthcheckValidationError
 from sqlalchemy import select
 from sqlmodel import Session
@@ -57,7 +57,7 @@ def update_healthcheck(
     if not check:
         raise HealthcheckNotFoundError(healthcheck_id)
     check_type = payload.check_type or check.check_type
-    if check_type == "row_count":
+    if HealthCheckType.require(check_type).requires_unique_per_datasource:
         _ensure_unique_row_count(session, check.datasource_id, check_type, exclude_id=healthcheck_id)
     for key, value in payload.model_dump(exclude_none=True).items():
         setattr(check, key, value)
@@ -114,14 +114,14 @@ def list_results_for_check(session: Session, healthcheck_id: str, limit: int = 1
 def _ensure_unique_row_count(
     session: Session,
     datasource_id: str,
-    check_type: str,
+    check_type: HealthCheckType | str,
     exclude_id: str | None = None,
 ) -> None:
-    if check_type != "row_count":
+    if not HealthCheckType.require(check_type).requires_unique_per_datasource:
         return
     query = select(HealthCheck).where(
         HealthCheck.datasource_id == datasource_id,  # type: ignore[arg-type]
-        HealthCheck.check_type == "row_count",  # type: ignore[arg-type]
+        HealthCheck.check_type == HealthCheckType.ROW_COUNT.value,  # type: ignore[arg-type]
     )
     if exclude_id:
         query = query.where(HealthCheck.id != exclude_id)  # type: ignore[arg-type]

@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-SHARD="${1:-}"
-set -euo pipefail
 set -a; source packages/shared/e2e.env; set +a
-PLAYWRIGHT_CMD=(npx playwright test --config=playwright.config.ts)
-if [ -n "$SHARD" ]; then
-    PLAYWRIGHT_CMD+=(--shard "$SHARD")
-fi
 unset VIRTUAL_ENV
 export UV_PYTHON="${E2E_PYTHON_VERSION}"
 DATA_DIR="${DATA_DIR}-run-$$"
@@ -123,23 +117,56 @@ echo "Backend is ready"
 echo "Waiting for frontend readiness"
 wait_for_url "http://127.0.0.1:${FRONTEND_PORT}" "frontend"
 echo "Frontend is ready"
-echo "Starting Playwright e2e tests"
-if [ -n "$SHARD" ]; then
-    echo "Using Playwright default workers=4 shard=$SHARD"
-else
-    echo "Using Playwright default workers=4"
-fi
+echo "Starting Playwright e2e tests across 4 shards"
+mkdir -p packages/frontend/tests/.artifacts/playwright
+for shard_index in 1 2 3 4; do
+    mkdir -p "packages/frontend/tests/.artifacts/playwright/test-results-shard-${shard_index}-of-4"
+    mkdir -p "packages/frontend/tests/.artifacts/playwright/playwright-report-shard-${shard_index}-of-4"
+done
 set +e
+pids=()
 (
-    cd packages/frontend && \
-    PLAYWRIGHT_DISABLE_WEB_SERVER=true \
-    exec python3 ../../scripts/run_with_timeout.py \
+    echo "Starting Playwright shard 1/4"
+    cd packages/frontend
+    PLAYWRIGHT_DISABLE_WEB_SERVER=true exec python3 ../../scripts/run_with_timeout.py \
         --timeout-seconds "${E2E_TIMEOUT_SECONDS:-0}" \
         --grace-seconds "${E2E_TIMEOUT_GRACE_SECONDS:-30}" \
         --heartbeat-seconds "${E2E_HEARTBEAT_SECONDS:-0}" \
-        -- "${PLAYWRIGHT_CMD[@]}"
-)
-status=$?
+        -- npx playwright test --config=playwright.config.ts --shard 1/4
+) & pids+=("$!")
+(
+    echo "Starting Playwright shard 2/4"
+    cd packages/frontend
+    PLAYWRIGHT_DISABLE_WEB_SERVER=true exec python3 ../../scripts/run_with_timeout.py \
+        --timeout-seconds "${E2E_TIMEOUT_SECONDS:-0}" \
+        --grace-seconds "${E2E_TIMEOUT_GRACE_SECONDS:-30}" \
+        --heartbeat-seconds "${E2E_HEARTBEAT_SECONDS:-0}" \
+        -- npx playwright test --config=playwright.config.ts --shard 2/4
+) & pids+=("$!")
+(
+    echo "Starting Playwright shard 3/4"
+    cd packages/frontend
+    PLAYWRIGHT_DISABLE_WEB_SERVER=true exec python3 ../../scripts/run_with_timeout.py \
+        --timeout-seconds "${E2E_TIMEOUT_SECONDS:-0}" \
+        --grace-seconds "${E2E_TIMEOUT_GRACE_SECONDS:-30}" \
+        --heartbeat-seconds "${E2E_HEARTBEAT_SECONDS:-0}" \
+        -- npx playwright test --config=playwright.config.ts --shard 3/4
+) & pids+=("$!")
+(
+    echo "Starting Playwright shard 4/4"
+    cd packages/frontend
+    PLAYWRIGHT_DISABLE_WEB_SERVER=true exec python3 ../../scripts/run_with_timeout.py \
+        --timeout-seconds "${E2E_TIMEOUT_SECONDS:-0}" \
+        --grace-seconds "${E2E_TIMEOUT_GRACE_SECONDS:-30}" \
+        --heartbeat-seconds "${E2E_HEARTBEAT_SECONDS:-0}" \
+        -- npx playwright test --config=playwright.config.ts --shard 4/4
+) & pids+=("$!")
+status=0
+for pid in "${pids[@]}"; do
+    if ! wait "$pid"; then
+        status=1
+    fi
+done
 set -e
 exit "$status"
 

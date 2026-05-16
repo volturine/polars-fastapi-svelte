@@ -8,9 +8,8 @@ from typing import Any
 import polars as pl
 import pytest
 from contracts.datasource.models import DataSource
+from contracts.datasource.source_types import DataSourceType
 from sqlmodel import Session
-
-from modules.datasource.source_types import DataSourceType
 
 
 class FauxDatasourceRuntime:

@@ -6,10 +6,15 @@ from fastapi import Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import run_in_threadpool
 from pydantic import ValidationError
 from sqlmodel import Session
-from starlette.websockets import WebSocketState
 
 from backend_core.dependencies import get_lock_owner_id, resolve_lock_owner_id
 from backend_core.error_handlers import handle_errors
+from backend_core.websocket import (
+    is_disconnect_runtime_error,
+    resolve_websocket_session_token,
+    safe_close_websocket,
+    safe_send_json,
+)
 from modules.locks import schemas, service, watchers
 from modules.mcp.router import MCPRouter
 
@@ -18,60 +23,11 @@ logger = logging.getLogger(__name__)
 router = MCPRouter(prefix="/locks", tags=["locks"])
 
 
-def _websocket_disconnected(websocket: WebSocket) -> bool:
-    return websocket.client_state is WebSocketState.DISCONNECTED or websocket.application_state is WebSocketState.DISCONNECTED
-
-
-def _is_disconnect_runtime_error(exc: RuntimeError) -> bool:
-    message = str(exc)
-    return (
-        'Cannot call "receive" once a disconnect message has been received' in message
-        or 'Cannot call "send" once a close message has been sent' in message
-        or 'Unexpected ASGI message "websocket.close"' in message
-        or 'WebSocket is not connected. Need to call "accept" first.' in message
-    )
-
-
-async def _safe_close_websocket(websocket: WebSocket) -> None:
-    if _websocket_disconnected(websocket):
-        return
-    try:
-        await websocket.close()
-    except RuntimeError as exc:
-        if _is_disconnect_runtime_error(exc):
-            return
-        raise
-
-
-async def _safe_send_json(websocket: WebSocket, payload: dict) -> bool:
-    if _websocket_disconnected(websocket):
-        return False
-    try:
-        await websocket.send_json(payload)
-    except RuntimeError as exc:
-        if _websocket_disconnected(websocket) or _is_disconnect_runtime_error(exc):
-            return False
-        raise
-    except WebSocketDisconnect:
-        return False
-    return True
-
-
-def _resolve_websocket_session_token(websocket: WebSocket) -> str | None:
-    cookie_token = websocket.cookies.get("session_token")
-    if cookie_token:
-        return cookie_token
-    header_token = websocket.headers.get("X-Session-Token")
-    if header_token:
-        return header_token
-    return None
-
-
 async def _get_websocket_owner_id(websocket: WebSocket) -> str | None:
     return await run_in_threadpool(
         run_settings_db,
         resolve_lock_owner_id,
-        _resolve_websocket_session_token(websocket),
+        resolve_websocket_session_token(websocket),
     )
 
 
@@ -89,11 +45,11 @@ async def _send_status(
     resource_id: str,
     lock: schemas.LockStatusResponse | None,
 ) -> None:
-    await _safe_send_json(websocket, _status_payload(resource_type, resource_id, lock))
+    await safe_send_json(websocket, _status_payload(resource_type, resource_id, lock))
 
 
 async def _send_error(websocket: WebSocket, error: str, status_code: int) -> None:
-    await _safe_send_json(
+    await safe_send_json(
         websocket,
         schemas.LockWebsocketErrorMessage(
             error=error,
@@ -108,7 +64,7 @@ async def _notify_watchers(resource_type: str, resource_id: str, lock: schemas.L
     namespace = get_namespace()
     for websocket in await watchers.registry.sockets(namespace, resource_type, resource_id):
         try:
-            sent = await _safe_send_json(websocket, payload)
+            sent = await safe_send_json(websocket, payload)
         except Exception:
             stale.append(websocket)
             continue
@@ -259,7 +215,7 @@ async def lock_websocket(websocket: WebSocket) -> None:
     watch_id: str | None = None
     watch_token: str | None = None
     await websocket.accept()
-    await _safe_send_json(websocket, schemas.LockWebsocketConnectedMessage().model_dump(mode="json"))
+    await safe_send_json(websocket, schemas.LockWebsocketConnectedMessage().model_dump(mode="json"))
     try:
         while True:
             try:
@@ -388,7 +344,7 @@ async def lock_websocket(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         return
     except RuntimeError as exc:
-        if _is_disconnect_runtime_error(exc):
+        if is_disconnect_runtime_error(exc):
             return
         logger.error("Lock websocket error: %s", exc, exc_info=True)
         await _send_error(websocket, "An internal error occurred", 500)
@@ -403,4 +359,4 @@ async def lock_websocket(websocket: WebSocket) -> None:
             if released:
                 await _notify_watchers(watch_type, watch_id, None)
         reset_namespace(token)
-        await _safe_close_websocket(websocket)
+        await safe_close_websocket(websocket)

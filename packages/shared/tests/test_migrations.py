@@ -14,6 +14,7 @@ def test_alembic_config_includes_runtime_scope(monkeypatch, tmp_path: Path) -> N
     assert config.get_main_option('sqlalchemy.url') == 'postgresql+psycopg://user:pass@host:5432/db'
     assert config.attributes['runtime_scope'] == 'tenant'
     assert config.attributes['target_schema'] == 'alpha'
+    assert config.attributes['configure_logging'] is False
 
 
 def test_migrate_runtime_runs_public_then_each_tenant(monkeypatch) -> None:

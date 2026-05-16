@@ -10,8 +10,8 @@ from contracts.analysis.models import Analysis
 from contracts.build_jobs.live import hub as build_job_hub
 from contracts.build_runs.models import BuildRunStatus
 from contracts.compute import schemas as compute_schemas
-from contracts.datasource.models import DataSource
-from contracts.engine_runs.models import EngineRun
+from contracts.datasource.models import DataSource, DataSourceTargetKind
+from contracts.engine_runs.schemas import EngineRunKind
 from contracts.runtime import ipc as runtime_ipc
 from contracts.scheduler.models import Schedule
 from contracts.scheduler.schemas import ScheduleCreate, ScheduleResponse, ScheduleUpdate
@@ -294,7 +294,7 @@ def _enqueue_schedule_analysis_build(
         request_json=request.model_dump(mode="json"),
         starter_json=compute_schemas.BuildStarter.for_schedule(schedule.id).model_dump(mode="json"),
         status=BuildRunStatus.QUEUED,
-        current_kind="datasource_update",
+        current_kind=EngineRunKind.BUILD.value,
         current_datasource_id=schedule.datasource_id,
         current_tab_id=tab_id,
         current_tab_name=tab_name,
@@ -313,25 +313,21 @@ def is_schedule_target_eligible(datasource: DataSource) -> bool:
     return datasource is not None
 
 
-def _resolve_schedule_target(session: Session, datasource_id: str) -> tuple[str, str | None, str | None]:
-    """Resolve schedule execution path and optional analysis provenance.
-
-    Returns: (target_kind, analysis_id, tab_id)
-    target_kind: analysis | raw | datasource
-    """
+def _resolve_schedule_target(session: Session, datasource_id: str) -> tuple[DataSourceTargetKind, str | None, str | None]:
+    """Resolve schedule execution path and optional analysis provenance."""
     datasource = session.get(DataSource, datasource_id)
     if not datasource:
         raise DataSourceNotFoundError(datasource_id)
 
     analysis_id = datasource.created_by_analysis_id
-    if datasource.created_by == "analysis" and analysis_id:
+    if datasource.target_kind() == DataSourceTargetKind.ANALYSIS and analysis_id:
         tab_id = datasource.config.get("analysis_tab_id") if isinstance(datasource.config, dict) else None
-        return "analysis", analysis_id, tab_id
+        return DataSourceTargetKind.ANALYSIS, analysis_id, tab_id
 
-    if _is_reingestable_raw_datasource(datasource):
-        return "raw", None, None
+    if datasource.target_kind() == DataSourceTargetKind.RAW:
+        return DataSourceTargetKind.RAW, None, None
 
-    return "datasource", None, None
+    return DataSourceTargetKind.DATASOURCE, None, None
 
 
 def _build_schedule_response(
@@ -368,19 +364,6 @@ def _build_schedule_response(
                         break
 
     return ScheduleResponse.model_validate(data)
-
-
-def _is_reingestable_raw_datasource(datasource: DataSource) -> bool:
-    if datasource.source_type != "iceberg":
-        return False
-    if datasource.created_by == "analysis":
-        return False
-    if not isinstance(datasource.config, dict):
-        return False
-    source = datasource.config.get("source")
-    if not isinstance(source, dict):
-        return False
-    return source.get("source_type") in {"file", "database"}
 
 
 def _enrich_schedule_response(session: Session, schedule: Schedule) -> ScheduleResponse:
@@ -444,7 +427,7 @@ def create_schedule(session: Session, payload: ScheduleCreate) -> ScheduleRespon
     datasource = session.get(DataSource, payload.datasource_id)
     if not datasource:
         raise DataSourceNotFoundError(payload.datasource_id)
-    if datasource.created_by == "analysis" and not datasource.created_by_analysis_id:
+    if datasource.is_analysis_output and not datasource.created_by_analysis_id:
         raise ScheduleValidationError(
             "Datasource has no analysis provenance",
             details={"datasource_id": payload.datasource_id},
@@ -465,7 +448,7 @@ def create_schedule(session: Session, payload: ScheduleCreate) -> ScheduleRespon
         if not trigger_ds:
             raise DataSourceNotFoundError(payload.trigger_on_datasource_id)
 
-    next_run = _compute_next_run(payload.cron_expression)
+    next_run = Schedule.compute_next_run(payload.cron_expression)
     record = Schedule(
         id=str(uuid.uuid4()),
         datasource_id=payload.datasource_id,
@@ -514,7 +497,7 @@ def update_schedule(session: Session, schedule_id: str, payload: ScheduleUpdate)
         setattr(schedule, key, value)
 
     if payload.cron_expression:
-        schedule.next_run = _compute_next_run(payload.cron_expression)
+        schedule.next_run = Schedule.compute_next_run(payload.cron_expression)
 
     session.add(schedule)
     session.commit()
@@ -603,15 +586,13 @@ def _is_triggered_by_datasource(
     datasource = session.get(DataSource, datasource_id)
     if not datasource:
         return False
-    result = session.execute(
-        select(EngineRun)
-        .where(EngineRun.datasource_id == datasource_id)  # type: ignore[arg-type]
-        .where(EngineRun.status == "success")  # type: ignore[arg-type]
-        .where(EngineRun.kind.in_(["datasource_update", "datasource_create"]))  # type: ignore[arg-type, attr-defined]
-        .order_by(EngineRun.created_at.desc())  # type: ignore[arg-type, attr-defined]
-        .limit(1),
+    latest_runs = build_run_service.list_build_runs(
+        session,
+        datasource_id=datasource_id,
+        status=BuildRunStatus.COMPLETED,
+        limit=1,
     )
-    latest = result.scalar_one_or_none()
+    latest = latest_runs[0] if latest_runs else None
     if not latest:
         return False
     if last_run is None:
@@ -739,7 +720,7 @@ def mark_schedule_run(session: Session, schedule_id: str) -> None:
     now = _utcnow().replace(tzinfo=None)
     schedule.last_run = now
     schedule.last_success_at = now
-    schedule.next_run = _compute_next_run(schedule.cron_expression)
+    schedule.next_run = Schedule.compute_next_run(schedule.cron_expression)
     schedule.lease_owner = None
     schedule.lease_expires_at = None
     session.add(schedule)
@@ -763,11 +744,11 @@ def enqueue_schedule_run(session: Session, schedule_id: str, *, worker_id: str) 
     schedule.last_triggered_at = naive_stamp
     schedule.last_failure_at = None
 
-    if target_kind == "raw":
+    if target_kind == DataSourceTargetKind.RAW:
         run = _enqueue_schedule_refresh_build(
             session,
             schedule=schedule,
-            target_kind="raw",
+            target_kind=DataSourceTargetKind.RAW.value,
             namespace=namespace,
             now=stamp,
         )
@@ -775,11 +756,11 @@ def enqueue_schedule_run(session: Session, schedule_id: str, *, worker_id: str) 
         runtime_ipc.notify_build_job()
         return run.id
 
-    if target_kind == "datasource":
+    if target_kind == DataSourceTargetKind.DATASOURCE:
         run = _enqueue_schedule_refresh_build(
             session,
             schedule=schedule,
-            target_kind="datasource_update",
+            target_kind=EngineRunKind.BUILD.value,
             namespace=namespace,
             now=stamp,
         )
@@ -822,17 +803,10 @@ def reconcile_schedule_run(session: Session, *, build_id: str) -> Schedule | Non
         schedule.last_run = stamp
         schedule.last_success_at = stamp
         schedule.last_successful_build_id = run.id
-        schedule.next_run = _compute_next_run(schedule.cron_expression)
+        schedule.next_run = Schedule.compute_next_run(schedule.cron_expression)
     else:
         schedule.last_failure_at = stamp
     session.add(schedule)
     session.commit()
     session.refresh(schedule)
     return schedule
-
-
-def _compute_next_run(cron_expr: str) -> datetime | None:
-    if not cron_expr:
-        return None
-    cron = croniter.croniter(cron_expr, datetime.now(UTC))
-    return cron.get_next(datetime)

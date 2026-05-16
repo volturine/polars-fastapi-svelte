@@ -12,12 +12,7 @@ from contracts.enums import DataForgeStrEnum
 from core.iceberg_metadata import resolve_iceberg_branch_metadata_path
 from pydantic import ConfigDict
 
-from datasources.datasource_loading import (
-    _assert_select_only as shared_assert_select_only,
-)
-from datasources.datasource_loading import (
-    load_datasource_frame,
-)
+from datasources.datasource_loading import load_datasource_frame
 from operations.step_converter import convert_step_format
 
 
@@ -417,10 +412,6 @@ DatasourceHandler.SOURCE_LOADERS = {
 
 def load_datasource(config: dict) -> pl.LazyFrame:
     return DatasourceHandler()(pl.LazyFrame(), config)
-
-
-def _assert_select_only(query: str) -> None:
-    shared_assert_select_only(query)
 
 
 async def load_datasource_async(config: dict) -> pl.LazyFrame:

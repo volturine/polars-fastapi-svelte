@@ -10,6 +10,7 @@ from contracts.analysis.pipeline_types import PipelineDefinition, PipelineTab
 from contracts.datasource.models import DataSource
 
 from modules.analysis.step_schemas import FilterConfig
+from modules.export.utils import export_slug
 
 _FILTER_BINARY_OPERATORS = {"=", "==", "!=", ">", "<", ">=", "<="}
 _FILTER_IN_OPERATORS = {"in", "not_in"}
@@ -52,12 +53,6 @@ class ExportSelection:
     ordered_tabs: list[PipelineTab]
     target_tab: PipelineTab
     tab_map: dict[str, PipelineTab]
-
-
-def _slug(value: str) -> str:
-    lowered = value.strip().lower()
-    slug = re.sub(r"[^a-z0-9]+", "_", lowered).strip("_")
-    return slug or "item"
 
 
 def _identifier(value: str) -> str:
@@ -187,7 +182,7 @@ def _datasource_path_constant(
     datasource: DataSource | None,
     used: set[str],
 ) -> tuple[str, str]:
-    base = _identifier(f"source_{_slug(tab.name)}_path").upper()
+    base = _identifier(f"source_{export_slug(tab.name, fallback='item')}_path").upper()
     candidate = base
     suffix = 2
     while candidate in used:
@@ -382,7 +377,7 @@ def generate_polars_code(
 
     tab_last_var: dict[str, str] = {}
     for tab_index, tab in enumerate(selection.ordered_tabs, start=1):
-        tab_slug = _identifier(f"tab_{tab_index}_{_slug(tab.name)}")
+        tab_slug = _identifier(f"tab_{tab_index}_{export_slug(tab.name, fallback='item')}")
         source_var = f"{tab_slug}_source"
 
         lines.append(f"# ---- Tab: {tab.name} ----")
@@ -666,7 +661,7 @@ def generate_sql_code(
         if isinstance(source_tab_id, str) and source_tab_id:
             continue
         datasource = datasources_by_id.get(tab.datasource.id)
-        base = _identifier(_slug(datasource.name if datasource else tab.name))
+        base = _identifier(export_slug(datasource.name if datasource else tab.name, fallback="item"))
         table_name = f"{base}_table"
         suffix = 2
         while table_name in used_table_names:
@@ -692,7 +687,7 @@ def generate_sql_code(
     tab_final_cte: dict[str, str] = {}
 
     for tab_index, tab in enumerate(selection.ordered_tabs, start=1):
-        tab_alias = _identifier(f"tab_{tab_index}_{_slug(tab.name)}")
+        tab_alias = _identifier(f"tab_{tab_index}_{export_slug(tab.name, fallback='item')}")
         source_cte = f"{tab_alias}_source"
         source_tab_id = tab.datasource.analysis_tab_id
         if isinstance(source_tab_id, str) and source_tab_id:

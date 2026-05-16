@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from pathlib import Path
 
 from contracts.compute import schemas as compute_schemas
@@ -40,11 +41,20 @@ async def _submit_and_wait(
     )
     wait_task = asyncio.create_task(response_hub.wait(request.id))
     await asyncio.to_thread(runtime_ipc.notify_compute_request, request.id)
-    await asyncio.gather(wait_task)
-    session.expire_all()
-    completed = compute_requests_service.get_request(session, request.id)
-    if completed is None:
-        raise PipelineExecutionError(f"Compute request {request.id} disappeared")
+    while True:
+        session.expire_all()
+        completed = compute_requests_service.get_request(session, request.id)
+        if completed is None:
+            wait_task.cancel()
+            raise PipelineExecutionError(f"Compute request {request.id} disappeared")
+        if completed.status in {ComputeRequestStatus.COMPLETED, ComputeRequestStatus.FAILED}:
+            wait_task.cancel()
+            break
+        session.rollback()
+        with contextlib.suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(asyncio.shield(wait_task), timeout=0.25)
+        if wait_task.done():
+            wait_task = asyncio.create_task(response_hub.wait(request.id))
     if completed.status == ComputeRequestStatus.COMPLETED:
         return completed
     payload = completed.response_json or {}

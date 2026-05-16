@@ -22,6 +22,7 @@ def _alembic_config(*, scope: str, schema: str) -> Config:
     config.set_main_option('target_schema', schema)
     config.attributes['runtime_scope'] = scope
     config.attributes['target_schema'] = schema
+    config.attributes['configure_logging'] = False
     return config
 
 

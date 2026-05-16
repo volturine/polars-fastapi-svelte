@@ -1,17 +1,15 @@
 import logging
-import re
 
 import polars as pl
 from contracts.compute.base import OperationHandler, OperationParams
 from contracts.enums import DataForgeStrEnum
+from core.settings_projection import get_resolved_telegram_settings
 from pydantic import ConfigDict, Field, model_validator
 
+from operations.template_placeholders import render_template_placeholders
 from runtime.notification_delivery import notification_service
-from runtime.runtime_settings import get_resolved_telegram_settings
 
 logger = logging.getLogger(__name__)
-
-_PLACEHOLDER_RE = re.compile(r"\{\{(\w+)\}\}")
 
 
 class NotificationMethod(DataForgeStrEnum):
@@ -40,18 +38,6 @@ class NotificationParams(OperationParams):
         if not self.input_columns:
             raise ValueError("At least one input column is required (input_columns)")
         return self
-
-
-def _build_message(template: str, row: dict[str, object]) -> str:
-    """Replace ``{{col}}`` placeholders with row values."""
-
-    def _replace(m: re.Match[str]) -> str:
-        key = m.group(1)
-        if key in row:
-            return str(row[key])
-        return m.group(0)
-
-    return _PLACEHOLDER_RE.sub(_replace, template)
 
 
 class NotificationHandler(OperationHandler):
@@ -114,7 +100,7 @@ class NotificationHandler(OperationHandler):
             for offset in range(0, row_count, validated.batch_size):
                 batch = rows[offset : offset + validated.batch_size]
                 for row in batch:
-                    message = _build_message(validated.message_template, row)
+                    message = render_template_placeholders(validated.message_template, row)
                     recipient_value = row.get(validated.recipient_column) if validated.recipient_column else None
                     try:
                         recipients = parse_recipients(recipient_value)
@@ -123,7 +109,7 @@ class NotificationHandler(OperationHandler):
                         if not recipients:
                             raise ValueError("recipient is required")
                         if validated.method == NotificationMethod.EMAIL:
-                            subject = _build_message(validated.subject_template, row)
+                            subject = render_template_placeholders(validated.subject_template, row)
                             notification_service.send_email(
                                 to=",".join(recipients),
                                 subject=subject,

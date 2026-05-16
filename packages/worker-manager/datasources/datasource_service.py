@@ -219,56 +219,6 @@ def _extract_schema(datasource: DataSource, sheet_name: str | None = None) -> Sc
     return handler(datasource, sheet_name)
 
 
-def _build_datasource_result_json(
-    datasource_id: str,
-    name: str,
-    source_type: DataSourceType,
-    config: Mapping[str, object],
-) -> dict[str, str]:
-    result = {"datasource_id": datasource_id, "datasource_name": name}
-    if source_type != DataSourceType.ICEBERG:
-        return result
-    source = config.get("source")
-    if not isinstance(source, dict):
-        return result
-    source_type_value = source.get("source_type")
-    if source_type_value not in {
-        DataSourceType.FILE,
-        DataSourceType.FILE.value,
-        DataSourceType.DATABASE,
-        DataSourceType.DATABASE.value,
-    }:
-        return result
-    snapshot_id = config.get("current_snapshot_id")
-    if snapshot_id is None:
-        snapshot_id = config.get("snapshot_id")
-    if snapshot_id is None:
-        return result
-    result["snapshot_id"] = str(snapshot_id)
-    return result
-
-
-def _log_build_create(
-    session: Session,
-    datasource_id: str,
-    name: str,
-    source_type: DataSourceType,
-    config: Mapping[str, object],
-    branch: str,
-) -> None:
-    del session, datasource_id, name, source_type, config, branch
-
-
-def _log_build_update(
-    session: Session,
-    datasource_id: str,
-    name: str,
-    config: Mapping[str, object],
-    branch: str | None,
-) -> None:
-    del session, datasource_id, name, config, branch
-
-
 def _persist_schema_cache(session: Session, datasource: DataSource) -> None:
     schema_info = _extract_schema(datasource)
     datasource.schema_cache = _schema_cache_payload(schema_info)
@@ -349,7 +299,6 @@ def create_file_datasource(
     session.add(datasource)
     session.commit()
     session.refresh(datasource)
-    _log_build_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch="master")
     try:
         _persist_schema_cache(session, datasource)
     except Exception as exc:
@@ -398,14 +347,6 @@ def create_database_datasource(
             session.add(datasource)
             session.commit()
             session.refresh(datasource)
-            _log_build_create(
-                session,
-                datasource_id,
-                name,
-                DataSourceType.DATABASE,
-                source_config,
-                branch=branch,
-            )
             return DataSourceResponse.model_validate(datasource)
         raise DataSourceConnectionError(
             "Failed to query database datasource",
@@ -428,7 +369,6 @@ def create_database_datasource(
     session.add(datasource)
     session.commit()
     session.refresh(datasource)
-    _log_build_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch=branch)
     try:
         _persist_schema_cache(session, datasource)
     except Exception as exc:
@@ -498,7 +438,6 @@ def create_iceberg_datasource(
     session.add(datasource)
     session.commit()
     session.refresh(datasource)
-    _log_build_create(session, datasource_id, name, DataSourceType.ICEBERG, config, branch=branch_name)
     try:
         _persist_schema_cache(session, datasource)
     except Exception as exc:
@@ -582,14 +521,13 @@ def refresh_external_datasource(session: Session, datasource_id: str) -> DataSou
     session.add(datasource)
     session.commit()
     session.refresh(datasource)
-    _log_build_update(session, datasource.id, datasource.name, next_config, branch=branch)
     return DataSourceResponse.model_validate(datasource)
 
 
 def is_reingestable_raw_datasource(datasource: DataSource) -> bool:
     if datasource.source_type != DataSourceType.ICEBERG:
         return False
-    if datasource.created_by == "analysis":
+    if datasource.is_analysis_output:
         return False
     if not isinstance(datasource.config, dict):
         return False

@@ -1,9 +1,8 @@
 from datetime import datetime
 
+from contracts.datasource.source_types import DataSourceType
 from contracts.enums import DataForgeStrEnum
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-
-from modules.datasource.source_types import DataSourceType
 
 
 class ColumnSchema(BaseModel):

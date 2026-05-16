@@ -1022,7 +1022,7 @@ class TestAssertSelectOnly:
     """SQL read-only guard in datasource operations."""
 
     def _check(self, query: str):
-        from operations.datasource import _assert_select_only
+        from datasources.datasource_loading import _assert_select_only
 
         _assert_select_only(query)
 

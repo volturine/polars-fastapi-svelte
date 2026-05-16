@@ -4,9 +4,28 @@ from typing import Any
 from sqlalchemy import JSON, Column, DateTime, String
 from sqlmodel import Field, SQLModel
 
+from contracts.enums import DataForgeStrEnum
+
+
+class HealthCheckType(DataForgeStrEnum):
+    ROW_COUNT = 'row_count'
+    COLUMN_NULL = 'column_null'
+    COLUMN_UNIQUE = 'column_unique'
+    COLUMN_RANGE = 'column_range'
+    COLUMN_COUNT = 'column_count'
+    NULL_PERCENTAGE = 'null_percentage'
+    DUPLICATE_PERCENTAGE = 'duplicate_percentage'
+
+    @property
+    def requires_unique_per_datasource(self) -> bool:
+        return self == HealthCheckType.ROW_COUNT
+
 
 class HealthCheck(SQLModel, table=True):  # type: ignore[call-arg]
     __tablename__ = 'healthchecks'
+
+    def check_type_kind(self) -> HealthCheckType:
+        return HealthCheckType.require(self.check_type)
 
     id: str = Field(sa_column=Column(String, primary_key=True))
     datasource_id: str = Field(sa_column=Column(String, nullable=False, index=True))

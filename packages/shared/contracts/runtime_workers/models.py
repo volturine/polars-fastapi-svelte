@@ -28,3 +28,9 @@ class RuntimeWorker(SQLModel, table=True):  # type: ignore[call-arg, assignment]
     last_heartbeat_at: dt.datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False, index=True))
     updated_at: dt.datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
     stopped_at: dt.datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
+
+    def is_reclaimable(self, *, now: dt.datetime, heartbeat_seconds: float) -> bool:
+        if self.stopped_at is not None:
+            return True
+        heartbeat = self.last_heartbeat_at.astimezone(dt.UTC) if self.last_heartbeat_at.tzinfo is not None else self.last_heartbeat_at.replace(tzinfo=dt.UTC)
+        return now - heartbeat > dt.timedelta(seconds=heartbeat_seconds)

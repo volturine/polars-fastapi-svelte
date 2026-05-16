@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Browser, Page } from '@playwright/test';
-import { test as base } from '@playwright/test';
+import { expect, test as base } from '@playwright/test';
 import { E2E_PASSWORD, E2E_RUN_STAMP, type E2ERequest, workerAuthFile } from './utils/api.js';
 
 export { expect } from '@playwright/test';
@@ -62,11 +62,21 @@ async function createAuthFile(browser: Browser, workerAuth: WorkerAuth): Promise
 		if (authRequired) {
 			const email = `e2e-ui-${E2E_RUN_STAMP}-w${workerAuth.workerIndex}@example.com`;
 			await page.goto('/register', { waitUntil: 'domcontentloaded' });
-			await page.locator('#name').fill(`E2E UI Worker ${workerAuth.workerIndex}`);
-			await page.locator('#email').fill(email);
-			await page.locator('#password').fill(E2E_PASSWORD);
-			await page.locator('#confirm').fill(E2E_PASSWORD);
-			await page.getByRole('button', { name: 'Create account', exact: true }).click();
+			const nameInput = page.locator('#name');
+			const emailInput = page.locator('#email');
+			const passwordInput = page.locator('#password');
+			const confirmInput = page.locator('#confirm');
+			await nameInput.fill(`E2E UI Worker ${workerAuth.workerIndex}`);
+			await emailInput.fill(email);
+			await passwordInput.fill(E2E_PASSWORD);
+			await confirmInput.fill(E2E_PASSWORD);
+			await expect(nameInput).toHaveValue(`E2E UI Worker ${workerAuth.workerIndex}`);
+			await expect(emailInput).toHaveValue(email);
+			await expect(passwordInput).toHaveValue(E2E_PASSWORD);
+			await expect(confirmInput).toHaveValue(E2E_PASSWORD);
+			const createButton = page.getByRole('button', { name: 'Create account', exact: true });
+			await expect(createButton).toBeEnabled({ timeout: 15_000 });
+			await createButton.click();
 			const continueLink = page.getByRole('link', { name: /Continue/i });
 			await Promise.race([
 				continueLink.waitFor({ state: 'visible', timeout: 15_000 }),

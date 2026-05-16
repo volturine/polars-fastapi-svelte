@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from sqlmodel import Session, select
 
@@ -83,17 +83,10 @@ def list_workers(session: Session, *, kind: RuntimeWorkerKind | None = None) -> 
     return list(session.execute(stmt).scalars().all())
 
 
-def _worker_reclaimable(worker: RuntimeWorker, *, now: datetime, heartbeat_seconds: float) -> bool:
-    if worker.stopped_at is not None:
-        return True
-    heartbeat = worker.last_heartbeat_at.replace(tzinfo=UTC)
-    return now - heartbeat > timedelta(seconds=heartbeat_seconds)
-
-
 def worker_available(session: Session, *, kind: RuntimeWorkerKind, heartbeat_seconds: float = 15.0) -> bool:
     now = _utcnow()
     for worker in reversed(list_workers(session, kind=kind)):
-        if _worker_reclaimable(worker, now=now, heartbeat_seconds=heartbeat_seconds):
+        if worker.is_reclaimable(now=now, heartbeat_seconds=heartbeat_seconds):
             continue
         return True
     return False
@@ -101,4 +94,4 @@ def worker_available(session: Session, *, kind: RuntimeWorkerKind, heartbeat_sec
 
 def reclaimable_worker_ids(session: Session, *, kind: RuntimeWorkerKind, heartbeat_seconds: float = 15.0) -> set[str]:
     now = _utcnow()
-    return {worker.id for worker in list_workers(session, kind=kind) if _worker_reclaimable(worker, now=now, heartbeat_seconds=heartbeat_seconds)}
+    return {worker.id for worker in list_workers(session, kind=kind) if worker.is_reclaimable(now=now, heartbeat_seconds=heartbeat_seconds)}

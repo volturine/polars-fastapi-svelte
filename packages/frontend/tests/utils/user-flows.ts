@@ -24,11 +24,21 @@ export async function registerViaUi(page: Page, email: string, name: string): Pr
 	await expect(page.getByRole('heading', { name: 'Create account' })).toBeVisible({
 		timeout: 15_000
 	});
-	await page.locator('#name').fill(name);
-	await page.locator('#email').fill(email);
-	await page.locator('#password').fill(E2E_PASSWORD);
-	await page.locator('#confirm').fill(E2E_PASSWORD);
-	await page.getByRole('button', { name: 'Create account', exact: true }).click();
+	const nameInput = page.locator('#name');
+	const emailInput = page.locator('#email');
+	const passwordInput = page.locator('#password');
+	const confirmInput = page.locator('#confirm');
+	await nameInput.fill(name);
+	await emailInput.fill(email);
+	await passwordInput.fill(E2E_PASSWORD);
+	await confirmInput.fill(E2E_PASSWORD);
+	await expect(nameInput).toHaveValue(name);
+	await expect(emailInput).toHaveValue(email);
+	await expect(passwordInput).toHaveValue(E2E_PASSWORD);
+	await expect(confirmInput).toHaveValue(E2E_PASSWORD);
+	const createButton = page.getByRole('button', { name: 'Create account', exact: true });
+	await expect(createButton).toBeEnabled({ timeout: 15_000 });
+	await createButton.click();
 	const continueLink = page.getByRole('link', { name: /Continue/i });
 	await Promise.race([
 		continueLink.waitFor({ state: 'visible', timeout: 15_000 }),
@@ -68,7 +78,7 @@ export async function uploadDatasourceViaUi(
 	const uploadBtn = page.getByRole('button', { name: 'Upload', exact: true });
 	await expect(uploadBtn).toBeEnabled({ timeout: 10_000 });
 	await uploadBtn.click();
-	await expect(page).toHaveURL(/\/datasources/, { timeout: 30_000 });
+	await expect(page).toHaveURL((url) => url.pathname === '/datasources', { timeout: 30_000 });
 	const row = page.locator(`[data-ds-row="${name}"]`);
 	await expect(row).toBeVisible({ timeout: 30_000 });
 	await row.click();

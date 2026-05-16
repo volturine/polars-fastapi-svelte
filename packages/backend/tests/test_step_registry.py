@@ -4,8 +4,9 @@ import importlib.util
 import sys
 from pathlib import Path
 
+from contracts.analysis.step_types import iter_step_types, normalize_step_type
+
 from modules.analysis.step_schemas import STEP_CATALOG
-from modules.analysis.step_types import iter_step_types, normalize_step_type
 
 ROOT = Path(__file__).resolve().parents[3]
 WORKER_ROOT = ROOT / "packages" / "worker-manager"

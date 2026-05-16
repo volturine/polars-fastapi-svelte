@@ -6,6 +6,7 @@ import { gotoAnalysesGallery, waitForDatasourceList, waitForUdfList } from './re
 
 const ELEMENT_VISIBLE_TIMEOUT = 10_000;
 const DIALOG_HIDDEN_TIMEOUT = 10_000;
+const ANALYSIS_DELETE_TIMEOUT = 45_000;
 
 function confirmDialog(page: Page, heading: string | RegExp): Locator {
 	return page
@@ -93,7 +94,22 @@ export async function deleteAnalysisViaUI(
 		await card.getByRole('button', { name: /Delete analysis/ }).click();
 		const dialog = confirmDialog(page, 'Delete Analysis');
 		await dialog.getByRole('button', { name: /^Delete$/ }).click();
-		await expect(card).toBeHidden({ timeout: DIALOG_HIDDEN_TIMEOUT });
+
+		const deadline = Date.now() + ANALYSIS_DELETE_TIMEOUT;
+		while (Date.now() < deadline) {
+			await gotoAnalysesGallery(page, ELEMENT_VISIBLE_TIMEOUT);
+			const remaining = await page.locator(`[data-analysis-card="${name}"]`).count();
+			if (remaining === 0) {
+				return;
+			}
+			const deleteError = page.getByText(/^Failed to delete:/).first();
+			if (await deleteError.isVisible().catch(() => false)) {
+				throw new Error((await deleteError.textContent()) ?? `Failed to delete analysis ${name}`);
+			}
+			await page.waitForTimeout(2_000);
+		}
+
+		throw new Error(`Analysis still visible after delete flow: ${name}`);
 	} catch (error) {
 		console.warn(`[ui-cleanup] deleteAnalysisViaUI failed for "${name}":`, error);
 	}

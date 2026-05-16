@@ -7,7 +7,6 @@ predefined UDF with wiring to LLM request endpoints.
 """
 
 import logging
-import re
 import time
 
 import polars as pl
@@ -16,9 +15,9 @@ from contracts.enums import DataForgeStrEnum
 from core.ai_clients import AIError, get_ai_client, parse_request_options
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
-logger = logging.getLogger(__name__)
+from operations.template_placeholders import render_template_placeholders
 
-_PLACEHOLDER_RE = re.compile(r"\{\{(\w+)\}\}")
+logger = logging.getLogger(__name__)
 
 
 class AIProvider(DataForgeStrEnum):
@@ -58,21 +57,6 @@ class AIParams(OperationParams):
         if not self.input_columns:
             raise ValueError("At least one input column is required (input_columns)")
         return self
-
-
-def _build_prompt(template: str, row: dict[str, object]) -> str:
-    """Replace ``{{col}}`` placeholders with row values.
-
-    Falls back to ``{{text}}`` → first column value for single-column prompts.
-    """
-
-    def _replace(m: re.Match[str]) -> str:
-        key = m.group(1)
-        if key in row:
-            return str(row[key])
-        return m.group(0)  # leave unknown placeholders untouched
-
-    return _PLACEHOLDER_RE.sub(_replace, template)
 
 
 class AIHandler(OperationHandler):
@@ -137,7 +121,7 @@ class AIHandler(OperationHandler):
                 for row in batch_rows:
                     if uses_text and single_col:
                         row["text"] = row[select_cols[0]]
-                    prompts.append(_build_prompt(validated.prompt_template, row))
+                    prompts.append(render_template_placeholders(validated.prompt_template, row))
                 success = False
                 for attempt in range(validated.max_retries + 1):
                     try:

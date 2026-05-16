@@ -1,5 +1,6 @@
-from modules.analysis.step_types import (
+from contracts.analysis.step_types import (
     chart_type_for_step,
+    get_step_timing_key,
     is_chart_step_type,
     is_plot_alias_step_type,
     normalize_step_type,
@@ -19,3 +20,8 @@ def test_chart_step_normalization() -> None:
     assert not is_chart_step_type("filter")
     assert normalize_step_type("plot_bar") == "chart"
     assert normalize_step_type("filter") == "filter"
+
+
+def test_step_timing_key_labels_repeated_steps() -> None:
+    assert get_step_timing_key("filter") == ("filter", "Filter")
+    assert get_step_timing_key("filter_2") == ("filter", "Filter 2")

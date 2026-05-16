@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from typing import TypeAlias, cast
 
+from contracts.analysis.step_types import (
+    STEP_TYPES,
+    ChartType,
+    is_step_type,
+    iter_step_types,
+)
 from contracts.enums import DataForgeStrEnum
 from contracts.step_config_enums import (
     DurationUnit,
@@ -12,13 +18,6 @@ from contracts.step_config_enums import (
     WithColumnsExprType,
 )
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-
-from modules.analysis.step_types import (
-    STEP_TYPES,
-    ChartType,
-    is_step_type,
-    iter_step_types,
-)
 
 __all__ = [
     "get_config_model",

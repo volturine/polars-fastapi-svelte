@@ -2,7 +2,7 @@
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
-const DEFAULT_E2E_WORKERS = 4;
+const DEFAULT_E2E_WORKERS = 1;
 
 function shardSuffixFromArgs(): string {
 	const shardFlagIndex = process.argv.findIndex((arg) => arg === '--shard');
@@ -19,25 +19,18 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${port}`;
 const ciArgs = process.env.CI ? ['--disable-dev-shm-usage', '--disable-gpu'] : [];
 const artifactsRoot = path.resolve(process.cwd(), 'tests', '.artifacts');
 const shardSuffix = shardSuffixFromArgs();
+const reporter = [['line'] as const];
 
 export default defineConfig({
 	testDir: './tests',
 	timeout: 30_000,
 	expect: { timeout: 10_000 },
 	fullyParallel: false,
+	globalSetup: './tests/global-setup.ts',
 	workers: DEFAULT_E2E_WORKERS,
 	retries: 1,
 	outputDir: path.join(artifactsRoot, 'playwright', `test-results${shardSuffix}`),
-	reporter: [
-		[
-			'html',
-			{
-				open: 'never',
-				outputFolder: path.join(artifactsRoot, 'playwright', `playwright-report${shardSuffix}`)
-			}
-		],
-		['line']
-	],
+	reporter,
 	use: {
 		baseURL,
 		trace: 'on-first-retry',

@@ -47,7 +47,7 @@ from backend_core.settings_store import (
     invalidate_resolved_settings_cache,
     seed_settings_from_env,
 )
-from modules.udf.seed import ensure_udf_seeds
+from modules.udf import service as udf_service
 
 register_settings_bootstrap_hook(seed_settings_from_env)
 register_settings_cache_invalidator(invalidate_resolved_settings_cache)
@@ -176,7 +176,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await asyncio.to_thread(ensure_backend_public_tables)
     await asyncio.to_thread(run_settings_db, ensure_default_user)
     await asyncio.to_thread(_register_api_worker, api_worker_id)
-    await asyncio.to_thread(run_db, ensure_udf_seeds)
+    await asyncio.to_thread(run_db, udf_service.seed_defaults)
 
     # Start background cleanup task
     stop_event = asyncio.Event()

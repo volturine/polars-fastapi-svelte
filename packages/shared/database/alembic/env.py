@@ -33,7 +33,12 @@ for module_name in _MODEL_MODULES:
 config = context.config
 config.set_main_option('sqlalchemy.url', settings.database_url)
 
-if config.config_file_name is not None:
+
+def _should_configure_logging() -> bool:
+    return bool(config.attributes.get('configure_logging', True))
+
+
+if config.config_file_name is not None and _should_configure_logging():
     fileConfig(config.config_file_name)
 
 _SHARED_TABLES = {'app_settings', 'engine_instances', 'runtime_namespaces', 'runtime_workers'}

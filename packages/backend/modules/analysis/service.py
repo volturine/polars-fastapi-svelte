@@ -5,7 +5,7 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any
 
-from contracts.analysis.models import Analysis, AnalysisDataSource, AnalysisStatus
+from contracts.analysis.models import Analysis, AnalysisDataSource, AnalysisFavorite, AnalysisStatus
 from contracts.analysis.pipeline_types import (
     PipelineDefinition,
     PipelineStep,
@@ -49,8 +49,29 @@ from modules.analysis.templates import AnalysisTemplate, get_template, list_temp
 from modules.analysis_versions import service as version_service
 
 
-def _to_response(analysis: Analysis) -> AnalysisResponseSchema:
-    return AnalysisResponseSchema.model_validate(analysis)
+def _to_response(analysis: Analysis, *, is_favorite: bool = False) -> AnalysisResponseSchema:
+    return AnalysisResponseSchema.model_validate(
+        {
+            "id": analysis.id,
+            "name": analysis.name,
+            "description": analysis.description,
+            "pipeline_definition": analysis.pipeline_definition,
+            "created_at": analysis.created_at,
+            "updated_at": analysis.updated_at,
+            "result_path": analysis.result_path,
+            "thumbnail": analysis.thumbnail,
+            "is_favorite": is_favorite,
+        }
+    )
+
+
+def _favorite_ids(session: Session, user_id: str | None, analysis_ids: list[str]) -> set[str]:
+    if not user_id or not analysis_ids:
+        return set()
+    stmt = select(col(AnalysisFavorite.analysis_id)).where(col(AnalysisFavorite.user_id) == user_id)  # type: ignore[arg-type]
+    stmt = stmt.where(col(AnalysisFavorite.analysis_id).in_(analysis_ids))  # type: ignore[arg-type]
+    rows = session.execute(stmt).all()
+    return {str(analysis_id) for (analysis_id,) in rows}
 
 
 def _slugify(value: str) -> str:
@@ -550,7 +571,55 @@ def list_analyses(
         defer(Analysis.result_path),  # type: ignore[arg-type]
         defer(Analysis.owner_id),  # type: ignore[arg-type]
     )
-    return [AnalysisGalleryItemSchema.model_validate(a) for a in session.execute(stmt).scalars()]
+    analyses = list(session.execute(stmt).scalars())
+    return [
+        AnalysisGalleryItemSchema.model_validate(
+            {
+                "id": analysis.id,
+                "name": analysis.name,
+                "thumbnail": analysis.thumbnail,
+                "created_at": analysis.created_at,
+                "updated_at": analysis.updated_at,
+                "is_favorite": False,
+            }
+        )
+        for analysis in analyses
+    ]
+
+
+def list_favorite_analyses(
+    session: Session,  # type: ignore[type-arg]
+    user_id: str | None,
+) -> list[AnalysisGalleryItemSchema]:
+    if not user_id:
+        return []
+    favorite_stmt = select(col(AnalysisFavorite.analysis_id)).where(col(AnalysisFavorite.user_id) == user_id)  # type: ignore[arg-type]
+    favorite_ids = [str(analysis_id) for (analysis_id,) in session.execute(favorite_stmt).all()]
+    if not favorite_ids:
+        return []
+    analysis_stmt = select(Analysis).where(col(Analysis.id).in_(favorite_ids))  # type: ignore[arg-type]
+    analysis_stmt = analysis_stmt.options(
+        defer(Analysis.pipeline_definition),  # type: ignore[arg-type]
+        defer(Analysis.description),  # type: ignore[arg-type]
+        defer(Analysis.status),  # type: ignore[arg-type]
+        defer(Analysis.result_path),  # type: ignore[arg-type]
+        defer(Analysis.owner_id),  # type: ignore[arg-type]
+    )
+    analyses = list(session.execute(analysis_stmt).scalars())
+    analyses.sort(key=lambda analysis: analysis.updated_at, reverse=True)
+    return [
+        AnalysisGalleryItemSchema.model_validate(
+            {
+                "id": analysis.id,
+                "name": analysis.name,
+                "thumbnail": analysis.thumbnail,
+                "created_at": analysis.created_at,
+                "updated_at": analysis.updated_at,
+                "is_favorite": True,
+            }
+        )
+        for analysis in analyses
+    ]
 
 
 def list_analysis_templates() -> list[dict[str, Any]]:
@@ -861,6 +930,34 @@ def update_analysis(
     session.commit()
     session.refresh(analysis)
     return _to_response(analysis)
+
+
+def set_favorite(
+    session: Session,  # type: ignore[type-arg]
+    analysis_id: str,
+    user_id: str,
+    is_favorite: bool,
+) -> dict[str, Any]:
+    analysis = session.get(Analysis, analysis_id)
+    if not analysis:
+        raise AnalysisNotFoundError(analysis_id)
+
+    stmt = select(AnalysisFavorite).where(
+        col(AnalysisFavorite.user_id) == user_id,
+        col(AnalysisFavorite.analysis_id) == analysis_id,
+    )
+    existing = session.execute(stmt).scalar_one_or_none()
+
+    if is_favorite:
+        if existing is None:
+            session.add(AnalysisFavorite(user_id=user_id, analysis_id=analysis_id))
+            session.commit()
+        return {"analysis_id": analysis_id, "is_favorite": True}
+
+    if existing is not None:
+        session.delete(existing)
+        session.commit()
+    return {"analysis_id": analysis_id, "is_favorite": False}
 
 
 def delete_analysis(

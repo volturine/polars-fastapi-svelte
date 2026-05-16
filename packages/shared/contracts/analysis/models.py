@@ -42,3 +42,10 @@ class AnalysisDataSource(SQLModel, table=True):  # type: ignore[call-arg]
 
     analysis_id: str = Field(sa_column=Column(String, ForeignKey('analyses.id', ondelete='CASCADE'), primary_key=True))
     datasource_id: str = Field(sa_column=Column(String, ForeignKey('datasources.id', ondelete='CASCADE'), primary_key=True))
+
+
+class AnalysisFavorite(SQLModel, table=True):  # type: ignore[call-arg]
+    __tablename__ = 'analysis_favorites'
+
+    user_id: str = Field(sa_column=Column(String, primary_key=True))
+    analysis_id: str = Field(sa_column=Column(String, ForeignKey('analyses.id', ondelete='CASCADE'), primary_key=True))

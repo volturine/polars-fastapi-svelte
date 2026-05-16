@@ -135,6 +135,7 @@ class AnalysisResponseSchema(BaseModel):
     updated_at: datetime
     result_path: str | None
     thumbnail: str | None
+    is_favorite: bool = False
 
 
 class AnalysisGalleryItemSchema(BaseModel):
@@ -145,6 +146,7 @@ class AnalysisGalleryItemSchema(BaseModel):
     thumbnail: str | None
     created_at: datetime
     updated_at: datetime
+    is_favorite: bool = False
 
 
 class AnalysisTemplateSummarySchema(BaseModel):
@@ -167,6 +169,13 @@ class DuplicateAnalysisSchema(BaseModel):
 
     name: Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
     description: str | None = None
+
+
+class AnalysisFavoriteStatusSchema(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    analysis_id: str
+    is_favorite: bool
 
 
 class ImportAnalysisSchema(BaseModel):

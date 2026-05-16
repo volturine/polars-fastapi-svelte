@@ -615,7 +615,7 @@ export class AnalysisStore {
 			});
 	}
 
-	update(updates: { name?: string; description?: string }): void {
+	update(updates: { name?: string; description?: string | null }): void {
 		if (!this.current) return;
 		this.current = { ...this.current, ...updates };
 	}

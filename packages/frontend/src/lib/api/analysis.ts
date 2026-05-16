@@ -20,6 +20,9 @@ export const createAnalysis = (data: AnalysisCreate): ResultAsync<Analysis, ApiE
 export const listAnalyses = (): ResultAsync<AnalysisGalleryItem[], ApiError> =>
 	apiRequest<AnalysisGalleryItem[]>('/v1/analysis');
 
+export const listFavoriteAnalyses = (): ResultAsync<AnalysisGalleryItem[], ApiError> =>
+	apiRequest<AnalysisGalleryItem[]>('/v1/analysis/favorites');
+
 export const listAnalysisTemplates = (): ResultAsync<AnalysisTemplateSummary[], ApiError> =>
 	apiRequest<AnalysisTemplateSummary[]>('/v1/analysis/templates');
 
@@ -112,6 +115,17 @@ export const deleteAnalysisVersion = (
 
 export const deleteAnalysis = (id: string): ResultAsync<void, ApiError> =>
 	apiRequest<void>(`/v1/analysis/${id}`, { method: 'DELETE' });
+
+export type AnalysisFavoriteStatus = {
+	analysis_id: string;
+	is_favorite: boolean;
+};
+
+export const favoriteAnalysis = (id: string): ResultAsync<AnalysisFavoriteStatus, ApiError> =>
+	apiRequest<AnalysisFavoriteStatus>(`/v1/analysis/${id}/favorite`, { method: 'POST' });
+
+export const unfavoriteAnalysis = (id: string): ResultAsync<AnalysisFavoriteStatus, ApiError> =>
+	apiRequest<AnalysisFavoriteStatus>(`/v1/analysis/${id}/favorite`, { method: 'DELETE' });
 
 export type AnalysisVersion = {
 	id: string;

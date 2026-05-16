@@ -17,7 +17,7 @@ from modules.analysis import schemas, service
 from modules.analysis.pipeline_compiler import compile_step
 from modules.analysis.step_schemas import get_step_catalog
 from modules.analysis.step_types import is_step_type
-from modules.auth.dependencies import get_optional_user
+from modules.auth.dependencies import get_current_user_id, get_optional_user
 from modules.auth.models import User
 from modules.compute import executor_client
 from modules.export import service as export_service
@@ -136,8 +136,18 @@ async def import_analysis(
 @router.get("", response_model=list[schemas.AnalysisGalleryItemSchema], mcp=True)
 @handle_errors(operation="list analyses")
 async def list_analyses(session: Session = Depends(get_db)):
-    """List all analyses as gallery items with id, name, thumbnail, and timestamps."""
+    """List all analyses as gallery items with id, name, and thumbnail metadata."""
     return service.list_analyses(session)
+
+
+@router.get("/favorites", response_model=list[schemas.AnalysisGalleryItemSchema], mcp=True)
+@handle_errors(operation="list favorite analyses")
+async def list_favorite_analyses(
+    session: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+):
+    """List only the current user's favorited analyses."""
+    return service.list_favorite_analyses(session, user.id if user else None)
 
 
 @router.get("/step-types", mcp=True)
@@ -205,6 +215,36 @@ async def update_analysis(
     response.headers["ETag"] = _analysis_etag(updated)
     response.headers["X-Analysis-Version"] = _analysis_version(updated)
     return updated
+
+
+@router.post(
+    "/{analysis_id}/favorite",
+    response_model=schemas.AnalysisFavoriteStatusSchema,
+    mcp=True,
+)
+@handle_errors(operation="favorite analysis", value_error_status=404)
+async def favorite_analysis(
+    analysis_id: AnalysisId,
+    user_id: str = Depends(get_current_user_id),
+    session: Session = Depends(get_db),
+):
+    """Mark an analysis as favorite for the current user."""
+    return service.set_favorite(session, parse_analysis_id(analysis_id), user_id, True)
+
+
+@router.delete(
+    "/{analysis_id}/favorite",
+    response_model=schemas.AnalysisFavoriteStatusSchema,
+    mcp=True,
+)
+@handle_errors(operation="unfavorite analysis", value_error_status=404)
+async def unfavorite_analysis(
+    analysis_id: AnalysisId,
+    user_id: str = Depends(get_current_user_id),
+    session: Session = Depends(get_db),
+):
+    """Remove an analysis from the current user's favorites."""
+    return service.set_favorite(session, parse_analysis_id(analysis_id), user_id, False)
 
 
 @router.delete("/{analysis_id}", status_code=204, mcp=True)

@@ -4,7 +4,13 @@
 	import { idbGet, idbSet } from '$lib/utils/indexeddb';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { resolve } from '$app/paths';
-	import { deleteAnalysis, duplicateAnalysis, listAnalyses } from '$lib/api/analysis';
+	import {
+		deleteAnalysis,
+		duplicateAnalysis,
+		favoriteAnalysis,
+		listAnalyses,
+		unfavoriteAnalysis
+	} from '$lib/api/analysis';
 	import GalleryGrid from '$lib/components/gallery/GalleryGrid.svelte';
 	import EmptyState from '$lib/components/gallery/EmptyState.svelte';
 	import AnalysisFilters from '$lib/components/gallery/AnalysisFilters.svelte';
@@ -18,6 +24,7 @@
 	import { toEpochDisplay } from '$lib/utils/datetime';
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import { css, spinner } from '$lib/styles/panda';
+	import { favoriteStore } from '$lib/stores/favorites.svelte';
 	import { useNamespace } from '$lib/stores/namespace.svelte';
 
 	const queryClient = useQueryClient();
@@ -121,6 +128,19 @@
 
 	function requestDelete(id: string) {
 		deleteConfirmId = id;
+	}
+
+	async function toggleFavorite(id: string) {
+		const next = !favoriteStore.isFavorite(id);
+		const result = next ? await favoriteAnalysis(id) : await unfavoriteAnalysis(id);
+		if (result.isErr()) {
+			deleteError = result.error.message;
+			return;
+		}
+		favoriteStore.apply(id, result.value.is_favorite);
+		void queryClient.invalidateQueries({ queryKey: ['analyses', ns.value] });
+		void queryClient.invalidateQueries({ queryKey: ['favorite-analyses', ns.value] });
+		void queryClient.invalidateQueries({ queryKey: ['analysis', id] });
 	}
 
 	function requestDuplicate(analysis: AnalysisGalleryItem) {
@@ -364,8 +384,10 @@
 					<GalleryGrid
 						analyses={filteredAndSortedAnalyses}
 						{selectedIds}
+						favoriteIds={favoriteStore.ids}
 						onDelete={requestDelete}
 						onDuplicate={requestDuplicate}
+						onToggleFavorite={toggleFavorite}
 						onToggleSelect={toggleSelect}
 					/>
 				{/if}

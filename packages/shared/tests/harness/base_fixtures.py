@@ -34,7 +34,7 @@ def _settings():
 
 
 def _register_sqlmodel_metadata() -> None:
-    from contracts.analysis.models import Analysis, AnalysisDataSource
+    from contracts.analysis.models import Analysis, AnalysisDataSource, AnalysisFavorite
     from contracts.analysis_versions.models import AnalysisVersion
     from contracts.build_jobs.models import BuildJob
     from contracts.build_runs.models import BuildEvent, BuildRun
@@ -52,6 +52,7 @@ def _register_sqlmodel_metadata() -> None:
 
     del Analysis
     del AnalysisDataSource
+    del AnalysisFavorite
     del AnalysisVersion
     del AppSettings
     del BuildEvent

@@ -936,6 +936,11 @@ describe('AnalysisStore.update', () => {
 		expect(store.current?.description).toBe('New desc');
 	});
 
+	test('clears analysis description', () => {
+		store.update({ description: null });
+		expect(store.current?.description).toBeNull();
+	});
+
 	test('does nothing when no current analysis', () => {
 		store.current = null;
 		store.update({ name: 'test' });

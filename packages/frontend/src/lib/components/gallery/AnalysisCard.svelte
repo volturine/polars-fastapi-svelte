@@ -2,19 +2,29 @@
 	import type { AnalysisGalleryItem } from '$lib/types/analysis';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { ChartBar, Copy, Trash2 } from 'lucide-svelte';
+	import { ChartBar, Copy, Star, Trash2 } from 'lucide-svelte';
 	import { formatDateDisplay, getYearDisplay } from '$lib/utils/datetime';
 	import { css } from '$lib/styles/panda';
 
 	interface Props {
 		analysis: AnalysisGalleryItem;
 		selected: boolean;
+		favorite: boolean;
 		onDelete: (id: string) => void;
 		onDuplicate?: (analysis: AnalysisGalleryItem) => void;
+		onToggleFavorite: (id: string) => void;
 		onToggleSelect: (id: string) => void;
 	}
 
-	let { analysis, selected, onDelete, onDuplicate, onToggleSelect }: Props = $props();
+	let {
+		analysis,
+		selected,
+		favorite,
+		onDelete,
+		onDuplicate,
+		onToggleFavorite,
+		onToggleSelect
+	}: Props = $props();
 
 	function handleClick(e: MouseEvent) {
 		const target = e.target as HTMLElement;
@@ -130,6 +140,35 @@
 				{analysis.name}
 			</h3>
 			<div class={css({ display: 'inline-flex', alignItems: 'center', gap: '1' })}>
+				<button
+					type="button"
+					class={css({
+						display: 'inline-flex',
+						flexShrink: '0',
+						alignItems: 'center',
+						justifyContent: 'center',
+						border: 'none',
+						backgroundColor: 'transparent',
+						padding: '1',
+						cursor: 'pointer',
+						color: favorite ? 'accent.primary' : 'fg.muted',
+						_hover: { color: 'accent.primary' },
+						_focusVisible: {
+							color: 'accent.primary',
+							outline: '2px solid',
+							outlineColor: 'accent.primary',
+							outlineOffset: '1px'
+						}
+					})}
+					onclick={(e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						onToggleFavorite(analysis.id);
+					}}
+					aria-label={favorite ? 'Remove analysis from favorites' : 'Add analysis to favorites'}
+				>
+					<Star size={16} fill={favorite ? 'currentColor' : 'none'} />
+				</button>
 				{#if onDuplicate}
 					<button
 						type="button"

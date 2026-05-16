@@ -11,6 +11,13 @@ import { gotoAnalysesGallery, gotoNewAnalysis, waitForLayoutReady } from './util
 import { gotoAnalysisEditor } from './utils/analysis.js';
 import { dialogByHeading } from './utils/locators.js';
 
+async function expandSidebar(page: Parameters<typeof gotoAnalysesGallery>[0]) {
+	const button = page.getByRole('button', { name: 'Expand sidebar' });
+	if (await button.isVisible().catch(() => false)) {
+		await button.click();
+	}
+}
+
 test.describe('Analyses – list & gallery', () => {
 	test('home page renders main content area', async ({ page }) => {
 		await gotoAnalysesGallery(page);
@@ -48,6 +55,43 @@ test.describe('Analyses – list & gallery', () => {
 
 			await page.getByRole('textbox', { name: 'Search analyses' }).fill('ZZZNOMATCH');
 			await expect(page.getByText(/No analyses match your search/i)).toBeVisible();
+		} finally {
+			await deleteAnalysisViaUI(page, analysisName);
+			await deleteDatasourceViaUI(page, dsName);
+		}
+	});
+
+	test('favorited analyses appear in the sidebar and persist on reload', async ({
+		page,
+		request
+	}) => {
+		test.setTimeout(60_000);
+		const suffix = uid();
+		const dsName = `e2e-favorite-ds-${suffix}`;
+		const analysisName = `E2E Favorite ${suffix}`;
+		const dsId = await createDatasource(request, dsName);
+		const aId = await createAnalysis(request, analysisName, dsId);
+		try {
+			await gotoAnalysesGallery(page);
+			await expandSidebar(page);
+
+			const card = page.locator(`[data-analysis-card="${analysisName}"]`);
+			await expect(card).toBeVisible();
+			await card.getByRole('button', { name: 'Add analysis to favorites' }).click();
+
+			const favorites = page.getByRole('group', { name: 'Favorite analyses' });
+			const link = favorites.getByRole('link', { name: analysisName });
+			await expect(link).toBeVisible({ timeout: 10_000 });
+
+			await page.reload({ waitUntil: 'networkidle' });
+			await gotoAnalysesGallery(page);
+			await expandSidebar(page);
+			const persistedLink = page
+				.getByRole('group', { name: 'Favorite analyses' })
+				.getByRole('link', { name: analysisName });
+			await expect(persistedLink).toBeVisible({ timeout: 10_000 });
+			await persistedLink.click();
+			await expect(page).toHaveURL(`/analysis/${aId}`);
 		} finally {
 			await deleteAnalysisViaUI(page, analysisName);
 			await deleteDatasourceViaUI(page, dsName);

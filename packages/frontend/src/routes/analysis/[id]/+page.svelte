@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { createQuery } from '@tanstack/svelte-query';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
@@ -18,13 +18,15 @@
 	} from '$lib/utils/analysis-tab';
 	import {
 		exportAnalysisCode,
+		favoriteAnalysis,
 		getAnalysisWithHeaders,
 		listAnalysisVersions,
 		restoreAnalysisVersion,
 		renameAnalysisVersion,
 		deleteAnalysisVersion,
 		type CodeExportFormat,
-		type CodeExportResponse
+		type CodeExportResponse,
+		unfavoriteAnalysis
 	} from '$lib/api/analysis';
 	import { getDatasourceSchema, listDatasources } from '$lib/api/datasource';
 	import { downloadBlob, getEngineDefaults, getStepSchema } from '$lib/api/compute';
@@ -56,6 +58,7 @@
 	import BaseModal from '$lib/components/ui/BaseModal.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
 	import { schemaStore } from '$lib/stores/schema.svelte';
+	import { favoriteStore } from '$lib/stores/favorites.svelte';
 	import { css, spinner, button } from '$lib/styles/panda';
 	import {
 		Lock,
@@ -71,10 +74,12 @@
 		PanelBottom,
 		Pencil,
 		Plus,
+		Star,
 		Trash2,
 		X
 	} from 'lucide-svelte';
 
+	const queryClient = useQueryClient();
 	const analysisId = $derived($page.params.id ?? null);
 	const validAnalysisId = $derived(analysisId && isUuid(analysisId) ? analysisId : null);
 	let lastAnalysisId = $state<string | null>(null);
@@ -324,6 +329,8 @@
 	let versionError = $state<string | null>(null);
 	let editingVersionId = $state<string | null>(null);
 	let editingVersionName = $state('');
+	let showDescriptionModal = $state(false);
+	let descriptionDraft = $state('');
 	let showExportModal = $state(false);
 	let exportScopeTabId = $state<string | null>(null);
 	let exportFormat = $state<CodeExportFormat>('polars');
@@ -378,6 +385,11 @@
 		},
 		retry: false
 	}));
+
+	const currentAnalysis = $derived(analysisStore.current ?? analysisQuery.data ?? null);
+	const analysisFavorite = $derived(
+		validAnalysisId ? favoriteStore.isFavorite(validAnalysisId) : false
+	);
 
 	let resetForRemoteLock = $state(false);
 
@@ -1019,6 +1031,46 @@
 		tabError = '';
 	}
 
+	function openDescriptionModal() {
+		descriptionDraft = currentAnalysis?.description ?? '';
+		showDescriptionModal = true;
+	}
+
+	function closeDescriptionModal() {
+		showDescriptionModal = false;
+		descriptionDraft = '';
+	}
+
+	function saveDescriptionDraft() {
+		if (editorReadOnly || !currentAnalysis) return;
+		const next = descriptionDraft.trim() || null;
+		if ((currentAnalysis.description ?? null) !== next) {
+			analysisStore.update({ description: next });
+			markUnsaved();
+		}
+		closeDescriptionModal();
+	}
+
+	async function toggleFavorite() {
+		if (!validAnalysisId || !currentAnalysis) return;
+		const next = !analysisFavorite;
+		const result = next
+			? await favoriteAnalysis(validAnalysisId)
+			: await unfavoriteAnalysis(validAnalysisId);
+		if (result.isErr()) {
+			saveError = result.error.message;
+			return;
+		}
+		favoriteStore.apply(validAnalysisId, result.value.is_favorite);
+		analysisStore.current = {
+			...currentAnalysis,
+			is_favorite: result.value.is_favorite
+		};
+		void queryClient.invalidateQueries({ queryKey: ['analyses'] });
+		void queryClient.invalidateQueries({ queryKey: ['favorite-analyses'] });
+		void queryClient.invalidateQueries({ queryKey: ['analysis', validAnalysisId] });
+	}
+
 	function openVersionModal() {
 		versionError = null;
 		showVersionModal = true;
@@ -1260,57 +1312,119 @@
 						flexDirection: 'column',
 						minWidth: '0',
 						overflow: 'hidden',
-						paddingX: '5'
+						paddingX: '5',
+						gap: '1'
 					})}
 				>
-					<h1
-						contenteditable={!editorReadOnly}
-						class={css({
-							margin: '0',
-							fontSize: 'xs',
-							fontWeight: 'semibold',
-							textTransform: 'uppercase',
-							whiteSpace: 'nowrap',
-							overflow: 'hidden',
-							textOverflow: 'ellipsis',
-							outline: 'none',
-							letterSpacing: 'wide2',
-							cursor: editorReadOnly ? 'default' : 'text',
-							_focus: {
-								backgroundColor: 'bg.hover',
-
-								paddingX: '1',
-								marginX: 'calc({spacing.1} * -1)'
-							}
-						})}
-						onblur={(e) => {
-							if (editorReadOnly) {
-								e.currentTarget.textContent = analysisQuery.data.name;
-								return;
-							}
-							const newName = e.currentTarget.textContent?.trim();
-							if (newName && newName !== analysisQuery.data.name) {
-								analysisStore.update({ name: newName });
-								markUnsaved();
-							} else if (e.currentTarget) {
-								e.currentTarget.textContent = analysisQuery.data.name;
-							}
-						}}
-					>
-						{analysisQuery.data.name}
-					</h1>
-					{#if analysisQuery.data.description}
-						<span
+					<div class={css({ display: 'flex', alignItems: 'center', gap: '2', minWidth: '0' })}>
+						<h1
+							contenteditable={!editorReadOnly}
 							class={css({
-								fontSize: '2xs',
+								margin: '0',
+								flex: '1',
+								minWidth: '0',
+								fontSize: 'xs',
+								fontWeight: 'semibold',
+								textTransform: 'uppercase',
 								whiteSpace: 'nowrap',
 								overflow: 'hidden',
 								textOverflow: 'ellipsis',
-								color: 'fg.faint',
-								letterSpacing: 'tight2'
-							})}>{analysisQuery.data.description}</span
+								outline: 'none',
+								letterSpacing: 'wide2',
+								cursor: editorReadOnly ? 'default' : 'text',
+								_focus: {
+									backgroundColor: 'bg.hover',
+									paddingX: '1',
+									marginX: 'calc({spacing.1} * -1)'
+								}
+							})}
+							onblur={(e) => {
+								const savedName = currentAnalysis?.name ?? analysisQuery.data.name;
+								if (editorReadOnly) {
+									e.currentTarget.textContent = savedName;
+									return;
+								}
+								const newName = e.currentTarget.textContent?.trim();
+								if (newName && newName !== savedName) {
+									analysisStore.update({ name: newName });
+									markUnsaved();
+									return;
+								}
+								e.currentTarget.textContent = savedName;
+							}}
 						>
-					{/if}
+							{currentAnalysis?.name ?? analysisQuery.data.name}
+						</h1>
+						<button
+							class={css({
+								display: 'inline-flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								width: '6',
+								height: '6',
+								flexShrink: '0',
+								backgroundColor: 'transparent',
+								border: 'none',
+								cursor: 'pointer',
+								color: analysisFavorite ? 'accent.primary' : 'fg.muted',
+								_hover: { color: 'accent.primary', backgroundColor: 'bg.hover' }
+							})}
+							type="button"
+							onclick={toggleFavorite}
+							aria-label={analysisFavorite
+								? 'Remove analysis from favorites'
+								: 'Add analysis to favorites'}
+							data-testid="analysis-favorite-toggle"
+						>
+							<Star size={14} fill={analysisFavorite ? 'currentColor' : 'none'} />
+						</button>
+					</div>
+					<div class={css({ display: 'flex', alignItems: 'center', gap: '2', minWidth: '0' })}>
+						{#if currentAnalysis?.description}
+							<span
+								class={css({
+									fontSize: '2xs',
+									whiteSpace: 'nowrap',
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									color: 'fg.faint',
+									letterSpacing: 'tight2',
+									minWidth: '0',
+									flex: '1'
+								})}
+							>
+								{currentAnalysis.description}
+							</span>
+						{:else if !editorReadOnly}
+							<span class={css({ fontSize: '2xs', color: 'fg.muted', flex: '1' })}>
+								No description
+							</span>
+						{/if}
+						{#if !editorReadOnly}
+							<button
+								class={css({
+									display: 'inline-flex',
+									alignItems: 'center',
+									gap: '1',
+									flexShrink: '0',
+									backgroundColor: 'transparent',
+									border: 'none',
+									padding: '0',
+									fontSize: '2xs',
+									color: 'fg.muted',
+									cursor: 'pointer',
+									_hover: { color: 'fg.primary' }
+								})}
+								type="button"
+								onclick={openDescriptionModal}
+								aria-label={currentAnalysis?.description ? 'Edit description' : 'Add description'}
+								data-testid="analysis-description-trigger"
+							>
+								<Pencil size={12} />
+								<span>{currentAnalysis?.description ? 'Edit' : 'Add description'}</span>
+							</button>
+						{/if}
+					</div>
 				</div>
 			</div>
 			<div
@@ -1857,6 +1971,79 @@
 	</div>
 {/if}
 
+{#snippet descriptionModalContent()}
+	<div
+		class={css({
+			display: 'flex',
+			justifyContent: 'space-between',
+			alignItems: 'center',
+			paddingX: '4',
+			paddingY: '3',
+			borderBottomWidth: '1',
+			'& h2': { margin: '0', fontSize: 'md', color: 'fg.primary' }
+		})}
+	>
+		<h2 id="analysis-description-title">Edit description</h2>
+		<button
+			class={css({
+				background: 'transparent',
+				border: 'none',
+				color: 'fg.muted',
+				cursor: 'pointer',
+				fontSize: 'xl',
+				padding: '1',
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'center',
+				transitionProperty: 'color, background-color',
+				transitionDuration: 'normal',
+				_hover: { backgroundColor: 'bg.hover', color: 'fg.primary' }
+			})}
+			onclick={closeDescriptionModal}
+			aria-label="Close description editor"
+		>
+			<X size={16} />
+		</button>
+	</div>
+	<div class={css({ display: 'grid', gap: '3', padding: '4' })}>
+		<p class={css({ margin: '0', fontSize: 'sm', color: 'fg.tertiary' })}>
+			Add context for collaborators, saved versions, and your future self.
+		</p>
+		<textarea
+			rows="5"
+			class={css({
+				width: 'full',
+				borderWidth: '1',
+				backgroundColor: 'bg.primary',
+				paddingX: '3',
+				paddingY: '2',
+				fontSize: 'sm',
+				resize: 'vertical'
+			})}
+			bind:value={descriptionDraft}
+			placeholder="What is this analysis for?"
+			data-testid="analysis-description-input"
+		></textarea>
+	</div>
+	<div
+		class={css({
+			paddingX: '4',
+			paddingY: '3',
+			borderTopWidth: '1',
+			display: 'flex',
+			justifyContent: 'flex-end',
+			gap: '2'
+		})}
+	>
+		<button class={button({ variant: 'secondary' })} onclick={closeDescriptionModal} type="button"
+			>Cancel</button
+		>
+		<button class={button({ variant: 'primary' })} onclick={saveDescriptionDraft} type="button"
+			>Apply</button
+		>
+	</div>
+{/snippet}
+
 {#snippet exportModalContent()}
 	<div
 		class={css({
@@ -2270,6 +2457,24 @@
 		>
 	</div>
 {/snippet}
+
+<BaseModal
+	open={showDescriptionModal}
+	onClose={closeDescriptionModal}
+	closeOnEscape={true}
+	closeOnBackdrop={true}
+	panelClass={css({
+		width: 'min(560px, 92vw)',
+		maxHeight: '70vh',
+		backgroundColor: 'bg.primary',
+		borderWidth: '1',
+		display: 'flex',
+		flexDirection: 'column',
+		_focus: { outline: 'none' }
+	})}
+	ariaLabelledby="analysis-description-title"
+	content={descriptionModalContent}
+/>
 
 <BaseModal
 	open={showVersionModal}

@@ -192,7 +192,7 @@ def _shared_tables():
 
 
 def _tenant_tables():
-    from contracts.analysis.models import Analysis, AnalysisDataSource
+    from contracts.analysis.models import Analysis, AnalysisDataSource, AnalysisFavorite
     from contracts.analysis_versions.models import AnalysisVersion
     from contracts.build_jobs.models import BuildJob
     from contracts.build_runs.models import BuildEvent, BuildRun
@@ -208,6 +208,7 @@ def _tenant_tables():
     table_names = {
         Analysis.__tablename__,
         AnalysisDataSource.__tablename__,
+        AnalysisFavorite.__tablename__,
         AnalysisVersion.__tablename__,
         BuildEvent.__tablename__,
         BuildJob.__tablename__,

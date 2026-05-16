@@ -160,6 +160,10 @@ def _build_default_provider_metadata(password: str) -> dict[str, str]:
     }
 
 
+def get_default_user_id() -> str:
+    return _DEFAULT_USER_ID
+
+
 def get_default_user(session: Session) -> User | None:
     return get_user_by_id(session, _DEFAULT_USER_ID)
 

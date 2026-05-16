@@ -101,6 +101,14 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('analysis_id', 'datasource_id'),
     )
     op.create_table(
+        'analysis_favorites',
+        sa.Column('user_id', sa.String(), nullable=False),
+        sa.Column('analysis_id', sa.String(), nullable=False),
+        sa.ForeignKeyConstraint(['analysis_id'], ['analyses.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('user_id', 'analysis_id'),
+    )
+    op.create_index('ix_analysis_favorites_analysis_id', 'analysis_favorites', ['analysis_id'])
+    op.create_table(
         'analysis_versions',
         sa.Column('id', sa.String(), nullable=False),
         sa.Column('analysis_id', sa.String(), nullable=False),
@@ -371,6 +379,8 @@ def downgrade() -> None:
     op.drop_table('build_runs')
     op.drop_table('engine_runs')
     op.drop_table('analysis_versions')
+    op.drop_index('ix_analysis_favorites_analysis_id', table_name='analysis_favorites')
+    op.drop_table('analysis_favorites')
     op.drop_table('analysis_datasources')
     op.drop_table('analyses')
     op.drop_index('ix_datasource_column_metadata_datasource_id', table_name='datasource_column_metadata')

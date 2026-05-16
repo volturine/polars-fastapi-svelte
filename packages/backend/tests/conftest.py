@@ -61,7 +61,7 @@ if TYPE_CHECKING:
 
 
 def _register_backend_sqlmodel_metadata() -> None:
-    from contracts.analysis.models import Analysis, AnalysisDataSource
+    from contracts.analysis.models import Analysis, AnalysisDataSource, AnalysisFavorite
     from contracts.analysis_versions.models import AnalysisVersion
     from contracts.build_jobs.models import BuildJob
     from contracts.build_runs.models import BuildEvent, BuildRun
@@ -82,6 +82,7 @@ def _register_backend_sqlmodel_metadata() -> None:
 
     del Analysis
     del AnalysisDataSource
+    del AnalysisFavorite
     del AnalysisVersion
     del AppSettings
     del AuthProvider
@@ -209,7 +210,7 @@ def client(test_db_session, test_user):
     from core.database import get_db
 
     from main import app
-    from modules.auth.dependencies import get_current_user
+    from modules.auth.dependencies import get_current_user, get_current_user_id, get_optional_user_id
 
     def override_get_db():
         yield test_db_session
@@ -221,6 +222,8 @@ def client(test_db_session, test_user):
     app.state.runtime_availability_probe = _UnavailableRuntimeAvailabilityProbe()
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = lambda: test_user
+    app.dependency_overrides[get_current_user_id] = lambda: test_user.id
+    app.dependency_overrides[get_optional_user_id] = lambda: test_user.id
     with TestClient(app) as ac:
         try:
             yield ac

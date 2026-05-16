@@ -6,6 +6,7 @@ from backend_core.dependencies import get_optional_lock_owner_id
 from backend_core.error_handlers import handle_errors
 from backend_core.validation import AnalysisId, parse_analysis_id
 from modules.analysis import schemas as analysis_schemas
+from modules.analysis import service as analysis_service
 from modules.analysis_versions import schemas, service
 from modules.locks import service as lock_service
 from modules.mcp.router import MCPRouter
@@ -105,4 +106,5 @@ def restore_version(
 
     The current state is saved as a version before restoring, so you can always undo.
     """
-    return service.restore_version(session, parse_analysis_id(analysis_id), version)
+    restored = service.restore_version(session, parse_analysis_id(analysis_id), version)
+    return analysis_service.get_analysis(session, restored.id)

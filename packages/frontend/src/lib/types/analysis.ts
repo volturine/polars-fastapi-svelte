@@ -87,6 +87,7 @@ export interface Analysis {
 	updated_at: string;
 	result_path: string | null;
 	thumbnail: string | null;
+	is_favorite?: boolean;
 	version?: string | null;
 }
 
@@ -96,6 +97,7 @@ export interface AnalysisGalleryItem {
 	thumbnail: string | null;
 	created_at: string;
 	updated_at: string;
+	is_favorite?: boolean;
 }
 
 export interface AnalysisTemplateSummary {

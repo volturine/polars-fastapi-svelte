@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import { createQuery } from '@tanstack/svelte-query';
 	import {
 		LayoutGrid,
 		Database,
@@ -13,10 +14,13 @@
 		MessageSquare,
 		Cpu,
 		LogOut,
-		User
+		User,
+		Star
 	} from 'lucide-svelte';
+	import { listFavoriteAnalyses } from '$lib/api/analysis';
 	import { css } from '$lib/styles/panda';
 	import { enginesStore } from '$lib/stores/engines.svelte';
+	import { favoriteStore } from '$lib/stores/favorites.svelte';
 	import EnginesPopup from '$lib/components/common/EnginesPopup.svelte';
 
 	interface Props {
@@ -54,6 +58,18 @@
 	const currentPath = $derived(page.url.pathname);
 	let enginesOpen = $state(false);
 	let enginesTrigger = $state<HTMLButtonElement>();
+
+	const analysesQuery = createQuery(() => ({
+		queryKey: ['favorite-analyses', namespace],
+		enabled: namespace.trim().length > 0,
+		queryFn: async () => {
+			const result = await listFavoriteAnalyses();
+			if (result.isErr()) throw new Error(result.error.message);
+			return result.value;
+		}
+	}));
+
+	const favoriteAnalyses = $derived(analysesQuery.data ?? []);
 
 	const navItems = [
 		{ href: '/', label: 'Analyses', icon: LayoutGrid, prefix: '/analysis' },
@@ -140,6 +156,12 @@
 	function openEngines(): void {
 		enginesOpen = true;
 	}
+
+	$effect(() => {
+		const analyses = analysesQuery.data;
+		if (!analyses) return;
+		favoriteStore.sync(analyses);
+	});
 
 	// Subscription: opening the popup is an explicit on-demand owner of the engines stream.
 	$effect(() => {
@@ -240,42 +262,147 @@
 		{/if}
 	</div>
 
-	<nav
+	<div
 		class={css({
 			display: 'flex',
 			flexDirection: 'column',
-			gap: '0.5',
-			paddingY: '2',
-			flex: '1'
+			flex: '1',
+			minHeight: '0'
 		})}
-		aria-label="Primary"
 	>
-		{#each navItems as item (item.href)}
-			{@const active = isActive(item)}
-			<a
-				href={resolve(item.href as '/')}
-				class={navLinkClass(active)}
-				title={collapsed ? item.label : undefined}
-				aria-current={active ? 'page' : undefined}
-			>
-				<span
+		<nav
+			class={css({
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '0.5',
+				paddingY: '2'
+			})}
+			aria-label="Primary"
+		>
+			{#each navItems as item (item.href)}
+				{@const active = isActive(item)}
+				<a
+					href={resolve(item.href as '/')}
+					class={navLinkClass(active)}
+					title={collapsed ? item.label : undefined}
+					aria-current={active ? 'page' : undefined}
+				>
+					<span
+						class={css({
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							flexShrink: 0,
+							width: '5',
+							height: '5'
+						})}
+					>
+						<item.icon size={16} />
+					</span>
+					{#if !collapsed}
+						<span>{item.label}</span>
+					{/if}
+				</a>
+			{/each}
+		</nav>
+
+		<div
+			class={css({
+				display: 'flex',
+				flexDirection: 'column',
+				gap: '2',
+				flex: '1',
+				minHeight: '0',
+				paddingX: collapsed ? '0' : '3',
+				paddingTop: collapsed ? '0' : '3',
+				paddingBottom: collapsed ? '0' : '2',
+				overflow: 'hidden'
+			})}
+			role="group"
+			aria-label="Favorite analyses"
+		>
+			{#if !collapsed}
+				<div
 					class={css({
 						display: 'flex',
 						alignItems: 'center',
-						justifyContent: 'center',
-						flexShrink: 0,
-						width: '5',
-						height: '5'
+						gap: '2',
+						paddingBottom: '1',
+						color: 'fg.muted',
+						fontSize: '2xs2',
+						fontWeight: 'semibold',
+						letterSpacing: 'widest',
+						textTransform: 'uppercase'
 					})}
 				>
-					<item.icon size={16} />
-				</span>
-				{#if !collapsed}
-					<span>{item.label}</span>
+					<Star size={12} />
+					<span>Favorites</span>
+				</div>
+
+				{#if analysesQuery.isLoading}
+					<div class={css({ fontSize: 'xs', color: 'fg.muted' })}>Loading…</div>
+				{:else if favoriteAnalyses.length === 0}
+					<p
+						class={css({
+							margin: '0',
+							fontSize: 'xs',
+							lineHeight: '1.5',
+							color: 'fg.faint'
+						})}
+					>
+						Star analyses to pin them here.
+					</p>
+				{:else}
+					<div
+						class={css({
+							display: 'flex',
+							flexDirection: 'column',
+							gap: '1',
+							overflowY: 'auto',
+							paddingRight: '1'
+						})}
+						data-testid="favorite-analyses"
+					>
+						{#each favoriteAnalyses as analysis (analysis.id)}
+							<a
+								href={resolve(`/analysis/${analysis.id}`)}
+								class={css({
+									display: 'flex',
+									alignItems: 'center',
+									gap: '2',
+									minWidth: '0',
+									paddingX: '2',
+									paddingY: '1.5',
+									fontSize: 'sm',
+									color: currentPath === `/analysis/${analysis.id}` ? 'fg.primary' : 'fg.tertiary',
+									backgroundColor:
+										currentPath === `/analysis/${analysis.id}` ? 'bg.hover' : 'transparent',
+									textDecoration: 'none',
+									transitionProperty: 'color, background-color',
+									transitionDuration: '160ms',
+									transitionTimingFunction: 'ease',
+									_hover: { color: 'fg.primary', backgroundColor: 'bg.hover' }
+								})}
+								data-testid={`favorite-analysis-link-${analysis.id}`}
+							>
+								<Star size={12} fill="currentColor" />
+								<span
+									class={css({
+										minWidth: '0',
+										overflow: 'hidden',
+										textOverflow: 'ellipsis',
+										whiteSpace: 'nowrap'
+									})}
+								>
+									{analysis.name}
+								</span>
+							</a>
+						{/each}
+					</div>
 				{/if}
-			</a>
-		{/each}
-	</nav>
+			{/if}
+		</div>
+	</div>
 
 	<div
 		class={css({

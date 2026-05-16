@@ -16,6 +16,7 @@
 	import { computeActivityStore } from '$lib/stores/compute-activity.svelte';
 	import { analysisStore } from '$lib/stores/analysis.svelte';
 	import { datasourceStore } from '$lib/stores/datasource.svelte';
+	import { favoriteStore } from '$lib/stores/favorites.svelte';
 	import { schemaStore } from '$lib/stores/schema.svelte';
 	import { overlayStack } from '$lib/stores/overlay.svelte';
 	import {
@@ -41,6 +42,7 @@
 	let sidebarHovered = $state(false);
 	let shellInteractive = $state(false);
 	const currentPath = $derived(page.url.pathname);
+	const namespaceState = useNamespace();
 
 	const authPaths = [
 		'/login',
@@ -105,6 +107,12 @@
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 		void initNamespace();
+	});
+
+	// State: favorites are namespace-scoped and reset on namespace changes.
+	$effect(() => {
+		if (!isNamespaceReady()) return;
+		favoriteStore.setNamespace(namespaceState.value);
 	});
 
 	// Subscription: $derived can't install listeners.
@@ -213,7 +221,6 @@
 		void idbSet('sidebar_collapsed', sidebarCollapsed);
 	}
 
-	const namespaceState = useNamespace();
 	let namespaceOpen = $state(false);
 	let namespaceTrigger = $state<HTMLButtonElement>();
 	const namespaceDraft = $derived(namespaceState.value);
@@ -227,6 +234,7 @@
 				chatStore.reset();
 				analysisStore.reset();
 				datasourceStore.reset();
+				favoriteStore.reset();
 				schemaStore.reset();
 			},
 			async afterCommit() {

@@ -125,6 +125,38 @@ test.describe('Analyses – save/discard dirty tracking', () => {
 			await deleteDatasourceViaUI(page, ds);
 		}
 	});
+
+	test('analysis description can be edited and saved after creation', async ({ page, request }) => {
+		test.setTimeout(45_000);
+		const id = uid();
+		const ds = `e2e-description-ds-${id}`;
+		const analysis = `E2E Description ${id}`;
+		const nextDescription = `Updated description ${id}`;
+		const dsId = await createDatasource(request, ds);
+		const aId = await createAnalysis(request, analysis, dsId);
+		try {
+			await gotoAnalysisEditor(page, aId);
+			await page.getByTestId('analysis-description-trigger').click();
+
+			const dialog = dialogByHeading(page, /Edit description/i);
+			await expect(dialog).toBeVisible({ timeout: 8_000 });
+			await dialog.getByTestId('analysis-description-input').fill(nextDescription);
+			await dialog.getByRole('button', { name: 'Apply' }).click();
+
+			await expect(page.getByRole('button', { name: 'Save' })).toBeVisible({ timeout: 5_000 });
+			await page.getByRole('button', { name: 'Save' }).click();
+			await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible({ timeout: 10_000 });
+
+			await page.reload({ waitUntil: 'networkidle' });
+			await waitForEditorReload(page);
+			await expect(page.locator('header').first().getByText(nextDescription)).toBeVisible({
+				timeout: 10_000
+			});
+		} finally {
+			await deleteAnalysisViaUI(page, analysis);
+			await deleteDatasourceViaUI(page, ds);
+		}
+	});
 });
 
 // ── Step library labels ─────────────────────────────────────────────────────

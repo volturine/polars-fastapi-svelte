@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from contracts.analysis.models import Analysis, AnalysisDataSource
+from contracts.analysis.models import Analysis, AnalysisDataSource, AnalysisFavorite
 from contracts.datasource.models import DataSource
 from contracts.locks.models import ResourceLock
 from sqlalchemy import select
@@ -476,6 +476,7 @@ class TestAnalysisGet:
         assert result["id"] == sample_analysis.id
         assert result["name"] == sample_analysis.name
         assert result["description"] == sample_analysis.description
+        assert result["is_favorite"] is False
 
     def test_get_analysis_not_found(self, client):
         missing_id = str(uuid.uuid4())
@@ -522,6 +523,7 @@ class TestAnalysisList:
 
         assert item["id"] == sample_analysis.id
         assert item["name"] == sample_analysis.name
+        assert item["is_favorite"] is False
 
 
 class TestAnalysisImport:
@@ -647,6 +649,27 @@ class TestAnalysisUpdate:
 
         assert result["description"] == "Updated description"
         assert result["name"] == sample_analysis.name
+
+    def test_favorite_analysis_creates_row(self, client, sample_analysis: Analysis, test_db_session, test_user):
+        response = client.post(f"/api/v1/analysis/{sample_analysis.id}/favorite")
+
+        assert response.status_code == 200
+        assert response.json() == {"analysis_id": sample_analysis.id, "is_favorite": True}
+        stmt = select(AnalysisFavorite).where(AnalysisFavorite.user_id == test_user.id, AnalysisFavorite.analysis_id == sample_analysis.id)  # type: ignore[arg-type]
+        row = test_db_session.execute(stmt).scalar_one_or_none()
+        assert row is not None
+
+    def test_unfavorite_analysis_deletes_row(self, client, sample_analysis: Analysis, test_db_session, test_user):
+        test_db_session.add(AnalysisFavorite(user_id=test_user.id, analysis_id=sample_analysis.id))
+        test_db_session.commit()
+
+        response = client.delete(f"/api/v1/analysis/{sample_analysis.id}/favorite")
+
+        assert response.status_code == 200
+        assert response.json() == {"analysis_id": sample_analysis.id, "is_favorite": False}
+        stmt = select(AnalysisFavorite).where(AnalysisFavorite.user_id == test_user.id, AnalysisFavorite.analysis_id == sample_analysis.id)  # type: ignore[arg-type]
+        row = test_db_session.execute(stmt).scalar_one_or_none()
+        assert row is None
 
     def test_update_analysis_tab_steps(self, client, sample_analysis: Analysis):
         payload = {
